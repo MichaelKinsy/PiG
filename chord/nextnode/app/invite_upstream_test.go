@@ -10,7 +10,7 @@ import (
 )
 
 // Ports packages/chord/test/node/app/invite.test.ts (Pi main c23b9ec1): the owner makes an invite for a principal, the invitee's
-// page posts the token from the fragment and gets a browser session for it, once; only the owner (AppInfo.owner) makes invites,
+// page posts the token from the fragment and gets a browser sign-in for it, once; only the owner (AppInfo.owner) makes invites,
 // whichever principal the app chose as its owner.
 
 func inviteServer(t *testing.T, owner *delta.JsonObject) *kitServer {

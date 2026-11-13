@@ -255,6 +255,16 @@ func (s *Session) boundaryProjection(drafts []extension.SessionBoundaryDraft) (i
 	return preview.BuildSessionProjection(), nil
 }
 
+// draftCustomMessage is the members of a custom_message draft as a custom message holds them: a draft written without display or content has no such member
+// (agent-session.ts _applyBoundaryDrafts passes draft.content and draft.display on as they are).
+func draftCustomMessage(draft extension.SessionBoundaryDraft) map[string]any {
+	custom := map[string]any{"customType": draft.CustomType, "content": draft.Content, "details": draft.Details}
+	if display := draft.DisplayMember(); display != nil {
+		custom["display"] = display
+	}
+	return custom
+}
+
 func applyBoundaryDrafts(manager *icodingagent.Session, drafts []extension.SessionBoundaryDraft) ([]icodingagent.SessionEntry, error) {
 	appended := make([]icodingagent.SessionEntry, 0, len(drafts))
 	for _, draft := range drafts {
@@ -264,8 +274,12 @@ func applyBoundaryDrafts(manager *icodingagent.Session, drafts []extension.Sessi
 		case "custom":
 			id, err = manager.AppendCustomEntry(draft.CustomType, draft.Data)
 		case "custom_message":
-			id, err = manager.AppendCustomMessageEntry(draft.CustomType, draft.Content, draft.Display, draft.Details)
+			id, err = manager.AppendCustomMessage(draftCustomMessage(draft))
 		case "context_edit":
+			if draft.ReplacementUndefined {
+				// upstream: session-manager.ts:1371-1379 (appendContextEdit rejects a replacement that is not null and has no content: undefined is one).
+				return nil, icodingagent.ErrContextEditReplacement
+			}
 			var replacement *icodingagent.ContextEditReplacement
 			if raw := bytes.TrimSpace(draft.Replacement); len(raw) > 0 && !bytes.Equal(raw, []byte("null")) {
 				replacement = &icodingagent.ContextEditReplacement{}
@@ -280,7 +294,7 @@ func applyBoundaryDrafts(manager *icodingagent.Session, drafts []extension.Sessi
 				firstKept = *draft.FirstKeptEntryID
 			}
 			tokensBefore := compaction.EstimateProjectedContextTokens(manager.BuildSessionProjection(), manager.GetContextBranch()).Tokens
-			id, err = manager.AppendCompaction(draft.Summary, firstKept, tokensBefore, draft.Details, true, draft.Usage)
+			id, err = manager.AppendCompactionEntry(icodingagent.CompactionEntry{Summary: draft.Summary, FirstKeptEntryID: firstKept, TokensBefore: tokensBefore, Details: draft.Details, Usage: draft.Usage, UsageNull: draft.UsageNull, UsageRaw: draft.UsageRaw, FromHook: true})
 		default:
 			return nil, fmt.Errorf("unsupported session boundary draft type %q", draft.Type)
 		}

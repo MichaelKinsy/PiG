@@ -1,0 +1,23 @@
+from = "1.5.2+f7734109"
+to = "1.5.2+ede360e4"
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_last_assistant_text_cases_test.go#TestSessionLastAssistantTextCases", "test:coding/session_last_assistant_text_cases_test.go#TestSessionLastAssistantTextMatchesPi", "test:coding/session_last_assistant_text_test.go#TestSessionLastAssistantText", "test:coding/cli/rpc_upstream_test.go#TestRPCModeUpstream", "test:coding/cli/child_session_last_assistant_text_test.go#TestChildSessionLastAssistantTextSkipsATurnWithoutAnAnswer", "test:internal/codingagent/copy_after_abort_or_error_upstream_test.go#TestCopyAfterAProviderErrorCopiesThePreviousAnswer", "test:internal/codingagent/copy_after_abort_or_error_upstream_test.go#TestCopyWithNothingToCopySaysSo", "scenario:test/parity/scenarios/slash-commands/27-copy-after-aborted-turn.toml", "scenario:test/parity/scenarios/slash-commands/28-copy-after-errored-turn.toml"]
+rationale = "ede360e4d (#12121, issue #12119): getLastAssistantText skips an assistant message without text whose turn did not end normally (`stopReason !== \"stop\" && !content.some((c) => c.type === \"text\" && c.text.trim())`: aborted, error, toolUse, length, or no stop reason), where it skipped only an aborted message with no content; a reply that ended with stop stays the last reply even without text. coding.Session.LastAssistantText is the one Go function (trim is internal/jsstring.Trim, String.prototype.trim); /copy and the copy key (internal/codingagent handleCopyCommand), RPC get_last_assistant_text (coding/cli/rpc_mode.go, which the evals harness reads), the slash command context of coding/session_ops.go and the child session's getLastAssistantText and state (coding/cli/child_session_ops.go, child_sessions.go) all call it. The Node runtime's vendored agent-session.js and the parity oracle carry the commit through the backport block ede360e4d of automation/gen/pi-post-release-backports.mjs."
+
+[[files]]
+path = "packages/coding-agent/docs/rpc-commands.md"
+change = "modified"
+disposition = "ported"
+evidence = []
+rationale = "ede360e4d: get_last_assistant_text says \"Messages without text from an aborted or failed turn, or that only call tools, are skipped.\" PiG's page docs/site/docs/rpc-commands.md says it in the command table and in the command's section; the vendored Pi page and the oracle's carry Pi's sentence through the backport block."
+
+[[files]]
+path = "packages/coding-agent/test/suite/regressions/12119-copy-after-abort-or-error.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/session_last_assistant_text_cases_test.go#TestSessionLastAssistantTextCases", "test:coding/cli/rpc_upstream_test.go#TestRPCModeUpstream", "test:internal/codingagent/copy_after_abort_or_error_upstream_test.go#TestCopyAfterAProviderErrorCopiesThePreviousAnswer"]
+rationale = "ede360e4d adds three cases: the previous answer after Esc during a tool call, the previous answer after a provider error, and a reply that ended normally without text stays the last reply (undefined). They are the three \"Pi 12119:\" rows of coding/testdata/last_assistant_text_cases.json (the histories Pi's faux provider leaves, the same expected text), run on a Session by TestSessionLastAssistantTextCases and on the installed Pi by TestSessionLastAssistantTextMatchesPi; the provider-error case also runs through a real turn in RPC mode and in the interactive mode, and the Esc case through the resumed history of scenario slash-commands/27. The other rows of the file are Pi's answers from a run of the function at the commit."

@@ -103,6 +103,34 @@ def test_every_kind_encodes_its_upstream_fields() -> None:
     assert encoded.images == []
 
 
+def test_structural_kinds_carry_an_id() -> None:
+    """Every node kind can carry an id: an a11y, focus or drawing record of a mounted view names a node by it."""
+    tree = kit.Container(
+        [
+            kit.Box(children=[kit.Text("t", id="id-text")], id="id-box"),
+            kit.TruncatedText("t", id="id-truncated-text"),
+            kit.Markdown("m", id="id-markdown"),
+            kit.Spacer(id="id-spacer"),
+            kit.DynamicBorder(id="id-dynamic-border"),
+            kit.Image(b"png", "image/png", id="id-image"),
+            kit.Loader(id="id-loader"),
+            kit.HStack(id="id-hstack"),
+            kit.VStack(id="id-vstack"),
+            kit.Lines(["row"], id="id-lines"),
+            kit.UserMessage("u", id="id-user-message"),
+            kit.Diff("d", id="id-diff"),
+        ],
+        id="id-container",
+    )
+
+    def ids(node: dict[str, Any]) -> list[tuple[str, Any]]:
+        return [(node["kind"], node.get("id"))] + [pair for child in node.get("children", []) for pair in ids(child)]
+
+    got = ids(kit.View(tree)._encode(False).body["root"])
+    assert len(got) == 14
+    assert [node_id for _, node_id in got] == [f"id-{kind}" for kind, _ in got]
+
+
 def test_defaults_match_upstream_constructors() -> None:
     body = kit.View(kit.Container([kit.Box(), kit.Spacer(), kit.DynamicBorder(), kit.Loader(), kit.Text()]))._encode(False).body
     assert body["root"]["children"] == [

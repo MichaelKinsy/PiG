@@ -2515,6 +2515,31 @@ impl Extension {
                                     );
                                 }
                             }
+                            "ui.custom.invalidate" => {
+                                let Some(args) = notify.args.as_ref() else {
+                                    continue;
+                                };
+                                let key = args
+                                    .get("key")
+                                    .and_then(Value::as_str)
+                                    .unwrap_or_default()
+                                    .to_string();
+                                let count = args.get("count").and_then(Value::as_u64).unwrap_or(0);
+                                if count == 0 {
+                                    continue;
+                                }
+                                let overlay = base_ctx.overlays.lock().unwrap().get(&key).cloned();
+                                let Some(overlay) = overlay else {
+                                    continue;
+                                };
+                                if let Err(err) = overlay.send_invalidate(count) {
+                                    overlay.active.store(false, Ordering::Release);
+                                    let _ = conn.notify(
+                                        "ui.custom.close",
+                                        Some(serde_json::json!({"key": key, "error": err})),
+                                    );
+                                }
+                            }
                             "ui.custom.input" => {
                                 let Some(args) = notify.custom_input else {
                                     continue;

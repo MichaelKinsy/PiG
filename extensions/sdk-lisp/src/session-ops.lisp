@@ -27,10 +27,12 @@
 
 (defun setup-append-message (manager message) (sess-write manager "appendMessage" "message" message))
 (defun setup-append-custom-entry (manager custom-type &optional data)
-  (sess-write manager "appendCustomEntry" "customType" custom-type "data" data))
+  "DATA NIL leaves the entry without a data member; :NULL writes the member as null."
+  (apply #'sess-write manager "appendCustomEntry" "customType" custom-type (and data (list "data" data))))
 (defun setup-append-custom-message-entry (manager custom-type content display &optional details)
-  (sess-write manager "appendCustomMessageEntry" "customType" custom-type "content" content
-                                                  "display" (if display t :false) "details" details))
+  "DETAILS NIL leaves the entry without a details member; :NULL writes the member as null."
+  (apply #'sess-write manager "appendCustomMessageEntry" "customType" custom-type "content" content
+         "display" (if display t :false) (and details (list "details" details))))
 (defun setup-append-session-info (manager name) (sess-write manager "appendSessionInfo" "name" name))
 (defun setup-append-model-change (manager provider model-id)
   (sess-write manager "appendModelChange" "provider" provider "modelId" model-id))

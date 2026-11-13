@@ -1,6 +1,6 @@
 # Models
 
-A model in PiG is identified by a **provider-qualified spec**: `provider/modelID`. Model-selection options such as `--model`, `/model`, `Ctrl+P` cycling, and the extension `setModel()` call accept provider-qualified specs. Scoped model entries in settings also use that form. The saved default is an exception: set `defaultProvider` to the provider and `defaultModel` to the model ID without the provider prefix. A provider-qualified `defaultModel` does not select that model at startup.
+A model in PiG is identified by a **provider-qualified spec**: `provider/modelID`. Model-selection options such as `--model`, `/model` and `Ctrl+P` cycling accept provider-qualified specs. An extension's `setModel()` takes a model object, as Pi's does; the Go, Python, Rust and Lisp SDKs also take the spec. Scoped model entries in settings also use that form. The saved default is an exception: set `defaultProvider` to the provider and `defaultModel` to the model ID without the provider prefix. A provider-qualified `defaultModel` does not select that model at startup.
 
 `--model` and `/model` resolve a bare model ID across all providers, as Pi does. The Go function `coding.BuildModel` is different: it reads a spec without a `/` as `openai/<id>`. Always pass `provider/id` to `BuildModel`.
 
@@ -13,7 +13,7 @@ A model in PiG is identified by a **provider-qualified spec**: `provider/modelID
 | `Ctrl+P` / `Shift+Ctrl+P` | Cycle next/previous within scoped models. |
 | `/scoped-models` | Edit the cycle list interactively. |
 | `--models a,b,c` | Set scope for this run only (does not persist). |
-| `setModel(spec)` (extension API) | Programmatic switch. The Go SDK's `Context.SetModel` returns `(applied, error)`. |
+| `setModel(model)` (extension API) | Programmatic switch to a model object: one from the model registry, as it is or edited, or one built by hand for a provider PiG knows. The session uses the object's context window, limits, base URL and compat. Go `Context.SetModel(model)` returns `(applied, error)`; `Context.SetModelNamed("provider/id")`, and a `provider/id` string in Python, Rust and Lisp, switch by spec. |
 
 The selector lists models from providers with configured authentication. It uses `GEMINI_API_KEY` for Google Gemini, not `GOOGLE_API_KEY`. Providers without configured authentication are omitted.
 

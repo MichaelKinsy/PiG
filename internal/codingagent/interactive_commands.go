@@ -352,7 +352,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			return m.currentSession().ID(), m.currentSession().CWD(), n
 		},
 		LastAssistant: m.lastAssistantMessageText,
-		CopyClipboard: copyToClipboard,
+		CopyClipboard: m.effectiveCopyClipboard(),
 		CostSummary: func() string {
 			if m.agent == nil {
 				return "No agent activity yet."

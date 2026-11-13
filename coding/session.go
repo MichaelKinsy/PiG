@@ -11,7 +11,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -842,9 +841,7 @@ func (s *Session) persistMessage(msg agent.AgentMessage) error {
 	if in := s.inner.Load(); in != nil {
 		var id string
 		if msg.Custom != nil {
-			customType, _ := msg.Custom["customType"].(string)
-			display, _ := msg.Custom["display"].(bool)
-			id, err = in.AppendCustomMessageEntry(customType, msg.Custom["content"], display, msg.Custom["details"])
+			id, err = in.AppendCustomMessage(msg.Custom)
 		} else {
 			id, err = in.AppendMessage(msg)
 			if err == nil {
@@ -1230,7 +1227,7 @@ func (s *Session) refreshCurrentModelFromRegistry() {
 	if refreshed == nil {
 		return
 	}
-	if s.modelRuntime.sameBoundModelMetadata(current, refreshed) {
+	if s.modelRuntime.sameBoundModelMetadata(current, refreshed) || s.modelRuntime.keepsModelObject(current, refreshed) {
 		return
 	}
 	defer s.beginReplicatedChange()()
@@ -1251,9 +1248,7 @@ func (runtime *ModelRuntime) sameBoundModelMetadata(current, refreshed *ai.Model
 	default:
 		return false
 	}
-	left, right := *current, *refreshed
-	left.Provider, right.Provider = nil, nil
-	return reflect.DeepEqual(left, right)
+	return sameModelMetadata(current, refreshed)
 }
 
 // ModelRuntime returns this Session's mode-independent model execution path.
@@ -1656,8 +1651,10 @@ func (s *Session) SetSessionName(name string) error {
 
 // ─── Message helpers ─────────────────────────────────────────────────────────
 
-// LastAssistantText returns the trimmed text of the most recent assistant message, or nil when there is none or its text is empty. An aborted
-// message without content is skipped; the text joins every text block, and trimming follows JavaScript's String.prototype.trim.
+// LastAssistantText returns the trimmed text of the last assistant reply, or nil when there is none or the last reply has no text. An
+// assistant message without text from a turn that did not end normally (a stop reason other than "stop": aborted, failed, only calling
+// tools, cut at the length limit, or none) is skipped (Pi #12119); a reply that ended normally stays the last reply even without text.
+// The text joins every text block, and trimming follows JavaScript's String.prototype.trim.
 // Ports packages/coding-agent/src/core/agent-session.ts getLastAssistantText.
 func (s *Session) LastAssistantText() *string {
 	msgs := s.Messages()
@@ -1666,7 +1663,10 @@ func (s *Session) LastAssistantText() *string {
 			continue
 		}
 		a := msg.Assistant
-		if a.StopReason == "aborted" && len(a.Content) == 0 {
+		if a.StopReason != ai.StopReasonStop && !slices.ContainsFunc(a.Content, func(b ai.AssistantContentBlock) bool {
+			tc, ok := b.(ai.TextContent)
+			return ok && jsstring.Trim(tc.Text) != ""
+		}) {
 			continue
 		}
 		var sb strings.Builder
@@ -1983,12 +1983,14 @@ func (s *Session) PendingMessageCount() int {
 // SetSteeringMode updates the active queue and persists its drain mode.
 func (s *Session) SetSteeringMode(mode agent.QueueMode) error {
 	s.agent.SetSteeringMode(mode)
+	// pig divergence (D633): a failed save of the mode is returned; Pi's setSteeringMode (agent-session.ts:2859-2862) returns nothing.
 	return s.SettingsManager().SetSteeringMode(string(mode))
 }
 
 // SetFollowUpMode updates the active queue and persists its drain mode.
 func (s *Session) SetFollowUpMode(mode agent.QueueMode) error {
 	s.agent.SetFollowUpMode(mode)
+	// pig divergence (D633): a failed save of the mode is returned; Pi's setFollowUpMode (agent-session.ts:2868-2871) returns nothing.
 	return s.SettingsManager().SetFollowUpMode(string(mode))
 }
 
@@ -2959,7 +2961,7 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 	}
 
 	s.mu.Lock()
-	entryID, err := s.inner.Load().AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
+	entryID, err := s.inner.Load().AppendCompactionEntry(icodingagent.CompactionEntry{Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, UsageRaw: result.UsageRaw, FromHook: fromExtension})
 	if err != nil {
 		s.mu.Unlock()
 		return fail(fmt.Errorf("coding: Compact: persist: %w", err), false)
@@ -3560,7 +3562,7 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 	in := s.inner.Load()
 	var entryID string
 	if err == nil {
-		entryID, err = in.AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
+		entryID, err = in.AppendCompactionEntry(icodingagent.CompactionEntry{Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, UsageRaw: result.UsageRaw, FromHook: fromExtension})
 	}
 	if err != nil {
 		aborted := compactCtx.Err() != nil || cancelledByExtension

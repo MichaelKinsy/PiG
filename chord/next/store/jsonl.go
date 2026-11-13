@@ -30,7 +30,8 @@ import (
 const chunkBytes = 64 * 1024
 
 // ByteSource is an AsyncIterable<Uint8Array>: Next gives the next chunk (ok false at the end), Close releases it
-// early.
+// early. A chunk is valid until the next Next or Close: copy it to keep it. (Pi's streams hand out arrays of their own;
+// a source here may fill the buffer it handed out again, as the sync bodies do.)
 type ByteSource interface {
 	Next(ctx context.Context) (chunk []byte, ok bool, err error)
 	Close() error

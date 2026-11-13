@@ -447,12 +447,12 @@ func TestRetryDelayMsUsesSafeIntegerMagnitude(t *testing.T) {
 	}
 }
 
-// Upstream RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts)
-// has no ECONNRESET or connection-reset entry, so a message carrying only Go's
-// "connection reset by peer" text is not retried, as in pi-ai.
-func TestConnectionResetTextIsNotRetryable(t *testing.T) {
+// Upstream RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts) lists
+// "connection reset by peer" since Pi 4699b5b26 (#12128), so a message carrying only
+// Go's text of a reset is retried, as in pi-ai. Before that commit neither retried it.
+func TestConnectionResetTextIsRetryable(t *testing.T) {
 	message := "github-copilot: request: read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer"
-	if IsRetryableAssistantError(errorFaux(message)) {
-		t.Fatalf("IsRetryableAssistantError(%q) = true; pi-ai's pattern list does not retry it", message)
+	if !IsRetryableAssistantError(errorFaux(message)) {
+		t.Fatalf("IsRetryableAssistantError(%q) = false; pi-ai's pattern list retries it", message)
 	}
 }

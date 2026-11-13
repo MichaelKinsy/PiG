@@ -15,22 +15,45 @@ func TestProviderPayloadHookReceivesModelAPIAndPayload(t *testing.T) {
 	const modelID = "hook-model"
 	fail := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("no network") })}
 	for _, tc := range []struct {
-		name     string
-		api      API
-		provider Provider
+		name  string
+		api   API
+		build func() Provider
 	}{
-		{"openai-completions", APIOpenAICompletions, NewOpenAIProvider(OpenAIConfig{Model: modelID, ProviderID: "openai", APIKey: "k", BaseURL: "https://example.invalid/v1"})},
-		{"openai-responses", APIOpenAIResponses, NewOpenAIResponsesProvider(OpenAIResponsesConfig{Model: modelID, ProviderID: "openai", APIKey: "k", BaseURL: "https://example.invalid/v1"})},
-		{"openai-codex-responses", APIOpenAICodexResponses, NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{Model: modelID, APIKey: codexToken(), BaseURL: "https://example.invalid"})},
-		{"azure-openai-responses", APIAzureOpenAIResponses, NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{Model: modelID, APIKey: "k", ProviderID: "azure-openai-responses", BaseURL: "https://example.invalid/openai/v1"})},
-		{"anthropic-messages", APIAnthropicMessages, NewAnthropicProvider(AnthropicConfig{Model: modelID, ProviderID: "anthropic", APIKey: "k", BaseURL: "https://example.invalid"})},
-		{"mistral-conversations", APIMistralConversations, newMistralTestProvider(MistralConfig{Model: modelID, APIKey: "k", BaseURL: "https://example.invalid"}, nil)},
-		{"google-generative-ai", APIGoogleGenerativeAI, NewGoogleProvider(GoogleConfig{Model: modelID, ProviderID: "google", APIKey: "k", BaseURL: "http://127.0.0.1:1"})},
-		{"google-vertex", APIGoogleVertex, newGoogleVertexTestProvider(GoogleVertexConfig{Model: modelID, APIKey: "k", BaseURL: "http://127.0.0.1:1"}, nil)},
-		{"pi-messages", APIPiMessages, NewPiMessagesProvider(PiMessagesConfig{Model: modelID, ProviderID: "pi", APIKey: "k", BaseURL: "https://example.invalid"})},
+		{"openai-completions", APIOpenAICompletions, func() Provider {
+			return NewOpenAIProvider(OpenAIConfig{Model: modelID, ProviderID: "openai", APIKey: "k", BaseURL: "https://example.invalid/v1"})
+		}},
+		{"openai-responses", APIOpenAIResponses, func() Provider {
+			return NewOpenAIResponsesProvider(OpenAIResponsesConfig{Model: modelID, ProviderID: "openai", APIKey: "k", BaseURL: "https://example.invalid/v1"})
+		}},
+		{"openai-codex-responses", APIOpenAICodexResponses, func() Provider {
+			return NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{Model: modelID, APIKey: codexToken(), BaseURL: "https://example.invalid"})
+		}},
+		{"azure-openai-responses", APIAzureOpenAIResponses, func() Provider {
+			return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{Model: modelID, APIKey: "k", ProviderID: "azure-openai-responses", BaseURL: "https://example.invalid/openai/v1"})
+		}},
+		{"anthropic-messages", APIAnthropicMessages, func() Provider {
+			return NewAnthropicProvider(AnthropicConfig{Model: modelID, ProviderID: "anthropic", APIKey: "k", BaseURL: "https://example.invalid"})
+		}},
+		{"mistral-conversations", APIMistralConversations, func() Provider {
+			return newMistralTestProvider(MistralConfig{Model: modelID, APIKey: "k", BaseURL: "https://example.invalid"}, nil)
+		}},
+		{"google-generative-ai", APIGoogleGenerativeAI, func() Provider {
+			return NewGoogleProvider(GoogleConfig{Model: modelID, ProviderID: "google", APIKey: "k", BaseURL: "http://127.0.0.1:1"})
+		}},
+		{"google-vertex", APIGoogleVertex, func() Provider {
+			return newGoogleVertexTestProvider(GoogleVertexConfig{Model: modelID, APIKey: "k", BaseURL: "http://127.0.0.1:1"}, nil)
+		}},
+		{"pi-messages", APIPiMessages, func() Provider {
+			return NewPiMessagesProvider(PiMessagesConfig{Model: modelID, ProviderID: "pi", APIKey: "k", BaseURL: "https://example.invalid"})
+		}},
 	} {
+		if !BuiltAPI(tc.api) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.name, func(t *testing.T) {
-			defer func() { _ = tc.provider.Close() }()
+			provider := tc.build()
+			defer func() { _ = provider.Close() }()
 			for _, reject := range []bool{false, true} {
 				var calls int
 				var gotAPI API
@@ -48,7 +71,7 @@ func TestProviderPayloadHookReceivesModelAPIAndPayload(t *testing.T) {
 					// The Google adapters reject a custom fetch, so they dial the closed port of their base URL.
 					opts.Fetch = nil
 				}
-				stream, err := tc.provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hello"), Timestamp: 1}}}), opts)
+				stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hello"), Timestamp: 1}}}), opts)
 				message := ""
 				if err != nil {
 					message = err.Error()

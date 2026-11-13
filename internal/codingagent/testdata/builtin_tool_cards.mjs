@@ -40,8 +40,11 @@ for (const test of JSON.parse(input)) {
   // drew the pending card.
   let rendered = () => {};
   const component = new ToolExecutionComponent(test.tool, "id1", test.args, { showImages: !test.noImages }, defs[test.tool], { requestRender() { rendered(); } }, test.cwd);
-  component.markExecutionStarted();
-  component.setArgsComplete();
+  // A streaming probe draws the call while its arguments still arrive.
+  if (!test.streaming) {
+    component.markExecutionStarted();
+    component.setArgsComplete();
+  }
   if (test.settle) {
     // Earlier requests come from construction; the preview's own invalidate is the one after the first render starts it.
     const repaint = new Promise((resolve) => { rendered = resolve; });

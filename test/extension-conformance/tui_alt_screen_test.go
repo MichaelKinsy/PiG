@@ -20,7 +20,7 @@ const wantTuiAltProbe = "tui-alt: mode=fullscreen; children=1; terminal=true; vi
 // wantTuiAltFrameProbe is Pi's own result for tui-alt-frame-probe: a component's render reads the screen as it was when the frame began, an
 // overlay's visible callback decides whether it shows, invalidate reaches the overlays' components, and a render that changes the screen (flags,
 // children, focus, an overlay with a visible callback that reads the screen, scroll, invalidate) reads its own changes back at once.
-const wantTuiAltFrameProbe = "tui-alt-frame: frame1=0/true/0/false/false/false; frame2=6/true/6/false/false/false; visibleOn=true/true/true; visibleOff=false/true; invalidate=true/true; mutate=flags=false/false/true,set=true/true/false,add=3,remove=2,focus=true,overlay=true/true/true/true,hidden=false,scroll=5/false,invalidate=true,lines=6; after=true/true/false/2:info"
+const wantTuiAltFrameProbe = "tui-alt-frame: frame1=0/true/0/false/false/false; frame2=6/true/6/false/false/false; visibleOn=true/true/true; visibleOff=false/true; invalidate=1/1; mutate=flags=false/false/true,set=true/true/false,add=3,remove=2,focus=true,overlay=true/true/true/true,hidden=false,scroll=5/false,invalidate=1,lines=6; after=true/true/false/2:info"
 
 // wantTuiAltChildrenProbe is Pi's own result for tui-alt-children-probe: children read after each addChild, removeChild and clear, with three
 // components of equal content that stay distinct, a duplicate child and a component that is not a child (D207: the SDKs return a copy).

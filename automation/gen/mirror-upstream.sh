@@ -97,32 +97,26 @@ verify_mirror_tree() {
   (( source_count >= 200 ))
 }
 
-# The published pi-ai data is matched by package version: a commit pin's build
-# of pi-ai (extensions/sdk-ts/node_modules) carries the data of its own source.
+# The upstream source omits the generated provider data its provider sources import. The mirror holds the pinned
+# release's bytes, so the data is the snapshot the pin froze for the commit (automation/pin/frozen/<commit>.provider-data.tgz,
+# checked against its recorded digest), never an installed pi-ai package: the installed package is the parity oracle and
+# carries the post-release backports, which the readers of the mirror apply themselves (pi-post-release-backports.mjs
+# --read-mirror). Data that is already there and is not the snapshot's is replaced; a commit without a snapshot fails.
 hydrate_provider_data() {
-  local directory="$1" version="$2" candidate package_version matches
-  local target="$directory/packages/ai/src/providers/data"
-  [[ "$SOURCES_ONLY" -eq 1 || -f "$target/amazon-bedrock.json" ]] && return 0
-  for candidate in \
-    "${PIG_PUBLISHED_AI_DATA:-}" \
-    "${PI_PACKAGE_ROOT:-}/node_modules/@earendil-works/pi-ai/dist/providers/data" \
-    "$REPO_ROOT/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/providers/data" \
-    "$(dirname "${PI_PACKAGE_ROOT:-/missing/pi-coding-agent}")/pi-ai/dist/providers/data" \
-    "$HOME/.local/share/mise/installs/npm-earendil-works-pi-coding-agent/$version/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/providers/data"; do
-    [[ -n "$candidate" && -f "$candidate/amazon-bedrock.json" ]] || continue
-    matches=$(sed -nE 's/^[[:space:]]*"version":[[:space:]]*"([^"]+)".*/\1/p' "$(dirname "$(dirname "$(dirname "$candidate")")")/package.json")
-    package_version=${matches%%$'\n'*}
-    [[ "$package_version" == "$version" ]] || {
-      echo "error: published pi-ai data version ${package_version:-unknown} does not match $version" >&2
-      return 1
-    }
-    mkdir -p "$target"
-    cp "$candidate"/*.json "$target/"
-    return 0
-  done
-  echo "error: upstream source tag omits generated provider data and no matching published pi-ai package was found" >&2
-  echo "       set PI_PACKAGE_ROOT or PIG_PUBLISHED_AI_DATA for pi-ai $version" >&2
-  return 1
+  local directory="$1" commit="$2"
+  [[ "$SOURCES_ONLY" -eq 1 ]] && return 0
+  python3 "$REPO_ROOT/automation/pin/pin.py" mirror-data --commit "$commit" --target "$directory/packages/ai/src/providers/data"
+}
+
+# The pin's mirror must be the text every recorded backport applies to exactly once: a mirror file that already holds
+# the result of a backport makes the mirror's readers fail (or, worse, read a fix twice). Checked whenever the pin's
+# mirror is made or found; a comparison mirror (--version) and a sources-only mirror have no backports to apply.
+verify_mirror_backports() {
+  [[ -z "$OVERRIDE_TAG" && "$SOURCES_ONLY" -eq 0 ]] || return 0
+  node "$REPO_ROOT/automation/gen/pi-post-release-backports.mjs" --verify-mirror "$1" || {
+    echo "error: the upstream mirror ${1} is not the pinned release where a recorded backport applies" >&2
+    return 1
+  }
 }
 
 # The mirrored source imports third-party packages (chord's schema.ts imports typebox) and its workspace packages. Point
@@ -228,13 +222,14 @@ fi
 if [[ -d "$TARGET_DIR" && "$FORCE" -eq 0 ]]; then
   if verify_provenance "$TARGET_DIR" "$TARGET_VERSION" "$TARGET_TAG" "$RESOLVED_COMMIT"; then
     chmod -R u+w "$TARGET_DIR/packages/ai/src" 2>/dev/null || true
-    hydrate_provider_data "$TARGET_DIR" "$PACKAGE_VERSION"
+    hydrate_provider_data "$TARGET_DIR" "$RESOLVED_COMMIT" || exit 1
   fi
   if ! verify_provenance "$TARGET_DIR" "$TARGET_VERSION" "$TARGET_TAG" "$RESOLVED_COMMIT" || ! verify_mirror_tree "$TARGET_DIR"; then
     echo "error: upstream mirror provenance is missing or stale: ${TARGET_DIR}" >&2
     echo "       re-run with --force" >&2
     exit 1
   fi
+  verify_mirror_backports "$TARGET_DIR" || exit 1
   echo "✓ already mirrored: ${TARGET_DIR}"
   if [[ -z "${CI:-}${GITHUB_ACTIONS:-}" ]]; then
     chmod -R u-w "$TARGET_DIR" 2>/dev/null || true
@@ -324,9 +319,9 @@ done
 find "$TARGET_DIR" -mindepth 2 -name package-lock.json -type f -delete 2>/dev/null || true
 
 # The upstream source tag omits generated provider JSON files that the checked-in
-# provider sources import. Recover the exact-version files from the published
-# pi-ai package before validating and locking the mirror.
-hydrate_provider_data "$TARGET_DIR" "$PACKAGE_VERSION"
+# provider sources import. Unpack the pin's frozen snapshot of them before
+# validating and locking the mirror.
+hydrate_provider_data "$TARGET_DIR" "$RESOLVED_COMMIT" || exit 1
 
 # Verify complete extraction because an interrupted per-entry extraction can
 # otherwise leave a plausible but incomplete mirror.
@@ -337,6 +332,7 @@ if ! verify_mirror_tree "$TARGET_DIR"; then
   echo "       EDR likely killed the extraction. Re-run with --force, or seed from the MSR cache (oras pull)." >&2
   exit 1
 fi
+verify_mirror_backports "$TARGET_DIR" || exit 1
 
 write_provenance "$TARGET_DIR/.pig-upstream-source.json" "$TARGET_VERSION" "$TARGET_TAG" "$RESOLVED_COMMIT"
 

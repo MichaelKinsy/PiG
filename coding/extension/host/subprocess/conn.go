@@ -457,6 +457,20 @@ func (c *Conn) Send(env *Envelope) error {
 	return nil
 }
 
+// SendContext is [Conn.Send] that stops waiting for room in the writer queue when ctx ends: the frame is then not sent and the
+// error is ctx's.
+func (c *Conn) SendContext(ctx context.Context, env *Envelope) error {
+	frame, err := c.encodeEnvelope(env)
+	if err != nil {
+		return err
+	}
+	if err := c.enqueue(ctx, outboundFrame{frame: frame, work: true}); err != nil {
+		frame.release()
+		return err
+	}
+	return nil
+}
+
 // enqueue commits frame to the writer queue, waiting for space until ctx ends
 // or the connection closes.
 func (c *Conn) enqueue(ctx context.Context, frame outboundFrame) error {
@@ -2307,6 +2321,8 @@ func (c *Conn) deliverResponse(id string, env *Envelope) {
 }
 
 // sendResponse puts env in the channel of the request id while the request is still registered, and reports whether it did: the request returns its channel for reuse only after it unregistered under pendingMu, so no response is sent to a channel that was reused.
+//
+//perf:hot
 func (c *Conn) sendResponse(id string, ch chan *Envelope, env *Envelope) bool {
 	c.pendingMu.Lock()
 	sent := false

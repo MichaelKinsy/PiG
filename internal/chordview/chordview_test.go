@@ -1,6 +1,7 @@
 package chordview
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 	"sync"
@@ -101,5 +102,55 @@ func TestSurfacesOfAnApp(t *testing.T) {
 	}
 	if got := Surfaces(&app.App{Web: &app.AppSurface{}}); len(got) != 1 || got[0].Name != "web" {
 		t.Fatalf("an app with a web surface has %+v", got)
+	}
+}
+
+// TestARefusedRecordReachesNoRegistry: mount and update build their records in Go; a record the decoder refuses is
+// refused with the decoder's code and text, and nothing is mounted or replaced.
+func TestARefusedRecordReachesNoRegistry(t *testing.T) {
+	r := uiview.New(uiview.Options{})
+	att, _, aerr := r.Attach(abilities(), func(uiview.Delivery) bool { return true })
+	if aerr != nil {
+		t.Fatal(aerr)
+	}
+	defer att.Detach()
+	refused := func(name string, err *uiview.Error, raw, text string, decode func([]byte) *uiview.Error) {
+		t.Helper()
+		want := decode([]byte(raw))
+		if want == nil || want.Code != uiview.CodeInvalid || want.Message != text {
+			t.Fatalf("%s: the decoder answers %v, want invalid %q", name, want, text)
+		}
+		if err == nil || err.Code != want.Code || err.Message != want.Message {
+			t.Errorf("%s: %v, want %v", name, err, want)
+		}
+	}
+	decodeMount := func(raw []byte) *uiview.Error { _, err := uiview.DecodeMount(raw); return err }
+	decodeUpdate := func(raw []byte) *uiview.Error { _, err := uiview.DecodeUpdate(raw); return err }
+	long := strings.Repeat("s", 129)
+
+	// A surface whose name is no mount key: through Refresh, as the app's surfaces arrive.
+	for name, raw := range map[string]string{"": `{"slot":"panel","view":{"root":{"kind":"text","text":"chord : base not built"}}}`, long: `{"key":"` + long + `","slot":"panel","view":{"root":{"kind":"text","text":"chord ` + long + `: base not built"}}}`} {
+		v := Show(r, []Surface{{Name: name, Base: func() string { return "" }}})
+		refused("mount of a surface named "+name, v.Refresh(), raw, "key must be 1..128 bytes", decodeMount)
+	}
+	v := Show(r, nil)
+	_, err := v.mount("", uiview.Content{View: textView("x")})
+	refused("mount", err, `{"slot":"panel","view":{"root":{"kind":"text","text":"x"}}}`, "key must be 1..128 bytes", decodeMount)
+	_, err = v.mount("web", uiview.Content{View: json.RawMessage(`{}`)})
+	refused("mount without a root", err, `{"key":"web","slot":"panel","view":{}}`, "view must be an object with a root", decodeMount)
+	if n := len(r.Snapshots()); n != 0 {
+		t.Fatalf("%d mounts after refused records", n)
+	}
+
+	st, err := v.mount("web", uiview.Content{View: textView("x")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = v.update(uiview.Ref{Epoch: st.Mount.Epoch, Rev: st.Mount.Rev}, uiview.Content{View: textView("y")})
+	refused("update", err, `{"mount":{"key":"","epoch":1,"rev":1},"view":{"root":{"kind":"text","text":"y"}}}`, "mount.key is required", decodeUpdate)
+	_, err = v.update(st.Mount, uiview.Content{View: json.RawMessage(`{}`)})
+	refused("update without a root", err, `{"mount":{"key":"web","epoch":1,"rev":1},"view":{}}`, "view must be an object with a root", decodeUpdate)
+	if snaps := r.Snapshots(); len(snaps) != 1 || snaps[0].Mount != st.Mount || string(snaps[0].View) != `{"root":{"kind":"text","text":"x"}}` {
+		t.Fatalf("after refused updates: %+v", snaps)
 	}
 }

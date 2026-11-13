@@ -477,7 +477,7 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		ctx.SetThinkingLevel("high")
-		ok, err := ctx.SetModel("probe/model")
+		ok, err := ctx.SetModelNamed("probe/model")
 		if err != nil {
 			return err
 		}
@@ -1532,6 +1532,28 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-g-state:%s,rev=%d", cur.State, cur.Mount.Rev), "info")
 		return nil
 	})
+	// D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The
+	// argument is the row's token: the ids of the container, the text and the box are built from it.
+	ext.Command("ui_view_node_ids", "Mount a view whose container, text and box carry an id", func(ctx sdk.Context, args string) error {
+		tok := strings.TrimSpace(args)
+		label := kit.NewText("Label "+tok, 0, 0)
+		label.ID, label.Bg = tok+"-label", "selectedBg"
+		frame := kit.NewBox(1, 0, kit.NewText("inside", 0, 0))
+		frame.ID, frame.Bg = tok+"-frame", "toolPendingBg"
+		root := kit.NewContainer(label, frame)
+		root.ID = tok + "-root"
+		st, err := ctx.MountView(sdk.ViewMount{
+			Key:  "ids",
+			Slot: sdk.ViewSlotPanel,
+			View: kit.View{Root: root},
+			A11y: []sdk.ViewA11y{{Node: tok + "-label", Name: "Label " + tok}},
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-i-mounted:"+string(st.State), "info")
+		return nil
+	})
 	// D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
 	// The key and the number come from the test, so a binding the SDK dropped, or one it made up, is not what the host holds.
 	ext.Command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", func(ctx sdk.Context, args string) error {
@@ -1999,11 +2021,41 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
-		ok, err := ctx.SetModel(args)
+		ok, err := ctx.SetModelNamed(args)
 		if err != nil {
 			return err
 		}
 		ctx.Notify(fmt.Sprintf("setModel=%t", ok), "info")
+		return nil
+	})
+	// set_model_object (TestSetModelTakesTheObjectAcrossSDKs) passes the model object its argument is the JSON of to SetModel and reports the answer, or the error. Every SDK fixture has it.
+	ext.Command("set_model_object", "Switch to the model object in the arguments", func(ctx sdk.Context, args string) error {
+		var model map[string]any
+		if err := json.Unmarshal([]byte(args), &model); err != nil {
+			return err
+		}
+		ok, err := ctx.SetModel(model)
+		if err != nil {
+			ctx.Notify("setModelObject=error:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("setModelObject=%t", ok), "info")
+		return nil
+	})
+	// set_model_object_before_agent_start (TestSetModelObjectFromBeforeAgentStartAcrossSDKs) subscribes a before_agent_start handler that passes the model object its argument is the JSON of to SetModel, as the extension of Pi's issue 9631 does. Every SDK fixture has it.
+	ext.Command("set_model_object_before_agent_start", "Switch to the model object in the arguments before each agent start", func(_ sdk.Context, args string) error {
+		var model map[string]any
+		if err := json.Unmarshal([]byte(args), &model); err != nil {
+			return err
+		}
+		ext.OnEvent("before_agent_start", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			ok, err := hctx.SetModel(model)
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify(fmt.Sprintf("beforeAgentSetModel=%t", ok), "info")
+			return nil, nil
+		})
 		return nil
 	})
 	// event_probe_off runs every unsubscribe event_probe_on returned for the event named by the argument (TestConformance_EventUnsubscribeEveryEvent).
@@ -2293,7 +2345,7 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	ext.Command("model_set", "Switch the model", func(ctx sdk.Context, args string) error {
-		ok, err := ctx.SetModel(strings.TrimSpace(args))
+		ok, err := ctx.SetModelNamed(strings.TrimSpace(args))
 		if err != nil {
 			return err
 		}
@@ -2324,6 +2376,50 @@ func Extension() *sdk.Extension {
 
 	ext.Command("append_entry", "Append a custom entry", func(ctx sdk.Context, args string) error {
 		return ctx.AppendEntry("conformance-entry", "hello-entry")
+	})
+	// entry_null_members appends an entry and sends a message with the optional member left out, then with it written as null: Go's nil is Pi's omitted
+	// argument and json.RawMessage("null") is its null.
+	ext.Command("entry_null_members", "Append entries and send messages with an omitted and a null member", func(ctx sdk.Context, args string) error {
+		if err := ctx.AppendEntry("conformance-null-omitted", nil); err != nil {
+			return err
+		}
+		if err := ctx.AppendEntry("conformance-null-explicit", json.RawMessage("null")); err != nil {
+			return err
+		}
+		if err := ctx.SendMessage("conformance-null-omitted", "x", false, sdk.SendMessageOptions{}); err != nil {
+			return err
+		}
+		return ctx.SendMessage("conformance-null-explicit", "x", false, sdk.SendMessageOptions{Details: json.RawMessage("null")})
+	})
+	// label_members calls setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for
+	// each. Go's nil is the call without a label and json.RawMessage("null") is its null.
+	ext.Command("label_members", "Set a label that is omitted, null and empty", func(ctx sdk.Context, args string) error {
+		if err := ctx.SetLabelValue(args, nil); err != nil {
+			return err
+		}
+		if err := ctx.SetLabelValue(args, json.RawMessage("null")); err != nil {
+			return err
+		}
+		return ctx.SetLabel(args, "")
+	})
+	// setup_null_members seeds a new session through the SessionManager of the setup callback: an entry and a message with the optional member left out,
+	// then with it written as null, under the types and display values of the pinned Pi package's rows "api custom data ..." and
+	// "api custom_message details ...". Go's nil is Pi's omitted argument and json.RawMessage("null") is its null.
+	ext.Command("setup_null_members", "Seed a new session with an omitted and a null member", func(ctx sdk.Context, args string) error {
+		_, err := ctx.NewSession(map[string]any{"setup": sdk.SetupFunc(func(manager sdk.SetupSessionManager) error {
+			if _, err := manager.AppendCustomEntry("api-custom", nil); err != nil {
+				return err
+			}
+			if _, err := manager.AppendCustomEntry("api-custom", json.RawMessage("null")); err != nil {
+				return err
+			}
+			if _, err := manager.AppendCustomMessageEntry("api-message", "x", false, nil); err != nil {
+				return err
+			}
+			_, err := manager.AppendCustomMessageEntry("api-message", "x", true, json.RawMessage("null"))
+			return err
+		})})
+		return err
 	})
 	// append-entries-probe appends one custom entry for each comma-separated type in order. Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
 	ext.Command("append-entries-probe", "Append a custom entry for each comma-separated type", func(ctx sdk.Context, args string) error {
@@ -2496,7 +2592,7 @@ func Extension() *sdk.Extension {
 	// replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, name and file (from the context and from the session manager) and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call SetModel before it reads. Every SDK fixture reports the same shape.
 	ext.Command("replica-probe", "Report the replicated model object, session ids and context usage", func(ctx sdk.Context, args string) error {
 		if model, ok := strings.CutPrefix(args, "set-model:"); ok {
-			if _, err := ctx.SetModel(model); err != nil {
+			if _, err := ctx.SetModelNamed(model); err != nil {
 				return err
 			}
 		}
@@ -3081,6 +3177,26 @@ func Extension() *sdk.Extension {
 			return fmt.Errorf("%s", strings.Join(failures, "; "))
 		}
 		ctx.Notify("overlay-handle=ok", "info")
+		return nil
+	})
+
+	ext.Command("overlay-invalidate-probe", "Count the host's invalidations of a mounted overlay and draw the theme", func(ctx sdk.Context, args string) error {
+		options := sdk.RemoteOverlayOptions{Overlay: true}
+		var err error
+		if strings.TrimSpace(args) == "plain" {
+			_, err = ctx.Custom(&plainThemeProbeComponent{ctx: ctx}, options)
+		} else {
+			_, err = ctx.Custom(&invalidateProbeComponent{ctx: ctx, kept: themeProbeRow(ctx)}, options)
+		}
+		if err != nil {
+			return err
+		}
+		ctx.Notify("overlay-invalidate=ok", "info")
+		return nil
+	})
+
+	ext.Command("theme-read-probe", "Report the theme the extension holds, with no component mounted", func(ctx sdk.Context, _ string) error {
+		ctx.Notify("theme-read="+themeProbeRow(ctx), "info")
 		return nil
 	})
 
@@ -3978,10 +4094,41 @@ func Extension() *sdk.Extension {
 		if len(entries) != 2 || len(preview["contextEntries"].([]any)) != 2 || entries[0].(map[string]any)["customType"] != "kept" || entries[1].(map[string]any)["customType"] != "before-error" {
 			return nil, errors.New("lost boundary mutation or preview")
 		}
+		// One draft with a null replacement, one without the member, and a compaction that keeps nothing: Pi omits the target of the first, rejects the second
+		// (session-manager.ts appendContextEdit) and keeps no entry before the third (appendCompaction).
 		return map[string]any{
-			"entries":  []any{map[string]any{"type": "custom", "customType": "conformance-boundary"}},
+			"entries": []any{
+				map[string]any{"type": "custom", "customType": "conformance-boundary"},
+				map[string]any{"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": nil},
+				map[string]any{"type": "context_edit", "targetId": "conformance-omitted-member"},
+				map[string]any{"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": nil, "details": map[string]any{"format": "conformance-checkpoint"}, "usage": nil},
+				// A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+				map[string]any{"type": "custom", "customType": "conformance-null-data", "data": nil},
+				map[string]any{"type": "custom_message", "customType": "conformance-null-details", "content": "x", "display": false, "details": nil},
+			},
 			"continue": true,
 		}, nil
+	})
+	ext.OnEvent("agent_before_settle", func(ctx sdk.Context, data map[string]any) (any, error) {
+		entries, _ := data["entries"].([]any)
+		if len(entries) != 6 {
+			return nil, fmt.Errorf("boundary result reached the next handler as %d entries", len(entries))
+		}
+		member := func(index int, key string) string {
+			entry, _ := entries[index].(map[string]any)
+			value, present := entry[key]
+			switch {
+			case !present:
+				return "absent"
+			case value == nil:
+				return "null"
+			}
+			return "value"
+		}
+		compaction, _ := entries[3].(map[string]any)
+		details, _ := compaction["details"].(map[string]any)
+		ctx.Notify(fmt.Sprintf("agent_before_settle_drafts:%d:%s:%s:%s:%v:%s:%s:%s:%s", len(entries), member(1, "replacement"), member(2, "replacement"), member(3, "firstKeptEntryId"), details["format"], member(0, "data"), member(3, "usage"), member(4, "data"), member(5, "details")), "info")
+		return nil, nil
 	})
 	ext.OnSessionStart(func(ctx sdk.Context, data map[string]any) (any, error) {
 		ctx.Notify("session_start:"+fmt.Sprint(data["reason"]), "info")
@@ -4502,6 +4649,44 @@ func (c *focusProbeComponent) Render(int) []string {
 }
 
 func (*focusProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
+}
+
+// themeProbeRow is the active theme's name and its accent foreground, as the extension holds them now.
+func themeProbeRow(ctx sdk.Context) string {
+	theme := ctx.UITheme()
+	return theme.Name + "|" + theme.Fg("accent", "x")
+}
+
+// invalidateProbeComponent keeps a themed row until the host invalidates it, as a Pi component that caches its rows does: the row
+// names the theme the component saw at its Invalidate, and each frame the theme it sees at its render.
+type invalidateProbeComponent struct {
+	ctx           sdk.Context
+	invalidations int
+	kept          string
+}
+
+func (c *invalidateProbeComponent) Render(int) []string {
+	return []string{fmt.Sprintf("inv=%d kept=%s live=%s", c.invalidations, c.kept, c.ctx.UITheme().Name)}
+}
+
+func (c *invalidateProbeComponent) Invalidate() {
+	c.invalidations++
+	c.kept = themeProbeRow(c.ctx)
+}
+
+func (*invalidateProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
+}
+
+// plainThemeProbeComponent has no Invalidate: the host's invalidation renders it again all the same.
+type plainThemeProbeComponent struct{ ctx sdk.Context }
+
+func (c *plainThemeProbeComponent) Render(int) []string {
+	return []string{"plain live=" + themeProbeRow(c.ctx)}
+}
+
+func (*plainThemeProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
 	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
 }
 

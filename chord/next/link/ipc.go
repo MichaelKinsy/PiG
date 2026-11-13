@@ -71,24 +71,35 @@ func (end *ipcLink) Send(message []byte) {
 			end.end()
 		}
 	}); err != nil {
-		end.end()
+		end.closeHere()
 	}
 }
 
 func (end *ipcLink) Close() {
 	port := end.currentPort()
-	if port == nil {
-		return
-	}
-	end.end()
+	// At once, also when the port ended already and its end waits for a hand-over (the port is forgotten then).
+	end.closeHere()
 	// Disconnecting a channel that is gone already would emit an error.
-	if port.Connected() {
+	if port != nil && port.Connected() {
 		port.Disconnect()
 	}
 }
 
-// end detaches from the port and closes this end.
+// end detaches from the port and closes this end for the port, which ended (a disconnect, a send that failed after its
+// call): after the messages that arrived before.
 func (end *ipcLink) end() {
+	end.detach()
+	end.ended()
+}
+
+// closeHere detaches from the port and closes this end at once: this side's Close, a send that failed in its call.
+func (end *ipcLink) closeHere() {
+	end.detach()
+	end.closedHere()
+}
+
+// detach forgets the port and removes its listeners.
+func (end *ipcLink) detach() {
 	end.portMu.Lock()
 	port := end.port
 	removeMessage, removeDisconnect := end.removeMessage, end.removeDisconnect
@@ -102,5 +113,4 @@ func (end *ipcLink) end() {
 			removeDisconnect()
 		}
 	}
-	end.ended()
 }

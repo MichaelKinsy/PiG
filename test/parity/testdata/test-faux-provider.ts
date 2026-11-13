@@ -390,8 +390,8 @@ function classify(messages: any[]) {
     return { kind: "tool", toolCalls: [{ toolName: "grep", toolArgs: { pattern: "hello", path: "parity-read-target.txt" } }] };
   }
   // Echo the actual result so a failed search cannot satisfy the scenario.
-  if (["Run: find txt files", "Run: find path glob", "Run: find dot slash glob", "Run: find scoped ignores"].some(prompt => lastText.includes(prompt))) {
-    const pattern = lastText.includes("Run: find path glob") ? "src/**/*.spec.ts" : lastText.includes("Run: find dot slash glob") ? "./src/**/*.spec.ts" : lastText.includes("Run: find scoped ignores") ? "**/*.txt" : "*.txt";
+  if (["Run: find txt files", "Run: find path glob", "Run: find dot slash glob", "Run: find anchored glob", "Run: find scoped ignores"].some(prompt => lastText.includes(prompt))) {
+    const pattern = lastText.includes("Run: find path glob") ? "src/**/*.spec.ts" : lastText.includes("Run: find dot slash glob") ? "./src/**/*.spec.ts" : lastText.includes("Run: find anchored glob") ? "{src,parent}/**/*.spec.ts" : lastText.includes("Run: find scoped ignores") ? "**/*.txt" : "*.txt";
     return { kind: "tool", toolCalls: [{ toolName: "find", toolArgs: { pattern, path: "." } }] };
   }
   // Ls tool parity.
@@ -401,6 +401,10 @@ function classify(messages: any[]) {
   // Edit tool parity.
   if (lastText.includes("Run: edit parity-edit-target.txt")) {
     return { kind: "tool", toolCalls: [{ toolName: "edit", toolArgs: { path: "parity-edit-target.txt", oldText: "REPLACE_ME", newText: "REPLACED" } }] };
+  }
+  // A short line, then one line that alone overflows the bash tool's rolling tail and ends the output with its newline (Pi 935f0ac0ccfc, #12092).
+  if (lastText.includes("Run: bash long last line")) {
+    return { kind: "tool", toolCalls: [{ toolName: "bash", toolArgs: { command: "echo short; head -c 219000 /dev/zero | tr '\\0' x; echo END" } }] };
   }
   // Long-output bash tool parity (exercises visual-truncate.ts via bash.ts collapse hint).
   if (lastText.includes("Run: bash long output")) {
@@ -489,11 +493,13 @@ function classify(messages: any[]) {
     }
     if (currentUserText.includes("Run: grep hello")) return { kind: "text", text: "found" };
     // fd traversal order is unspecified; the upstream regressions sort the paths too.
-    if (["Run: find txt files", "Run: find path glob", "Run: find dot slash glob", "Run: find scoped ignores"].some(prompt => currentUserText.includes(prompt))) return { kind: "text", text: lastText.split("\n").sort().join("\n") };
+    if (["Run: find txt files", "Run: find path glob", "Run: find dot slash glob", "Run: find anchored glob", "Run: find scoped ignores"].some(prompt => currentUserText.includes(prompt))) return { kind: "text", text: lastText.split("\n").sort().join("\n") };
     if (currentUserText.includes("Run: ls here")) return { kind: "text", text: "listed-ls" };
     if (currentUserText.includes("Run: edit parity-edit-target.txt")) return { kind: "text", text: "edited" };
     if (currentUserText.includes("Run: tui live parallel tools")) return { kind: "text", text: "LIVE-PARALLEL-DONE" };
     if (currentUserText.includes("Run: tui live tool")) return { kind: "text", text: "LIVE-TOOL-DONE" };
+    // The tool's result is the answer, so the kept end of the line and the notice under it are what the scenario compares.
+    if (currentUserText.includes("Run: bash long last line")) return { kind: "text", text: lastText };
     if (currentUserText.includes("Run: bash long output")) return { kind: "text", text: "ran" };
     if (currentUserText.includes("Run: parallel reads")) return { kind: "text", text: "parallel-done" };
     if (currentUserText.includes("Run: compact reads")) return { kind: "text", text: "compact-reads-done" };
@@ -584,13 +590,20 @@ function streamTestFaux(model: any, context: any, options: any) {
     });
     return stream;
   }
-  if (lastText.includes("Trigger: retryable provider error")) {
-    const key = "retryable-provider-error";
+  // A retryable trigger fails its first request with the provider's wording and answers the retry. "Connection closed." is the gateway
+  // drop Pi 9b88b94e2 (#12093) added to the retryable wordings.
+  const retryable = lastText.includes("Trigger: retryable provider error")
+    ? { key: "retryable-provider-error", errorMessage: "please retry your request" }
+    : lastText.includes("Trigger: connection closed provider error")
+      ? { key: "connection-closed-provider-error", errorMessage: "Connection closed." }
+      : undefined;
+  if (retryable) {
+    const { key, errorMessage } = retryable;
     if (!retryState.has(key)) {
       retryState.add(key);
       queueMicrotask(() => {
         output.stopReason = "error";
-        output.errorMessage = "please retry your request";
+        output.errorMessage = errorMessage;
         stream.push({ type: "start", partial: output });
         stream.push({ type: "error", reason: "error", error: output });
         stream.end();
@@ -709,7 +722,9 @@ export default function (pi: any) {
       provider: "test-faux",
       baseUrl: "http://localhost:0",
       reasoning: false,
-      input: ["text", "image"],
+      // TEST_FAUX_TEXT_ONLY=1 makes the model text-only, for the scenarios of a read under a model without image input.
+      // It changes only the model's `input`.
+      input: process.env.TEST_FAUX_TEXT_ONLY === "1" ? ["text"] : ["text", "image"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       contextWindow: 128000,
       maxTokens: 4096,

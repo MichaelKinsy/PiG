@@ -46,6 +46,10 @@ func TestStreamUpstream(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range cases {
+		if !BuiltAPI(tc.API) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.Name, func(t *testing.T) { runUpstreamStreamCase(t, tc) })
 	}
 }

@@ -450,7 +450,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 		suppressed := caps
 		suppressed.Images = ""
 		SetCapabilities(suppressed)
-		t.invalidateMountedRoots()
+		t.Invalidate() // tui-alt-screen.ts:360: the mounted roots and the overlays' components
 	}
 	// The main and alternate screens keep independent Kitty keyboard-protocol
 	// stacks. Pi enters the alternate screen before Terminal.start pushes, so its
@@ -483,20 +483,6 @@ func (t *TuiAltScreen) getMountedRoots() []Component {
 		return []Component{root}
 	}
 	return t.childSnapshot()
-}
-
-// invalidateMountedRoots invalidates the rendered document tree so cached lines
-// are recomputed after a capability change. Mirrors upstream invalidate() over
-// getMountedRoots (layoutRoot when set, else the base children).
-func (t *TuiAltScreen) invalidateMountedRoots() {
-	t.mu.Lock()
-	root := t.layoutRoot
-	t.mu.Unlock()
-	if root != nil {
-		root.Invalidate()
-		return
-	}
-	t.implicitDocument.Invalidate()
 }
 
 // StopOptions controls alt-screen teardown. Mirrors upstream TuiStopOptions.

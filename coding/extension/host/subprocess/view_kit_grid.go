@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	registerViewWidget(ViewKindGrid, &viewWidget{check: checkGrid, build: buildGrid, focusable: true})
+	registerViewWidget(ViewKindGrid, &viewWidget{check: checkGrid, focusable: true})
 }
 
 // gridColor checks a colour by the rule a drawing's fill follows: a theme token, "#rrggbb" or "#rrggbbaa".

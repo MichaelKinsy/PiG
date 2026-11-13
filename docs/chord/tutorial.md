@@ -251,7 +251,7 @@ Step 1 of `run` opens the telemetry store (chapter XI), starts the app, tries th
 1. owner link: http://127.0.0.1:<port>/_chord/owner#<token>
    data directory: cache, logs, owner-token, plugins, server, telemetry.sqlite, telemetry.sqlite-shm, telemetry.sqlite-wal, workers
    GET / signed out: 401
-   the owner signs in: 200 chord-session=…
+   the owner signs in: 200 chord-sign-in=…
    GET / signed in: 200
 ```
 
@@ -269,7 +269,7 @@ func closeServer(ctx context.Context, server *app.App) {
 
 `StartServer` made the data directory: `server/` (its store, the cookie secret, its files), `workers/` (one directory per worker), `plugins/` (the user's plugin root, beside the app's built-in one), `cache/` (the workers' bases), `logs/`, `owner-token` and the telemetry store's files. Without the owner's session both requests are answered 401: the kit answers it before a route or the page runs; once signed in, the page is served.
 
-The **owner link** (`/_chord/owner#<token>`) is how the owner gets in: a single-use token, valid ten minutes, made at each start. It sits in the URL's fragment, which browsers never send, so it never reaches a log; the link's page posts it and receives a session cookie. A command-line client on the same machine reads `owner-token` instead (mode 0600). Nothing is the owner because it comes from loopback: any local process could.
+The **owner link** (`/_chord/owner#<token>`) is how the owner gets in: a single-use token, valid ten minutes, made at each start. It sits in the URL's fragment, which browsers never send, so it never reaches a log; the link's page posts it and receives a sign-in cookie. A command-line client on the same machine reads `owner-token` instead (mode 0600). Nothing is the owner because it comes from loopback: any local process could.
 
 # A List on Its Own Worker
 
@@ -1645,7 +1645,7 @@ The trace holds the click and nothing else. Work that serves many requests is it
 
 ## Trap: a trace starts where a span starts
 
-The panel took its reference to `Todos` before the click (`useHold`), under `BACKGROUND_CONTEXT`, and that hold is in no trace of the page: **a context without a recording span records nothing.** A host gives such work no span of its own, so its calls start no `chord.call` and send no carrier, and the provider's `chord.method` becomes a root of its own trace. So were the server's calls in step 2: on the worker each is a root `chord.method`. Start a span where the work begins, a click handler or a job (`host.root(fn, context, { trace })`, in Go `RootOptions.Trace`), and pass its `ctx` down. The kit's HTTP component does this for every request: a `chord.http` span (method, route pattern, status), with the route's `ctx` under it. Step 11 adds honey from the command line, as step 3 did, and a blank todo; the request is the trace's root, the server's call to the worker under it:
+The panel took its reference to `Todos` before the click (`useHold`), under `BACKGROUND_CONTEXT`, and that reference is in no trace of the page: **a context without a recording span records nothing.** Its hold is shared work (the page's other references to the same list use it too), a `chord.hold` root of its own, linked to the getter's span when there is one; but calls made under such a context start no `chord.call` and send no carrier, and the provider's `chord.method` becomes a root of its own trace. So were the server's calls in step 2: on the worker each is a root `chord.method`. Start a span where the work begins, a click handler or a job (`host.root(fn, context, { trace })`, in Go `RootOptions.Trace`), and pass its `ctx` down. The kit's HTTP component does this for every request: a `chord.http` span (method, route pattern, status), with the route's `ctx` under it. Step 11 adds honey from the command line, as step 3 did, and a blank todo; the request is the trace's root, the server's call to the worker under it (its hold of the list is shared work: a root of its own, linked to the request):
 
 <!-- quote: telemetry.go -->
 ```go
@@ -1665,8 +1665,6 @@ The panel took its reference to `Todos` before the click (`useHold`), under `BAC
 ```text
 11. adding honey from the command line:
    chord.http chord.host="server" method="POST" route="POST /api/lists/:list" status=200
-     chord.hold chord.host="server" type="todo.todos" object="todo.todos(groceries)" address.kind="list" outcome="bound"
-       chord.relay chord.host="list|groceries" type="todo.todos" member="hold" upstream.kind="list" outcome="ok"
      chord.call chord.host="server" type="todo.todos" member="add" object="todo.todos(groceries)" address.kind="list" chord.principal="owner" outcome="ok"
        chord.relay chord.host="list|groceries" type="todo.todos" member="#0" upstream.kind="list" outcome="ok"
          chord.method chord.host="list|groceries" type="todo.todos" member="add" object="todo.todos(groceries)" principal.kind="owner" chord.principal="{\"kind\":\"owner\"}" outcome="ok"
@@ -1767,15 +1765,13 @@ The steps run it twice on the app's data directory while the app runs, once for 
 <!-- output: main -->
 ```text
    trace <data directory> --name chord.http --principal owner:
-   <id>  chord.http  8 spans  <ms>  error
-   <id>  chord.http  8 spans  <ms>
-   <id>  chord.http  8 spans  <ms>
+   <id>  chord.http  6 spans  <ms>  error
+   <id>  chord.http  6 spans  <ms>
+   <id>  chord.http  6 spans  <ms>
    chord.link.bytes sent: <n> bytes in <n> messages
    chord.link.bytes received: <n> bytes in <n> messages
    trace <data directory> <the refused one's id>:
    chord.http chord.host="server" method="POST" route="POST /api/lists/:list" status=500 error http_failed: status 500
-     chord.hold chord.host="server" type="todo.todos" object="todo.todos(groceries)" address.kind="list" outcome="bound"
-       chord.relay chord.host="list|groceries" type="todo.todos" member="hold" upstream.kind="list" outcome="ok"
      chord.call chord.host="server" type="todo.todos" member="add" object="todo.todos(groceries)" address.kind="list" chord.principal="owner" outcome="error" error call_failed: a todo needs text
        chord.relay chord.host="list|groceries" type="todo.todos" member="#0" upstream.kind="list" outcome="error" error relay_failed: a todo needs text
          chord.method chord.host="list|groceries" type="todo.todos" member="add" object="todo.todos(groceries)" principal.kind="owner" chord.principal="{\"kind\":\"owner\"}" outcome="error" error method_failed: a todo needs text

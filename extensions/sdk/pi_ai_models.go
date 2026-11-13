@@ -331,6 +331,12 @@ var (
 		`fetch failed`,
 		`request to \S+ failed, reason:`,
 		`getaddrinfo`,
+		// Pi 4699b5b26 (#12128): bare Node socket error codes, e.g. "read ECONNRESET", "write EPIPE", or "connect ETIMEDOUT 1.2.3.4:443", not part of a longer identifier.
+		// Pi spells it (?<![a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?![a-z0-9_]); RE2 has no lookaround, so the neighbours are matched.
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`(?:^|[^a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?:[^a-z0-9_]|$)`,
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`connection reset by peer`,
 		`ENOTFOUND`,
 		`EAI_AGAIN`,
 		`upstream.?connect`,

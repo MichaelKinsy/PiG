@@ -69,11 +69,37 @@ func checkResponsesAllowEmpty(t *testing.T, module, apiName string, api ai.API, 
 	compareResponses(t, module, apiName, api, run, probes, false)
 }
 
+// requireStrippedStream stands in for a comparison with Pi in a build with api's pig_strip tag. Pi has no build without the API, so there is nothing to compare: the Pi-oracle tests compare the kept APIs only, and for a stripped one they require that its stream sends no request and reports the strip.
+func requireStrippedStream(t *testing.T, api ai.API, run func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error)) {
+	t.Helper()
+	reached := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reached = true
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+	model := &ai.Model{ID: "m1", DisplayName: "m1", Input: []string{"text"}, ProviderMeta: ai.ProviderMetadata{API: api, ProviderID: "stripped", BaseURL: server.URL}}
+	message := ""
+	stream, err := run(t.Context(), model, ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}}}), ai.StreamOptions{APIKey: "k"})
+	if err != nil {
+		message = err.Error()
+	} else if stream != nil {
+		message = stream.Result().ErrorMessage
+	}
+	if want := fmt.Sprintf("API %s is stripped from this Piglet (strip.apis: %s)", api, api); !strings.Contains(message, want) || reached {
+		t.Errorf("this build strips %s, so the test compares only the kept APIs with Pi: its stream ended with %q (request sent: %v), want the strip message %q and no request", api, message, reached, want)
+	}
+}
+
 // generatedToolCallID matches the id D120 generates for a streamed tool call that carries none.
 var generatedToolCallID = regexp.MustCompile(`"id":"[^"]*_\d{13}_\d+"`)
 
 func compareResponses(t *testing.T, module, apiName string, api ai.API, run func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error), probes []responseProbe, needContent bool) {
 	t.Helper()
+	if !ai.BuiltAPI(api) {
+		requireStrippedStream(t, api, run)
+		return
+	}
 	input, err := json.Marshal(probes)
 	if err != nil {
 		t.Fatal(err)

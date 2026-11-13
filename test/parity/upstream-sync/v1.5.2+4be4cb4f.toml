@@ -1,0 +1,58 @@
+from = "1.5.2+f7734109"
+to = "1.5.2+4be4cb4f"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/read.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/read_image_unsupported_upstream_test.go#TestReadKeepsTextOnlyImageWarningOutOfWhatTheModelGetsUpstream", "test:internal/codingagent/tools/tools_read_port_test.go#TestToolsReadPort", "test:internal/codingagent/tools/read_images_test.go#TestReadImageModelProfileOverridesFallback", "test:test/extension-conformance/builtin_tool_delegate_test.go#TestConformance_BuiltinToolDelegationAcrossSDKs"]
+rationale = "4be4cb4f5 (#12139): getNonVisionImageNote is removed, so the text of an image read no longer says that the selected model takes no images (the text is stored in the session and was replayed after a switch to a vision model); when the image was attached and ctx.model has no image input, details = { imageUnsupportedByModel: ctx.model.id }, else details stays undefined (none beside an image that could not be prepared, none for a vision model or without a model). internal/codingagent/tools/read.go readImage does the same from the tool environment (Model, SupportsImages); tools.ReadDetails.ImageUnsupportedByModel and coding/extension.ReadToolDetails.ImageUnsupportedByModel are *string with omitempty, so the member is absent unless set and present for an id of \"\" as in Pi, in the session file, the rpc and json events and an extension's tool result (ext_details.go passes it on). The conformance case reads a PNG under the harness's model without image input through every SDK and compares with Pi's vendored read.js: text \"Read image file [image/png]\", details {\"imageUnsupportedByModel\":\"current\"}. The parity oracle and the vendored Node runtime carry the commit as a post-release backport (pi-coding-agent/core/tools/read.js). sdk-ts ReadToolDetails gains the member when the pin reaches 4be4cb4f5e9c. pi-ai's downgradeUnsupportedImages is unchanged by the commit, and so is ai/transform_messages.go."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/read.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/read_image_unsupported_upstream_test.go#TestReadKeepsTextOnlyImageWarningOutOfWhatTheModelGetsUpstream", "test:internal/codingagent/read_image_unsupported_upstream_test.go#TestReadCardDrawsTheImageWarningFromDetails", "test:internal/codingagent/read_image_unsupported_upstream_test.go#TestReadResultStoredWithTheOldImageNoteStaysAsWritten"]
+rationale = "4be4cb4f5 (#12139): formatReadResult draws \"[<model> does not support images; it saw a placeholder instead]\" in the warning color from a truthy details.imageUnsupportedByModel, as the whole result when the card is collapsed and after the text and the truncation warning when it is expanded. internal/codingagent/tool_builtin_renderers.go readRenderResult does the same through readImageUnsupportedByModel, which reads the tool's own details and the JSON of a stored result; an id of \"\" draws nothing. A result stored before the commit (the old note in its text, no details) is shown and replayed as written: Pi has no migration and neither has PiG. The parity oracle carries the commit as a post-release backport (pi-coding-agent/core/tools/renderers/read.js)."
+
+[[files]]
+path = "packages/coding-agent/test/tools.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/read_image_unsupported_upstream_test.go#TestReadKeepsTextOnlyImageWarningOutOfWhatTheModelGetsUpstream", "test:internal/codingagent/tools/tools_read_port_test.go#TestToolsReadPort"]
+rationale = "4be4cb4f5 (#12139): the new case \"should keep a text-only model's image warning out of what the model gets\" (1 of 1) is ported with the same file, model id and four expectations (the text is \"Read image file [image/png]\", the content has an image, the card contains the warning collapsed and expanded) through the real read tool and the real tool card; TestToolsReadPort's subtest of the same title pins the details member as stored and as an extension receives it."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4be4cb4f5: Pi's own changelog line; PiG records the change in changelog.d."
+
+[[files]]
+path = "packages/durable/src/tools/read.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/tools/tools_images_test.go#TestReadOfImagesWithoutAnImageProcessor", "test:durable/tools/read_images_test.go#TestReadNamesAModelThatTakesNoImagesInDetails", "test:durable/tools/coding_tools_pi_oracle_test.go#TestReadOfImagesMatchesPi"]
+rationale = "4be4cb4f5 (#12139): the info diagnostic no longer ends with \"The current model does not support images; it sees a placeholder instead.\" (diagnostics are rendered into what the model sees) and ImageModel loses vision for imageUnsupportedByModel, the model's id when it has no image input, which readImage returns as details. durable/tools/read_image.go imageModel and readImage do the same; durable/tools.ReadToolDetails.ImageUnsupportedByModel is *string with omitempty (present for an id of \"\", as Pi spreads details whenever the id is defined). pi-durable is outside the files the parity oracle's backports patch, so TestReadOfImagesMatchesPi, which runs the pinned mirror's read.ts, requires for its two cases of a model without image input that the pin's message still ends with the removed sentence and that PiG's is the pin's without it; that special case goes when the pin reaches the commit."
+
+[[files]]
+path = "packages/durable/test/tools-images.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/tools/tools_images_test.go#TestReadOfImagesWithoutAnImageProcessor"]
+rationale = "4be4cb4f5 (#12139): \"says when the model sees a placeholder instead of the image\" becomes \"names a text-only model in details for UIs, not in what the model gets\" (the image block, the message \"Read image file [image/png].\", details { imageUnsupportedByModel: \"test\" }, no details for a vision model) and the helper's model gains the id \"test\"; the subtest of TestReadOfImagesWithoutAnImageProcessor carries the new title and the four expectations, and readImageFile's model the id."
+
+[[files]]
+path = "packages/durable/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4be4cb4f5: Pi's README sentence on a model without image input; PiG has no durable README and documents the member in the doc comments of durable/tools.ReadToolDetails and readImage."
+
+[[files]]
+path = "packages/durable/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4be4cb4f5: Pi's own changelog line; PiG records the change in changelog.d."

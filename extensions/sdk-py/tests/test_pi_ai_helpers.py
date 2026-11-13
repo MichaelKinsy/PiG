@@ -121,6 +121,22 @@ def test_connection_closed_is_retryable():
         assert helpers.is_retryable_assistant_error({"role": "assistant", "stopReason": "error", "errorMessage": text}) is want, text
 
 
+def test_node_socket_error_codes_are_retryable():
+    # Pi 4699b5b26 packages/ai/test/retry.test.ts:65,77 (#12128): a provider error that reports only a Node socket error code is retried; a code inside a longer identifier is not.
+    for text, want in (
+        ("read ECONNRESET", True),
+        ("connect ETIMEDOUT 140.82.113.3:443", True),
+        ("write EPIPE", True),
+        ("connect ECONNREFUSED 127.0.0.1:443", True),
+        ("ECONNABORTED", True),
+        ("Connection reset by peer", True),
+        ("Invalid value EXECONNRESET", False),
+        ("Unknown field ETIMEDOUTX", False),
+        ("Invalid key ERR_EPIPE_ID", False),
+    ):
+        assert helpers.is_retryable_assistant_error({"role": "assistant", "stopReason": "error", "errorMessage": text}) is want, text
+
+
 def test_the_golden_file_covers_every_helper():
     called = {case["fn"] for case in GOLDEN["cases"]}
     assert set(CALLS) <= called

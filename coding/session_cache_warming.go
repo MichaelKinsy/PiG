@@ -260,6 +260,7 @@ func (s *Session) CacheWarmingStatus() *icodingagent.CacheWarmingStatus {
 // reconciles active warming. Mirrors upstream AgentSession.setCacheWarmingMode.
 func (s *Session) SetCacheWarmingMode(mode icodingagent.CacheWarmingMode) error {
 	if err := s.SettingsManager().SetCacheWarmingMode(mode); err != nil {
+		// pig divergence (D633): a failed save of the mode is returned and the warmer is not told; Pi's setCacheWarmingMode (agent-session.ts:1520-1523) cannot fail and always tells it.
 		return err
 	}
 	if warmer := s.cacheWarmerHooks(); warmer != nil {

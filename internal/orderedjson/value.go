@@ -32,7 +32,54 @@ func Value(raw []byte) any {
 	return value
 }
 
-// UnmarshalFields decodes data into v, a pointer to a struct, like encoding/json, then replaces each named member of an `any` field with [Value] of its raw JSON, so an object an extension supplied is not reordered by a Go map. A named member absent from data leaves its field as it is. v must not have an UnmarshalJSON method that calls UnmarshalFields: decode into a local alias type.
+// nullValue is the one Null, boxed once: handing it out allocates nothing.
+var nullValue any = json.RawMessage("null")
+
+// Null is the value of a member its writer set to null, held as raw JSON like a container. JSON.stringify writes a member whose value is null and leaves out one whose value is undefined. A nil `any` is undefined, so Null keeps the two apart: an encoder writes it as null where `omitempty` drops nil, and code that forwards a member it finds not nil forwards it.
+func Null() any { return nullValue }
+
+// IsNull reports whether value is a JSON null held as raw JSON: Null, or `null` a caller wrote as a json.RawMessage.
+func IsNull(value any) bool {
+	raw, ok := value.(json.RawMessage)
+	return ok && isNullText(raw)
+}
+
+// Member decodes the value of an optional member: Value, with JSON null as Null. Absent, empty and invalid input is nil.
+func Member(raw []byte) any {
+	if isNullText(raw) {
+		return nullValue
+	}
+	return Value(raw)
+}
+
+func isNullText(raw []byte) bool { return string(bytes.TrimSpace(raw)) == "null" }
+
+// IsNullMember reports whether the top-level object in data, which is valid JSON, has a member name whose value is null. Of several members with that name the last counts, as JSON.parse keeps it. It allocates nothing unless a key holds an escape.
+func IsNullMember(data []byte, name string) bool {
+	if !bytes.Contains(data, []byte("null")) {
+		return false
+	}
+	var raw [1][]byte
+	lastMembers(data, []string{name}, raw[:])
+	return isNullText(raw[0])
+}
+
+// ContainerMember is the top-level member name of the object in data, which is valid JSON, when its value is an object or an array: the container as [Value] holds it, JSON.stringify(JSON.parse(raw)). An absent member and any other value are nil. Of several members with that name the last counts, as JSON.parse keeps it.
+func ContainerMember(data []byte, name string) json.RawMessage {
+	var raw [1][]byte
+	lastMembers(data, []string{name}, raw[:])
+	container, _ := Value(raw[0]).(json.RawMessage)
+	return container
+}
+
+// HasMember reports whether the top-level object in data, which is valid JSON, has a member name. It allocates nothing unless a key holds an escape.
+func HasMember(data []byte, name string) bool {
+	var raw [1][]byte
+	lastMembers(data, []string{name}, raw[:])
+	return raw[0] != nil
+}
+
+// UnmarshalFields decodes data into v, a pointer to a struct, like encoding/json, then replaces each named member of an `any` field with [Member] of its raw JSON, so an object an extension supplied is not reordered by a Go map and a member it wrote as null holds [Null]. A named member absent from data leaves its field as it is. v must not have an UnmarshalJSON method that calls UnmarshalFields: decode into a local alias type.
 //
 // It decodes data once: each named field (an `any` holding nil) is pointed at a placeholder that keeps the decoder from building the member
 // as a map, and the member's raw JSON is found by a walk over the top-level object. Anything that walk cannot settle exactly as the three
@@ -66,8 +113,8 @@ func UnmarshalFields(data []byte, v any, members ...string) error {
 		return unmarshalFieldsThreePass(data, v, members)
 	}
 	for i, field := range fields {
-		// An absent member leaves the field the nil it held; null and invalid JSON are Value's nil.
-		if decoded := Value(raws[i]); decoded == nil {
+		// An absent member leaves the field the nil it held, a null one holds Null, and invalid JSON is Value's nil.
+		if decoded := Member(raws[i]); decoded == nil {
 			field.SetZero()
 		} else {
 			field.Set(reflect.ValueOf(decoded))
@@ -174,7 +221,7 @@ func valueEnd(data []byte, i int) int {
 	return i
 }
 
-// unmarshalFieldsThreePass is UnmarshalFields by three decodes: the struct, the members again as raw JSON, then Value of each named member.
+// unmarshalFieldsThreePass is UnmarshalFields by three decodes: the struct, the members again as raw JSON, then Member of each named member.
 func unmarshalFieldsThreePass(data []byte, v any, members []string) error {
 	if err := json.Unmarshal(data, v); err != nil {
 		return err
@@ -197,7 +244,7 @@ func unmarshalFieldsThreePass(data []byte, v any, members []string) error {
 		if !ok || field.Kind() != reflect.Interface || field.NumMethod() != 0 {
 			return fmt.Errorf("orderedjson: %s has no `any` field with JSON name %q", structure.Type(), member)
 		}
-		if decoded := Value(value); decoded == nil {
+		if decoded := Member(value); decoded == nil {
 			field.SetZero()
 		} else {
 			field.Set(reflect.ValueOf(decoded))

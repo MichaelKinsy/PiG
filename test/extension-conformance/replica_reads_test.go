@@ -222,7 +222,7 @@ func (s *replicaHostState) bind(bridge *subprocess.UIBridge) {
 		}
 		return nil, fmt.Errorf("replica row: unexpected sessionRead %s", method)
 	})
-	bridge.SetHostAction("setModel", func(_ context.Context, model string) (bool, error) {
+	setModelBySpec(bridge, func(_ context.Context, model string) (bool, error) {
 		for _, candidate := range replicaModels {
 			var m struct{ Provider, ID string }
 			if json.Unmarshal([]byte(candidate), &m) == nil && m.Provider+"/"+m.ID == model {

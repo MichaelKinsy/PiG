@@ -30,6 +30,10 @@ func TestProviderRequestBodiesWriteMarkupLiterally(t *testing.T) {
 		{"pi-messages", PiMessagesAPI, APIPiMessages, "radius", ""},
 	}
 	for _, c := range cases {
+		if !BuiltAPI(c.api) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(c.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var body string

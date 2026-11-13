@@ -61,6 +61,7 @@
     "tui.md": "adapted-pi",
     "typescript-runtimes.md": "pig-authored",
     "trust.md": "pig-authored",
+    "ui-views.md": "pig-authored",
     "usage.md": "adapted-pi",
     "usecase-clean-spreadsheet.md": "pig-authored",
     "usecase-draft-document.md": "pig-authored",
@@ -258,6 +259,10 @@
             {
               "title": "Build Terminal UI Components",
               "path": "tui.md"
+            },
+            {
+              "title": "Build Extension Views",
+              "path": "ui-views.md"
             },
             {
               "title": "Integrate with the CLI",

@@ -43,7 +43,7 @@ func referenceUnmarshalFields(data []byte, v any, members ...string) error {
 		if !ok || field.Kind() != reflect.Interface || field.NumMethod() != 0 {
 			return fmt.Errorf("orderedjson: %s has no `any` field with JSON name %q", structure.Type(), member)
 		}
-		if decoded := Value(value); decoded == nil {
+		if decoded := Member(value); decoded == nil {
 			field.SetZero()
 		} else {
 			field.Set(reflect.ValueOf(decoded))

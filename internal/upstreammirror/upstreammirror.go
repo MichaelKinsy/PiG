@@ -88,3 +88,16 @@ func ReadPicked(root, rel string) ([]byte, error) {
 	}
 	return out, nil
 }
+
+// PickedPaths returns the files of the mirror (slash-separated, relative to the Pi repository) that a recorded post-release fix covers:
+// ReadPicked differs from the mirror's file for these only, so a test that reads many mirror files reads the others directly.
+func PickedPaths(root string) ([]string, error) {
+	cmd := exec.Command("node", filepath.Join(root, filepath.FromSlash(BackportsScript)), "--mirror-paths")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("list the Pi mirror files with post-release fixes: %w\n%s", err, stderr.String())
+	}
+	return strings.Fields(string(out)), nil
+}

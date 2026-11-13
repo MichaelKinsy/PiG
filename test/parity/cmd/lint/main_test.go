@@ -51,6 +51,48 @@ func TestLintRules(t *testing.T) {
 			wantRules: nil,
 		},
 		{
+			name:   "provider fixture model options pass with a fixture",
+			source: "# Upstream evidence (pi v0.69.0)\nsome toml",
+			sc: scenario{
+				Name:                    "fixture-options",
+				Driver:                  "interactive-tmux",
+				ProviderFixture:         "anthropic-messages",
+				ProviderFixtureBasePath: "/api.anthropic.com",
+				ProviderFixtureCompat:   map[string]any{"supportsStrictTools": true},
+				Covers:                  []string{"packages/tui/src/autocomplete.ts"},
+				Tags:                    []string{"fast", "hermetic"},
+				Assert:                  assertBlock{OutputEqual: true},
+			},
+			wantRules: nil,
+		},
+		{
+			name:   "provider fixture model options without a fixture fail",
+			source: "# Upstream evidence (pi v0.69.0)\nsome toml",
+			sc: scenario{
+				Name:                  "fixture-options-alone",
+				Driver:                "interactive-tmux",
+				ProviderFixtureCompat: map[string]any{"supportsStrictMode": true},
+				Covers:                []string{"packages/tui/src/autocomplete.ts"},
+				Tags:                  []string{"fast", "hermetic"},
+				Assert:                assertBlock{OutputEqual: true},
+			},
+			wantRules: []string{"provider-fixture-option"},
+		},
+		{
+			name:   "a provider fixture base path without a leading slash fails",
+			source: "# Upstream evidence (pi v0.69.0)\nsome toml",
+			sc: scenario{
+				Name:                    "fixture-base-path",
+				Driver:                  "interactive-tmux",
+				OpenAIFixture:           true,
+				ProviderFixtureBasePath: "api.anthropic.com/",
+				Covers:                  []string{"packages/tui/src/autocomplete.ts"},
+				Tags:                    []string{"fast", "hermetic"},
+				Assert:                  assertBlock{OutputEqual: true},
+			},
+			wantRules: []string{"provider-fixture-base-path"},
+		},
+		{
 			name:   "unknown provider fixture API fails",
 			source: "# Upstream evidence (pi v0.69.0)\nsome toml",
 			sc: scenario{

@@ -73,6 +73,43 @@ type VirtualModelDecl struct {
 	Input          []string `json:"input,omitempty"`
 }
 
+// ── Model selection ──────────────────────────────────────────────────────────
+
+// CallSetModel (ext→host) is upstream's pi.setModel(model) (types.ts ExtensionAPI.setModel; agent-session.ts _bindExtensionCore setModel). Args is a
+// SetModelArgs and the result a SetModelResult.
+const CallSetModel = "setModel"
+
+// SetModelArgs is the argument of CallSetModel. Model is Pi's model object: the stored-model record every model crosses the wire as (ctx.model, model_select,
+// ctx.modelRegistry), which ai.DecodeStoredModel reads. The Session takes the object as given, with the members the extension left on it; the host looks no
+// model up by its provider and id. A value that is not a chat model object is rejected.
+type SetModelArgs struct {
+	Model json.RawMessage `json:"model"`
+}
+
+// SetModelResult is the result of CallSetModel. Success is Pi's boolean: false when the model's provider has no configured auth. Error is the message of
+// the rejection Pi's Promise would carry.
+type SetModelResult struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
+}
+
+// CallResolveModel (ext→host) builds the model object a `provider/id` name stands for, as coding.BuildModel builds it. It is a PiG-only call with no Pi
+// counterpart and is not SDK API: the string form of an SDK's set-model (Go SetModelNamed, Python set_model(str), Rust set_model(&str), Lisp ctx-set-model
+// with a string) calls it and then CallSetModel with the object, so CallSetModel has one shape. Args is a ResolveModelArgs and the result a
+// ResolveModelResult.
+const CallResolveModel = "resolveModel"
+
+// ResolveModelArgs is the argument of CallResolveModel. Spec is `provider/id`; a spec with no slash names an openai model.
+type ResolveModelArgs struct {
+	Spec string `json:"spec"`
+}
+
+// ResolveModelResult is the result of CallResolveModel: the model object, or the message of the error that building it met.
+type ResolveModelResult struct {
+	Model json.RawMessage `json:"model,omitempty"`
+	Error string          `json:"error,omitempty"`
+}
+
 // CallRegisterVirtualModel (ext→host) registers a virtual model after load. Args is a VirtualModelDecl.
 const CallRegisterVirtualModel = "registerVirtualModel"
 

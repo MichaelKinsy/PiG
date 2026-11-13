@@ -54057,65 +54057,6 @@ export default value;
 declare module "pi-pin:@earendil-works/pi-ai/dist/providers/data/qwen-token-plan-cn.json" {
 const value: {
 "openai-completions": {
-"chat:deepseek-v3.2": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStrictMode: boolean;
-thinkingFormat: string;
-supportsDeveloperRole: boolean;
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-};
-type: string;
-};
-"chat:deepseek-v4-flash": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStrictMode: boolean;
-thinkingFormat: string;
-supportsDeveloperRole: boolean;
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-};
-thinkingLevelMap: {
-off: null;
-minimal: null;
-low: null;
-medium: null;
-high: string;
-xhigh: null;
-max: string;
-};
-type: string;
-};
 "chat:deepseek-v4-flash-0731": {
 id: string;
 name: string;
@@ -54897,6 +54838,94 @@ max: string;
 };
 type: string;
 };
+"chat:deepseek-v4.1-flash": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+thinkingFormat: string;
+supportsDeveloperRole: boolean;
+supportsStore: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: null;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:deepseek-v4.1-flash-1017": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+thinkingFormat: string;
+supportsDeveloperRole: boolean;
+supportsStore: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: null;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:glm-5.2": {
 id: string;
 name: string;
@@ -55257,6 +55286,94 @@ max: string;
 };
 type: string;
 };
+"chat:deepseek-v4.1-flash": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+thinkingFormat: string;
+supportsDeveloperRole: boolean;
+supportsStore: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: null;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:deepseek-v4.1-flash-1017": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+thinkingFormat: string;
+supportsDeveloperRole: boolean;
+supportsStore: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: null;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:glm-5.2": {
 id: string;
 name: string;
@@ -55515,65 +55632,6 @@ export default value;
 declare module "pi-pin:@earendil-works/pi-ai/dist/providers/data/qwen-token-plan.json" {
 const value: {
 "openai-completions": {
-"chat:deepseek-v3.2": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStrictMode: boolean;
-thinkingFormat: string;
-supportsDeveloperRole: boolean;
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-};
-type: string;
-};
-"chat:deepseek-v4-flash": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsStrictMode: boolean;
-thinkingFormat: string;
-supportsDeveloperRole: boolean;
-supportsStore: boolean;
-supportsReasoningEffort: boolean;
-};
-thinkingLevelMap: {
-off: null;
-minimal: null;
-low: null;
-medium: null;
-high: string;
-xhigh: null;
-max: string;
-};
-type: string;
-};
 "chat:deepseek-v4-flash-0731": {
 id: string;
 name: string;

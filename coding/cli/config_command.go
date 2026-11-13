@@ -147,6 +147,7 @@ func newScopedConfigSelector(cwd, agentDir string, global, settings *codingagent
 	selector := tui.NewScopedConfigSelector(tui.BuildResourceGroups(globalItems), tui.BuildResourceGroups(projectItems), 0, writeScope, projectModeAvailable)
 	selector.OnToggle = func(item *tui.ResourceItem, enabled bool) {
 		if err := applyConfigToggle(cwd, agentDir, settings, item, enabled); err != nil {
+			// pig divergence (D633): a toggle whose save failed is reported and shown in its previous state; Pi's selector keeps it (config-selector.ts:552-564, :626-628).
 			item.Enabled = !enabled
 			fmt.Fprintf(os.Stderr, "config toggle: %v\n", err)
 		}

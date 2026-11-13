@@ -17,7 +17,12 @@ func TestDirectAPIAuthenticationThrowsSynchronouslyUpstream(t *testing.T) {
 				for range stream.Events(context.Background()) {
 				}
 			}
-			if err == nil || err.Error() != "No API key for provider: test-provider" || stream != nil || called {
+			want := "No API key for provider: test-provider"
+			if !BuiltAPI(api) {
+				// A build with this API's pig_strip tag reports the strip before it looks for a key (D92).
+				want = strippedAPIMessage("test-provider", api)
+			}
+			if err == nil || err.Error() != want || stream != nil || called {
 				t.Fatalf("stream=%v error=%v payload=%v", stream != nil, err, called)
 			}
 		})

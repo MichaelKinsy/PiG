@@ -18,7 +18,9 @@ type AgentTurnContext struct {
 	// ToolResults are the tool result messages emitted for the completed turn.
 	ToolResults []ToolResultMessage
 	// Context is the loop context (transcript and executable tools) after the
-	// turn's assistant message and tool results have been appended.
+	// turn's assistant message and tool results have been appended. Its Messages,
+	// like NewMessages, are the run's own array cut at its length: replacing a
+	// message in place changes the run, as in Pi; an append does not reach it.
 	Context AgentContext
 	// NewMessages are the messages this run returns if it exits now. Prompt
 	// runs include the initial prompt messages; continuation runs do not
@@ -78,6 +80,9 @@ type PrepareNextTurn func(ctx context.Context, turn PrepareNextTurnContext) (*Ag
 
 // PrepareRequestContext is the runtime state available immediately before a
 // provider request. Mirrors upstream PrepareRequestContext.
+//
+// Context.Messages is the run's own array, cut at its length: replacing a message in place changes the request that follows and the
+// rest of the run, as writing to Pi's context.messages does; an append goes to an array of the hook's own and does not reach the run.
 type PrepareRequestContext struct {
 	Context       AgentContext
 	Model         *ai.Model

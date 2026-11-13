@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
@@ -253,5 +254,74 @@ func TestEncodeGridHoldsExactlyTheMembersSet(t *testing.T) {
 		`{"kind":"grid","id":"bare","columns":1}]}}`
 	if string(encoded.View) != want {
 		t.Fatalf("view JSON\n got %s\nwant %s", encoded.View, want)
+	}
+}
+
+// Every node kind can carry an id: an a11y, focus or drawing record of a mounted view (D614) names a node by it. The
+// structural kinds send the id that was set, and no member when none was.
+func TestEncodeStructuralNodeIDs(t *testing.T) {
+	build := func(id func(kind string) string) kit.View {
+		box := kit.NewBox(1, 1, &kit.Text{ID: id("text"), Text: "t"})
+		box.ID = id("box")
+		image := kit.NewImage([]byte("png"), "image/png")
+		image.ID = id("image")
+		root := kit.NewContainer(
+			box,
+			&kit.TruncatedText{ID: id("truncated-text"), Text: "t"},
+			&kit.Markdown{ID: id("markdown"), Text: "m"},
+			&kit.Spacer{ID: id("spacer"), Lines: 1},
+			&kit.DynamicBorder{ID: id("dynamic-border")},
+			image,
+			&kit.Loader{ID: id("loader"), Message: "l"},
+			&kit.HStack{ID: id("hstack")},
+			&kit.VStack{ID: id("vstack")},
+			&kit.Lines{ID: id("lines"), Lines: []string{"row"}},
+			&kit.UserMessage{ID: id("user-message"), Text: "u", OutputPad: 1},
+			&kit.Diff{ID: id("diff"), Diff: "d"},
+		)
+		root.ID = id("container")
+		return kit.View{Root: root}
+	}
+	type node struct {
+		Kind     string  `json:"kind"`
+		ID       *string `json:"id"`
+		Children []node  `json:"children"`
+	}
+	nodes := func(view kit.View) []node {
+		t.Helper()
+		encoded, err := Encode(view, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var payload struct {
+			Root node `json:"root"`
+		}
+		if err := json.Unmarshal(encoded.View, &payload); err != nil {
+			t.Fatal(err)
+		}
+		var all []node
+		var walk func(n node)
+		walk = func(n node) {
+			all = append(all, n)
+			for _, child := range n.Children {
+				walk(child)
+			}
+		}
+		walk(payload.Root)
+		return all
+	}
+	named := nodes(build(func(kind string) string { return "id-" + kind }))
+	if len(named) != 14 {
+		t.Fatalf("the view encodes %d nodes, want the 14 structural kinds", len(named))
+	}
+	for _, n := range named {
+		if n.ID == nil || *n.ID != "id-"+n.Kind {
+			t.Errorf("the %s node carries the id %v, want %q", n.Kind, n.ID, "id-"+n.Kind)
+		}
+	}
+	for _, n := range nodes(build(func(string) string { return "" })) {
+		if n.ID != nil {
+			t.Errorf("the %s node without an id carries the member id %q", n.Kind, *n.ID)
+		}
 	}
 }

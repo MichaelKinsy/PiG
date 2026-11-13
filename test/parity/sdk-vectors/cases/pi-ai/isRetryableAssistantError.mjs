@@ -185,3 +185,12 @@ for (const errorMessage of [
   "429", "a429", "429a", "4290", "1429", "_429_", "x-500-y", "status=502,", "HTTP 503.", "status\n504\n", "(520)", "429.5 seconds", "req_503 5031", "4290 5003", "5001 and 502",
   "ſ429ſ", "\u212a500\u212a", "A429", "429Z", "0429", "4290",
 ]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });
+
+// Pi 4699b5b26 (packages/ai/src/utils/retry.ts, #12128): a provider error that reports only a Node socket error code is retried, a code inside a longer identifier is not, and
+// the other socket codes are left alone. The first nine messages are Pi's own test strings (packages/ai/test/retry.test.ts); the rest are the guards on both sides of a code.
+for (const errorMessage of [
+  "read ECONNRESET", "connect ETIMEDOUT 140.82.113.3:443", "write EPIPE", "connect ECONNREFUSED 127.0.0.1:443", "ECONNABORTED", "Connection reset by peer",
+  "Invalid value EXECONNRESET", "Unknown field ETIMEDOUTX", "Invalid key ERR_EPIPE_ID",
+  "read econnreset", "(EPIPE)", "ECONNRESET_", "_ECONNRESET", "0EPIPE", "EPIPE0", "connect EHOSTUNREACH 140.82.113.3:443", "connect ENETUNREACH 140.82.113.3:443", "UND_ERR_SOCKET",
+  "\u212aECONNRESET", "EPIPE\u017f", "write: broken pipe", "read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer", "ECONNRESET billing",
+]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });

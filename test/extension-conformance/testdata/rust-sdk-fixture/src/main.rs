@@ -3602,6 +3602,95 @@ fn main() {
         },
     );
     ext.command(
+        "overlay-invalidate-probe",
+        "Count the host's invalidations of a mounted overlay and draw the theme",
+        |ctx, args| {
+            fn row(ctx: &pig_sdk::Context) -> String {
+                let theme = ctx.theme();
+                format!("{}|{}", theme.name, theme.fg("accent", "x"))
+            }
+            fn input(data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+                if data == "q" {
+                    return Ok(RemoteComponentResult::done(Some(json!("closed"))));
+                }
+                Ok(RemoteComponentResult::pending())
+            }
+            struct InvalidateProbe {
+                ctx: pig_sdk::Context,
+                invalidations: u64,
+                kept: String,
+            }
+            impl RemoteComponent for InvalidateProbe {
+                fn render(&self, _width: u32) -> Vec<String> {
+                    vec![format!(
+                        "inv={} kept={} live={}",
+                        self.invalidations,
+                        self.kept,
+                        self.ctx.theme().name
+                    )]
+                }
+                fn invalidate(&mut self) {
+                    self.invalidations += 1;
+                    self.kept = row(&self.ctx);
+                }
+                fn handle_input(
+                    &mut self,
+                    data: &pig_sdk::JsString,
+                ) -> Result<RemoteComponentResult, String> {
+                    input(data)
+                }
+            }
+            // No invalidate: the host's invalidation renders it again all the same.
+            struct PlainThemeProbe(pig_sdk::Context);
+            impl RemoteComponent for PlainThemeProbe {
+                fn render(&self, _width: u32) -> Vec<String> {
+                    vec![format!("plain live={}", row(&self.0))]
+                }
+                fn handle_input(
+                    &mut self,
+                    data: &pig_sdk::JsString,
+                ) -> Result<RemoteComponentResult, String> {
+                    input(data)
+                }
+            }
+            let on_handle = |_overlay: pig_sdk::OverlayHandle| {};
+            let result = if args.trim() == "plain" {
+                ctx.custom_component_with_handle(
+                    PlainThemeProbe(ctx.clone()),
+                    json!({"overlay": true}),
+                    on_handle,
+                )
+            } else {
+                ctx.custom_component_with_handle(
+                    InvalidateProbe {
+                        ctx: ctx.clone(),
+                        invalidations: 0,
+                        kept: row(ctx),
+                    },
+                    json!({"overlay": true}),
+                    on_handle,
+                )
+            };
+            if let Err(err) = result {
+                return CommandResult::Error(err.to_string());
+            }
+            ctx.notify("overlay-invalidate=ok", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "theme-read-probe",
+        "Report the theme the extension holds, with no component mounted",
+        |ctx, _args| {
+            let theme = ctx.theme();
+            ctx.notify(
+                &format!("theme-read={}|{}", theme.name, theme.fg("accent", "x")),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "overlay-focus-probe",
         "Render the focus the host publishes to a mounted overlay",
         |ctx, _args| {
@@ -4612,6 +4701,39 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The
+    // argument is the row's token: the ids of the container, the text and the box are built from it.
+    ext.command(
+        "ui_view_node_ids",
+        "Mount a view whose container, text and box carry an id",
+        |ctx, args| {
+            let tok = args.trim();
+            let root = Container::new()
+                .id(format!("{tok}-root"))
+                .child(
+                    kit::Text::new(format!("Label {tok}"), 0, 0)
+                        .id(format!("{tok}-label"))
+                        .bg("selectedBg"),
+                )
+                .child(
+                    kit::Box::new(1, 0)
+                        .id(format!("{tok}-frame"))
+                        .bg("toolPendingBg")
+                        .child(kit::Text::new("inside", 0, 0)),
+                );
+            let mut mount = view_mount("ids", kit::View::new(root), vec![]);
+            mount.a11y = vec![pig_sdk::ViewA11y {
+                node: format!("{tok}-label"),
+                name: format!("Label {tok}"),
+                ..Default::default()
+            }];
+            match ctx.mount_view(mount) {
+                Ok(st) => ctx.notify(&format!("view-i-mounted:{}", st.state), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
     ext.on_view_intent(|inv| match inv.intent.as_str() {
         // The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
         name if name.starts_with("fx.close-") => {
@@ -5202,6 +5324,46 @@ fn main() {
             CommandResult::Ok
         },
     );
+    ext.command(
+        "set_model_object",
+        "Switch to the model object in the arguments",
+        |ctx, args| {
+            let model: serde_json::Value = match serde_json::from_str(args) {
+                Ok(model) => model,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let (ok, error) = ctx.set_model(&model);
+            if error.is_empty() {
+                ctx.notify(&format!("setModelObject={ok}"), "info");
+            } else {
+                ctx.notify(&format!("setModelObject=error:{error}"), "info");
+            }
+            CommandResult::Ok
+        },
+    );
+    let before_agent_model_subscriber = ext.event_subscriber();
+    ext.command(
+        "set_model_object_before_agent_start",
+        "Switch to the model object in the arguments before each agent start",
+        move |_ctx, args| {
+            let model: serde_json::Value = match serde_json::from_str(args) {
+                Ok(model) => model,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let subscription =
+                before_agent_model_subscriber.on_before_agent_start(move |ctx, _event| {
+                    let (ok, error) = ctx.set_model(&model);
+                    if !error.is_empty() {
+                        return Err(error);
+                    }
+                    ctx.notify(&format!("beforeAgentSetModel={ok}"), "info");
+                    Ok(None)
+                });
+            // The handler stays subscribed for the life of the extension.
+            std::mem::forget(subscription);
+            CommandResult::Ok
+        },
+    );
     let event_probe_on_subscriber = ext.event_subscriber();
     let event_probe_on_subscriptions: Arc<Mutex<Vec<(String, pig_sdk::EventSubscription)>>> =
         Arc::new(Mutex::new(Vec::new()));
@@ -5611,6 +5773,80 @@ fn main() {
         |ctx, _args| match ctx.append_entry("conformance-entry", json!("hello-entry")) {
             Ok(_) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    // An entry and a message with the optional member left out, then with it written as null: Value::Null is Pi's omitted argument in append_entry, and
+    // the siblings that take an Option write Some(Value::Null) as null.
+    ext.command(
+        "entry_null_members",
+        "Append entries and send messages with an omitted and a null member",
+        |ctx, _args| {
+            let result = ctx
+                .append_entry("conformance-null-omitted", Value::Null)
+                .and_then(|_| ctx.append_entry_opt("conformance-null-explicit", Some(Value::Null)))
+                .and_then(|_| ctx.send_message("conformance-null-omitted", "x", false, None, None))
+                .and_then(|_| {
+                    ctx.send_message_with_details(
+                        "conformance-null-explicit",
+                        "x",
+                        false,
+                        None,
+                        None,
+                        Some(Value::Null),
+                    )
+                });
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
+    // setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+    ext.command(
+        "label_members",
+        "Set a label that is omitted, null and empty",
+        |ctx, args| {
+            let result = ctx
+                .set_label_opt(args, None)
+                .and_then(|_| ctx.set_label_opt(args, Some(Value::Null)))
+                .and_then(|_| ctx.set_label(args, ""));
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
+    // The setup callback's SessionManager: an entry and a message with the optional member left out, then with it written as null. Value::Null is
+    // Pi's omitted argument, and the siblings that take an Option write Some(Value::Null) as null.
+    ext.command(
+        "setup_null_members",
+        "Seed a new session with an omitted and a null member",
+        |ctx, _args| {
+            let result = ctx.new_session_setup(
+                json!({}),
+                |manager: &pig_sdk::SetupSessionManager| {
+                    manager.append_custom_entry("api-custom", Value::Null)?;
+                    manager.append_custom_entry_opt("api-custom", Some(Value::Null))?;
+                    manager.append_custom_message_entry(
+                        "api-message",
+                        json!("x"),
+                        false,
+                        Value::Null,
+                    )?;
+                    manager.append_custom_message_entry_opt(
+                        "api-message",
+                        json!("x"),
+                        true,
+                        Some(Value::Null),
+                    )?;
+                    Ok(())
+                },
+                None,
+            );
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
         },
     );
     ext.command(
@@ -6954,10 +7190,44 @@ fn main() {
             data["context"]["contextEntries"].as_array().unwrap().len(),
             2
         );
+        // One draft with a null replacement, one without the member, and a compaction that keeps nothing.
         Some(json!({
-            "entries": [{"type": "custom", "customType": "conformance-boundary"}],
+            "entries": [
+                {"type": "custom", "customType": "conformance-boundary"},
+                {"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": null},
+                {"type": "context_edit", "targetId": "conformance-omitted-member"},
+                {"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": null, "details": {"format": "conformance-checkpoint"}, "usage": null},
+                {"type": "custom", "customType": "conformance-null-data", "data": null},
+                {"type": "custom_message", "customType": "conformance-null-details", "content": "x", "display": false, "details": null}
+            ],
             "continue": true
         }))
+    });
+    ext.on_event("agent_before_settle", |ctx, data| {
+        let entries = data["entries"].as_array().cloned().unwrap_or_default();
+        assert_eq!(entries.len(), 6, "boundary result reached the next handler");
+        let member = |index: usize, key: &str| match entries[index].get(key) {
+            None => "absent",
+            Some(Value::Null) => "null",
+            Some(_) => "value",
+        };
+        let format = entries[3]["details"]["format"].as_str().unwrap_or("");
+        ctx.notify(
+            &format!(
+                "agent_before_settle_drafts:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+                entries.len(),
+                member(1, "replacement"),
+                member(2, "replacement"),
+                member(3, "firstKeptEntryId"),
+                format,
+                member(0, "data"),
+                member(3, "usage"),
+                member(4, "data"),
+                member(5, "details")
+            ),
+            "info",
+        );
+        None
     });
     ext.on_event("session_start", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");
@@ -9047,7 +9317,7 @@ impl MutDoc {
         screen.invalidate()?;
         r.push(format!(
             "invalidate={}",
-            self.invalidations.load(Ordering::SeqCst) > 0
+            self.invalidations.load(Ordering::SeqCst)
         ));
         r.push(format!("lines={}", screen.get_screen_lines()?.len()));
         Ok(r.join(","))
@@ -9162,8 +9432,8 @@ fn tui_alt_frame_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     screen.invalidate()?;
     f.push(format!(
         "invalidate={}/{}",
-        doc.invalidations.load(Ordering::SeqCst) > 0,
-        ov.invalidations.load(Ordering::SeqCst) > 0
+        doc.invalidations.load(Ordering::SeqCst),
+        ov.invalidations.load(Ordering::SeqCst)
     ));
     ov2.hide()?;
     let link = Arc::new(std::sync::OnceLock::new());
