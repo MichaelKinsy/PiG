@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Prove that both vendored chord trees (chord/nextnode/plugins/node and chord/nextnode/surfaces/client) are what their
 # manifests record: Pi at the manifest's commit with exactly its `carried` commits cherry-picked onto it, in order. It
-# makes that tree in a scratch worktree of a Pi clone, runs each tree's vendoring script into a scratch directory, and
+# makes that tree in a scratch worktree of a Pi clone (automation/gen/vendor-chord-derive.sh: a carried commit's conflict
+# outside the roots the copies read leaves that path as it was and is printed; one inside them fails), runs each tree's
+# vendoring script into a scratch directory, and
 # compares the manifest it writes (commit, pin, carried, versions, every file's hash) with the committed one, byte for
 # byte. The Go tests TestNodeVendoredFilesAreExactlyTheManifests and TestClientVendoredFilesAreExactlyTheManifests prove
 # the other half: the committed files are the ones the committed manifests hash.
@@ -32,12 +34,9 @@ for name in plugins-node surfaces-client; do
 	# One derived tree serves both manifests when they name the same commits.
 	if [ "$commit $carried" != "$made" ]; then
 		drop_tree
-		git -C "$repo" worktree add --quiet --detach "$work/tree" "$commit"
-		for id in ${carried//,/ }; do
-			git -C "$work/tree" -c user.name=vendor-chord-carried-check -c user.email=vendor@localhost -c commit.gpgsign=false \
-				cherry-pick --allow-empty "$id" >/dev/null ||
-				{ echo "vendor-chord-carried-check: $dir: Pi $id does not cherry-pick onto $commit and the commits carried before it" >&2; exit 1; }
-		done
+		# The derived tree: a conflict under a root the copies read fails; a path left outside them is printed.
+		"$root/automation/gen/vendor-chord-derive.sh" "$repo" "$work/tree" "$commit" "$carried" |
+			sed "s|^left |vendor-chord-carried-check: outside the copied roots, left at the derived tree's side: Pi |"
 		made="$commit $carried"
 	fi
 	mkdir "$work/$name"
