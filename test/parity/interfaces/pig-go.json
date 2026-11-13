@@ -293445,6 +293445,50 @@
       "shapeHash": "sha256:c5ac56c4fc7d42e5a6cb5ebfc68af68cc9c3294bd31086bec455411ce830b4fc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#fileCallArguments",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "fileCallArguments",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(args encoding/json.RawMessage) github.com/MichaelKinsy/PiG/ai.JsonObject"
+      },
+      "shapeHash": "sha256:27686455b1486990997e2e4598c3a317b1434253bc66b9ad3ec22feba65f5d3a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#fileCallMember",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "fileCallMember",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "fileCallMember"
+      },
+      "shapeHash": "sha256:51767813d2a77fe0cd9b1ae3dd69dd046c5eec449321f3ca255c6261e564e245"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#fileCallMember.UnmarshalJSONFrom",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "fileCallMember.UnmarshalJSONFrom",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(decoder *encoding/json/jsontext.Decoder) error"
+      },
+      "shapeHash": "sha256:b44b5e7b92d9698b11800f14f7c0fe40523c0491cbf788f5b3dc588e13fb9a66"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#fileCallMembers",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "fileCallMembers",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "fileCallMembers"
+      },
+      "shapeHash": "sha256:bd94d9fb2f8a999580237d412448aeabe7872d0fb0962d81dd0c84e8db09d9c2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#fileRecords",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "fileRecords",
@@ -305213,6 +305257,17 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#otherFileCallArgument",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "otherFileCallArgument",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "otherFileCallArgument"
+      },
+      "shapeHash": "sha256:5b749690f56f9bf7444e49ed25ad0ea9fc7705ec00ac71dd1bc6aa3fd9c7059a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#outcomeAbort",
