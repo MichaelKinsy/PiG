@@ -147,7 +147,6 @@ func eachReloadSDK(t *testing.T, test func(t *testing.T, sdk string)) {
 }
 
 // Defect A. A prompt written while a reload runs is read after the reload and the response of the command that awaited it, and runs on the reloaded extension. The reloaded generation's factory blocks its thread until the test has written the prompt, as a factory that computes does: Pi's loop cannot turn there, so Pi reads the prompt after the reload whatever the timing.
-// mutation-checked: without rpcSettleGate.holdReload in serveRPCMode's reload the Go fixture answers `notify ping g1, response c, notify started g2, response b`.
 func TestRPCPromptWrittenDuringAReloadRunsOnTheReloadedExtension(t *testing.T) {
 	eachReloadSDK(t, func(t *testing.T, sdk string) {
 		f := startReloadRPC(t, sdk, "RL_LOAD=block")
@@ -379,7 +378,6 @@ func TestRPCUserMessageSentByAReloadsSessionStartRunsOnTheReloadedExtension(t *t
 }
 
 // Defect B. A command whose handler is in flight when a reload replaces its generation still answers. The handler signals that it runs, the test starts the reload and lets the handler go on while the replacement generation is loading: the handler's ctx is stale by then (agent-session.ts:3825-3826), so in Pi its ctx.ui throws, RPC reports the error and the prompt answers "handled" (agent-session.ts:2280-2291). On the base the host dropped the Node handler's call unanswered and the prompt never answered.
-// mutation-checked: dropping the call of a generation the reload has armed (Host.supersededByReload out of runCall and handleIncoming, with invalidateSupersededGenerations out of Reload) leaves `response c` unwritten.
 func TestRPCCommandInFlightAtAReloadIsAnswered(t *testing.T) {
 	eachReloadSDK(t, func(t *testing.T, sdk string) {
 		f := startReloadRPC(t, sdk, "RL_LOAD=await")
