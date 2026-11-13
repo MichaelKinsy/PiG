@@ -7,11 +7,11 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"runtime"
 	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
@@ -141,21 +141,8 @@ func timeoutConnectionResult(ctx context.Context, provider Provider, options Str
 	return string(result.StopReason) + ": " + result.ErrorMessage
 }
 
-// awaitGoroutineBaseline yields until the process has no more goroutines than baseline, its count before the requests were sent: a transport's
-// connection goroutines end a moment after the server saw the connection close. It sets no time bound, as testenv.Await sets none: goroutines
-// that stay hold the test until its deadline, whose dump names them.
-func awaitGoroutineBaseline(t *testing.T, baseline int) {
-	t.Helper()
-	for runtime.NumGoroutine() > baseline {
-		if t.Context().Err() != nil {
-			t.Fatalf("goroutines = %d, want the %d from before the requests", runtime.NumGoroutine(), baseline)
-		}
-		runtime.Gosched()
-	}
-}
-
 // A provider that takes the request and never answers: every one of twenty requests ends with the SDK's "Request timed out.", the server
-// sees each request's connection close, and afterwards no connection is open and the process is back at its goroutine count.
+// sees each request's connection close, and afterwards no connection is open and every goroutine the requests started has ended.
 func TestProviderTimeoutClosesTheRequestConnection(t *testing.T) {
 	const timeouts = 20
 	for _, transport := range []string{"direct", "proxy tunnel", "caller's fetch"} {
@@ -168,7 +155,7 @@ func TestProviderTimeoutClosesTheRequestConnection(t *testing.T) {
 				provider := shape.provider(server.URL)
 				t.Cleanup(func() { _ = provider.Close() })
 
-				baseline := runtime.NumGoroutine()
+				baseline := testenv.BaselineGoroutines()
 				results := make(chan string, timeouts)
 				for range timeouts {
 					go func() { results <- timeoutConnectionResult(t.Context(), provider, options) }()
@@ -192,7 +179,7 @@ func TestProviderTimeoutClosesTheRequestConnection(t *testing.T) {
 				if open := server.Open(); open != 0 {
 					t.Fatalf("server connections still open after %d timeouts = %d, want 0", timeouts, open)
 				}
-				awaitGoroutineBaseline(t, baseline)
+				baseline.RequireEnded(t, 10*time.Second)
 			})
 		}
 	}
@@ -228,7 +215,7 @@ func TestProviderIdleTimeoutClosesAStalledResponseBody(t *testing.T) {
 				provider := shape.provider(server.URL)
 				t.Cleanup(func() { _ = provider.Close() })
 
-				baseline := runtime.NumGoroutine()
+				baseline := testenv.BaselineGoroutines()
 				if got := timeoutConnectionResult(t.Context(), provider, route.options); !slices.Contains(want, got) {
 					t.Fatalf("result = %q, want one of %q", got, want)
 				}
@@ -244,7 +231,7 @@ func TestProviderIdleTimeoutClosesAStalledResponseBody(t *testing.T) {
 				if open := server.Open(); open != 0 {
 					t.Fatalf("server connections still open = %d, want 0", open)
 				}
-				awaitGoroutineBaseline(t, baseline)
+				baseline.RequireEnded(t, 10*time.Second)
 			})
 		}
 	}
