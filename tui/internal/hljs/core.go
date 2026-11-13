@@ -664,12 +664,25 @@ type Result struct {
 	iterations int
 }
 
-// checkpoint is a state at the start of a scan iteration from which a run over the same code, with more text after it, continues identically: the root mode is on top, nothing is buffered or open, and the emitter holds the finished children before it. iterations is the count of the iterations before it, which a resumed run starts from, so highlight.js's iteration limit throws at the same match as in a whole run.
+// checkpoint is a state at the start of a scan iteration from which a run over the same code, with more text after it, continues identically: nothing is buffered, and it holds what the run keeps besides. unit is where the scan stands, and iterations the count of the iterations before it, which a resumed run starts from, so highlight.js's iteration limit throws at the same match as in a whole run. top is the mode stack, nil for the language alone. appends and depth place it in the emitter's output: the children added before it and the nodes open at it. The counts are held in 32 bits, since a run records a checkpoint for every few units of its code; a run past them records no more.
 type checkpoint struct {
-	unit       int
-	children   int
-	iterations int
+	unit       int32
+	iterations int32
+	appends    int32
+	depth      int32
+	top        *frame
 }
+
+// recording is the checkpoints a run records.
+type recording uint8
+
+const (
+	recordNone recording = iota
+	// recordRoot records the checkpoints between finished top-level nodes.
+	recordRoot
+	// recordStack records the checkpoints inside open modes as well.
+	recordStack
+)
 
 type highlightRun struct {
 	registry       *Registry
@@ -689,7 +702,7 @@ type highlightRun struct {
 	lastMatchType  string
 	lastMatchIndex int
 	match          enhancedMatch
-	record         bool
+	record         recording
 	checkpoints    []checkpoint
 	// keyBuffer is the bytes of the lexeme keywordData looks up.
 	keyBuffer []byte
@@ -703,11 +716,11 @@ const highlightJSIterationLimit = 100000
 
 // highlight is highlight.js _highlight(languageName, codeToHighlight, ignoreIllegals, continuation).
 func (r *Registry) highlight(languageName string, code []rune, ignoreIllegals bool, continuation *frame) Result {
-	return r.highlightFrom(languageName, code, ignoreIllegals, continuation, checkpoint{}, false)
+	return r.highlightFrom(languageName, code, ignoreIllegals, continuation, checkpoint{}, recordNone)
 }
 
-// highlightFrom is highlight starting the scan at the unit and iteration count of from, which must be a checkpoint of an earlier run over a prefix of code (the zero checkpoint for the whole code), and optionally recording this run's checkpoints.
-func (r *Registry) highlightFrom(languageName string, code []rune, ignoreIllegals bool, continuation *frame, from checkpoint, record bool) Result {
+// highlightFrom is highlight starting at from, a checkpoint of an earlier run over a prefix of code (the zero checkpoint for the whole code): at its unit, with its iteration count, on its mode stack. record is the checkpoints this run records. A stack that does not stand on the root frame this Registry has for the language is not continued: the run fails.
+func (r *Registry) highlightFrom(languageName string, code []rune, ignoreIllegals bool, continuation *frame, from checkpoint, record recording) Result {
 	language := r.getLanguage(languageName)
 	if language == nil {
 		throw(`Unknown language: "` + languageName + `"`)
@@ -721,15 +734,28 @@ func (r *Registry) highlightFrom(languageName string, code []rune, ignoreIllegal
 		language:       md,
 		continuations:  map[string]*frame{},
 		emitter:        newTokenTreeEmitter(),
-		index:          from.unit,
-		iterations:     from.iterations,
+		index:          int(from.unit),
+		iterations:     int(from.iterations),
 		record:         record,
 	}
 	run.top = continuation
 	if run.top == nil {
 		run.top = languageFrame(md)
 	}
-	run.processContinuations()
+	if from.top == nil {
+		run.processContinuations()
+		return run.run()
+	}
+	// The root frame of a language is unique in its Registry, so a stack of another language, of another Registry, or of a language registered again does not stand on it.
+	bottom := from.top
+	for bottom.parent != nil {
+		bottom = bottom.parent
+	}
+	if continuation != nil || bottom != run.top || int(from.unit) > len(code) {
+		return Result{Language: languageName, HasLanguage: true, emitter: run.emitter, top: run.top, failed: true}
+	}
+	run.top = from.top
+	run.reopenNodes()
 	return run.run()
 }
 
@@ -760,7 +786,7 @@ func (h *highlightRun) run() (result Result) {
 	h.top.mode.comp().matcher.considerAll()
 	for {
 		h.iterations++
-		if h.record {
+		if h.record != recordNone {
 			h.recordCheckpoint()
 		}
 		if h.resume {
@@ -816,10 +842,19 @@ func languageReach(language *Mode) reach {
 	return props.reach
 }
 
-// recordCheckpoint records the state at the start of this iteration when a run over more text would reach it unchanged.
+// recordCheckpoint records the state at the start of this iteration when a run over more text would reach it unchanged and a run that starts from it can be given all of it. A state is not recorded for what a run keeps outside a checkpoint: text the mode on top has not emitted, a match being retried (resume), the stack of a sublanguage that did not end on its root (continuations), a begin match at the position of the next match (lastMatch), and what a mode on the stack was given when it began (stackResumes).
 func (h *highlightRun) recordCheckpoint() {
-	if h.resume || !h.top.language || len(h.modeBuffer) != 0 || len(h.continuations) != 0 || len(h.emitter.stack) != 1 || h.index == 0 || h.index >= len(h.code) {
+	if h.resume || len(h.modeBuffer) != 0 || h.index == 0 || h.index >= len(h.code) {
 		return
+	}
+	if !h.top.language && (h.record != recordStack || !stackResumes(h.top)) {
+		return
+	}
+	for _, continuation := range h.continuations {
+		// A sublanguage run that ended on its root continues as a new run does.
+		if continuation != nil && !continuation.language {
+			return
+		}
 	}
 	// Only a begin match at the position of the next match changes how that match is read, and a resumed run has no last match.
 	if h.lastMatchType == "begin" && h.lastMatchIndex >= h.index {
@@ -828,10 +863,64 @@ func (h *highlightRun) recordCheckpoint() {
 	if isLowSurrogate(h.code[h.index]) || isHighSurrogate(h.code[h.index-1]) {
 		return
 	}
-	if n := len(h.checkpoints); n > 0 && h.checkpoints[n-1].unit == h.index {
+	if h.index > math.MaxInt32 || h.iterations > math.MaxInt32 || h.emitter.appends > math.MaxInt32 {
 		return
 	}
-	h.checkpoints = append(h.checkpoints, checkpoint{unit: h.index, children: len(h.emitter.root.children), iterations: h.iterations - 1})
+	n := len(h.checkpoints)
+	if n > 0 && int(h.checkpoints[n-1].unit) == h.index {
+		return
+	}
+	point := checkpoint{unit: int32(h.index), iterations: int32(h.iterations - 1), appends: int32(h.emitter.appends), depth: int32(len(h.emitter.stack) - 1)}
+	if !h.top.language {
+		point.top = h.top
+		// A point is valid by the lines that follow it (resumeLimit), so the last point of a line inside open modes stands for the line.
+		if n > 0 && h.checkpoints[n-1].top != nil && !slices.Contains(h.code[h.checkpoints[n-1].unit:h.index], '\n') {
+			h.checkpoints[n-1] = point
+			return
+		}
+	}
+	h.checkpoints = append(h.checkpoints, point)
+}
+
+// ResumeStackMax bounds the modes of a stack a checkpoint holds, and so the frames a caller keeps with a ResumePoint, and the spans open at one.
+const ResumeStackMax = 64
+
+// stackResumes reports whether a run can start on the stack: it has at most ResumeStackMax modes, and none of them holds what a run gave it when the mode began, or buffers text for another language. The callbacks of a mode (on:begin, on:end) keep what they share on the mode object (END_SAME_AS_BEGIN's first group), endSameAsBegin and the mode it starts keep the end pattern of their begin there, and a sublanguage mode buffers its text for a run of the other language.
+func stackResumes(top *frame) bool {
+	depth := 0
+	for f := top; !f.language; f = f.parent {
+		depth++
+		mode := f.mode
+		if depth > ResumeStackMax || mode.endSameAsBegin || mode.comp().endFromBegin || f.data != nil || mode.rare().onBegin != nil || mode.rare().onEnd != nil || mode.rare().subLanguage.set {
+			return false
+		}
+	}
+	return true
+}
+
+// nodeClass is the class of the node a mode opens in the output, "" for a mode that opens none.
+func (h *highlightRun) nodeClass(mode *Mode) string {
+	if mode.className == "" {
+		return ""
+	}
+	if className := h.language.lang().classNameAliases[mode.className]; className != "" {
+		return className
+	}
+	return mode.className
+}
+
+// reopenNodes opens the nodes of the modes on the stack a run continues from a checkpoint, outermost first, as startNewMode opened them in the run that recorded it: with the language's aliases, which highlight.js processContinuations, for the stack of a sublanguage, does not apply.
+func (h *highlightRun) reopenNodes() {
+	var classes []string
+	for f := h.top; !f.language; f = f.parent {
+		if className := h.nodeClass(f.mode); className != "" {
+			classes = append(classes, className)
+		}
+	}
+	for _, className := range slices.Backward(classes) {
+		h.emitter.openNode(className)
+	}
+	h.emitter.continued = len(classes)
 }
 
 func isHighSurrogate(u rune) bool { return u >= 0xd800 && u <= 0xdbff }
@@ -930,11 +1019,7 @@ func (h *highlightRun) processBuffer() {
 }
 
 func (h *highlightRun) startNewMode(mode *Mode) *frame {
-	if mode.className != "" {
-		className := h.language.lang().classNameAliases[mode.className]
-		if className == "" {
-			className = mode.className
-		}
+	if className := h.nodeClass(mode); className != "" {
 		h.emitter.openNode(className)
 	}
 	h.top = &frame{mode: mode, parent: h.top}
@@ -1053,6 +1138,7 @@ func (h *highlightRun) doEndMatch(match *enhancedMatch) int {
 	if endMode.mode.starts != nil {
 		if endMode.mode.endSameAsBegin {
 			endMode.mode.starts.setComp().endRe = endMode.mode.comp().endRe
+			endMode.mode.starts.setComp().endFromBegin = true
 			endMode.mode.starts.present |= keyEndRe
 		}
 		h.startNewMode(endMode.mode.starts)

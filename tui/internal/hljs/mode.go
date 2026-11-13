@@ -74,6 +74,8 @@ type compiledProps struct {
 	terminatorEnd string
 	matcher       *resumableMultiRegex
 	data          *responseData
+	// endFromBegin is set on a mode whose endRe a run copied from the begin of the endSameAsBegin mode that starts it.
+	endFromBegin bool
 }
 
 // languageProps are the properties of a language object. A registry holds a few hundred languages among thousands of modes, so they sit outside Mode.

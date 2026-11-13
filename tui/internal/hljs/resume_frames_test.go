@@ -271,7 +271,7 @@ type streamedSnippet struct{ name, lang, code string }
 
 func (s streamedSnippet) text() string { return strings.ReplaceAll(s.code, "§", "`") }
 
-// streamedSnippets are code blocks of the languages most often fenced, with the constructs a frame can end inside: strings, template literals and their substitutions, block and line comments, regular expressions, parameter lists over lines, tags, here documents, blank lines and trailing white space; and modes inside modes: strings with escapes, substitutions inside substitutions, objects inside lists, comments inside documents, here documents with substitutions, a script and a style sheet inside a page, tags inside a template and inside Markdown.
+// streamedSnippets are code blocks of the languages most often fenced, with the constructs a frame can end inside: strings, template literals and their substitutions, block and line comments, regular expressions, parameter lists over lines, tags, here documents, blank lines and trailing white space; and modes inside modes: strings with escapes, substitutions inside substitutions, objects inside lists, comments inside documents, here documents with substitutions, a script and a style sheet inside a page, tags inside a template and inside Markdown, and a tag that a template leaves open for the text after it.
 var streamedSnippets = []streamedSnippet{
 	{"scoreboard block", "typescript", `export function parse1(input: string): Node[] {
 	const out: Node[] = [];
@@ -704,6 +704,23 @@ echo "after ${#msg} \"escaped\" $((1 + 2))"
 <% end %>
 <p>two</p>
 <p>three</p>
+`},
+	{"a tag the template continues", "django", `<a href="{{ url }}"
+   class="x">{{ label }}</a>
+<p>one</p>
+{% for item in items %}
+  <li title="{{ item.name }}">{{ item }}</li>
+{% endfor %}
+<p>two</p>
+<p>three</p>
+`},
+	{"a tag the next template continues", "javascript", `const open = html§<div class="a§;
+const one = 1;
+const two = 2;
+const three = 3;
+const rest = html§ b">text</div>§;
+const four = 4;
+const five = 5;
 `},
 	{"embedded code and tags", "markdown", `Intro with <span class="x">inline *tag*</span> text.
 

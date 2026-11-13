@@ -37,7 +37,7 @@ func streamedBlock(n int, json bool) string {
 	return strings.ReplaceAll(md20000Function, "{n}", strconv.Itoa(n))
 }
 
-// TestStreamedBlockFramesAreAWholeRun streams a TypeScript block and a JSON document as an open fence delivers them: a frame at every line, a frame at every byte, and the frames of a fence that closes (the whole code, the code with one and then two backticks of the closing fence on a line after it, and the code alone again once the fence is closed, which is shorter than the frame before it). Every frame has the lines of a whole run.
+// TestStreamedBlockFramesAreAWholeRun streams a TypeScript block, a JSON document, and blocks whose frames resume inside a mode that runs over lines (a list of documents, a comment, a docstring) as an open fence delivers them: a frame at every line, a frame at every byte, and the frames of a fence that closes (the whole code, the code with one and then two backticks of the closing fence on a line after it, and the code alone again once the fence is closed, which is shorter than the frame before it). Every frame has the lines of a whole run.
 func TestStreamedBlockFramesAreAWholeRun(t *testing.T) {
 	for _, c := range []struct {
 		name, lang, code string
@@ -45,6 +45,10 @@ func TestStreamedBlockFramesAreAWholeRun(t *testing.T) {
 		{"typescript", "typescript", streamedBlock(1, false)},
 		{"json", "json", streamedBlock(1, true)},
 		{"typescript with CRLF", "typescript", strings.ReplaceAll(streamedBlock(2, false), "\n", "\r\n")},
+		{"json list of documents", "json", "[\n" + strings.Repeat("  {\"id\": 1, \"name\": \"an item\", \"tags\": [\"a\", \"b\"]},\n", 12) + "  {}\n]\n"},
+		{"go comment over lines", "go", "package demo\n\n/* A comment: you will see\n   the lines it runs over, and the\n   words it marks. */\nvar x = \"text\"\nvar y = 1\nvar z = 2\n"},
+		{"python docstring over lines", "python", "def f():\n    \"\"\"First line \\n of the\n    docstring that runs \\t over\n    the lines.\n    \"\"\"\n    return 1\n\nx = 2\ny = 3\n"},
+		{"css comment over lines", "css", "a {\n  color: red; /* a comment: you will\n  see it run over the lines */\n  margin: 0;\n}\nb { top: 1px; }\nc { top: 2px; }\n"},
 	} {
 		theme := resumeStateTheme()
 		for end := 1; end <= len(c.code); end++ {
@@ -66,8 +70,14 @@ func TestStreamedBlockFramesAreAWholeRun(t *testing.T) {
 
 // TestAnEditBeforeTheEndOfABlockTakesNoStateOfTheBlock: a resume state serves only a text that starts with the whole text it was recorded over. After a block is streamed, the block with one byte changed at any place has, as the state it would resume from, none recorded over a text that reaches the change, and its lines are those of a whole run.
 func TestAnEditBeforeTheEndOfABlockTakesNoStateOfTheBlock(t *testing.T) {
-	code := streamedBlock(1, false) + streamedBlock(2, false)
-	for _, lang := range []string{"typescript", "javascript"} {
+	script := streamedBlock(1, false) + streamedBlock(2, false)
+	for _, c := range []struct{ lang, code string }{
+		{"typescript", script},
+		{"javascript", script},
+		// A JSON list is one mode from its first line to its last: its states lie inside the open modes.
+		{"json", "[\n" + streamedBlock(1, true) + ",\n" + streamedBlock(2, true) + "]\n"},
+	} {
+		lang, code := c.lang, c.code
 		theme := resumeStateTheme()
 		for end := 40; end < len(code); end += 40 {
 			checkHighlightedFrame(t, lang+", streamed", code[:end], lang, theme)
