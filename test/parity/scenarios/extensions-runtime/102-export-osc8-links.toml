@@ -38,7 +38,7 @@
 # copies testdata/export-cwd for every run (snapshotCWD), so this scenario and 29 share only the read-only dump script; the export goes to
 # the copy.
 
-name = "98-export-osc8-links"
+name = "102-export-osc8-links"
 description = "HTML export converts OSC 8 hyperlinks of an extension tool's rendered result to links, as pi does"
 covers = [
   "packages/coding-agent/src/core/export-html/ansi-to-html.ts",

@@ -32,7 +32,7 @@
 # Red proof (2026-11-13): with `&& i+1 < len(tail)` removed from snapshotText (internal/codingagent/tools/output_accumulator.go, PiG's port
 # of the fix; go build -overlay) pig prints "(no output)", a blank line and "[Showing lines 3-2 of 2 (50.0KB limit). Full output: ...]",
 # and the scenario fails on both_contain, both_not_contain and output_equal.
-name = "30-print-bash-long-last-line"
+name = "31-print-bash-long-last-line"
 description = "Print mode returns the end of an over-long last line of bash output, as pi does"
 covers = [
   "packages/coding-agent/src/core/tools/output-accumulator.ts",

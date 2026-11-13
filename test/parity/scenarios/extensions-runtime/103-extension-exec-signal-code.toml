@@ -28,7 +28,7 @@
 # scenario with this tag when runtime.GOOS is "windows" (runner_test.go, "scenario sends POSIX signals"), and its skip-allowlist gate accepts
 # that skip there; on every other host the scenario runs.
 
-name = "99-extension-exec-signal-code"
+name = "103-extension-exec-signal-code"
 description = "Extension pi.exec() reports 143 and 137 for commands that SIGTERM and SIGKILL ended, and 143 with killed for a timeout"
 covers = [
   "packages/coding-agent/src/core/exec.ts",
