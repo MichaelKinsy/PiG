@@ -171,10 +171,33 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/custom_editor.go#HandleInput",
+        "internal/codingagent/custom_editor.go#OnAction",
+        "internal/codingagent/interactive_input.go#handleCustomEditorKey",
+        "internal/codingagent/interactive_input.go#inputLoopUntil",
+        "internal/codingagent/keys.go#classifyKeyWithBindings"
+      ],
+      "evidence": [
+        "internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+        "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt",
+        "internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings",
+        "internal/codingagent/keybindings_inventory_test.go#TestAppKeybindingDefinitionsMatchUpstreamInventory",
+        "internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults",
+        "internal/codingagent/select_page_keys_test.go#TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
+        "test/parity/scenarios/custom-editor-precedence.toml",
+        "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml"
+      ],
+      "contracts": [
+        "coding-agent/custom-editor/active-keybinding-manager",
+        "coding-agent/custom-editor/app-key-precedence",
+        "coding-agent/custom-editor/handler-order"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2407,20 +2430,37 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderDiff",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/diff_render.go#RenderDiff"
+      ],
+      "evidence": [
+        "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
+        "test/parity/scenarios/interactive-rendering/49-edit-tool-diff-output-pad-0.toml",
+        "tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/diff/render-diff"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderIntraLineDiff",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/diff_render.go#RenderIntraLineDiff"
+      ],
+      "evidence": [
+        "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
+        "test/parity/scenarios/interactive-rendering/49-edit-tool-diff-output-pad-0.toml",
+        "tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
+        "tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion"
+      ],
+      "contracts": [
+        "coding-agent/diff/render-intra-line"
+      ],
       "divergence": "",
       "rationale": ""
     },

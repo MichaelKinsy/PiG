@@ -2348,6 +2348,8 @@ evidence = [
   "test/parity/scenarios/custom-editor-precedence.toml",
   "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
   "internal/codingagent/select_page_keys_test.go#TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
+  "internal/codingagent/keybindings_inventory_test.go#TestAppKeybindingDefinitionsMatchUpstreamInventory",
+  "internal/codingagent/keybindings_platform_test.go#TestKeybindingDefinitionsApplyPlatformDefaults",
 ]
 
 [contract.upstream]
