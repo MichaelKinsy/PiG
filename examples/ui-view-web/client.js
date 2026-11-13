@@ -1,17 +1,21 @@
 // A reference client of the plugin UI carrier (docs/ui-view-carrier.md). It attaches over the bridge, keeps the
 // client's side of the carrier's rules (numbers without a hole, a resync after a gap, a redraw only when the digest
-// changed), draws the snapshots it is sent, applies their a11y and focus records, and raises their intents.
+// changed), draws the snapshots it is sent as controls (a node is the control its kind and its a11y role make it) and
+// their drawings as vector graphics, applies their a11y and focus records, and raises their intents.
 
 const SLOTS = ["notify", "status", "widget-above", "widget-below", "header", "footer", "dialog", "overlay", "panel", "tool-card", "message", "entry"];
 // The node kinds this page draws. A kind outside the list is refused by the host for this client; a node the page
 // cannot draw after all is reported with ui_view_report.
 const NODES = ["container", "box", "vstack", "hstack", "text", "truncated-text", "markdown", "lines", "spacer", "dynamic-border", "image",
-  "select-list", "settings-list", "input", "editor", "mouse-region", "scroll-view"];
+  "loader", "select-list", "settings-list", "input", "editor", "mouse-region", "scroll-view"];
 const ABILITIES = {
   slots: SLOTS, nodes: NODES, markdown: true, imageFormats: ["png", "jpeg", "gif", "webp"],
-  limits: { nodes: 2048, depth: 32, snapshotBytes: 1 << 20, textBytes: 1 << 16, mounts: 32, intentArgBytes: 1 << 16 },
+  // snapshotBytes is the carrier's bound of one line: a scene of a few thousand points is some hundred kilobytes.
+  limits: { nodes: 2048, depth: 32, snapshotBytes: 1 << 22, textBytes: 1 << 16, mounts: 32, intentArgBytes: 1 << 16 },
   input: { keyboard: true, pointer: true, text: true },
   claims: [{ name: "client.kind", value: "web" }],
+  // Both drawing profiles, up to the host's own bounds (coding/uiview/drawing.go).
+  drawing: { profiles: ["scene", "pixels"], shapes: 4096, pixels: 1 << 20 },
 };
 
 const token = new URLSearchParams(location.search).get("token");
@@ -29,7 +33,10 @@ const pending = new Map(); // command + " " + id -> resolve
 const mounts = new Map(); // plugin + "\n" + key -> { snapshot, element, ids, prefix }
 
 // What the page exposes to a test or a console: the carrier state it keeps.
-window.uiView = { mounts, abilities: ABILITIES, get session() { return session; }, get attachment() { return attachment; }, get lastSeq() { return lastSeq; }, resyncs: 0, gaps: 0, reports: 0 };
+window.uiView = { mounts, abilities: ABILITIES, get session() { return session; }, get attachment() { return attachment; }, get lastSeq() { return lastSeq; }, resyncs: 0, gaps: 0, reports: 0,
+  // Milliseconds. timing.draw: what the last draw took. timing.intent: from the last intent's command to the end of the draw of the update its handler made.
+  // timing.gesture: the same from the pointer or key event on a drawing's region, so with the wait for the drag's turn.
+  timing: {} };
 
 function say(text, kind = "note") {
   const line = document.createElement("div");
@@ -181,7 +188,7 @@ function apply(snapshot) {
   } else if (held && held.snapshot.mount.epoch === snapshot.mount.epoch && snapshot.digest && held.snapshot.digest === snapshot.digest) {
     // The same content: nothing is drawn.
     held.snapshot = snapshot;
-    held.element.hidden = snapshot.state === "hidden";
+    present(held);
     showPanels();
   } else {
     draw(key, snapshot, held);
@@ -189,41 +196,95 @@ function apply(snapshot) {
   state.textContent = `attachment ${attachment}, event ${lastSeq}, ${mounts.size} mounts`;
 }
 
-// draw shows a snapshot. A mount already on the page keeps its element and morph keeps what it can of its view, so an
-// update leaves what the user is typing, the selection and the focus where they are.
+// shell makes the element of a new mount: a card with a caption and the mount's own intents as buttons, the view, and
+// a status line. A mount of the dialog or the overlay slot is a dialog element. The mount's controls have no listener
+// of their own: the shell listens once and reads what was activated from the element (`data-act`) and its view node,
+// so an update can keep every element (morph) and still act on the newest view.
+function shell(snapshot) {
+  const mount = { prefix: `m${++nextMount}-`, restore: document.activeElement, floating: snapshot.slot === "dialog" || snapshot.slot === "overlay" };
+  const el = (mount.element = document.createElement(mount.floating ? "dialog" : "article"));
+  el.className = "mount";
+  el.dataset.plugin = snapshot.plugin;
+  el.dataset.key = snapshot.mount.key;
+  mount.head = document.createElement("header");
+  mount.head.append(document.createElement("span"));
+  mount.body = text("view", "");
+  mount.footer = document.createElement("footer");
+  mount.footer.setAttribute("role", "status");
+  el.append(mount.head, mount.body, mount.footer);
+  el.addEventListener("click", (event) => onClick(mount, event));
+  el.addEventListener("keydown", (event) => onKey(mount, event));
+  el.addEventListener("pointerdown", (event) => onPointerDown(mount, event));
+  el.addEventListener("pointermove", (event) => onPointerMove(mount, event));
+  for (const end of ["pointerup", "pointercancel"]) el.addEventListener(end, (event) => onPointerUp(mount, event));
+  if (mount.floating) {
+    // The mount is the extension's: the page does not close it. A dialog the browser closed all the same is opened again.
+    el.setAttribute("closedby", "none");
+    el.addEventListener("cancel", (event) => event.preventDefault());
+    el.addEventListener("close", () => present(mount));
+  }
+  return mount;
+}
+
+// present shows or hides a mount as its state says. A dialog mount is opened as a modal dialog and an overlay as a
+// dialog beside the page; hidden, it is closed, so the page under it takes input again.
+function present(mount) {
+  const hidden = mount.snapshot.state === "hidden";
+  const el = mount.element;
+  el.hidden = hidden;
+  if (!mount.floating || !el.isConnected) return;
+  if (hidden) {
+    if (el.open) el.close();
+  } else if (!el.open) {
+    if (mount.snapshot.slot === "dialog") el.showModal();
+    else el.show();
+  }
+}
+
+// draw shows a snapshot. A mount already on the page keeps its element and morph keeps every element whose node is
+// still in the view, so an update leaves what the user is typing, the selection and the focus where they are, and a
+// style that changed moves by its transition.
 function draw(key, snapshot, held) {
-  const mount = held ?? { prefix: `m${++nextMount}-`, restore: document.activeElement };
+  const started = performance.now();
+  const mount = held ?? shell(snapshot);
   const was = mount.ids ?? new Map();
+  const before = mount.snapshot;
   mount.snapshot = snapshot;
-  mount.ids = new Map();
-  if (!held) {
-    mount.element = document.createElement("article");
-    mount.element.className = "mount";
-    mount.element.dataset.plugin = snapshot.plugin;
-    mount.element.dataset.key = snapshot.mount.key;
-    mount.head = document.createElement("header");
-    mount.head.append(document.createElement("span"));
-    mount.body = text("view", "");
-    mount.footer = document.createElement("footer");
-    mount.element.append(mount.head, mount.body, mount.footer);
-    if (snapshot.slot === "panel") {
-      mount.tab = tab(key, mount);
-      panels.chosen = key;
-    }
+  if (!held && snapshot.slot === "panel") {
+    mount.tab = tab(key, mount);
+    panels.chosen = key;
   }
   mount.element.dataset.digest = snapshot.digest ?? "";
-  mount.element.hidden = snapshot.state === "hidden";
-  mount.head.firstChild.textContent = `${snapshot.plugin} / ${snapshot.mount.key}${snapshot.degraded ? " (degraded)" : ""}`;
+  const title = `${snapshot.plugin} / ${snapshot.mount.key}${snapshot.degraded ? " (degraded)" : ""}`;
+  mount.head.firstChild.textContent = title;
+  if (mount.floating) mount.element.setAttribute("aria-label", title);
   mount.body.removeAttribute("style");
   theme(mount.body, snapshot.view);
 
-  const undrawn = [];
-  const fresh = snapshot.view?.root ? node(snapshot.view.root, mount, "root", undrawn, snapshot.view) : text("undrawn", snapshot.degraded ? "This view does not fit this client." : "");
+  const ctx = { mount, view: snapshot.view, a11y: new Map((snapshot.a11y ?? []).map((entry) => [entry.node, entry])), ids: new Map(), owned: new Set(), undrawn: [], boxes: 0, inline: false };
+  let fresh = snapshot.view?.root ? node(snapshot.view.root, ctx, "root") : text("undrawn", snapshot.degraded ? "This view does not fit this client." : "");
+  if (snapshot.drawing) {
+    // The drawing fills the node it names; without one, or when that node is a control, it follows the view.
+    const graphic = scene(snapshot);
+    const filled = ctx.ids.get(snapshot.drawing.node);
+    if (filled && !/^(?:INPUT|TEXTAREA|PROGRESS|IMG|HR)$/.test(filled.tagName)) {
+      filled.replaceChildren(graphic);
+      filled.classList.add("drawn");
+    } else {
+      const both = text("canvas", "");
+      both.append(fresh, graphic);
+      fresh = both;
+    }
+  }
+  applyA11y(snapshot, ctx, mount.prefix);
+  (snapshot.focus ?? []).forEach((entry, i) => ctx.ids.get(entry.node)?.setAttribute("tabindex", String(i + 1)));
+
   const focused = mount.element.contains(document.activeElement) ? document.activeElement : null;
   const selection = focused && typed(focused) ? [focused.selectionStart, focused.selectionEnd, focused.selectionDirection] : null;
   const root = mount.body.firstChild;
   if (!root) mount.body.append(fresh);
-  else if (morph(root, fresh, mount) !== root) root.replaceWith(fresh);
+  else if (morph(root, fresh) !== root) root.replaceWith(fresh);
+  mount.ids = new Map([...mount.body.querySelectorAll("[data-node]")].map((el) => [el.dataset.node, el]));
   // A text node that morph could not keep in place (it moved to another parent) hands its text to the element drawn for it.
   for (const [id, el] of mount.ids) {
     const old = was.get(id);
@@ -235,14 +296,17 @@ function draw(key, snapshot, held) {
     mount.head.replaceChildren(mount.head.firstChild);
     for (const decl of JSON.parse(actions)) {
       const button = document.createElement("button");
-      button.textContent = decl.name;
-      button.addEventListener("click", () => raise(mount, decl, "", undefined));
+      button.type = "button";
+      button.textContent = words(decl.name);
+      button.title = decl.name;
+      button.dataset.act = "intent";
+      button.dataset.intent = decl.name;
       mount.head.append(button);
     }
   }
-  applyA11y(mount);
   if (!held) document.querySelector(`section[data-slot="${snapshot.slot}"]`).append(mount.element);
   mounts.set(key, mount);
+  present(mount);
   showPanels(); // before the focus moves: an element that is not shown takes none
   // The focus stays on the element that had it; when that element was drawn again, on the one with its id.
   const target = focused?.isConnected ? focused : focused?.id ? document.getElementById(focused.id) : null;
@@ -250,57 +314,77 @@ function draw(key, snapshot, held) {
     target.focus({ preventScroll: true });
     if (selection && typed(target)) target.setSelectionRange(...selection);
   }
-  applyFocus(mount, !held);
-  for (const [path, kind] of undrawn) report(mount, path, `this client does not draw ${kind}`);
+  applyFocus(mount, !held, before);
+  for (const [path, kind] of ctx.undrawn) report(mount, path, `this client does not draw ${kind}`);
+  mount.drawnAt = performance.now();
+  window.uiView.timing.draw = mount.drawnAt - started;
 }
 
-const typed = (el) => el.tagName === "INPUT" || el.tagName === "TEXTAREA";
-// The kinds whose element morph keeps while it morphs their children. Their listeners name only the mount and the id.
-const SHELLS = new Set(["container", "box", "vstack", "hstack", "mouse-region", "scroll-view"]);
+// words names an intent for its button. An intent has a name, `<extension>.<verb>`, and no label, so the button reads
+// the verb in words ("map.zoomIn": "Zoom in") and carries the name as its title.
+function words(name) {
+  const verb = name.slice(name.lastIndexOf(".") + 1).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[-_]+/g, " ").trim().toLowerCase();
+  return verb ? verb[0].toUpperCase() + verb.slice(1) : name;
+}
 
-// morph makes what is drawn (old) show the freshly drawn node and returns the element that stands for it: old when
-// both are the same kind under the same id and the kind is a shell or takes text, else fresh. An input or editor that
-// is kept keeps the user's text unless the view's value changed. Children with an id are matched by id and the others
-// by position, so a node that is gone takes its element with it and never lends it to another id.
-function morph(old, fresh, mount) {
-  const n = fresh.view;
-  if (!n || old.view?.kind !== n.kind || old.view.id !== n.id || !(typed(old) || SHELLS.has(n.kind))) return fresh;
+// typed: the element takes text the user types (an input or an editor node).
+const typed = (el) => el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type === "text");
+// keyOf names an element among its siblings: the id of its view node, or the key of its shape in a drawing.
+const keyOf = (el) => (el.nodeType !== 1 ? "" : el.view?.id ? `#${el.view.id}` : (el.getAttribute("data-k") ?? ""));
+
+// morph makes what is drawn (old) show the freshly drawn tree and returns the node that stands for it: old when both
+// are the same element for the same view node or shape, else fresh. Attributes are set to the fresh ones, an input or
+// an editor keeps the user's text unless the view's value changed, and a checkbox takes the state the view gives.
+// Children with a key are matched by key and the others by position, so a node that is gone takes its element with it
+// and never lends it to another id.
+function morph(old, fresh) {
+  if (old.nodeType !== fresh.nodeType || old.nodeName !== fresh.nodeName || keyOf(old) !== keyOf(fresh) || old.view?.kind !== fresh.view?.kind) return fresh;
+  if (old.nodeType !== 1) {
+    if (old.data !== fresh.data) old.data = fresh.data;
+    return old;
+  }
   for (const { name } of [...old.attributes]) if (!fresh.hasAttribute(name)) old.removeAttribute(name);
   for (const { name, value } of fresh.attributes) if (old.getAttribute(name) !== value) old.setAttribute(name, value);
-  if (typed(old) && (n.value ?? "") !== (old.view.value ?? "")) old.value = n.value ?? "";
-  old.view = n;
-  if (n.id) mount.ids.set(n.id, old);
+  if (typed(old) && (fresh.view?.value ?? "") !== (old.view?.value ?? "")) {
+    // The extension changed the value under the user: the selection stays where it was, as far as the new text goes.
+    const selection = [old.selectionStart, old.selectionEnd, old.selectionDirection];
+    old.value = fresh.view?.value ?? "";
+    if (document.activeElement === old) old.setSelectionRange(...selection);
+  }
+  if (old.type === "checkbox" || old.type === "radio") old.checked = fresh.checked;
+  old.view = fresh.view;
   if (typed(old)) return old;
-  const olds = [...old.children];
-  const byId = new Map(olds.filter((el) => el.view?.id).map((el) => [el.view.id, el]));
+  const olds = [...old.childNodes];
+  const byKey = new Map(olds.filter(keyOf).map((el) => [keyOf(el), el]));
   const kept = new Set();
-  [...fresh.children].forEach((child, i) => {
-    const match = child.view?.id ? byId.get(child.view.id) : olds[i]?.view?.id ? undefined : olds[i];
-    const now = match && !kept.has(match) ? morph(match, child, mount) : child;
+  [...fresh.childNodes].forEach((child, i) => {
+    const key = keyOf(child);
+    const match = key ? byKey.get(key) : olds[i] && !keyOf(olds[i]) ? olds[i] : undefined;
+    const now = match && !kept.has(match) ? morph(match, child) : child;
     kept.add(now);
-    if (old.children[i] !== now) old.insertBefore(now, old.children[i] ?? null);
+    if (old.childNodes[i] !== now) old.insertBefore(now, old.childNodes[i] ?? null);
   });
   for (const el of olds) if (!kept.has(el)) el.remove();
-  if (n.kind === "scroll-view" && n.follow === "end") old.scrollTop = old.scrollHeight;
+  if (old.view?.kind === "scroll-view" && old.view.follow === "end") old.scrollTop = old.scrollHeight;
   return old;
 }
 
-function text(className, value) {
-  const el = document.createElement("div");
-  el.className = className;
+function text(className, value, tag = "div") {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
   el.textContent = value;
   return el;
 }
 
 // The sizes of a view (gap, padding, basis, minSize, maxSize, a spacer's lines) are terminal cells (D107). Here a cell
-// is 1ch wide (the width of "0" in the view's font) and one line high.
+// is the page's spacing tokens: --view-col wide and --view-row high (index.html).
 const cols = (n) => `calc(${n} * var(--col))`;
 const rows = (n) => `calc(${n} * var(--row))`;
 const ALIGN = { stretch: "stretch", start: "flex-start", center: "center", end: "flex-end" };
 
 // colour follows the rule drawings use (coding/uiview/drawing.go, validColor): "#rrggbb" or "#rrggbbaa" is the colour
-// itself and a name is a theme token, drawn from the custom property --pig-<token> that the page (index.html) or the
-// view's theme sets. A token the page has no colour for draws nothing.
+// itself and a name is a theme token, drawn from the custom property --pig-<token> that the page (index.html), a theme
+// directory or the view's theme sets. A token the page has no colour for draws nothing.
 const HEX = /^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/;
 const TOKEN = /^[a-z][A-Za-z0-9]*$/;
 function colour(value) {
@@ -395,36 +479,44 @@ function stack(n, el, child) {
   return el;
 }
 
-// node draws one D107 view node. The kinds that carry an id (select-list, settings-list, input, editor, mouse-region,
-// scroll-view) become focusable elements under that id, so a11y and focus records can name them.
-function node(n, mount, path, undrawn, view) {
-  let el;
-  const child = (c, i) => node(c, mount, `${path}/${i}`, undrawn, view);
-  const children = (parent) => {
+// node draws one D107 view node as the control it is. What a node is comes from its kind and, for a node with an id,
+// from the role its a11y record gives it: a mouse-region is a button, or a checkbox, a switch or a radio with its
+// checked state; a text with the role heading is a heading; a select-list is a listbox, or a row of tabs. The kinds
+// that carry an id become elements under that id, so a11y and focus records can name them. Inside a button or a label
+// (ctx.inline) a node is drawn as phrasing content without its padding: the control has its own.
+function node(n, ctx, path) {
+  const role = n.id ? ctx.a11y.get(n.id)?.role : undefined;
+  const tag = ctx.inline ? "span" : "div";
+  const child = (c, i) => node(c, ctx, `${path}/${i}`);
+  const children = (parent, change = {}) => {
+    const saved = { boxes: ctx.boxes, inline: ctx.inline };
+    Object.assign(ctx, change);
     (n.children ?? []).forEach((c, i) => parent.append(child(c, i)));
+    Object.assign(ctx, saved);
     return parent;
   };
+  let el; // the element that stands for the node among its siblings
+  let named; // the element that carries the node's id, when it is not el
   switch (n.kind) {
     case "container":
-      el = children(text("container", ""));
+      el = children(text("container", "", tag));
       break;
     case "box":
-      el = children(text("box", ""));
-      pad(el, n, 1);
+      el = children(text(n.bg ? "box card" : "box", "", tag), { boxes: ctx.boxes + 1 });
+      if (!ctx.inline) pad(el, n, 1);
       el.style.background = colour(n.bg);
       break;
     case "vstack": case "hstack":
-      el = stack(n, text(n.kind, ""), child);
+      el = stack(n, text(n.kind, "", tag), child);
       break;
-    case "text":
-      el = text("text", n.text ?? "");
-      pad(el, n, 1);
-      el.style.background = colour(n.bg);
+    case "text": case "truncated-text": {
+      const heading = role === "heading" && !ctx.inline;
+      if (heading) ctx.owned.add(n.id);
+      el = text(n.kind === "text" ? "text" : "text truncated", n.text ?? "", heading ? `h${Math.min(2 + ctx.boxes, 6)}` : tag);
+      if (!ctx.inline) pad(el, n, n.kind === "text" ? 1 : 0);
+      if (n.kind === "text") el.style.background = colour(n.bg);
       break;
-    case "truncated-text":
-      el = text("text truncated", n.text ?? "");
-      pad(el, n, 0);
-      break;
+    }
     case "markdown": {
       el = markdown(n.text ?? "");
       const style = n.defaultTextStyle ?? {};
@@ -436,11 +528,12 @@ function node(n, mount, path, undrawn, view) {
       break;
     }
     case "lines":
-      el = text("lines", (n.content ?? []).join("\n"));
+      el = lines(n, ctx);
       break;
     case "spacer":
-      el = text("spacer", "");
+      el = text("spacer", "", tag);
       el.style.height = rows(n.lines ?? 1);
+      el.setAttribute("aria-hidden", "true");
       break;
     case "dynamic-border":
       el = document.createElement("hr");
@@ -448,103 +541,473 @@ function node(n, mount, path, undrawn, view) {
       el.style.borderColor = colour(n.color);
       break;
     case "image": {
-      const bytes = (view.images ?? []).find((image) => image.ref === n.ref);
-      if (!bytes) return undrawnNode(n, path, undrawn);
-      el = document.createElement("img");
-      el.src = `data:${bytes.mimeType};base64,${bytes.data}`;
-      el.alt = n.filename ?? "";
+      const bytes = (ctx.view.images ?? []).find((image) => image.ref === n.ref);
+      if (!bytes) return undrawnNode(n, path, ctx.undrawn);
+      el = picture(bytes, n.filename ?? "");
+      if (n.maxWidthCells) el.style.maxWidth = cols(n.maxWidthCells);
+      if (n.maxHeightCells) el.style.maxHeight = rows(n.maxHeightCells);
+      break;
+    }
+    case "loader": {
+      el = text("loader", "", tag);
+      el.setAttribute("role", "status");
+      const spinner = el.appendChild(text("spinner", "", "span"));
+      spinner.setAttribute("aria-hidden", "true");
+      spinner.style.color = colour(n.spinnerColor);
+      el.appendChild(text("", n.message ?? "Loading...", "span")).style.color = colour(n.messageColor);
       break;
     }
     case "select-list": case "settings-list":
-      el = listbox(n, mount);
+      ctx.owned.add(n.id);
+      el = listbox(n, ctx.mount, role === "tablist");
       break;
     case "input":
+      ctx.owned.add(n.id);
       el = document.createElement("input");
+      el.type = "text";
       el.value = n.value ?? "";
       el.placeholder = n.placeholder ?? "";
-      el.addEventListener("keydown", (event) => event.key === "Enter" && activate(mount, n.id, el.value));
+      el.dataset.act = "submit";
       break;
     case "editor":
+      ctx.owned.add(n.id);
       el = document.createElement("textarea");
       el.value = n.value ?? "";
-      el.addEventListener("keydown", (event) => event.key === "Enter" && (event.ctrlKey || event.metaKey) && activate(mount, n.id, el.value));
+      el.dataset.act = "submit";
       break;
     case "mouse-region":
-      el = children(text("mouse-region", ""));
-      el.tabIndex = 0;
-      el.addEventListener("click", () => activate(mount, n.id, undefined));
-      el.addEventListener("keydown", (event) => (event.key === "Enter" || event.key === " ") && (event.preventDefault(), activate(mount, n.id, undefined)));
+      ctx.owned.add(n.id);
+      if (role === "checkbox" || role === "switch" || role === "radio") {
+        // A native checkbox or radio; the region's child is its label.
+        el = document.createElement("label");
+        el.className = "mouse-region check";
+        named = el.appendChild(document.createElement("input"));
+        named.type = role === "radio" ? "radio" : "checkbox";
+        if (role === "switch") named.setAttribute("role", "switch");
+        children(el, { inline: true });
+      } else if (!role || ["button", "link", "tab", "menuitem", "treeitem"].includes(role)) {
+        el = children(text("mouse-region", "", "button"), { inline: true });
+        el.type = "button";
+        if (role && role !== "button") el.setAttribute("role", role);
+      } else {
+        el = children(text("mouse-region", "", tag));
+        el.tabIndex = 0;
+        el.setAttribute("role", role);
+      }
+      (named ?? el).dataset.act = "node";
       break;
     case "scroll-view":
-      el = children(text("scroll-view", ""));
+      el = children(text("scroll-view", "", tag));
       el.tabIndex = 0;
       if (n.follow === "end") queueMicrotask(() => (el.scrollTop = el.scrollHeight));
       break;
     default:
-      return undrawnNode(n, path, undrawn);
+      return undrawnNode(n, path, ctx.undrawn);
   }
   el.view = n;
   if (n.id) {
-    el.id = mount.prefix + n.id;
-    mount.ids.set(n.id, el);
+    const at = named ?? el;
+    at.id = ctx.mount.prefix + n.id;
+    at.dataset.node = n.id;
+    ctx.ids.set(n.id, at);
   }
   return el;
 }
 
 function undrawnNode(n, path, undrawn) {
   undrawn.push([path, n.kind]);
-  return text("undrawn", `[${n.kind}]`);
+  return text("undrawn", `This client does not draw ${n.kind}.`);
 }
 
-// listbox draws a select-list or a settings-list: arrow keys move the selection, Enter or a click activates it. A
-// settings-list item steps through its values.
-function listbox(n, mount) {
-  const el = document.createElement("div");
-  el.setAttribute("role", "listbox");
-  el.tabIndex = 0;
-  const items = n.items ?? [];
-  let selected = Math.min(Math.max(n.selectedIndex ?? 0, 0), Math.max(items.length - 1, 0));
-  const current = items.map((item) => item.currentValue);
-  const options = items.map((item, i) => {
-    const option = document.createElement("div");
-    option.setAttribute("role", "option");
-    option.id = `${mount.prefix}${n.id}-${i}`;
-    const label = document.createElement("span");
-    label.textContent = item.label ?? item.value ?? item.id ?? "";
-    const detail = document.createElement("small");
-    option.append(label, detail);
-    option.addEventListener("click", () => (select(i), fire()));
-    return option;
-  });
-  const select = (i) => {
-    selected = i;
-    options.forEach((option, j) => {
-      option.setAttribute("aria-selected", String(j === i));
-      option.lastChild.textContent = n.kind === "settings-list" ? current[j] ?? "" : items[j].description ?? "";
-    });
-    if (options[i]) el.setAttribute("aria-activedescendant", options[i].id);
-  };
-  const fire = () => {
-    const item = items[selected];
-    if (!item) return;
-    if (n.kind === "select-list") return activate(mount, n.id, item.value ?? item.label);
-    const values = item.values ?? [];
-    if (values.length) current[selected] = values[(values.indexOf(current[selected]) + 1) % values.length];
-    select(selected);
-    activate(mount, n.id, current[selected], item.id);
-  };
-  el.addEventListener("keydown", (event) => {
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      select((selected + (event.key === "ArrowDown" ? 1 : items.length - 1)) % Math.max(items.length, 1));
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      fire();
-    }
-  });
-  el.append(...options);
-  select(selected);
+function picture(bytes, alt) {
+  const el = document.createElement("img");
+  el.className = "image";
+  el.src = `data:${bytes.mimeType};base64,${bytes.data}`;
+  el.alt = alt;
   return el;
+}
+
+// lines draws a lines node: rows a component of its own drew, kept as they are in a monospace face. Its annotations
+// say what the rows show, and the page then draws that instead: `progress` a progress bar, `list` a list with one
+// row per item (label, detail and the further columns as the columns of one grid, the selected row marked current),
+// `image` the image the rows depict.
+function lines(n, ctx) {
+  const content = (n.content ?? []).join("\n");
+  if (n.progress && n.progress.max > 0) {
+    const el = text("lines", content, "progress");
+    el.max = n.progress.max;
+    el.value = Math.min(Math.max(n.progress.value, 0), n.progress.max);
+    return el;
+  }
+  if (n.list) {
+    const items = n.list.items ?? [];
+    const detailed = items.some((item) => item.detail);
+    const cells = (item) => [item.label ?? "", ...(detailed ? [item.detail ?? ""] : []), ...(item.columns ?? [])];
+    const el = text("lines rows", "", ctx.inline ? "span" : "div");
+    el.setAttribute("role", "list");
+    el.style.gridTemplateColumns = `minmax(0, 1fr)${" auto".repeat(Math.max(1, ...items.map((item) => cells(item).length)) - 1)}`;
+    items.forEach((item, i) => {
+      const row = el.appendChild(text("", "", "div"));
+      row.setAttribute("role", "listitem");
+      if (i === n.list.selectedIndex) row.setAttribute("aria-current", "true");
+      for (const cell of cells(item)) row.append(text("", cell, "span"));
+    });
+    return el;
+  }
+  const bytes = n.image && (ctx.view.images ?? []).find((image) => image.ref === n.image.ref);
+  if (bytes) return picture(bytes, "");
+  return text("lines", content, ctx.inline ? "span" : "pre");
+}
+
+// listbox draws a select-list or a settings-list as a listbox of options, or as a row of tabs when its a11y role is
+// tablist: the arrow keys move the selection, Enter or a click activates it. A settings-list item steps through its
+// values. What is selected, and a setting's current value, are kept on the options themselves.
+function listbox(n, mount, tabs) {
+  const el = text(tabs ? "list tabs" : "list", "");
+  el.setAttribute("role", tabs ? "tablist" : "listbox");
+  el.tabIndex = 0;
+  el.dataset.act = "list";
+  const items = n.items ?? [];
+  const selected = Math.min(Math.max(n.selectedIndex ?? 0, 0), Math.max(items.length - 1, 0));
+  items.forEach((item, i) => {
+    const option = el.appendChild(text("", "", "div"));
+    option.setAttribute("role", tabs ? "tab" : "option");
+    option.id = `${mount.prefix}${n.id}-${i}`;
+    option.dataset.act = "option";
+    option.setAttribute("aria-selected", String(i === selected));
+    if (n.kind === "settings-list" && item.currentValue !== undefined) option.dataset.value = item.currentValue;
+    option.append(text("", item.label ?? item.value ?? item.id ?? "", "span"), text("", (n.kind === "settings-list" ? item.currentValue : item.description) ?? "", "small"));
+  });
+  if (items.length) el.setAttribute("aria-activedescendant", `${mount.prefix}${n.id}-${selected}`);
+  return el;
+}
+
+const cursor = (list) => [...list.children].findIndex((option) => option.getAttribute("aria-selected") === "true");
+
+function choose(list, i) {
+  [...list.children].forEach((option, j) => option.setAttribute("aria-selected", String(j === i)));
+  if (list.children[i]) list.setAttribute("aria-activedescendant", list.children[i].id);
+}
+
+// fire activates the selected item of a list: a select-list raises its value; a settings-list steps the setting to its
+// next value and raises that with the setting's id.
+function fire(mount, list) {
+  const n = list.view;
+  const i = cursor(list);
+  const item = (n.items ?? [])[i];
+  if (!item) return;
+  if (n.kind === "select-list") return activate(mount, n.id, item.value ?? item.label);
+  const option = list.children[i];
+  const values = item.values ?? [];
+  let current = option.dataset.value;
+  if (values.length) {
+    current = values[(values.indexOf(current) + 1) % values.length];
+    option.dataset.value = current;
+  }
+  option.lastChild.textContent = current ?? "";
+  activate(mount, n.id, current, item.id);
+}
+
+// onClick is the one click listener of a mount: a button, a checkbox or another region raises its node's intents, an
+// option is selected and activated, a header button raises the mount's own intent, a region of a drawing its gesture.
+function onClick(mount, event) {
+  const at = event.target.closest?.("[data-act]");
+  if (!at || !mount.element.contains(at) || at.getAttribute("aria-disabled") === "true") return;
+  switch (at.dataset.act) {
+    case "node":
+      activate(mount, at.dataset.node, undefined);
+      break;
+    case "option":
+      choose(at.parentElement, [...at.parentElement.children].indexOf(at));
+      fire(mount, at.parentElement);
+      break;
+    case "intent": {
+      const decl = (mount.snapshot.intents ?? []).find((d) => !d.nodeKey && d.name === at.dataset.intent);
+      if (decl) raise(mount, decl, "", undefined);
+      break;
+    }
+    case "region":
+      if (mount.dragged) mount.dragged = false;
+      else gesture(mount, at.dataset.region, "activate", pointIn(at, event.clientX, event.clientY), undefined, event.timeStamp);
+      break;
+  }
+}
+
+const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+// onKey is the one key listener of a mount, for the keys a native control does not handle by itself: the arrows and
+// Enter of a list, Enter of an input, Ctrl+Enter of an editor, Enter and Space of a region that is not a button, the
+// keys of a drawing's region, and Escape, which cancels the mount's cancellable intent in flight.
+function onKey(mount, event) {
+  const { key } = event;
+  if (key === "Escape") {
+    // Escape never closes a dialog mount: the mount is the extension's.
+    if (mount.floating) event.preventDefault();
+    return void mount.cancel?.();
+  }
+  const at = event.target.closest?.("[data-act]");
+  if (!at || !mount.element.contains(at) || at.getAttribute("aria-disabled") === "true") return;
+  const press = key === "Enter" || key === " ";
+  switch (at.dataset.act) {
+    case "list": {
+      const count = at.children.length;
+      const step = at.getAttribute("role") === "tablist" ? { ArrowRight: 1, ArrowLeft: -1 }[key] : undefined;
+      const move = { ArrowDown: 1, ArrowUp: -1 }[key] ?? step;
+      if (move) {
+        event.preventDefault();
+        choose(at, (cursor(at) + move + count) % Math.max(count, 1));
+      } else if (key === "Enter") {
+        event.preventDefault();
+        fire(mount, at);
+      }
+      break;
+    }
+    case "submit":
+      if (key === "Enter" && (at.tagName === "INPUT" || event.ctrlKey || event.metaKey)) activate(mount, at.dataset.node, at.value);
+      break;
+    case "node":
+      // A button and a checkbox click themselves on Enter and Space.
+      if (press && at.tagName !== "BUTTON" && at.tagName !== "INPUT") {
+        event.preventDefault();
+        activate(mount, at.dataset.node, undefined);
+      }
+      break;
+    case "region": {
+      const box = at.getBBox();
+      const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      const arrow = ARROWS[key];
+      if (press) {
+        event.preventDefault();
+        gesture(mount, at.dataset.region, "activate", centre, undefined, event.timeStamp);
+      } else if (arrow && wants(mount, at.dataset.region, "drag")) {
+        // The keyboard's drag: an eighth of the drawing's viewport in the arrow's direction, then the release.
+        event.preventDefault();
+        const view = at.ownerSVGElement.viewBox.baseVal;
+        const by = { x: (arrow[0] * (view.width || at.ownerSVGElement.clientWidth)) / 8, y: (arrow[1] * (view.height || at.ownerSVGElement.clientHeight)) / 8 };
+        gesture(mount, at.dataset.region, "drag", centre, by, event.timeStamp);
+        gesture(mount, at.dataset.region, "release", centre);
+      }
+      break;
+    }
+  }
+}
+
+// A drawing (D614): a scene of vector shapes, or a pixel grid over an image asset, drawn as one SVG element, and the
+// regions that turn a gesture into a declared intent as shapes of that element that take the pointer and the keyboard.
+const SVG = "http://www.w3.org/2000/svg";
+const FIT = { contain: "xMidYMid meet", cover: "xMidYMid slice", stretch: "none" };
+const ANCHOR = { center: "middle", end: "end" };
+
+function svg(tag, attributes = {}) {
+  const el = document.createElementNS(SVG, tag);
+  for (const [name, value] of Object.entries(attributes)) if (value !== undefined) el.setAttribute(name, String(value));
+  return el;
+}
+
+// paint is a shape's colour as CSS: the colour itself or the theme token's custom property; a token the page has no
+// colour for paints nothing.
+const paint = (value) => (HEX.test(value) ? value : TOKEN.test(value ?? "") ? `var(--pig-${value}, none)` : "none");
+
+// bytesOf finds the bytes of an asset a drawing names: the asset's declaration gives the SHA-256 of its bytes, and the
+// bytes ride in the view's images under that hash as their ref (or under the asset's id).
+function bytesOf(snapshot, id) {
+  const declared = (snapshot.assets ?? []).find((asset) => asset.id === id);
+  const bytes = (snapshot.view?.images ?? []).find((image) => image.ref === declared?.sha256 || image.ref === id);
+  return bytes ? `data:${bytes.mimeType};base64,${bytes.data}` : undefined;
+}
+
+const PATH = {
+  move: (c) => `M${c.x ?? 0} ${c.y ?? 0}`,
+  line: (c) => `L${c.x ?? 0} ${c.y ?? 0}`,
+  quad: (c) => `Q${c.x1 ?? 0} ${c.y1 ?? 0} ${c.x ?? 0} ${c.y ?? 0}`,
+  cubic: (c) => `C${c.x1 ?? 0} ${c.y1 ?? 0} ${c.x2 ?? 0} ${c.y2 ?? 0} ${c.x ?? 0} ${c.y ?? 0}`,
+  close: () => "Z",
+};
+
+// shape draws one shape of a scene as its SVG element. A shape with a key carries it (data-k), so morph keeps its
+// element across updates and a shape that moved is the same element with other attributes.
+function shape(s, snapshot) {
+  let el;
+  switch (s.kind) {
+    case "group":
+      el = svg("g");
+      for (const c of s.children ?? []) el.append(shape(c, snapshot));
+      break;
+    case "rect":
+      el = svg("rect", { x: s.x ?? 0, y: s.y ?? 0, width: s.width ?? 0, height: s.height ?? 0, rx: s.radius });
+      break;
+    case "ellipse":
+      el = svg("ellipse", { cx: s.cx ?? 0, cy: s.cy ?? 0, rx: s.rx ?? 0, ry: s.ry ?? 0 });
+      break;
+    case "line":
+      el = svg("line", { x1: s.x1 ?? 0, y1: s.y1 ?? 0, x2: s.x2 ?? 0, y2: s.y2 ?? 0 });
+      break;
+    case "polyline":
+      el = svg(s.closed ? "polygon" : "polyline", { points: (s.points ?? []).map((p) => `${p.x ?? 0},${p.y ?? 0}`).join(" ") });
+      break;
+    case "path":
+      el = svg("path", { d: (s.commands ?? []).map((c) => PATH[c.op]?.(c) ?? "").join("") });
+      break;
+    case "text":
+      el = svg("text", { x: s.x ?? 0, y: s.y ?? 0, "font-size": s.size || 12, "text-anchor": ANCHOR[s.align] });
+      el.textContent = s.text ?? "";
+      break;
+    case "image":
+      el = svg("image", { x: s.x ?? 0, y: s.y ?? 0, width: s.width ?? 0, height: s.height ?? 0, href: bytesOf(snapshot, s.asset), preserveAspectRatio: "none" });
+      break;
+    default:
+      return svg("g");
+  }
+  if (s.key) el.setAttribute("data-k", s.key);
+  if (s.kind !== "group" && s.kind !== "image") {
+    const stroke = s.stroke ? `;stroke:${paint(s.stroke.color)};stroke-width:${s.stroke.width ?? 0}` : "";
+    el.setAttribute("style", `fill:${s.fill ? paint(s.fill) : s.kind === "text" ? "currentColor" : "none"}${stroke}`);
+  }
+  if (s.opacity !== undefined) el.setAttribute("opacity", String(s.opacity));
+  if (s.transform) el.setAttribute("transform", `matrix(${s.transform.join(" ")})`);
+  return el;
+}
+
+// scene draws a snapshot's drawing. The viewport is the SVG's viewBox and its fit the way the box is filled; the
+// element is as wide as its place and as high as the viewport's proportions make it, unless its place has a height.
+function scene(snapshot) {
+  const d = snapshot.drawing;
+  const root = svg("svg", { class: "drawing" });
+  const pixels = d.profile === "pixels" ? d.pixels : undefined;
+  const view = d.viewport ?? (pixels ? { x: 0, y: 0, width: pixels.width, height: pixels.height, fit: "contain" } : undefined);
+  if (view) {
+    root.setAttribute("viewBox", `${view.x ?? 0} ${view.y ?? 0} ${view.width} ${view.height}`);
+    root.setAttribute("preserveAspectRatio", FIT[view.fit] ?? FIT.contain);
+    root.style.aspectRatio = `${view.width} / ${view.height}`;
+  }
+  if (pixels) {
+    const grid = root.appendChild(svg("image", { x: 0, y: 0, width: pixels.width, height: pixels.height, href: bytesOf(snapshot, pixels.asset), preserveAspectRatio: "none" }));
+    grid.style.imageRendering = pixels.scaling === "nearest" ? "pixelated" : "auto";
+  }
+  for (const s of d.shapes ?? []) root.append(shape(s, snapshot));
+  for (const region of d.regions ?? []) {
+    const hit = shape({ ...region.shape, key: undefined, fill: undefined, stroke: undefined, opacity: undefined }, snapshot);
+    hit.setAttribute("class", "region");
+    hit.setAttribute("data-k", `region ${region.key}`);
+    hit.setAttribute("data-act", "region");
+    hit.setAttribute("data-region", region.key);
+    hit.setAttribute("tabindex", "0");
+    hit.setAttribute("role", region.role ?? "button");
+    hit.setAttribute("aria-label", region.name);
+    hit.removeAttribute("style");
+    hit.appendChild(svg("title")).textContent = region.name;
+    root.append(hit);
+  }
+  return root;
+}
+
+// wants: the region of the mount's drawing takes that gesture.
+function wants(mount, key, name) {
+  return (mount.snapshot.drawing?.regions ?? []).some((region) => region.key === key && region.gestures.includes(name));
+}
+
+// pointIn is a pointer position in the coordinates of the drawing a shape belongs to.
+function pointIn(el, clientX, clientY) {
+  const matrix = (el.ownerSVGElement ?? el).getScreenCTM();
+  if (!matrix) return { x: 0, y: 0 };
+  const p = new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse());
+  return { x: p.x, y: p.y };
+}
+
+// gesture raises the intent of a region for one gesture, when the region takes that gesture. What the gesture was is
+// offered to the intent's argument under the names x and y (the pointer in drawing coordinates), dx and dy (a drag's
+// movement since its last event), gesture and region; `argument` fills only the ones the intent's shape declares.
+// The gestures of a mount are raised one after the other, each when the one before it is answered: an intent is
+// raised on the view the page holds, and the answer to the gesture before may have drawn a new one.
+function gesture(mount, key, name, point, by, since) {
+  return later(mount, () => send(mount, key, name, point, by, since));
+}
+
+// send raises a region's intent for a gesture now, on the view the page holds. It is a step of the mount's gestures.
+function send(mount, key, name, point, by = { x: 0, y: 0 }, since) {
+  const region = (mount.snapshot.drawing?.regions ?? []).find((r) => r.key === key && r.gestures.includes(name));
+  const decl = region && (mount.snapshot.intents ?? []).find((d) => d.name === region.intent);
+  if (!decl) return undefined;
+  const round = (v) => Math.round(v * 1000) / 1000;
+  const extra = { x: round(point.x), y: round(point.y), dx: round(by.x), dy: round(by.y), gesture: name, region: key };
+  return raise(mount, decl, decl.nodeKey ?? "", undefined, undefined, { extra, quiet: name !== "activate", since });
+}
+
+// later runs a step of the mount's gestures after the steps before it.
+function later(mount, step) {
+  // A step that failed does not hold up the ones after it.
+  return (mount.gestures = (mount.gestures ?? Promise.resolve()).catch(() => {}).then(step));
+}
+
+// The pointer on a region: press when it goes down, drag while it moves, release when it goes up. One intent of a
+// drag is in flight at a time, because each is raised on the view the last one drew: the moves made meanwhile are
+// summed into the next drag, which is sent on an animation frame and at most 30 times a second. The release is always
+// sent, after the last drag.
+const DRAG_INTERVAL = 1000 / 30;
+
+function onPointerDown(mount, event) {
+  const at = event.target.closest?.("[data-act=region]");
+  if (!at || event.button !== 0 || !mount.element.contains(at)) return;
+  const drag = (mount.drag = { key: at.dataset.region, pointer: event.pointerId, at: [event.clientX, event.clientY], moved: false, sent: 0 });
+  mount.dragged = false;
+  // While the pointer drags, the scene follows it at once: no transition between its updates.
+  if (wants(mount, drag.key, "drag")) mount.element.classList.add("dragging");
+  if (wants(mount, drag.key, "drag") || wants(mount, drag.key, "release")) {
+    try {
+      at.setPointerCapture(event.pointerId);
+    } catch {
+      // A pointer the browser does not know (a scripted event) cannot be captured; its events still bubble here.
+    }
+  }
+  gesture(mount, drag.key, "press", pointIn(at, event.clientX, event.clientY), undefined, event.timeStamp);
+}
+
+function onPointerMove(mount, event) {
+  const drag = mount.drag;
+  if (!drag || event.pointerId !== drag.pointer) return;
+  if (!drag.moved && Math.hypot(event.clientX - drag.at[0], event.clientY - drag.at[1]) < 3) return;
+  drag.moved = mount.dragged = true;
+  drag.next = [event.clientX, event.clientY, event.timeStamp];
+  pump(mount, drag);
+}
+
+function onPointerUp(mount, event) {
+  const drag = mount.drag;
+  if (!drag || event.pointerId !== drag.pointer) return;
+  mount.drag = undefined;
+  if (drag.moved) drag.next = [event.clientX, event.clientY, event.timeStamp];
+  later(mount, () => move(mount, drag));
+  later(mount, () => {
+    const at = mount.element.querySelector(`[data-region="${CSS.escape(drag.key)}"]`);
+    return at && send(mount, drag.key, "release", pointIn(at, event.clientX, event.clientY));
+  });
+  later(mount, () => mount.drag || mount.element.classList.remove("dragging"));
+}
+
+// pump sends the drag's pending move once the one before it is answered and its turn has come.
+function pump(mount, drag) {
+  if (drag.pumping || !drag.next) return;
+  drag.pumping = true;
+  later(mount, async () => {
+    await new Promise((resolve) => setTimeout(() => requestAnimationFrame(resolve), Math.max(0, drag.sent + DRAG_INTERVAL - performance.now())));
+    await move(mount, drag);
+    drag.pumping = false;
+    if (mount.drag === drag) pump(mount, drag);
+  });
+}
+
+// move raises the drag gesture for the movement since the last one sent, in the drawing's units as it is drawn now.
+// It is a step of the mount's gestures.
+async function move(mount, drag) {
+  const at = mount.element.querySelector(`[data-region="${CSS.escape(drag.key)}"]`);
+  if (!drag.next || !at) return;
+  const [x, y, since] = drag.next;
+  drag.next = undefined;
+  const matrix = at.ownerSVGElement.getScreenCTM();
+  const by = { x: (x - drag.at[0]) / (matrix?.a || 1), y: (y - drag.at[1]) / (matrix?.d || 1) };
+  drag.at = [x, y];
+  drag.sent = performance.now();
+  await send(mount, drag.key, "drag", pointIn(at, x, y), by, since);
 }
 
 // activate raises every intent the mount declares for the node.
@@ -553,9 +1016,11 @@ function activate(mount, nodeKey, value, item) {
 }
 
 // argument builds an intent's argument from its declared shape. An object property named `value` takes the node's
-// value and one named `item` the activated item's id; a string, number or boolean shape takes the node's value itself.
-// It returns undefined when the shape asks for more than the node gives: the page then asks the user.
-function argument(shape, value, item) {
+// value and one named `item` the activated item's id; for a gesture on a region of a drawing, the properties named x,
+// y, dx, dy, gesture and region take what the gesture was (`extra`). A property the shape does not declare is never
+// sent. A string, number or boolean shape takes the node's value itself. It returns undefined when the shape asks for
+// more than the node gives: the page then asks the user.
+function argument(shape, value, item, extra = {}) {
   const fit = (s, v) => {
     if (v === undefined) return undefined;
     if (s.type === "string" || s.type === "enum") return String(v);
@@ -565,9 +1030,10 @@ function argument(shape, value, item) {
   };
   if (shape.type !== "object") return fit(shape, value ?? true);
   const arg = {};
-  const given = { value, item };
+  const given = { ...extra, value, item };
   for (const [name, sub] of Object.entries(shape.properties ?? {})) {
-    const v = fit(sub, given[name]);
+    // A pointer position is a fraction of a unit; an integer property takes the nearest whole one.
+    const v = fit(sub, sub.type === "integer" && typeof extra[name] === "number" ? Math.round(extra[name]) : given[name]);
     if (v !== undefined) arg[name] = v;
     else if ((shape.required ?? []).includes(name)) return undefined;
   }
@@ -595,7 +1061,7 @@ function ask(mount, decl) {
       form.append(label);
     }
     const sendButton = document.createElement("button");
-    sendButton.textContent = decl.name;
+    sendButton.textContent = words(decl.name);
     form.append(sendButton);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -616,57 +1082,83 @@ function ask(mount, decl) {
   });
 }
 
-async function raise(mount, decl, nodeKey, value, item) {
-  let arg = argument(decl.arg, value, item);
+// raise sends one intent and shows how it settled in the mount's status line. A gesture of a drawing other than
+// activate is quiet: it writes the line only when it did not settle done (or stale, which the next gesture repairs).
+async function raise(mount, decl, nodeKey, value, item, { extra, quiet = false, since } = {}) {
+  let arg = argument(decl.arg, value, item, extra);
   if (arg === undefined) arg = await ask(mount, decl);
   const { key, epoch, rev } = mount.snapshot.mount;
   const id = `w${++nextId}`;
   const command = { type: "ui_view_intent", attachment, plugin: mount.snapshot.plugin, mount: { key, epoch, rev }, intent: decl.name, arg };
   if (nodeKey) command.nodeKey = nodeKey;
-  mount.footer.textContent = `${decl.name} … `;
+  if (!quiet) {
+    delete mount.footer.dataset.outcome;
+    mount.footer.textContent = `${decl.name} … `;
+  }
   if (decl.cancellable) {
     // The carrier's cancel names the intent request by its id.
-    const cancel = document.createElement("button");
-    cancel.textContent = "Cancel";
-    cancel.addEventListener("click", () => request({ type: "ui_view_intent_cancel" }, id));
-    mount.footer.append(cancel);
+    const cancel = () => request({ type: "ui_view_intent_cancel" }, id);
+    mount.cancel = cancel;
+    if (!quiet) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Cancel";
+      button.addEventListener("click", cancel);
+      mount.footer.append(button);
+    }
   }
+  const posted = performance.now();
   const reply = await request(command, id);
   const result = reply.success ? reply.data : { outcome: reply.code, error: reply.error };
   // The mount may have been redrawn while the intent was in flight: write to the one on the page.
   mount = mounts.get(`${mount.snapshot.plugin}\n${key}`) ?? mount;
-  mount.footer.textContent = `${decl.name}: ${result.outcome}${result.error ? ` (${result.error})` : ""}${result.answer === undefined ? "" : ` ${JSON.stringify(result.answer)}`}`;
-  mount.footer.dataset.outcome = result.outcome;
+  mount.cancel = undefined;
+  if (!quiet || (result.outcome !== "done" && result.outcome !== "stale")) {
+    mount.footer.textContent = `${decl.name}: ${result.outcome}${result.error ? ` (${result.error})` : ""}${result.answer === undefined ? "" : ` ${JSON.stringify(result.answer)}`}`;
+    mount.footer.dataset.outcome = result.outcome;
+    mount.footer.toggleAttribute("data-answer", result.answer !== undefined);
+  }
+  // A checkbox the user clicked shows what the view says, whether or not the intent changed it.
+  for (const box of mount.body.querySelectorAll("input[type=checkbox], input[type=radio]")) box.checked = box.hasAttribute("checked");
+  if (mount.drawnAt > posted) window.uiView.timing.intent = mount.drawnAt - posted;
+  if (since !== undefined && mount.drawnAt > since) window.uiView.timing.gesture = mount.drawnAt - since;
 }
 
 const RELATIONS = { labelledBy: "aria-labelledby", describedBy: "aria-describedby", controls: "aria-controls", owns: "aria-owns" };
 const STATES = { selected: "aria-selected", checked: "aria-checked", expanded: "aria-expanded", busy: "aria-busy", disabled: "aria-disabled", readOnly: "aria-readonly", required: "aria-required", invalid: "aria-invalid" };
+// The states a native control has an attribute of its own for.
+const NATIVE = { checked: "input[type=checkbox], input[type=radio]", disabled: "button, input, textarea", readOnly: "input[type=text], textarea", required: "input, textarea" };
 
-// applyA11y sets what the snapshot's a11y records say about the nodes they name.
-function applyA11y(mount) {
-  for (const entry of mount.snapshot.a11y ?? []) {
-    const el = mount.ids.get(entry.node);
+// applyA11y sets what the snapshot's a11y records say about the nodes they name, on the freshly drawn elements. A
+// role that made the node the control it is (ctx.owned) is not written again, and a state a native control has is set
+// as that control's own attribute: a checkbox is checked, a button disabled.
+function applyA11y(snapshot, ctx, prefix) {
+  for (const entry of snapshot.a11y ?? []) {
+    const el = ctx.ids.get(entry.node);
     if (!el) continue;
     if (entry.name) el.setAttribute("aria-label", entry.name);
     if (entry.description) el.setAttribute("aria-description", entry.description);
-    if (entry.role) el.setAttribute("role", entry.role);
-    for (const [member, attribute] of Object.entries(STATES)) if (entry[member] !== undefined) el.setAttribute(attribute, String(entry[member]));
+    if (entry.role && !ctx.owned.has(entry.node)) el.setAttribute("role", entry.role);
+    for (const [member, attribute] of Object.entries(STATES)) {
+      if (entry[member] === undefined) continue;
+      if (NATIVE[member] && el.matches(NATIVE[member])) el.toggleAttribute(member.toLowerCase(), entry[member]);
+      else el.setAttribute(attribute, String(entry[member]));
+    }
     const related = {};
-    for (const relation of entry.relations ?? []) (related[RELATIONS[relation.kind]] ??= []).push(mount.prefix + relation.target);
+    for (const relation of entry.relations ?? []) (related[RELATIONS[relation.kind]] ??= []).push(prefix + relation.target);
     for (const [attribute, ids] of Object.entries(related)) el.setAttribute(attribute, ids.join(" "));
   }
 }
 
-// applyFocus puts the named nodes in the focus order the snapshot gives and, on a new mount, moves the focus to the
-// node that requests it.
-function applyFocus(mount, isNew) {
+// applyFocus moves the focus where the snapshot asks: on a new mount to the node that requests it, and on an update
+// to the node the view's `focus` member names when that member changed and the focus is inside the mount. The order
+// of the focus records is the tab order (draw).
+function applyFocus(mount, isNew, before) {
   const order = mount.snapshot.focus ?? [];
-  order.forEach((entry, i) => {
-    const el = mount.ids.get(entry.node);
-    if (el) el.tabIndex = i + 1;
-  });
   const asked = order.find((entry) => entry.request === "mount");
   if (isNew && asked) mount.ids.get(asked.node)?.focus();
+  const lead = mount.snapshot.view?.focus;
+  if (!isNew && lead && lead !== before?.view?.focus && mount.element.contains(document.activeElement)) mount.ids.get(lead)?.focus();
   const restore = order.find((entry) => entry.restore);
   if (restore?.restore === "self") mount.restore = undefined;
 }
