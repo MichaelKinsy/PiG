@@ -217,7 +217,7 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 	// (mirrors upstream restoreProgress + session.isStreaming/isCompacting).
 	if restoreProgress && m.opts.Settings.GetShowTerminalProgress() &&
 		((m.agent != nil && m.agent.IsStreaming()) || m.isCompacting) {
-		setTerminalProgress(true)
+		m.setTerminalProgress(true)
 	}
 	m.tuiInst.Render()
 	return true

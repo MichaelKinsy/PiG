@@ -15,7 +15,6 @@ import (
 // (interactive-mode.ts:820, :2040). Resuming a session recorded in directory B from a mode started in A must complete
 // paths from B, even though the process directory is neither.
 func TestResumeSessionFromOtherCwdAutocompletesFromSessionCwd(t *testing.T) {
-	icodingagent.ObserveRebindTitles(t, func(string) {})
 	t.Chdir(t.TempDir())
 	f := newRebindFixture(t, func(*coding.Session, ...any) (any, error) { return nil, nil }, nil)
 	f.runtime.SetRebindSession(func(ctx context.Context, session *coding.Session) error {

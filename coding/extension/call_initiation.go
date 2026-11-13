@@ -28,6 +28,29 @@ func CallInitiated(ctx context.Context) {
 	}
 }
 
+type callerSettlementKey struct{}
+
+// WithCallerSettlement returns ctx carrying after, through which the handler of
+// a call leaves work for the call's transport to run once the code that awaits
+// the call has gone on from its result to its next await or its end.
+func WithCallerSettlement(ctx context.Context, after func(fn func())) context.Context {
+	return context.WithValue(ctx, callerSettlementKey{}, after)
+}
+
+// AfterCallerSettles runs fn once the code that awaits the call carried by ctx
+// has resumed from the call's result and then awaited again or ended. Pi runs
+// that continuation in the microtasks of the call's settlement, before its
+// event loop turns. Without a transport that follows the caller, fn runs at once.
+func AfterCallerSettles(ctx context.Context, fn func()) {
+	if ctx != nil {
+		if after, ok := ctx.Value(callerSettlementKey{}).(func(func())); ok && after != nil {
+			after(fn)
+			return
+		}
+	}
+	fn()
+}
+
 // DialogInitiationReporter is implemented by a UIContext whose Select,
 // Confirm, Input, and Editor call CallInitiated once the dialog is installed.
 // Other UIContexts are treated as initiated when the host dispatches the call.

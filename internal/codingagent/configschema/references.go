@@ -218,7 +218,7 @@ func referenceRows(schema *Schema, section referenceSection, prefix string) []st
 			description = append(description, "Required.")
 		}
 		if v, ok := field.get("description"); ok {
-			description = append(description, v.(string))
+			description = append(description, productNameText(v.(string)))
 		}
 		cell := typeText
 		if link != "" {
@@ -233,6 +233,24 @@ func referenceRows(schema *Schema, section referenceSection, prefix string) []st
 		}
 	}
 	return rows
+}
+
+// productNameTexts are the fragments of the schema descriptions that name the product, with PiG's text for each.
+// pig divergence (D2): the reference page of PiG's documentation names PiG ("Product name in messages"). The schemas keep Pi's
+// text, byte-equal to the files Pi publishes, so only the page is rendered through this table.
+var productNameTexts = [][2]string{
+	{"Pi warms only tiers with a known lifetime.", "PiG warms only tiers with a known lifetime."},
+	{"When false, pi infers stop or toolUse", "When false, PiG infers stop or toolUse"},
+	{"When omitted, Pi auto-detects the format", "When omitted, PiG auto-detects the format"},
+	{"for pi-controlled values.", "for PiG-controlled values."},
+}
+
+// productNameText is a schema description as the reference page shows it.
+func productNameText(description string) string {
+	for _, pair := range productNameTexts {
+		description = strings.ReplaceAll(description, pair[0], pair[1])
+	}
+	return description
 }
 
 // RenderReferences returns the reference pages by file name (generate-references.ts renderReferences).

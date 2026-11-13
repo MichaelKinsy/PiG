@@ -39,7 +39,8 @@ func tmuxKeyboardSetup(query func(string) string) string {
 	}
 
 	if extKeysFormat == "xterm" {
-		return "tmux extended-keys-format is xterm. Pi works best with csi-u. " +
+		// pig divergence (D2): the warning names PiG where Pi's names Pi ("Product name in messages").
+		return "tmux extended-keys-format is xterm. PiG works best with csi-u. " +
 			"Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux."
 	}
 

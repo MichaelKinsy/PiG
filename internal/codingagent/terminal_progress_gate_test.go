@@ -7,13 +7,10 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-func recordTerminalProgress(t *testing.T) *[]bool {
+// recordTerminalProgress records the progress calls m makes on its renderer's terminal, on the test's goroutine.
+func recordTerminalProgress(t *testing.T, m *InteractiveMode) *[]bool {
 	t.Helper()
-	var writes []bool
-	restore := setTerminalProgress
-	setTerminalProgress = func(active bool) { writes = append(writes, active) }
-	t.Cleanup(func() { setTerminalProgress = restore })
-	return &writes
+	return &recordTerminalCalls(t, m).progress
 }
 
 // Pi gates OSC 9;4 progress on terminal.showTerminalProgress alone
@@ -34,8 +31,8 @@ func TestTerminalProgressFollowsSettingOnly(t *testing.T) {
 		{"on in an unrecognized terminal", `{"terminal": {"showTerminalProgress": true}}`, []bool{true, false, true, false}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			writes := recordTerminalProgress(t)
 			m := statusBorderMode(t, false)
+			writes := recordTerminalProgress(t, m)
 			m.opts.Settings = settingsFromJSON(t, tc.settings)
 			m.handleAgentEvent(agent.TurnStartEvent{})
 			m.handleAgentEvent(agent.AgentEndEvent{})

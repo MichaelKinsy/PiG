@@ -172,7 +172,8 @@ func (sm *SessionManager) Open(path string, cwdOverride ...string) (*Session, er
 		// _setSessionFile: a path existsSync rejects, for any stat failure, starts a new Session there.
 		info, statErr := os.Stat(resolved)
 		if statErr == nil && info.Size() > 0 {
-			return nil, fmt.Errorf("Session file is not a valid pi session: %s", resolved)
+			// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
+			return nil, fmt.Errorf("Session file is not a valid pig session: %s", resolved)
 		}
 		cwd := sm.cwd
 		if len(cwdOverride) > 0 {
@@ -235,7 +236,8 @@ func restoreSessionFileEntries(path string, records []FileEntry) (*Session, erro
 func restoreSessionEntries(path string, records []FileEntry, persist bool) (*Session, error) {
 	header, valid := records[0].(SessionHeader)
 	if !valid {
-		return nil, fmt.Errorf("Session file is not a valid pi session: %s", path)
+		// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
+		return nil, fmt.Errorf("Session file is not a valid pig session: %s", path)
 	}
 	session, err := newSessionFromEntries(header.CWD, header.ID, records)
 	if err != nil {

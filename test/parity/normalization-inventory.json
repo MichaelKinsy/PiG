@@ -489,6 +489,12 @@
           "pattern": "parity-cli-[0-9a-z-]+-(pig|pi)-[0-9]+",
           "with": "parity-cli-run",
           "reason": "D2: replace only this scenario's allocated temporary root."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "not a valid pig? session:",
+          "with": "not a valid <app> session:",
+          "reason": "D2 (Product name in messages): the diagnostic names the product that prints it; the rest of the line stays compared."
         }
       ]
     },
@@ -2757,6 +2763,41 @@
             "capture_end": "OVEND"
           },
           "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: an extension's ctx.ui.setTheme while its overlay is open, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/98-reload-resets-extension-ui.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A status and a footer an extension set are gone after /reload when it does not set them again",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/99-failed-reload-then-reload.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "reload-cells-begin",
+            "capture_end": "reload-cells-end"
+          },
+          "reason": "Owned visible surface: A /reload that fails leaves the old extension instance stale; a later /reload loads a live one.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -9895,6 +9936,12 @@
     {
       "scenario": "test/parity/scenarios/session/17-invalid-session-file.toml",
       "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "not a valid pig? session:",
+          "with": "not a valid <app> session:",
+          "reason": "D2 (Product name in messages): the diagnostic names the product that prints it; the rest of the line stays compared."
+        },
         {
           "kind": "normalize_replace",
           "pattern": "parity-snap-cwd-[0-9]+",

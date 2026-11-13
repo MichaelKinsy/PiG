@@ -133,8 +133,6 @@ func fileCallArguments(args json.RawMessage) ai.JsonObject {
 // JS event loop where agent events and input are dispatched on one thread.
 // Cross-event state (the current assistant block / message / turn index) lives
 // on InteractiveMode fields since the handler is now invoked per event.
-// setTerminalProgress writes the OSC 9;4 terminal progress indicator.
-var setTerminalProgress = tui.SetTerminalProgress
 
 // handleAgentEvent takes one item of the Session's Events on the owner loop.
 //
@@ -234,7 +232,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 	m.programStatusReporter().HandleEvent(ev)
 	switch e := ev.(type) {
 	case agent.SessionInfoChangedEvent:
-		setTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))
+		m.setTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))
 		m.statusLine.SetName(e.Name)
 		m.tuiInst.RequestRender()
 
@@ -253,7 +251,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 
 	case agent.AgentEndEvent:
 		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(false)
+			m.setTerminalProgress(false)
 		}
 		m.clearStatusIndicator("working")
 		// Pi removes a message still streaming when the run ends (interactive-mode.ts agent_end).
@@ -278,7 +276,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 
 	case agent.TurnStartEvent:
 		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(true)
+			m.setTerminalProgress(true)
 		}
 		if m.workingVisible {
 			if m.activeStatusIndicator == nil || m.activeStatusIndicator.Kind != "working" {
@@ -619,7 +617,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 	case agent.CompactionStartEvent:
 		// Central abort routing handles Esc and Ctrl+C during compaction.
 		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(true)
+			m.setTerminalProgress(true)
 		}
 		m.isCompacting = true
 		m.showCompactionStatusIndicator(e.Reason)
@@ -630,7 +628,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 		// Restore normal state; handle result.
 		// Mirrors upstream compaction_end handler (interactive-mode.ts:2795-2833).
 		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(false)
+			m.setTerminalProgress(false)
 		}
 		m.isCompacting = false
 		m.clearStatusIndicator("compaction")

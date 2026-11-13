@@ -245,7 +245,7 @@ func buildFusedFixture(t *testing.T, f fusedModuleFixture, env []string) {
 			t.Errorf("build removed source path %s", path)
 		}
 	}
-	if want := `fused member "review" raises Pig's example.com/dep v1.0.0 to v1.1.0 (minimum version selection)`; !slices.Equal(graph.raised, []string{want}) {
+	if want := `fused member "review" raises PiG's example.com/dep v1.0.0 to v1.1.0 (minimum version selection)`; !slices.Equal(graph.raised, []string{want}) {
 		t.Fatalf("raised = %q, want %q", graph.raised, want)
 	}
 	// The module the build compiled is the one the vet scope note names.
@@ -303,7 +303,7 @@ func TestOverlayFuseRejectsMemberRequiringNewerSDK(t *testing.T) {
 	if err == nil {
 		t.Fatal("a member requiring a newer SDK than Pig pins was fused")
 	}
-	for _, want := range []string{`fuse "review"`, "github.com/MichaelKinsy/PiG/extensions/sdk v0.5.0", "newer than the v0.4.0 this Pig source pins"} {
+	for _, want := range []string{`fuse "review"`, "github.com/MichaelKinsy/PiG/extensions/sdk v0.5.0", "newer than the v0.4.0 this PiG source pins"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error %q does not contain %q", err, want)
 		}
@@ -373,7 +373,7 @@ func TestMergeFusedModulesTakesTheHighestMemberVersionAndAnchorsLocalReplacement
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := `fused member "beta" raises Pig's example.com/dep v1.0.0 to v1.3.0 (minimum version selection)`; !slices.Equal(graph.raised, []string{want}) {
+	if want := `fused member "beta" raises PiG's example.com/dep v1.0.0 to v1.3.0 (minimum version selection)`; !slices.Equal(graph.raised, []string{want}) {
 		t.Fatalf("raised = %q, want %q", graph.raised, want)
 	}
 	versions := map[string]string{}

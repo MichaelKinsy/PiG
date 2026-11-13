@@ -134,10 +134,7 @@ func TestInteractiveCompactionUpstream(t *testing.T) {
 		run("updates working state when same run resumes after compaction", func(t *testing.T) {
 			m := compactionUIMode(t, false)
 			m.opts.Settings.ShowTerminalProgress = new(true)
-			old := setTerminalProgress
-			var progress []bool
-			setTerminalProgress = func(value bool) { progress = append(progress, value) }
-			defer func() { setTerminalProgress = old }()
+			terminal := recordTerminalCalls(t, m)
 			m.workingVisible = true
 			m.handleAgentEvent(agent.TurnStartEvent{})
 			if m.activeStatusIndicator == nil || m.activeStatusIndicator.Kind != "working" {
@@ -148,7 +145,7 @@ func TestInteractiveCompactionUpstream(t *testing.T) {
 			if m.activeStatusIndicator != nil {
 				t.Fatal("hidden working indicator not cleared")
 			}
-			if !reflect.DeepEqual(progress, []bool{true, true}) {
+			if progress := terminal.takeProgress(); !reflect.DeepEqual(progress, []bool{true, true}) {
 				t.Fatal(progress)
 			}
 		})

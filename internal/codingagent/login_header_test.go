@@ -491,8 +491,9 @@ func TestSuccessfulReloadRestoresBuiltInHeaderAndFailedReloadPreservesCurrentLog
 
 	m.extHeader.SetLines([]string{"active login after failed reload"})
 	host.err = errors.New("reload failed")
-	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
-		t.Fatal(err)
+	// upstream: a reload that throws ends there (agent-session.ts:3838); the mode shows the error.
+	if err := m.buildSlashContext(t.Context()).Reload(); !errors.Is(err, host.err) {
+		t.Fatalf("reload error = %v, want %v", err, host.err)
 	}
 	if got := m.extHeader.Render(65); len(got) != 1 || got[0] != "active login after failed reload" {
 		t.Fatalf("failed reload replaced active login: %q", got)

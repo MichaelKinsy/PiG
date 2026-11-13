@@ -2,7 +2,6 @@ package codingagent
 
 import (
 	"context"
-	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -42,14 +41,6 @@ func (h *TestHarness) RebindSubscribed() bool {
 // RebindSubscribedTo observes the selected channel without invoking the Session's Events getter. Call it through Do.
 func (h *TestHarness) RebindSubscribedTo(events <-chan agent.AgentEvent) bool {
 	return h.m.eventCh != nil && h.m.eventCh == events
-}
-
-// ObserveRebindTitles intercepts the existing terminal-title sink without changing the rebind implementation.
-func ObserveRebindTitles(t testing.TB, notify func(string)) {
-	t.Helper()
-	previous := setTerminalTitle
-	setTerminalTitle = notify
-	t.Cleanup(func() { setTerminalTitle = previous })
 }
 
 // LoadStartupResources runs the resource loads Run performs before it binds the Session: prompt templates and theme paths.

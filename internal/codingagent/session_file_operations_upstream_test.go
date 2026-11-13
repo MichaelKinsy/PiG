@@ -340,7 +340,7 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 		original := `{"type":"message","id":"abc","parentId":"orphaned","timestamp":"2025-01-01T00:00:00Z","message":{"role":"assistant","content":"test"}}` + "\n"
 		path := fileOperationWrite(t, dir, "no-header.jsonl", original)
 		_, err := NewSessionManagerWithDir(dir, dir).Open(path)
-		if err == nil || err.Error() != "Session file is not a valid pi session: "+path {
+		if err == nil || err.Error() != d2Text("Session file is not a valid pi session: ")+path {
 			t.Fatalf("error=%v", err)
 		}
 		data, err := os.ReadFile(path)
@@ -354,7 +354,7 @@ func TestSessionFileOperationsUpstream(t *testing.T) {
 		original := "{\"type\":\"event\",\"data\":\"not a session\"}\n"
 		path := fileOperationWrite(t, dir, "not-a-session.log", original)
 		_, err := NewSessionManagerWithDir(dir, dir).Open(path)
-		if err == nil || err.Error() != "Session file is not a valid pi session: "+path {
+		if err == nil || err.Error() != d2Text("Session file is not a valid pi session: ")+path {
 			t.Fatalf("error=%v", err)
 		}
 		data, err := os.ReadFile(path)

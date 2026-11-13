@@ -8,14 +8,14 @@ import (
 	"testing"
 )
 
-// Every source file Cargo can consume in a build must ship with the staged SDK, including newly added modules. The unit-test modules (src/*tests.rs) do not: lib.rs and the modules that declare them do so under #[cfg(test)].
+// Every source file Cargo can consume in a build must ship with the staged SDK, including newly added modules. The unit-test modules (src/*tests.rs) do not: lib.rs and the modules that declare them do so under #[cfg(test)]. src/go.mod does not either: it is no part of the crate and only keeps src out of the root module zip.
 func TestBundledFilesMatchRustSourceTree(t *testing.T) {
 	want := []string{"LICENSE", "Cargo.toml", "Cargo.lock"}
 	err := fs.WalkDir(os.DirFS("."), "src", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !entry.IsDir() && !isTestModule(path) {
+		if !entry.IsDir() && !isTestModule(path) && path != "src/go.mod" {
 			want = append(want, path)
 		}
 		return nil

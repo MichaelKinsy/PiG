@@ -1024,20 +1024,9 @@ func (t *ProcessTerminal) clearProgressInterval() bool {
 	return true
 }
 
-// SetTerminalTitle writes an OSC 0 sequence to stdout to update the terminal
-// window title. An empty title clears back to terminal default.
-func SetTerminalTitle(title string) {
-	processTerminal.SetTitle(title)
-}
-
 // SetTerminalProgramStatus reports program status (OSC 7501) on the process terminal.
 func SetTerminalProgramStatus(status ProgramStatus) {
 	processTerminal.SetProgramStatus(status)
-}
-
-// SetTerminalProgress toggles the OSC 9;4 terminal progress indicator.
-func SetTerminalProgress(active bool) {
-	processTerminal.SetProgress(active)
 }
 
 // BuildTerminalTitle formats the pig terminal title from a session name
