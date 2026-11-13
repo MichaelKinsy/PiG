@@ -1174,7 +1174,27 @@ export default function (pi) {
     await attempt("arg", [goTo("a", "x")]);
     await attempt("ok", [goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n + 1)]);
   } });
+  // D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+  pi.registerCommand("ui_view_dismiss", { description: "Mount a dialog with a dismiss intent and probe what the host refuses", handler: async (args, ctx) => {
+    const object = { type: "object" };
+    const tap = { name: "fx.tap", arg: object };
+    const closing = (name) => ({ name, arg: object, dismiss: true });
+    const content = (intents) => ({ view: viewText(ctx, "-dismiss"), intents });
+    const st = await ctx.ui.mountView({ key: "dismiss", slot: "dialog", ...content([tap, closing(args)]) });
+    ctx.ui.notify(`view-d-mounted:${st.state}`, "info");
+    const attempt = async (label, intents) => ctx.ui.notify(`view-d-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content(intents)))}`, "info");
+    await attempt("two", [tap, closing(args), closing(`${args}2`)]);
+    await attempt("node", [tap, { ...closing(args), nodeKey: "n" }]);
+    await attempt("arg", [tap, { ...closing(args), arg: { type: "object", properties: { value: { type: "string" } }, required: ["value"] } }]);
+    await attempt("ok", [closing(args), tap]);
+  } });
   pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent.startsWith("fx.close-")) {
+      // The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+      if (JSON.stringify(inv.arg) !== "{}") return { outcome: "refused", error: "dismiss takes {}" };
+      await ctx.ui.removeView({ ...inv.mount, rev: inv.rev });
+      return { outcome: "done" };
+    }
     if (inv.intent === "fx.redraw" || inv.intent === "fx.foreign") {
       const own = inv.intent === "fx.redraw";
       const content = { view: textView(`fixture-${own ? "redraw" : "foreign"}-${inv.arg.n + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0)}`), intents: redrawIntents };

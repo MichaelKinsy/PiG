@@ -1580,7 +1580,51 @@ func Extension() *sdk.Extension {
 		attempt("ok", goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n+1))
 		return nil
 	})
+	// D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+	// The name of the dismiss intent comes from the test, so a flag the SDK dropped, or one it made up, is not what the host holds.
+	ext.Command("ui_view_dismiss", "Mount a dialog with a dismiss intent and probe what the host refuses", func(ctx sdk.Context, args string) error {
+		object := sdk.ViewShape{Type: "object"}
+		tap := sdk.ViewIntent{Name: "fx.tap", Arg: object}
+		closing := func(name string) sdk.ViewIntent { return sdk.ViewIntent{Name: name, Arg: object, Dismiss: true} }
+		content := func(intents ...sdk.ViewIntent) sdk.ViewContent {
+			return sdk.ViewContent{View: viewText(ctx, "-dismiss"), Intents: intents}
+		}
+		st, err := ctx.MountView(sdk.ViewMount{Key: "dismiss", Slot: sdk.ViewSlotDialog, ViewContent: content(tap, closing(args))})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-d-mounted:"+string(st.State), "info")
+		attempt := func(label string, intents ...sdk.ViewIntent) {
+			code := "none"
+			if _, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(intents...)}); err != nil {
+				code = "error"
+				if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+					code = string(ve.Code)
+				}
+			}
+			ctx.Notify("view-d-"+label+":"+code, "info")
+		}
+		attempt("two", tap, closing(args), closing(args+"2"))
+		onNode := closing(args)
+		onNode.NodeKey = "n"
+		attempt("node", tap, onNode)
+		needsValue := closing(args)
+		needsValue.Arg = sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"value": {Type: "string"}}, Required: []string{"value"}}
+		attempt("arg", tap, needsValue)
+		attempt("ok", closing(args), tap)
+		return nil
+	})
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
+		if strings.HasPrefix(in.Intent, "fx.close-") {
+			// The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+			if strings.TrimSpace(string(in.Arg)) != "{}" {
+				return sdk.ViewIntentResult{Outcome: "refused", Error: "dismiss takes {}"}
+			}
+			if _, err := in.Context.RemoveView(sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev}); err != nil {
+				return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+			}
+			return sdk.ViewIntentResult{Outcome: "done"}
+		}
 		switch in.Intent {
 		case "fx.redraw", "fx.foreign":
 			return redrawIntent(in)

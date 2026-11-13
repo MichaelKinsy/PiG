@@ -725,6 +725,20 @@ there are any, and mount when a client arrives (step 12).
     update (`request: "mount"` asks when the mount is first drawn). Send it only with the update that should move the focus,
     because every revision that carries it asks again. The client decides: it shows the view where it can, and when it does not
     give the focus `ViewDiagnostics` returns an `unfocused` notice that says why.
+16. Let the user close a dialog or an overlay. Declare one intent with `dismiss` (Go `Dismiss`, Python `dismiss`, Rust
+    `dismiss`, Lisp `:dismiss`, Node `dismiss`): no `nodeKey`, and an argument shape that accepts `{}`. When the user dismisses
+    the mount (Escape, or the client's close control) the client raises that intent with `{}`, and your handler closes the
+    mount: call `RemoveView`, `FinishView` or `HideView`. The host closes nothing for you. Without such an intent, Escape
+    leaves the mount and it stays open until a key or control of your own closes it; a client that does not know the member
+    does the same. In a slot that is neither `dialog` nor `overlay` the member has no effect.
+
+    ```go
+    closing := sdk.ViewIntent{Name: "mail.close", Arg: sdk.ViewShape{Type: "object"}, Dismiss: true}
+    st, err := ctx.MountView(sdk.ViewMount{Key: "compose", Slot: sdk.ViewSlotDialog,
+        ViewContent: sdk.ViewContent{Title: "Compose", View: view, Intents: []sdk.ViewIntent{closing}}})
+    // In the OnViewIntent handler, for "mail.close":
+    in.Context.RemoveView(sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev})
+    ```
 
 Every bound is the host's: one past it fails with code `invalid` in every SDK. `docs/additive-features.md` D614 lists the bounds.
 

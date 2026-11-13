@@ -123,6 +123,10 @@ type IntentDecl struct {
 	// hid, and the plugin's handler shows the mount. At most one intent of a mount has it; it names no node and its
 	// argument shape accepts the empty object, which is what a client sends.
 	WhenHidden bool `json:"whenHidden,omitempty"`
+	// Dismiss names the intent a client raises, with the empty object, when the user dismisses a dialog or overlay
+	// mount: the plugin's handler closes the mount. At most one intent of a mount has it; it names no node and its
+	// argument shape accepts the empty object. A client ignores it on a mount of another slot.
+	Dismiss bool `json:"dismiss,omitempty"`
 }
 
 // Content is what a mount shows: the D107 view, the intents its nodes raise, its assets and a degrade node; and beside
@@ -406,7 +410,7 @@ func (c *Content) check() *Error {
 		return fail(CodeInvalid, "fallback must be a node object")
 	}
 	seen := map[string]struct{}{}
-	whenHidden := 0
+	whenHidden, dismiss := 0, 0
 	for i := range c.Intents {
 		d := &c.Intents[i]
 		if d.Name == "" {
@@ -431,17 +435,28 @@ func (c *Content) check() *Error {
 				return fail(CodeInvalid, "intent %q answer: %v", d.Name, err)
 			}
 		}
-		if !d.WhenHidden {
-			continue
+		if d.WhenHidden {
+			if whenHidden++; whenHidden > 1 {
+				return fail(CodeInvalid, "intent %q: at most one intent of a mount may be whenHidden", d.Name)
+			}
+			if d.NodeKey != "" {
+				return fail(CodeInvalid, "intent %q is whenHidden and names a node; a hidden mount draws none", d.Name)
+			}
+			if err := d.Arg.Validate(json.RawMessage(`{}`)); err != nil {
+				return fail(CodeInvalid, "intent %q is whenHidden and its arg does not accept {}: %v", d.Name, err)
+			}
 		}
-		if whenHidden++; whenHidden > 1 {
-			return fail(CodeInvalid, "intent %q: at most one intent of a mount may be whenHidden", d.Name)
-		}
-		if d.NodeKey != "" {
-			return fail(CodeInvalid, "intent %q is whenHidden and names a node; a hidden mount draws none", d.Name)
-		}
-		if err := d.Arg.Validate(json.RawMessage(`{}`)); err != nil {
-			return fail(CodeInvalid, "intent %q is whenHidden and its arg does not accept {}: %v", d.Name, err)
+		// pig additive (D614): the intent a client raises when the user dismisses a dialog or overlay mount.
+		if d.Dismiss {
+			if dismiss++; dismiss > 1 {
+				return fail(CodeInvalid, "intent %q: at most one intent of a mount may be dismiss", d.Name)
+			}
+			if d.NodeKey != "" {
+				return fail(CodeInvalid, "intent %q is dismiss and names a node; the user dismisses the mount, not a node", d.Name)
+			}
+			if err := d.Arg.Validate(json.RawMessage(`{}`)); err != nil {
+				return fail(CodeInvalid, "intent %q is dismiss and its arg does not accept {}: %v", d.Name, err)
+			}
 		}
 	}
 	assets := make(map[string]struct{}, len(c.Assets))

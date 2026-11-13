@@ -872,6 +872,26 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                              (attempt "gesture" (list (pig:obj "gesture" "pinch" "intent" "fx.tap")))
                              (attempt "arg" (list (b-go "a" "x")))
                              (attempt "ok" (list (b-go "ctrl+shift+p" n) (b-go "shift+ctrl+q" (1+ n))))))))))
+      ;; D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+      (flet ((tap () (pig:view-intent "fx.tap" (pig:view-shape "object")))
+             (closing (name &rest members)
+               (apply #'pig:view-intent name (or (getf members :arg) (pig:view-shape "object")) :dismiss t
+                      (let ((rest (copy-list members))) (remf rest :arg) rest))))
+        (pig:command ext "ui_view_dismiss" "Mount a dialog with a dismiss intent and probe what the host refuses"
+                     (lambda (ctx args)
+                       (let* ((st (pig:ctx-mount-view ctx "dismiss" "dialog" (view-text ctx "-dismiss")
+                                                      :intents (list (tap) (closing args))))
+                              (mount (pig:view-status-mount st)))
+                         (kp-notify ctx (format nil "view-d-mounted:~A" (pig:view-status-state st)))
+                         (flet ((attempt (label intents)
+                                  (kp-notify ctx (format nil "view-d-~A:~A" label
+                                                         (code-of (lambda () (pig:ctx-update-view ctx mount (view-text ctx "-dismiss")
+                                                                                                  :intents intents)))))))
+                           (attempt "two" (list (tap) (closing args) (closing (concatenate 'string args "2"))))
+                           (attempt "node" (list (tap) (closing args :node-key "n")))
+                           (attempt "arg" (list (tap) (closing args :arg (pig:view-shape "object" :properties (list (cons "value" (pig:view-shape "string")))
+                                                                                                :required '("value")))))
+                           (attempt "ok" (list (closing args) (tap))))))))
       (pig:command ext "ui_view_cancelled" "Report the intent whose handler was cancelled"
                    (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "intent-cancelled:~A" (car cancelled-tag)))))
       (pig:command ext "ui_view_state" "Report the state of the second mount"
@@ -883,7 +903,13 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
        ext
        (lambda (ctx inv)
          (let ((intent (pig:jget inv "intent")) (arg (pig:jget inv "arg")))
-           (cond ((member intent '("fx.redraw" "fx.foreign") :test #'equal) (kp-redraw-intent ctx inv))
+           (cond ((and (> (length intent) 9) (string= "fx.close-" intent :end2 9))
+                  ;; the user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount
+                  (cond ((and (hash-table-p arg) (zerop (hash-table-count arg)))
+                         (pig:ctx-remove-view ctx (pig:view-ref (pig:jref inv "mount" "key") (pig:jref inv "mount" "epoch") (pig:jget inv "rev")))
+                         (pig:view-intent-result "done"))
+                        (t (pig:view-intent-result "refused" :error "dismiss takes {}"))))
+                 ((member intent '("fx.redraw" "fx.foreign") :test #'equal) (kp-redraw-intent ctx inv))
                  ((equal intent "fx.reopen")
                   ;; the user opened the hidden view: its handler shows it
                   (pig:ctx-show-view ctx (pig:view-ref (pig:jref inv "mount" "key") (pig:jref inv "mount" "epoch") (pig:jget inv "rev")))

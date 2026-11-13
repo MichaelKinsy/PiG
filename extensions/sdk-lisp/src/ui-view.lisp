@@ -37,16 +37,20 @@ broken, \"session_replaced\", \"owner_gone\" or \"shutdown\"; RESULT is the JSON
     (when max-items (setf (gethash "maxItems" shape) max-items))
     shape))
 
-(defun view-intent (name arg &key node-key answer cancellable timeout-ms when-hidden)
+(defun view-intent (name arg &key node-key answer cancellable timeout-ms when-hidden dismiss)
   "One intent the view's nodes may raise. NAME is \"<extension>.<verb>\"; TIMEOUT-MS defaults to 30000 and is 100..300000.
 WHEN-HIDDEN lets a client raise the intent while the mount is hidden: it is how the user opens a view the extension hid, and the
-handler shows the mount. At most one intent of a mount has it; it names no node and its ARG accepts the empty object."
+handler shows the mount. At most one intent of a mount has it; it names no node and its ARG accepts the empty object.
+DISMISS names the intent a client raises, with the empty object, when the user dismisses a dialog or overlay mount: the handler
+closes the mount. The same three rules hold for it. Without one, Escape leaves the mount and it stays open until the extension
+closes it."
   (let ((intent (obj "name" name "arg" arg)))
     (when node-key (setf (gethash "nodeKey" intent) node-key))
     (when answer (setf (gethash "answer" intent) answer))
     (when cancellable (setf (gethash "cancellable" intent) t))
     (when timeout-ms (setf (gethash "timeoutMs" intent) timeout-ms))
     (when when-hidden (setf (gethash "whenHidden" intent) t))
+    (when dismiss (setf (gethash "dismiss" intent) t))
     intent))
 
 (defun view-asset (id mime size sha256 delivery)
