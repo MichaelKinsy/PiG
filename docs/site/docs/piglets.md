@@ -511,6 +511,8 @@ build:
 
 This setting requires every selected extension to be compiled into its Piglet Binary. A non-fusible extension stops the build.
 
+`build.fusedReload: source` is the companion setting for developing a fused member: the Binary then runs a member whose source you edited from that source. See [Editing a fused member's source](piglet-binaries.md#editing-a-fused-members-source). PiG Standard does not set it.
+
 ## Worked example: a read-only reviewer
 
 This example builds the smallest useful Piglet, runs it, and checks what the model receives. The outputs were captured from PiG with a test model.

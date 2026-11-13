@@ -311,13 +311,43 @@ Advantages:
 
 Costs:
 
-- the Binary must be rebuilt when the extension changes;
+- the Binary must be rebuilt when the extension changes (see [Editing a fused member's source](#editing-a-fused-members-source) for development);
 - the artifact is target specific;
 - the extension shares the PiG process failure boundary;
 - fused code requires stricter review;
 - only compatible Go factories can fuse.
 
 Fused behavior must match source subprocess behavior. Fusion is a delivery optimization, not a second extension API.
+
+### Editing a fused member's source
+
+By default a Binary runs the copy of each fused member that was compiled into it. An edit of the member's source has no effect, at a start or on `/reload`, until you build the Binary again.
+
+Set `build.fusedReload: source` in the Piglet to develop a fused member against its Binary:
+
+```yaml
+build:
+  extensionRealization: fused
+  fusedReload: source
+```
+
+The build then records, for each fused member, a digest of the member's source. When you give the Binary that member's source under the member's name, for example `pig-reviewer -e ./review` for the member `review`, a start and every `/reload` compare the source with the digest:
+
+- **Unchanged source:** the fused copy runs, as without the key.
+- **Changed source:** the member runs as an ordinary isolated subprocess extension built from the source, with the build that `pig -e ./review` uses. On `/reload` the fused copy is stopped with everything it registered, and the member keeps its name, its place in handler order and its entry in the extension list. It stays a subprocess, across restarts, until `pig piglet build` fuses the edited source. PiG never rewrites the installed Binary and starts no build in the background.
+- **Changed source and no Go toolchain, or a source that cannot be read:** the fused copy runs and PiG reports one warning where it reports a failed extension load, at a start and on `/reload`. The warning names the member and the remedy, for example `source at ./review differs from the fused copy; no Go toolchain: running the fused copy: cannot build go extension: the "go" toolchain is not installed; install it, or run this extension from a Piglet Binary or prebuilt package (which need no toolchain)`.
+
+`/reload --explain` shows `subprocess, rebuilt from <dir>` for a member that runs from its source, and `fused (source differs; toolchain missing)` or `fused (source unreadable)` for one that could not.
+
+The digest covers what `go build` reads from the member's module: `go.mod`, `go.sum`, the non-test Go, C and assembly sources of every package, the files they embed, and the same set of each module the member's `go.mod` replaces with a local directory. It does not cover `_test.go` files, `testdata`, `vendor`, nested modules, directories that start with `.` or `_`, or other files, so editing a test or a README does not move the member out of the Binary. It holds file content only: a touched file, or the same source checked out at another path, compares equal.
+
+Costs to expect:
+
+- The first start or `/reload` after an edit compiles the member: about 0.34 s for a small extension on the measured host, almost all of it the Go compile and link. The result is cached, so a later start or reload of the same source runs no build.
+- A member that runs from its source is a subprocess: each call into it costs about 35 microseconds more than a fused call, and its process holds about 12 MB.
+- A start that compares sources reads the member's source files once.
+
+One thing a reload cannot undo: the fused copy's code stays linked into the process. PiG stops everything the copy registered, but a goroutine or timer that the member started itself keeps running beside the new copy unless the member stops it. Stop such work in the member's `session_shutdown` handler, as a Pi extension must (Pi cannot unload a module either). As a subprocess the same leak is hidden by the process exit, so check it before you fuse the member again.
 
 A child session that an extension creates loads none of the Binary's fused members by default, as it loads no extension it was not given a path for. To give it one, the extension lists `builtin:<member>` in the child's `additionalExtensionPaths` (Go `AdditionalExtensionPaths`), the form Pi uses for a built-in extension. The member loads once through the same fused path, `resources.extensionNames` selects it by member name, and a child of that child gets it only if it lists the path again, so a member that creates children does not load itself in each of them. A Binary that fuses no such member rejects the path as an unknown built-in extension, as Pi does.
 

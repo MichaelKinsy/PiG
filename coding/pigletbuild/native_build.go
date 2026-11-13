@@ -68,6 +68,9 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 			if err != nil {
 				return nil, err
 			}
+			if err := bakeFusedSourceDigests(p, entries); err != nil {
+				return nil, err
+			}
 			fused = append(fused, entries...)
 			continue
 		}
@@ -562,6 +565,8 @@ type fusedEntry struct {
 	ModulePath       string
 	Package          string
 	WorkspaceModules []string
+	// SourceDigest is subprocess.FusedSourceDigest of Root for a Piglet built with `build.fusedReload: source`, else empty.
+	SourceDigest string
 }
 
 // isGoFactoryCell reports whether a planned cell is a Go SDK-factory cell, the
@@ -607,6 +612,24 @@ func collectFused(cell subprocess.CellSpec) ([]fusedEntry, error) {
 		})
 	}
 	return out, nil
+}
+
+// bakeFusedSourceDigests sets each entry's source digest for a Piglet built with `build.fusedReload: source`: the Binary then runs a
+// member whose source changed since the build from that source. Without the key nothing is baked and the generated registry is the
+// one a build wrote before the key existed.
+// pig additive (D31): a fused member whose source changed runs from its source.
+func bakeFusedSourceDigests(p *piglet.Piglet, entries []fusedEntry) error {
+	if p == nil || p.Build == nil || p.Build.FusedReload != piglet.FusedReloadSource {
+		return nil
+	}
+	for i := range entries {
+		digest, err := subprocess.FusedSourceDigest(entries[i].Root)
+		if err != nil {
+			return fmt.Errorf("fuse %q: source digest for build.fusedReload: %w", entries[i].Name, err)
+		}
+		entries[i].SourceDigest = digest
+	}
+	return nil
 }
 
 // overlayFuse imports each extension factory and the frontend member through
@@ -713,6 +736,11 @@ func renderFuseRegistry(fused []fusedEntry) string {
 	b.WriteString(")\n\nfunc init() {\n")
 	for _, f := range fused {
 		_, _ = fmt.Fprintf(&b, "\tregisterFactory(%q, %s.%s)\n", f.Name, f.Pkg, f.Factory)
+	}
+	for _, f := range fused {
+		if f.SourceDigest != "" {
+			_, _ = fmt.Fprintf(&b, "\tregisterSource(%q, %q)\n", f.Name, f.SourceDigest)
+		}
 	}
 	b.WriteString("}\n")
 	return b.String()

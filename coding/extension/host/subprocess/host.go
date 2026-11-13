@@ -89,6 +89,9 @@ type ExtConfig struct {
 
 	selectedPath string
 	resolveErr   error
+	// fusedRebuiltFrom is the source directory of a member fused into this Piglet Binary that runs as a subprocess because its
+	// source changed (see resolveFused).
+	fusedRebuiltFrom string
 	// sourceCheck is set when this package derived ContentHash from the source files: it reports an error once they no longer hash
 	// to it. A cell build runs it before it publishes (see fillContentHash).
 	sourceCheck func() error
@@ -1491,19 +1494,25 @@ func (h *Host) LoadAll(ctx context.Context, configs []ExtConfig) ([]extension.Ex
 	// aliases configs and every extension takes the unchanged cell path.
 	cellConfigs := configs
 	if fusedResolver != nil {
+		// pig additive (D31): a member ranks where its configuration stands, whether it runs fused or, its source changed, as a subprocess.
+		h.recordLoadOrder(configs, false)
 		cellConfigs = cellConfigs[:0:0]
 		for _, cfg := range configs {
-			serve, ok := fusedResolver.FusedServe(cfg)
-			if !ok {
-				cellConfigs = append(cellConfigs, cfg)
+			choice := resolveFused(ctx, cfg)
+			if choice.serve == nil {
+				cellConfigs = append(cellConfigs, choice.cellConfig(cfg))
 				continue
 			}
-			ext, err := h.LoadInProcess(ctx, cfg, serve)
+			ext, err := h.LoadInProcess(ctx, cfg, choice.serve)
 			if err != nil {
 				errs = append(errs, &ExtensionLoadError{Name: cfg.Name, Path: extConfigOrigin(cfg), Err: err, fused: true})
 				continue
 			}
 			loaded = append(loaded, *ext)
+			if choice.warning != "" {
+				// pig additive (D31): the member is loaded; the start reports, where it reports a failed load, that its source is not what runs.
+				errs = append(errs, &ExtensionLoadError{Name: cfg.Name, Path: extConfigOrigin(cfg), Err: &FusedSourceWarning{Message: choice.warning}, fused: true})
+			}
 		}
 	}
 	h.recordLoadOrder(configs, false)
@@ -2969,18 +2978,23 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 			cellConfigs = append(cellConfigs, cfg)
 			continue
 		}
-		serve, fused := fusedResolver.FusedServe(cfg)
-		if !fused {
-			cellConfigs = append(cellConfigs, cfg)
+		choice := resolveFused(ctx, cfg)
+		if choice.serve == nil {
+			cellConfigs = append(cellConfigs, choice.cellConfig(cfg))
 			continue
 		}
-		item, stageErr := h.stageInProcess(ctx, cfg, serve)
+		item, stageErr := h.stageInProcess(ctx, cfg, choice.serve)
 		if stageErr != nil {
 			rep.Issues = append(rep.Issues, reloadIssue(cfg, stageErr))
 			removeOld(cfg.Name)
 			continue
 		}
 		staged = append(staged, item)
+		if choice.warning != "" {
+			// pig additive (D31): one warning and the placement of a fused member whose compiled copy runs although its source differs.
+			rep.Issues = append(rep.Issues, extConfigOrigin(cfg)+": "+choice.warning)
+			rep.Cells = append(rep.Cells, ReloadCellReport{Key: cfg.Name, Strategy: fusedPlacement, Language: "go", Extensions: []string{cfg.Name}, Replaced: oldByName[cfg.Name] != nil, Reason: choice.reason})
+		}
 	}
 	cells := h.planCells(cellConfigs)
 	h.planEventBus(ctx, cells)

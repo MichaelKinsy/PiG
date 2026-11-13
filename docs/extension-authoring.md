@@ -144,6 +144,8 @@ Detached Go work must have an owner that:
 
 A naked `go func()` with ignored error is not a valid translation of a Promise.
 
+Stop every goroutine, timer and ticker the extension started itself in its `session_shutdown` handler. `/reload` sends `session_shutdown` with reason `reload` to the running instance and then starts a new one. A subprocess extension's leftovers end with its process, which hides the leak. A member fused into a Piglet Binary has no process of its own: its code stays linked, so work it did not stop keeps running old code beside the new instance, also after a Binary built with `build.fusedReload: source` has switched the member to a subprocess built from its edited source (D31, [Piglet Binaries](site/docs/piglet-binaries.md#editing-a-fused-members-source)). Pi has the same rule: it cannot unload a module, so an old instance's timers run on until the extension clears them.
+
 ### UI and cancellation
 
 Upstream Promise-based dialogs (`select`, `confirm`, `input`, `editor`) map to blocking Go SDK calls because the handler is already off the host UI loop. In interactive mode that includes the `input` event: a handler registered for it runs on its own goroutine, one dispatch at a time, and the rest of the prompt path is applied on the owner loop when the handlers return. An input handler may therefore open a dialog and wait for the answer. With no `input` handler loaded there is nothing that can suspend the dispatch, and the prompt path stays synchronous, because several of the loop's guarantees are stated in terms of a submission being fully dispatched before the loop reads the next keystroke.

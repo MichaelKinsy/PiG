@@ -57,6 +57,8 @@ type reloadLeakRow struct {
 	// command is a command every extension of the row registers and answers without a UI.
 	command string
 	configs func(t *testing.T, root, dir string) []subprocess.ExtConfig
+	// afterLoad runs once after the first load and before the warm-up reloads.
+	afterLoad func(t *testing.T)
 }
 
 func reloadLeakRows() []reloadLeakRow {
@@ -91,6 +93,20 @@ func reloadLeakRows() []reloadLeakRow {
 			rows = append(rows, reloadLeakRow{sdk: s, realization: "fused", command: "noop", configs: func(*testing.T, string, string) []subprocess.ExtConfig {
 				return []subprocess.ExtConfig{{Name: reloadLeakFusedName, Enabled: true}}
 			}})
+			// A member of a Piglet Binary built with `build.fusedReload: source` (D31): it loads fused, its source is edited, and the
+			// first warm-up reload switches it to the subprocess built from that source. The baseline is taken after the switch, so
+			// the stopped fused copy is counted once; TestFusedMemberSwitchLeavesNothingRunning requires that a host after the switch
+			// holds the goroutines of one that loaded the subprocess copy directly.
+			var hybridSource string
+			rows = append(rows, reloadLeakRow{sdk: s, realization: "fused-then-subprocess", strategy: subprocess.CellStrategyIsolated, command: "noop", configs: func(t *testing.T, _, dir string) []subprocess.ExtConfig {
+				hybridSource = filepath.Join(dir, reloadLeakHybridName)
+				if err := os.Mkdir(hybridSource, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				cfg := hybridConfig(t, hybridSource, reloadLeakHybridName, "v0")
+				reloadLeakHybridDigest = hybridDigest(t, hybridSource)
+				return []subprocess.ExtConfig{cfg}
+			}, afterLoad: func(t *testing.T) { hybridEdit(t, hybridSource, reloadLeakHybridName, "v1") }})
 		}
 	}
 	return rows
@@ -99,10 +115,25 @@ func reloadLeakRows() []reloadLeakRow {
 // reloadLeakFusedName is the extension reloadLeakFused serves in this process.
 const reloadLeakFusedName = "reload-leak-fused"
 
-// reloadLeakFused is the fused resolver of the fused row: every load runs the factory again in this process, as a Piglet Binary's generated registry does.
+// reloadLeakHybridName is the member of the fused-then-subprocess row, and reloadLeakHybridDigest the digest baked for it.
+const reloadLeakHybridName = "reload-leak-hybrid"
+
+var reloadLeakHybridDigest string
+
+// reloadLeakFused is the fused resolver of the fused rows: every load runs the factory again in this process, as a Piglet Binary's generated registry does.
 type reloadLeakFused struct{}
 
+// BakedSourceDigest is the digest of the source the hybrid member was fused from; the fused row's member has none.
+func (reloadLeakFused) BakedSourceDigest(name string) (string, bool) {
+	return reloadLeakHybridDigest, name == reloadLeakHybridName
+}
+
 func (reloadLeakFused) FusedServe(cfg subprocess.ExtConfig) (func(net.Conn) error, bool) {
+	if cfg.Name == reloadLeakHybridName {
+		return func(conn net.Conn) error {
+			return sdk.ServeFactory(conn, func() *sdk.Extension { return hybridFusedCopy(reloadLeakHybridName) })
+		}, true
+	}
 	if cfg.Name != reloadLeakFusedName {
 		return nil, false
 	}
@@ -316,6 +347,9 @@ func TestReloadLeak(t *testing.T) {
 				t.Fatalf("load: %d of %d loaded, %v", len(loaded), len(configs), errs)
 			}
 			runner := inproc.NewRunner(loaded, dir)
+			if row.afterLoad != nil {
+				row.afterLoad(t)
+			}
 
 			// artifacts are the cells of the latest reload: an unchanged source runs the artifact it ran before.
 			var artifacts []string
