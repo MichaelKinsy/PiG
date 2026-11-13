@@ -2,7 +2,9 @@
 // a panel with a list and a widget, update, hide, show, remove and finish them, and its intent handler redraws the panel
 // with the picked value. vtabs mounts three titled panels and hides the third, which the user can open; vfocus updates
 // the second with a focus request; vbind mounts a panel whose keys are bindings. With PIG_UI_VIEW_FIXTURE_MOUNTS=0 every command runs and makes no ui.view call, so a session
-// that never mounted takes the same keys.
+// that never mounted takes the same keys. With PIG_UI_VIEW_FIXTURE_ABILITIES=panel or =widget-above it mounts one view
+// in that slot when it is told the abilities of the client that attached (OnViewAbilities), before any command; with
+// =listen it takes that event and makes no ui.view call.
 package main
 
 import (
@@ -16,8 +18,9 @@ import (
 )
 
 const (
-	panelKey  = "panel"
-	widgetKey = "note"
+	panelKey   = "panel"
+	widgetKey  = "note"
+	arrivalKey = "arrival"
 )
 
 var pick = sdk.ViewIntent{
@@ -92,6 +95,19 @@ func main() {
 		mu.Lock()
 		defer mu.Unlock()
 		return refs[key]
+	}
+	if arrival := os.Getenv("PIG_UI_VIEW_FIXTURE_ABILITIES"); arrival != "" {
+		var once sync.Once
+		ext.OnViewAbilities(func(ctx sdk.Context, abilities *sdk.ViewAbilities) {
+			if arrival == "listen" || abilities == nil {
+				return
+			}
+			once.Do(func() {
+				if err := keep(ctx.MountView(sdk.ViewMount{Key: arrivalKey, Slot: sdk.ViewSlot(arrival), ViewContent: note("fixture arrival view")})); err != nil {
+					ctx.Notify("viewfx abilities: "+err.Error(), "error")
+				}
+			})
+		})
 	}
 	command := func(name, description string, run func(ctx sdk.Context) error) {
 		ext.Command(name, description, func(ctx sdk.Context, _ string) error {

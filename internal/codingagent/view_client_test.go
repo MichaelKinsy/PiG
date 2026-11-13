@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"go/parser"
 	"go/token"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -234,7 +235,10 @@ func (f *viewFixture) transition(op string, ref uiview.Ref) {
 	f.loop.run()
 }
 
-// awaitResult waits until the client's queue holds an intent's result and returns the queue as it is then.
+// awaitResult waits until the client's queue holds an intent's result and the loop holds the drain that applies it, and
+// returns the queue as it is then. The client queues a result and then wakes the loop, so the result alone does not say
+// that the loop can apply it: a test that ran the loop between the two left the intent in flight, and the client drops
+// an activation made while an intent is in flight.
 func (f *viewFixture) awaitResult() []viewItem {
 	f.t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -242,7 +246,10 @@ func (f *viewFixture) awaitResult() []viewItem {
 		f.client.mu.Lock()
 		queue := slices.Clone(f.client.queue)
 		f.client.mu.Unlock()
-		if slices.ContainsFunc(queue, func(it viewItem) bool { return it.result != nil }) {
+		f.loop.mu.Lock()
+		held := len(f.loop.tasks)
+		f.loop.mu.Unlock()
+		if held > 0 && slices.ContainsFunc(queue, func(it viewItem) bool { return it.result != nil }) {
 			return queue
 		}
 		if time.Now().After(deadline) {
@@ -264,11 +271,17 @@ func (f *viewFixture) notices(key string) []uiview.Notice {
 // pig additive (D614): a client that is attached and was never sent a mount adds nothing to the loop: no component, no
 // input listener, no goroutine, no timer. Extensions read its abilities.
 func TestViewClientIsInertUntilAMount(t *testing.T) {
-	before := runtime.NumGoroutine()
+	synctest.Test(t, testViewClientIsInertUntilAMount)
+}
+
+func testViewClientIsInertUntilAMount(t *testing.T) {
+	// The count is of the test's own bubble: a goroutine of another test is not the client's.
+	before := testenv.LiveGoroutines()
 	f := newViewFixture(t)
 	f.loop.run()
-	if after := runtime.NumGoroutine(); after != before {
-		t.Errorf("attaching started %d goroutines", after-before)
+	synctest.Wait()
+	if n := testenv.LiveGoroutines() - before; n != 0 {
+		t.Errorf("attaching started %d goroutines", n)
 	}
 	f.client.wake()
 	f.loop.run()
