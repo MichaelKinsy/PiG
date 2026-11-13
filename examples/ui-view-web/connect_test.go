@@ -370,8 +370,8 @@ func (b bridge) follow(t *testing.T) *stream {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = res.Body.Close() })
 	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "text/event-stream" {
-		_ = res.Body.Close()
 		t.Fatalf("GET /events = %s %s", res.Status, res.Header.Get("Content-Type"))
 	}
 	s := &stream{t: t, b: b, events: make(chan sse, 4096), close: cancel, seen: map[string]int{}}
@@ -851,13 +851,15 @@ func TestConnectStopsTryingASessionThatNeverServes(t *testing.T) {
 	var end ending
 	retried := 0
 	for end = page.end(); end.Retry; end = page.end() {
-		retried++
+		// One try at the start and one every 100 ms of the second the bridge waits.
+		if retried++; retried > 11 {
+			t.Fatalf("the session closed %d connections and the bridge still tries: its wait is 1 s", retried)
+		}
 	}
 	if retried < 1 || !strings.Contains(end.Reason, "closed the connection") || !strings.Contains(end.Reason, "waited 1 s") {
 		t.Fatalf("after %d connections that the session closed the page is told %+v", retried, end)
 	}
 	page.over()
-	// One try at the start and one every 100 ms of the second the bridge waits.
 	if n := session.connections(); n < 2 || n > 11 {
 		t.Fatalf("the bridge connected %d times in the 1 s it waits, want 2 to 11: a try every 100 ms", n)
 	}
@@ -865,6 +867,33 @@ func TestConnectStopsTryingASessionThatNeverServes(t *testing.T) {
 		now := b.state(t)
 		return now.Pages == 0 && now.timers() == base.timers() && now.connections() == base.connections()
 	})
+}
+
+// TestConnectHoldsNoTimerForAPageThatLeft: a page leaves just after a try failed, with the timer for its next try set.
+// From the moment the bridge counts no page it holds no timer, and then no connection.
+func TestConnectHoldsNoTimerForAPageThatLeft(t *testing.T) {
+	session := listenAt(t, filepath.Join(shortDir(t), "1.sock"), func(c net.Conn) { _ = c.Close() })
+	b := connectBridge(t, session.path)
+	base := b.state(t)
+	page := b.follow(t)
+	if end := page.end(); !end.Retry {
+		t.Fatalf("after the session closed the first connection the page is sent %+v", end)
+	}
+	page.close()
+	// The state is asked for without a pause: the first answer that counts no page is at most a few milliseconds after
+	// the page left, well inside the 100 ms a timer that was left would still have to run.
+	deadline := time.Now().Add(30 * time.Second)
+	now := b.state(t)
+	for now.Pages != 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the bridge still counts the page that left")
+		}
+		now = b.state(t)
+	}
+	if now.timers() != base.timers() {
+		t.Fatalf("the bridge counts no page and holds %+v, at the start %+v: the timer of the page that left", now, base)
+	}
+	eventually(t, "the bridge to hold no connection", func() bool { return b.state(t).connections() == base.connections() })
 }
 
 // TestConnectPassesOnOnlyTheCarriersCommands: the session's socket is written the seven ui_view_* commands as the page
