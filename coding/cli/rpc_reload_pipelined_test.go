@@ -390,8 +390,8 @@ func TestRPCCommandInFlightAtAReloadIsAnswered(t *testing.T) {
 		f.open("held-gate")
 		want := []string{"extension_error command:held: stale ctx", "response c success=true"}
 		if sdk == "go" {
-			// A Go handler has no exception to raise: Notify on a stale ctx does nothing.
-			want = []string{"response c success=true"}
+			// A Go extension's generation is served until the reload's commit replaces it (Host.supersedeGenerations): the handler's notification is delivered.
+			want = []string{"notify held done g1", "response c success=true"}
 		}
 		if got := f.through("response c success=true"); !slices.Equal(got, want) {
 			t.Fatalf("the command in flight at the reload: %q, want %q", got, want)
