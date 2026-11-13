@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // TestRPCAbortedExtensionProviderTurnWhoseAuthorNeverReacts: an author that never reacts to the abort of its request (it neither pushes nor ends its stream) holds the
@@ -107,10 +109,11 @@ func TestRPCAbortedExtensionProviderTurnWhoseAuthorNeverReacts(t *testing.T) {
 
 			// The way out: stdin closes. The process exits 0, and the runtime's process does not outlive it.
 			p.closeAndWait("while an aborted extension provider turn waits for an author that never reacts")
-			deadline := time.Now().Add(10 * time.Second)
+			budget := testbudget.Wait(t)
+			deadline := time.Now().Add(budget)
 			for !errors.Is(syscall.Kill(runtimeProcess, 0), syscall.ESRCH) {
 				if time.Now().After(deadline) {
-					t.Errorf("the extension runtime's process %d is alive 10 s after pig exited", runtimeProcess)
+					t.Errorf("the extension runtime's process %d is alive %s after pig exited", runtimeProcess, budget)
 					_ = syscall.Kill(runtimeProcess, syscall.SIGKILL)
 					break
 				}
