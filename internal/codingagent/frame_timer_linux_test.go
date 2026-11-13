@@ -416,6 +416,27 @@ func TestStopOfARunLeavesNoKernelTimerGoroutineAndNoDescriptor(t *testing.T) {
 	}
 }
 
+// A tick of the kernel timer is the zero time on both of its ways to the owner loop, the expiry the reader takes from the descriptor and the
+// deadline that had passed when Reset was called: the loop is told to wake and reads no clock value from the tick.
+func TestKernelFrameTimerTickCarriesNoTime(t *testing.T) {
+	d, _ := newKernelFrameTimer().(*kernelFrameTimer)
+	if d == nil {
+		t.Skip("no timerfd on this kernel")
+	}
+	defer d.Close()
+	for _, after := range []time.Duration{time.Millisecond, 0} {
+		d.Reset(after)
+		select {
+		case at := <-d.C():
+			if !at.IsZero() {
+				t.Fatalf("the tick of Reset(%v) carries the time %v, want the zero time", after, at)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("no tick for Reset(%v)", after)
+		}
+	}
+}
+
 // BenchmarkKernelFrameTimer measures the timer's three paths: a deadline armed and replaced before it expires (a throttled frame that is
 // stopped), a deadline that had passed (the tick comes from Reset), and an expiry (the tick comes from the reading goroutine).
 func BenchmarkKernelFrameTimer(b *testing.B) {
