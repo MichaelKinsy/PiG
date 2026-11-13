@@ -21,7 +21,9 @@ import (
 //
 // A write never blocks its caller (Node's `send` queues and returns false past the high-water mark): records go to an
 // unbounded queue one owned writer goroutine drains. One owned reader goroutine reads and tells the listeners in order,
-// and tells the disconnect once; both end with the connection. The channel implements link.IpcPort.
+// and tells the disconnect once; both end with the connection. A write that fails tells its send and ends the writer
+// only, as a failed `send` of Node's tells its callback: the other end is gone, and the reader ends the channel once it
+// told what that end wrote before. The channel implements link.IpcPort.
 
 const (
 	recordFrame   byte = 0
@@ -50,6 +52,8 @@ type channel struct {
 	queue      []outgoing
 	wake       chan struct{}
 	finished   bool
+	// unwritable: a write failed; nothing is sent any more.
+	unwritable bool
 	started    bool
 }
 
@@ -184,12 +188,16 @@ func (c *channel) write(conn net.Conn) {
 				record.callback(err)
 			}
 			if err != nil {
-				for _, dropped := range batch[index+1:] {
+				c.mu.Lock()
+				c.unwritable = true
+				unsent := slices.Concat(batch[index+1:], c.queue)
+				c.queue = nil
+				c.mu.Unlock()
+				for _, dropped := range unsent {
 					if dropped.callback != nil {
 						dropped.callback(errChannelClosed)
 					}
 				}
-				c.finish()
 				return
 			}
 		}
@@ -244,7 +252,7 @@ func (c *channel) enqueue(kind byte, payload []byte, callback func(error)) bool 
 		return false
 	}
 	c.mu.Lock()
-	if c.finished {
+	if c.finished || c.unwritable {
 		c.mu.Unlock()
 		if callback != nil {
 			callback(errChannelClosed)
