@@ -174787,9 +174787,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:coding/extension/host/subprocess/upstream_discovery_test.go#TestUpstreamExtensionsDiscovery"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
       ]
     },
     {
@@ -183179,9 +183179,9 @@
         "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
       ]
     },
     {
@@ -183201,9 +183201,9 @@
         "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
       ]
     },
     {
@@ -194360,9 +194360,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
-        "test:internal/codingagent/mermaid_class_assignments_upstream_test.go#TestMermaidClassAssignmentsUpstream"
+        "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream"
       ]
     },
     {
@@ -194379,12 +194379,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
+        "call:coding/extension/host/subprocess/markdown_transform_proxy.go#markdownTransformProxy.transform"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
       ]
     },
     {
@@ -194470,9 +194470,9 @@
         "call:coding/extension/markdowntransform/markdowntransform.go#CreateMarkdownTransform"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:coding/extension/host/subprocess/upstream_runner_markdown_test.go#TestUpstreamRunnerMarkdownSourceFactories"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
       ]
     },
     {
@@ -194514,9 +194514,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidFallbackAssistantBlockMatchesDisabledTransform"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
       ]
     },
     {
@@ -194536,9 +194536,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:internal/codingagent/mermaid_fallback_upstream_test.go#TestMermaidFallbackAssistantBlockMatchesDisabledTransform"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
       ]
     },
     {
@@ -194600,9 +194600,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
-        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes",
-        "test:internal/codingagent/assistant_block_async_race_test.go#TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop"
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes"
       ]
     },
     {
@@ -194619,9 +194619,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
+        "call:coding/extension/renderer.go#MarkdownTransformerRegistration.Scoped"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/subprocess/markdown_message_types_test.go#TestRegisteredMarkdownMessageTypesReachTheBuiltExtension"
       ]
     },
@@ -194639,9 +194640,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
+        "call:coding/extension/renderer.go#MarkdownTransformerRegistration.Scoped"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/subprocess/markdown_transform_proxy_test.go#TestNodeMarkdownTransformerDoesNotCacheAcrossMessages"
       ]
     },
@@ -194659,9 +194661,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#Runner.GetMarkdownTransformers"
+        "call:coding/extension/renderer.go#MarkdownTransformerRegistration.Scoped"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
         "test:coding/extension/host/subprocess/markdown_transform_proxy_test.go#TestNodeMarkdownTransformerDoesNotCacheAcrossMessages"
       ]
     },
@@ -226042,7 +226045,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.AppendThinkingLevelChange"
+        "call:coding/virtual_models.go#recordedThinkingLevel"
       ],
       "evidence": [
         "test:internal/codingagent/session_test.go#TestAppendThinkingLevelChange"
