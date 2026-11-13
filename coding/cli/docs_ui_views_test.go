@@ -328,7 +328,7 @@ func TestDocsUIViewsMeterExampleDrawsForAnAbleClient(t *testing.T) {
 	if bar(drawn) != 30.0 {
 		t.Errorf("the bar is %v wide, want 30", bar(drawn))
 	}
-	// A region names its intent and no node, so the client raises it without a nodeKey.
+	// A region names its intent and no node, so the client raises the intent without a nodeKey.
 	redrawn, data := docsUIViewsRaise(t, c, able, drawn, "", "meter.raise", `{}`)
 	if bar(redrawn[0]) != 40.0 || fmt.Sprint(data["answer"]) != "map[level:4]" {
 		t.Errorf("after meter.raise the bar is %v wide and the answer %v, want 40 and level 4", bar(redrawn[0]), data["answer"])
@@ -340,9 +340,10 @@ func TestDocsUIViewsMeterExampleDrawsForAnAbleClient(t *testing.T) {
 	if mount.snapshot["drawing"] != nil {
 		t.Errorf("a client that draws no profile was sent the drawing %v", mount.snapshot["drawing"])
 	}
-	docsUIViewsWant(t, "the view of a client that draws no profile", mount.view, "Level 3 of 10", "[ Raise ]")
-	redrawn, _ = docsUIViewsRaise(t, c, plain, mount, "raise", "meter.raise", `{}`)
-	docsUIViewsWant(t, "the view after the button", redrawn[0].view, "Level 4 of 10")
+	docsUIViewsWant(t, "the view of a client that draws no profile", mount.view, "Level 3 of 10. Press r to raise it.")
+	// The binding of r raises the intent without a nodeKey, as the region does.
+	redrawn, _ = docsUIViewsRaise(t, c, plain, mount, "", "meter.raise", `{}`)
+	docsUIViewsWant(t, "the view after the binding's intent", redrawn[0].view, "Level 4 of 10")
 	c.end()
 
 	const asks = `scene = abilities.drawing?.profiles.includes("scene") ?? false;`

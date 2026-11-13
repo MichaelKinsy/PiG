@@ -116,8 +116,8 @@ A node is a JSON object with a `kind`. Give a node an `id` when an intent, an `a
 |---|---|---|
 | `vstack`, `hstack` | children in a column or a row | `children`, `gap`; a child's `stack: { basis, grow, shrink, minSize, maxSize }` |
 | `container` | children in a column | `children` |
-| `box` | padded children on a background | `children`, `paddingX`, `paddingY`, `bg` |
-| `text` | wrapped text | `text`, `paddingX`, `paddingY`, `bg` |
+| `box` | padded children on a background | `children`, `paddingX`, `paddingY` (1 when absent), `bg` |
+| `text` | wrapped text | `text`, `paddingX`, `paddingY` (1 when absent), `bg` |
 | `truncated-text` | one row of text, cut at the width | `text` |
 | `markdown` | rendered markdown | `text`, `defaultTextStyle: { color, bgColor, bold, italic, underline, strikethrough }` |
 | `lines` | rows that your extension drew, shown verbatim | `content` (an array of strings) |
@@ -127,7 +127,7 @@ A node is a JSON object with a `kind`. Give a node an `id` when an intent, an `a
 | `settings-list` | settings that step through their values | `items: [{ id, label, currentValue, values }]` |
 | `input` | one line of text; Enter submits | `value`, `placeholder` |
 | `editor` | several lines of text | `value` |
-| `mouse-region` | a button: a click activates it | `children` (an array of one node, for example a `text` with the label), `region: { types: ["press"] }` |
+| `mouse-region` | a button: a click activates it. It needs a pointer (`abilities.input.pointer`), which the terminal has only in fullscreen mode, so also give its action a binding | `children` (an array of one node, for example a `text` with the label), `region: { types: ["press"] }` |
 | `scroll-view` | one child that scrolls | `children` (an array of one node), `follow: "end"` |
 | `grid` | a calendar-style grid of equal columns; the user chooses a cell | `id` (required), `columns` (1 to 16), `head` (one label for each column), `chipRows` (1 to 8, default 3), `selected` (a cell's `value`), `cells: [{ value, label, mark: "current", dim, color, chips: [{ text, color }], more }]` |
 
@@ -244,7 +244,6 @@ export default function meter(pi) {
   let mount = null;
   let scene = false;
 
-  const raise = { kind: "mouse-region", id: "raise", region: { types: ["press"] }, children: [{ kind: "text", text: "[ Raise ]" }] };
   const drawing = () => ({
     profile: "scene",
     node: "canvas",
@@ -256,13 +255,13 @@ export default function meter(pi) {
     ],
     regions: [{ key: "raise", shape: { kind: "rect", x: 0, y: 0, width: 100, height: 20 }, gestures: ["activate"], intent: "meter.raise", name: "Raise the level" }],
   });
-  const intent = { name: "meter.raise", arg: { type: "object" }, answer: { type: "object", properties: { level: { type: "integer" } }, required: ["level"] } };
-  const text = () => ({ kind: "text", text: `Level ${level} of 10` });
-  // The region raises the intent, so the intent has no nodeKey. Without a drawing, the button raises it.
+  const text = () => ({ kind: "text", text: `Level ${level} of 10. Press r to raise it.` });
+  // The region and the binding raise the intent, so the intent has no nodeKey.
   const content = () => ({
-    view: { root: scene ? { kind: "box", id: "canvas" } : { kind: "vstack", children: [text(), raise] } },
+    view: { root: scene ? { kind: "box", id: "canvas" } : text() },
     ...(scene ? { drawing: drawing() } : {}),
-    intents: [scene ? intent : { ...intent, nodeKey: "raise" }],
+    intents: [{ name: "meter.raise", arg: { type: "object" }, answer: { type: "object", properties: { level: { type: "integer" } }, required: ["level"] } }],
+    bindings: [{ key: "r", intent: "meter.raise", name: "Raise" }],
     fallback: text(),
   });
 
