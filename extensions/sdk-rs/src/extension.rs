@@ -1792,9 +1792,15 @@ impl Extension {
         bus.adopt(&conn);
         self.events.connect(&conn);
         // A node factory's pi.events.on runs before its runtime registers; a native listener subscribed before run does the same.
-        let mut early_dispatches: std::collections::VecDeque<
+        // early_frames are the frames the host sent before the ready that the main loop serves once the extension is ready, in arrival order: listener dispatches, and notifies other than a state. early_states are the states it sent before the ready, which are applied before the ready's snapshot.
+        let mut early_frames: std::collections::VecDeque<
             crate::protocol::Envelope<Box<serde_json::value::RawValue>>,
         > = std::collections::VecDeque::new();
+        let mut early_states: Vec<Value> = Vec::new();
+        // What the factory's calls read on this connection before the run took it.
+        for env in conn.take_early_notifies() {
+            keep_early_notify(env, &mut early_states, &mut early_frames);
+        }
         // A shutdown read while a subscription's result is awaited is acted on once the run has registered.
         let mut shutdown_during_subscriptions = false;
         for crate::event_bus::LiveOp {
@@ -1823,7 +1829,7 @@ impl Extension {
                             .as_ref()
                             .is_some_and(|req| req.method == "events.dispatch") =>
                     {
-                        early_dispatches.push_back(env)
+                        early_frames.push_back(env)
                     }
                     "notify"
                         if env
@@ -1833,6 +1839,7 @@ impl Extension {
                     {
                         bus.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref()))
                     }
+                    "notify" => keep_early_notify(env, &mut early_states, &mut early_frames),
                     "shutdown" => shutdown_during_subscriptions = true,
                     other => {
                         return Err(io::Error::new(
@@ -1902,7 +1909,7 @@ impl Extension {
                         .as_ref()
                         .is_some_and(|req| req.method == "events.dispatch") =>
                 {
-                    early_dispatches.push_back(env)
+                    early_frames.push_back(env)
                 }
                 "notify"
                     if env
@@ -1912,6 +1919,7 @@ impl Extension {
                 {
                     bus.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref()))
                 }
+                "notify" => keep_early_notify(env, &mut early_states, &mut early_frames),
                 "shutdown" => shutdown_before_ready = true,
                 _ => {
                     answer = Some(env);
@@ -1938,9 +1946,13 @@ impl Extension {
         let shared_height = Arc::new(AtomicU32::new(ready.height));
         let shared_identity = Arc::new(Mutex::new(crate::context::SessionIdentity::default()));
         let shared_session = Arc::new(Mutex::new(crate::context::SessionMirror::default()));
-        // Initialize session mirror from the ready payload.
-        if let Some(ref state) = ready.state
-            && let Some(session) = state.get("session")
+        // The states in arrival order: one the host sent before the ready is older than the ready's snapshot, so it is applied first.
+        let states: Vec<&Value> = early_states.iter().chain(ready.state.as_ref()).collect();
+        // Initialize session mirror from the states.
+        for session in states
+            .iter()
+            .copied()
+            .filter_map(|state| state.get("session"))
         {
             let _ = shared_session.lock().unwrap().apply_update(session);
         }
@@ -1949,7 +1961,7 @@ impl Extension {
         ));
         *host_subs.source_info.lock().unwrap() = ready.source_info.clone();
         let shared_ui = Arc::new(Mutex::new(UiState::default()));
-        if let Some(state) = ready.state.as_ref().and_then(|state| state.as_object()) {
+        for state in states.iter().copied().filter_map(|state| state.as_object()) {
             shared_ui.lock().unwrap().apply_state(state);
             shared_identity.lock().unwrap().apply_state(state);
             conn.api_state.lock().unwrap().apply_state(state);
@@ -2088,7 +2100,7 @@ impl Extension {
         // Main loop.
         let mut event_replicas = crate::event_stream::EventReplicas::default();
         loop {
-            let env = match early_dispatches.pop_front() {
+            let env = match early_frames.pop_front() {
                 Some(env) => env,
                 None if shutdown_before_ready => return stop_requests("shutdown"),
                 None => match conn.read_envelope() {
@@ -3894,6 +3906,25 @@ pub fn report_load_failure(sock_path: &str) -> io::Result<()> {
         return Ok(());
     }
     UnixStream::connect(sock_path).map(drop)
+}
+
+/// Keeps a notify the host sent before the ready. A state is older than the ready's snapshot, so `run` applies it before that snapshot; any other notify is served by the main loop once the extension is ready, in arrival order. Neither is dropped, and neither fails the load.
+fn keep_early_notify(
+    env: Envelope<Box<serde_json::value::RawValue>>,
+    states: &mut Vec<Value>,
+    frames: &mut VecDeque<Envelope<Box<serde_json::value::RawValue>>>,
+) {
+    let state = env
+        .notify
+        .as_ref()
+        .filter(|notify| notify.method == "state_update")
+        .and_then(|notify| notify.args.as_ref())
+        .and_then(|args| args.get("state"))
+        .cloned();
+    match state {
+        Some(state) => states.push(state),
+        None => frames.push_back(env),
+    }
 }
 
 fn resolve_socket_path_from_env() -> io::Result<String> {
