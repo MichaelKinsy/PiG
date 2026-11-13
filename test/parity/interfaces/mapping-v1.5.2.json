@@ -27513,9 +27513,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -27646,8 +27646,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -27668,8 +27668,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -28530,9 +28530,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -34615,7 +34615,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/mistral_messages_payload_oracle_test.go#TestMistralMessagesPayloadMatchesPi"
+        "test:ai/github_copilot_reasoning_oracle_test.go#TestGitHubCopilotCompletionsReasoningEffortMatchesPi"
       ]
     },
     {
@@ -73265,9 +73265,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -73398,8 +73398,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -73420,8 +73420,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -74326,9 +74326,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -81531,7 +81531,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/mistral_messages_payload_oracle_test.go#TestMistralMessagesPayloadMatchesPi"
+        "test:ai/github_copilot_reasoning_oracle_test.go#TestGitHubCopilotCompletionsReasoningEffortMatchesPi"
       ]
     },
     {
@@ -90729,9 +90729,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -90862,8 +90862,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -90884,8 +90884,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -91191,9 +91191,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -95152,7 +95152,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/mistral_messages_payload_oracle_test.go#TestMistralMessagesPayloadMatchesPi"
+        "test:ai/github_copilot_reasoning_oracle_test.go#TestGitHubCopilotCompletionsReasoningEffortMatchesPi"
       ]
     },
     {

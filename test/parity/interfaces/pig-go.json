@@ -42750,9 +42750,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[886]generatedMapRef"
+        "type": "[889]generatedMapRef"
       },
-      "shapeHash": "sha256:d50bb43df8d2c138d7a81ac0a0758b6dbfae7dc45f526e1f538a23d77362c1f9"
+      "shapeHash": "sha256:dc2daa97b858cdc1ec68a7a54a2241797ae4622d0de1b3e336777f731e133d6d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",
