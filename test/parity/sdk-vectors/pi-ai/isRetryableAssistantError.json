@@ -5912,6 +5912,696 @@
     }
    ],
    "result": false
+  },
+  {
+   "name": "case 0198",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "read ECONNRESET",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0199",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "connect ETIMEDOUT 140.82.113.3:443",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0200",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "write EPIPE",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0201",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "connect ECONNREFUSED 127.0.0.1:443",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0202",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "ECONNABORTED",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0203",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Connection reset by peer",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0204",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Invalid value EXECONNRESET",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0205",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Unknown field ETIMEDOUTX",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0206",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Invalid key ERR_EPIPE_ID",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0207",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "read econnreset",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0208",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "(EPIPE)",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0209",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "ECONNRESET_",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0210",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "_ECONNRESET",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0211",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "0EPIPE",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0212",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "EPIPE0",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0213",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "connect EHOSTUNREACH 140.82.113.3:443",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0214",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "connect ENETUNREACH 140.82.113.3:443",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0215",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "UND_ERR_SOCKET",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0216",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "KECONNRESET",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0217",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "EPIPEſ",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0218",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "write: broken pipe",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0219",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0220",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "ECONNRESET billing",
+     "timestamp": 1
+    }
+   ],
+   "result": false
   }
  ]
 }
