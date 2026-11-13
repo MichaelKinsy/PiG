@@ -160483,7 +160483,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "116 normalized-name Pig candidates are ambiguous."
+        "117 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160607,6 +160607,7 @@
         "go:github.com/MichaelKinsy/PiG/tui#tuiBase.Add",
         "go:github.com/MichaelKinsy/PiG/tui#wheelClockStart.Add",
         "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#firstSet.add",
+        "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#lexemeParser.add",
         "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#reach.add",
         "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#tokenTreeEmitter.add"
       ],
@@ -165818,7 +165819,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "11 normalized-name Pig candidates are ambiguous."
+        "12 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -336150,7 +336151,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "12 normalized-name Pig candidates are ambiguous."
+        "13 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -384876,7 +384877,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "11 normalized-name Pig candidates are ambiguous."
+        "12 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",

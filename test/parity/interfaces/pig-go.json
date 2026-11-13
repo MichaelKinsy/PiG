@@ -393578,6 +393578,17 @@
       "shapeHash": "sha256:0ebec17c04164040733f3f31fbb55b1c35d93d07ace13668127288dc2cc7e2a7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#renderHighlightedHTMLFrom",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "renderHighlightedHTMLFrom",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(theme HighlightTheme, open []scopeEntry, parts ...string) (output string, scopes []scopeEntry, err error)"
+      },
+      "shapeHash": "sha256:d629aba9671c1f51ae212e3ade6afcaad5d039daf29d39b0e500dff04615afcd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#renderInline",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "renderInline",
@@ -402131,9 +402142,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(languageName string, code []rune, ignoreIllegals bool, continuation *frame, from checkpoint, record bool) Result"
+        "type": "func(languageName string, code []rune, ignoreIllegals bool, continuation *frame, from checkpoint, record recording) Result"
       },
-      "shapeHash": "sha256:1b90d7a53651175ae8a22d68364281677e0c903303a208bce01e3119e3685ee9"
+      "shapeHash": "sha256:ed3212203d47ccdd64e03f5116b36c60ff032b383958f82a443a4b89298e3896"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.indexDeferred",
@@ -402224,6 +402235,17 @@
       "shapeHash": "sha256:35a8c2b878f4021bcb707c8dccf61b5597358b23495c5ace662e233df27dae91"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.resumeRecording",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.resumeRecording",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(language string) (recording, reach)"
+      },
+      "shapeHash": "sha256:8a8f950b4c3c70ebf0e77fdb1fbaf67031040181187a362743d5891d2799ada4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.setLanguage",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "Registry.setLanguage",
@@ -402255,6 +402277,17 @@
         "type": "ResumePoint"
       },
       "shapeHash": "sha256:c63d70b7bb33718f5893c062b6ba5c94e8743d3f189fab87c21c52609f5db540"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#ResumeStackMax",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "ResumeStackMax",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Text",
@@ -402618,6 +402651,39 @@
         "type": "checkpoint"
       },
       "shapeHash": "sha256:0a2ff0f7c006a24a80cb137a348f98860657ef8ab258e1ac6ad1954cc74d3e1a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#checkpointWalk",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "checkpointWalk",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "checkpointWalk"
+      },
+      "shapeHash": "sha256:998f566e81eb00864f554285a9596e462476031dff0f907a66c14237e62fce87"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#checkpointWalk.mark",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "checkpointWalk.mark",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(depth int)"
+      },
+      "shapeHash": "sha256:bc6c752c2082bf6e734d7d3b79f664192b0784c0402c2ed027a4f505b06aa7fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#checkpointWalk.node",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "checkpointWalk.node",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(node *treeNode, depth int)"
+      },
+      "shapeHash": "sha256:358116fd4fa79edfb9a6a30ef2f545a98e2b98364cb7126d83ff7198f79838f4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#classEnd",
@@ -403577,6 +403643,17 @@
       "shapeHash": "sha256:21c90798813258e81ba1ff51a67836bfa6dba64110e155ad8825ffb47287b997"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#highlightRun.nodeClass",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "highlightRun.nodeClass",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(mode *Mode) string"
+      },
+      "shapeHash": "sha256:2407b08bd06da87844b9d3ef89672a2197fbe0954faf1745de2ada98c1f7185d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#highlightRun.processBuffer",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "highlightRun.processBuffer",
@@ -403635,6 +403712,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#highlightRun.recordCheckpoint",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "highlightRun.recordCheckpoint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#highlightRun.reopenNodes",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "highlightRun.reopenNodes",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -405106,6 +405194,50 @@
       "shapeHash": "sha256:6daf8e3b8636322019e05ebb9228b9d2cf42bc905c51ecd2865e9f933356dfab"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#recordNone",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "recordNone",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "recording"
+      },
+      "shapeHash": "sha256:7d42f034a99f1c98208751792b1311534ddcce9e476f209b7cd6a52c746385e0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#recordRoot",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "recordRoot",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "recording"
+      },
+      "shapeHash": "sha256:7d42f034a99f1c98208751792b1311534ddcce9e476f209b7cd6a52c746385e0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#recordStack",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "recordStack",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "recording"
+      },
+      "shapeHash": "sha256:7d42f034a99f1c98208751792b1311534ddcce9e476f209b7cd6a52c746385e0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#recording",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "recording",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "recording"
+      },
+      "shapeHash": "sha256:7d42f034a99f1c98208751792b1311534ddcce9e476f209b7cd6a52c746385e0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#regExpPattern",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "regExpPattern",
@@ -405799,6 +405931,17 @@
       "shapeHash": "sha256:cd8fe59ae34f41ab97eb1fae4765f21a19a0d5c52bc10e4e096ea980b20c9299"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#stackResumes",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "stackResumes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(top *frame) bool"
+      },
+      "shapeHash": "sha256:d3623788e8177b432f41a982a653f1878739b76c2e68785b9d99a571add6f2f6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#stringPattern",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "stringPattern",
@@ -406008,6 +406151,17 @@
       "shapeHash": "sha256:bba7c91b8816e78c892b503474bf0f05fa0555bd0808440abfed2f04b1fc4d71"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#tokenTreeEmitter.checkpointHTML",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "tokenTreeEmitter.checkpointHTML",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(checkpoints []checkpoint) (html string, offsets []int, ok bool)"
+      },
+      "shapeHash": "sha256:e5ab7e9a5350b0dfb049f5e27b62afe7c3bba2d3064cd12d09540c1b90dcac7d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#tokenTreeEmitter.closeAllNodes",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "tokenTreeEmitter.closeAllNodes",
@@ -406039,17 +406193,6 @@
         "type": "func(kind string)"
       },
       "shapeHash": "sha256:7c6fa6de2a1f608bec74f7eb286b5cf527744190abdbb41a90d6edff96728ef6"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#tokenTreeEmitter.rootOffsets",
-      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
-      "name": "tokenTreeEmitter.rootOffsets",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(counts []int) (html string, offsets []int)"
-      },
-      "shapeHash": "sha256:85fcf58ec96fa13ca2d66c421ec9a9af3150776e4ef1a00c9def1dce1ef03fc7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#tokenTreeEmitter.toHTML",
@@ -406281,6 +406424,28 @@
         "type": "func(out *strings.Builder, unit rune)"
       },
       "shapeHash": "sha256:9abcdfa48614ead4014d4da5cca733e31fb5ee1a52da9a460756592d994af827"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#writeCloseTag",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "writeCloseTag",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buffer *strings.Builder, node *treeNode)"
+      },
+      "shapeHash": "sha256:669daad584f88107b8c67552e65a84343f89ee95ad081cfb9bbab060f004c939"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#writeOpenTag",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "writeOpenTag",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buffer *strings.Builder, node *treeNode)"
+      },
+      "shapeHash": "sha256:669daad584f88107b8c67552e65a84343f89ee95ad081cfb9bbab060f004c939"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#writePatternUnit",
