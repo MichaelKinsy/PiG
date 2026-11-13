@@ -93,7 +93,7 @@ func TestDocsEventBusPage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the pig binary and starts Go, Node and Python extensions")
 	}
-	page, examples := docsHeroExamples(t, docsEventBusPagePath, "asker/extension.go", "geo.mjs", "geo.py")
+	page, examples := docsHeroExamples(t, docsEventBusPagePath, "asker/extension.go", "geo.mjs", "geo.py", "waiter/extension.go", "slow-geo.mjs", "slow-geo.py")
 	binary := buildPigBinaryForSignalTest(t)
 	dir := t.TempDir()
 	env := append(listenEnv(t, dir), "PIG_OFFLINE=1")
@@ -101,10 +101,14 @@ func TestDocsEventBusPage(t *testing.T) {
 	// The table's Go calls of an answering extension: a listener that the factory subscribes with ext.Events(), and an
 	// emit from that listener with ctx.Events().
 	geoGo := docsHeroGoExtension(t, binary, env, dir, "geogo", "package geogo\n\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\n\nfunc Extension() *sdk.Extension {\n\text := sdk.New(\"geogo\")\n\tif _, err := ext.Events().On(\"geo:locate\", func(ctx sdk.Context, data any) error {\n\t\trequest, _ := data.(map[string]any)\n\t\treturn ctx.Events().Emit(\"geo:found\", map[string]any{\"id\": request[\"id\"], \"name\": request[\"name\"], \"lat\": 48.86, \"lon\": 2.35})\n\t}); err != nil {\n\t\tpanic(err)\n\t}\n\treturn ext\n}\n")
-	paths := map[string]string{"asker": asker, "geogo": geoGo}
+	waiter := docsHeroGoExtension(t, binary, env, dir, "waiter", examples["waiter/extension.go"])
+	paths := map[string]string{"asker": asker, "geogo": geoGo, "waiter": waiter}
 	for name, source := range map[string]string{
 		"geo.mjs": examples["geo.mjs"],
 		"geo.py":  examples["geo.py"],
+		// The page's second example: answers that come after emit returned, to an asker that waits.
+		"slow-geo.mjs": examples["slow-geo.mjs"],
+		"slow-geo.py":  examples["slow-geo.py"],
 		// The page's rule for a listener that fails: its error is reported, and the emitter and the listeners after it do not see it.
 		"failing.mjs": "export default function (pi) {\n  pi.events.on(\"geo:locate\", () => {\n    throw new Error(\"failing listener\");\n  });\n}\n",
 		// The page's rule for an async listener: emit returns at the listener's first await, so a reply after it comes too late for an
@@ -131,6 +135,9 @@ func TestDocsEventBusPage(t *testing.T) {
 		{"no extension listens", []string{"asker"}, "warning: no extension answers geo:locate"},
 		{"a listener before the answering one fails", []string{"asker", "failing.mjs", "geo.mjs"}, found},
 		{"an async listener replies after emit returned", []string{"asker", "late.mjs"}, "warning: no extension answers geo:locate"},
+		{"a waiting asker hears a Node listener that answers after an await", []string{"waiter", "slow-geo.mjs"}, found},
+		{"a waiting asker hears a Python extension that answers from a thread", []string{"waiter", "slow-geo.py"}, found},
+		{"a waiting asker gives up when no extension answers", []string{"waiter"}, "warning: no extension answered geo:locate in 2 s"},
 		{"a reply to another request is not taken", []string{"asker", "stranger.mjs"}, "warning: no extension answers geo:locate"},
 	} {
 		t.Run(row.name, func(t *testing.T) {

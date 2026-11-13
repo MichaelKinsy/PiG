@@ -101,6 +101,101 @@ def new_extension() -> pig_sdk.Extension:
     return ext
 ```
 
+## Example: the answer comes later
+
+An answering extension can need time, for example to read a file or to call a service. `Emit` does not wait for the part of an `async` Node listener that follows its first `await`. The asking extension then waits for the reply itself, with a time limit. Create the extension with `pig extension init waiter --lang go`. Replace `waiter/extension.go`:
+
+```go
+// waiter/extension.go: asks for a place on the event bus and waits for a reply that comes later.
+package waiter
+
+import (
+	"fmt"
+	"sync/atomic"
+	"time"
+
+	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+)
+
+var requests atomic.Int64
+
+func Extension() *sdk.Extension {
+	ext := sdk.New("waiter")
+	ext.Command("locate", "Ask another extension where a place is and wait for the reply", func(ctx sdk.Context, name string) error {
+		id := fmt.Sprintf("waiter-%d", requests.Add(1))
+		replies := make(chan map[string]any, 1)
+		off, err := ctx.Events().On("geo:found", func(_ sdk.Context, data any) error {
+			if reply, ok := data.(map[string]any); ok && reply["id"] == id {
+				select {
+				case replies <- reply:
+				default:
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		defer off()
+		if err := ctx.Events().Emit("geo:locate", map[string]any{"id": id, "name": name}); err != nil {
+			return err
+		}
+		select {
+		case place := <-replies:
+			ctx.Notify(fmt.Sprintf("%v is at %v, %v", place["name"], place["lat"], place["lon"]), "info")
+		case <-time.After(2 * time.Second):
+			ctx.Notify("no extension answered geo:locate in 2 s", "warning")
+		}
+		return nil
+	})
+	return ext
+}
+```
+
+The last `select` waits for the reply or for the end of two seconds, whichever comes first. The listener on `geo:found` runs while the command waits.
+
+A Node extension that answers after an `await`:
+
+```js
+// slow-geo.mjs: answers geo:locate after an await.
+const places = { Paris: [48.86, 2.35], Lagos: [6.52, 3.38] };
+
+export default function (pi) {
+  pi.events.on("geo:locate", async (request) => {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const [lat, lon] = places[request.name] ?? [0, 0];
+    pi.events.emit("geo:found", { id: request.id, name: request.name, lat, lon });
+  });
+}
+```
+
+With `pig -e ./waiter -e ./slow-geo.mjs`, `/locate Paris` shows `Paris is at 48.86, 2.35`. With `pig -e ./waiter` alone, the command shows `no extension answered geo:locate in 2 s` after two seconds.
+
+A Python listener is a plain function, and `emit` waits until it returns. A Python extension that answers later emits from a thread:
+
+```python
+# slow-geo.py: answers geo:locate from a timer thread.
+import threading
+
+import pig_sdk
+
+PLACES = {"Paris": (48.86, 2.35), "Lagos": (6.52, 3.38)}
+
+
+def new_extension() -> pig_sdk.Extension:
+    ext = pig_sdk.Extension("slow-geo")
+
+    def locate(ctx, request):
+        def answer():
+            lat, lon = PLACES.get(request["name"], (0, 0))
+            ext.events.emit("geo:found", {"id": request["id"], "name": request["name"], "lat": lat, "lon": lon})
+
+        threading.Timer(0.2, answer).start()
+
+    ext.events.on("geo:locate", locate)
+    return ext
+```
+
 ## Calls
 
 | SDK | The bus | Listen | Emit |
@@ -117,7 +212,7 @@ Inside a handler, use the bus of the handler's context (`ctx`). Use the bus of t
 
 - **Payload.** A payload is a JSON value. To or from a Go, Rust, Python or Lisp extension it crosses by value. Go receives an object as `map[string]any`, an array as `[]any` and a number as `float64`. Between two Node extensions the listener receives the emitter's own object, as in Pi.
 - **Order.** Listeners run in the order in which they subscribed, across all extensions. `emit` returns after the last listener has returned. A listener can emit, and that emit completes before the listener returns.
-- **Async listeners.** An `async` Node listener returns at its first `await`. `emit` does not wait for the rest of that listener, as in Pi. A reply that a listener emits after an `await` arrives after the asking `emit` has returned. An extension that asks such a listener must wait for the reply itself.
+- **Async listeners.** An `async` Node listener returns at its first `await`. `emit` does not wait for the rest of that listener, as in Pi. A reply that a listener emits after an `await` arrives after the asking `emit` has returned. An extension that asks such a listener must wait for the reply itself, as the second example does.
 - **No timeout.** A listener that does not return blocks its emitter.
 - **No listener.** An emit that no extension listens to does nothing and reports nothing. The channel `error` is the exception: an emit on `error` with no listener fails.
 - **A listener fails.** The error does not reach the emitter or the listeners after it. PiG writes `Event handler error (<channel>): <error>` to its standard error.
