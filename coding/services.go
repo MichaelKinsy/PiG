@@ -784,7 +784,7 @@ func registerHarnessTestFaux(reg *icodingagent.ModelRegistry) error {
 		API:     "test-faux",
 		Models: []extension.ProviderModelConfig{{
 			ID: "faux-1", Name: "Test Faux", API: "test-faux", Provider: "test-faux", BaseURL: "http://localhost:0",
-			Input: []string{"text", "image"}, ContextWindow: ai.TestFauxContextWindow, MaxTokens: ai.TestFauxMaxTokens,
+			Input: ai.TestFauxInput(), ContextWindow: ai.TestFauxContextWindow, MaxTokens: ai.TestFauxMaxTokens,
 		}},
 	})
 }

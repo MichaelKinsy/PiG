@@ -850,3 +850,13 @@ func messageImages(message Message) []ImageContent {
 	}
 	return images
 }
+
+// TestFauxInput is the input of the harness model faux-1 as test/parity/testdata/test-faux-provider.ts declares it: text and
+// image, or text only under TEST_FAUX_TEXT_ONLY=1 (the scenarios of a read under a model without image input). The switch
+// changes only the model's input.
+func TestFauxInput() []string {
+	if os.Getenv("TEST_FAUX_TEXT_ONLY") == "1" {
+		return []string{"text"}
+	}
+	return []string{"text", "image"}
+}

@@ -97,7 +97,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "7496298e10fbaeca1c41c905fb4380d271050fe5b9615b8e98e4dc79705a6a59",
+      "sha256": "aecce6be545b64ef451983bb5ae8fac0d3d66ff471ce5fd4c96044da31c086ac",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -10893,6 +10893,72 @@
             "/**/durationMs"
           ],
           "reason": "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tools/32-rpc-read-image-text-only-model.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "id",
+          "paths": [
+            "/**/id",
+            "/**/parentId",
+            "/**/leafId"
+          ],
+          "group": "entry",
+          "pattern": "^[a-f0-9]{8,16}$",
+          "reason": "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tools/33-interactive-read-image-text-only-model.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: read parity-read-target.txt",
+            "capture_end_regex": "it saw a placeholder instead\\][\\s\\S]*?done"
+          },
+          "reason": "Owned visible surface: The read card of an image read under a text-only model names the model in a warning, collapsed and expanded",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
         }
       ]
     },

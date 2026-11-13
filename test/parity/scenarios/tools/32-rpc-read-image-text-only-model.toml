@@ -1,0 +1,69 @@
+# Behavior family: tools (read of an image under a model without image input)
+# Pi 4be4cb4f5e9c (#12139; the oracle carries it as a post-release backport of core/tools/read.js and renderers/read.js). Probe: Pi in rpc mode prints the read's tool_execution_end event, the toolResult message and the session entry
+# with the faux model made text-only. TEST_FAUX_TEXT_ONLY=1 changes only the model's `input` (["text"] instead of ["text", "image"]) in
+# both faux twins (test/parity/testdata/test-faux-provider.ts, ai.TestFauxInput). The file the prompt reads, parity-read-target.txt, is a
+# 1x1 PNG: read detects an image by its bytes.
+# What the MODEL gets: the result text is "Read image file [image/png]" with the image block and no note about the model (the text is
+# stored and replayed after a switch to a vision model; pi-ai replaces the image per request). details.imageUnsupportedByModel names the
+# model in the event, the message and the entry; details are never sent to the model.
+name = "32-rpc-read-image-text-only-model"
+description = "A text-only model's read of an image keeps the note out of the result text and names the model in details"
+covers = ["packages/coding-agent/src/core/tools/read.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = true
+cwd = "testdata/read-image-text-only"
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"read","type":"prompt","message":"Run: read parity-read-target.txt"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"command":"get_messages","success":true']
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"entries","type":"get_entries"}'
+wait_contains = ['"command":"get_entries","success":true']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "TEST_FAUX_TEXT_ONLY=1"]
+pi = ["TEST_FAUX_TEXT_ONLY=1"]
+pig_args = ["--offline", "--model", "test-faux/faux-1", "--system-prompt", "RPC wire probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--model", "test-faux/faux-1", "--system-prompt", "RPC wire probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = ['"toolName":"read"', '"role":"toolResult"', '"text":"Read image file [image/png]"', '"details":{"imageUnsupportedByModel":"faux-1"}', '"type":"image"']
+both_not_contain = ["Current model does not support images"]
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId", "/**/leafId"]
+kind = "id"
+group = "entry"
+pattern = '^[a-f0-9]{8,16}$'
+reason = "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
