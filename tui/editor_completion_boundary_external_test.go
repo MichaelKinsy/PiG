@@ -105,13 +105,20 @@ func BenchmarkEditorOwnedArgumentCompletion(b *testing.B) {
 			return nil, nil
 		},
 	}}, b.TempDir(), ""))
-	b.ReportAllocs()
-	for b.Loop() {
+	complete := func() {
 		e.SetText("/load-skills ")
 		e.HandleInput("s")
 		flush()
 		e.HandleInput("\t")
 		e.Render(80)
+	}
+	// One completion before the timed loop: the first in a process pays what the process builds once (about 1,250 allocations when this
+	// benchmark runs alone, fewer after the benchmarks that run before it in the package), and five iterations read that as 302 alone and
+	// 53 or 58 in the package; a completion costs 53 at 2,000 iterations.
+	complete()
+	b.ReportAllocs()
+	for b.Loop() {
+		complete()
 	}
 }
 

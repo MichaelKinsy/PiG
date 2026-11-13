@@ -450,7 +450,7 @@ func pythonModuleTemplate(name, module string) string {
 	return fmt.Sprintf(`#!/usr/bin/env python3
 """%[1]s: a pig subprocess extension scaffolded by `+"`pig extension init`"+`.
 
-Pig imports `+"`new_extension`"+` into a generated runner. Pig supplies the staged
+PiG imports `+"`new_extension`"+` into a generated runner. PiG supplies the staged
 SDK on PYTHONPATH.
 """
 import pig_sdk
@@ -503,7 +503,7 @@ func lispSystemTemplate(name string) string {
 
 func lispFactoryTemplate(name string) string {
 	tool := strings.ReplaceAll(name, "-", "_") + "_ping"
-	return fmt.Sprintf(`;;;; Pig calls NEW-EXTENSION, which DEFINE-EXTENSION defines, to build this extension.
+	return fmt.Sprintf(`;;;; PiG calls NEW-EXTENSION, which DEFINE-EXTENSION defines, to build this extension.
 
 (defpackage %[1]q (:use "COMMON-LISP"))
 (in-package %[1]q)
@@ -631,9 +631,9 @@ func printExtensionInitReport(report extensionInitReport, jsonOut bool) int {
 
 func printExtensionInitHelp() {
 	fmt.Print("Usage:\n  pig extension init <path> [--name <name>] [--lang go|python|rust|lisp|node] [--login] [--isolated] [--force] [--json]\n\n" +
-		"Scaffold a new extension whose versioned SDK dependency Pig resolves to its\n" +
-		"staged copy, so it builds with no Pig source checkout or committed SDK path.\n" +
-		"Go builds fully offline; Python needs python3; Lisp needs SBCL 2.6.9; Node needs only Node (its Pi API module is supplied by Pig); Rust needs cargo (and crates.io\n" +
+		"Scaffold a new extension whose versioned SDK dependency PiG resolves to its\n" +
+		"staged copy, so it builds with no PiG source checkout or committed SDK path.\n" +
+		"Go builds fully offline; Python needs python3; Lisp needs SBCL 2.6.9; Node needs only Node (its Pi API module is supplied by PiG); Rust needs cargo (and crates.io\n" +
 		"on a cold cache for transitive dependencies).\n\n" +
 		"Options:\n" +
 		"  --name <name>   Extension name; it must match the sanitized directory base name.\n" +

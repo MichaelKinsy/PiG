@@ -534,7 +534,8 @@ func NewSettingsSelectorComponent(config SettingsConfig, callbacks SettingsCallb
 		toggle("auto-resize-images", "Auto-resize images", "Resize large images to 2000x2000 max for better model compatibility", config.AutoResizeImages),
 		toggle("block-images", "Block images", "Prevent images from being sent to LLM providers", config.BlockImages),
 		toggle("skill-commands", "Skill commands", "Register skills as /skill:name commands", config.EnableSkillCommands),
-		toggle("show-hardware-cursor", "Show hardware cursor", "Use the terminal cursor instead of Pi's drawn cursor", config.ShowHardwareCursor),
+		// pig divergence (D2): the description names PiG where Pi's names Pi ("Product name in messages").
+		toggle("show-hardware-cursor", "Show hardware cursor", "Use the terminal cursor instead of PiG's drawn cursor", config.ShowHardwareCursor),
 		cycle("editor-padding", "Editor padding", "Horizontal padding for input editor (0-3)", strconv.Itoa(config.EditorPaddingX), "0", "1", "2", "3"),
 		cycle("output-padding", "Output padding", "Horizontal padding for messages, tool output, and command output", strconv.Itoa(int(config.OutputPad)), "0", "1"),
 		cycle("autocomplete-max-visible", "Autocomplete max items", "Max visible items in autocomplete dropdown (3-20)", strconv.Itoa(config.AutocompleteMaxVisible), "3", "5", "7", "10", "15", "20"),

@@ -54,6 +54,8 @@ type AssistantMessageComponent struct {
 	terminalErrorPad  int
 	// rowBuf is the array renderBorrowedChild renders into.
 	rowBuf []string
+	// streamMemos is what the block's Markdown segments kept at the frame last drawn, held while the message streams (pinStreamMemos).
+	streamMemos []*markdownMemos
 }
 
 func (b *AssistantMessageComponent) newMarkdown(text string) *Markdown {
@@ -183,10 +185,11 @@ func (b *AssistantMessageComponent) UpdateContent(message AssistantMessage, isSt
 }
 
 // FinishStreaming tells the block that its message is complete: its Markdown drops the memos that only speed up the
-// render of the next streamed delta. The rows are unchanged. A hidden thinking run shows its label, so its Markdown does
+// render of the next streamed delta, and the block lets go of the ones it held for the next frame. The rows are unchanged. A hidden thinking run shows its label, so its Markdown does
 // not render again and drops them now (Markdown.FinishStreaming keeps them for an undrawn text's next render).
 func (b *AssistantMessageComponent) FinishStreaming() {
 	b.finished = true
+	b.streamMemos = nil
 	run := 0
 	for _, segment := range b.segments {
 		segment.md.FinishStreaming()
@@ -305,6 +308,7 @@ func (b *AssistantMessageComponent) SetContent(content []AssistantSegment) {
 
 // Dispose releases this block's Markdown generations without allowing a late publication.
 func (b *AssistantMessageComponent) Dispose() {
+	b.streamMemos = nil
 	b.md.Dispose()
 	for _, segment := range b.segments {
 		segment.md.Dispose()
@@ -451,6 +455,7 @@ func (b *AssistantMessageComponent) IsDirty() bool { return b.invalidatable.IsDi
 
 // Invalidate rebuilds the content so theme-baked colors follow the active theme (assistant-message.ts invalidate). It runs on the goroutine that owns the block, as Pi's runs on its event loop; a transform worker marks the block dirty through SetAsyncMarkdownTransforms instead.
 func (b *AssistantMessageComponent) Invalidate() {
+	b.streamMemos = nil
 	b.Container.Invalidate()
 	b.updateContent()
 }
@@ -463,7 +468,9 @@ func (b *AssistantMessageComponent) Render(width int) []string {
 	if b.ownedRuns {
 		b.measureOwnedRuns(width)
 	}
-	return b.withZones(b.renderCopy(width))
+	out := b.renderCopy(width)
+	b.pinStreamMemos()
+	return b.withZones(out)
 }
 
 // renderBorrowedChild is Render into an array the block keeps for its next render: the parent container that borrows it
@@ -477,7 +484,26 @@ func (b *AssistantMessageComponent) renderBorrowedChild(width int) []string {
 		b.measureOwnedRuns(width)
 	}
 	b.rowBuf = b.renderInto(width, b.rowBuf)
+	b.pinStreamMemos()
 	return b.withZones(b.rowBuf)
+}
+
+// pinStreamMemos holds what the block's Markdown segments kept at the frame just drawn, in place of what it held for the frame before, until the stream ends (FinishStreaming) or the block is invalidated or disposed. A Markdown lets go of its memos when its render returns, as markdown.ts holds its rendered blocks in a WeakRef, so a collection between two frames makes the next one render every block of the answer again; a message that streams draws again within a frame's time, so its block holds them for that frame. A collection that ends between a segment's render and this call has released that segment's memos, and its next render builds them again, as it does for a Markdown nothing holds.
+// pig additive (D112): the rows are the same with or without the memos; the block holds one frame's memos of its own segments and nothing older.
+func (b *AssistantMessageComponent) pinStreamMemos() {
+	if b.finished {
+		return
+	}
+	held := b.streamMemos[:0]
+	for _, segment := range b.segments {
+		if memos := segment.md.memosRef.Value(); memos != nil {
+			held = append(held, memos)
+		}
+	}
+	if len(held) < len(b.streamMemos) {
+		clear(b.streamMemos[len(held):])
+	}
+	b.streamMemos = held
 }
 
 // withZones adds the OSC 133 zone boundaries to out in place.

@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
@@ -83,6 +84,8 @@ func (h *Host) stageCellsInOrder(ctx context.Context, cells []CellSpec, commit f
 	ctx = context.WithValue(stageCtx, runtimeParentKey{}, parent)
 	ctx, closeBuildLine := h.withBuildLine(ctx, cells)
 	defer closeBuildLine()
+	// The cells staged here are one load: they read each SDK tree once between them when they look for their built images.
+	ctx = runtimecell.WithLoadTreeHashes(ctx)
 	type unit struct {
 		order     int
 		admission *memberAdmission

@@ -215,7 +215,7 @@ func TestGitUpdatesUpstream(t *testing.T) {
 		if !strings.Contains(first, "git clean -fdx\n") || !strings.Contains(first, "npm install") {
 			t.Fatalf("first update commands: %s", first)
 		}
-		want := fmt.Sprintf("Could not remove all untracked files in %s (git clean -fdx failed with code 1). Files may be in use by another pi session; close it and run the update again.", installed)
+		want := fmt.Sprintf(d2Text("Could not remove all untracked files in %s (git clean -fdx failed with code 1). Files may be in use by another pi session; close it and run the update again."), installed)
 		if len(messages) != 1 || messages[0] != want {
 			t.Fatalf("progress messages=%q want %q", messages, want)
 		}

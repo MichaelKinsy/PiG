@@ -534,7 +534,7 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 			_, _ = fmt.Fprintf(stdout, "  source: %s\n", p.AgentEnv.Source)
 		}
 		if p.AgentEnv.PigRuntime != nil {
-			_, _ = fmt.Fprintf(stdout, "  Pig runtime: %s@%s\n", p.AgentEnv.PigRuntime.Mode, p.AgentEnv.PigRuntime.Version)
+			_, _ = fmt.Fprintf(stdout, "  PiG runtime: %s@%s\n", p.AgentEnv.PigRuntime.Mode, p.AgentEnv.PigRuntime.Version)
 		}
 		if p.AgentEnv.Policy != nil {
 			_, _ = fmt.Fprintf(stdout, "  policy: %s\n", p.AgentEnv.Policy.Preset)
@@ -916,7 +916,7 @@ func renderPigletValidation(output pigletValidationOutput, jsonMode bool, stdout
 			_, _ = fmt.Fprintf(stdout, "  OK: skill %s (%s)\n", resource.Name, resource.Path)
 		}
 		if environment := output.AgentEnvironment; environment != nil {
-			_, _ = fmt.Fprintf(stdout, "  OK: agent environment %s (%s), Pig runtime %s@%s, policy %s\n", environment.Form, environment.Value, environment.RuntimeMode, environment.RuntimeVersion, environment.PolicyPreset)
+			_, _ = fmt.Fprintf(stdout, "  OK: agent environment %s (%s), PiG runtime %s@%s, policy %s\n", environment.Form, environment.Value, environment.RuntimeMode, environment.RuntimeVersion, environment.PolicyPreset)
 		}
 		_, _ = fmt.Fprintf(stdout, "OK: %s (%s): %d extension(s), %d skill(s)\n", output.Name, output.Source, len(output.Extensions), len(output.Skills))
 	default:

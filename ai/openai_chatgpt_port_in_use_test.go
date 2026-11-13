@@ -24,7 +24,7 @@ func TestOpenAIChatGPTLoginFailsWhenTheCallbackPortIsInUse(t *testing.T) {
 
 	_, err = oauth.Login(t.Context(), chatgptLoginInteraction("oaiapp_issued", func(*url.URL) { authorized = true }), LoginOptions{GetDeviceID: func() string { return chatgptDeviceID }})
 
-	const want = "Port 1455 is in use, probably by an unfinished login in another pi session or by the Codex CLI. Cancel that login and try again."
+	want := d2Text("Port 1455 is in use, probably by an unfinished login in another pi session or by the Codex CLI. Cancel that login and try again.")
 	if err == nil || err.Error() != want {
 		t.Fatalf("Login error = %v, want %q", err, want)
 	}

@@ -33,7 +33,7 @@ func TestExportFileToHTMLMatchesPi(t *testing.T) {
 		{"empty file is a new session", empty, out, ""},
 		{"missing", filepath.Join(dir, "none.jsonl"), out, "File not found: " + filepath.Join(dir, "none.jsonl")},
 		{"directory", dir, out, "EISDIR: illegal operation on a directory, read"},
-		{"not a session", garbage, out, "Session file is not a valid pi session: " + garbage},
+		{"not a session", garbage, out, d2Text("Session file is not a valid pi session: ") + garbage},
 		{"output directory missing", valid, filepath.Join(dir, "nodir", "out.html"), "ENOENT: no such file or directory, open '" + filepath.Join(dir, "nodir", "out.html") + "'"},
 		{"output is a directory", valid, dir, "EISDIR: illegal operation on a directory, open '" + dir + "'"},
 	} {
