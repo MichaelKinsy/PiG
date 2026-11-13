@@ -16,9 +16,11 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// eventProbe is a mounted interactive mode with the terminal progress calls recorded.
+// eventProbe is a mounted interactive mode with the title and progress calls on its renderer's terminal recorded.
 type eventProbe struct {
 	*InteractiveMode
+	terminal *terminalCalls
+	// progress is the terminal's progress calls. The probe's events are handled on the test's goroutine.
 	progress *[]bool
 }
 
@@ -26,12 +28,10 @@ func newEventProbe(t *testing.T, showProgress bool) eventProbe {
 	t.Helper()
 	m, _ := newTickRenderProbe(t, "regular")
 	m.opts.Settings.ShowTerminalProgress = &showProgress
-	calls := []bool{}
-	previous := setTerminalProgress
-	setTerminalProgress = func(active bool) { calls = append(calls, active) }
-	t.Cleanup(func() { setTerminalProgress = previous })
+	terminal := recordTerminalCalls(t, m)
+	terminal.progress = []bool{}
 	t.Cleanup(func() { m.clearStatusIndicator("") })
-	return eventProbe{InteractiveMode: m, progress: &calls}
+	return eventProbe{InteractiveMode: m, terminal: terminal, progress: &terminal.progress}
 }
 
 func (p eventProbe) chat() string {

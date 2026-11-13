@@ -31,8 +31,9 @@ func TestFailedExtensionReloadDropsTheStagedDefaultTools(t *testing.T) {
 		SessionHandle:   handle,
 		SettingsManager: NewSettingsManager(t.TempDir(), t.TempDir()),
 	})
-	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
-		t.Fatal(err)
+	// upstream: a reload that throws ends there (agent-session.ts:3838); the mode shows the error.
+	if err := m.buildSlashContext(t.Context()).Reload(); err == nil {
+		t.Fatalf("reload error = %v, want the extension host's", err)
 	}
 	if handle.pending || handle.refreshes != 0 {
 		t.Fatalf("pending = %v, refreshes = %d: a failed extension reload left the staged default tools for a later refresh", handle.pending, handle.refreshes)

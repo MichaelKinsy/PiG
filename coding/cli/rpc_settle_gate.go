@@ -13,12 +13,16 @@ import (
 // rpcSettleGate holds stdin input between a published agent_end and the agent_settled that follows it. Pi's path from agent_end to agent_settled (agent-session.ts:1752-1777 _runAgentPrompt, 1044-1058 _emitAgentSettled) runs in microtasks unless it waits on something real, so no stdin line is read inside it (rpc-mode.ts:355-360,808-810). Pig reads stdin on its own goroutine, so a command sent on seeing agent_end would otherwise be answered before agent_settled.
 //
 // The gate is open while a wait that Pi serves stdin during is pending: a compaction, an auto-retry delay, a new run (agent_start), or a settle-tail extension handler that waits on a timer, I/O or another real wait (subprocess.Host.SetSettleTailHandler). A pending extension dialog is checked by the caller, which also stops waiting when shutdown starts or the mode ends.
+//
+// The gate holds stdin through a reload in the same way. Pi's session.reload() awaits session_shutdown, the settings and resource loader, session_start and resources_discover in one chain (agent-session.ts:3815-3861), and the command that awaited ctx.reload() goes on in the microtasks of its end, so no stdin line is read from the reload's first await to that command's response or next await (rpc-mode.ts:345-347,832-834): a prompt written while a reload runs is handled after it, by the reloaded extensions. Only a handler of the chain that waits on a timer or I/O lets Pi read stdin inside it, and the hosts report those handlers with the settle-tail ones. Pig reloads on a goroutine of its own, across process boundaries, so without the hold the command loop ran such a prompt on the extensions the reload was replacing.
 type rpcSettleGate struct {
 	mu         sync.Mutex
 	tail       bool
 	compacting bool
 	retrying   bool
-	// handlerWaits holds each extension host's count of settle-tail handlers that wait on something real; a replacement host reports into a slot of its own.
+	// reloads counts the reloads whose chain has not ended (holdReload).
+	reloads int
+	// handlerWaits holds each extension host's count of settle-tail and reload handlers that wait on something real; a replacement host reports into a slot of its own.
 	handlerWaits []*int
 	waiters      []chan struct{}
 }
@@ -86,7 +90,34 @@ func (g *rpcSettleGate) handlerWaitsLocked() bool {
 }
 
 func (g *rpcSettleGate) openLocked() bool {
-	return !g.tail || g.compacting || g.retrying || g.handlerWaitsLocked()
+	if g.handlerWaitsLocked() {
+		return true
+	}
+	return g.reloads == 0 && (!g.tail || g.compacting || g.retrying)
+}
+
+// holdReload holds stdin for a reload from its start and returns the function that ends the hold, once: the caller runs it when the command that awaited the reload has answered or awaits again.
+// pig divergence (D630): the hold also lasts while a reloaded extension's factory awaits a timer or I/O, where Pi's loop turns inside the reload and reads stdin: a prompt written then runs after the reload on the reloaded extension, not on the runner the reload has invalidated, and stdin's end is read after the reload.
+func (g *rpcSettleGate) holdReload() (release func()) {
+	g.mu.Lock()
+	g.reloads++
+	g.mu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			g.mu.Lock()
+			defer g.mu.Unlock()
+			g.reloads--
+			g.releaseLocked()
+		})
+	}
+}
+
+// reloading reports whether a reload holds stdin (holdReload).
+func (g *rpcSettleGate) reloading() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.reloads > 0
 }
 
 func (g *rpcSettleGate) releaseLocked() {

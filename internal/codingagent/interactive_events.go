@@ -133,9 +133,6 @@ func fileCallArguments(args json.RawMessage) ai.JsonObject {
 // JS event loop where agent events and input are dispatched on one thread.
 // Cross-event state (the current assistant block / message / turn index) lives
 // on InteractiveMode fields since the handler is now invoked per event.
-// setTerminalProgress writes the OSC 9;4 terminal progress indicator.
-var setTerminalProgress = tui.SetTerminalProgress
-
 // handleAgentEvent takes one item of the Session's Events on the owner loop.
 //
 // Pi's frame is a timer callback (packages/tui/src/tui.ts:1033-1090 requestRender), so it cannot begin between two events that Pi's loop handles in one task: the events of a response the provider delivered in one run, and the message_end, tool_execution_start, turn_end and agent_end the loop emits behind them without awaiting anything (packages/agent/src/agent-loop.ts:262-263, 296-299, 329). The Session marks the bounds of such a task (eventRegionMarker). The loop takes the frame timer and the events from one select, so between the markers it only collects the events, and applies them all in the iteration that takes the closing marker: a frame that falls due meanwhile draws the state before the task, as Pi's timer does when it fires before the task, and the frame after it draws the whole task.
@@ -234,7 +231,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 	m.programStatusReporter().HandleEvent(ev)
 	switch e := ev.(type) {
 	case agent.SessionInfoChangedEvent:
-		setTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))
+		m.setTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))
 		m.statusLine.SetName(e.Name)
 		m.tuiInst.RequestRender()
 
@@ -253,7 +250,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 
 	case agent.AgentEndEvent:
 		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(false)
+			m.setTerminalProgress(false)
 		}
 		m.clearStatusIndicator("working")
 		// Pi removes a message still streaming when the run ends (interactive-mode.ts agent_end).
@@ -278,7 +275,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 
 	case agent.TurnStartEvent:
 		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(true)
+			m.setTerminalProgress(true)
 		}
 		if m.workingVisible {
 			if m.activeStatusIndicator == nil || m.activeStatusIndicator.Kind != "working" {
@@ -619,7 +616,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 	case agent.CompactionStartEvent:
 		// Central abort routing handles Esc and Ctrl+C during compaction.
 		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(true)
+			m.setTerminalProgress(true)
 		}
 		m.isCompacting = true
 		m.showCompactionStatusIndicator(e.Reason)
@@ -630,7 +627,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 		// Restore normal state; handle result.
 		// Mirrors upstream compaction_end handler (interactive-mode.ts:2795-2833).
 		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(false)
+			m.setTerminalProgress(false)
 		}
 		m.isCompacting = false
 		m.clearStatusIndicator("compaction")

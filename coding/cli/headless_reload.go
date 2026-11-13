@@ -36,6 +36,12 @@ func (b *cliRuntimeBuilder) reloadBuildExtensions(owner context.Context, build *
 		release := build.Services.Registry().HoldRegistrationRefresh()
 		reloaded, err := host.Reload(owner)
 		release()
+		// pig additive (D19): an extension whose runtime did not acknowledge the reload was ended and loaded again. These modes write the host's lifecycle notices to stderr (the crash handler of newSubprocessExtensionHost), and the reload's line goes there too (subprocess.ReloadReport.Unacknowledged).
+		if report := host.LastReloadReport(); report != nil {
+			for _, line := range report.Unacknowledged {
+				fmt.Fprintln(os.Stderr, line)
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("extension reload: %w", err)
 		}

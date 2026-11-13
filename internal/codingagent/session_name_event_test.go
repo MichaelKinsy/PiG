@@ -25,8 +25,9 @@ func TestSessionNameEventUpdatesInteractiveFooter(t *testing.T) {
 		if m.statusLine.name != name {
 			t.Fatalf("footer name=%q, want %q", m.statusLine.name, name)
 		}
-		if output.Len() != 0 {
-			t.Fatalf("name event synchronously repainted transcript: %q", output.String())
+		// The title is written on the renderer's terminal at once (updateTerminalTitle); the frame waits for the requested render.
+		if want := "\x1b]0;" + tui.BuildTerminalTitle(name, "") + "\x07"; output.String() != want {
+			t.Fatalf("name event wrote %q on the terminal, want only the title %q: the transcript is not repainted synchronously", output.String(), want)
 		}
 		select {
 		case render := <-renders:

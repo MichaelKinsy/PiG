@@ -213,13 +213,13 @@
    "tui/terminal.go#ProcessTerminal.SetProgress"
   ],
   "production": [
-   "call:tui/terminal.go#SetTerminalProgress"
+   "public-api:tui/terminal.go#ProcessTerminal.SetProgress"
   ],
   "evidence": [
    "test:tui/terminal_input_regression_test.go#TestTerminalProgressCancellationJoinsKeepalive",
    "test:tui/terminal_protocol_parity_test.go#TestTerminalProtocolParityObservations"
   ],
-  "rationale": "ProcessTerminal.setProgress is the Go method ProcessTerminal.SetProgress; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+  "rationale": "ProcessTerminal.setProgress is the Go method tui.ProcessTerminal.SetProgress; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and the interactive mode calls it only through the tui.Terminal interface of its renderer's terminal (InteractiveMode.setTerminalProgress, as Pi's this.ui.terminal.setProgress), which go/types does not attribute to this type; test callers (go/types) are the proof."
  },
  {
   "ids": [
@@ -229,12 +229,12 @@
    "tui/terminal.go#ProcessTerminal.SetTitle"
   ],
   "production": [
-   "call:tui/terminal.go#SetTerminalTitle"
+   "public-api:tui/terminal.go#ProcessTerminal.SetTitle"
   ],
   "evidence": [
    "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
   ],
-  "rationale": "ProcessTerminal.setTitle is the Go method ProcessTerminal.SetTitle; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
+  "rationale": "ProcessTerminal.setTitle is the Go method tui.ProcessTerminal.SetTitle; signature reviewed against the upstream declaration. Closed as public-api-tested: the method is exported from the public tui package and the interactive mode calls it only through the tui.Terminal interface of its renderer's terminal (InteractiveMode.setTerminalTitle, as Pi's this.ui.terminal.setTitle), which go/types does not attribute to this type; test callers (go/types) are the proof."
  },
  {
   "ids": [

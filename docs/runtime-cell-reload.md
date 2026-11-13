@@ -32,6 +32,8 @@ The host attributes a crash to the factory being admitted, an extension path in 
 
 Recovery reruns factories, not interrupted tools or callbacks. Current invocations fail on their original dead connections. Subsequent named capability calls can use the recovered instance. Generation checks reject stale crash reports; old connection-owned UI state cannot mutate the replacement. Original owner cancellation and Host shutdown cancel and drain recovery. Every restart, diagnostic split and quarantine is reported through the existing crash-notice callback. Quarantine is host runtime state and never changes authored isolation.
 
+A cell whose process ends just before a `/reload` begins is restarted by that reload without a notice of the exit. The reload replaces the cell before the watcher of the process reports its end, and the generation check rejects the late report. Before the end of a Node cell's process was reported once for each extension, each extension of such a cell was reported as disabled, with a request for the `/reload` that was already running.
+
 ## Diagnostic logs
 
 PiG captures one temporary `pig-packed-*.log` stderr file per packed process (D20) or `pig-ext-*.log` per isolated process (D56). Each file keeps the first 1 MiB and the last 64 KiB of the output and states how many bytes it dropped, so a startup failure and a crash line both survive a flood. Shutdown and reload close the process handles and remove that file. A load or crash diagnostic that names the file retains it for troubleshooting, including after reload. A cancelled load does not retain a log. Remove a retained file manually when you no longer need it.

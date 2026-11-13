@@ -194,6 +194,8 @@ func recoveryBusPlacement(t *testing.T, text string) string {
 	return strings.Join(names, ",") + " | " + strings.Join(placement, " ")
 }
 
+// The reload at the end supersedes two Node processes that share a routed bus: each runtime releases its bus listeners when it is told that its runner is stale, and the host applies those calls.
+// mutation-checked: with runCall refusing the bus release calls of an invalidated generation (releasesBusListeners) the runtimes exit and the reload does not load member0: "member0 is not registered".
 func TestNodeCrashQuarantinesOnlyCulpritAndDoesNotReplay(t *testing.T) {
 	skipWithoutNodeExtensions(t)
 	t.Parallel()
