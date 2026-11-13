@@ -1,4 +1,5 @@
-import "@earendil-works/pi-coding-agent";
+/// <reference path="./pi-pin.d.ts" />
+import type { MarkdownTransformContext, Theme } from "@earendil-works/pi-coding-agent";
 import "@earendil-works/pi-tui";
 
 export type * from "@earendil-works/pi-coding-agent";
@@ -110,6 +111,11 @@ export interface PiGViewIntent {
   cancellable?: boolean;
   /** 100..300000; default 30000. */
   timeoutMs?: number;
+  /**
+   * Lets a client raise the intent while the mount is hidden: it is how the user opens a view the extension hid, and the
+   * handler shows the mount. At most one intent of a mount has it; it names no node and its `arg` accepts `{}`.
+   */
+  whenHidden?: boolean;
 }
 export interface PiGViewAsset {
   id: string;
@@ -120,6 +126,22 @@ export interface PiGViewAsset {
 }
 /** The D107 wire view, `{ root: { kind: "text", text: "..." } }`. */
 export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
+/** D614: one event of a grid cell: its text (at most 256 bytes) and its colour (a theme token, "#rrggbb" or "#rrggbbaa"). */
+export type PiGViewGridChip = { text: string; color?: string };
+/**
+ * D614: one cell of a {@link PiGViewGrid}. `value` names it in the intent a choice raises (at most 256 bytes, unique in the grid; a cell
+ * without one cannot be chosen), `label` is its first line (at most 64 bytes), `mark` draws it as today, `dim` as outside the shown range,
+ * `color` tints the label, `chips` are the events it shows (at most 8) and `more` counts the events the sender left out (0..9999).
+ */
+export type PiGViewGridCell = { value?: string; label?: string; mark?: "current"; dim?: boolean; color?: string; chips?: PiGViewGridChip[]; more?: number };
+/**
+ * D614: the grid node of the D107 view, a calendar-style grid of equal columns whose cells are data. Use it as the `root` of a
+ * {@link PiGWireView} or as a child of a container node. The host is its only validator: `columns` is 1..16, `head` is absent or one label a
+ * column (64 bytes each), `chipRows` 1..8 (default 3), at most 128 cells in at most 32 rows, `selected` one of the cell values, and a member
+ * the record lacks rejects the call with code `invalid`. An intent whose `nodeKey` is the grid's `id` is raised with `{ value }` of the cell
+ * the user chose.
+ */
+export type PiGViewGrid = { kind: "grid"; id: string; columns: number; head?: string[]; chipRows?: number; selected?: string; cells: PiGViewGridCell[] };
 /** One fact the attached client states about itself, named "<area>.<fact>". */
 export interface PiGViewClaim {
   name: string;
@@ -213,15 +235,32 @@ export interface PiGViewA11y {
   invalid?: boolean;
   relations?: { kind: "labelledBy" | "describedBy" | "controls" | "owns"; target: string }[];
 }
-/** Makes the node with id `node` focusable; the order of the entries is the focus order. */
+/**
+ * Makes the node with id `node` focusable; the order of the entries is the focus order. `request` asks for the focus when
+ * the mount is first drawn (`mount`) or when the revision that carries it is first drawn (`update`); a client that does not
+ * give it leaves an `unfocused` notice.
+ */
 export interface PiGViewFocus {
   node: string;
-  request?: "mount";
+  request?: "mount" | "update";
   restore?: "previous" | "self";
 }
+/** A gesture a binding may name. */
+export type PiGViewGesture = "swipe-left" | "swipe-right" | "swipe-up" | "swipe-down";
+/**
+ * Ties a key or a gesture to an intent of the same content that names no node. A client fires it only while the mount holds
+ * the focus and the focused node did not take the key. `key` is a key id as `registerShortcut` writes it (`"d"`,
+ * `"shift+left"`, `"ctrl+shift+p"`); `arg` is the constant argument the intent is raised with (`{}` when absent) and `name`
+ * what a client shows for the binding.
+ */
+export type PiGViewBinding = ({ key: string; gesture?: never } | { gesture: PiGViewGesture; key?: never }) & {
+  intent: string;
+  arg?: unknown;
+  name?: string;
+};
 /** One diagnostic of a mount; `count` is how often it happened. */
 export interface PiGViewNotice {
-  code: "invalid" | "unsupported" | "limit" | "stale" | "terminal" | "refused" | "failed" | "timeout" | "undrawn";
+  code: "invalid" | "unsupported" | "limit" | "stale" | "terminal" | "refused" | "failed" | "timeout" | "undrawn" | "unfocused";
   severity: "info" | "warning" | "error";
   message?: string;
   path?: string;
@@ -234,6 +273,8 @@ export interface PiGViewNotice {
   count: number;
 }
 export interface PiGViewContent {
+  /** The short text a client labels the mount with, in a tab or a list of views: at most 64 bytes on one line. */
+  title?: string;
   view: PiGWireView;
   intents?: PiGViewIntent[];
   assets?: PiGViewAsset[];
@@ -245,6 +286,8 @@ export interface PiGViewContent {
   a11y?: PiGViewA11y[];
   /** At most 256 entries; at most one requests the focus. */
   focus?: PiGViewFocus[];
+  /** At most 32 entries; a key or a gesture is bound once. */
+  bindings?: PiGViewBinding[];
 }
 export interface PiGViewMount extends PiGViewContent {
   key: string;

@@ -52,6 +52,9 @@ type viewSurface struct {
 	// terminalRows is the terminal's height in rows, 0 when unknown; an
 	// editor's visible line count follows it (nil: an in-memory surface).
 	terminalRows func() int
+	// rowBudget is the rows the surface is drawn with when its owner cuts it, 0 or nil for no cut; a grid draws fewer
+	// chip lines to fit it (nil: a D107 surface).
+	rowBudget func() int
 
 	frame     *viewFrame
 	instances map[string]*viewInstance

@@ -34,7 +34,18 @@ type sessionBoundTool struct {
 //
 // upstream: agent-session.ts:1551-1557 (declared = { ...tool, description })
 func (tool *sessionBoundTool) Schema() ai.ToolSchema {
-	schema := tool.AgentTool.Schema()
+	return tool.withDescription(tool.AgentTool.Schema())
+}
+
+// BorrowedSchema is Schema with the wrapped tool's parameters shared where it can share them; see agent.schemaBorrower.
+func (tool *sessionBoundTool) BorrowedSchema() ai.ToolSchema {
+	if borrower, ok := tool.AgentTool.(interface{ BorrowedSchema() ai.ToolSchema }); ok {
+		return tool.withDescription(borrower.BorrowedSchema())
+	}
+	return tool.Schema()
+}
+
+func (tool *sessionBoundTool) withDescription(schema ai.ToolSchema) ai.ToolSchema {
 	if tool.description != nil {
 		schema.Description = *tool.description
 	}

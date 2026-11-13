@@ -10633,7 +10633,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "7 normalized-name Pig candidates are ambiguous."
+        "8 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -10649,7 +10649,8 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension#API",
         "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api",
         "go:github.com/MichaelKinsy/PiG/coding/mcpext#API",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#entrySlot.api"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#entrySlot.api",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#pendingSlot.api"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -44521,22 +44522,24 @@
     {
       "id": "pkg:ai/.#Usage",
       "upstreamShapeHash": "sha256:8a7bcee0bd41b2b0aebf3d4686c021018b3b234becf65641fd78aa25123aac5b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#Usage"
+        "go:github.com/MichaelKinsy/PiG/ai#Usage",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.usage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -69253,7 +69256,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "7 normalized-name Pig candidates are ambiguous."
+        "8 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -69269,7 +69272,8 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension#API",
         "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api",
         "go:github.com/MichaelKinsy/PiG/coding/mcpext#API",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#entrySlot.api"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#entrySlot.api",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#pendingSlot.api"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -103652,22 +103656,24 @@
     {
       "id": "pkg:ai/compat#Usage",
       "upstreamShapeHash": "sha256:8a7bcee0bd41b2b0aebf3d4686c021018b3b234becf65641fd78aa25123aac5b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#Usage"
+        "go:github.com/MichaelKinsy/PiG/ai#Usage",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.usage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -152700,7 +152706,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "39 normalized-name Pig candidates are ambiguous."
+        "40 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -152719,6 +152725,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#mistralEventLoop.run",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesEventLoop.run",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.run",
+        "go:github.com/MichaelKinsy/PiG/ai#providerRefresh.run",
         "go:github.com/MichaelKinsy/PiG/ai#tslibAsyncGenerator.run",
         "go:github.com/MichaelKinsy/PiG/coding#GraphExtensionRunner.run",
         "go:github.com/MichaelKinsy/PiG/coding#PreparedPromptRun.Run",
@@ -152990,7 +152997,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "20 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -153008,12 +153015,18 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.Schema",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.schema"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -154900,7 +154913,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -154911,6 +154924,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#tslibAsyncGenerator.step",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.step",
         "go:github.com/MichaelKinsy/PiG/tui#NativeAction.step"
       ],
       "missingClosure": [
@@ -155491,7 +155505,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "88 normalized-name Pig candidates are ambiguous."
+        "87 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -155511,7 +155525,6 @@
         "go:github.com/MichaelKinsy/PiG/ai#expandedCatalogChunks.Store",
         "go:github.com/MichaelKinsy/PiG/ai#googleGenerativeToolCallCounter.Store",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexToolCallCounter.Store",
-        "go:github.com/MichaelKinsy/PiG/ai#openRouterVariants.Store",
         "go:github.com/MichaelKinsy/PiG/ai#registryFQBuilt.Store",
         "go:github.com/MichaelKinsy/PiG/ai#responsesSlotObjects.Store",
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.Store",
@@ -160477,7 +160490,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "115 normalized-name Pig candidates are ambiguous."
+        "116 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160550,6 +160563,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#currentRendererTUI.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#earendilAnnouncementComponent.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstTimeSetupStartup.Add",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#idArena.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#lineBatch.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#mermaidFoldScanned.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#nativeModelIndex.add",
@@ -165811,7 +165825,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "11 normalized-name Pig candidates are ambiguous."
+        "12 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -165830,6 +165844,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/uiview#canon.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#wireReader.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Str",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.str",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#grepScanner.str",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#graphemeIter.Str"
       ],
@@ -305059,7 +305074,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "16 normalized-name Pig candidates are ambiguous."
+        "17 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -305084,7 +305099,8 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.Compact",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#Compact",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#Compact",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#compact"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#compact",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.compact"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -315451,7 +315467,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "8 normalized-name Pig candidates are ambiguous."
+        "10 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -315466,8 +315482,10 @@
         "go:github.com/MichaelKinsy/PiG/coding#sessionToolRegistry.entry",
         "go:github.com/MichaelKinsy/PiG/coding#virtualModelStore.entry",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Entry",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.Entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#lazyTree.entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#treeNodeAdapter.entry",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/timings#entry"
       ],
       "missingClosure": [
@@ -317349,7 +317367,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "40 normalized-name Pig candidates are ambiguous."
+        "41 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -317397,6 +317415,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#oauthProxyWithStore.ID",
         "go:github.com/MichaelKinsy/PiG/coding/piglet/artifact#Component.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.ID",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#parityOAuthProvider.ID"
       ],
@@ -336138,7 +336157,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "12 normalized-name Pig candidates are ambiguous."
+        "13 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -336156,6 +336175,7 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelEventStream.Result",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Result",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#customOverlay.Result",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#Result",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#headJoin.Result",
         "go:github.com/MichaelKinsy/PiG/tui#ScopedModelsList.Result",
         "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Result",
@@ -383485,7 +383505,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "20 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -383503,12 +383523,18 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.Schema",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.schema"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -384863,7 +384889,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "11 normalized-name Pig candidates are ambiguous."
+        "12 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -384882,6 +384908,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/uiview#canon.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#wireReader.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Str",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.str",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#grepScanner.str",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#graphemeIter.Str"
       ],
@@ -393450,7 +393477,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "5 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -393461,6 +393488,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/extension#ValidatedLoginDefinition.Color",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.color",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Color",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#Color",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#Color",
@@ -414940,7 +414968,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "24 normalized-name Pig candidates are ambiguous."
+        "25 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -414966,6 +414994,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#markedDefinitionBlock.Text",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#markedHTMLBlock.Text",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#searchTextArena.text",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.text",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#grepEventParser.text",
         "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.Text",
         "go:github.com/MichaelKinsy/PiG/tui#Editor.Text",

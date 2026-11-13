@@ -708,7 +708,7 @@ func cmdBundle(ctx context.Context, args []string, stderr io.Writer, getenv func
 	}
 	pin := committedPiPin()
 	store := filepath.Join(cmp.Or(*piBuilds, piBuildStore(getenv)), pin.Commit)
-	piDurable, err := writePinnedInstall(root, filepath.Join(outDir, "pi-durable"), filepath.Join(store, durableReference.packs), durableReference, pin)
+	piDurable, err := writePinnedInstall(root, filepath.Join(outDir, "pi-durable"), "", durableReference, pin)
 	if err != nil {
 		return err
 	}

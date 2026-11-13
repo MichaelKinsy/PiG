@@ -26,6 +26,6 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['TOOL_WIRE {"case":"read",', 'TOOL_WIRE {"case":"bash truncated",', 'TOOL_WIRE {"case":"ls fractional","result":{"content":[{"text":"a.txt\n\n[1 entries limit reached. Use limit=2 for more]","type":"text"}],"details":{"entryLimitReached":1}}}', 'TOOL_WIRE {"case":"find limited","result":{"content":[{"text":"a.txt","type":"text"}]}}']
+both_contain = ['TOOL_WIRE {"case":"bash over-long last line",', 'TOOL_WIRE {"case":"read",', 'TOOL_WIRE {"case":"bash truncated",', 'TOOL_WIRE {"case":"ls fractional","result":{"content":[{"text":"a.txt\n\n[1 entries limit reached. Use limit=2 for more]","type":"text"}],"details":{"entryLimitReached":1}}}', 'TOOL_WIRE {"case":"find limited","result":{"content":[{"text":"a.txt","type":"text"}]}}']
 runs = 3
 

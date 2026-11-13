@@ -141,6 +141,8 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	// The shell writes straight into an OS pipe (no exec copy goroutine), so
 	// Wait returns when the shell exits even if a background descendant still
 	// holds the write end. childwait then applies upstream's grace.
+	// pig divergence (D631): Pi's bash tool spawns the shell with stdio pipes (bash.ts:129), which libuv makes socket pairs. This is a pipe: a command
+	// can open it again through /dev/stdout or /dev/stderr, which a socket refuses (ENXIO), and a write after the reader closed raises SIGPIPE at once.
 	pr, pw, err := childwait.NewPipe()
 	if err != nil {
 		return BashOperationsResult{}, err
@@ -157,8 +159,8 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		}
 		cmd.Stdin = stdinRead
 	}
-	// Process group so abort and timeout reap descendants (upstream spawns
-	// detached on non-win32 and kills the tree).
+	// Own session and process group, so abort and timeout reap descendants and the shell has no controlling terminal (upstream spawns detached on
+	// non-win32 and kills the tree).
 	setProcessGroup(cmd)
 	// Upstream spawns with windowsHide: true and stdio
 	// [commandFromStdin ? "pipe" : "ignore", "pipe", "pipe"].

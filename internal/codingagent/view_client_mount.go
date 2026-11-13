@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"slices"
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
@@ -20,40 +21,76 @@ type viewMount struct {
 	ref     uiview.Ref
 	intents []uiview.IntentDecl
 	digest  string
-	// accepted reports that the surface holds a view, drawable that the last snapshot's view is the one it holds, and
-	// visible that the mount is live and drawable, so it is in the tree.
-	accepted, drawable, visible bool
-	focused                     bool
+	// accepted reports that the surface holds a view, drawable that the last snapshot's view is the one it holds, live
+	// that the mount is live and drawable, hidden that its plugin hid it, and visible that the mount is in the tree: it is
+	// live and, in a slot with tabs, the tab that is drawn.
+	accepted, drawable, live, hidden, visible bool
+	focused                                   bool
+	// title is the snapshot's. node is the node of the last focus request, which takes the keys while the focus records
+	// name it. asksFocus reports a focus request the client has not answered, and attention that the mount asked to be
+	// shown while the user worked in another view.
+	title, node          string
+	asksFocus, attention bool
+	// bindings is the last snapshot's. keys reports that one of them is a key the terminal offers, and hint is the text
+	// of the hint row: the keys that have a name, each with its name (see bind).
+	bindings []uiview.Binding
+	keys     bool
+	hint     string
 	// cancel ends the intent in flight and is nil when there is none; flight numbers it and cancellable is its
 	// declaration's.
 	cancel      context.CancelFunc
 	flight      uint64
 	cancellable bool
-	// notOffered holds the intents the terminal told the plugin it does not offer, and cutAt the ref of the view it
-	// reported as cut.
+	// notOffered holds the intents the terminal told the plugin it does not offer, unbound the bindings it told the
+	// plugin it cannot honour, and cutAt the ref of the view it reported as cut.
 	notOffered map[string]bool
+	unbound    map[string]bool
 	cutAt      uiview.Ref
 
-	// lines is what Render returned for lineWidth, lineRows, lineRev and lineTheme, and nil when it must draw again.
+	// lines is what Render returned for lineWidth, lineRows, lineRev, lineTheme and lineHint, and nil when it must draw
+	// again.
 	lines     []string
 	lineWidth int
 	lineRows  int
 	lineRev   uint64
 	lineTheme *tui.Theme
+	lineHint  bool
 }
 
-// takesFocus reports whether the mount can hold the keyboard focus now.
+// focusNode returns the node that takes the keys when the view names none: the node of the last focus request while the
+// records still name it, else the first record's.
+func (m *viewMount) focusNode(entries []uiview.Focus, request *uiview.Focus) string {
+	if request != nil {
+		m.node = request.Node
+	}
+	if !slices.ContainsFunc(entries, func(f uiview.Focus) bool { return f.Node == m.node }) {
+		m.node = ""
+		if len(entries) > 0 {
+			m.node = entries[0].Node
+		}
+	}
+	return m.node
+}
+
+// takesFocus reports whether the mount can hold the keyboard focus now: its view has a node that takes keys, or the
+// mount binds a key, which makes it focusable as a whole.
 func (m *viewMount) takesFocus() bool {
-	return m.visible && m.slot.focus && m.surface.Focusable()
+	return m.visible && m.slot.focus && (m.keys || m.surface.Focusable())
 }
 
-// Render returns the mount's rows at width, cut to the slot's rows. It lays the view out again only after the view, the
-// width, the row cap or the theme changed.
+// Render returns the mount's rows at width, cut to the slot's rows, the hint row of its bindings among them while the
+// mount holds the focus. It lays the view out again only after the view, the width, the row cap, the theme or the
+// presence of the hint row changed.
 func (m *viewMount) Render(width int) []string {
 	rows := m.slot.rows(m.c.ui.size().rows)
 	rev, theme := m.surface.Revision(), tui.ActiveTheme()
-	if m.lines != nil && m.lineWidth == width && m.lineRows == rows && m.lineRev == rev && m.lineTheme == theme {
+	hinted := m.focused && m.hint != ""
+	if m.lines != nil && m.lineWidth == width && m.lineRows == rows && m.lineRev == rev && m.lineTheme == theme && m.lineHint == hinted {
 		return m.lines
+	}
+	if hinted {
+		// The hint row is one of the slot's rows.
+		rows--
 	}
 	lines := m.surface.Render(width)
 	if len(lines) > rows {
@@ -67,10 +104,14 @@ func (m *viewMount) Render(width int) []string {
 			})
 		}
 	}
+	if hinted {
+		lines = append(lines[:len(lines):len(lines)], viewHintRow(m.hint, width, theme))
+		rows++
+	}
 	if lines == nil {
 		lines = []string{}
 	}
-	m.lines, m.lineWidth, m.lineRows, m.lineRev, m.lineTheme = lines, width, rows, rev, theme
+	m.lines, m.lineWidth, m.lineRows, m.lineRev, m.lineTheme, m.lineHint = lines, width, rows, rev, theme, hinted
 	return lines
 }
 
@@ -89,6 +130,7 @@ func (m *viewMount) SetFocused(focused bool) {
 		return
 	}
 	m.focused = focused
+	m.c.stamp++
 	m.surface.SetFocused(focused)
 	switch {
 	case focused:
@@ -101,7 +143,7 @@ func (m *viewMount) SetFocused(focused bool) {
 // HandleInput takes a key while the mount holds the focus. The key that interrupts leaves the panel: it first cancels a
 // cancellable intent in flight, then goes to the focused node (a list or an input gives the focus up on it), and when
 // the node does not take it the focus returns to the editor all the same. Every other key goes to the focused node, and
-// one the node does not take to unhandledKey. Satisfies tui.InputHandler.
+// one the node does not take to unhandledKey, which is where the mount's bindings are. Satisfies tui.InputHandler.
 func (m *viewMount) HandleInput(data string) {
 	interrupts := m.c.ui.interrupts(data)
 	if interrupts && m.cancel != nil && m.cancellable {
@@ -110,6 +152,7 @@ func (m *viewMount) HandleInput(data string) {
 	took := m.surface.HandleInput(data)
 	switch {
 	case interrupts:
+		m.c.withheld(m, data, string(AppInterrupt))
 		if m.focused {
 			m.leave()
 		}

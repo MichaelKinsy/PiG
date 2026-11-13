@@ -1,23 +1,28 @@
-// Post-v1.5.2 Pi fixes that the vendored Pi JavaScript (shims/pi-dist) must carry (0.8.0).
+// Post-release Pi fixes that the vendored Pi JavaScript (shims/pi-dist) and the parity oracle carry ahead of the pin.
 //
-// PiG pins Pi v1.5.2, and the Node extension runtime runs that package's compiled output: the SDK
-// (createAgentSession, the built-in tools, the llama.cpp built-in extension), pi-tui components
-// extensions render with, and the HTML export. Go ports of later Pi fixes do not change those files,
-// so a Node path would keep the old behavior. Each entry below applies one Pi commit's change to the
-// compiled output with exact before/after strings, and the vendoring step fails when a `before`
-// string is missing or ambiguous (a pin change cannot silently drop a backport). The Pi commit is named
-// at each entry. This is Pi's own later behavior, not a divergence.
+// PiG pins one Pi build, and the Node extension runtime runs that package's compiled output: the SDK (createAgentSession, the built-in
+// tools, the llama.cpp built-in extension), pi-tui components extensions render with, and the HTML export. Go ports of later Pi fixes do
+// not change those files, so a Node path would keep the old behavior. Each entry below (a BEGIN/END block named by the Pi commit it
+// carries) applies that commit's change to the compiled output with exact before/after strings, and the vendoring step fails when a
+// `before` string is missing or ambiguous (a pin change cannot silently drop a backport). This is Pi's own later behavior, not a divergence.
+//
+// An entry lives only until the pin reaches its commit: `make pin-bump` (automation/pin/carried.py) classifies every entry against the
+// target Pi's installed package and deletes the blocks the target already carries (`--classify`); a block the target does not carry must
+// still apply, else the bump stops naming the entry and the file. A script with no block is a no-op: the mechanism stays for the next
+// release cycle, and the oracle build does not apply or stamp it (oracle.backports_digest is "" then).
 //
 // Run through vendor-pi-dist.sh after the identity patches and before the SDK and library bundles are compiled.
 // The same entries are applied to the installed Pi the parity tests compare with (`--packages name=dir ...`, from automation/pin/oracle.py), so the oracle is Pi with these fixes.
-// The source mirror (.upstream/current) stays the pinned release, which the sync ledger's delta audit compares with the earlier pin; the
+// `pi` itself runs the package's bundle (dist/bundle, Pi's esbuild output over the compiled output), which no entry can patch as text: the oracle build applies
+// the entries to the source build's packages too (`--package-files` names the files, so the build can put them back) and has Pi's own bundler make the bundle again.
+// The source mirror (.upstream/current) stays the pinned build, which the sync ledger's delta audit compares with the earlier pin; the
 // tests that read the mirror's docs and schemas read them through `--read-mirror <mirror> <path>` (internal/upstreammirror.ReadPicked), the
 // pinned file plus the entries of packageFileBackports and backportPatches that cover it.
-// `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned release's.
-//
-// Pi commits of the 0.8.0 list that are not here, and why:
-//   49fe0a237 (Anthropic threads by endpoint), code part: pi-ai's anthropic-messages implementation is a bridge stub that runs in PiG's host; only its description text is backported below.
-//   75ca6e7d0, 628d8ab52, 64c96d00d, d9d535b6c (durable, env), b48c675a9 (env daemon, Rust), 75d59639a, 65c43bb52 (chord): packages the Node runtime does not vendor.
+// `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned build's.
+// A commit that also moves a dependency a Pi package pins exactly carries that as a `dependency(...)` entry in a block of its own (oracle only; see `dependency` below).
+// What a commit's blocks deliberately leave at the pin is said in them, one `// not carried: <file> (<what>): <reason>` line per file. The sync ledger rows of a followed
+// commit answer for the oracle too (automation/pin/carried.py oracle_ledger_problems, which `pin.py check-oracle` runs).
+
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,16 +32,50 @@ const note = (sha) => `// Pi ${sha} (post-v1.5.2), backported by automation/gen/
 // 49fe0a237 (#11987): the supportsMessageThreads description of pi-ai's compat schema, which the models docs and the models.json schema repeat.
 const messageThreadsDefault = ["Default: true for provider anthropic with a baseUrl on api.anthropic.com", "Default: true for a baseUrl on api.anthropic.com"];
 
-export const backportPatches = {
-  // b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
-  "pi-coding-agent/extensions/llama/provider.js": [
+const blocks = [];
+const patch = (id, key, patches) => blocks.push({ id, key, patches, table: "dist" });
+// dependency carries a dependency change of a Pi commit: the Pi package `pkg` (pi-ai) pins `dep.name` exactly, at `dep.from` in the pinned build and at `dep.to` from
+// the commit on. `resolved`, `integrity` and `dependencies` are the entry of `dep.to` in Pi's own package-lock.json at the commit (read from the Pi git, never from the
+// registry). The oracle build (automation/pin/oracle.py carried_closure) installs the frozen closure with this lock entry in place of the pinned one, so `npm ci`
+// verifies the archive against the integrity, and has Pi's bundler read the installed copy. No file of the installed package is rewritten (its package.json keeps the
+// pin's range: published ranges follow the pin), and the vendored runtime installs no carried dependency. `--classify` reads the package's package.json (classifyDependency).
+const dependency = (id, pkg, dep) => blocks.push({ id, key: `${pkg}/package.json`, table: "dependency", dependency: { id, package: pkg, ...dep } });
+const packageFile = (id, key, patches) => blocks.push({ id, key, patches, table: "package" });
+
+// BEGIN backport b3c2e4a6bef8
+// b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
+patch("b3c2e4a6bef8", "pi-coding-agent/extensions/llama/provider.js", [
     ['export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";', 'export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:9931";'],
-  ],
-  // 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
-  "pi-ai/providers/compat-schema.js": [messageThreadsDefault],
-  "pi-coding-agent/docs/models-configuration.md": [messageThreadsDefault],
-  // be2744d95 (#12047): a Kitty fullscreen redraw keeps the uploaded images and skips the ED 2 clear.
-  "pi-tui/tui-alt-screen.js": [
+]);
+// END backport b3c2e4a6bef8
+
+// BEGIN backport 9b88b94e2
+// 9b88b94e2 (#12093, #12064): a provider error reading "Connection closed." is retried (the classifier that pi-ai's SDK, the coding agent and the oracle test of ai.IsRetryableAssistantError run).
+patch("9b88b94e2", "pi-ai/utils/retry.js", [
+    [`    "connection.?lost",
+    "other side closed",
+`, `    "connection.?lost",
+    ${note("9b88b94e2").trim()}
+    // Gateway mid-stream drop relayed as an Anthropic-style \`api_error\` event,
+    // e.g. {"type":"error","error":{"type":"api_error","message":"Connection closed."}} (#12064).
+    "connection.?closed",
+    "other side closed",
+`],
+]);
+// END backport 9b88b94e2
+
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
+patch("49fe0a237", "pi-ai/providers/compat-schema.js", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// BEGIN backport 49fe0a237
+patch("49fe0a237", "pi-coding-agent/docs/models-configuration.md", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// BEGIN backport be2744d95
+// be2744d95 (#12047): a Kitty fullscreen redraw keeps the uploaded images and skips the ED 2 clear.
+patch("be2744d95", "pi-tui/tui-alt-screen.js", [
     [`            const clearImages = this.imageProtocol === "kitty" && hadUploadedKittyImages
                 ? deleteAllKittyPlacements()
                 : this.deleteKittyImages();
@@ -52,26 +91,137 @@ export const backportPatches = {
                 buffer += \`\${this.deleteKittyImages()}\\x1b[2J\`;
             }
 `],
-  ],
-  // 5b4d7d3df (#12045): hard breaks after an inline Markdown image stay separate rows.
-  "pi-tui/components/markdown.js": [
+]);
+// END backport be2744d95
+
+// BEGIN backport 5b4d7d3df
+// 5b4d7d3df (#12045): hard breaks after an inline Markdown image stay separate rows.
+patch("5b4d7d3df", "pi-tui/components/markdown.js", [
     ["        for (const line of this.renderToken(token, contentWidth, nextTokenType)) {\n",
       `${"        " + note("5b4d7d3df")}        // Image lines skip wrapping, so split them here: hard breaks after an image must stay separate rows.
         const tokenLines = this.renderToken(token, contentWidth, nextTokenType).flatMap((line) => isImageLine(line) ? line.split("\\n") : [line]);
         for (const line of tokenLines) {
 `],
-  ],
-  // bbfc6c7ce (#12044): the find tool ignores a leading ./ in its pattern.
-  "pi-coding-agent/core/tools/find.js": [
+]);
+// END backport 5b4d7d3df
+
+// BEGIN backport 787005a40
+// 787005a40 (#12109): an overlay hides the Kitty and iTerm2 images it covers, and they are drawn again once it no longer covers them.
+patch("787005a40", "pi-tui/terminal-image.js", [
+    ['import { pathToFileURL } from "node:url";\n', `import { pathToFileURL } from "node:url";\n${note("787005a40")}import { visibleWidth } from "./utils.js";\n`],
+    [`    return line.includes(KITTY_PREFIX) || line.includes(ITERM2_PREFIX);
+}
+`, `    return line.includes(KITTY_PREFIX) || line.includes(ITERM2_PREFIX);
+}
+${note("787005a40")}/**
+ * Return the cells an image line draws over. Kitty places the image at the line and extends it
+ * downward; iTerm2 lines move the cursor up before drawing, so the image ends at the line.
+ */
+export function getImageLineExtent(line) {
+    const kittyStart = line.indexOf(KITTY_PREFIX);
+    if (kittyStart !== -1) {
+        const controls = /\\x1b_G([^;]*);/.exec(line)?.[1] ?? "";
+        const columnValue = /(?:^|,)c=(\\d+)(?:,|$)/.exec(controls)?.[1];
+        const columns = columnValue === undefined
+            ? getRegisteredKittyImageMetadataFromControls(controls)?.columns
+            : Number.parseInt(columnValue, 10);
+        const startCol = visibleWidth(line.slice(0, kittyStart));
+        const rows = getKittyImagePlacementRows(line) ?? 1;
+        return { firstRow: 0, lastRow: rows - 1, startCol, endCol: startCol + (columns ?? Infinity) };
+    }
+    const iterm2Start = line.indexOf(ITERM2_PREFIX);
+    if (iterm2Start === -1)
+        return undefined;
+    const before = line.slice(0, iterm2Start);
+    const moveUp = /\\x1b\\[(\\d+)A$/.exec(before);
+    // Only a plain cell count is a known width; \`auto\`, pixel and percent widths depend on the image.
+    const columnValue = /[;=]width=(\\d+)[;:]/.exec(line.slice(iterm2Start))?.[1];
+    // visibleWidth counts the cursor-up sequence as text, so measure only what precedes it.
+    const startCol = visibleWidth(moveUp ? before.slice(0, moveUp.index) : before);
+    return {
+        firstRow: moveUp ? -Number.parseInt(moveUp[1], 10) : 0,
+        lastRow: 0,
+        startCol,
+        endCol: startCol + (columnValue === undefined ? Infinity : Number.parseInt(columnValue, 10)),
+    };
+}
+/** Remove Kitty and iTerm2 image sequences, including iTerm2's cursor-up prefix, keeping the text. */
+export function stripImageSequences(line) {
+    return line.replace(/\\x1b_G[^\\x1b]*\\x1b\\\\/g, "").replace(/(?:\\x1b\\[\\d+A)?\\x1b\\]1337;File=[^\\x07]*\\x07/g, "");
+}
+`],
+]);
+// END backport 787005a40
+
+// BEGIN backport 787005a40
+patch("787005a40", "pi-tui/tui.js", [
+    ['import { getCapabilities, isImageLine, setCellDimensions } from "./terminal-image.js";\n',
+      `${note("787005a40")}import { getCapabilities, getImageLineExtent, getMaxKittyImageRows, isImageLine, setCellDimensions, stripImageSequences, } from "./terminal-image.js";\n`],
+    ['}\nexport const VIEWPORT_TUI = Symbol.for("@earendil-works/pi-tui/viewport");\n',
+      `}\n${note("787005a40")}/**
+ * Drop image placements that intersect an overlay rectangle (\`row\` is viewport-relative).
+ * Terminals draw images above text, so an overlay cannot paint over them. The renderers delete a
+ * placement once its line changes and draw it again when the overlay no longer covers it.
+ * Images beside the overlay stay; on the row holding such an image's sequence the overlay is not
+ * drawn, because \`compositeTuiLine\` passes image lines through.
+ */
+function hideImagesUnderOverlay(lines, overlay, viewportStart) {
+    if (overlay.height === 0)
+        return;
+    // Kitty images extend downward, so an image line above the viewport can still reach into it.
+    for (let index = Math.max(0, viewportStart - getMaxKittyImageRows()); index < lines.length; index++) {
+        const line = lines[index];
+        const extent = getImageLineExtent(line);
+        if (!extent)
+            continue;
+        const firstRow = index + extent.firstRow - viewportStart;
+        const lastRow = index + extent.lastRow - viewportStart;
+        if (firstRow < overlay.row + overlay.height &&
+            lastRow >= overlay.row &&
+            extent.startCol < overlay.col + overlay.width &&
+            extent.endCol > overlay.col) {
+            lines[index] = stripImageSequences(line);
+        }
+    }
+}
+export const VIEWPORT_TUI = Symbol.for("@earendil-works/pi-tui/viewport");\n`],
+    ["        // Composite each overlay\n        for (const { overlayLines, row, col, w } of rendered) {\n",
+      `        ${note("787005a40").trim()}
+        // Composite each overlay, back to front. Hiding images per overlay also hides images drawn by overlays below it.
+        for (const { overlayLines, row, col, w } of rendered) {
+            hideImagesUnderOverlay(result, { row, col, width: w, height: overlayLines.length }, viewportStart);
+`],
+]);
+// END backport 787005a40
+
+// BEGIN backport bbfc6c7ce
+// bbfc6c7ce (#12044): the find tool ignores a leading ./ in its pattern.
+patch("bbfc6c7ce", "pi-coding-agent/core/tools/find.js", [
     ['                        let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\\\", "/") : pattern;\n',
       `                        let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\\\", "/") : pattern;
                         ${note("bbfc6c7ce").trim()}
                         // fd's full paths never contain "/./", so "./src/*.ts" would find nothing; drop the "./".
                         effectivePattern = effectivePattern.replace(/^(?:\\.\\/)+/, "");
 `],
-  ],
-  // 0e1e3fc81 (#12052): OSC 8 hyperlinks in HTML-exported tool output become links.
-  "pi-coding-agent/core/export-html/ansi-to-html.js": [
+]);
+// END backport bbfc6c7ce
+
+// BEGIN backport 935f0ac0ccfc
+// 935f0ac0ccfc (#12092): the bash tool keeps the end of the last line when the retained tail is only that over-long line.
+patch("935f0ac0ccfc", "pi-coding-agent/core/tools/output-accumulator.js", [
+    ["        const tailTruncation = truncateTail(this.getSnapshotText(), {\n",
+      `        ${note("935f0ac0ccfc").trim()}
+        // Clipping drops the partial first line of the retained tail. When the tail is only the end of one over-long line,
+        // that is everything, so show the end of that line instead.
+        const snapshotText = this.getSnapshotText() || this.tailText;
+        const tailTruncation = truncateTail(snapshotText, {
+`],
+]);
+// END backport 935f0ac0ccfc
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): OSC 8 hyperlinks in HTML-exported tool output become links.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/ansi-to-html.js", [
     [` * - Reset (0)
  */`, ` * - Reset (0)
  * - OSC 8 hyperlinks with http, https, or mailto URLs (other CSI, OSC, and APC sequences and stray ESC characters are dropped)
@@ -168,20 +318,50 @@ export function stripAnsiEscapes(text) {
         result += "</a>";
     }
 `],
-  ],
-  // 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
-  "pi-coding-agent/core/export-html/tool-renderer.js": [
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport a83b75a07
+// a83b75a07 (#12089): a command a signal ended reports 128 + the signal number as its code, not 0.
+patch("a83b75a07", "pi-coding-agent/core/exec.js", [
+    ['import { spawn } from "node:child_process";\n', 'import { spawn } from "node:child_process";\nimport { constants as osConstants } from "node:os";\n'],
+    ["    const exitCode = code ?? 0;\n",
+      `    ${note("a83b75a07").trim()}
+    // A signal-killed command has no exit code. Use the shell convention, as the bash tool does, so a
+    // timeout, an abort or a crash does not read as success (#12088).
+    const exitCode = code ?? (proc.signalCode ? 128 + (osConstants.signals[proc.signalCode] ?? 0) : 1);
+`],
+]);
+// END backport a83b75a07
+
+// BEGIN backport a83b75a07
+// a83b75a07 (#12089): the pi.exec docs name the code of a command a signal ended.
+patch("a83b75a07", "pi-coding-agent/docs/extensions.md", [
+    ["A command that ignores SIGTERM gets SIGKILL after 5 seconds.\n",
+      "A command that ignores SIGTERM gets SIGKILL after 5 seconds. A command terminated by a signal, by pi or otherwise, reports 128 + the signal number as `code`, like a shell: 143 for SIGTERM, 137 for SIGKILL.\n"],
+]);
+// END backport a83b75a07
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/tool-renderer.js", [
     ['import { ansiLinesToHtml } from "./ansi-to-html.js";', 'import { ansiLinesToHtml, stripAnsiEscapes } from "./ansi-to-html.js";'],
     ["const ANSI_ESCAPE_REGEX = /\\x1b\\[[\\d;]*m/g;\n", ""],
     ['    return line.replace(ANSI_ESCAPE_REGEX, "").trim().length === 0;', '    return stripAnsiEscapes(line).trim().length === 0;'],
-  ],
-  // 0e1e3fc81 (#12052): a click on a link in an expandable tool output does not toggle it.
-  "pi-coding-agent/core/export-html/template.js": [
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): a click on a link in an expandable tool output does not toggle it.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/template.js", [
     ["class=\"tool-output expandable ansi-rendered\" onclick=\"if(window.getSelection().toString())return;this.classList.toggle('expanded')\">",
       "class=\"tool-output expandable ansi-rendered\" onclick=\"if(window.getSelection().toString()||event.target.closest('a'))return;this.classList.toggle('expanded')\">"],
-  ],
-  // 3345c2925 (#12054): hiding an extension's own tool keeps the restored MCP tools pending.
-  "pi-coding-agent/core/agent-session.js": [
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport 3345c2925
+// 3345c2925 (#12054): hiding an extension's own tool keeps the restored MCP tools pending.
+patch("3345c2925", "pi-coding-agent/core/agent-session.js", [
     ["    _pendingToolNames = new Set();\n",
       "    _pendingToolNames = new Set();\n    /** The restored or reloaded loadout that `_pendingToolNames` belongs to. */\n    _restoredToolNames = new Set();\n"],
     [`        // A loadout that deactivates a tool replaces the restored one, whose pending tools are dropped.
@@ -212,15 +392,285 @@ export function stripAnsiEscapes(text) {
             this._pendingToolNames.add(name);
         this._restoredToolNames = new Set(this.getActiveToolNames());
         this._buildRuntime({`],
-  ],
-};
+]);
+// END backport 3345c2925
 
-// Files of a Pi package that are not compiled output and that the vendored runtime does not carry, but that the installed Pi package
-// (the parity oracle) and the source mirror hold, with the same text: keyed like backportPatches, by package and path in the package.
-export const packageFileBackports = {
-  // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
-  "pi-coding-agent/schemas/models.schema.json": [messageThreadsDefault],
-};
+// BEGIN backport a635f3901
+// a635f3901 (#12111): the /resume picker keeps its selection while the session list reloads progressively.
+patch("a635f3901", "pi-coding-agent/modes/interactive/components/session-selector.js", [
+    ["    selectionTouched = false;\n    searchInput;\n",
+      `    selectionTouched = false;
+    ${note("a635f3901").trim()}
+    // Session to select once it appears, while a progressive reload has not yet delivered it
+    pendingSelectedPath;
+    searchInput;
+`],
+    [`    setSessions(sessions, showCwd) {
+        const selectedPath = this.selectionTouched ? this.getSelectedSessionPath() : undefined;
+        this.allSessions = sessions;
+        this.showCwd = showCwd;
+        this.filterSessions(this.searchInput.getValue());
+        if (!this.selectionTouched) {
+            this.selectedIndex = 0;
+        }
+        else if (selectedPath) {
+            const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
+            if (selectedIndex >= 0)
+                this.selectedIndex = selectedIndex;
+        }
+    }
+`, `    ${note("a635f3901").trim()}
+    /**
+     * @param partial true when more sessions are still loading; a selected session missing from a
+     * partial list stays the selection target until it arrives
+     */
+    setSessions(sessions, showCwd, partial = false) {
+        const pendingPath = this.selectionTouched ? this.pendingSelectedPath : undefined;
+        const selectedPath = this.selectionTouched ? (pendingPath ?? this.getSelectedSessionPath()) : undefined;
+        this.allSessions = sessions;
+        this.showCwd = showCwd;
+        this.filterSessions(this.searchInput.getValue());
+        if (!this.selectionTouched) {
+            this.selectedIndex = 0;
+        }
+        else if (selectedPath) {
+            const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
+            if (selectedIndex >= 0) {
+                this.selectedIndex = selectedIndex;
+                this.pendingSelectedPath = undefined;
+            }
+            else if (partial) {
+                // The selected session may not have loaded yet: keep it as the target instead of
+                // adopting whichever session the index now points to.
+                this.pendingSelectedPath = selectedPath;
+            }
+            else {
+                this.pendingSelectedPath = undefined;
+            }
+        }
+    }
+`],
+    ["        this.selectionTouched = true;\n        // Up arrow\n",
+      `        this.selectionTouched = true;
+        ${note("a635f3901").trim()}
+        this.pendingSelectedPath = undefined;
+        // Up arrow
+`],
+    ["                if (scope === this.scope)\n                    this.sessionList.setSessions(sessions, showCwd);\n",
+      `                ${note("a635f3901").trim()}
+                if (scope === this.scope)
+                    this.sessionList.setSessions(sessions, showCwd, true);
+`],
+    ['        this.sessionList.setSessions(sessions ?? [], this.scope === "all");\n',
+      `        ${note("a635f3901").trim()}
+        this.sessionList.setSessions(sessions ?? [], this.scope === "all", loading || sessions === null);
+`],
+]);
+// END backport a635f3901
+
+// BEGIN backport 406e719a6bff
+// 406e719a6bff (#12049): a tool schema with a node that has no type, enum or anyOf is not sent strict (OpenAI strict mode rejects it).
+patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
+    [`        }
+    }
+    if (schema.anyOf !== undefined) {
+`, `        }
+    }
+    ${note("406e719a6bff").trim()}
+    // OpenAI strict mode rejects nodes without a type; a bare enum counts as typed, a bare const does not.
+    if (schema.type === undefined && schema.anyOf === undefined && schema.enum === undefined) {
+        throw new UnsupportedStrictJsonSchemaError("schemas without a type are unsupported");
+    }
+    if (schema.anyOf !== undefined) {
+`],
+]);
+// END backport 406e719a6bff
+
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
+packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// BEGIN backport aa47cedce
+// aa47cedce (#12100): a non-strict Anthropic tool schema keeps its root additionalProperties (false, true or a schema). PiG's vendored runtime carries pi-ai's
+// anthropic-messages as a bridge stub that runs in PiG's host (ai/anthropic.go, which has the change), so the file is the installed Pi's only: the parity oracle
+// (the request body of test/pipeline-diff's tool schema comparison) is Pi with the fix.
+packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
+    [`        // Keep shared definitions so property $refs still resolve. Other root keywords stay out:
+        // Anthropic rejects root anyOf/oneOf/allOf with a 400.
+        const legacyInputSchema = {
+            type: "object",
+            properties: schema.properties ?? {},
+            required: schema.required ?? [],
+`, `        // Keep shared definitions so property $refs still resolve, and additionalProperties so the
+        // model knows whether extra arguments are allowed. Other root keywords stay out:
+        // Anthropic rejects root anyOf/oneOf/allOf with a 400.
+        ${note("aa47cedce").trim()}
+        const legacyInputSchema = {
+            type: "object",
+            properties: schema.properties ?? {},
+            required: schema.required ?? [],
+            ...(schema.additionalProperties === undefined ? {} : { additionalProperties: schema.additionalProperties }),
+`],
+]);
+// END backport aa47cedce
+
+// BEGIN backport f72f799a4
+// f72f799a4 (#12103; 22f456d73 #12108 after it changes Pi's changelog and a test only): the Google adapters hand the caller's fetch to @google/genai, which takes one
+// (httpOptions.fetch) from 2.32.0 on, so the commit moves pi-ai's exact pin of the SDK. The lock entry below is the one Pi's package-lock.json and
+// packages/coding-agent/install-lock/package-lock.json hold at f72f799a4; both locks change nothing else but pi-ai's range, and the entry's own dependencies are those of 2.21.0.
+// Oracle only: the vendored runtime's Google adapters are bridge stubs that run PiG's Go adapters (D74), which carry the behaviour, and it installs no SDK. PiG has no
+// @google/genai at all: its Go body encoder mirrors the SDK's converters (ai/google_wire.go, which names the mirrored version). The oracle is Pi and installs the SDK.
+// The oracle carries the commit's BEHAVIOUR (the SDK, the three adapters, the bundle of both). What authors and inventories derive from the installed package stays the pin's:
+// not carried: pi-ai/package.json (`"@google/genai": "2.32.0"`): published ranges follow the pin until the re-pin (extensions/sdk-ts/package.json derives its peer range from the installed manifest); the lock the oracle installs names 2.32.0, the manifest on disk 2.21.0. Re-pin worklist: arrives with the pin.
+// not carried: pi-ai/api/google-shared.d.ts (drops `mapStopReasonString`, which google-shared.js below no longer exports): declarations follow the pin until the re-pin (extensions/sdk-ts/pi-pin.d.ts and test/parity/interfaces derive from the installed declarations). Re-pin worklist: arrives with the pin.
+// not carried: pi-ai/api/google-{generative-ai,shared,vertex}.js.map and .d.ts.map: nothing imports through a source map and Pi's bundler runs with source maps off.
+dependency("f72f799a4", "pi-ai", {
+    name: "@google/genai",
+    from: "2.21.0",
+    to: "2.32.0",
+    resolved: "https://registry.npmjs.org/@google/genai/-/genai-2.32.0.tgz",
+    integrity: "sha512-60c79uXpR0a47bmGqDxbXEBuQUalNmwo5mx5kqb91jIW4FoqpsLSt86DeVhRhtH5+s/16Wqxt3sXzFQn2U1OHQ==",
+    dependencies: { "google-auth-library": "^10.3.0", "p-retry": "^4.6.2", protobufjs: "^7.5.4", ws: "^8.18.0" },
+});
+// END backport f72f799a4
+
+// BEGIN backport f72f799a4
+// The compiled output of the three adapters, byte for byte what Pi's build of f72f799a4 emits (no note line): Pi built at the commit and at its parent differs in
+// these three files, google-shared.d.ts and their source maps only, and the pinned build equals the parent's in all of them.
+packageFile("f72f799a4", "pi-ai/api/google-generative-ai.js", [
+    [`            if (options?.fetch && options.fetch !== globalThis.fetch) {
+                throw new Error("Custom fetch is not supported by the Google Generative AI adapter");
+            }
+`,
+      ``],
+    [`            const client = createClient(model, apiKey, options?.headers, options?.identity);
+`,
+      `            const client = createClient(model, apiKey, options?.headers, options?.identity, options?.fetch);
+`],
+    [`function createClient(model, apiKey, optionsHeaders, identity) {
+    const httpOptions = {};
+`,
+      `function createClient(model, apiKey, optionsHeaders, identity, fetch) {
+    // Always pass fetch: without one, @google/genai adds a per-request dispatcher that disables
+    // undici's header and body timeouts, bypassing the idle timeouts of the global dispatcher.
+    const httpOptions = { fetch: fetch ?? globalThis.fetch };
+`],
+    [`    return new GoogleGenAI({
+        apiKey,
+        httpOptions: Object.keys(httpOptions).length > 0 ? httpOptions : undefined,
+    });
+`,
+      `    return new GoogleGenAI({ apiKey, httpOptions });
+`],
+    [`        }),
+    };
+`,
+      `        }),
+        // Off for now, until we have evaluated the implications of the SDK's automatic continuation
+        // (extra requests and stream resumes inside the SDK). A CONTINUATION finish ends the turn as "length".
+        automaticContinuation: false,
+    };
+`],
+]);
+// END backport f72f799a4
+
+// BEGIN backport f72f799a4
+packageFile("f72f799a4", "pi-ai/api/google-shared.js", [
+    [`        case FinishReason.MAX_TOKENS:
+            return "length";
+`,
+      `        case FinishReason.MAX_TOKENS:
+        // Per-request token limit reached before generation completed; pi does not resume with the continuation token.
+        case FinishReason.CONTINUATION:
+            return "length";
+`],
+    [`    }
+}
+/**
+ * Map string finish reason to our StopReason (for raw API responses).
+ */
+export function mapStopReasonString(reason) {
+    switch (reason) {
+        case "STOP":
+            return "stop";
+        case "MAX_TOKENS":
+            return "length";
+        default:
+            return "error";
+`,
+      ``],
+]);
+// END backport f72f799a4
+
+// BEGIN backport f72f799a4
+packageFile("f72f799a4", "pi-ai/api/google-vertex.js", [
+    [`            if (options?.fetch && options.fetch !== globalThis.fetch) {
+                throw new Error("Custom fetch is not supported by the Google Vertex adapter");
+            }
+`,
+      ``],
+    [`                ? createClientWithApiKey(model, apiKey, options?.headers, options?.identity)
+                : createClient(model, resolveProject(options), resolveLocation(options), options?.headers, options?.env, options?.identity);
+`,
+      `                ? createClientWithApiKey(model, apiKey, options?.headers, options?.identity, options?.fetch)
+                : createClient(model, resolveProject(options), resolveLocation(options), options?.headers, options?.env, options?.identity, options?.fetch);
+`],
+    [`function createClient(model, project, location, optionsHeaders, env, identity) {
+`,
+      `function createClient(model, project, location, optionsHeaders, env, identity, fetch) {
+`],
+    [`        ...(googleAuthOptions ? { googleAuthOptions } : {}),
+        httpOptions: buildHttpOptions(model, optionsHeaders, identity),
+    });
+`,
+      `        ...(googleAuthOptions ? { googleAuthOptions } : {}),
+        httpOptions: buildHttpOptions(model, optionsHeaders, identity, fetch),
+    });
+`],
+    [`function createClientWithApiKey(model, apiKey, optionsHeaders, identity) {
+`,
+      `function createClientWithApiKey(model, apiKey, optionsHeaders, identity, fetch) {
+`],
+    [`        apiVersion: API_VERSION,
+        httpOptions: buildHttpOptions(model, optionsHeaders, identity),
+    });
+`,
+      `        apiVersion: API_VERSION,
+        httpOptions: buildHttpOptions(model, optionsHeaders, identity, fetch),
+    });
+`],
+    [`function buildHttpOptions(model, optionsHeaders, identity) {
+    const httpOptions = {};
+`,
+      `function buildHttpOptions(model, optionsHeaders, identity, fetch) {
+    // Always pass fetch: without one, @google/genai adds a per-request dispatcher that disables
+    // undici's header and body timeouts, bypassing the idle timeouts of the global dispatcher.
+    const httpOptions = { fetch: fetch ?? globalThis.fetch };
+`],
+    [`    return Object.keys(httpOptions).length > 0 ? httpOptions : undefined;
+`,
+      `    return httpOptions;
+`],
+    [`        }),
+    };
+`,
+      `        }),
+        // Off for now, until we have evaluated the implications of the SDK's automatic continuation
+        // (extra requests and stream resumes inside the SDK). A CONTINUATION finish ends the turn as "length".
+        automaticContinuation: false,
+    };
+`],
+]);
+// END backport f72f799a4
+
+// backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
+// does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
+const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
+export const backportPatches = tableOf("dist");
+export const packageFileBackports = tableOf("package");
+// carriedDependencies lists the `dependency` entries: {id, package, name, from, to, resolved, integrity, dependencies}.
+export const carriedDependencies = blocks.filter((b) => b.dependency).map((b) => b.dependency);
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
 
@@ -259,6 +709,14 @@ export function applyPackageBackports(packages) {
   }
 }
 
+// packageBackportFiles lists the files applyPackageBackports rewrites under `packages`.
+export function packageBackportFiles(packages) {
+  return packageBackportKeys().flatMap((file) => {
+    const [name, ...rest] = file.split("/");
+    return name in packages ? [join(packages[name], packageLocation(name, rest))] : [];
+  });
+}
+
 const count = (text, part) => text.split(part).length - 1;
 
 // verifyPackageBackports throws when a file of `packages` does not carry each of its backports once: an installed Pi that was not
@@ -277,6 +735,74 @@ export function verifyPackageBackports(packages) {
     }
   }
   if (problems.length > 0) throw new Error(problems.join("\n"));
+}
+
+const commonPrefix = (a, b) => {
+  let n = 0;
+  while (n < a.length && n < b.length && a[n] === b[n]) n++;
+  return n;
+};
+
+// firstDifference says where the text of an entry (`before`) first differs from the file `text`: the file's line that shares the longest prefix with
+// the entry's first line, then the first later line that differs, so a maintainer reads the change without diffing by hand.
+function firstDifference(before, text) {
+  const want = before.split("\n");
+  const have = text.split("\n");
+  let at = 0;
+  let best = -1;
+  have.forEach((line, i) => {
+    const n = commonPrefix(want[0], line);
+    if (n > best) [best, at] = [n, i];
+  });
+  const show = (line) => JSON.stringify((line ?? "<end of file>").slice(0, 140));
+  for (let i = 0; i < want.length; i++) {
+    if (have[at + i] !== want[i]) return `entry text line ${i + 1} reads ${show(want[i])}, the file's line ${at + i + 1} reads ${show(have[at + i])}`;
+  }
+  return `the entry's text occurs ${count(text, before)} times in the file`;
+}
+
+// classifyDependency says whether the Pi package installed at `root` still pins a carried dependency at the version the entry replaces ("pending"), pins the carried
+// version ("carried": the target holds the commit and the entry must go), or pins anything else ("conflict" with its old pin gone, which the caller settles with the
+// commit's ancestry: a target past the commit pins a later version).
+function classifyDependency({ id, key, dependency: dep }, root) {
+  const pinned = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).dependencies?.[dep.name];
+  const state = pinned === dep.from ? "pending" : pinned === dep.to ? "carried" : "conflict";
+  const detail = state === "conflict" ? `conflict: the package pins ${dep.name} ${pinned ?? "nowhere"}, the entry moves ${dep.from} to ${dep.to}` : "";
+  return { id, key, state, beforeGone: state !== "pending", detail };
+}
+
+// classifyBackports says, for every block of a package in `packages`, whether the installed package is still the one the block was written for
+// ("pending": each patch's before-text occurs once and its after-text not at all), already carries the block's change ("carried": each
+// after-text occurs once, a removal's before-text not at all), or is neither ("conflict", with the file and the first differing line).
+// Pi's own version of the change need not be the backport's text, so the caller decides a conflict whose before-text is gone (beforeGone) by
+// asking whether the target contains the Pi commit.
+export function classifyBackports(packages) {
+  const results = [];
+  for (const block of blocks) {
+    const { id, key, patches } = block;
+    const [name, ...rest] = key.split("/");
+    if (!(name in packages)) continue;
+    if (block.dependency) {
+      results.push(classifyDependency(block, packages[name]));
+      continue;
+    }
+    const text = readFileSync(join(packages[name], packageLocation(name, rest)), "utf8");
+    const states = patches.map(([before, after]) => {
+      const nb = count(text, before);
+      const na = after === "" ? 0 : count(text, after);
+      if (after === "" ? nb === 0 : na === 1 && (nb === 0 || after.includes(before))) return "carried";
+      if (nb === 1 && na === 0) return "pending";
+      return `conflict: ${firstDifference(before, text)}`;
+    });
+    const bad = states.find((state) => state.startsWith("conflict"));
+    const state = bad ? "conflict" : states.every((x) => x === "carried") ? "carried" : states.every((x) => x === "pending") ? "pending" : "conflict";
+    // beforeGone: no patch's before-text is in the file any more. Pi's own version of a change rarely equals the backport's after-text
+    // (the backport adds a note line), so a target that holds the Pi commit shows as "conflict" here with its before-text gone; the caller
+    // settles that with the commit's ancestry.
+    const beforeGone = patches.every(([before]) => count(text, before) === 0);
+    results.push({ id, key, state, beforeGone, detail: bad ?? (state === "conflict" ? "some patches of the entry are carried and some are not" : "") });
+  }
+  return results;
 }
 
 // mirrorKey is the backport key of a file of the Pi repository the source mirror holds (packages/coding-agent/docs/x.md), or undefined
@@ -307,7 +833,10 @@ const packagesOf = (args) => Object.fromEntries(args.map((arg) => arg.split(/=(.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const [mode, ...args] = process.argv.slice(2);
   if (mode === "--packages") applyPackageBackports(packagesOf(args));
+  else if (mode === "--package-files") process.stdout.write(JSON.stringify(packageBackportFiles(packagesOf(args))));
   else if (mode === "--verify-packages") verifyPackageBackports(packagesOf(args));
+  else if (mode === "--classify") process.stdout.write(JSON.stringify(classifyBackports(packagesOf(args))));
+  else if (mode === "--dependencies") process.stdout.write(JSON.stringify(carriedDependencies));
   else if (mode === "--read-mirror") process.stdout.write(readMirrorFile(args[0], args[1]));
   else if (mode === "--verify-mirror") verifyMirrorBackports(args[0]);
   else applyBackportPatches(mode);

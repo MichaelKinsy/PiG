@@ -220,6 +220,9 @@ func (h *NodeHost) reference(ctx context.Context, contract *contracts.Contract, 
 	if declared.Kind != contracts.KindLocal {
 		return nil, fmt.Errorf("%s: NodeHost.Get holds a local type; a remote type is held through a Go host that routes its kind to the node", declared.Name)
 	}
+	if err := eventsDoNotCross(declared); err != nil {
+		return nil, err
+	}
 	wire, err := ContractDataOf(contract)
 	if err != nil {
 		return nil, err
@@ -647,9 +650,10 @@ func (h *NodeHost) stopWatch(id int) {
 }
 
 // bridgeEvent handles an event of the Node host that belongs to the reference RPC: a frame or the end of a watch, or the
-// change of a reference's state (the reference RPC, Go to Node), or a request or notification the Node host's proxies make
-// of the Go host (bridgedEvent). It runs on the goroutine that reads the channel, so the events of one watch reach it in the
-// order the Node host sent them. A message that does not decode is dropped, as `control` drops one.
+// change of a reference's state (the reference RPC, Go to Node), an `event` or `ack` message of the events that cross
+// between the hosts (plugins_node_events.go), or a request or notification the Node host's proxies make of the Go host
+// (bridgedEvent). It runs on the goroutine that reads the channel, so the events of one watch reach it in the order the
+// Node host sent them. A message that does not decode is dropped, as `control` drops one.
 func (h *NodeHost) bridgeEvent(event string, payload []byte) {
 	switch event {
 	case "frame":
@@ -658,6 +662,10 @@ func (h *NodeHost) bridgeEvent(event string, payload []byte) {
 		h.watchEnded(payload)
 	case "state":
 		h.referenceState(payload)
+	case "event":
+		h.nodeEvents()
+	case "ack":
+		h.eventsAcked(payload)
 	default:
 		h.bridgedEvent(event, payload)
 	}

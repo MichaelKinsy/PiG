@@ -244,6 +244,12 @@ func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string, i
 		}
 	}
 
+	// Pi 406e719a6bff (#12049, post-v1.5.2): OpenAI strict mode rejects a node without a type; a bare enum counts as typed, a bare const does not.
+	// `schema.type === undefined`: an explicit null is a value, so only an absent key counts.
+	if !hasJSONSchemaKey(schema, "type") && !hasJSONSchemaKey(schema, "anyOf") && !hasJSONSchemaKey(schema, "enum") {
+		return strictSchemaError("schemas without a type are unsupported")
+	}
+
 	if variantsValue, exists := schema["anyOf"]; exists {
 		variants, ok := variantsValue.([]any)
 		if !ok || len(variants) == 0 {

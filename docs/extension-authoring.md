@@ -474,6 +474,8 @@ Export one Pi-compatible default extension function. Pig packs Node factories in
 
 Use `@michaelkinsy/pig-extension-types` during development when the extension uses a PiG-only API such as `ui.setLogin`. The declaration package pins the exact Pi version from `coding.UpstreamVersion`; it does not provide a second runtime implementation. See `extensions/sdk-ts/README.md`.
 
+A project that imports `@michaelkinsy/pig-extension-types` type-checks `@earendil-works/pi-coding-agent`, `pi-ai`, `pi-tui` and `pi-agent-core` against the Pi build PiG is pinned to, not against the installed release: the package's `pi-pin.d.ts` declares them, and no `tsconfig` entry is needed. The pin can be past the published release, so a member the pin has and the release lacks exists only in PiG, and an extension that uses it does not run on that Pi release. The comment at the top of `node_modules/@michaelkinsy/pig-extension-types/pi-pin.d.ts` lists those members.
+
 ## Contributing an OAuth provider
 
 Register OAuth only through the runtime provider declaration. `pig login --list` resolves enabled extensions. For each source extension without a valid projection for its exact source configuration and immutable artifact digest, Pig starts it for registration inspection, collects OAuth provider declarations, and stops it without dispatching session or capability handlers. A valid projection avoids startup. Embedded packed members are inspected independently through the complete compiled artifact. Duplicate provider IDs fail and name both owners. Login then starts only the owning extension. Embedded and fused extensions use the same registration contract.
@@ -594,7 +596,7 @@ An extension that draws the model's thinking itself, for example in an activity 
 
 An extension can mount a view in a slot that the attached client draws, update it, and answer the user's intents. The view is a
 D107 view, so every SDK builds it with its kit. No client is attached by default: read the abilities first and mount only if
-there are any, and mount when a client arrives (step 11).
+there are any, and mount when a client arrives (step 12).
 
 1. `ctx.ViewAbilities()` (Go), `ctx.view_abilities()` (Python), `ctx.view_abilities()` (Rust), `ctx-view-abilities` (Lisp) or
    `ctx.ui.viewAbilities()` (Node) returns what the client draws: slots, node kinds, markdown, image formats, limits and input.
@@ -618,12 +620,28 @@ there are any, and mount when a client arrives (step 11).
    shapes than it states fail with `limit`. `regions` turn a gesture inside a shape into one of your declared intents.
 7. Describe nodes to assistive technology with `a11y` and make them focusable with `focus`. Both name view nodes by their `id`,
    so give those nodes an id.
-8. Leave a result when you finish: `FinishViewWith(ref, result)`, `finish_view(mount, result=...)`, `finish_view_with`,
+8. Bind keys and gestures with `bindings` (at most 32): each entry has a `key` (a key id such as `d`, `shift+left`, `ctrl+shift+p`
+   or `ctrl++`) or a `gesture` (`swipe-left`, `swipe-right`, `swipe-up`, `swipe-down`), the `intent` it raises, and optionally a
+   constant `arg` and a `name` the client shows. The intent is one you declared without a `nodeKey`; several bindings may raise it
+   with different arguments (`d`, `w` and `m` for three views). A binding works only while the mount holds the focus, after the
+   focused node has had the key, so an input inside the view keeps its letters; a global key is `registerShortcut`. The host answers
+   `invalid` for a key bound twice, for a reserved key (`escape`, `tab`, `f6`, and `ctrl` with `c`, `d` or `z`) and for a `name`
+   that is not a label (step 13 says what a label is). The reserved keys are the default keys of the user's interrupt, clear, exit
+   and suspend actions; they stay reserved when the user gives an action another key. A client that cannot honour a binding leaves
+   an `unsupported` notice with the path `bindings[i]`; a client may also state the claim `input.bindings`, which an alternative can
+   test. The claim names the kinds of trigger a client honours (`key`, `gesture`), not the keys, and a client may honour bindings
+   without stating it: the notice is what tells you.
+   In the terminal a panel that binds a key can be entered with F6 even when nothing in it takes keys, the named bindings are listed
+   on one row under the focused view, and gestures are not offered (you read the notice). A key the user's keybindings give to
+   interrupt, clear, exit or suspend raises nothing either, whenever the user changed them: you read the notice the first time the
+   key is pressed, so offer every bound intent in the view as well. While an `input` or `editor` node holds the keys of the view it
+   takes every key, because a binding is never global and the focused node comes first: give such a view another way to its actions.
+9. Leave a result when you finish: `FinishViewWith(ref, result)`, `finish_view(mount, result=...)`, `finish_view_with`,
    `(ctx-finish-view ctx mount :result value)`, `ctx.ui.finishView(mount, result)`. The reply and the state carry it back.
-9. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
-   `ctx.ui.viewDiagnostics`: the notices of a mount say which update the host rejected, which intent it ended and what a client
-   could not draw. The host keeps 32 notices for a mount and counts repeats.
-10. On a click: change, redraw, answer. An update your handler makes to the mount its intent came from belongs to the answer:
+10. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
+    `ctx.ui.viewDiagnostics`: the notices of a mount say which update the host rejected, which intent it ended and what a client
+    could not draw. The host keeps 32 notices for a mount and counts repeats.
+11. On a click: change, redraw, answer. An update your handler makes to the mount its intent came from belongs to the answer:
     the intent settles `done`, and the client is sent the new view before it is told the intent is done. Make the update through
     the context the handler was given (`in.Context`, `inv.context`, the handler's `ctx`) and wait for it before you answer. Use no
     timer and no delay. Hide, show, finish and remove never make an answer stale, so a handler may close its own panel and answer
@@ -639,7 +657,7 @@ there are any, and mount when a client arrives (step 11).
     });
     ```
 
-11. Mount when a client arrives. Register one handler while the extension loads: `pi.onViewAbilities((abilities, ctx) => ...)`
+12. Mount when a client arrives. Register one handler while the extension loads: `pi.onViewAbilities((abilities, ctx) => ...)`
     (Node), `ext.OnViewAbilities(func(ctx sdk.Context, abilities *sdk.ViewAbilities))` (Go), `ext.on_view_abilities(handler)` with
     `handler(abilities, ctx)` (Python), `ext.on_view_abilities(|ctx, abilities| ...)` (Rust), `(on-view-abilities ext (lambda (ctx
     abilities) ...))` (Lisp). It runs when the first client attaches, when the abilities change and when the last client leaves.
@@ -660,6 +678,23 @@ there are any, and mount when a client arrives (step 11).
     });
     ```
 
+13. Give the mount a `title` (Go `ViewContent.Title`, Python and Lisp the `title` keyword, Rust `ViewMount.title` and
+    `ViewUpdate.title`, Node the `title` member): at most 64 bytes on one line. A client labels the mount with it, in a tab or a
+    list of views. The title, the mount's `key` (a client labels an untitled mount with it) and a binding's `name` are labels: the
+    host answers `invalid` for one that holds a control character, a line separator or a control that reorders the text around it
+    (U+202A to U+202E and U+2066 to U+2069), so that a label cannot pass for another. The direction marks of Arabic and Hebrew text
+    (U+200E, U+200F, U+061C) are accepted. It is content, so send it again with every update; an update without it clears it.
+14. Let the user open a view you hid. Declare one intent with `whenHidden` (Go `WhenHidden`, Python `when_hidden`, Rust
+    `when_hidden`, Lisp `:when-hidden`, Node `whenHidden`): no `nodeKey`, and an argument shape that accepts `{}`. It is the one
+    intent a hidden mount takes. A client lists your hidden mount by its title, and when the user chooses it your handler gets
+    that intent: call `ShowView`, after an update if the view is out of date. A hidden mount without such an intent is not
+    offered to the user.
+15. Show a view from a tool. Register a tool of your own (for example `mail_show`); its handler mounts the view, or shows and
+    updates it, from the context it is given. To ask for the keyboard too, put `request: "update"` on one `focus` record of that
+    update (`request: "mount"` asks when the mount is first drawn). Send it only with the update that should move the focus,
+    because every revision that carries it asks again. The client decides: it shows the view where it can, and when it does not
+    give the focus `ViewDiagnostics` returns an `unfocused` notice that says why.
+
 Every bound is the host's: one past it fails with code `invalid` in every SDK. `docs/additive-features.md` D614 lists the bounds.
 
 ### Views in the terminal
@@ -671,23 +706,41 @@ check the abilities and keep a fallback such as a widget or a notice.
 |---|---|---|---|
 | `widget-above` | above the editor, after the widgets | at most 10 | no |
 | `widget-below` | below the editor, after the widgets | at most 10 | no |
-| `panel` | the rows directly above the editor | at most half the terminal | yes |
+| `panel` | the rows directly above the editor, as tabs | at most half the terminal | yes |
 
 - The TUI draws every D107 node kind except `image`, at the terminal's width. It states its size as claims: `size.columns`,
   and `size.rows` for each slot. Use them in `alternatives` (`atLeast`) to send a layout that fits; `client.kind` is `terminal`.
 - A view taller than its slot is cut, the last row reads `... (view truncated)`, and `ViewDiagnostics` returns a `limit` notice.
-- A panel takes the focus when one of its `focus` records has `request: "mount"`, when the user presses F6, or on a click in
-  fullscreen mode. Escape returns the focus to the editor. Name the node that takes the keys in the view's `focus`.
+- Panels are tabs. One row above the panel lists every live panel, and every hidden one that declares a `whenHidden` intent,
+  by `title` (or by `key` without one); only the front tab's view is drawn. One live panel without a title has no tab row. A
+  label that does not fit is cut by display cells with `...`.
+- F6 walks from the editor through the tabs and back; Escape returns the focus to the editor, and the tab last visited stays
+  drawn. A view that takes keys gets the focus; otherwise the tab row holds it. On a hidden tab (drawn dim, in parentheses)
+  Enter raises its `whenHidden` intent: show the mount in your handler. A click in fullscreen mode focuses a panel.
+- A panel that you mount, show after a hide, or update with a focus request comes to the front when the user is in the editor
+  or on its tab. While the user works in another view yours stays where it is and its tab is marked with `*`.
+- A focus request (`request: "mount"` or `"update"`) is granted when your view already has the focus, when the user stands on
+  its tab, or when the editor has the focus and is empty. Otherwise `ViewDiagnostics` returns an `unfocused` notice with the
+  reason, for example `the editor holds text`. Name the node that takes the keys in the view's `focus`, or request it.
 - Bind an intent to a node with `nodeKey`. Choosing a select-list item, changing a settings-list value, submitting an input or
   an editor and clicking a mouse-region raise it. Declare the argument as an object with a `value` property (the item's value,
   the new setting value or the submitted text) and, for a settings-list, an `item` property (the setting's id), or as a scalar
   that takes the value. The TUI offers no control for an intent without a `nodeKey`; `ViewDiagnostics` says so.
+- A `grid` node is a calendar-style grid of equal columns whose cells are data: `{kind: "grid", id, columns, head?, chipRows?, selected?, cells: [{value?, label?, mark?, dim?, color?, chips: [{text, color?}], more?}]}` (at most 128 cells, 8 chips a cell). Name it in the view's `focus` and bind an intent to it with `nodeKey`: the arrow keys, Home, End, Enter and Space of a focused grid in the TUI, and a click, raise the intent with the chosen cell's `value`; every other key, and a move past an edge, goes to the client. Send the chips you show and the count you left out in `more`; the client adds what it could not draw to its "+K more" line.
+- Build a grid with your SDK's kit: Go `kit.NewGrid(id, columns, cells)` over `kit.GridCell` and `kit.GridChip` (set `Head`,
+  `ChipRows` and `Selected` on the grid), Rust `kit::Grid::new(id, columns, cells)` with `.head`, `.chip_rows` and `.selected`
+  over `kit::GridCell::new().value(..).label(..).chip(kit::GridChip::new(text).color(..))`, Python
+  `kit.Grid(id, columns, cells, head=, chip_rows=, selected=)` over `kit.GridCell` and `kit.GridChip`, Lisp
+  `(kit-grid id columns cells :head :chip-rows :selected)` over `kit-grid-cell` and `kit-grid-chip`. In Node the node is the
+  plain object above; `PiGViewGrid`, `PiGViewGridCell` and `PiGViewGridChip` type it. A member you do not set is not sent, and
+  no SDK checks or changes a value: the host validates the grid and answers a broken rule with code `invalid`.
 - One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
   answer arrived is dropped.
 
-Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `TestConformance_UIViewAnswerRedraw` and
-`TestConformance_UIViewAbilitiesEvent` run the same probes in every SDK against the host, and
-`docs/additive-features.md` D614 lists the records.
+Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `TestConformance_UIViewAnswerRedraw`,
+`TestConformance_UIViewAbilitiesEvent`, `TestConformance_UIViewToolShowsAndFocuses`, `TestConformance_UIViewGrid` and
+`TestConformance_UIViewBindings` run the same probes in every SDK against the host, and `docs/additive-features.md` D614 lists the
+records.
 
 ## Adding a new extension API surface
 

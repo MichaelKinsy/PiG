@@ -253,7 +253,7 @@ func (runtime *ModelRuntime) loadAvailableModels(ctx context.Context, providerID
 }
 
 // queueAvailabilityRefresh assigns publication generations when the availability pass starts, after any catalog work. Only a later availability pass invalidates this pass.
-// The pass reads auth.json through one view (AvailabilityReadContext) unless an extension provider takes part.
+// The pass reads auth.json through one view (AvailabilityReadContext).
 func (runtime *ModelRuntime) queueAvailabilityRefresh(ctx context.Context) error {
 	ctx = runtime.services.Registry().AvailabilityReadContext(runtime.services.Registry().ModelTaskContext(ctx))
 	state := &runtime.availability

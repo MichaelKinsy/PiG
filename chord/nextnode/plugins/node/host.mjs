@@ -11,6 +11,7 @@
 // exception or rejection; the process exits with code 1, after the exception was printed on stderr as Node prints it).
 // The notifications of bridge.mjs (`unwatch`, `release`) have no answer either; its events are `frame`, `watchEnd` and `state`, and it serves the
 // requests that hold a local type of the plugins for the Go side (`get`, `value`, `watch`, `call`) and contracts as data (`describe`).
+// The events of the two hosts cross as `event` and `ack` messages, in both directions, none answered (events.mjs).
 // The calls to the Go side are `{ event: "call", call, name, args }` (answered by the request `{ op: "answer", id: call, ok,
 // result | error }`) and `{ event: "cancel", call }` (callbacks.mjs), and the telemetry the host reports is
 // `{ event: "telemetry", op, ... }` (telemetry.mjs). The host's synchronous callbacks (`principalKey`, `revokedBy`) use a second

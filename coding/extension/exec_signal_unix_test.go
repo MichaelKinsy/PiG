@@ -34,8 +34,8 @@ func waitForPid(t *testing.T, pidFile string) int {
 	return 0
 }
 
-// core/exec.ts:46-52: options.signal aborting kills the command with SIGTERM, and the call resolves with the output so far, killed set and code 0,
-// the code `code ?? 0` gives a command that a signal ended. The command is gone when the call returns.
+// core/exec.ts:46-52: options.signal aborting kills the command with SIGTERM, and the call resolves with the output so far, killed set and code 143,
+// 128 + SIGTERM, the code a command that a signal ended reports. The command is gone when the call returns.
 func TestExecCommandOptionsSignalEndsTheCommand(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	signal, abort := context.WithCancel(context.Background())
@@ -52,8 +52,8 @@ func TestExecCommandOptionsSignalEndsTheCommand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Stdout != "started\n" || result.Code != 0 || !result.Killed {
-		t.Fatalf("result = %+v, want the output so far, code 0 and killed", result)
+	if result.Stdout != "started\n" || result.Code != 143 || !result.Killed {
+		t.Fatalf("result = %+v, want the output so far, code 143 and killed", result)
 	}
 	if err := syscall.Kill(waitForPid(t, pidFile), 0); !errors.Is(err, syscall.ESRCH) {
 		t.Fatalf("the command is still running after the call returned (kill 0: %v)", err)
@@ -68,7 +68,7 @@ func TestExecCommandOptionsSignalAbortedBeforeTheCallKillsTheStartedCommand(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Code != 0 || !result.Killed {
-		t.Fatalf("result = %+v, want code 0 and killed", result)
+	if result.Code != 143 || !result.Killed {
+		t.Fatalf("result = %+v, want code 143 and killed", result)
 	}
 }

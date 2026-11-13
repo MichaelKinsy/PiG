@@ -489,8 +489,11 @@ func (a *rpcAdmission) startPrompt(id rpcRequestID, text string, input rpcInputR
 	if a.ctx.Err() != nil {
 		return
 	}
-	// upstream: agent-session.ts:2133 prompt() awaits _startRun, which marks the Session busy before its compaction check and
-	// before_agent_start (:1832-1837), so input that arrives meanwhile queues into this run or is rejected.
+	// upstream: agent-session.ts:2195 prompt() awaits _startRun, which marks the Session busy before its compaction check and
+	// before_agent_start (:1944-1948), so input that arrives meanwhile queues into this run or is rejected.
+	// pig divergence (D629): a second prompt of the same input chunk passed promptInput's isStreaming check before the first reached this
+	// point, as Pi's passes _preparePrompt's; BeginRunStart rejects it with the "already processing" error. Pi's _startRun has no such
+	// check: it answers "started", the prompt is never run, its error is dropped and an agent_settled is emitted for it.
 	start, err := a.session.BeginRunStart()
 	if err != nil {
 		fail(err)

@@ -49,7 +49,7 @@ func nextCall(t *testing.T, host *mockHost) envelope {
 
 // core/exec.ts:46-52: options.signal aborting kills the command, and the call has no other signal. The SDK names the call by an exec
 // id, sends it outside the calling request, and reports the abort with exec.cancel after the call's frame; the host answers the call
-// with what the command wrote, killed and code 0.
+// with what the command wrote, killed and code 143.
 func TestExecWithSignalSendsExecCancelWhenTheSignalEnds(t *testing.T) {
 	signal, abort := context.WithCancel(context.Background())
 	host, outcome, stop := execSignalHost(t, signal)
@@ -72,9 +72,9 @@ func TestExecWithSignalSendsExecCancelWhenTheSignalEnds(t *testing.T) {
 		t.Fatalf("cancel call = %s %s (parent %q)", cancel.Call.Method, cancel.Call.Args, cancel.Call.ParentRequestID)
 	}
 	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: cancel.ID, CallResult: &callResultMsg{}})
-	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{Result: json.RawMessage(`{"stdout":"so far","stderr":"","code":0,"killed":true}`)}})
+	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{Result: json.RawMessage(`{"stdout":"so far","stderr":"","code":143,"killed":true}`)}})
 	got := recv(t, outcome)
-	if got.err != nil || got.result == nil || *got.result != (ExecResult{Stdout: "so far", ExitCode: 0, Killed: true}) {
+	if got.err != nil || got.result == nil || *got.result != (ExecResult{Stdout: "so far", ExitCode: 143, Killed: true}) {
 		t.Fatalf("outcome = %+v, %v", got.result, got.err)
 	}
 }
@@ -91,7 +91,7 @@ func TestExecWithASignalThatIsDoneAlreadySendsTheCancelBehindTheCall(t *testing.
 		t.Fatalf("calls = %s, %s; want exec then exec.cancel", call.Call.Method, cancel.Call.Method)
 	}
 	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: cancel.ID, CallResult: &callResultMsg{}})
-	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{Result: json.RawMessage(`{"stdout":"","stderr":"","code":0,"killed":true}`)}})
+	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{Result: json.RawMessage(`{"stdout":"","stderr":"","code":143,"killed":true}`)}})
 	if got := recv(t, outcome); got.err != nil || got.result == nil || !got.result.Killed {
 		t.Fatalf("outcome = %+v, %v", got.result, got.err)
 	}

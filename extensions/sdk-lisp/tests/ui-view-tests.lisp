@@ -12,6 +12,10 @@
     (kt-check-json "{\"name\":\"x.go\",\"arg\":{\"type\":\"object\",\"properties\":{\"n\":{\"type\":\"integer\"}},\"required\":[\"n\"]},\"nodeKey\":\"btn\",\"answer\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"maxItems\":3},\"cancellable\":true,\"timeoutMs\":500}"
                    intent)))
 
+(deftest ui-view-intent-a-hidden-mount-takes
+  (kt-check-json "{\"name\":\"x.open\",\"arg\":{\"type\":\"object\"},\"whenHidden\":true}"
+                 (pig::view-intent "x.open" (pig::view-shape "object") :when-hidden t)))
+
 (deftest ui-view-target-sets-one-member
   (kt-check-json "{\"toolCallId\":\"c1\"}" (pig::view-target :tool-call-id "c1")))
 

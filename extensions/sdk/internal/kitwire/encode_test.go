@@ -225,3 +225,33 @@ func TestEncodeConversationKinds(t *testing.T) {
 		t.Fatalf("images = %+v, want the result image once", encoded.Images)
 	}
 }
+
+// The grid node (D614): the encoded node holds exactly the wire members the author set. Columns is always sent, and an
+// optional member left unset is absent, not null, zero or empty.
+func TestEncodeGridHoldsExactlyTheMembersSet(t *testing.T) {
+	grid := kit.NewGrid("month", 7, []kit.GridCell{
+		{Label: "30", Dim: true},
+		{Value: "d1", Label: "1", Chips: []kit.GridChip{{Text: "standup", Color: "#3366cc"}, {Text: "lunch"}}, More: 2},
+		{Value: "d2", Label: "2", Mark: "current", Color: "accent"},
+		{Value: "d3"},
+		{},
+	})
+	grid.Head = []string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+	grid.ChipRows = new(2)
+	grid.Selected = "d2"
+	encoded, err := Encode(kit.View{Root: kit.NewContainer(grid, kit.NewGrid("bare", 1, nil))}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"root":{"kind":"container","children":[` +
+		`{"kind":"grid","id":"month","columns":7,"chipRows":2,"head":["Mo","Tu","We","Th","Fr","Sa","Su"],"cells":[` +
+		`{"label":"30","dim":true},` +
+		`{"value":"d1","label":"1","chips":[{"text":"standup","color":"#3366cc"},{"text":"lunch"}],"more":2},` +
+		`{"value":"d2","label":"2","mark":"current","color":"accent"},` +
+		`{"value":"d3"},` +
+		`{}],"selected":"d2"},` +
+		`{"kind":"grid","id":"bare","columns":1}]}}`
+	if string(encoded.View) != want {
+		t.Fatalf("view JSON\n got %s\nwant %s", encoded.View, want)
+	}
+}

@@ -762,7 +762,7 @@ def test_execute_tool_with_an_aborted_signal_cancels_after_the_call_starts() -> 
         host.close()
 
 
-_EXEC_KILLED = {"stdout": "so far", "stderr": "", "code": 0, "killed": True}
+_EXEC_KILLED = {"stdout": "so far", "stderr": "", "code": 143, "killed": True}
 
 
 def test_exec_signal_cancels_the_command() -> None:
@@ -789,7 +789,7 @@ def test_exec_signal_cancels_the_command() -> None:
         host.answer(cancel, None)
         host.answer(call, _EXEC_KILLED)
         assert host.read()["response"]["result"] == {"content": "done"}
-        assert (got[0].stdout, got[0].exit_code, got[0].killed) == ("so far", 0, True)
+        assert (got[0].stdout, got[0].exit_code, got[0].killed) == ("so far", 143, True)
     finally:
         host.close()
 

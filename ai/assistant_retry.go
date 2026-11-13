@@ -69,6 +69,9 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"connection.?error",
 	"connection.?refused",
 	"connection.?lost",
+	// Gateway mid-stream drop relayed as an Anthropic-style api_error event, e.g. {"type":"error","error":{"type":"api_error","message":"Connection closed."}}; also the agent proxy's "Connection closed by proxy server before the response completed" (#12064, Pi 9b88b94e2).
+	// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+	"connection.?closed",
 	"other side closed",
 	"fetch failed",
 	// node-fetch system errors, e.g. the Google ADC OAuth token refresh used by google-vertex; the reason is often empty (#10996, Pi 0fbdbd3f).

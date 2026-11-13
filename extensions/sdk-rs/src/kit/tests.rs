@@ -416,6 +416,55 @@ fn mouse_region_encodes_its_handler_as_a_description() {
     );
 }
 
+// The grid node (D614): the encoded node holds exactly the wire members the
+// author set. `columns` is always sent, and an optional member left unset is
+// absent, not null, zero or empty.
+#[test]
+fn grid_holds_exactly_the_members_set() {
+    let ledger = ViewLedger::default();
+    let grid = Grid::new(
+        "month",
+        7,
+        vec![
+            GridCell::new().label("30").dim(true),
+            GridCell::new()
+                .value("d1")
+                .label("1")
+                .chip(GridChip::new("standup").color("#3366cc"))
+                .chip(GridChip::new("lunch"))
+                .more(2),
+            GridCell::new()
+                .value("d2")
+                .label("2")
+                .mark("current")
+                .color("accent"),
+            GridCell::new().value("d3"),
+            GridCell::new(),
+        ],
+    )
+    .head(["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"])
+    .chip_rows(2)
+    .selected("d2");
+    let view = View::new(
+        Container::new()
+            .child(grid)
+            .child(Grid::new("bare", 1, vec![])),
+    );
+    assert_eq!(
+        wire_view(&ledger, &view)["root"],
+        json!({"kind": "container", "children": [
+            {"kind": "grid", "id": "month", "columns": 7, "chipRows": 2, "head": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], "cells": [
+                {"label": "30", "dim": true},
+                {"value": "d1", "label": "1", "chips": [{"text": "standup", "color": "#3366cc"}, {"text": "lunch"}], "more": 2},
+                {"value": "d2", "label": "2", "mark": "current", "color": "accent"},
+                {"value": "d3"},
+                {},
+            ], "selected": "d2"},
+            {"kind": "grid", "id": "bare", "columns": 1},
+        ]})
+    );
+}
+
 #[test]
 fn events_decode_each_upstream_callback() {
     let (key, select) = Event::from_wire(&json!({

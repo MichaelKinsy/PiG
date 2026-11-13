@@ -1100,6 +1100,80 @@ export default function (pi) {
   pi.registerCommand("ui_view_block", { description: "Block the abilities watcher on its next event", handler: async (_args, ctx) => { viewWatch.block = true; ctx.ui.notify("view-block:set", "info"); } });
   pi.registerCommand("ui_view_release", { description: "Release the blocked abilities watcher", handler: async (_args, ctx) => { viewWatch.release?.(); viewWatch.release = undefined; ctx.ui.notify("view-release:done", "info"); } });
   pi.registerCommand("ui_view_events", { description: "Report how often the abilities watcher ran", handler: async (_args, ctx) => ctx.ui.notify(`view-events:${viewWatch.events}`, "info") });
+  // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+  // updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+  pi.registerCommand("ui_view_tool", { description: "Register the tool that shows a titled view", handler: async () => {
+    pi.registerTool({
+      name: "view_show",
+      label: "view_show",
+      description: "Mount, show and focus a titled view",
+      parameters: { type: "object", properties: {} },
+      async execute(_id, params, _signal, _onUpdate, ctx) {
+        const text = (value) => ({ content: [{ type: "text", text: value }] });
+        if (params.op === "hide") return text(`view-tool:${(await ctx.ui.hideView((await ctx.ui.viewState("shown")).mount)).state}`);
+        const content = (title, request) => ({
+          title, view: xList(params.node, "fixture-shown"),
+          intents: [{ name: "fx.reopen", arg: { type: "object" }, whenHidden: true }, { name: "fx.tap", arg: { type: "object" } }],
+          focus: [request ? { node: params.node, request } : { node: params.node }],
+        });
+        let st = await ctx.ui.mountView({ key: "shown", slot: "panel", ...content(params.title) });
+        st = await ctx.ui.hideView(st.mount);
+        st = await ctx.ui.showView(st.mount);
+        st = await ctx.ui.updateView(st.mount, content(`${params.title}/2`, "update"));
+        return text(`view-tool:${st.state},rev=${st.mount.rev}`);
+      },
+    });
+  } });
+  // D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is the
+  // row's token: the cell values, the selection and one chip text are built from it. A view is a plain object here, so this fixture can
+  // also write a member the record lacks (the `member` line); the builders of the Go, Rust and Python kits cannot.
+  pi.registerCommand("ui_view_grid", { description: "Mount a month as a grid and probe the bounds of the grid", handler: async (args, ctx) => {
+    const tok = args.trim();
+    const cells = [{ label: "30", dim: true }, { label: "31", dim: true }];
+    for (let d = 1; d <= 28; d++) {
+      const cell = { value: `${tok}-${d}`, label: String(d) };
+      if (d === 1) Object.assign(cell, { chips: [{ text: `${tok} standup`, color: "#3366cc" }, { text: "lunch", color: "accent" }], more: 2 });
+      if (d === 2) Object.assign(cell, { mark: "current", color: "#ff000080" });
+      if (d === 3) cell.chips = [{ text: "plain" }];
+      if (d === 28) delete cell.label;
+      cells.push(cell);
+    }
+    const content = (grid) => ({
+      view: { root: { kind: "container", children: [{ kind: "text", text: `Month ${tok}`, paddingX: 0, paddingY: 0 }, { kind: "grid", id: "month", ...grid }] } },
+      intents: [{ name: "fx.pick", nodeKey: "month", arg: { type: "object", properties: { value: { type: "string" } }, required: ["value"] } }],
+      fallback: { kind: "text", text: `grid-fallback ${tok}`, paddingX: 0, paddingY: 0 },
+    });
+    const st = await ctx.ui.mountView({ key: "grid", slot: "panel", ...content({ columns: 7, head: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], chipRows: 2, selected: `${tok}-2`, cells }) });
+    ctx.ui.notify(`view-g-mounted:${st.state}`, "info");
+    const attempt = async (label, columns, cells) => ctx.ui.notify(`view-g-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content({ columns, cells })))}`, "info");
+    await attempt("cells", 7, Array.from({ length: 129 }, () => ({ label: "x" })));
+    await attempt("chips", 7, [{ value: "a", chips: Array.from({ length: 9 }, () => ({ text: "c" })) }]);
+    await attempt("columns", 17, [{ value: "a" }]);
+    await attempt("mark", 7, [{ value: "a", mark: tok }]);
+    await attempt("member", 7, [{ value: "a", extra: 1 }]);
+    const cur = await ctx.ui.viewState("grid");
+    ctx.ui.notify(`view-g-state:${cur.state},rev=${cur.mount.rev}`, "info");
+  } });
+  // D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+  pi.registerCommand("ui_view_bindings", { description: "Mount a view with bindings and probe what the host refuses", handler: async (args, ctx) => {
+    const [key, number] = args.split(" ");
+    const n = Number(number);
+    const content = (bindings) => ({
+      view: viewText(ctx, "-bind"), bindings,
+      intents: [{ name: "fx.go", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] } }, { name: "fx.tap", arg: { type: "object" } }],
+    });
+    const goTo = (key, n) => ({ key, intent: "fx.go", arg: { n } });
+    const tap = (key) => ({ key, intent: "fx.tap" });
+    const st = await ctx.ui.mountView({ key: "bind", slot: "panel", ...content([{ ...goTo(key, n), name: `Go ${n}` }, goTo("w", n + 1), { gesture: "swipe-left", intent: "fx.tap" }]) });
+    ctx.ui.notify(`view-b-mounted:${st.state}`, "info");
+    const attempt = async (label, bindings) => ctx.ui.notify(`view-b-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content(bindings)))}`, "info");
+    await attempt("many", [..."abcdefghijklmnopqrstuvwxyz0123456"].map(tap));
+    await attempt("reserved", [tap("shift+tab")]);
+    await attempt("order", [tap("ctrl+shift+p"), tap("shift+ctrl+p")]);
+    await attempt("gesture", [{ gesture: "pinch", intent: "fx.tap" }]);
+    await attempt("arg", [goTo("a", "x")]);
+    await attempt("ok", [goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n + 1)]);
+  } });
   pi.onViewIntent(async (inv, ctx) => {
     if (inv.intent === "fx.redraw" || inv.intent === "fx.foreign") {
       const own = inv.intent === "fx.redraw";
@@ -1108,6 +1182,12 @@ export default function (pi) {
       const st = own ? await ctx.ui.updateView(mount, content) : await foreignUpdate(mount, content);
       return { outcome: "done", answer: { rev: st.mount.rev } };
     }
+    if (inv.intent === "fx.reopen") {
+      // The user opened the hidden view: its handler shows it.
+      await ctx.ui.showView({ ...inv.mount, rev: inv.rev });
+      return { outcome: "done" };
+    }
+    if (inv.intent === "fx.pick") return { outcome: "done", answer: { node: inv.nodeKey, picked: inv.arg.value } };
     if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n * 2 + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
     if (inv.intent === "fx.wait") {
       ctx.ui.notify(`intent-started:${inv.arg.tag}`, "info");

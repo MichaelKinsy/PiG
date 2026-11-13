@@ -1,7 +1,10 @@
 // Command fixture is the extension of the terminal view client's integration test (test/integration). Its commands mount
 // a panel with a list and a widget, update, hide, show, remove and finish them, and its intent handler redraws the panel
-// with the picked value. With PIG_UI_VIEW_FIXTURE_MOUNTS=0 every command runs and makes no ui.view call, so a session
-// that never mounted takes the same keys.
+// with the picked value. vtabs mounts three titled panels and hides the third, which the user can open; vfocus updates
+// the second with a focus request; vbind mounts a panel whose keys are bindings. With PIG_UI_VIEW_FIXTURE_MOUNTS=0 every command runs and makes no ui.view call, so a session
+// that never mounted takes the same keys. With PIG_UI_VIEW_FIXTURE_ABILITIES=panel or =widget-above it mounts one view
+// in that slot when it is told the abilities of the client that attached (OnViewAbilities), before any command; with
+// =listen it takes that event and makes no ui.view call.
 package main
 
 import (
@@ -15,8 +18,9 @@ import (
 )
 
 const (
-	panelKey  = "panel"
-	widgetKey = "note"
+	panelKey   = "panel"
+	widgetKey  = "note"
+	arrivalKey = "arrival"
 )
 
 var pick = sdk.ViewIntent{
@@ -30,6 +34,42 @@ func panel(title string) sdk.ViewContent {
 		View:    kit.View{Root: kit.NewContainer(kit.NewText(title, 1, 0), list), Focus: "pick"},
 		Intents: []sdk.ViewIntent{pick},
 		Focus:   []sdk.ViewFocus{{Node: "pick", Request: "mount"}},
+	}
+}
+
+// open is the intent a hidden tab takes: its handler shows the tab.
+var open = sdk.ViewIntent{Name: "viewfx.open", Arg: sdk.ViewShape{Type: "object"}, TimeoutMs: 5000, WhenHidden: true}
+
+var tabTitles = map[string]string{"cal": "Calendar", "notes": "Notes"}
+
+// tab is a titled panel with a list; request is the focus request of its list.
+func tab(key, text, request string) sdk.ViewContent {
+	list := kit.NewSelectList("pick", []kit.SelectItem{{Value: "alpha", Label: "Alpha item"}, {Value: "beta", Label: "Beta item"}}, 4)
+	return sdk.ViewContent{
+		Title:   tabTitles[key],
+		View:    kit.View{Root: kit.NewContainer(kit.NewText(text, 1, 0), list), Focus: "pick"},
+		Intents: []sdk.ViewIntent{pick, open},
+		Focus:   []sdk.ViewFocus{{Node: "pick", Request: request}},
+	}
+}
+
+// goTo is the intent the bound panel's keys raise.
+var goTo = sdk.ViewIntent{
+	Name: "viewfx.go", TimeoutMs: 5000,
+	Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"n": {Type: "integer"}}},
+}
+
+// bound is a panel without a node that takes keys: d raises goTo with an argument and has a name, w raises it without
+// one, and a swipe is bound too.
+func bound(text string) sdk.ViewContent {
+	return sdk.ViewContent{
+		View:    kit.View{Root: kit.NewText(text, 1, 0)},
+		Intents: []sdk.ViewIntent{goTo},
+		Bindings: []sdk.ViewBinding{
+			{Key: "d", Intent: goTo.Name, Arg: map[string]any{"n": 7}, Name: "Day"},
+			{Key: "w", Intent: goTo.Name},
+			{Gesture: "swipe-left", Intent: goTo.Name},
+		},
 	}
 }
 
@@ -55,6 +95,19 @@ func main() {
 		mu.Lock()
 		defer mu.Unlock()
 		return refs[key]
+	}
+	if arrival := os.Getenv("PIG_UI_VIEW_FIXTURE_ABILITIES"); arrival != "" {
+		var once sync.Once
+		ext.OnViewAbilities(func(ctx sdk.Context, abilities *sdk.ViewAbilities) {
+			if arrival == "listen" || abilities == nil {
+				return
+			}
+			once.Do(func() {
+				if err := keep(ctx.MountView(sdk.ViewMount{Key: arrivalKey, Slot: sdk.ViewSlot(arrival), ViewContent: note("fixture arrival view")})); err != nil {
+					ctx.Notify("viewfx abilities: "+err.Error(), "error")
+				}
+			})
+		})
 	}
 	command := func(name, description string, run func(ctx sdk.Context) error) {
 		ext.Command(name, description, func(ctx sdk.Context, _ string) error {
@@ -84,6 +137,24 @@ func main() {
 	command("vupdate", "Update the fixture's widget", func(ctx sdk.Context) error {
 		return keep(ctx.UpdateView(sdk.ViewUpdate{Mount: ref(widgetKey), ViewContent: note("fixture widget updated")}))
 	})
+	command("vtabs", "Mount three titled panels and hide the third", func(ctx sdk.Context) error {
+		mail := sdk.ViewContent{Title: "Mail", View: kit.View{Root: kit.NewText("mail rows", 1, 0)}}
+		if err := keep(ctx.MountView(sdk.ViewMount{Key: "mail", Slot: sdk.ViewSlotPanel, ViewContent: mail})); err != nil {
+			return err
+		}
+		for _, key := range []string{"cal", "notes"} {
+			if err := keep(ctx.MountView(sdk.ViewMount{Key: key, Slot: sdk.ViewSlotPanel, ViewContent: tab(key, key+" rows", "")})); err != nil {
+				return err
+			}
+		}
+		return keep(ctx.HideView(ref("notes")))
+	})
+	command("vfocus", "Update the second tab with a focus request", func(ctx sdk.Context) error {
+		return keep(ctx.UpdateView(sdk.ViewUpdate{Mount: ref("cal"), ViewContent: tab("cal", "cal asked", "update")}))
+	})
+	command("vbind", "Mount a panel with key bindings", func(ctx sdk.Context) error {
+		return keep(ctx.MountView(sdk.ViewMount{Key: "bind", Slot: sdk.ViewSlotPanel, ViewContent: bound("bind rows")}))
+	})
 	command("vhide", "Hide the fixture's views", func(ctx sdk.Context) error { return both(ctx.HideView) })
 	command("vshow", "Show the fixture's views", func(ctx sdk.Context) error { return both(ctx.ShowView) })
 	command("vremove", "Remove the fixture's views", func(ctx sdk.Context) error { return both(ctx.RemoveView) })
@@ -96,7 +167,25 @@ func main() {
 			return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
 		}
 		at := sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev}
-		if err := keep(in.Context.UpdateView(sdk.ViewUpdate{Mount: at, ViewContent: panel("picked " + arg.Value)})); err != nil {
+		if in.Intent == goTo.Name {
+			// A key of the bound panel: the panel shows the argument the client raised the intent with.
+			if err := keep(in.Context.UpdateView(sdk.ViewUpdate{Mount: at, ViewContent: bound("bound " + string(in.Arg))})); err != nil {
+				return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+			}
+			return sdk.ViewIntentResult{Outcome: "done"}
+		}
+		if in.Intent == open.Name {
+			// The user opened the hidden tab.
+			if err := keep(in.Context.ShowView(at)); err != nil {
+				return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+			}
+			return sdk.ViewIntentResult{Outcome: "done"}
+		}
+		content := panel("picked " + arg.Value)
+		if _, titled := tabTitles[in.Mount.Key]; titled {
+			content = tab(in.Mount.Key, in.Mount.Key+" picked "+arg.Value, "")
+		}
+		if err := keep(in.Context.UpdateView(sdk.ViewUpdate{Mount: at, ViewContent: content})); err != nil {
 			return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
 		}
 		return sdk.ViewIntentResult{Outcome: "done"}

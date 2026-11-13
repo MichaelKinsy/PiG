@@ -7298,3 +7298,55 @@ end = "\n\n\trequestRender(force = false): void {"
 sha256 = "a41d73a127962410af68ce65abee17a1c1530e3b348359d240dbb9179ca569d2"
 keybindings = [
 ]
+
+[[contract]]
+id = "tui/tui-base/request-render-throttle"
+upstream_id = "render:packages/tui/src/tui.ts#TuiBase.renderNow"
+family = "tui-components"
+kind = "render-scheduling"
+claim = "Porting guard for the frame scheduler: requestRender marks a frame as requested once and schedules it on the next tick, a forced request resets the render state and asks for an immediate frame that cancels a throttled one, cancelRenderTimer clears the one timer, and scheduleRender arms one setTimeout for max(0, MIN_RENDER_INTERVAL_MS - time since the last frame began) whose callback records the frame time, draws, and schedules again when a request arrived while it drew. PiG keeps this range as a line-for-line port (RequestRender, scheduleRenderLocked) and arms the timer in one place (armFrameLocked, which cuts the delay to whole milliseconds as Node's setTimeout does); any change of this range upstream is reviewed against that port and against whatever paces frames beside it before the hash is updated"
+status = "ported"
+pig_targets = [
+  "tui/tui.go#RequestRender",
+  "tui/tui.go#scheduleRenderLocked",
+  "tui/tui.go#armFrameLocked",
+]
+evidence = [
+  "tui/render_scheduler_test.go#TestTUIRequestRender_RespectsMinInterval",
+  "tui/render_scheduler_test.go#TestThrottledFrameWaitsTheWholeMillisecondsLeftOfTheInterval",
+  "tui/render_scheduler_test.go#TestOwnerDeadlineOfAThrottledFrameIsTheWholeMillisecondsLeftOfTheInterval",
+  "test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml",
+  "test/parity/scenarios/interactive-rendering/46-bash-execution-running-spinner.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\trequestRender(force = false): void {"
+end = "\n\n\tprivate handleTerminalInput(data: string): void {"
+sha256 = "7a1d4eeae07b1697b0b0052af3199853a3db677e046133e051f008fb4f568951"
+keybindings = [
+]
+
+[[contract]]
+id = "tui/tui-base/render-interval-state"
+upstream_id = "render:packages/tui/src/tui.ts#TuiBase.renderNow"
+family = "tui-components"
+kind = "render-scheduling"
+claim = "Porting guard for the frame scheduler's state: one requested flag, one immediate-frame flag, one timer, the time the last frame began, and the constant MIN_RENDER_INTERVAL_MS = 16. PiG's minRenderInterval is that constant; a change of the fields or of the value upstream is reviewed against the port and against whatever paces frames beside it before the hash is updated"
+status = "ported"
+pig_targets = [
+  "tui/tui.go#minRenderInterval",
+  "tui/tui.go#scheduleRenderLocked",
+]
+evidence = [
+  "tui/render_scheduler_test.go#TestTUIRequestRender_RespectsMinInterval",
+  "test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\tprivate renderRequested = false;"
+end = "\n\tprivate showHardwareCursor = false;"
+sha256 = "ee38b030fdb9aa8f829f137707ec88351ed0ce8d7ba3cd114a07db516944c20a"
+keybindings = [
+]

@@ -261,26 +261,32 @@ func TestDurableCodeModeOutputAndToolSearch(t *testing.T) {
 
 	// Pi 1.2.0 packages/durable/test/codemode.test.ts:1045 "finds tools with searchTools(), describeTool(), and describeNamespace(), and lists them in ALL_TOOLS"
 	t.Run("finds tools with searchTools(), describeTool(), and describeNamespace(), and lists them in ALL_TOOLS", func(t *testing.T) {
-		chat := codemodeChatWith(t, ToolOptions{Namespaces: []Namespace{{Name: "github", Description: "GitHub MCP server", Prefix: "mcp__github__"}}})
-		addTool(t, chat.setup.registry, tool("mcp__github__list_issues", func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		chat := codemodeChatWith(t, ToolOptions{})
+		// The namespace is the extension's: its tools belong to it whatever their names.
+		addNamespaced(t, chat.setup.registry, "mcp:github", durable.ToolNamespace{Name: "github", Description: "GitHub MCP server", Instructions: "Pass the repository as owner/name."}, tool("list_issues", func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{}, nil
 		}, durable.ReplayUnsafe))
+		// A namespace without tools yet (a server waiting for sign-in) is described too.
+		addNamespaced(t, chat.setup.registry, "mcp:linear", durable.ToolNamespace{Name: "linear", Description: "Linear: sign in first."})
 		run := runScript(t, `const found = await searchTools("issues");
+			const byInstructions = await searchTools("repository owner");
 			const inNamespace = await searchTools("echo", { namespace: "github" });
 			return {
 				found: found.map((tool) => tool.name),
+				byInstructions: byInstructions.map((tool) => tool.name),
 				inNamespace,
 				described: (await describeTool("echo")).includes("echo(args:"),
 				missing: (await describeTool("nope")) ?? null,
 				namespace: await describeNamespace("github"),
-				all: ALL_TOOLS.map((tool) => tool.name).includes("mcp__github__list_issues"),
+				empty: await describeNamespace("linear"),
+				all: ALL_TOOLS.map((tool) => tool.name).includes("list_issues"),
 			};`, chat)
 		var got any
 		if err := json.Unmarshal([]byte(scriptHeader.ReplaceAllString(run.text, "")), &got); err != nil {
 			t.Fatalf("%q: %v", run.text, err)
 		}
 		var want any
-		_ = json.Unmarshal([]byte(`{"found":["mcp__github__list_issues"],"inNamespace":[],"described":true,"missing":null,"namespace":{"name":"github","description":"GitHub MCP server","tools":["mcp__github__list_issues"]},"all":true}`), &want)
+		_ = json.Unmarshal([]byte(`{"found":["list_issues"],"byInstructions":["list_issues"],"inNamespace":[],"described":true,"missing":null,"namespace":{"name":"github","description":"GitHub MCP server","instructions":"Pass the repository as owner/name.","tools":["list_issues"]},"empty":{"name":"linear","description":"Linear: sign in first.","tools":[]},"all":true}`), &want)
 		if !equalJSON(got, want) {
 			t.Errorf("got %s", run.text)
 		}
@@ -288,12 +294,13 @@ func TestDurableCodeModeOutputAndToolSearch(t *testing.T) {
 }
 
 func TestDiscoveryGlobalsCheckTheirArguments(t *testing.T) {
-	chat := codemodeChatWith(t, ToolOptions{Namespaces: []Namespace{{Name: "github", Prefix: "mcp__github__"}, {Name: "jira", Prefix: "mcp__jira__"}}})
-	for _, name := range []string{"mcp__github__list_issues", "mcp__jira__list_issues", "my-tool"} {
-		addTool(t, chat.setup.registry, tool(name, func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-			return durable.ToolExecutionResult{}, nil
-		}, durable.ReplayUnsafe))
+	chat := codemodeChatWith(t, ToolOptions{})
+	noop := func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		return durable.ToolExecutionResult{}, nil
 	}
+	addNamespaced(t, chat.setup.registry, "mcp:github", durable.ToolNamespace{Name: "github", Description: "GitHub"}, tool("mcp__github__list_issues", noop, durable.ReplayUnsafe))
+	addNamespaced(t, chat.setup.registry, "mcp:jira", durable.ToolNamespace{Name: "jira", Description: "Jira"}, tool("mcp__jira__list_issues", noop, durable.ReplayUnsafe))
+	addTool(t, chat.setup.registry, tool("my-tool", noop, durable.ReplayUnsafe))
 	run := runScript(t, `const fail = async (promise) => { try { await promise; return "resolved"; } catch (error) { return error.message; } };
 		return {
 			inGithub: (await searchTools("issues", { namespace: "github" })).map((tool) => tool.name),

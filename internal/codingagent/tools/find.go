@@ -62,7 +62,12 @@ type FindTool struct {
 func (t *FindTool) Name() string  { return "find" }
 func (t *FindTool) Label() string { return "" }
 
-func (t *FindTool) Schema() ai.ToolSchema {
+func (t *FindTool) Schema() ai.ToolSchema { return t.schema(false) }
+
+// BorrowedSchema is Schema with the parameters shared, not copied: the caller reads them and never modifies them.
+func (t *FindTool) BorrowedSchema() ai.ToolSchema { return t.schema(true) }
+
+func (t *FindTool) schema(borrow bool) ai.ToolSchema {
 	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:        "find",
 		Description: "Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to 1000 results or 50KB (whichever is hit first).",
@@ -70,7 +75,7 @@ func (t *FindTool) Schema() ai.ToolSchema {
 		"pattern":{"type":"string","description":"Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'"},
 		"path":{"type":"string","description":"Directory to search in (default: current directory)"},
 		"limit":{"type":"number","description":"Maximum number of results (default: 1000)"}
-	}}`)
+	}}`, borrow)
 }
 
 func (t *FindTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }

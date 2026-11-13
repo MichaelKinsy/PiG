@@ -34,21 +34,22 @@ var releaseRef = regexp.MustCompile(`^v?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$`)
 // isRelease reports whether the pin is a release tag, whose packages npm publishes, rather than a commit.
 func (p piPin) isRelease() bool { return releaseRef.MatchString(p.Ref) }
 
-// piReference is one of Pi's npm projects a bundle or the image installs at the pin: the pi-durable reference of the
-// Durable profiles, or Pi's coding agent, the reference of the agent profiles.
+// piReference is Pi's coding agent, the reference of the agent profiles, as an npm project a bundle or the image installs at the pin.
+// (The pi-durable reference of the Durable profiles is the repository's own project bench/k8s/image/pi-durable, whose lock
+// names the packs vendored in third_party/pi-packs: writeVendoredInstall.)
 type piReference struct {
 	// dir is the project's directory in a bundle and under bench/k8s/image (a release's published install pair).
 	dir string
 	// closure names a commit's frozen closure, automation/pin/frozen/<commit>.<closure>.json.gz, and packs the directory
 	// of a commit's build where `python3 automation/pin/pin.py install-oracle` leaves the packs it installs with it
-	// (automation/pin/oracle.py frozen_lock_path, ensure and ensure_durable).
+	// (automation/pin/oracle.py frozen_lock_path and ensure).
 	closure, packs string
 	// pkg is the package the project exists for; at a commit it must come from the pinned source.
 	pkg string
 }
 
 var (
-	durableReference = piReference{dir: "pi-durable", closure: "durable-closure", packs: "durable-packs", pkg: "@earendil-works/pi-durable"}
+	durableReference = piReference{dir: "pi-durable", pkg: "@earendil-works/pi-durable"}
 	agentReference   = piReference{dir: "pi-agent", closure: "closure", packs: "packs", pkg: "@earendil-works/pi-coding-agent"}
 )
 
@@ -161,6 +162,9 @@ func writePinnedInstall(root, dir, packsDir string, ref piReference, pin piPin) 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
+	if ref == durableReference {
+		return writeVendoredInstall(root, dir, pin)
+	}
 	if pin.isRelease() {
 		for _, f := range []string{"package.json", "package-lock.json"} {
 			data, err := os.ReadFile(filepath.Join(root, "bench", "k8s", "image", ref.dir, f))
@@ -204,6 +208,53 @@ func writePinnedInstall(root, dir, packsDir string, ref piReference, pin piPin) 
 	}
 	return pin.Version, nil
 }
+
+// vendoredPacksPrefix is how bench/k8s/image/pi-durable's manifest and lock name a pack of third_party/pi-packs; a bundle holds the packs
+// in packs/ beside the project.
+const vendoredPacksPrefix = "file:../../../../third_party/pi-packs/"
+
+// writeVendoredInstall writes the npm project of the pi-durable reference into dir: bench/k8s/image/pi-durable's package.json and lock with
+// the packs of third_party/pi-packs (the pinned source build of Pi's durable closure) copied to dir/packs, the lock's sha512 naming each.
+// It returns the version VERSIONS records.
+func writeVendoredInstall(root, dir string, pin piPin) (string, error) {
+	if err := os.MkdirAll(filepath.Join(dir, "packs"), 0o755); err != nil {
+		return "", err
+	}
+	var files []string
+	for _, f := range []string{"package.json", "package-lock.json"} {
+		data, err := os.ReadFile(filepath.Join(root, "bench", "k8s", "image", durableReference.dir, f))
+		if err != nil {
+			return "", err
+		}
+		text := strings.ReplaceAll(string(data), vendoredPacksPrefix, "file:packs/")
+		if f == "package-lock.json" {
+			for _, m := range vendoredPackRef.FindAllStringSubmatch(text, -1) {
+				files = append(files, m[1])
+			}
+		}
+		if err := os.WriteFile(filepath.Join(dir, f), []byte(text), 0o644); err != nil {
+			return "", err
+		}
+	}
+	if len(files) == 0 {
+		return "", errors.New("bench/k8s/image/pi-durable/package-lock.json names no pack of third_party/pi-packs; run `make vendor-pi-packs`")
+	}
+	for _, file := range slices.Compact(slices.Sorted(slices.Values(files))) {
+		data, err := os.ReadFile(filepath.Join(root, "third_party", "pi-packs", file))
+		if err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(filepath.Join(dir, "packs", file), data, 0o644); err != nil {
+			return "", err
+		}
+	}
+	if pin.isRelease() {
+		return pin.PackageVersion, nil
+	}
+	return pin.Version, nil
+}
+
+var vendoredPackRef = regexp.MustCompile(`file:packs/([^"]+\.tgz)`)
 
 // checkInstalledVersion checks that root/<ref.dir> installed ref.pkg at the pin's package version.
 func checkInstalledVersion(root string, ref piReference, pin piPin) error {

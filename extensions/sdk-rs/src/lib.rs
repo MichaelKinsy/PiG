@@ -216,8 +216,8 @@ mod extension;
 pub mod kit;
 mod ui_view;
 pub use ui_view::{
-    ViewA11y, ViewAbilities, ViewAlternative, ViewAsset, ViewClaim, ViewClause, ViewDrawShape,
-    ViewDrawing, ViewDrawingAbilities, ViewError, ViewFocus, ViewInput, ViewIntent,
+    ViewA11y, ViewAbilities, ViewAlternative, ViewAsset, ViewBinding, ViewClaim, ViewClause,
+    ViewDrawShape, ViewDrawing, ViewDrawingAbilities, ViewError, ViewFocus, ViewInput, ViewIntent,
     ViewIntentInvocation, ViewIntentResult, ViewLimits, ViewMount, ViewNotice, ViewPathCommand,
     ViewPixels, ViewPoint, ViewRef, ViewRegion, ViewRelation, ViewShape, ViewSlotClaims,
     ViewStatus, ViewStroke, ViewTarget, ViewUpdate, ViewViewport, ViewWhen, ViewWhenAll,

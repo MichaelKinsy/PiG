@@ -205,10 +205,11 @@ func (t *Attachment) Invoke(ctx context.Context, plugin string, ref Ref, nodeKey
 	return res
 }
 
-// Report records that this client could not draw part of a mount. Code is undrawn, unsupported or limit.
+// Report records that this client could not draw part of a mount, or did not give it the focus it asked for. Code is
+// undrawn, unsupported, limit or unfocused.
 func (t *Attachment) Report(plugin string, ref Ref, n Notice) *Error {
-	if n.Code != NoticeUndrawn && n.Code != string(CodeUnsupported) && n.Code != string(CodeLimit) {
-		return fail(CodeInvalid, "a client reports undrawn, unsupported or limit, not %q", n.Code)
+	if n.Code != NoticeUndrawn && n.Code != NoticeUnfocused && n.Code != string(CodeUnsupported) && n.Code != string(CodeLimit) {
+		return fail(CodeInvalid, "a client reports undrawn, unsupported, limit or unfocused, not %q", n.Code)
 	}
 	if n.Severity != SeverityInfo && n.Severity != SeverityWarning && n.Severity != SeverityError {
 		return fail(CodeInvalid, "unknown severity %q", n.Severity)
@@ -269,13 +270,15 @@ func identity(s *Snapshot) string {
 }
 
 func fallbackFits(a *ClientAbilities, m measured) bool {
-	return m.bytes <= a.Limits.SnapshotBytes && m.nodes <= a.Limits.Nodes && m.depth+1 <= a.Limits.Depth && m.text <= a.Limits.TextBytes
+	_, undrawn := undrawnKind(a, m)
+	return !undrawn && m.bytes <= a.Limits.SnapshotBytes && m.nodes <= a.Limits.Nodes && m.depth+1 <= a.Limits.Depth && m.text <= a.Limits.TextBytes
 }
 
 // resolve returns the snapshot one client draws for a mount: the alternative its claims select or the view, with the
-// a11y and focus entries of the nodes that view has. A client that does not draw the slot is not sent the mount. A
-// client the content does not fit is sent the fallback (or no view when that does not fit either), marked degraded, and
-// the plugin gets a notice. It reads the measurements made when the content was admitted and never walks a view.
+// a11y and focus entries of the nodes that view has and, unless the fallback stands in, every binding. A client that
+// does not draw the slot is not sent the mount. A client the content does not fit is sent the fallback (or no view when
+// that does not fit either), marked degraded, and the plugin gets a notice. It reads the measurements made when the
+// content was admitted and never walks a view.
 func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 	if !slices.Contains(t.abilities.Slots, m.snap.Slot) {
 		return Snapshot{}, false
@@ -283,7 +286,7 @@ func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 	c := &m.snap.Content
 	i, view, d := candidate(&t.abilities, m.snap.Slot, c)
 	s := m.snap
-	out := Content{Intents: c.Intents, Assets: c.Assets, View: view, Drawing: d}
+	out := Content{Title: c.Title, Intents: c.Intents, Assets: c.Assets, View: view, Drawing: d}
 	ids := m.cands[i].ids
 	if bad := fits(&t.abilities, c, m.cands[i], d); bad != nil {
 		n := Notice{Code: string(bad.code), Severity: SeverityWarning, Path: "delivery", Message: bad.message}
@@ -310,6 +313,9 @@ func (r *Registry) resolve(t *Attachment, m *mount) (Snapshot, bool) {
 		if _, ok := ids[f.Node]; ok {
 			out.Focus = append(out.Focus, f)
 		}
+	}
+	if i >= 0 {
+		out.Bindings = c.Bindings
 	}
 	if i > 0 {
 		s.Alternative = i

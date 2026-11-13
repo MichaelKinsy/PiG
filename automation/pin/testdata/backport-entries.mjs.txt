@@ -1,0 +1,220 @@
+// BEGIN backport b3c2e4a6bef8
+// b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
+patch("b3c2e4a6bef8", "pi-coding-agent/extensions/llama/provider.js", [
+    ['export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";', 'export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:9931";'],
+]);
+// END backport b3c2e4a6bef8
+
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
+patch("49fe0a237", "pi-ai/providers/compat-schema.js", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// BEGIN backport 49fe0a237
+patch("49fe0a237", "pi-coding-agent/docs/models-configuration.md", [messageThreadsDefault]);
+// END backport 49fe0a237
+
+// BEGIN backport be2744d95
+// be2744d95 (#12047): a Kitty fullscreen redraw keeps the uploaded images and skips the ED 2 clear.
+patch("be2744d95", "pi-tui/tui-alt-screen.js", [
+    [`            const clearImages = this.imageProtocol === "kitty" && hadUploadedKittyImages
+                ? deleteAllKittyPlacements()
+                : this.deleteKittyImages();
+            buffer += \`\${clearImages}\\x1b[2J\`;
+`,
+      `            ${note("be2744d95").trim()}
+            if (this.imageProtocol === "kitty" && hadUploadedKittyImages) {
+                // Kitty frees image data without placements on ED 2, which would break placement-only reuse.
+                // Every row is cleared with EL 2 below, so keep the uploads and skip the screen clear.
+                buffer += deleteAllKittyPlacements();
+            }
+            else {
+                buffer += \`\${this.deleteKittyImages()}\\x1b[2J\`;
+            }
+`],
+]);
+// END backport be2744d95
+
+// BEGIN backport 5b4d7d3df
+// 5b4d7d3df (#12045): hard breaks after an inline Markdown image stay separate rows.
+patch("5b4d7d3df", "pi-tui/components/markdown.js", [
+    ["        for (const line of this.renderToken(token, contentWidth, nextTokenType)) {\n",
+      `${"        " + note("5b4d7d3df")}        // Image lines skip wrapping, so split them here: hard breaks after an image must stay separate rows.
+        const tokenLines = this.renderToken(token, contentWidth, nextTokenType).flatMap((line) => isImageLine(line) ? line.split("\\n") : [line]);
+        for (const line of tokenLines) {
+`],
+]);
+// END backport 5b4d7d3df
+
+// BEGIN backport bbfc6c7ce
+// bbfc6c7ce (#12044): the find tool ignores a leading ./ in its pattern.
+patch("bbfc6c7ce", "pi-coding-agent/core/tools/find.js", [
+    ['                        let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\\\", "/") : pattern;\n',
+      `                        let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\\\", "/") : pattern;
+                        ${note("bbfc6c7ce").trim()}
+                        // fd's full paths never contain "/./", so "./src/*.ts" would find nothing; drop the "./".
+                        effectivePattern = effectivePattern.replace(/^(?:\\.\\/)+/, "");
+`],
+]);
+// END backport bbfc6c7ce
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): OSC 8 hyperlinks in HTML-exported tool output become links.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/ansi-to-html.js", [
+    [` * - Reset (0)
+ */`, ` * - Reset (0)
+ * - OSC 8 hyperlinks with http, https, or mailto URLs (other CSI, OSC, and APC sequences and stray ESC characters are dropped)
+ */`],
+    [`// Match ANSI escape sequences: ESC[ followed by params and ending with 'm'
+const ANSI_REGEX = /\\x1b\\[([\\d;]*)m/g;
+`, `${note("0e1e3fc81")}// Match escape sequences: SGR (ESC[...m), other CSI sequences, OSC sequences, and APC sequences (terminated by BEL or ST)
+const ANSI_REGEX = /\\x1b\\[([\\d;]*)m|\\x1b\\[[0-?]*[ -/]*[@-~]|\\x1b\\]([^\\x07\\x1b]*)(?:\\x07|\\x1b\\\\)|\\x1b_[^\\x07\\x1b]*(?:\\x07|\\x1b\\\\)/g;
+// OSC 8 hyperlink payload: "8;params;url"
+const OSC8_REGEX = /^8;[^;]*;(.*)$/s;
+const SAFE_LINK_REGEX = /^(?:https?:|mailto:)/i;
+/**
+ * Remove all escape sequences matched by the converter, plus stray ESC characters.
+ */
+export function stripAnsiEscapes(text) {
+    return text.replace(ANSI_REGEX, "").replace(/\\x1b/g, "");
+}
+`],
+    [`    let inSpan = false;
+    // Reset regex state`, `    let inSpan = false;
+    let inLink = false;
+    const closeSpan = () => {
+        if (inSpan) {
+            result += "</span>";
+            inSpan = false;
+        }
+    };
+    const openSpan = () => {
+        if (hasStyle(style)) {
+            result += \`<span style="\${styleToInlineCSS(style)}">\`;
+            inSpan = true;
+        }
+    };
+    // Reset regex state`],
+    [`            result += escapeHtml(beforeText);
+        }
+        // Parse SGR parameters
+        const paramStr = match[1];
+        const params = paramStr ? paramStr.split(";").map((p) => parseInt(p, 10) || 0) : [0];
+        // Close existing span if we have one
+        if (inSpan) {
+            result += "</span>";
+            inSpan = false;
+        }
+        // Apply the codes
+        applySgrCode(params, style);
+        // Open new span if we have any styling
+        if (hasStyle(style)) {
+            result += \`<span style="\${styleToInlineCSS(style)}">\`;
+            inSpan = true;
+        }
+`, `            result += escapeHtml(beforeText.replace(/\\x1b/g, ""));
+        }
+        if (match[1] !== undefined) {
+            // Parse SGR parameters
+            const paramStr = match[1];
+            const params = paramStr ? paramStr.split(";").map((p) => parseInt(p, 10) || 0) : [0];
+            closeSpan();
+            applySgrCode(params, style);
+            openSpan();
+        }
+        else if (match[2] !== undefined) {
+            const hyperlink = OSC8_REGEX.exec(match[2]);
+            if (hyperlink) {
+                // Keep spans nested inside the link: close and reopen the current style around link changes
+                // Browsers strip C0 controls from URLs, so strip them before checking the scheme
+                const url = hyperlink[1].trim().replace(/[\\x00-\\x1f\\x7f]/g, "");
+                closeSpan();
+                if (inLink) {
+                    result += "</a>";
+                    inLink = false;
+                }
+                if (url && SAFE_LINK_REGEX.test(url)) {
+                    result += \`<a href="\${escapeHtml(url)}">\`;
+                    inLink = true;
+                }
+                openSpan();
+            }
+            // Other OSC sequences are dropped
+        }
+        // Other CSI and APC sequences are dropped
+`],
+    [`        result += escapeHtml(remainingText);
+    }
+    // Close any open span
+    if (inSpan) {
+        result += "</span>";
+    }
+`, `        result += escapeHtml(remainingText.replace(/\\x1b/g, ""));
+    }
+    // Close any open span and link
+    closeSpan();
+    if (inLink) {
+        result += "</a>";
+    }
+`],
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/tool-renderer.js", [
+    ['import { ansiLinesToHtml } from "./ansi-to-html.js";', 'import { ansiLinesToHtml, stripAnsiEscapes } from "./ansi-to-html.js";'],
+    ["const ANSI_ESCAPE_REGEX = /\\x1b\\[[\\d;]*m/g;\n", ""],
+    ['    return line.replace(ANSI_ESCAPE_REGEX, "").trim().length === 0;', '    return stripAnsiEscapes(line).trim().length === 0;'],
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport 0e1e3fc81
+// 0e1e3fc81 (#12052): a click on a link in an expandable tool output does not toggle it.
+patch("0e1e3fc81", "pi-coding-agent/core/export-html/template.js", [
+    ["class=\"tool-output expandable ansi-rendered\" onclick=\"if(window.getSelection().toString())return;this.classList.toggle('expanded')\">",
+      "class=\"tool-output expandable ansi-rendered\" onclick=\"if(window.getSelection().toString()||event.target.closest('a'))return;this.classList.toggle('expanded')\">"],
+]);
+// END backport 0e1e3fc81
+
+// BEGIN backport 3345c2925
+// 3345c2925 (#12054): hiding an extension's own tool keeps the restored MCP tools pending.
+patch("3345c2925", "pi-coding-agent/core/agent-session.js", [
+    ["    _pendingToolNames = new Set();\n",
+      "    _pendingToolNames = new Set();\n    /** The restored or reloaded loadout that `_pendingToolNames` belongs to. */\n    _restoredToolNames = new Set();\n"],
+    [`        // A loadout that deactivates a tool replaces the restored one, whose pending tools are dropped.
+        // One that only adds tools, like activating tool_search, keeps them.
+        const active = new Set(this.getActiveToolNames());
+        if (previous.some((name) => !active.has(name)))
+            this._pendingToolNames.clear();
+`, `        // A loadout that deactivates a tool of the restored one replaces it, and its pending tools are
+        // dropped. One that only adds tools, like activating tool_search, keeps them, and so does one
+        // that only deactivates tools outside the restored loadout, such as an extension's own tool that
+        // the restore or reload activated as newly registered.
+        const active = new Set(this.getActiveToolNames());
+        if (previous.some((name) => !active.has(name) && this._restoredToolNames.has(name))) {
+            this._pendingToolNames.clear();
+        }
+`],
+    ["    _restoreToolsFromTranscript(modifiers = []) {\n        this._pendingToolNames.clear();\n",
+      "    _restoreToolsFromTranscript(modifiers = []) {\n        this._pendingToolNames.clear();\n        this._restoredToolNames.clear();\n"],
+    [`        this._pendingToolNames = new Set(names.filter((name) => this._isAllowedTool(name)));
+        // Ignores names that are not registered.
+`, `        this._pendingToolNames = new Set(names.filter((name) => this._isAllowedTool(name)));
+        this._restoredToolNames = new Set(applyToolModifiers(getCurrentTools(systemMessages).map((tool) => tool.name), modifiers));
+        // Ignores names that are not registered.
+`],
+    [`        for (const name of this.getActiveToolNames())
+            this._pendingToolNames.add(name);
+        this._buildRuntime({`, `        for (const name of this.getActiveToolNames())
+            this._pendingToolNames.add(name);
+        this._restoredToolNames = new Set(this.getActiveToolNames());
+        this._buildRuntime({`],
+]);
+// END backport 3345c2925
+
+// BEGIN backport 49fe0a237
+// 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
+packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
+// END backport 49fe0a237
+
