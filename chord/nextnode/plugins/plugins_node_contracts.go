@@ -3,9 +3,6 @@ package plugins
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"slices"
-	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -39,21 +36,6 @@ func ContractDataOf(contract *contracts.Contract) (*ContractData, error) {
 		Name: declared.Name, Version: current.Version, Fingerprint: current.Fingerprint,
 		Normal: contracts.NormalForm(declared.Kind, declared.Params, current.Variants),
 	}, nil
-}
-
-// eventsDoNotCross is why a local type with event members that a Node host's plugins serve is not held by the Go side
-// (NodeHost.Get, NodeHost.Hold), nil for a type without any: the events of a Go core facet's object reach the plugins
-// through its proxy (plugins_node_bridged.go), and the other direction is not carried yet. Inside either host the type
-// is whole: a Node host's plugins declare event members, emit and subscribe among themselves (node/contracts.mjs
-// rebuilds an event member as one).
-func eventsDoNotCross(declared *contracts.ContractData) error {
-	variant := declared.Versions[len(declared.Versions)-1].Variants.Value(contracts.LocalVariant)
-	names := slices.Sorted(slices.Values(variant.Events.Keys()))
-	if len(names) == 0 {
-		return nil
-	}
-	return fmt.Errorf("%s: events do not cross the plugins bridge between a Go host and a Node host, and the type has the event members %s",
-		declared.Name, strings.Join(names, ", "))
 }
 
 // ContractDescription is a contract as the Node host rebuilt it from ContractData: its kind, name, version and fingerprint as

@@ -226,6 +226,7 @@ async function load(request, context) {
 		...(request.closeTimeout === undefined ? {} : { closeTimeout: request.closeTimeout }),
 		...(request.readyTimeout === undefined ? {} : { readyTimeout: request.readyTimeout }),
 		...(request.reloadDrainTimeout === undefined ? {} : { reloadDrainTimeout: request.reloadDrainTimeout }),
+		...(request.eventWindow === undefined ? {} : { eventWindow: request.eventWindow }),
 		...(request.compression === true ? { compression: nodeCompression } : {}),
 		...(telemetry === undefined ? {} : { telemetry }),
 		...(request.principalKey === true
