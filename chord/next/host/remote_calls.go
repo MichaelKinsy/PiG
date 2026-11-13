@@ -73,7 +73,9 @@ func (w *callWindow[C]) removeHold(hold int) []C {
 // reference sharing a hold releases.
 func (w *callWindow[C]) removeWhere(matches func(C) bool) []C {
 	var removed []C
-	kept := w.waiting[:0:0]
+	// A new array, and none when nothing is left: a zero-length slice of the old one would keep it, and with it every
+	// call taken out (its arguments, its result, the binding that made it), until the next append.
+	var kept []C
 	for _, call := range w.waiting {
 		if matches(call) {
 			removed = append(removed, call)
@@ -99,6 +101,9 @@ func (w *callWindow[C]) drain() {
 			return
 		}
 		call := w.waiting[0]
+		// Cleared before the reslice: the backing array would keep the call it sent until it is replaced.
+		var none C
+		w.waiting[0] = none
 		w.waiting = w.waiting[1:]
 		w.inFlight++
 		call.send()

@@ -3942,7 +3942,7 @@
       "evidence": [
         "chord/next/host/remote_remote_object_test.go"
       ],
-      "rationale": "All 33 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestConsumerSpansHoldInAChordHoldSpanUntilBound…, TestConsumerSpansKeepACallItsCallerCancelledOk…, TestConsumerSpansEndAHoldsSpanFailedWhenItsFirstAnswerIsAFailure (remote_remote_object_test.go)). Pi 47e9d74f9 + 90ed3e3b1 retitle 1 case (changed in TestRemoteObjectHoldOverTheParentLink) and add 40: 11 run in chord/next/host/remote_remote_object_shared_test.go ('sharing' 5, 'state changes' 6); 29 are not ported yet (named in test/parity/upstream-sync/v1.5.2+90ed3e3b.toml); the hash is the pin's."
+      "rationale": "All 33 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestConsumerSpansHoldInAChordHoldSpanUntilBound…, TestConsumerSpansKeepACallItsCallerCancelledOk…, TestConsumerSpansEndAHoldsSpanFailedWhenItsFirstAnswerIsAFailure (remote_remote_object_test.go)). Pi 47e9d74f9 + 90ed3e3b1 retitle 1 case (changed in TestRemoteObjectHoldOverTheParentLink) and add 40, all run: 11 in chord/next/host/remote_remote_object_shared_test.go ('sharing' 5, 'state changes' 6) and 29 in chord/next/host/remote_remote_object_shared_{retry,seen,differences,events,cancellation,admission,cost,telemetry,gc}_test.go (one Go test per Pi describe; the one order Go does not define is recorded in test/parity/upstream-sync/v1.5.2+90ed3e3b.toml); the hash is the pin's."
     },
     {
       "path": "packages/chord/test/remote/replica.test.ts",

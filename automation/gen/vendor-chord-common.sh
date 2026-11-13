@@ -18,13 +18,18 @@
 # @earendil-works/pi-schema is a package of the Pi tree (packages/schema), copied from PI_TREE; its version and
 # pi-telemetry's must be the versions Pi's chord pins.
 # Sets root, tree, pin, commit, carried, telemetry and out.
+# shellcheck shell=bash
 
+: "${name:?set by the sourcing script}" "${default_out:?set by the sourcing script}"
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 tree=${PI_TREE:-"$root/.upstream/current"}
 pin=$(sed -n 's/^commit=//p' "$root/.upstream/pin")
+# shellcheck disable=SC2034 # the sourcing script passes it to its .mjs generator.
 commit=${PI_COMMIT:-$pin}
+# shellcheck disable=SC2034 # the sourcing script passes it to its .mjs generator.
 carried=${PI_CARRIED:-}
 telemetry=${PI_TELEMETRY:-"$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-telemetry"}
+# shellcheck disable=SC2034 # the sourcing script passes it to its .mjs generator.
 out=${VENDOR_CHORD_OUT:-"$root/$default_out"}
 
 [ -d "$tree/packages/chord/src" ] || { echo "$name: $tree has no packages/chord/src (make upstream-mirror, or set PI_TREE)" >&2; exit 1; }

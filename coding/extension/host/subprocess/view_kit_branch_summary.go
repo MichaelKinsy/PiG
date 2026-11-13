@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	registerViewWidget(ViewKindBranchSummary, &viewWidget{build: buildBranchSummary})
+	registerViewWidget(ViewKindBranchSummary, &viewWidget{})
 }
 
 func buildBranchSummary(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {

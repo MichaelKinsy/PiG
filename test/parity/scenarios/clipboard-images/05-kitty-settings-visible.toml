@@ -11,14 +11,16 @@
 # binaries detect Kitty image capability. It then opens /settings
 # and asserts the image-related entries are present.
 #
-# Upstream evidence (Pi 0.84.0 via ht/libghostty-vt, 2026-08-07): the
-# headless-terminal production path reports Kitty capability and both binaries
-# render the complete image-settings crop identically after normalization.
-# Pi 0.99.1 lists 34 rows with image controls (settings-selector.ts:470-857: 23 base,
-# 2 image at :757-775, 9 always shown, including fullscreen-wheel-scroll-lines at :733).
-# Divergence D80 adds exactly one PiG row (Mask secret input), so the counter reads
-# (1/35) in PiG and (1/34) in Pi. Assert both raw counts, then map only that approved
-# difference, as settings/02 and settings/09 do.
+# Upstream evidence (Pi 1.5.2, settings-selector.ts; run through ht/libghostty-vt in tern-ci:v11, 2026-11-13):
+# with image capability Pi lists 35 rows: 24 in the items array (:485-768, among them share-destination at
+# :516, added by Pi cea25743, first released in 1.3.0), the 2 image rows (:771-787) and 9 rows spliced in
+# unconditionally (:790-876). PiG omits the share-destination row by divergence D64 (/share always uploads
+# to pi-in-go.dev) and adds exactly one row by divergence D80 (Mask secret input), so both counters read
+# (1/35) and the first window, which holds neither row, is the same text and the same styling on both
+# sides. No count normalization: the two raw counts and the equality of the complete crop reject any other
+# row difference. The rows where the rosters differ are compared in settings/15-settings-roster-d64-d80,
+# and internal/codingagent TestSettingsRosterDiffersFromPiOnlyByD64AndD80 derives the whole roster from the
+# pinned source, as settings/02 and settings/09 state for a terminal without images.
 
 name = "05-kitty-settings-visible"
 description = "Image-related settings appear when terminal reports Kitty image capability."
@@ -32,7 +34,10 @@ driver = "headless-terminal"
 width = 100
 height = 35
 ready_pattern_pig = "(auto)"
-ready_pattern_pi = "$0.000"
+# Pi starts typing after its startup rebind, which sets the autocomplete provider and then prints this warning
+# (interactive-mode.ts:1085-1099; settings/02 waits the same way). The footer paints before the rebind, and
+# "/settings" sent then is submitted as a prompt: the list never opens (seen once in three family runs).
+ready_pattern_pi = "Warning: No models available."
 ready_timeout_seconds = 25
 keys = ["/settings<CR>"]
 settle_seconds = 1
@@ -48,12 +53,7 @@ pi = ["TERM_PROGRAM=ghostty", "TERM=xterm-ghostty", "COLORTERM=truecolor"]
 
 [assert]
 runs = 3
-output_normalized_equal = true
+output_equal = true
+escaped_output_equal = true
 pig_contains = ["(1/35)"]
-pi_contains = ["(1/34)"]
-
-# normalize-rationale: divergence D80 introduces one visible PiG-only setting; the raw assertions above reject any other count change.
-[[assert.normalize_replace]]
-pattern = '\(1/35\)'
-with = '(1/34)'
-reason = "D80 adds exactly one visible PiG-only settings row; raw assertions require 35 PiG rows and 34 Pi rows before this replacement."
+pi_contains = ["(1/35)"]

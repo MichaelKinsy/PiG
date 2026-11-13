@@ -22,7 +22,6 @@ func init() {
 				c.fail("bordered-loader needs an id")
 			}
 		},
-		build:     buildBorderedLoader,
 		focusable: true,
 	})
 }

@@ -483,6 +483,10 @@ func readRenderResult(result extension.AgentToolResult, options extension.ToolRe
 	output := toolResultTextOutput(value, context.ShowImages)
 	lang := ""
 	if !context.IsError && rawPath != "" {
+		if tui.LanguageFromPathThrows(rawPath) {
+			// formatReadResult throws out of highlightCode for this path (read.ts:124-125): no component, and the card draws the result fallback.
+			return nil
+		}
 		lang = tui.LanguageFromPath(rawPath)
 	}
 	var rendered []string
@@ -658,6 +662,11 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 	panicOnUnlinkablePath(rawPath, context.Cwd)
 	text := tui.FormatWriteHeaderArgs(writeHeaderFields(fields), context.Cwd)
 	content, ok := stringField(fields, "content")
+	// renderCall throws out of highlightCode for such a path while the content streams in (the highlight cache, write.ts:55-64 and :73-75) and for a
+	// complete call's content unless it is empty (formatWriteCall, write.ts:123-127): no component, and the card draws the call fallback.
+	if ok && (!context.ArgsComplete || content != "") && tui.LanguageFromPathThrows(rawPath) {
+		return nil
+	}
 	lang := ""
 	if rawPath != "" {
 		lang = tui.LanguageFromPath(rawPath)

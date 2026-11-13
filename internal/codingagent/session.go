@@ -833,7 +833,9 @@ func sameMessageEntry(a, b MessageEntry) bool {
 // holdsWithoutRecord reports whether the session of no file holds entry exactly as appended, with no record to write, and with the entry
 // encoding without error, which is what heldMessageEntry decides from a record's decode. It is the case heldMessageEntry returns entry for
 // (proof, the proof for entry, says its decoded form equals entry), minus the encoding that only the file needs. A message whose Details are a
-// Go value encodes them once here, because only the encoding says whether they can be encoded; the other members are proven by decodedFormBesideDetails.
+// Go value of a type that can hold a value the encoder rejects encodes them once here, because only the encoding says whether they can be
+// encoded; Details of a type whose every value encodes (alwaysEncodes: the built-in tools' details) are not encoded at all. The other
+// members are proven by decodedFormBesideDetails.
 // pig additive (D112): Pi appends the object and stringifies it only to persist (session-manager.ts _persist returns without a session file).
 func (s *Session) holdsWithoutRecord(entry MessageEntry, proof heldProof) bool {
 	if !proof.appended || !s.fileless() {
@@ -842,8 +844,73 @@ func (s *Session) holdsWithoutRecord(entry MessageEntry, proof heldProof) bool {
 	if !proof.besideDetails {
 		return true
 	}
+	if alwaysEncodes(reflect.TypeOf(entry.Message.ToolResult.Details)) {
+		return true
+	}
 	_, err := jsstring.MarshalJSON(entry.Message.ToolResult.Details)
 	return err == nil
+}
+
+// encodableTypes remembers alwaysEncodes for each type asked about: reflect.Type -> bool.
+var encodableTypes sync.Map
+
+// alwaysEncodes reports whether the JSON encoder writes every value of type t without an error, decided from the type alone and once for
+// each type. It holds for a type built only from booleans, numbers, plain strings, and pointers to, slices, arrays and structs of those:
+// such a value has no number the encoder rejects, no key or member with an encoding of its own that can fail, no dynamic type to meet
+// and, as no such type holds itself, no cycle. It reports false for every other type (an interface, a map, a named string such
+// as a JSON number, a type with its own JSON or text encoding, a type that refers to itself), which is then encoded to find out.
+func alwaysEncodes(t reflect.Type) bool {
+	if t == nil {
+		return false
+	}
+	if known, ok := encodableTypes.Load(t); ok {
+		return known.(bool)
+	}
+	result := typeAlwaysEncodes(t, map[reflect.Type]bool{})
+	encodableTypes.Store(t, result)
+	return result
+}
+
+var plainStringType = reflect.TypeFor[string]()
+
+// typeAlwaysEncodes is alwaysEncodes without the memo; within holds the types the walk is inside.
+func typeAlwaysEncodes(t reflect.Type, within map[reflect.Type]bool) bool {
+	if within[t] {
+		return false
+	}
+	p := reflect.PointerTo(t)
+	if t.Implements(jsonMarshalerType) || p.Implements(jsonMarshalerType) || t.Implements(textMarshalerType) || p.Implements(textMarshalerType) {
+		return false
+	}
+	switch t.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		// A number that is not finite is written as null, as JSON.stringify writes it (jsstring.MarshalJSON).
+		return true
+	case reflect.String:
+		return t == plainStringType
+	case reflect.Pointer, reflect.Slice, reflect.Array:
+		within[t] = true
+		defer delete(within, t)
+		return typeAlwaysEncodes(t.Elem(), within)
+	case reflect.Struct:
+		within[t] = true
+		defer delete(within, t)
+		for field := range t.Fields() {
+			// A field the encoder does not write holds nothing it can reject; an embedded struct's exported fields are written.
+			if !field.IsExported() && !field.Anonymous {
+				continue
+			}
+			if _, options, _ := strings.Cut(field.Tag.Get("json"), ","); options != "" && options != "omitempty" && options != "omitzero" {
+				return false
+			}
+			if !typeAlwaysEncodes(field.Type, within) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // heldMessageEntry returns the entry the session holds for entry, whose record is raw and whose proof is proof, and whether that is entry

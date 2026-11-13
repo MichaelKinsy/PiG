@@ -64,9 +64,9 @@ func anthSpliceRequest(random *rand.Rand, pool []string) anthRequest {
 		case 4:
 			return anthContentBlock{Type: "tool_result", ToolUseID: "toolu_1", Content: text(), IsError: map[int]*bool{0: new(true), 1: nil}[random.IntN(2)]}
 		case 5:
-			return anthContentBlock{Type: "tool_result", ToolUseID: "toolu_2", Content: []anthContentBlock{{Type: "text", Text: text()}, {Type: "image", Source: map[string]any{"type": "base64", "media_type": "image/png", "data": text()}}}}
+			return anthContentBlock{Type: "tool_result", ToolUseID: "toolu_2", Content: []anthContentBlock{{Type: "text", Text: text()}, {Type: "image", Source: &anthImageSource{Type: "base64", MediaType: "image/png", Data: text()}}}}
 		case 6:
-			return anthContentBlock{Type: "image", Source: map[string]any{"type": "base64", "media_type": "image/png", "data": text()}, CacheControl: cache()}
+			return anthContentBlock{Type: "image", Source: &anthImageSource{Type: "base64", MediaType: "image/png", Data: text()}, CacheControl: cache()}
 		case 7:
 			definition := tool()
 			return anthContentBlock{Type: "tool_addition", Tool: &anthToolChange{Type: "tool_definition", Name: "extra", Definition: &definition}}

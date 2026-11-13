@@ -8,12 +8,12 @@ import (
 	"math/rand/v2"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
@@ -394,13 +394,18 @@ func getImageLineExtent(line string) (imageLineExtent, bool) {
 	return imageLineExtent{firstRow: firstRow, lastRow: 0, startCol: startCol, endCol: endCol}, true
 }
 
-// parseImageExtentCount is Number.parseInt of a run of ASCII digits, capped at imageExtentUnbounded.
+// parseImageExtentCount is upstream's Number.parseInt(digits, 10) as a count of cells: a count at or beyond imageExtentUnbounded
+// is imageExtentUnbounded, and so is NaN. Every caller passes a (\d+) capture.
 func parseImageExtentCount(digits string) int {
-	count, err := strconv.Atoi(digits)
-	if err != nil || count > imageExtentUnbounded {
+	count := jsnumber.ParseInt(digits)
+	if !(count < imageExtentUnbounded) { // NaN fails the comparison
 		return imageExtentUnbounded
 	}
-	return count
+	if count <= -imageExtentUnbounded {
+		return -imageExtentUnbounded
+	}
+	//portlint:allow numbers terminal-image.ts parsed cell count: Number.parseInt yields an integer or NaN, and NaN and every value outside (-2^30, 2^30) returned above
+	return int(count)
 }
 
 // trailingCursorUp matches upstream's /\x1b\[(\d+)A$/ against text: the index the sequence starts at and its digits.

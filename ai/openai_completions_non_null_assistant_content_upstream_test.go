@@ -24,7 +24,7 @@ func nonNullAssistantContentTranscript() []Message {
 func convertNonNullAssistantContent(t *testing.T, compat OpenAICompat) ([]string, []oaiMessage) {
 	t.Helper()
 	p := NewOpenAIProvider(OpenAIConfig{Model: "test", Compat: &compat}).(*openAIProvider)
-	messages, err := p.convertMessagesWithCompat(nonNullAssistantContentTranscript(), nil, "system", toolAnchors{}, false)
+	messages, err := p.convertMessagesWithCompat(nonNullAssistantContentTranscript(), nil, "system", toolAnchors{}, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

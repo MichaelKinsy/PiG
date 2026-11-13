@@ -4,7 +4,8 @@ package sessiongen
 
 import (
 	"bufio"
-	"fmt"
+	"encoding/binary"
+	"encoding/hex"
 	"io"
 	"math/rand/v2"
 	"strconv"
@@ -128,10 +129,28 @@ func (g *generator) iso() string {
 	return time.UnixMilli(g.clock).UTC().Format("2006-01-02T15:04:05.000Z")
 }
 
+// hex32 is v as eight lowercase hexadecimal digits, zero padded: fmt's %08x.
+func hex32(v uint32) string {
+	var raw [4]byte
+	var digits [8]byte
+	binary.BigEndian.PutUint32(raw[:], v)
+	hex.Encode(digits[:], raw[:])
+	return string(digits[:])
+}
+
+// hex64 is v as sixteen lowercase hexadecimal digits, zero padded: fmt's %016x.
+func hex64(v uint64) string {
+	var raw [8]byte
+	var digits [16]byte
+	binary.BigEndian.PutUint64(raw[:], v)
+	hex.Encode(digits[:], raw[:])
+	return string(digits[:])
+}
+
 // newID returns an id no earlier entry has: a repeated id would make a parent cycle.
 func (g *generator) newID() string {
 	for {
-		id := fmt.Sprintf("%08x", g.rng.Uint32())
+		id := hex32(g.rng.Uint32())
 		if _, taken := g.seen[id]; !taken {
 			g.seen[id] = struct{}{}
 			return id
@@ -216,7 +235,7 @@ func (g *generator) turn(n int) error {
 		return err
 	}
 	for range 1 + g.rng.IntN(4) {
-		call := fmt.Sprintf("toolu_%016x", g.rng.Uint64())
+		call := "toolu_" + hex64(g.rng.Uint64())
 		id, err = g.assistant(id, func() {
 			g.textBlock(g.text(100 + g.rng.IntN(300)))
 			g.str(`,{"type":"toolCall","id":"` + call + `","name":"bash","arguments":{"command":`)

@@ -115,6 +115,16 @@ func withFusedExtensionConfigs(fused, configs []subprocess.ExtConfig) []subproce
 
 // newSubprocessExtensionHost creates an extension host with no extensions
 // loaded and no config loader.
+// enableViews turns on what the pig command draws for an extension in every mode and on every command: the view kit's
+// widgets, the editors a view holds and the TuiAltScreens an extension constructs. An embedder that draws none of them
+// leaves the calls out and does not link the widget builders, the terminal editor or the alt-screen renderer. Main calls
+// it before it runs a command, so no path of the command builds a view without it.
+func enableViews() {
+	subprocess.EnableViewWidgets()
+	subprocess.EnableEditorViews()
+	subprocess.EnableTuiAltScreens()
+}
+
 func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, cells *subprocess.CellRegistry) (*subprocess.Host, *subprocess.UIBridge) {
 	host := subprocess.NewHostWithConfigRoot(cwd, codingagent.ConfigRoot())
 	if cells != nil {
@@ -131,10 +141,8 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 		return subprocess.TerminalCapabilitiesPayload{Images: string(caps.Images), TrueColor: caps.TrueColor, Hyperlinks: caps.Hyperlinks}
 	})
 	bridge.SetThemeFunc(codingagent.ActiveExtensionThemeWire)
-	// The pig command draws the editors an extension's view holds in every mode; an embedder that does not leaves the call out and does not link the terminal editor.
-	subprocess.EnableEditorViews()
-	// Likewise the pig command serves the TuiAltScreens an extension constructs; an embedder that does not leaves the call out and does not link their renderer.
-	subprocess.EnableTuiAltScreens()
+	// Main enabled the views before it ran a command; a caller that creates the host without Main has them from here.
+	enableViews()
 	subprocess.SetThemeLoader(codingagent.LoadExtensionTheme)
 	host.SetUIBridge(bridge)
 	host.SetSessionGraph(coding.NewSessionGraph())

@@ -1148,6 +1148,32 @@
       ]
     },
     {
+      "id": "BF-0749ea1",
+      "title": "`pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the…",
+      "symptom": "`pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the previewed extension was rejected with `editor views are not enabled in this program`.",
+      "rootCause": "The registry now keeps each kind's validator, child count and focus rule only. The builders sit in one table behind one lookup in buildWidget: EnableViewWidgets fills the ten kinds, EnableEditorViews adds the editor, which stays apart because it brings the terminal editor and 2.8 MB of word dictionaries. Both calls are idempotent, order-independent and safe during a build. A kind that is not enabled fails with one sentence that names the kind and the call; validation is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the previewed extension was rejected with `editor views are not enabled in this program`. Every `pig` command now enables them before it runs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0749ea17ba",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/views_enable_test.go::TestPigEntriesEnableExtensionViews",
+        "coding/extension/host/subprocess/view_kit_enable_test.go::TestEnablingViewWidgetsIsSafeDuringABuild",
+        "coding/extension/host/subprocess/view_kit_enable_test.go::TestViewOfAKindThatIsNotEnabledIsReportedOnceAndTheExtensionIsSentNothing",
+        "coding/extension/host/subprocess/view_kit_enable_test.go::TestViewWidgetBuildNamesTheCallUntilItsBuilderIsEnabled",
+        "examples/headless/widget_link_test.go::TestHeadlessEmbedLinksNoViewWidget"
+      ]
+    },
+    {
       "id": "BF-0790d5e",
       "title": "`String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which…",
       "symptom": "`String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which trims U+0085 and not U+FEFF where JavaScript trims U+FEFF and not U+0085 (`jsstring.Trim` is the JS rule, already used in 100 other places).",
@@ -1169,6 +1195,34 @@
         "agent/js_trim_test.go::TestReplayAndProxyLinesTrimLikeJavaScript",
         "tui/js_trim_test.go::TestAssistantMessageComponentTrimsRunsLikeJavaScript",
         "tui/js_trim_test.go::TestTextBlankCheckTrimsLikeJavaScript"
+      ]
+    },
+    {
+      "id": "BF-07d55d4",
+      "title": "Print, JSON and RPC modes: a stdout write that fails with ENOBUFS, EAGAIN or EWOULDBLOCK (a slow or…",
+      "symptom": "Print, JSON and RPC modes: a stdout write that fails with ENOBUFS, EAGAIN or EWOULDBLOCK (a slow or non-blocking pipe) is now retried every 10 ms without losing or repeating bytes, as Pi does; any other write error still ends the process with exit code 1.",
+      "rootCause": "Port of core/output-guard.ts writeRawStdoutChunk: the raw stdout writer retries ENOBUFS/EAGAIN/EWOULDBLOCK every 10 ms without limit, resumes after a partial write, and returns any other error so the ordered stdout queue (print, json, rpc) reports it and exits 1.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Print, JSON and RPC modes: a stdout write that fails with ENOBUFS, EAGAIN or EWOULDBLOCK (a slow or non-blocking pipe) is now retried every 10 ms without losing or repeating bytes, as Pi does; any other write error still ends the process with exit code 1.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "07d55d4709",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/stdout_retry_async_modelsb_test.go::TestStdoutQueueOverRawWriterReportsAClosedReader",
+        "coding/cli/stdout_retry_async_modelsb_test.go::TestStdoutQueueWaitCoversTheRetryPause",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutDoesNotRetryOtherErrors",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutRetriesTransientErrorsAfterTenMilliseconds",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutRetryHoldsTheChunkUntilThePauseEnds",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutRetryResumesAfterAPartialWrite",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutWriterKeepsOrderAcrossAStalledReader"
       ]
     },
     {
@@ -2302,6 +2356,31 @@
         "internal/codingagent/session_tool_cards_oracle_test.go::TestBuiltinToolCardsWithoutRegisteredDefinitionMatchPi",
         "internal/codingagent/session_tool_cards_oracle_test.go::TestUnregisteredToolCardsMatchPi",
         "internal/codingagent/tick_render_test.go::TestTimerDrivenFramesReachTerminalWithoutInput"
+      ]
+    },
+    {
+      "id": "BF-0ca206e",
+      "title": "An interactive start now prints the warnings about extensions still in a deprecated directory, with the…",
+      "symptom": "The warnings were computed and dropped.",
+      "rootCause": "Ports migrations.ts showDeprecationWarnings: warnings and the migration and documentation links print, stdin goes to raw mode, one key is awaited and the mode is restored. main.go no longer discards the warnings of RunMigrations.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An interactive start now prints the warnings about extensions still in a deprecated directory, with the migration guide and documentation links, and waits for one key before the TUI starts, as Pi does. Before, the warnings were computed and dropped.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0ca206e73e",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/deprecation_warnings_async_wcli_test.go::TestDeprecationWarningsAreSilentWithoutWarnings",
+        "coding/cli/deprecation_warnings_async_wcli_test.go::TestDeprecationWarningsPrintThenWaitForOneKey",
+        "coding/cli/deprecation_warnings_async_wcli_test.go::TestDeprecationWarningsRawModeFailureAndEndedInput",
+        "internal/codingagent/migrations_test.go::TestMigrationDocsURLsUseEarendilWorksRepo"
       ]
     },
     {
@@ -8039,6 +8118,33 @@
       ]
     },
     {
+      "id": "BF-2dc09ec",
+      "title": "Resource reload: an extension load hook or project-trust callback that reloads the resources with the context…",
+      "symptom": "Resource reload: an extension load hook or project-trust callback that reloads the resources with the context it received no longer deadlocks on the loader's operation lock; the nested reload runs inside the outer one, as Pi's unlocked reload does.",
+      "rootCause": "Pi has no lock around resource-loader reload(): a callback that calls reload() interleaves with it and resolves. DefaultResourceLoader.ReloadWith and LoadProjectTrustExtensions held opMu while the project-trust callback and the extension load hook ran, so a nested ReloadWith deadlocked. The context handed to those callbacks now marks the loader as held and a call made with it runs inside the outer operation. Tests: trust decision order, failures and caller context (project trust), overlapping reloads end in the last input state, serialisation.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resource reload: an extension load hook or project-trust callback that reloads the resources with the context it received no longer deadlocks on the loader's operation lock; the nested reload runs inside the outer one, as Pi's unlocked reload does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2dc09ec10c",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContext",
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderManyOverlappingReloadsEndInTheSameState",
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderOverlappingReloadsEndInTheLastInputsState",
+        "coding/resource_loader_trust_async_modelsb_test.go::TestDefaultResourceLoaderReloadHoldsTheOperationLockDuringTheExtensionLoad",
+        "coding/resource_loader_trust_async_modelsb_test.go::TestDefaultResourceLoaderTrustCallbackRunsBetweenBootstrapAndFinalLoad",
+        "coding/resource_loader_trust_async_modelsb_test.go::TestDefaultResourceLoaderTrustFailuresRejectTheReloadAndKeepThePreviousResult"
+      ]
+    },
+    {
       "id": "BF-2deefc0",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -8548,6 +8654,28 @@
         "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync",
         "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens",
         "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAMethodCalledWhileTheMirrorIsReadAgainAnswersAfterItsFrames"
+      ]
+    },
+    {
+      "id": "BF-30a10ed",
+      "title": "chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended",
+      "symptom": "chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended.",
+      "rootCause": "The channel's writer finished the channel when a write failed: a send to a worker that had just ended (EPIPE) closed the connection and dropped the listeners while the reader had not yet told what the worker wrote before it ended, its `fatal` among it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended. The failed write closed the connection under its reader, so messages not yet told (a `fatal` report with the worker's reason) were dropped. As Node's `send`, a failed write now only tells its sender; the reader ends the channel after it told what the worker wrote.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "30a10edfb2",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_channel_write_unix_test.go::TestAChannelTellsWhatTheOtherEndWroteBeforeItClosedWhenASendFailedMeanwhile"
       ]
     },
     {
@@ -10578,6 +10706,29 @@
       ]
     },
     {
+      "id": "BF-3a220c1",
+      "title": "`/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its…",
+      "symptom": "`/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its caller has no deadline or a later one.",
+      "rootCause": "fetchJSON joined the caller's context with a 15 s timeout of the request's own (client.ts:193-194, huggingface.ts:75-76). When the caller's deadline and the request's were due at the same instant, both timers existed and Go fired them in either order: the request's timeout could end a registry refresh before the 15 s signal of syncCatalog (index.ts:51) was cancelled, and the sync then returned \"The operation was aborted due to timeout\" where Pi returns \"Model catalog refresh timed out.\" (index.ts:60). In Pi the caller's timer is created first and Node fires the timers of one delay in creation order.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its caller has no deadline or a later one. When the caller's deadline was due at the same instant, both timers ran and either could fire first, so a model registry refresh that did not answer could end as `Could not connect to the server.` where Pi shows `Model catalog refresh timed out.`; in Pi the caller's timer is created first and fires first. No user on Linux or macOS sees a change: their clocks advance between the start of the catalog sync and its request, so the request never had a timer of its own (measured on Linux: Pi's text in 450 of 450 real-time runs before the change). The other text was reachable only on a clock that does not advance between those two calls; no run was made on such a platform.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3a220c1b33",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/llama/index_async_ext_b_test.go::TestLlamaCommandSyncCatalogEndsAtTheSharedFifteenSecondTimeout",
+        "internal/codingagent/llama/index_async_ext_b_test.go::TestLlamaRequestLeavesTheTimeoutToACallerWhoseDeadlineIsDueNoLater"
+      ]
+    },
+    {
       "id": "BF-3a6a63b",
       "title": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its…",
       "symptom": "The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds.",
@@ -11009,6 +11160,56 @@
       ],
       "tests": [
         "extensions/sdk-py/bundle_test.go::TestEveryPackageSourceIsBundled"
+      ]
+    },
+    {
+      "id": "BF-3cb88af",
+      "title": "SDK: `CreateAgentSessionServicesOptions.ModelRuntimeSignal` bounds only the creation of the model runtime, as…",
+      "symptom": "SDK: `CreateAgentSessionServicesOptions.ModelRuntimeSignal` bounds only the creation of the model runtime, as Pi's `modelRuntimeSignal` does.",
+      "rootCause": "createAgentSessionServices (agent-session-services.ts:140-146) hands modelRuntimeSignal to ModelRuntime.create alone; the resource reload (:154) and the local refresh after the extension registrations (:194) take no signal. CreateAgentSessionServices ran both under the signal, so a reload still running when the signal fired failed the creation. They now run under a context the signal does not cancel.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "SDK: `CreateAgentSessionServicesOptions.ModelRuntimeSignal` bounds only the creation of the model runtime, as Pi's `modelRuntimeSignal` does. A resource reload still running when the signal fired made `CreateAgentSessionServices` fail, and the model refresh after the extensions loaded was skipped; both now run to their end.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3cb88affbc",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/services_async_wcli2_test.go::TestServicesLocalRefreshAfterTheReloadOutlivesTheModelRuntimeSignal",
+        "coding/services_async_wcli2_test.go::TestServicesModelRuntimeCreateEndsAtTheModelRuntimeSignal",
+        "coding/services_async_wcli2_test.go::TestServicesReloadOutlivesTheModelRuntimeSignal",
+        "internal/codingagent/startup_ui_stop_order_async_wcli2_test.go::TestRunStartupComponentClearsAndSettlesBeforeStoppingTheTerminalReader"
+      ]
+    },
+    {
+      "id": "BF-3cb88af-2",
+      "title": "Startup prompts (project trust, the missing-directory choice, startup text input) keep reading the terminal…",
+      "symptom": "Startup prompts (project trust, the missing-directory choice, startup text input) keep reading the terminal until the prompt has been cleared and 25 ms have passed, as Pi does.",
+      "rootCause": "createAgentSessionServices (agent-session-services.ts:140-146) hands modelRuntimeSignal to ModelRuntime.create alone; the resource reload (:154) and the local refresh after the extension registrations (:194) take no signal. CreateAgentSessionServices ran both under the signal, so a reload still running when the signal fired failed the creation. They now run under a context the signal does not cancel.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Startup prompts (project trust, the missing-directory choice, startup text input) keep reading the terminal until the prompt has been cleared and 25 ms have passed, as Pi does. The terminal was handed back to line mode before the prompt was cleared, so keys typed in that moment could be echoed onto the screen.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3cb88affbc",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/services_async_wcli2_test.go::TestServicesLocalRefreshAfterTheReloadOutlivesTheModelRuntimeSignal",
+        "coding/services_async_wcli2_test.go::TestServicesModelRuntimeCreateEndsAtTheModelRuntimeSignal",
+        "coding/services_async_wcli2_test.go::TestServicesReloadOutlivesTheModelRuntimeSignal",
+        "internal/codingagent/startup_ui_stop_order_async_wcli2_test.go::TestRunStartupComponentClearsAndSettlesBeforeStoppingTheTerminalReader"
       ]
     },
     {
@@ -12128,6 +12329,26 @@
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogCountdownMatchesPi",
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette"
       ]
+    },
+    {
+      "id": "BF-417e1e6",
+      "title": "A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell…",
+      "symptom": "A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell back) with the call's arguments in alphabetical order; Pi and a live PiG turn draw them in the order the model sent them.",
+      "rootCause": "When a session is reopened, the transcript builds each tool card from the stored assistant message. It encoded the call's arguments from the argument map, which writes the keys sorted; a live call's card gets the arguments in the member order the model sent (ToolCall.ArgumentsJSON), and Pi keeps that order in both cases (the parsed object of the session file). The card that lists its arguments draws them in that order: the call fallback (render-utils.ts formatToolCallWithArgs walks Object.entries), which a tool without a renderer and a renderer that throws both reach.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell back) with the call's arguments in alphabetical order; Pi and a live PiG turn draw them in the order the model sent them. The transcript encoded the arguments from a Go map, which sorts its keys, instead of the stored member order.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "417e1e6158",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-41b25ac",
@@ -13983,6 +14204,34 @@
       ]
     },
     {
+      "id": "BF-48ba73d",
+      "title": "chord: a worker's exit is no longer held by a process that outlives it",
+      "symptom": "chord: a worker's exit is no longer held by a process that outlives it.",
+      "rootCause": "A process the worker started in a session of its own survives the kill of the worker's process group; when it held the worker's stdout or stderr, the server waited for the stream's end and told the worker's exit only when that process ended, so the worker's session never learned that its worker had died (and since the fix of a worker's last messages, a holder of the worker's channel did the same).",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Windows, macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a worker's exit is no longer held by a process that outlives it. A process the worker started in a session of its own survives the kill of the worker's process group; when it held the worker's stdout or stderr, the server waited for the stream's end and told the worker's exit only when that process ended, so the worker's session never learned that its worker had died (and since the fix of a worker's last messages, a holder of the worker's channel did the same). As Node, which emits `exit` when the process ended, after what it wrote, and `close` when its streams did, the exit is now told once everything the worker wrote before it ended was read and told, and waits for no stream's end. What such a process writes later is still told (output, the stderr tail, control messages, link frames) and is recorded on the worker that exited, never on a worker started after it. The server reads those streams on, three descriptors and goroutines per exited worker at most, until they end or the workers component closes, which now ends them. Limits: on Windows the exit is still told when the worker's streams ended (its pipes have no read that does not wait, and the worker's job object ends them with it): built and vetted, not run; not run on macOS.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "48ba73df55",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_drain_unix_test.go::TestADrainSettlesWhenItsProcessEndsBetweenItsReadersLookAtItsStreamAndItsWaitForIt",
+        "chord/nextnode/workers/workers_fixture_test.go::TestMain",
+        "chord/nextnode/workers/workers_lingering_unix_test.go::TestCloseEndsWhatIsStillReadOfAnExitedWorkerWhoseStreamsAProcessOutsideItsTreeHolds",
+        "chord/nextnode/workers/workers_lingering_unix_test.go::TestWhatAnExitedWorkersStreamsTellLaterIsToldOfItNotOfTheWorkerThatFollowedIt",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsOutput",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsWhatAProcessOutsideItsTreeWritesToItsOutputAfterItsExit"
+      ]
+    },
+    {
       "id": "BF-4916f14",
       "title": "A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi…",
       "symptom": "A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi (`harness-view-run.test.ts` \"commits a growing text and tool call at a cost that follows the new text\").",
@@ -15738,6 +15987,32 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-5213cab",
+      "title": "Checking for available package updates now queries at most four npm registries or Git remotes at a time, as…",
+      "symptom": "Checking for available package updates now queries at most four npm registries or Git remotes at a time, as Pi does, instead of five.",
+      "rootCause": "UPDATE_CHECK_CONCURRENCY is 4 in Pi; PiG used 5.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Checking for available package updates now queries at most four npm registries or Git remotes at a time, as Pi does, instead of five.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5213caba73",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/packagemanager/package_async_ext_b_test.go::TestLocalGitUpdateTargetSurvivesAFailingSetHead",
+        "internal/packagemanager/package_async_ext_b_test.go::TestRefreshTemporaryGitSourceReportsPullAroundTheAwaitedUpdate",
+        "internal/packagemanager/package_async_ext_b_unix_test.go::TestCheckForAvailableUpdatesRunsFourChecksAtATimeAndJoinsAll",
+        "internal/packagemanager/package_async_ext_b_unix_test.go::TestResolveAsksOnMissingOneSourceAtATimeAfterTheInstallOfThePreviousOne",
+        "internal/packagemanager/package_async_ext_b_unix_test.go::TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails"
+      ]
     },
     {
       "id": "BF-5229b7d",
@@ -18772,6 +19047,33 @@
         "ai/rpc33_provider_abort_test.go::TestOpenAIProviderAbortAtParserReadBoundaries",
         "ai/rpc33_provider_scratch_test.go::TestProviderScratchInterleavedTools",
         "ai/validate_upstream_test.go::TestValidateToolArgumentsReportsArgumentsError"
+      ]
+    },
+    {
+      "id": "BF-60cc9c5",
+      "title": "chord: a worker that fails right after it started now reports its reason",
+      "symptom": "chord: a worker that fails right after it started now reports its reason.",
+      "rootCause": "WorkerProcess.ended closed the worker's channel and told Exited without waiting for the channel's reader. What the worker wrote before it ended and the reader had not taken yet, or had taken and not yet handed to its listeners, was dropped: its last link frames (the answer to a holder) and its `fatal`. A worker that failed right after `started` was then recorded with the fixed 'worker failed to start' instead of its reason.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a worker that fails right after it started now reports its reason. The server could handle a worker's exit before it had read, or before it had handed over, the last messages the worker wrote (its answer to a waiting holder and its `fatal` report); it then closed the connection and recorded the fixed `worker failed to start` (in p2, under load: a session whose worker dies at its start showed that text where Pi shows why, for example `Unknown model`). As in Node, which emits a child's messages before its `exit` event, the exit is now told after the channel's reader took and told everything the worker wrote. Limits: not run on Windows, where a worker that ends before the server accepted its pipe connection can still lose its last messages.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "60cc9c5bd3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_fixture_test.go::TestMain",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterItOpenedItsChannel",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessLinkClosedByThisSideWhileItsChannelsReaderIsHeldDoesNotWaitForIt",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsChannelsReaderTookWhatItsChildWrote",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsOutputWhenItsChannelsReaderEndedFirst",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterWhatItsChannelsReaderTookIsTold"
       ]
     },
     {
@@ -23191,6 +23493,41 @@
       ]
     },
     {
+      "id": "BF-68dfec5",
+      "title": "Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system…",
+      "symptom": "Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system prompt) that calls the resource loader, and a project-trust callback or extension load that calls `ExtendResources` or `Close`, no longer block forever on the loader's operation lock; the call runs inside the reload in progress, as Pi's unlocked reload does.",
+      "rootCause": "Pi's DefaultResourceLoader.reload() has no lock (resource-loader.ts:541-710), so a callback of a running reload may call the loader: reload(), extendResources() and the other methods run at once. PiG serialises ReloadWith, LoadProjectTrustExtensions, ExtendResources and Close with opMu, and a call made from a callback waited for the lock its own operation held.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D632",
+      "removeWhen": "Pi serialises `reload()` or orders its fields, so that overlapping reloads end in the state of one of them.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system prompt) that calls the resource loader, and a project-trust callback or extension load that calls `ExtendResources` or `Close`, no longer block forever on the loader's operation lock; the call runs inside the reload in progress, as Pi's unlocked reload does. Reloads that overlap from outside still wait for each other (D632).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "68dfec5e1a",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "6cab7f05fc",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContext",
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderManyOverlappingReloadsEndInTheSameState",
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderOverlappingReloadsEndInTheLastInputsState",
+        "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayExtendAndClose",
+        "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContextOnAnotherGoroutine",
+        "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderContextOfAnEndedReloadDoesNotBypassTheOperationLock",
+        "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderOverrideMayCallTheLoader",
+        "coding/resource_loader_reentry_async_test.go::TestPiOverlappingReloadsMixTheirResultsD632"
+      ]
+    },
+    {
       "id": "BF-68f8761",
       "title": "`insecure: true` on a provider an extension registers with `refreshModels` now reaches the request transport",
       "symptom": "`insecure: true` on a provider an extension registers with `refreshModels` now reaches the request transport.",
@@ -23280,6 +23617,37 @@
         "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepResolvesFolderGlobsRelativeToPath",
         "internal/codingagent/tools/read_grep_operations_test.go::TestGrepToolUsesTheConfiguredOperations",
         "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
+      ]
+    },
+    {
+      "id": "BF-69158e9",
+      "title": "Anthropic Messages request bodies now have the member order of the bodies Pi sends",
+      "symptom": "Anthropic Messages request bodies now have the member order of the bodies Pi sends.",
+      "rootCause": "- A text block that carries the conversation's cache breakpoint was type, cache_control, text; Pi's is type, text, cache_control (the literal { type, text }, then the breakpoint is assigned). The block's wire form embedded the block and declared text again after it. - An image source, in a user message and in a tool result, was data, media_type, type; Pi's is type, media_type, data. It was a Go map. It is now a struct built by one function, as Pi's convertImageBlock is. - The request's optional members were system, tools, tool_choice, metadata, thinking, output_config, temperature, fallbacks; buildParams assigns system, temperature, tools, thinking, output_config, metadata, tool_choice…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Anthropic Messages request bodies now have the member order of the bodies Pi sends. PiG wrote four objects of the request body with their members in another order than Pi's `JSON.stringify` does; the content was the same. A text block carrying the conversation's cache breakpoint was `type, cache_control, text` (Pi: `type, text, cache_control`). An image source, in a user message or in a tool result, was `data, media_type, type` (Pi: `type, media_type, data`). The request's optional members were `system, tools, tool_choice, metadata, thinking, output_config, temperature` (Pi: `system, temperature, tools, thinking, output_config, metadata, tool_choice`). A tool choice object sent by an extension had its keys sorted, where Pi sends the extension's own order. This held for every provider that uses the Anthropic Messages API: Anthropic with an API key or OAuth, GitHub Copilot, OpenRouter, OpenCode, Vercel AI Gateway, MiniMax, Fireworks, Cloudflare AI Gateway and custom base URLs. Anthropic's prompt caching documentation says a cache hit needs an identical prompt prefix and names the key order of `tool_use` blocks as part of it; it does not say whether the member order of the objects fixed here is.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "69158e9e9e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
+        "ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi",
+        "ai/anthropic_test.go::TestAnthConvertMessages_ImageAndToolResultImage",
+        "ai/anthropic_wire_body_oracle_test.go::TestAnthropicWireBodyMatchesPiByteForByte",
+        "ai/mistral_map_tool_choice_test.go::TestMistralToolChoiceMatchesPiMapToolChoice",
+        "ai/request_marshal_to_test.go::TestRequestTypesEncodeAsTheirMarshalJSON",
+        "coding/extension/host/subprocess/tool_choice_order_test.go::TestCompleteRequestKeepsToolChoiceText",
+        "coding/extension/host/subprocess/tool_choice_order_test.go::TestModelStreamRequestKeepsToolChoiceText",
+        "internal/codingagent/subprocess_tool_choice_order_test.go::TestSubprocessToolChoiceObjectReachesAnthropicInTheOrderSent",
+        "test/parity/scenarios/providers-faux-streaming/31-anthropic-print-request-member-order.toml"
       ]
     },
     {
@@ -24595,8 +24963,8 @@
     {
       "id": "BF-6d3043e",
       "title": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time…",
-      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does.",
-      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process held: a tui.select.confirm remapped earlier left a prompt Enter could not confirm, and runStartupComponentWith waited for a key that never came. The user's keybindings.json was ignored by those prompts too.",
+      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) ignored the keybindings.json of the agent directory: a remapped tui.select.confirm or tui.select.cancel had no effect in them.",
+      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process already held and never read the user's keybindings.json.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
@@ -24611,11 +24979,8 @@
         }
       ],
       "tests": [
-        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesColorsThatArriveAfterTheTimeout",
-        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput",
-        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme",
-        "internal/codingagent/theme_selection_presence_test.go::TestStartupPromptExplicitEmptyThemeFallsBackToSystem",
-        "internal/codingagent/theme_selection_presence_test.go::TestStartupPromptMalformedThemeUsesSystemTheme"
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
       ]
     },
     {
@@ -25051,6 +25416,35 @@
         "coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies",
         "coding/extension/host/subprocess/runtime_node_terminal_image_width_test.go::TestNodeTerminalImageDefersTheWidthModule",
         "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage"
+      ]
+    },
+    {
+      "id": "BF-6f9cf77",
+      "title": "RPC mode: an extension dialog whose signal is already aborted now resolves its default without writing an…",
+      "symptom": "RPC mode: an extension dialog whose signal is already aborted now resolves its default without writing an extension_ui_request, as Pi does; the client no longer sees a dialog it cannot answer.",
+      "rootCause": "rpcUIContext.request returns ctx.Err() before writing extension_ui_request (rpc-mode.ts:101).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: an extension dialog whose signal is already aborted now resolves its default without writing an extension_ui_request, as Pi does; the client no longer sees a dialog it cannot answer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6f9cf779f7",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_async_modes_test.go::TestRPCAbortBashAnswersWhileTheBashCommandIsInFlight",
+        "coding/cli/rpc_async_modes_test.go::TestRPCAgentSubscriberWaitsForStdoutBackpressureOnEveryEvent",
+        "coding/cli/rpc_async_modes_test.go::TestRPCParseErrorAndRejectedHandlerAnswerInOrderAndTheLoopContinues",
+        "coding/cli/rpc_dialog_async_modes_test.go::TestRPCUIDialogWithAnAbortedSignalWritesNoRequest",
+        "coding/cli/rpc_dialog_async_modes_test.go::TestRPCUIEditorDialogHasNoTimeoutAndResolvesOnTheResponse",
+        "internal/codingagent/external_editor_async_modes_test.go::TestExternalEditorHandoffChild",
+        "internal/codingagent/external_editor_async_modes_test.go::TestExternalEditorHandoffOrdering",
+        "internal/codingagent/theme_controller_async_modes_test.go::TestThemeControllerFailedColorQueryAppliesNoColors"
       ]
     },
     {
@@ -27467,7 +27861,6 @@
         "chord/next/host/remote_events_order_window_test.go::TestTheDefaultEventWindowSendsThe32ndUnacknowledgedMessageAndDropsThe33rd",
         "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsCallTheLatestListenerOfUseEventsFollowItsMemberAndStopAtUnmount",
         "chord/nextnode/plugins/plugins_node_events_bridge_test.go::TestNodeDescribeRebuildsAnEventMemberAsAnEventMember",
-        "chord/nextnode/plugins/plugins_node_events_bridge_test.go::TestNodeGetOfATypeWithAnEventMemberSaysEventsDoNotCrossThePluginsBridge",
         "chord/nextnode/plugins/plugins_node_events_test.go::TestANodePluginDeclaresAnEventMemberAndItsEmitsReachASubscriberOnTheNodeHost",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeVendoredFilesAreExactlyTheManifests",
         "chord/nextnode/surfaces/surfaces_events_test.go::TestClientEventsReachAListenerCrossALinkAndAreExportedToReact",
@@ -37074,6 +37467,81 @@
       ]
     },
     {
+      "id": "BF-D633",
+      "title": "A failed settings save is reported where the change was made, where Pi reports it only in its settings…",
+      "symptom": "not reported upstream yet.",
+      "rootCause": "a user who changes a setting and is told nothing believes it is saved; on the next start the old value is back. Pi reports the failure at a later start, away from the change that caused it. PiG says so when and where the change was made.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D633",
+      "removeWhen": "Pi reports a failed save at the point of change.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "a4960ace50",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "6cab7f05fc",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/settings_failed_save_d633_test.go::TestConfigSelectorReportsAToggleThatCouldNotBeSaved",
+        "coding/cli/settings_failed_save_d633_test.go::TestPackageInstallAndRemoveReportAFailedSave",
+        "coding/cli/settings_failed_save_d633_test.go::TestRPCQueueModeSettersAnswerAFailedSave",
+        "coding/settings_failed_save_d633_test.go::TestSessionQueueModeSettersReturnAFailedSave",
+        "coding/settings_failed_save_d633_test.go::TestSetCacheWarmingModeReturnsAFailedSaveAndDoesNotTellTheWarmer",
+        "internal/codingagent/file_lock_test.go::TestSettingsAndTrustLockErrorsAreProperLockfileErrorsUpstream",
+        "internal/codingagent/file_lock_test.go::TestSettingsAndTrustLocksFailWhileHeld",
+        "internal/codingagent/file_lock_test.go::TestSettingsLockTakesOverStaleLocks",
+        "internal/codingagent/file_lock_test.go::TestSettingsUpdateKeepsMemoryWhenTheWriteFailsUpstream",
+        "internal/codingagent/settings_failed_save_d633_test.go::TestGraphSettingsManagerSettersReturnAFailedSave",
+        "internal/codingagent/settings_failed_save_d633_test.go::TestModelSelectorShowsAFailedSaveOfTheDefaultModel",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsNilAndItsFailureIsOnlyRecorded",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteFailureIsRecordedOnceAndTheQueueGoesOn",
+        "internal/codingagent/settings_write_queue_oracle_test.go::TestSettingsWriteQueueErrorPathMatchesPi",
+        "internal/codingagent/slash_session_handlers_test.go::TestSettingsHandlerTUI_FailedSaveRestoresTheRowValue"
+      ]
+    },
+    {
+      "id": "BF-D645",
+      "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
+      "symptom": "For a name that is a member of `Object.prototype`, Pi draws the source text of a native function inside a formula, returns a function where a key id is promised, reports `TypeError: value.startsWith is not a function` for a theme color, does not offer an MCP tool of a `direct` server, and ends print mode with `function is not iterable` before any turn when an extension tool has such a name. Pi has no test for such a name at any of the five sites.",
+      "rootCause": "these are defects of Pi, and PiG does not port a defect. None of Pi's five answers is something a user or a caller can use: the text of a native function drawn inside a formula, a function returned as a key id, a `TypeError` in place of the loader's own message, a function returned as an exposure, and a system prompt that cannot be built because a tool has a certain name. Reproducing them would mean adding the members of `Object.prototype` to five Go tables by hand.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D645",
+      "removeWhen": "Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "3fb47cfd56",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "43e001e9e3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi",
+        "coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure",
+        "internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi",
+        "internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline",
+        "internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey",
+        "tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi",
+        "tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -41259,6 +41727,56 @@
       ]
     },
     {
+      "id": "BF-b637cd4",
+      "title": "A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the…",
+      "symptom": "A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the name inside the file differs (`themes/proto.json` with `\"name\": \"other\"`, selected as `\"theme\": \"proto\"`, `--use-theme proto` or an extension's `ctx.ui.setTheme(\"proto\")`).",
+      "rootCause": "Pi's setTheme reports the error thrown under loadTheme. For a name that is neither built in nor registered, theme.ts loadThemeJson reads \u003cagent directory\u003e/themes/\u003cname\u003e.json whenever that file exists: a valid file loads by its file name, whatever name its JSON carries, and a file that fails gives the loader's reason (fs.readFileSync's message, the parse error and the validator's message labelled with the name, or resolveVarRefs' message). Only a name without such a file is \"Theme not found\".",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the name inside the file differs (`themes/proto.json` with `\"name\": \"other\"`, selected as `\"theme\": \"proto\"`, `--use-theme proto` or an extension's `ctx.ui.setTheme(\"proto\")`). PiG refused it with `Theme not found: proto` and fell back to the system theme, where Pi loads it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b637cd4647",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/theme_load_failure_reason_test.go::TestExtensionSetThemeRepeatsTheLoadersReason",
+        "internal/codingagent/theme_load_failure_reason_test.go::TestStartupThemeLoadFailureRepeatsTheLoadersReason",
+        "internal/codingagent/theme_load_failure_reason_test.go::TestThemeLoadFailureReasonMatchesPi",
+        "tui/theme_unregistered_load_test.go::TestSetThemeByNameCheckedReportsWhyAnUnregisteredThemeFileFailed"
+      ]
+    },
+    {
+      "id": "BF-b637cd4-2",
+      "title": "When the selected theme's file exists but fails to load, the `Failed to load theme \"\u003cname\u003e\":` line and the…",
+      "symptom": "When the selected theme's file exists but fails to load, the `Failed to load theme \"\u003cname\u003e\":` line and the result of an extension's `ctx.ui.setTheme` now give the reason, as Pi does: for example `Variable reference not found: nosuchvar`, the JSON syntax error, the validator's list of missing color tokens, or the file-system error for a file that cannot be read.",
+      "rootCause": "Pi's setTheme reports the error thrown under loadTheme. For a name that is neither built in nor registered, theme.ts loadThemeJson reads \u003cagent directory\u003e/themes/\u003cname\u003e.json whenever that file exists: a valid file loads by its file name, whatever name its JSON carries, and a file that fails gives the loader's reason (fs.readFileSync's message, the parse error and the validator's message labelled with the name, or resolveVarRefs' message). Only a name without such a file is \"Theme not found\".",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When the selected theme's file exists but fails to load, the `Failed to load theme \"\u003cname\u003e\":` line and the result of an extension's `ctx.ui.setTheme` now give the reason, as Pi does: for example `Variable reference not found: nosuchvar`, the JSON syntax error, the validator's list of missing color tokens, or the file-system error for a file that cannot be read. PiG said `Theme not found: \u003cname\u003e` for every such file since 0.4.0; only a name without a file is still \"Theme not found\".",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b637cd4647",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/theme_load_failure_reason_test.go::TestExtensionSetThemeRepeatsTheLoadersReason",
+        "internal/codingagent/theme_load_failure_reason_test.go::TestStartupThemeLoadFailureRepeatsTheLoadersReason",
+        "internal/codingagent/theme_load_failure_reason_test.go::TestThemeLoadFailureReasonMatchesPi",
+        "tui/theme_unregistered_load_test.go::TestSetThemeByNameCheckedReportsWhyAnUnregisteredThemeFileFailed"
+      ]
+    },
+    {
       "id": "BF-b65e288",
       "title": "A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill…",
       "symptom": "A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill -CONT` from elsewhere) no longer re-enters raw mode and draws into the shell's terminal; it stops again and waits for `fg`.",
@@ -41727,6 +42245,31 @@
         "coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi",
         "tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling",
         "tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads"
+      ]
+    },
+    {
+      "id": "BF-b91a454",
+      "title": "`pig --list-models` now checks credentials again before it prints, as Pi does",
+      "symptom": "`pig --list-models` now checks credentials again before it prints, as Pi does.",
+      "rootCause": "listModels (cli/list-models.ts:29-115) warns of modelRuntime.getError() (:34-37) and then awaits modelRuntime.getAvailable(undefined, { signal }) (:39) under main.ts:951 AbortSignal.timeout(15_000): a full availability pass (model-runtime.ts:343-386, 490-506) that stats auth.json for every credential read and reloads it under its lock when it changed. main does not catch its rejection.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig --list-models` now checks credentials again before it prints, as Pi does. When `auth.json` cannot be read (for example it is not valid JSON) the run warns `Availability refresh: \u003cerror\u003e`, reports the error and exits with status 1 instead of printing a table and exiting 0; a check that takes longer than 15 s ends the same way with a timeout error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b91a45414f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_list_async_wcli2_test.go::TestListModelsEndsAtItsSignalWithoutATable",
+        "coding/cli/model_list_async_wcli2_test.go::TestListModelsListsStoredOAuthAndConfiguredKeyProvidersWithoutRefreshing",
+        "coding/cli/model_list_async_wcli2_test.go::TestListModelsWarnsOfTheLoadErrorBeforeTheTable",
+        "coding/cli/model_list_reject_async_wcli2_test.go::TestListModelsEndsWithTheAvailabilityFailure"
       ]
     },
     {
@@ -50491,6 +51034,33 @@
       ]
     },
     {
+      "id": "BF-dd2727b",
+      "title": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…",
+      "symptom": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result.",
+      "rootCause": "Pi's getLanguageFromPath (theme.ts:993-1062) looks the lowercased extension up in a plain object, so `constructor` and `__proto__` find a member the object inherits from Object.prototype. The value is truthy: read.ts formatReadResult (:124-125) and write.ts renderCall (:55-64, :123-127) pass it to highlightCode, whose supportsLanguage check (theme.ts:937) throws a TypeError before the try, and tool-execution.ts updateDisplay (:303-341) catches the throw and draws the call or result fallback. PiG looked the extension up in a Go map, found no language and drew the write card with its content rows and the expanded read card with its blank row, which Pi does not draw for such a path.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws, and Pi falls back to its generic card; PiG looked the extension up in a Go map, found no language and drew the ordinary cards.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dd2727b68a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsDrawTheFallbackForAPathNamedLikeAnObjectPrototypeMember",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
+        "test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml",
+        "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml",
+        "tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsForAnInheritedMember",
+        "tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsLikePi"
+      ]
+    },
+    {
       "id": "BF-dd2f4cb",
       "title": "The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does…",
       "symptom": "The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does, and as the six-character escape inside a tool call's arguments.",
@@ -52423,6 +52993,68 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e5f76fe",
+      "title": "Settings: a change whose save failed (for example while another process held the settings lock) is now saved…",
+      "symptom": "Settings: a change whose save failed (for example while another process held the settings lock) is now saved by the next successful save of the same file, as Pi does; before, it stayed in effect until the restart and was then lost.",
+      "rootCause": "Finding fixed here: Pi clears the fields a setter marked only when a write of their scope succeeds (:578-584), so the write after a failed one also saves what the failed one did not, with new keys in the order they were first changed; PiG saved only the last setter change. Reload and a trust change forget what was not saved, as Pi does (:481, :511-514).",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Settings: a change whose save failed (for example while another process held the settings lock) is now saved by the next successful save of the same file, as Pi does; before, it stayed in effect until the restart and was then lost.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5f76fefde",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/settings_flush_writes_async_test.go::TestFlushSettingsWritesWaitsForAWriteInProgress",
+        "internal/codingagent/settings_flush_writes_async_test.go::TestSettingsWriteThatEndsItsGoroutineDoesNotStrandTheQueue",
+        "internal/codingagent/settings_write_queue_async_test.go::TestQueuedProjectWriteIsRefusedWhenTheTrustWasWithdrawnBeforeItRuns",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsFlushAndReloadWaitForAWriteInProgress",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsAndWritesAfterIt",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsNilAndItsFailureIsOnlyRecorded",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSettersOfSeveralGoroutinesWriteInOrderAndReturnAfterTheirOwnWrite",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteAfterAFailedOneSavesWhatItDidNotSave",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteFailureIsRecordedOnceAndTheQueueGoesOn",
+        "internal/codingagent/settings_write_queue_oracle_test.go::TestSettingsWriteQueueErrorPathMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-e5f76fe-2",
+      "title": "Settings: an extension settings storage whose lock callback changes a setting no longer blocks forever; the…",
+      "symptom": "Settings: an extension settings storage whose lock callback changes a setting no longer blocks forever; the change is saved after the save in progress, as in Pi.",
+      "rootCause": "Finding fixed here: Pi clears the fields a setter marked only when a write of their scope succeeds (:578-584), so the write after a failed one also saves what the failed one did not, with new keys in the order they were first changed; PiG saved only the last setter change. Reload and a trust change forget what was not saved, as Pi does (:481, :511-514).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Settings: an extension settings storage whose lock callback changes a setting no longer blocks forever; the change is saved after the save in progress, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5f76fefde",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/settings_flush_writes_async_test.go::TestFlushSettingsWritesWaitsForAWriteInProgress",
+        "internal/codingagent/settings_flush_writes_async_test.go::TestSettingsWriteThatEndsItsGoroutineDoesNotStrandTheQueue",
+        "internal/codingagent/settings_write_queue_async_test.go::TestQueuedProjectWriteIsRefusedWhenTheTrustWasWithdrawnBeforeItRuns",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsFlushAndReloadWaitForAWriteInProgress",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsAndWritesAfterIt",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsNilAndItsFailureIsOnlyRecorded",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSettersOfSeveralGoroutinesWriteInOrderAndReturnAfterTheirOwnWrite",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteAfterAFailedOneSavesWhatItDidNotSave",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteFailureIsRecordedOnceAndTheQueueGoesOn",
+        "internal/codingagent/settings_write_queue_oracle_test.go::TestSettingsWriteQueueErrorPathMatchesPi"
+      ]
     },
     {
       "id": "BF-e5f9fdd",
@@ -59709,11 +60341,26 @@
       "id": "D631",
       "title": "A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs",
       "entry": "BF-6da170c"
+    },
+    {
+      "id": "D632",
+      "title": "Resource loader operations that overlap wait for each other, where Pi's reloads interleave and can mix their…",
+      "entry": "BF-68dfec5"
+    },
+    {
+      "id": "D633",
+      "title": "A failed settings save is reported where the change was made, where Pi reports it only in its settings…",
+      "entry": "BF-D633"
+    },
+    {
+      "id": "D645",
+      "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
+      "entry": "BF-D645"
     }
   ],
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
-    "Fix reverted before release": 1,
+    "Fix reverted before release": 2,
     "Follow-up to unreleased work": 19,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 3,
