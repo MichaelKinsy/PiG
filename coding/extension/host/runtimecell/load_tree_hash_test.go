@@ -116,3 +116,58 @@ func TestLoadTreeHashIsReadOnceForALoadAndAgainForTheNext(t *testing.T) {
 		t.Errorf("outside a load: %q, want the changed tree's %q", hash, changed)
 	}
 }
+
+// A source of the SDK that changes while a load runs, after the load's first cell read the tree: a cell that has to build does not use the
+// load's reading. It hashes the tree again under its build lock and publishes under that key, so the image is stored under the key of the
+// tree it was compiled from. The next cell of the same load, which looks under the load's older key and finds nothing, reaches the image by
+// the same path.
+func TestACellBuiltDuringALoadIsPublishedUnderItsOwnReadingOfTheSDK(t *testing.T) {
+	if testing.Short() {
+		t.Skip("compiles a packed Go cell")
+	}
+	extension := goExtensionFixture(t, "latecell", `sdk.New("latecell")`)
+	sdkRoot := filepath.Join(t.TempDir(), "sdk")
+	if err := os.CopyFS(sdkRoot, os.DirFS(os.Getenv("PIG_SDK_GO_ROOT"))); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PIG_SDK_GO_ROOT", sdkRoot)
+	cacheRoot := filepath.Join(t.TempDir(), "cache")
+	normalized, err := normalizeGoExtensions([]GoExtension{extension}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := findSDKRootWithPreferred(normalized, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	load := WithLoadTreeHashes(t.Context())
+	atFirstCell := goPackedCellHashOfSDK(cacheRoot, "late-cell", normalized, loadTreeHash(load, found))
+	source, err := os.OpenFile(filepath.Join(sdkRoot, "extension.go"), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := source.WriteString("\n// edited while the load ran\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := source.Close(); err != nil {
+		t.Fatal(err)
+	}
+	built, err := buildGoPackedCell(load, cacheRoot, "late-cell", []GoExtension{extension}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	own := goPackedCellHash(cacheRoot, "late-cell", normalized, found)
+	if strings.HasPrefix(atFirstCell, "error:") || strings.HasPrefix(own, "error:") || own == atFirstCell {
+		t.Fatalf("the edit did not change the cell's key: %q before it, %q after", atFirstCell, own)
+	}
+	if built.Cached || built.Hash != own {
+		t.Fatalf("the cell built during the load: cached %v under %q; want a build published under its own reading %q, not the load's %q", built.Cached, built.Hash, own, atFirstCell)
+	}
+	again, err := buildGoPackedCell(load, cacheRoot, "late-cell", []GoExtension{extension}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !again.Cached || again.Hash != own {
+		t.Fatalf("the next cell of the load: cached %v under %q; want the image published under %q", again.Cached, again.Hash, own)
+	}
+}
