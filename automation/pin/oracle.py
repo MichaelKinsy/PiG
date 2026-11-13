@@ -472,6 +472,28 @@ def unpack_snapshot(pin: Pin, source: Path) -> str:
     return got
 
 
+def mirror_data(commit: str, target: Path) -> str:
+    """Make `target` (the provider data directory of a source mirror of Pi `commit`) the snapshot frozen for that commit, and
+    return its digest. The mirror is the pinned release's bytes: its data never comes from an installed package, which carries the
+    backports. Data that already has the snapshot's digest is left alone; anything else is replaced; no snapshot is an error."""
+    archive_path = FROZEN / f"{commit}.provider-data.tgz"
+    marker = FROZEN / f"{commit}.provider-data.tgz.sha256"
+    if not archive_path.exists() or not marker.exists():
+        raise PinError(f"no frozen provider data for Pi {commit or '(unknown commit)'} ({archive_path.name}): the mirror's provider data is the frozen snapshot of its commit, never an installed package's")
+    recorded = marker.read_text().strip()
+    if target.is_dir() and data_digest(target) == recorded:
+        return recorded
+    target.mkdir(parents=True, exist_ok=True)
+    for old in target.iterdir():
+        old.unlink()
+    with tarfile.open(archive_path) as archive:
+        archive.extractall(target, filter="data")
+    got = data_digest(target)
+    if got != recorded:
+        raise PinError(f"{archive_path} unpacks to digest {got}, its recorded digest is {recorded}")
+    return got
+
+
 def build_source(pin: Pin, source: Path) -> str:
     """Build the pinned source and return the digest of the model data it was built with."""
     root = json.loads((source / "package.json").read_text())
