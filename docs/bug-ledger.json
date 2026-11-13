@@ -4652,6 +4652,28 @@
       ]
     },
     {
+      "id": "BF-1b0a657",
+      "title": "`pi.sendMessage` with a `content` of `null` writes `\"content\":[]`, as in Pi, and so does a message without…",
+      "symptom": "`pi.sendMessage` with a `content` of `null` writes `\"content\":[]`, as in Pi, and so does a message without `content` that the interactive mode appends.",
+      "rootCause": "Pi's sendCustomMessage builds its message with `content: message.content ?? []` (agent-session.ts:2468), so a message sent without content and one sent with a null content both hold an empty list, in the message and in its session entry. Since the decode keeps a null member, the Session wrote `\"content\":null` for the null one, and the interactive mode's own path wrote the member as it came: no member for a message without content.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.sendMessage` with a `content` of `null` writes `\"content\":[]`, as in Pi, and so does a message without `content` that the interactive mode appends. PiG wrote `\"content\":null` for the first and no `content` member for the second. The cause: Pi's `sendCustomMessage` reads `message.content ?? []`, and PiG applied that default only to a missing content and only in one of its two paths.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1b0a657da2",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi"
+      ]
+    },
+    {
       "id": "BF-1b5540a",
       "title": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…",
       "symptom": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an `error`); the connection fails with a `DisconnectedError` carrying it.",
@@ -5079,6 +5101,31 @@
       ],
       "tests": [
         "durable/core/host/cf/test/warm-ticks.test.ts"
+      ]
+    },
+    {
+      "id": "BF-1ea5c18",
+      "title": "A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in…",
+      "symptom": "A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in Pi: its member order and any extra member.",
+      "rootCause": "The cause: the host decoded the object into its typed usage and wrote the typed value back.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in Pi: its member order and any extra member. This applies to a compaction draft, to a `session_before_compact` result's compaction and to a `session_before_tree` result's summary. PiG wrote its own member order and dropped extra members. The cause: the host decoded the object into its typed usage and wrote the typed value back. Token and cost totals do not change: they use `input`, `output`, `cacheRead`, `cacheWrite` and `cost.total`, as Pi's do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1ea5c18bc2",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/null_members_test.go::TestExtensionUsageKeepsTheAuthorsObject",
+        "coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi",
+        "internal/codingagent/session_null_members_rewrite_test.go::TestRewritersKeepAnAuthoredUsage",
+        "internal/sessionentry/null_members_test.go::TestUsageMemberIsWrittenAsItsAuthorWroteIt"
       ]
     },
     {
@@ -8635,6 +8682,31 @@
       ]
     },
     {
+      "id": "BF-3063e76",
+      "title": "`setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label…",
+      "symptom": "`setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label, `\"label\":null` for a null label and `\"label\":\"\"` for an empty string.",
+      "rootCause": "The cause: the host decoded the label as a string, and the binders of the session, the interactive mode and the session graph runner mapped an empty string to no label.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label, `\"label\":null` for a null label and `\"label\":\"\"` for an empty string. Each clears the label. PiG wrote the entry without a `label` member for all three. The cause: the host decoded the label as a string, and the binders of the session, the interactive mode and the session graph runner mapped an empty string to no label. An extension that clears a label with an empty string now writes `\"label\":\"\"`, as the same call does in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3063e768f4",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/ctx_mode_test.go::TestNodeRuntimeExposesSessionAndWorkingVisibleAPI",
+        "coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi",
+        "test/extension-conformance/api_session_writes_test.go::TestConformance_ExtensionAPISessionWrites",
+        "test/extension-conformance/entry_null_members_test.go::TestSetLabelOmittedNullAndEmptyAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-308d280",
       "title": "`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's…",
       "symptom": "`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's `Intl.getCanonicalLocales` does (`en-u-true` and `en-u-yes` are attributes); the lone `true` or `yes` of another singleton is still dropped.",
@@ -11516,6 +11588,29 @@
       ]
     },
     {
+      "id": "BF-3e00494",
+      "title": "fix(session): a custom message entry whose content is null projects an empty list",
+      "symptom": "fix(session): a custom message entry whose content is null projects an empty list",
+      "rootCause": "Pi's projection of a custom_message entry reads `entry.content ?? []` (session-manager.ts:455): a content member that is null and one that is absent both give the message an empty list. Since the entry decode keeps a null member as orderedjson.Null, SessionEntryToContextMessages handed the null on as the content. It treats the kept null as the absent member again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3e004947f7",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/session_lax_content_upstream_test.go::TestUpstreamLaxSessionEntryContent",
+        "internal/codingagent/session_entry_projection_gaps_test.go::TestSessionEntryToContextMessagesProjectsEachEntryKind",
+        "test/parity/scenarios/session/17-session-lax-message-content.toml"
+      ]
+    },
+    {
       "id": "BF-3e755ef",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -14091,6 +14186,28 @@
       ],
       "tests": [
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit"
+      ]
+    },
+    {
+      "id": "BF-47ef9ce",
+      "title": "A custom message whose `display` an extension sets to `null` (a `custom_message` draft, or `pi.sendMessage`…",
+      "symptom": "A custom message whose `display` an extension sets to `null` (a `custom_message` draft, or `pi.sendMessage` from a JavaScript extension) keeps `\"display\":null` in the session file, as in Pi.",
+      "rootCause": "The cause: `display` was a Go boolean with no null state.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom message whose `display` an extension sets to `null` (a `custom_message` draft, or `pi.sendMessage` from a JavaScript extension) keeps `\"display\":null` in the session file, as in Pi. PiG wrote `\"display\":false`. The cause: `display` was a Go boolean with no null state. Readers take the null for false, as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "47ef9ce797",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi"
       ]
     },
     {
@@ -30915,6 +31032,37 @@
       ]
     },
     {
+      "id": "BF-8b8b8d3",
+      "title": "A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in…",
+      "symptom": "A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in Pi: the `data` of `pi.appendEntry`, the `details` of `pi.sendMessage`, the `data`, `details` and `usage` of a `turn_end` or `agent_before_settle` draft, and the `details` and `usage` of a `session_before_compact` result's compaction and of a `session_before_tree` result's summary.",
+      "rootCause": "The cause: the host decoded a member an extension wrote as null and a member it left out into the same nil, and the entry types leave out a member without a value.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in Pi: the `data` of `pi.appendEntry`, the `details` of `pi.sendMessage`, the `data`, `details` and `usage` of a `turn_end` or `agent_before_settle` draft, and the `details` and `usage` of a `session_before_compact` result's compaction and of a `session_before_tree` result's summary. PiG wrote no member, and a reader of the reloaded session got undefined. The cause: the host decoded a member written as `null` and a member left out into the same value, and the entry types leave out a member without a value. A session file that PiG wrote before this change has no member where Pi has `null`; it reads as Pi reads the same file.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b8b8d33b3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/null_members_test.go::TestBoundaryDraftKeepsNullMembersApartFromAbsent",
+        "coding/extension/null_members_test.go::TestExtensionWrittenMembersKeepNullApartFromAbsent",
+        "coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi",
+        "internal/codingagent/session_null_members_rewrite_test.go::TestRewritersKeepNullMembers",
+        "internal/codingagent/session_null_members_rewrite_test.go::TestToolResultHandlerNullDetailsKeepTheToolsOwn",
+        "internal/orderedjson/null_test.go::TestIsNullMember",
+        "internal/orderedjson/null_test.go::TestNullMemberStaysApartFromAbsent",
+        "internal/orderedjson/value_test.go::TestUnmarshalFieldsKeepsNamedMembersInWrittenOrder",
+        "internal/sessionentry/null_members_test.go::TestOptionalMembersKeepNullApartFromAbsent",
+        "test/parity/scenarios/session/39-entry-null-members.toml"
+      ]
+    },
+    {
       "id": "BF-8b8f379",
       "title": "A pi-ai call made while a module loads is answered in every extension host: SDK sessions, the extension…",
       "symptom": "A pi-ai call made while a module loads is answered in every extension host: SDK sessions, the extension validation, the authentication inspection and the login preview no longer hang on it, and any extension call with no handler now gets an error result instead of silence.",
@@ -34330,6 +34478,28 @@
       "tests": [
         "coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty",
         "coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne"
+      ]
+    },
+    {
+      "id": "BF-94bd9a5",
+      "title": "Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the…",
+      "symptom": "Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the `details` of `append_custom_message_entry` writes an entry without that member, as Pi does.",
+      "rootCause": "The cause: the Python `SetupSessionManager` sent the member on every call, and its default, `None`, is a JSON null.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the `details` of `append_custom_message_entry` writes an entry without that member, as Pi does. PiG wrote `\"data\":null` and `\"details\":null` into the session file. The cause: the Python `SetupSessionManager` sent the member on every call, and its default, `None`, is a JSON null. `pig_sdk.NULL` still writes the member as null.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "94bd9a58fe",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/entry_null_members_test.go::TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -43374,6 +43544,34 @@
       ]
     },
     {
+      "id": "BF-c05aa12",
+      "title": "A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement`…",
+      "symptom": "PiG took the absent member for null, left the target out of model context and continued.",
+      "rootCause": "the host decoded a draft into a struct whose replacement is a raw JSON value, so an absent member and a null one were the same nil, and applyBoundaryDrafts took nil for null.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member now stops the run as it does in Pi, with Pi's message that the replacement \"must be null or contain string/array content\": nothing is appended and the run does not continue. Before this fix, PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "65a97c7f91",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "c05aa12b6c",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/session_overflow_owner_test.go::TestExtensionOwnedCompactionContinuesAfterOverflow",
+        "test/extension-conformance/boundary_draft_members_test.go::TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch"
+      ]
+    },
+    {
       "id": "BF-c1055c4",
       "title": "Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as…",
       "symptom": "Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as `*.@(md|txt)`, POSIX classes, `.` and empty path segments, and case-insensitive wildcard segments on Windows and macOS.",
@@ -45557,6 +45755,30 @@
       "tests": [
         "extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire",
         "test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-cc38705",
+      "title": "An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a…",
+      "symptom": "An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a branch summary entry without a `fromHook` member, as Pi does.",
+      "rootCause": "The cause: BranchSummaryEntry kept \"no fromHook\" only for an entry decoded from a record, in an unexported field, so no caller could ask for it. FromHookAbsent is now exported, as on CompactionEntry, and the session graph handler sets it when the argument is not given.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a branch summary entry without a `fromHook` member, as Pi does. PiG wrote `\"fromHook\":false`. The cause: the entry type could leave the member out only for an entry it had read from a file.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cc387053a6",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi",
+        "internal/codingagent/session_graph_branch_summary_test.go::TestGraphBranchWithSummaryWithoutFromHookWritesNoMember",
+        "internal/sessionentry/null_members_test.go::TestOptionalMembersKeepNullApartFromAbsent"
       ]
     },
     {
@@ -57326,6 +57548,32 @@
         "internal/codingagent/tree_selector_upstream_test.go::TestTreeSelectorOpensInConfiguredFilterMode",
         "internal/sessionentry/lazy_funnel_test.go::TestOnlyTheFunnelAssertsMessageMembers",
         "internal/sessionentry/lazy_funnel_test.go::TestTheFunnelCheckFindsAssertions"
+      ]
+    },
+    {
+      "id": "BF-f71a183",
+      "title": "A custom message that an extension writes without `display` (`pi.sendMessage({ customType, content })`, a…",
+      "symptom": "A custom message that an extension writes without `display` (`pi.sendMessage({ customType, content })`, a `custom_message` draft without the member) has no `display` member in the session file, as in Pi, and a draft without `content` has no `content` member.",
+      "rootCause": "The cause: display is a Go bool on the message, the draft and the entry, which has no \"not given\", and the entry wrote a nil content as null.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom message that an extension writes without `display` (`pi.sendMessage({ customType, content })`, a `custom_message` draft without the member) has no `display` member in the session file, as in Pi, and a draft without `content` has no `content` member. PiG wrote `\"display\":false` and `\"content\":null`. The cause: `display` was a Go boolean with no \"not given\" state, and the entry wrote a missing content as `null`. A session file that PiG wrote before this change keeps its `\"display\":false`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f71a1836fc",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/null_members_test.go::TestBoundaryDraftKeepsNullMembersApartFromAbsent",
+        "coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi",
+        "internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity",
+        "internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
+        "internal/sessionentry/null_members_test.go::TestOptionalMembersKeepNullApartFromAbsent"
       ]
     },
     {

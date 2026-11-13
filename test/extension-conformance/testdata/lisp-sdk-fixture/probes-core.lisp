@@ -324,6 +324,29 @@
                                                           "|"))))
                    (core-info ctx (format nil "getThinkingLevel=~A;getCommands=~A" (pig:ctx-get-thinking-level ctx) (core-join commands))))))
   (pig:command ext "append_entry" "Append a custom entry" (lambda (ctx args) (declare (ignore args)) (pig:ctx-append-entry ctx "conformance-entry" "hello-entry")))
+  ;; An entry and a message with the optional member left out, then with it written as null: NIL is Pi's omitted argument and :NULL is its null.
+  (pig:command ext "entry_null_members" "Append entries and send messages with an omitted and a null member"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-append-entry ctx "conformance-null-omitted" nil)
+                 (pig:ctx-append-entry ctx "conformance-null-explicit" :null)
+                 (pig:ctx-send-message ctx "conformance-null-omitted" "x" :display nil)
+                 (pig:ctx-send-message ctx "conformance-null-explicit" "x" :display nil :details :null)))
+  ;; setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+  (pig:command ext "label_members" "Set a label that is omitted, null and empty"
+               (lambda (ctx args)
+                 (pig:ctx-set-label ctx args)
+                 (pig:ctx-set-label ctx args :null)
+                 (pig:ctx-set-label ctx args "")))
+  ;; The setup callback's session manager: an entry and a message with the optional member left out, then with it written as null.
+  (pig:command ext "setup_null_members" "Seed a new session with an omitted and a null member"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-new-session ctx :setup (lambda (manager)
+                                                   (pig:setup-append-custom-entry manager "api-custom")
+                                                   (pig:setup-append-custom-entry manager "api-custom" :null)
+                                                   (pig:setup-append-custom-message-entry manager "api-message" "x" nil)
+                                                   (pig:setup-append-custom-message-entry manager "api-message" "x" t :null)))))
   (pig:command ext "append-entries-probe" "Append a custom entry for each comma-separated type"
                (lambda (ctx args)
                  (let ((start 0))
@@ -640,7 +663,27 @@
             (lambda (ctx data) (declare (ignore ctx))
               (unless (equal (map 'list (lambda (e) (pig:jget e "customType")) (pig:jget data "entries")) '("kept" "before-error")) (error "entries"))
               (unless (= 2 (length (pig:jref data "context" "contextEntries"))) (error "context entries"))
-              (pig:obj "entries" (vector (pig:obj "type" "custom" "customType" "conformance-boundary")) "continue" t)))
+              ;; One draft with a null replacement, one without the member, and a compaction that keeps nothing.
+              (pig:obj "entries" (vector (pig:obj "type" "custom" "customType" "conformance-boundary")
+                                         (pig:obj "type" "context_edit" "targetId" "conformance-failed-attempt" "replacement" :null)
+                                         (pig:obj "type" "context_edit" "targetId" "conformance-omitted-member")
+                                         (pig:obj "type" "compaction" "summary" "conformance-summary" "firstKeptEntryId" :null
+                                                  "details" (pig:obj "format" "conformance-checkpoint") "usage" :null)
+                                         ;; A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+                                         (pig:obj "type" "custom" "customType" "conformance-null-data" "data" :null)
+                                         (pig:obj "type" "custom_message" "customType" "conformance-null-details" "content" "x" "display" :false "details" :null))
+                       "continue" t)))
+    (pig:on ext "agent_before_settle"
+            (lambda (ctx data)
+              (let ((entries (pig:jget data "entries")))
+                (unless (= 6 (length entries)) (error "boundary result reached the next handler as ~D entries" (length entries)))
+                (flet ((member-token (index key)
+                         (multiple-value-bind (value present) (gethash key (elt entries index))
+                           (cond ((not present) "absent") ((or (null value) (eq value :null)) "null") (t "value")))))
+                  (core-info ctx (format nil "agent_before_settle_drafts:~D:~A:~A:~A:~A:~A:~A:~A:~A" (length entries) (member-token 1 "replacement") (member-token 2 "replacement")
+                                         (member-token 3 "firstKeptEntryId") (pig:jref (elt entries 3) "details" "format")
+                                         (member-token 0 "data") (member-token 3 "usage") (member-token 4 "data") (member-token 5 "details"))))
+                nil)))
     (pig:on ext "session_start"
             (lambda (ctx data)
               (core-info ctx (concatenate 'string "session_start:" (core-key-str data "reason" "")))

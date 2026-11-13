@@ -5462,6 +5462,80 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    // An entry and a message with the optional member left out, then with it written as null: Value::Null is Pi's omitted argument in append_entry, and
+    // the siblings that take an Option write Some(Value::Null) as null.
+    ext.command(
+        "entry_null_members",
+        "Append entries and send messages with an omitted and a null member",
+        |ctx, _args| {
+            let result = ctx
+                .append_entry("conformance-null-omitted", Value::Null)
+                .and_then(|_| ctx.append_entry_opt("conformance-null-explicit", Some(Value::Null)))
+                .and_then(|_| ctx.send_message("conformance-null-omitted", "x", false, None, None))
+                .and_then(|_| {
+                    ctx.send_message_with_details(
+                        "conformance-null-explicit",
+                        "x",
+                        false,
+                        None,
+                        None,
+                        Some(Value::Null),
+                    )
+                });
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
+    // setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+    ext.command(
+        "label_members",
+        "Set a label that is omitted, null and empty",
+        |ctx, args| {
+            let result = ctx
+                .set_label_opt(args, None)
+                .and_then(|_| ctx.set_label_opt(args, Some(Value::Null)))
+                .and_then(|_| ctx.set_label(args, ""));
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
+    // The setup callback's SessionManager: an entry and a message with the optional member left out, then with it written as null. Value::Null is
+    // Pi's omitted argument, and the siblings that take an Option write Some(Value::Null) as null.
+    ext.command(
+        "setup_null_members",
+        "Seed a new session with an omitted and a null member",
+        |ctx, _args| {
+            let result = ctx.new_session_setup(
+                json!({}),
+                |manager: &pig_sdk::SetupSessionManager| {
+                    manager.append_custom_entry("api-custom", Value::Null)?;
+                    manager.append_custom_entry_opt("api-custom", Some(Value::Null))?;
+                    manager.append_custom_message_entry(
+                        "api-message",
+                        json!("x"),
+                        false,
+                        Value::Null,
+                    )?;
+                    manager.append_custom_message_entry_opt(
+                        "api-message",
+                        json!("x"),
+                        true,
+                        Some(Value::Null),
+                    )?;
+                    Ok(())
+                },
+                None,
+            );
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command(
         "append-entries-probe",
         "Append a custom entry for each comma-separated type",
@@ -6803,10 +6877,44 @@ fn main() {
             data["context"]["contextEntries"].as_array().unwrap().len(),
             2
         );
+        // One draft with a null replacement, one without the member, and a compaction that keeps nothing.
         Some(json!({
-            "entries": [{"type": "custom", "customType": "conformance-boundary"}],
+            "entries": [
+                {"type": "custom", "customType": "conformance-boundary"},
+                {"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": null},
+                {"type": "context_edit", "targetId": "conformance-omitted-member"},
+                {"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": null, "details": {"format": "conformance-checkpoint"}, "usage": null},
+                {"type": "custom", "customType": "conformance-null-data", "data": null},
+                {"type": "custom_message", "customType": "conformance-null-details", "content": "x", "display": false, "details": null}
+            ],
             "continue": true
         }))
+    });
+    ext.on_event("agent_before_settle", |ctx, data| {
+        let entries = data["entries"].as_array().cloned().unwrap_or_default();
+        assert_eq!(entries.len(), 6, "boundary result reached the next handler");
+        let member = |index: usize, key: &str| match entries[index].get(key) {
+            None => "absent",
+            Some(Value::Null) => "null",
+            Some(_) => "value",
+        };
+        let format = entries[3]["details"]["format"].as_str().unwrap_or("");
+        ctx.notify(
+            &format!(
+                "agent_before_settle_drafts:{}:{}:{}:{}:{}:{}:{}:{}:{}",
+                entries.len(),
+                member(1, "replacement"),
+                member(2, "replacement"),
+                member(3, "firstKeptEntryId"),
+                format,
+                member(0, "data"),
+                member(3, "usage"),
+                member(4, "data"),
+                member(5, "details")
+            ),
+            "info",
+        );
+        None
     });
     ext.on_event("session_start", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");

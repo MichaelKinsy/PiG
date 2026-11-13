@@ -1781,6 +1781,28 @@ export default function (pi) {
   pi.registerCommand("set_label", { description: "Set an entry label", handler: async () => pi.setLabel("label-entry", "conformance-label") });
   pi.registerShortcut("ctrl+alt+y", { description: "Conformance shortcut", handler: async () => {} });
   pi.registerCommand("append_entry", { description: "Append a custom entry", handler: async () => pi.appendEntry("conformance-entry", "hello-entry") });
+  // An entry and a message with the optional member left out, then with it written as null.
+  pi.registerCommand("entry_null_members", { description: "Append entries and send messages with an omitted and a null member", handler: async () => {
+    pi.appendEntry("conformance-null-omitted");
+    pi.appendEntry("conformance-null-explicit", null);
+    pi.sendMessage({ customType: "conformance-null-omitted", content: "x", display: false });
+    pi.sendMessage({ customType: "conformance-null-explicit", content: "x", display: false, details: null });
+  } });
+  // setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+  pi.registerCommand("label_members", { description: "Set a label that is omitted, null and empty", handler: async (args) => {
+    pi.setLabel(args);
+    pi.setLabel(args, null);
+    pi.setLabel(args, "");
+  } });
+  // The setup callback's SessionManager: an entry and a message with the optional member left out, then with it written as null.
+  pi.registerCommand("setup_null_members", { description: "Seed a new session with an omitted and a null member", handler: async (_args, ctx) => {
+    await ctx.newSession({ setup: async (sessionManager) => {
+      sessionManager.appendCustomEntry("api-custom");
+      sessionManager.appendCustomEntry("api-custom", null);
+      sessionManager.appendCustomMessageEntry("api-message", "x", false);
+      sessionManager.appendCustomMessageEntry("api-message", "x", true, null);
+    } });
+  } });
   pi.registerCommand("append-entries-probe", { description: "Append a custom entry for each comma-separated type", handler: async (args) => { for (const customType of String(args).split(",")) pi.appendEntry(customType, `data-of-${customType}`); } });
   pi.registerCommand("scoped-models-probe", { description: "Report the model scope", handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.scopedModels), "info") });
   pi.registerCommand("ui-availability", {
@@ -2796,7 +2818,24 @@ export default function (pi) {
     if (event.entries.length !== 2 || event.context.contextEntries.length !== 2 || event.entries[0].customType !== "kept" || event.entries[1].customType !== "before-error") {
       throw new Error("lost boundary mutation or preview");
     }
-    return { entries: [{ type: "custom", customType: "conformance-boundary" }], continue: true };
+    // One draft with a null replacement, one without the member, and a compaction that keeps nothing.
+    return {
+      entries: [
+        { type: "custom", customType: "conformance-boundary" },
+        { type: "context_edit", targetId: "conformance-failed-attempt", replacement: null },
+        { type: "context_edit", targetId: "conformance-omitted-member" },
+        { type: "compaction", summary: "conformance-summary", firstKeptEntryId: null, details: { format: "conformance-checkpoint" }, usage: null },
+        // A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+        { type: "custom", customType: "conformance-null-data", data: null },
+        { type: "custom_message", customType: "conformance-null-details", content: "x", display: false, details: null },
+      ],
+      continue: true,
+    };
+  });
+  pi.on("agent_before_settle", (event, ctx) => {
+    if (event.entries.length !== 6) throw new Error(`boundary result reached the next handler as ${event.entries.length} entries`);
+    const member = (index, key) => (key in event.entries[index] ? (event.entries[index][key] === null ? "null" : "value") : "absent");
+    ctx.ui.notify(`agent_before_settle_drafts:${event.entries.length}:${member(1, "replacement")}:${member(2, "replacement")}:${member(3, "firstKeptEntryId")}:${event.entries[3].details?.format}:${member(0, "data")}:${member(3, "usage")}:${member(4, "data")}:${member(5, "details")}`, "info");
   });
   pi.on("session_start", async (event, ctx) => {
     ctx.ui.notify(`session_start:${event.reason ?? ""}`, "info");

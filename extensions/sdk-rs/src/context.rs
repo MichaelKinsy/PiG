@@ -2182,6 +2182,9 @@ pub(crate) fn model_identity(model: &serde_json::Value) -> (String, String) {
 }
 
 /// Context provides access to the host's UI and session state.
+/// It has no method that continues a turn or appends a compaction at a turn's end: a `turn_end` or `agent_before_settle` handler does both with its result,
+/// `entries` (custom, custom_message, context_edit and compaction drafts) and `continue` (one more provider request, no new user message). See "Own compaction
+/// and continue after an overflow" in the extensions guide.
 /// Passed to every handler function. Clones share the connection, cancellation and live session state, so retained callbacks can own a context without copying that state.
 #[derive(Clone)]
 pub struct Context {
@@ -3312,6 +3315,28 @@ impl Context {
         trigger_turn: Option<bool>,
         deliver_as: Option<&str>,
     ) -> io::Result<()> {
+        self.send_message_with_details(
+            custom_type,
+            content,
+            display,
+            trigger_turn,
+            deliver_as,
+            None,
+        )
+    }
+
+    /// [`Context::send_message`] with upstream's message `details`, extension data kept with the
+    /// message and not sent to the model: `None` leaves the member out and `Some(Value::Null)`
+    /// writes it as null.
+    pub fn send_message_with_details(
+        &self,
+        custom_type: &str,
+        content: &str,
+        display: bool,
+        trigger_turn: Option<bool>,
+        deliver_as: Option<&str>,
+        details: Option<serde_json::Value>,
+    ) -> io::Result<()> {
         // Both options are optional upstream: None is sent as unset and the
         // host applies upstream's default for the session's state.
         let mut options = serde_json::Map::new();
@@ -3324,16 +3349,17 @@ impl Context {
                 serde_json::Value::String(deliver_as.to_string()),
             );
         }
+        let mut message = serde_json::json!({
+            "customType": custom_type,
+            "content": content,
+            "display": display,
+        });
+        if let Some(details) = details {
+            message["details"] = details;
+        }
         call_result_to_io(self.call_wire(
             "sendMessage",
-            Some(serde_json::json!({
-                "message": {
-                    "customType": custom_type,
-                    "content": content,
-                    "display": display,
-                },
-                "options": options,
-            })),
+            Some(serde_json::json!({"message": message, "options": options})),
         )?)
     }
 
@@ -3377,12 +3403,30 @@ impl Context {
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
     }
 
-    /// Append a custom persistent entry to the session.
+    /// Append a custom persistent entry to the session. `Value::Null` leaves the entry without a
+    /// `data` member, as Pi's `appendEntry(customType)` does; [`Context::append_entry_opt`] writes
+    /// an explicit null.
     pub fn append_entry(&self, custom_type: &str, data: serde_json::Value) -> io::Result<()> {
-        call_result_to_io(self.call_wire(
-            "appendEntry",
-            Some(serde_json::json!({"customType": custom_type, "data": data})),
-        )?)
+        self.append_entry_opt(custom_type, if data.is_null() { None } else { Some(data) })
+    }
+
+    /// Append a custom persistent entry whose `data` member is left out (`None`, Pi's
+    /// `appendEntry(customType)`), written as null (`Some(Value::Null)`, Pi's
+    /// `appendEntry(customType, null)`) or a value.
+    pub fn append_entry_opt(
+        &self,
+        custom_type: &str,
+        data: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        let mut args = serde_json::Map::new();
+        args.insert(
+            "customType".into(),
+            serde_json::Value::String(custom_type.to_string()),
+        );
+        if let Some(data) = data {
+            args.insert("data".into(), data);
+        }
+        call_result_to_io(self.call_wire("appendEntry", Some(serde_json::Value::Object(args)))?)
     }
 
     // ─── Editor access ───────────────────────────────────────────────────
@@ -3440,14 +3484,31 @@ impl Context {
         )
     }
 
-    /// Set or clear a label for a session entry.
-    /// Sets or clears an entry label. The host's failure is returned, as
-    /// upstream's setLabel throws when the session cannot record the label.
+    /// Sets or clears an entry label. The label is written as given: an empty one clears the label
+    /// and its entry holds `"label":""`, as Pi's `setLabel(entryId, "")` writes it. The host's
+    /// failure is returned, as upstream's setLabel throws when the session cannot record the label.
     pub fn set_label(&self, entry_id: &str, label: &str) -> io::Result<()> {
-        call_result_to_io(self.call_wire(
-            "setLabel",
-            Some(serde_json::json!({"entryId": entry_id, "label": label})),
-        )?)
+        self.set_label_opt(entry_id, Some(serde_json::Value::String(label.to_string())))
+    }
+
+    /// Sets or clears an entry label in every form Pi's `setLabel(entryId, label?)` takes: `None`
+    /// is the call without a label, whose entry has no `label` member; `Some(Value::Null)` is a
+    /// null label, written as null; a string is written as given. All but a string that is not
+    /// empty clear the label.
+    pub fn set_label_opt(
+        &self,
+        entry_id: &str,
+        label: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        let mut args = serde_json::Map::new();
+        args.insert(
+            "entryId".into(),
+            serde_json::Value::String(entry_id.to_string()),
+        );
+        if let Some(label) = label {
+            args.insert("label".into(), label);
+        }
+        call_result_to_io(self.call_wire("setLabel", Some(serde_json::Value::Object(args)))?)
     }
 
     /// Return the host flag value or its first registered default; false and empty strings remain values. `None` is Pi's undefined; a host failure is an error, not the default.

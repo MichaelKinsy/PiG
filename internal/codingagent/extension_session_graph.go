@@ -593,7 +593,8 @@ func (g *GraphSessionManager) Call(_ context.Context, method string, raw json.Ra
 				return nil, err
 			}
 		}
-		return session.BranchWithSummary(parent, summary, details, fromHook, usage)
+		// upstream: session-manager.ts:1611-1630 (branchWithSummary stores fromHook as given: a call without the argument writes no member).
+		return session.BranchWithSummaryEntry(parent, BranchSummaryEntry{Summary: summary, Details: details, Usage: usage, FromHook: fromHook, FromHookAbsent: !args.Has(3)})
 	case "createBranchedSession":
 		leafID, err := args.String(0)
 		if err != nil {

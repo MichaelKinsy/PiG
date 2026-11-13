@@ -457,8 +457,8 @@ func BindSessionReadActions(bridge *subprocess.UIBridge, current func() *Session
 		return sess.Inner().MessageEntriesAfter(cursor)
 	})
 	// pi.setLabel is the handler the Session binds into its runner's runtime (agent-session.ts:3419 _bindExtensionCore); a subprocess extension
-	// reaches that one handler. An empty label clears it (types.ts:2106 SetLabelHandler takes `string | undefined`).
-	bridge.SetHostAction("setLabel", func(entryID, label string) error {
+	// reaches that one handler with the label as it gave it: a string (an empty one included), null, or none.
+	bridge.SetHostAction("setLabel", func(entryID string, label *string, null bool) error {
 		sess := current()
 		if sess == nil {
 			return ErrSessionNotReady
@@ -467,11 +467,7 @@ func BindSessionReadActions(bridge *subprocess.UIBridge, current func() *Session
 		if runner == nil || runner.Runtime().SetLabel == nil {
 			return ErrSessionNotReady
 		}
-		var value *string
-		if label != "" {
-			value = &label
-		}
-		return runner.Runtime().SetLabel(entryID, value)
+		return runner.Runtime().ApplyLabel(entryID, label, null)
 	})
 	var info icodingagent.ExtensionSessionInfoMemo
 	bridge.SetHostAction("sessionRead", func(method string, args json.RawMessage) (any, error) {

@@ -2263,6 +2263,50 @@ func Extension() *sdk.Extension {
 	ext.Command("append_entry", "Append a custom entry", func(ctx sdk.Context, args string) error {
 		return ctx.AppendEntry("conformance-entry", "hello-entry")
 	})
+	// entry_null_members appends an entry and sends a message with the optional member left out, then with it written as null: Go's nil is Pi's omitted
+	// argument and json.RawMessage("null") is its null.
+	ext.Command("entry_null_members", "Append entries and send messages with an omitted and a null member", func(ctx sdk.Context, args string) error {
+		if err := ctx.AppendEntry("conformance-null-omitted", nil); err != nil {
+			return err
+		}
+		if err := ctx.AppendEntry("conformance-null-explicit", json.RawMessage("null")); err != nil {
+			return err
+		}
+		if err := ctx.SendMessage("conformance-null-omitted", "x", false, sdk.SendMessageOptions{}); err != nil {
+			return err
+		}
+		return ctx.SendMessage("conformance-null-explicit", "x", false, sdk.SendMessageOptions{Details: json.RawMessage("null")})
+	})
+	// label_members calls setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for
+	// each. Go's nil is the call without a label and json.RawMessage("null") is its null.
+	ext.Command("label_members", "Set a label that is omitted, null and empty", func(ctx sdk.Context, args string) error {
+		if err := ctx.SetLabelValue(args, nil); err != nil {
+			return err
+		}
+		if err := ctx.SetLabelValue(args, json.RawMessage("null")); err != nil {
+			return err
+		}
+		return ctx.SetLabel(args, "")
+	})
+	// setup_null_members seeds a new session through the SessionManager of the setup callback: an entry and a message with the optional member left out,
+	// then with it written as null, under the types and display values of the pinned Pi package's rows "api custom data ..." and
+	// "api custom_message details ...". Go's nil is Pi's omitted argument and json.RawMessage("null") is its null.
+	ext.Command("setup_null_members", "Seed a new session with an omitted and a null member", func(ctx sdk.Context, args string) error {
+		_, err := ctx.NewSession(map[string]any{"setup": sdk.SetupFunc(func(manager sdk.SetupSessionManager) error {
+			if _, err := manager.AppendCustomEntry("api-custom", nil); err != nil {
+				return err
+			}
+			if _, err := manager.AppendCustomEntry("api-custom", json.RawMessage("null")); err != nil {
+				return err
+			}
+			if _, err := manager.AppendCustomMessageEntry("api-message", "x", false, nil); err != nil {
+				return err
+			}
+			_, err := manager.AppendCustomMessageEntry("api-message", "x", true, json.RawMessage("null"))
+			return err
+		})})
+		return err
+	})
 	// append-entries-probe appends one custom entry for each comma-separated type in order. Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
 	ext.Command("append-entries-probe", "Append a custom entry for each comma-separated type", func(ctx sdk.Context, args string) error {
 		for customType := range strings.SplitSeq(args, ",") {
@@ -3916,10 +3960,41 @@ func Extension() *sdk.Extension {
 		if len(entries) != 2 || len(preview["contextEntries"].([]any)) != 2 || entries[0].(map[string]any)["customType"] != "kept" || entries[1].(map[string]any)["customType"] != "before-error" {
 			return nil, errors.New("lost boundary mutation or preview")
 		}
+		// One draft with a null replacement, one without the member, and a compaction that keeps nothing: Pi omits the target of the first, rejects the second
+		// (session-manager.ts appendContextEdit) and keeps no entry before the third (appendCompaction).
 		return map[string]any{
-			"entries":  []any{map[string]any{"type": "custom", "customType": "conformance-boundary"}},
+			"entries": []any{
+				map[string]any{"type": "custom", "customType": "conformance-boundary"},
+				map[string]any{"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": nil},
+				map[string]any{"type": "context_edit", "targetId": "conformance-omitted-member"},
+				map[string]any{"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": nil, "details": map[string]any{"format": "conformance-checkpoint"}, "usage": nil},
+				// A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+				map[string]any{"type": "custom", "customType": "conformance-null-data", "data": nil},
+				map[string]any{"type": "custom_message", "customType": "conformance-null-details", "content": "x", "display": false, "details": nil},
+			},
 			"continue": true,
 		}, nil
+	})
+	ext.OnEvent("agent_before_settle", func(ctx sdk.Context, data map[string]any) (any, error) {
+		entries, _ := data["entries"].([]any)
+		if len(entries) != 6 {
+			return nil, fmt.Errorf("boundary result reached the next handler as %d entries", len(entries))
+		}
+		member := func(index int, key string) string {
+			entry, _ := entries[index].(map[string]any)
+			value, present := entry[key]
+			switch {
+			case !present:
+				return "absent"
+			case value == nil:
+				return "null"
+			}
+			return "value"
+		}
+		compaction, _ := entries[3].(map[string]any)
+		details, _ := compaction["details"].(map[string]any)
+		ctx.Notify(fmt.Sprintf("agent_before_settle_drafts:%d:%s:%s:%s:%v:%s:%s:%s:%s", len(entries), member(1, "replacement"), member(2, "replacement"), member(3, "firstKeptEntryId"), details["format"], member(0, "data"), member(3, "usage"), member(4, "data"), member(5, "details")), "info")
+		return nil, nil
 	})
 	ext.OnSessionStart(func(ctx sdk.Context, data map[string]any) (any, error) {
 		ctx.Notify("session_start:"+fmt.Sprint(data["reason"]), "info")

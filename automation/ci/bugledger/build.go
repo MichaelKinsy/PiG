@@ -51,6 +51,31 @@ func exemptions(root string) (map[string]string, error) {
 	return out, nil
 }
 
+// uncreditedTests reads automation/ci/bugledger/uncredited-tests.txt: "<commit> <test-file>::<TestName>: <reason>" lines for a test that a fix commit adds, edits or names and that does not guard the commit's bug.
+func uncreditedTests(root string) (map[string][]string, error) {
+	data, err := os.ReadFile(filepath.Join(root, "automation", "ci", "bugledger", "uncredited-tests.txt"))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]string{}
+	for l := range strings.SplitSeq(string(data), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.HasPrefix(l, "#") {
+			continue
+		}
+		h, rest, _ := strings.Cut(l, " ")
+		ref, reason, ok := strings.Cut(rest, ": ")
+		if !ok || len(h) < 10 || !strings.Contains(ref, "::") || strings.TrimSpace(reason) == "" {
+			return nil, fmt.Errorf("uncredited-tests.txt: %q must be \"<commit> <test-file>::<TestName>: <reason>\"", l)
+		}
+		out[h] = append(out[h], ref)
+	}
+	return out, nil
+}
+
 type builder struct {
 	r     repo
 	root  string
@@ -58,10 +83,12 @@ type builder struct {
 	base  string
 	idx   testIndex
 	// moved maps the tests a fix commit adds to where a later commit moved or renamed them; see moved-tests.txt.
-	moved   movedTests
-	order   map[string]int
-	entries []*Entry
-	rank    map[*Entry]int
+	moved movedTests
+	// uncredited maps a fix commit to the tests it touches that do not guard its bug; see uncredited-tests.txt.
+	uncredited map[string][]string
+	order      map[string]int
+	entries    []*Entry
+	rank       map[*Entry]int
 	// prior is the committed ledger. Its entries stand in for history this clone lacks; see inherit.
 	prior []Entry
 	// present holds the 10-character prefix of every commit reachable from HEAD.
@@ -145,6 +172,11 @@ func (b *builder) testsOf(entry *Entry, hash, message string) ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
+	for commit, refs := range b.uncredited {
+		if sameCommit(hash, commit) {
+			t = slices.DeleteFunc(t, func(ref string) bool { return slices.Contains(refs, ref) })
+		}
+	}
 	b.tests[hash] = t
 	return slices.Clone(t), nil
 }
@@ -226,6 +258,9 @@ func build(root, since string) (*Ledger, error) {
 		return nil, err
 	}
 	if b.moved, err = loadMovedTests(root); err != nil {
+		return nil, err
+	}
+	if b.uncredited, err = uncreditedTests(root); err != nil {
 		return nil, err
 	}
 	if prior, _, err := readCommitted(root); err == nil {

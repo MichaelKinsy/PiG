@@ -125,6 +125,10 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 
 ;;; ---------------------------------------------------------------- the context
 
+;;; The context has no function that continues a turn or appends a compaction at a turn's end: a turn_end or agent_before_settle handler does both with its
+;;; result, "entries" (custom, custom_message, context_edit and compaction drafts) and "continue" (one more provider request, no new user message). See "Own
+;;; compaction and continue after an overflow" in the extensions guide.
+
 (defstruct (ctx (:constructor %make-ctx (extension request tool-call-id request-id tool-context-p tool-args tool-index)))
   extension
   request
@@ -428,7 +432,9 @@ without setting."
             (success-and-error ctx "setModel" (obj "model" (jget resolved "model")))))
       (success-and-error ctx "setModel" (obj "model" model))))
 (defun ctx-set-thinking-level (ctx level) (ctx-call-host ctx "setThinkingLevel" (obj "level" level)) nil)
-(defun ctx-set-label (ctx entry-id label) (ctx-call-host ctx "setLabel" (obj "entryId" entry-id "label" label)) nil)
+(defun ctx-set-label (ctx entry-id &optional label)
+  "LABEL NIL (or no LABEL) leaves the entry without a label member, as Pi's setLabel(entryId) does; :NULL writes it as null, as setLabel(entryId, null) does; a string is written as given. All but a string that is not empty clear the label."
+  (ctx-call-host ctx "setLabel" (if (null label) (obj "entryId" entry-id) (obj "entryId" entry-id "label" label))) nil)
 (defun ctx-wait-for-idle (ctx) (ctx-call-host ctx "waitForIdle") nil)
 (defun ctx-yield (ctx)
   "Stand for Pi's first `await`: end the host's busy hold for this request (host call \"yield\")."
@@ -470,7 +476,8 @@ without setting."
   nil)
 
 (defun ctx-append-entry (ctx custom-type data)
-  (ctx-call-host ctx "appendEntry" (obj "customType" custom-type "data" data)) nil)
+  "DATA NIL leaves the entry without a data member, as Pi's appendEntry(customType) does; :NULL writes the member as null, as appendEntry(customType, null) does."
+  (ctx-call-host ctx "appendEntry" (if (null data) (obj "customType" custom-type) (obj "customType" custom-type "data" data))) nil)
 
 (defun ctx-set-session-name (ctx name)
   (ctx-call-host ctx "setSessionName" (obj "name" name)) nil)

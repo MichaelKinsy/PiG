@@ -185,6 +185,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1a855cd](#bf-1a855cd) | The `/session` block now follows a later theme change and shows the cache-warming countdown as of each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-1aaf60f](#bf-1aaf60f) | Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start… | PiG's own defect | All platforms | Unreleased |
+| [BF-1b0a657](#bf-1b0a657) | `pi.sendMessage` with a `content` of `null` writes `"content":[]`, as in Pi, and so does a message without… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1be8228](#bf-1be8228) | `listDir` of the local and remote execution environments leaves out an entry removed between enumeration and… | PiG's own defect | All platforms | Unreleased |
@@ -201,6 +202,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1dcaef7](#bf-1dcaef7) | Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
 | [BF-1e64d3f](#bf-1e64d3f) | A Durable core's warm turn waits exactly the microtask passes Pi's does | PiG's own defect | All platforms | Unreleased |
+| [BF-1ea5c18](#bf-1ea5c18) | A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ed43b3](#bf-1ed43b3) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ee7dea](#bf-1ee7dea) | The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1eea8f0](#bf-1eea8f0) | `ctx.ui.viewAbilities()` of a Node extension reported no client after a session log sync until the next state… | PiG's own defect | All platforms | Unreleased |
@@ -325,6 +327,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-305432b](#bf-305432b) | fix(coding-agent): stop macOS shell groups before killing them (Pi) | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3063e76](#bf-3063e76) | `setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label… | PiG's own defect | All platforms | Unreleased |
 | [BF-308d280](#bf-308d280) | `chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-308d280-2](#bf-308d280-2) | `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed… | PiG's own defect | All platforms | Unreleased |
 | [BF-30a10ed](#bf-30a10ed) | chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended | PiG's own defect | All platforms | Unreleased |
@@ -428,6 +431,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3d98081](#bf-3d98081) | Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3e00494](#bf-3e00494) | fix(session): a custom message entry whose content is null projects an empty list | PiG's own defect | All platforms | Unreleased |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-3ebb315](#bf-3ebb315) | Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack… | PiG's own defect | All platforms | Unreleased |
@@ -521,6 +525,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-47c3007-3](#bf-47c3007-3) | Shutdown no longer waits up to 15 seconds to refresh an MCP OAuth token that was about to expire, only to… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-47e7748](#bf-47e7748) | On macOS and the BSDs, a chord app's watch of its base code puts back the watch of a directory that was moved… | PiG's own defect | macOS | Unreleased |
 | [BF-47ec6e8](#bf-47ec6e8) | A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that… | PiG's own defect | All platforms | Unreleased |
+| [BF-47ef9ce](#bf-47ef9ce) | A custom message whose `display` an extension sets to `null` (a `custom_message` draft, or `pi.sendMessage`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4812c01](#bf-4812c01) | Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C… | PiG's own defect | Windows | Unreleased |
 | [BF-48318eb](#bf-48318eb) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
 | [BF-48435cd](#bf-48435cd) | A parsed http, https, ws, wss or ftp URL reports its fragment percent-encoded, as Node's `url.hash` does | PiG's own defect | All platforms | 0.5.0 |
@@ -1134,6 +1139,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8aff02e](#bf-8aff02e) | `grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8b75dc0](#bf-8b75dc0) | Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b792f9](#bf-8b792f9) | Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the… | PiG's own defect | Windows, WSL | Unreleased |
+| [BF-8b8b8d3](#bf-8b8b8d3) | A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in… | PiG's own defect | All platforms | Unreleased |
 | [BF-8b8f379](#bf-8b8f379) | A pi-ai call made while a module loads is answered in every extension host: SDK sessions, the extension… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b9e467](#bf-8b9e467) | `PIG_PROFILE=metrics` reports the exact cumulative allocation counts | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8bc7c8f](#bf-8bc7c8f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -1270,6 +1276,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-93f8b7c](#bf-93f8b7c) | fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api | PiG's own defect | All platforms | Unreleased |
 | [BF-94284ac](#bf-94284ac) | `pig -e git:<repo>@<branch>` no longer stays on its first checkout | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-942bc6c](#bf-942bc6c) | fix(coding-agent): preserve pi.exec spawn errors (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-94bd9a5](#bf-94bd9a5) | Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the… | PiG's own defect | All platforms | Unreleased |
 | [BF-94e3498](#bf-94e3498) | On Windows, PiG no longer searches `C:\etc\pig\piglets` or `C:\opt\pig\piglet.yaml` for a Piglet | PiG's own defect | Windows | 0.5.0 |
 | [BF-94e6796](#bf-94e6796) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-94f1e6f](#bf-94f1e6f) | fix(coding): a provider of only virtual models is configured with source virtual | PiG's own defect | All platforms | Unreleased |
@@ -1577,6 +1584,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bf9911e](#bf-bf9911e) | Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bfae6a0](#bf-bfae6a0) | Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\`, `+` and `_`: the word… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c019ea9](#bf-c019ea9) | A panic in a background goroutine of an interactive session no longer ends PiG with only a stderr dump | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c05aa12](#bf-c05aa12) | A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
 | [BF-c10ae73](#bf-c10ae73) | In RPC mode, runs that an extension command's handler sends with `sendMessage` or `sendUserMessage` start in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c1162b4](#bf-c1162b4) | `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +… | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
@@ -1652,6 +1660,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
 | [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cbf4a52](#bf-cbf4a52) | The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-cc38705](#bf-cc38705) | An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a… | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ccaade2](#bf-ccaade2) | The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cd7fa1c](#bf-cd7fa1c) | A read-only config root no longer prints warnings at every start | PiG's own defect | All platforms | 0.5.0 |
@@ -2022,6 +2031,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f6e7d49](#bf-f6e7d49) | `/tree` opens and searches a 300 MB session faster than Pi: it reads the session's index and each message's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f6e7d49-2](#bf-f6e7d49-2) | A session without a file (`--no-session`) keeps the records of entries behind its latest compaction… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f6e7d49-3](#bf-f6e7d49-3) | RPC `get_entries`, RPC `get_tree` and extension session reads now fail with an error naming the entry when… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f71a183](#bf-f71a183) | A custom message that an extension writes without `display` (`pi.sendMessage({ customType, content })`, a… | PiG's own defect | All platforms | Unreleased |
 | [BF-f73c00c](#bf-f73c00c) | Replaying a thinking block that holds only U+FEFF drops it and one that holds only U+0085 keeps it, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f78b951](#bf-f78b951) | fix(codingagent): cache the Markdown transformer list per theme and runner (TU-T6) | PiG's own defect | All platforms | Unreleased |
 | [BF-f7b245a](#bf-f7b245a) | A frontend member's main region now matches the transcript after an extension's custom entry is placed before… | PiG's own defect | All platforms | 0.5.0 |
@@ -4400,6 +4410,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/diff_render_test.go::TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion`, `tui/diff_render_test.go::TestRenderDiffPreservesIndentation`
 - **Release note:** Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start of the line.
 
+### BF-1b0a657
+
+**`pi.sendMessage` with a `content` of `null` writes `"content":[]`, as in Pi, and so does a message without…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pi.sendMessage` with a `content` of `null` writes `"content":[]`, as in Pi, and so does a message without `content` that the interactive mode appends.
+- **Root cause:** Pi's sendCustomMessage builds its message with `content: message.content ?? []` (agent-session.ts:2468), so a message sent without content and one sent with a null content both hold an empty list, in the message and in its session entry. Since the decode keeps a null member, the Session wrote `"content":null` for the null one, and the interactive mode's own path wrote the member as it came: no member for a message without content.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1b0a657da2` (2026-11-13)
+- **Tests:** `coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi`
+- **Release note:** `pi.sendMessage` with a `content` of `null` writes `"content":[]`, as in Pi, and so does a message without `content` that the interactive mode appends. PiG wrote `"content":null` for the first and no `content` member for the second. The cause: Pi's `sendCustomMessage` reads `message.content ?? []`, and PiG applied that default only to a missing content and only in one of its two paths.
+
 ### BF-1b5540a
 
 **`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…**
@@ -4618,6 +4642,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1e64d3f44e` (2026-11-08)
 - **Tests:** `durable/core/host/cf/test/warm-ticks.test.ts`
 - **Release note:** A Durable core's warm turn waits exactly the microtask passes Pi's does. The Cloudflare host's section effect resolved the agent a second time for the section's input, four passes more than Pi's `await section.render()` on each model call (+36 per turn of eight lookups); it now renders with the agent the `resolveAgent` hook last answered, as generation.ts passes the agent it resolved. The contract rows `F-ticks-warm-node` and `F-ticks-warm-gate` and the host test `warm-ticks.test.ts` pin Pi's counts.
+
+### BF-1ea5c18
+
+**A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in Pi: its member order and any extra member.
+- **Root cause:** The cause: the host decoded the object into its typed usage and wrote the typed value back.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1ea5c18bc2` (2026-11-13)
+- **Tests:** `coding/extension/null_members_test.go::TestExtensionUsageKeepsTheAuthorsObject`, `coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi`, `internal/codingagent/session_null_members_rewrite_test.go::TestRewritersKeepAnAuthoredUsage`, `internal/sessionentry/null_members_test.go::TestUsageMemberIsWrittenAsItsAuthorWroteIt`
+- **Release note:** A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in Pi: its member order and any extra member. This applies to a compaction draft, to a `session_before_compact` result's compaction and to a `session_before_tree` result's summary. PiG wrote its own member order and dropped extra members. The cause: the host decoded the object into its typed usage and wrote the typed value back. Token and cost totals do not change: they use `input`, `output`, `cacheRead`, `cacheWrite` and `cost.total`, as Pi's do.
 
 ### BF-1ed43b3
 
@@ -6336,6 +6374,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/harness/harness_listener_errors_test.go::TestAThrownValueThatCannotBeFormatted`, `durable/harness/tool_nested_test.go::TestAReplaySafeCallerReattachesToTheNestedCallsItMadeBeforeARestart`, `durable/harness/tool_nested_test.go::TestTheLeftRunningNestedCallsOfACallerInterruptedWhileItCleanedThemUpAreAborted`, `durable/harness/tool_nested_test.go::TestToolTaskMigratesVersion1InputToAModelIssuedCall`
 - **Release note:** A durable task that panics with a value whose `String` method panics now faults with the message `[object Object]`, as Pi's `errorMessage` gives for a thrown value that cannot be formatted, instead of Go's `%!v(PANIC=...)` text.
 
+### BF-3063e76
+
+**`setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label, `"label":null` for a null label and `"label":""` for an empty string.
+- **Root cause:** The cause: the host decoded the label as a string, and the binders of the session, the interactive mode and the session graph runner mapped an empty string to no label.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3063e768f4` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/ctx_mode_test.go::TestNodeRuntimeExposesSessionAndWorkingVisibleAPI`, `coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi`, `test/extension-conformance/api_session_writes_test.go::TestConformance_ExtensionAPISessionWrites`, `test/extension-conformance/entry_null_members_test.go::TestSetLabelOmittedNullAndEmptyAcrossSDKs`
+- **Release note:** `setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label, `"label":null` for a null label and `"label":""` for an empty string. Each clears the label. PiG wrote the entry without a `label` member for all three. The cause: the host decoded the label as a string, and the binders of the session, the interactive mode and the session graph runner mapped an empty string to no label. An extension that clears a label with an empty string now writes `"label":""`, as the same call does in Pi.
+
 ### BF-308d280
 
 **`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's…**
@@ -7759,6 +7811,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_messages_response_oracle_test.go::TestAnthropicMessagesResponseMatchesPi`, `ai/models_store_bytes_oracle_test.go::TestModelsStoreFileBytesMatchPi`, `ai/models_store_lossless_test.go::TestModelsStoreKeepsUnknownFieldsThroughCloneAndFile`, `ai/openai_completions_response_oracle_test.go::TestOpenAICompletionsResponseMatchesPi`, `ai/openai_responses_response_oracle_test.go::TestOpenAIResponsesResponseMatchesPi`, `ai/transcript_replay_oracle_test.go::TestTranscriptReplayMatchesPi`, `coding/mcpext/config_load_oracle_test.go::TestLoadMcpConfigMatchesPiOnRandomFiles`, `coding/nested_recorder_oracle_test.go::TestNestedCallRecorderMatchesPi` and 2 more in docs/bug-ledger.json
 - **Release note:** MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON object lists its array-index keys first, in ascending order, then the others in file order. The ordered JSON object the MCP configuration, tool arguments and other raw objects use now follows that rule.
 
+### BF-3e00494
+
+**fix(session): a custom message entry whose content is null projects an empty list**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(session): a custom message entry whose content is null projects an empty list
+- **Root cause:** Pi's projection of a custom_message entry reads `entry.content ?? []` (session-manager.ts:455): a content member that is null and one that is absent both give the message an empty list. Since the entry decode keeps a null member as orderedjson.Null, SessionEntryToContextMessages handed the null on as the content. It treats the kept null as the absent member again.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3e004947f7` (2026-11-13)
+- **Tests:** `coding/session_lax_content_upstream_test.go::TestUpstreamLaxSessionEntryContent`, `internal/codingagent/session_entry_projection_gaps_test.go::TestSessionEntryToContextMessagesProjectsEachEntryKind`, `test/parity/scenarios/session/17-session-lax-message-content.toml`
+
 ### BF-3e755ef
 
 **Fix in shipped code**
@@ -9040,6 +9105,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `47ec6e80d8` (2026-11-05)
 - **Tests:** `chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit`
 - **Release note:** A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that inherited stdout or stderr) no longer holds the host's exit: `Close` and the host's `Exited` waited for that child to end, for as long as it lived. The host now waits for its Node process to exit, and for the end of its output only for the stop grace after that, as Pi's server awaits the child's exit and not its output.
+
+### BF-47ef9ce
+
+**A custom message whose `display` an extension sets to `null` (a `custom_message` draft, or `pi.sendMessage`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom message whose `display` an extension sets to `null` (a `custom_message` draft, or `pi.sendMessage` from a JavaScript extension) keeps `"display":null` in the session file, as in Pi.
+- **Root cause:** The cause: `display` was a Go boolean with no null state.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `47ef9ce797` (2026-11-13)
+- **Tests:** `coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi`
+- **Release note:** A custom message whose `display` an extension sets to `null` (a `custom_message` draft, or `pi.sendMessage` from a JavaScript extension) keeps `"display":null` in the session file, as in Pi. PiG wrote `"display":false`. The cause: `display` was a Go boolean with no null state. Readers take the null for false, as before.
 
 ### BF-4812c01
 
@@ -17535,6 +17614,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/custom_editor_test.go::TestCustomEditorExtensionShortcutThenPasteImageComeFirst`, `internal/codingagent/keybindings_inventory_test.go::TestAppKeybindingDefinitionsMatchUpstreamInventory`, `internal/codingagent/keybindings_platform_test.go::TestKeybindingDefinitionsApplyPlatformDefaults`, `internal/codingagent/keybindings_platform_test.go::TestPlatformDivergentControlKeys`
 - **Release note:** Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the program as a raw key did nothing before), as in Pi.
 
+### BF-8b8b8d3
+
+**A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in Pi: the `data` of `pi.appendEntry`, the `details` of `pi.sendMessage`, the `data`, `details` and `usage` of a `turn_end` or `agent_before_settle` draft, and the `details` and `usage` of a `session_before_compact` result's compaction and of a `session_before_tree` result's summary.
+- **Root cause:** The cause: the host decoded a member an extension wrote as null and a member it left out into the same nil, and the entry types leave out a member without a value.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8b8b8d33b3` (2026-11-13)
+- **Tests:** `coding/extension/null_members_test.go::TestBoundaryDraftKeepsNullMembersApartFromAbsent`, `coding/extension/null_members_test.go::TestExtensionWrittenMembersKeepNullApartFromAbsent`, `coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi`, `internal/codingagent/session_null_members_rewrite_test.go::TestRewritersKeepNullMembers`, `internal/codingagent/session_null_members_rewrite_test.go::TestToolResultHandlerNullDetailsKeepTheToolsOwn`, `internal/orderedjson/null_test.go::TestIsNullMember`, `internal/orderedjson/null_test.go::TestNullMemberStaysApartFromAbsent`, `internal/orderedjson/value_test.go::TestUnmarshalFieldsKeepsNamedMembersInWrittenOrder` and 2 more in docs/bug-ledger.json
+- **Release note:** A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in Pi: the `data` of `pi.appendEntry`, the `details` of `pi.sendMessage`, the `data`, `details` and `usage` of a `turn_end` or `agent_before_settle` draft, and the `details` and `usage` of a `session_before_compact` result's compaction and of a `session_before_tree` result's summary. PiG wrote no member, and a reader of the reloaded session got undefined. The cause: the host decoded a member written as `null` and a member left out into the same value, and the entry types leave out a member without a value. A session file that PiG wrote before this change has no member where Pi has `null`; it reads as Pi reads the same file.
+
 ### BF-8b8f379
 
 **A pi-ai call made while a module loads is answered in every extension host: SDK sessions, the extension…**
@@ -19431,6 +19524,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `942bc6c05b` (2026-10-22)
 - **Tests:** `coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty`, `coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne`
+
+### BF-94bd9a5
+
+**Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the `details` of `append_custom_message_entry` writes an entry without that member, as Pi does.
+- **Root cause:** The cause: the Python `SetupSessionManager` sent the member on every call, and its default, `None`, is a JSON null.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `94bd9a58fe` (2026-11-13)
+- **Tests:** `test/extension-conformance/entry_null_members_test.go::TestSetupSessionNullMembersAcrossSDKs`
+- **Release note:** Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the `details` of `append_custom_message_entry` writes an entry without that member, as Pi does. PiG wrote `"data":null` and `"details":null` into the session file. The cause: the Python `SetupSessionManager` sent the member on every call, and its default, `None`, is a JSON null. `pig_sdk.NULL` still writes the member as null.
 
 ### BF-94e3498
 
@@ -23713,6 +23820,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/agent_env_isolation_test.go::TestPackageTestsDoNotReachTheExportedAgentDirectory`, `internal/codingagent/settings_secret_input_test.go::TestMaskedLoginErrorDoesNotEnterFramesOrSession`, `internal/npmpublish/main_test.go::TestMain`, `internal/npmpublish/main_test.go::TestPackageTestsDoNotReachTheExportedAgentDirectory`, `internal/testenv/agent_dir_guard_test.go::TestAgentDirGuardFailsWhenATestTouchesTheSeededDirectories`, `internal/testenv/tempscope_test.go::TestRequireIsolatedAgentEnvAcceptsOnlyTheScopedDirectories`, `internal/testenv/tempscope_test.go::TestScopeTempDirIsolatesAgentDirectoryEnvironment`, `test/ci-images/verification_shards_test.go::TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded` and 2 more in docs/bug-ledger.json
 - **Release note:** A panic in a background goroutine of an interactive session no longer ends PiG with only a stderr dump. PiG restores the terminal, prints the error, records it in `crashes.json` and exits 1, as Pi does for an uncaught exception. Any other goroutine panic or runtime fatal error is copied to `<agent dir>/crash-output/` and becomes a crash record at the next start.
 
+### BF-c05aa12
+
+**A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** PiG took the absent member for null, left the target out of model context and continued.
+- **Root cause:** the host decoded a draft into a struct whose replacement is a raw JSON value, so an absent member and a null one were the same nil, and applyBoundaryDrafts took nil for null.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `65a97c7f91` (2026-11-13), `c05aa12b6c` (2026-11-13)
+- **Tests:** `coding/session_overflow_owner_test.go::TestExtensionOwnedCompactionContinuesAfterOverflow`, `test/extension-conformance/boundary_draft_members_test.go::TestBoundaryDraftNullAndAbsentMembersAcrossSDKs`, `test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch`
+- **Release note:** A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member now stops the run as it does in Pi, with Pi's message that the replacement "must be null or contain string/array content": nothing is appended and the run does not continue. Before this fix, PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value.
+
 ### BF-c1055c4
 
 **Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as…**
@@ -24750,6 +24871,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cbf4a52c17` (2026-11-04)
 - **Tests:** `extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire`, `test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs`
 - **Release note:** The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of `Input`/`input` as given, as Pi's `ctx.ui.editor(title, "")` and `ctx.ui.input(title, "")` do (an RPC client sees `prefill: ""`). They used to drop it, so a port of Pi's plan-mode example wrote a different RPC request than Pi. Pi's `editor(title)` and `input(title)`, which write no such member, are now `EditorWithoutPrefill`, `InputWithoutPlaceholder` and `InputWithoutPlaceholderWithOptions` in Go and `editor_without_prefill`, `input_without_placeholder` and `input_without_placeholder_with_options` in Rust, as `ClearStatus` is for `SetStatus`. `TestConformance_UIEmptyMembersAgreeAcrossSDKs` now requires every SDK (isolated, packed, fused) to tell the empty string from the unset member.
+
+### BF-cc38705
+
+**An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a branch summary entry without a `fromHook` member, as Pi does.
+- **Root cause:** The cause: BranchSummaryEntry kept "no fromHook" only for an entry decoded from a record, in an unexported field, so no caller could ask for it. FromHookAbsent is now exported, as on CompactionEntry, and the session graph handler sets it when the argument is not given.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cc387053a6` (2026-11-13)
+- **Tests:** `coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi`, `internal/codingagent/session_graph_branch_summary_test.go::TestGraphBranchWithSummaryWithoutFromHookWritesNoMember`, `internal/sessionentry/null_members_test.go::TestOptionalMembersKeepNullApartFromAbsent`
+- **Release note:** An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a branch summary entry without a `fromHook` member, as Pi does. PiG wrote `"fromHook":false`. The cause: the entry type could leave the member out only for an entry it had read from a file.
 
 ### BF-cc9370b
 
@@ -29875,6 +30010,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8b65157e36` (2026-10-10), `c9ba8f3dbf` (2026-10-10), `deadeb8d16` (2026-10-10), `e097327828` (2026-10-10), `f6e7d49d7b` (2026-10-10)
 - **Tests:** `bench/sessionscale/cmd/sessionscale/gate_test.go::TestResumeMemoryAndPromptCostFollowTheContext`, `bench/sessionscale/gen_test.go::TestGenerateWritesTheScaledOwnerShape`, `coding/cli/rpc_mode_test.go::TestRPCTreeSerializesUpstreamShape`, `internal/codingagent/session_lazy_test.go::TestHandleReadsMatchDecodedReads`, `internal/codingagent/session_lazy_test.go::TestLazyEntriesKeepTheirTimestamps`, `internal/codingagent/session_lazy_test.go::TestLazyEntryOfAChangedRecordIsAnError`, `internal/codingagent/session_store_norace_test.go::TestResumedSessionRetainsContextNotHistory`, `internal/codingagent/session_store_norace_test.go::TestSessionWithoutFileRetainsCompressedHistory` and 14 more in docs/bug-ledger.json
 - **Release note:** RPC `get_entries`, RPC `get_tree` and extension session reads now fail with an error naming the entry when the session file was changed under PiG, instead of returning the entry's base members alone.
+
+### BF-f71a183
+
+**A custom message that an extension writes without `display` (`pi.sendMessage({ customType, content })`, a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom message that an extension writes without `display` (`pi.sendMessage({ customType, content })`, a `custom_message` draft without the member) has no `display` member in the session file, as in Pi, and a draft without `content` has no `content` member.
+- **Root cause:** The cause: display is a Go bool on the message, the draft and the entry, which has no "not given", and the entry wrote a nil content as null.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f71a1836fc` (2026-11-13)
+- **Tests:** `coding/extension/null_members_test.go::TestBoundaryDraftKeepsNullMembersApartFromAbsent`, `coding/session_entry_null_members_test.go::TestSessionEntryNullMembersMatchPi`, `internal/codingagent/live_message_meta_test.go::TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity`, `internal/codingagent/live_message_meta_test.go::TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity`, `internal/sessionentry/null_members_test.go::TestOptionalMembersKeepNullApartFromAbsent`
+- **Release note:** A custom message that an extension writes without `display` (`pi.sendMessage({ customType, content })`, a `custom_message` draft without the member) has no `display` member in the session file, as in Pi, and a draft without `content` has no `content` member. PiG wrote `"display":false` and `"content":null`. The cause: `display` was a Go boolean with no "not given" state, and the entry wrote a missing content as `null`. A session file that PiG wrote before this change keeps its `"display":false`.
 
 ### BF-f73c00c
 

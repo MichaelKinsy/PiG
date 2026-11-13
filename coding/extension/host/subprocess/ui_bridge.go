@@ -284,11 +284,13 @@ type HostCallbacks struct {
 	// upstream: types.ts:1451
 	SetSessionName func(name string) error
 
-	// SetLabel sets a label on a session entry; an empty label clears it.
+	// SetLabel records what pi.setLabel was given for a session entry: label is the string, an empty one included; a nil label with null set is a
+	// label written as null; a nil label without it is the call without a label. Pi writes a different entry for each
+	// (session-manager.ts appendLabelChange), and all but a string that is not empty clear the label.
 	// Its error fails the extension's call, as upstream appendLabelChange
 	// throws.
 	// upstream: types.ts:1453
-	SetLabel func(entryID, label string) error
+	SetLabel func(entryID string, label *string, null bool) error
 
 	// GetActiveTools returns the currently active tool names.
 	// upstream: types.ts:1454
@@ -1209,7 +1211,7 @@ func (b *UIBridge) HostStateSettled() {
 //   - "sendMessage":     func(extension.CustomMessageRef, SendMessageOptions) error
 //   - "sendUserMessage": func(any, SendUserMessageOptions) error
 //   - "appendEntry":     func(string, any, *DirectEntryAppend) error
-//   - "setLabel":        func(string, string) error
+//   - "setLabel":        func(string, *string, bool) error
 //   - "setActiveTools":  func([]string)
 //   - "refreshTools":    func() error
 //   - "setModel":        func(context.Context, *ai.Model) (bool, error)
@@ -1282,7 +1284,7 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 	case "appendEntry":
 		b.actions.AppendEntry = fn.(func(string, any, *DirectEntryAppend) error)
 	case "setLabel":
-		b.actions.SetLabel = fn.(func(string, string) error)
+		b.actions.SetLabel = fn.(func(string, *string, bool) error)
 	case "setActiveTools":
 		b.actions.SetActiveTools = fn.(func([]string))
 	case "refreshTools":
@@ -3953,15 +3955,16 @@ func (b *UIBridge) handleSetSessionName(actions *HostCallbacks, args json.RawMes
 }
 
 func (b *UIBridge) handleSetLabel(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	// The label as the extension gave it: a string, null, or no member for a call without a label (JSON.stringify leaves an undefined argument out).
 	var p struct {
-		EntryID string `json:"entryId"`
-		Label   string `json:"label"`
+		EntryID string  `json:"entryId"`
+		Label   *string `json:"label"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse setLabel args: %w", err)
 	}
 	if actions != nil && actions.SetLabel != nil {
-		if err := actions.SetLabel(p.EntryID, p.Label); err != nil {
+		if err := actions.SetLabel(p.EntryID, p.Label, p.Label == nil && orderedjson.IsNullMember(args, "label")); err != nil {
 			return nil, err
 		}
 	}

@@ -841,9 +841,7 @@ func (s *Session) persistMessage(msg agent.AgentMessage) error {
 	if in := s.inner.Load(); in != nil {
 		var id string
 		if msg.Custom != nil {
-			customType, _ := msg.Custom["customType"].(string)
-			display, _ := msg.Custom["display"].(bool)
-			id, err = in.AppendCustomMessageEntry(customType, msg.Custom["content"], display, msg.Custom["details"])
+			id, err = in.AppendCustomMessage(msg.Custom)
 		} else {
 			id, err = in.AppendMessage(msg)
 			if err == nil {
@@ -2958,7 +2956,7 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 	}
 
 	s.mu.Lock()
-	entryID, err := s.inner.Load().AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
+	entryID, err := s.inner.Load().AppendCompactionEntry(icodingagent.CompactionEntry{Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, UsageRaw: result.UsageRaw, FromHook: fromExtension})
 	if err != nil {
 		s.mu.Unlock()
 		return fail(fmt.Errorf("coding: Compact: persist: %w", err), false)
@@ -3559,7 +3557,7 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 	in := s.inner.Load()
 	var entryID string
 	if err == nil {
-		entryID, err = in.AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
+		entryID, err = in.AppendCompactionEntry(icodingagent.CompactionEntry{Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, UsageRaw: result.UsageRaw, FromHook: fromExtension})
 	}
 	if err != nil {
 		aborted := compactCtx.Err() != nil || cancelledByExtension

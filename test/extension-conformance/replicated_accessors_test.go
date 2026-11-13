@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -103,10 +104,13 @@ func (s *replicatedHostSession) bind(b *subprocess.UIBridge) {
 		s.appendEntry("session_info", fmt.Sprintf(`"name":%q`, name))
 		return nil
 	})
-	b.SetHostAction("setLabel", func(entryID, label string) error {
+	b.SetHostAction("setLabel", func(entryID string, label *string, _ bool) error {
+		if label == nil {
+			return errors.New("the probe sends a label")
+		}
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		s.appendEntry("label", fmt.Sprintf(`"targetId":%q,"label":%q`, entryID, label))
+		s.appendEntry("label", fmt.Sprintf(`"targetId":%q,"label":%q`, entryID, *label))
 		return nil
 	})
 	b.SetHostAction("sendMessage", func(message extension.CustomMessageRef, _ subprocess.SendMessageOptions) error {
