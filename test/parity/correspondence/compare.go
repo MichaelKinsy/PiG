@@ -12,12 +12,22 @@ type Rules struct {
 	AdditiveTableItems map[string]map[string]string `json:"additiveTableItems,omitempty"`
 	// DesignedOutTableItems maps a Pig table to the Pi items it omits, each to the divergence that designs it out.
 	DesignedOutTableItems map[string]map[string]string `json:"designedOutTableItems,omitempty"`
-	ConstantTargets       map[string]string            `json:"constantTargets"`
-	FunctionTargets       map[string]string            `json:"functionTargets"`
-	CalleeTargets         map[string]string            `json:"calleeTargets"`
-	CancellableCalls      []string                     `json:"cancellableCalls"`
-	CallContracts         []string                     `json:"callContracts"`
-	TransitionContracts   []TransitionContract         `json:"transitionContracts"`
+	// TableDescriptionTexts maps a Pig table to the items whose description names the product: each to the fragment of Pi's
+	// description, the fragment the Pig description states in its place, and the divergence that records the pair. The rest
+	// of the description is compared as Pi's.
+	TableDescriptionTexts map[string]map[string]DescriptionText `json:"tableDescriptionTexts,omitempty"`
+	ConstantTargets       map[string]string                     `json:"constantTargets"`
+	FunctionTargets       map[string]string                     `json:"functionTargets"`
+	CalleeTargets         map[string]string                     `json:"calleeTargets"`
+	CancellableCalls      []string                              `json:"cancellableCalls"`
+	CallContracts         []string                              `json:"callContracts"`
+	TransitionContracts   []TransitionContract                  `json:"transitionContracts"`
+}
+
+type DescriptionText struct {
+	Pi      string `json:"pi"`
+	Pig     string `json:"pig"`
+	Lineage string `json:"lineage"`
 }
 
 type TransitionContract struct {
@@ -69,6 +79,11 @@ func CompactionSettingsRules() Rules {
 		},
 		DesignedOutTableItems: map[string]map[string]string{
 			"table:settings-selector": {"share-destination": "docs/parity/DIVERGENCES.md#D64"},
+		},
+		TableDescriptionTexts: map[string]map[string]DescriptionText{
+			"table:settings-selector": {"show-hardware-cursor": {
+				Pi: "instead of Pi's drawn cursor", Pig: "instead of PiG's drawn cursor", Lineage: "docs/parity/DIVERGENCES.md#D2",
+			}},
 		},
 		ConstantTargets: map[string]string{
 			"SUMMARIZATION_PROMPT":             "SUMMARIZATION_PROMPT",
@@ -318,6 +333,7 @@ func compareTables(report *Report, source, target *Inventory, rules Rules) {
 		sourceItems := indexItems(sourceTable.Items)
 		targetItems := indexItems(targetTable.Items)
 		designedOut := rules.DesignedOutTableItems[targetID]
+		descriptionTexts := rules.TableDescriptionTexts[targetID]
 		for _, sourceItem := range sourceTable.Items {
 			targetItem, ok := targetItems[sourceItem.ID]
 			if !ok {
@@ -336,7 +352,15 @@ func compareTables(report *Report, source, target *Inventory, rules Rules) {
 				ID: "correspondence:table-item:" + sourceItem.ID, SourceID: sourceID + "#" + sourceItem.ID,
 				TargetID: targetID + "#" + targetItem.ID, Kind: "direct-table-identity", SourceHash: sourceItem.SourceHash, TargetHash: targetItem.SourceHash,
 			})
-			compareTableItem(report, sourceID, targetID, sourceItem, targetItem)
+			text, declared := descriptionTexts[sourceItem.ID]
+			compareTableItem(report, sourceID, targetID, sourceItem, targetItem, text, declared)
+		}
+		for id := range descriptionTexts {
+			_, inSource := sourceItems[id]
+			_, inTarget := targetItems[id]
+			if !inSource || !inTarget {
+				report.Findings = append(report.Findings, Finding{ID: "finding:table-description-text:" + id, Severity: "error", Kind: "table-description-text", SourceID: sourceID + "#" + id, TargetID: targetID + "#" + id, Detail: "declared description text names an item that the Pi table or the Pig table lacks"})
+			}
 		}
 		for id, lineage := range designedOut {
 			_, inSource := sourceItems[id]
@@ -376,7 +400,9 @@ func compareTables(report *Report, source, target *Inventory, rules Rules) {
 	}
 }
 
-func compareTableItem(report *Report, sourceTableID, targetTableID string, source, target DataItem) {
+// compareTableItem compares one item of both tables. A declared description text is the one difference its description may
+// hold: Pi's description with that fragment replaced must equal Pig's, and a declaration that replaces nothing fails.
+func compareTableItem(report *Report, sourceTableID, targetTableID string, source, target DataItem, text DescriptionText, declared bool) {
 	sourceID := sourceTableID + "#" + source.ID
 	targetID := targetTableID + "#" + target.ID
 	if source.Label != target.Label {
@@ -385,10 +411,28 @@ func compareTableItem(report *Report, sourceTableID, targetTableID string, sourc
 			Detail: fmt.Sprintf("Pi label %q differs from Pig label %q", source.Label, target.Label),
 		})
 	}
-	if source.Description != "" && target.Description != "" && source.Description != target.Description {
+	switch {
+	case !declared:
+		if source.Description != "" && target.Description != "" && source.Description != target.Description {
+			report.Findings = append(report.Findings, Finding{
+				ID: "finding:table-description:" + source.ID, Severity: "error", Kind: "table-description", SourceID: sourceID, TargetID: targetID,
+				Detail: fmt.Sprintf("Pi description %q differs from Pig description %q", source.Description, target.Description),
+			})
+		}
+	case text.Lineage == "" || text.Pi == "" || text.Pi == text.Pig || !strings.Contains(source.Description, text.Pi) || target.Description == source.Description:
+		report.Findings = append(report.Findings, Finding{
+			ID: "finding:table-description-text:" + source.ID, Severity: "error", Kind: "table-description-text", SourceID: sourceID, TargetID: targetID,
+			Detail: fmt.Sprintf("declared description text %q -> %q replaces nothing in Pi description %q for Pig description %q, or its lineage is missing", text.Pi, text.Pig, source.Description, target.Description),
+		})
+	case strings.ReplaceAll(source.Description, text.Pi, text.Pig) != target.Description:
 		report.Findings = append(report.Findings, Finding{
 			ID: "finding:table-description:" + source.ID, Severity: "error", Kind: "table-description", SourceID: sourceID, TargetID: targetID,
-			Detail: fmt.Sprintf("Pi description %q differs from Pig description %q", source.Description, target.Description),
+			Detail: fmt.Sprintf("Pi description %q with %q for %q differs from Pig description %q", source.Description, text.Pig, text.Pi, target.Description),
+		})
+	default:
+		report.Mappings = append(report.Mappings, MappingFact{
+			ID: "correspondence:table-description-text:" + source.ID, SourceID: text.Lineage, TargetID: targetID,
+			Kind: "table-description-text", SourceHash: source.SourceHash, TargetHash: target.SourceHash,
 		})
 	}
 	if len(source.Values) > 0 && len(target.Values) > 0 && !slices.Equal(source.Values, target.Values) {

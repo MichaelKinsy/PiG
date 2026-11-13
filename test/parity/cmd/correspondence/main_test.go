@@ -47,7 +47,7 @@ func TestCompareCurrentPin(t *testing.T) {
 	rules := correspondence.CompactionSettingsRules()
 	wantMappings := len(source.Constants) + len(rules.CallContracts)
 	for _, table := range source.Tables {
-		wantMappings += len(table.Items) + len(rules.AdditiveTableItems[rules.TableTargets[table.ID]])
+		wantMappings += len(table.Items) + len(rules.AdditiveTableItems[rules.TableTargets[table.ID]]) + len(rules.TableDescriptionTexts[rules.TableTargets[table.ID]])
 	}
 	known := knownCorrespondenceGaps(t, root)
 	// A Pi table item the Pig table lacks yields a missing-table-item finding
