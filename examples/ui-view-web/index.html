@@ -22,6 +22,7 @@
     --view-success-bg: #e6f4ea; --view-error-bg: #fbe9eb;
     --view-shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 4px 12px rgb(16 24 40 / 8%);
     --view-shadow-raised: 0 2px 4px rgb(16 24 40 / 8%), 0 16px 40px rgb(16 24 40 / 18%);
+    --view-backdrop: rgb(0 0 0 / 20%);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -32,6 +33,7 @@
       --view-success-bg: #1d3324; --view-error-bg: #3a1f24;
       --view-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 16px rgb(0 0 0 / 35%);
       --view-shadow-raised: 0 2px 4px rgb(0 0 0 / 45%), 0 20px 48px rgb(0 0 0 / 55%);
+      --view-backdrop: rgb(0 0 0 / 30%);
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -75,6 +77,11 @@
   .mount { background: var(--view-surface); color: var(--view-fg); border: 1px solid var(--view-border); border-radius: var(--view-radius); box-shadow: var(--view-shadow); padding: calc(2 * var(--view-space)); }
   .mount > header { display: flex; gap: var(--view-space); align-items: center; font-size: var(--view-text-sm); color: var(--view-fg-muted); margin-bottom: var(--view-space); min-height: var(--view-control); }
   .mount > header span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A mount's title is the card's heading; a mount without one has a caption, its extension and key. A title that
+     the view's own first heading repeats is not drawn twice. */
+  .mount > header span.title { font-size: var(--view-text-xl); line-height: 28px; font-weight: 600; color: var(--view-fg); }
+  .mount > header span.repeated { visibility: hidden; }
+  .mount > header:has(> span.repeated:only-child) { display: none; }
   .mount > footer { font-size: var(--view-text-sm); color: var(--view-fg-muted); display: flex; gap: var(--view-space); align-items: center; }
   .mount > footer:not(:empty) { margin-top: var(--view-space); min-height: var(--view-control); }
   .mount > footer[data-outcome]:not([data-outcome=done]) { color: var(--view-error); }
@@ -82,7 +89,7 @@
   .mount > footer[data-outcome=done]:not([data-answer]) { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   /* The dialog and the overlay slot: a dialog element over the page. */
   dialog.mount { width: min(40rem, calc(100vw - 4 * var(--view-space))); max-height: calc(100vh - 8 * var(--view-space)); overflow: auto; box-shadow: var(--view-shadow-raised); }
-  dialog.mount::backdrop { background: rgb(0 0 0 / 45%); }
+  dialog.mount::backdrop { background: var(--view-backdrop); }
   dialog.mount:not([open]) { display: none; }
   section[data-slot=overlay] dialog.mount { position: fixed; inset: 15% 0 auto 0; margin: 0 auto; z-index: 2; }
   /* A dialog mount that opened without the focus stands where the modal one does, without its backdrop. */
@@ -197,6 +204,7 @@
   .check { display: inline-flex; align-items: center; gap: var(--view-space); min-height: var(--view-control); cursor: pointer; }
   .scroll-view { max-height: calc(30 * var(--view-space)); overflow-y: auto; border-radius: var(--view-radius-sm); }
   .loader { display: flex; align-items: center; gap: var(--view-space); color: var(--view-fg-muted); }
+  * + .loader { margin-top: var(--view-space); }
   .spinner { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid var(--view-border); border-top-color: currentColor; color: var(--view-accent); animation: spin 800ms linear infinite; }
   @keyframes spin { to { transform: rotate(1turn); } }
   @media (prefers-reduced-motion: reduce) {

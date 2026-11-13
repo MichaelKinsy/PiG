@@ -340,6 +340,7 @@ function draw(key, snapshot, held) {
   mount.element.dataset.digest = snapshot.digest ?? "";
   const title = `${snapshot.title || `${snapshot.plugin} / ${snapshot.mount.key}`}${snapshot.degraded ? " (degraded)" : ""}`;
   mount.head.firstChild.textContent = title;
+  mount.head.firstChild.classList.toggle("title", Boolean(snapshot.title));
   if (mount.floating) {
     mount.element.setAttribute("aria-label", title);
     // The browser asks before it closes the dialog (its `cancel` event) only for a mount that can be dismissed.
@@ -372,6 +373,8 @@ function draw(key, snapshot, held) {
   if (!root) mount.body.append(fresh);
   else if (morph(root, fresh) !== root) root.replaceWith(fresh);
   mount.ids = new Map([...mount.body.querySelectorAll("[data-node]")].map((el) => [el.dataset.node, el]));
+  // A title that the view's own first heading repeats is not drawn twice.
+  mount.head.firstChild.classList.toggle("repeated", Boolean(snapshot.title) && mount.body.querySelector("h2, h3, h4, h5, h6")?.textContent.trim() === snapshot.title.trim());
   // A text node that morph could not keep in place (it moved to another parent) hands its text to the element drawn for it.
   for (const [id, el] of mount.ids) {
     const old = was.get(id);

@@ -479,6 +479,31 @@ func TestPageDefaultTokensHaveContrast(t *testing.T) {
 	}
 }
 
+// TestPageDrawsATitleAsTheCardsHeading: a mount's title is the heading of its card, in the type of a heading; a mount
+// without a title has a small muted caption, its extension and key; and a title that the view's own first heading
+// repeats is not drawn a second time.
+func TestPageDrawsATitleAsTheCardsHeading(t *testing.T) {
+	browser, send := openFixtures(t)
+	send(`/fx-a mount {"title":"Places","view":{"root":{"kind":"text","text":"A place"}}}`)
+	send(`/fx-b mount {"view":{"root":{"kind":"text","text":"A note"}}}`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"]') !== null && document.querySelector('[data-key="fx-b"]') !== null`)
+	head := func(key string) string {
+		return browser.String(`(() => { const span = document.querySelector('[data-key="` + key + `"] > header span'), s = getComputedStyle(span);
+			return [span.textContent, s.fontSize, s.fontWeight, s.color === getComputedStyle(document.documentElement).color ? "text colour" : "muted", getComputedStyle(span.parentElement).display].join(); })()`)
+	}
+	if got, want := head("fx-a"), "Places,20px,600,text colour,flex"; got != want {
+		t.Errorf("the header of a mount with a title is %s, want %s", got, want)
+	}
+	if got, want := head("fx-b"), "fixture-b / fx-b,13px,400,muted,flex"; got != want {
+		t.Errorf("the header of a mount without a title is %s, want %s", got, want)
+	}
+	send(`/fx-a update {"title":"Places","view":{"root":{"kind":"vstack","children":[{"kind":"text","id":"h","text":"Places"},{"kind":"text","text":"A place"}]}},"a11y":[{"node":"h","role":"heading"}]}`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"] h2') !== null`)
+	if got, want := head("fx-a"), "Places,20px,600,text colour,none"; got != want {
+		t.Errorf("the header of a mount whose view begins with its title is %s, want %s", got, want)
+	}
+}
+
 // TestPageHasAColourForEveryThemeToken: a view and a drawing name their colours by Pi's theme tokens, and a token the
 // page has no colour for draws nothing. Every colour of Pi's theme schema (schemas/theme.schema.json) is a custom
 // property `--pig-<token>` of the default stylesheet that the browser computes to a colour, in the light and in the
