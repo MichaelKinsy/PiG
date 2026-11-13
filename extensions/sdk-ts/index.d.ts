@@ -116,6 +116,12 @@ export interface PiGViewIntent {
    * handler shows the mount. At most one intent of a mount has it; it names no node and its `arg` accepts `{}`.
    */
   whenHidden?: boolean;
+  /**
+   * Names the intent a client raises, with `{}`, when the user dismisses a dialog or overlay mount: the handler closes
+   * the mount. At most one intent of a mount has it; it names no node and its `arg` accepts `{}`. Without one, Escape
+   * leaves the mount and it stays open until the extension closes it.
+   */
+  dismiss?: boolean;
 }
 export interface PiGViewAsset {
   id: string;
