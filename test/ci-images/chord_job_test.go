@@ -141,3 +141,74 @@ func TestEachChordGateRunsInExactlyOneJobThatCIResultRequires(t *testing.T) {
 		}
 	}
 }
+
+// The chord gates have a job of their own (Pi aca89cfe14 gave its chord tests one): it runs both, in the order terminal then
+// web, the web surface also when the terminal surface failed; it sets up what the tests read and no more (Go, the Go caches
+// read-only, and current Node, the one release that has the terminal surface's sandbox); and the plan runs it in the tier
+// that runs Node extensions, the job the two steps came from, which runs neither now.
+func TestChordSurfacesRunInTheirOwnJob(t *testing.T) {
+	jobs := verificationJobs(t)
+	job, ok := jobs["chord"]
+	if !ok {
+		t.Fatal("ci.yml has no chord job")
+	}
+	for target := range chordGates {
+		if running := jobsRunning(jobs, target); !slices.Equal(running, []string{"chord"}) {
+			t.Errorf("make %s runs in %v, want the chord job alone", target, running)
+		}
+	}
+	for _, need := range []string{"changes", "bookkeeping"} {
+		if !slices.Contains(job.Needs, need) {
+			t.Errorf("the chord job does not wait for %s: %v", need, job.Needs)
+		}
+	}
+	// The recorded runs of both targets together took under two minutes (the comment at the job); the limit leaves the runner's
+	// setup and a cold Go build cache room and still ends a hung browser long before the merge queue's 120-minute wait.
+	if job.Timeout < 10 || job.Timeout > 30 {
+		t.Errorf("chord timeout = %d minutes, want 10 to 30", job.Timeout)
+	}
+	tui, web, node, goSetup := -1, -1, -1, -1
+	for i, step := range job.Steps {
+		targets := makeTargets(step.Run)
+		switch {
+		case strings.HasPrefix(step.Uses, "actions/setup-go@") && step.With["go-version-file"] == ".go-version":
+			goSetup = i
+		case strings.HasPrefix(step.Uses, "actions/setup-node@"):
+			if node >= 0 || step.With["node-version-file"] != "automation/ci/node-current.version" {
+				t.Errorf("chord step %d sets up Node from %q; the job runs under current Node alone", i, step.With["node-version-file"])
+			}
+			node = i
+		case strings.HasPrefix(step.Uses, "actions/cache/save@"):
+			t.Errorf("chord step %d saves a cache; the jobs that fill the Go caches save them", i)
+		case slices.Contains(targets, "ci-chord-tui"):
+			tui = i
+		case slices.Contains(targets, "ci-chord-web"):
+			web = i
+			if step.If != "${{ !cancelled() }}" {
+				t.Errorf("the web surface step has if: %q, want it to run when the terminal surface's tests failed (${{ !cancelled() }})", step.If)
+			}
+		case len(targets) > 0 || strings.Contains(step.Run, "install-"):
+			t.Errorf("chord step %d does more than the chord gates need: %q", i, step.Run)
+		}
+		if len(targets) > 0 && !strings.Contains(step.Run, "automation/ci/with-isolated-pig-home.sh make "+targets[0]+"\n") {
+			t.Errorf("chord step %d does not run make %s under an isolated PiG home:\n%s", i, targets[0], step.Run)
+		}
+	}
+	if goSetup < 0 || node < goSetup || tui < node || web < tui {
+		t.Errorf("chord steps: setup-go at %d, setup-node at %d, ci-chord-tui at %d, ci-chord-web at %d; want them all, in this order", goSetup, node, tui, web)
+	}
+	for _, step := range jobs["node-runtime"].Steps {
+		if strings.Contains(step.Run, "chord") {
+			t.Errorf("the Node extensions job still runs a chord step:\n%s", step.Run)
+		}
+	}
+	tiers := map[string]string{}
+	for _, row := range tierRows(t) {
+		if row.job == "single" {
+			tiers[row.shard] = row.tier
+		}
+	}
+	if tiers["chord"] == "" || tiers["chord"] != tiers["node-runtime"] {
+		t.Errorf("ci-tiers.txt runs chord in tier %q and node-runtime in %q, want the same tier", tiers["chord"], tiers["node-runtime"])
+	}
+}
