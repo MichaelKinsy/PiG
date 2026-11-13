@@ -4733,6 +4733,8 @@ export class Runtime {
           args = {};
         }
         this.extensionRuntime.invalidate(args?.message || undefined);
+        // pig additive (D19): Pi's runner.invalidate() is synchronous, so the old ctx is stale before reload() goes on (agent-session.ts:3825-3826). The host's reload waits at that point for this acknowledgement (Host.supersedeGenerations): the members this runtime answers locally throw from here on, and every call it made before is on the wire ahead of the acknowledgement.
+        if (args?.ack) this.conn?.notify("invalidate_ack", { seq: args.ack });
         return;
       }
       case "runtime_input_end":

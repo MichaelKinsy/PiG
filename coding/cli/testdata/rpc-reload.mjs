@@ -22,6 +22,8 @@ export default async function (pi) {
     ctx.ui.notify("held running " + g, "info");
     await until("held-gate");
     ctx.ui.notify("held done " + g, "info");
+    // Written once the call was made: a stale ctx throws at ctx.ui, before it.
+    touch("held-went-on");
   } });
   pi.registerCommand("ask", { description: "ask", handler: async (_args, ctx) => {
     // The answer is recorded without the host: the handler's ctx is stale once a reload has run.

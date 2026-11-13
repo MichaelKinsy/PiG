@@ -2912,7 +2912,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	// would then be silently discarded as stale instead of quarantined.
 	//
 	// The generations are superseded first, so no call finds a generation armed and not yet superseded, which handleIncoming would drop without an answer.
-	defer h.supersedeGenerations()()
+	defer h.supersedeGenerations(ctx)()
 	h.armPackedProcessGenerations()
 	h.releaseRetryableQuarantines()
 	// Explicit reload ends inconclusive diagnostic partitions; identified culprits remain quarantined.

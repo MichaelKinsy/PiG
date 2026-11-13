@@ -688,9 +688,18 @@ type WithSessionArgs struct {
 // NotifyInvalidate (host→ext) carries the stale message after the host invalidated the extension's Session. A runtime that answers pi or ctx members locally throws InvalidateArgs.Message from them afterwards, as Pi's runner.invalidate makes them throw (runner.ts:679-690).
 const NotifyInvalidate = "invalidate"
 
-// InvalidateArgs is the NotifyInvalidate argument.
+// InvalidateArgs is the NotifyInvalidate argument. Ack, when it is not zero, asks a Node runtime to answer with NotifyInvalidateAck once it has applied the invalidation; it numbers such frames of one connection.
 type InvalidateArgs struct {
 	Message string `json:"message"`
+	Ack     uint64 `json:"ack,omitempty"`
+}
+
+// NotifyInvalidateAck (Node runtime→host) says the runtime applied the NotifyInvalidate frame whose Ack is Seq: the members of a captured pi or ctx that it answers locally throw the stale message from here on, and every call it made before is on the wire ahead of the ack. Pi's runner.invalidate() is synchronous, so the old ctx is stale before reload() goes on to load the settings and the extensions (agent-session.ts:3825-3826); a reload waits for this ack at the same point (Host.supersedeGenerations). The args are InvalidateAckArgs.
+const NotifyInvalidateAck = "invalidate_ack"
+
+// InvalidateAckArgs carries NotifyInvalidateAck.
+type InvalidateAckArgs struct {
+	Seq uint64 `json:"seq"`
 }
 
 // NotifyReloadStarted (host→ext) tells a running generation that Host.Reload has begun, before the host writes the replacement generations' admissions to the process's control channel. In print and JSON mode a Node runtime that answered a prompt's last call or session_shutdown waits in place for the host's next step (Pi's print mode continues without an event-loop turn); this notification is that step for a reload, so the runtime returns to its event loop, which reads the admissions. It carries no arguments and changes no state. The host sends it only to a Node runtime: the Go, Rust and Python SDKs have no such wait.

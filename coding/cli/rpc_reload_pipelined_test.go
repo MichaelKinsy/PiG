@@ -396,7 +396,8 @@ func TestRPCCommandInFlightAtAReloadIsAnswered(t *testing.T) {
 			want = []string{"notify held done g1", "response c success=true"}
 		}
 		if got := f.through("response c success=true"); !slices.Equal(got, want) {
-			t.Fatalf("the command in flight at the reload: %q, want %q", got, want)
+			_, wentOn := os.Stat(filepath.Join(f.dir, "held-went-on"))
+			t.Fatalf("the command in flight at the reload: %q, want %q (the Node handler made its call with a ctx that did not throw: %v)", got, want, wentOn == nil)
 		}
 		f.open("load-gate")
 		if got, want := f.through("response b success=true"), []string{"notify started g2", "response b success=true"}; !slices.Equal(got, want) {
