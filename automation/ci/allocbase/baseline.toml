@@ -161,7 +161,7 @@ allocs = 24
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAssistantMessageObservation/empty/marshal-shallow"
-allocs = 76
+allocs = 10
 
 [[benchmark]]
 package = "./ai"
@@ -191,7 +191,7 @@ allocs = 0
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAssistantMessageObservation/mixed/marshal-shallow"
-allocs = 202
+allocs = 171
 
 [[benchmark]]
 package = "./ai"
@@ -221,7 +221,7 @@ allocs = 1
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAssistantMessageObservation/text/marshal-shallow"
-allocs = 22
+allocs = 12
 
 [[benchmark]]
 package = "./ai"
