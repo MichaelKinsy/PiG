@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -23,6 +24,8 @@ type nullMembersRecord struct {
 	Error string   `json:"error"`
 	Lines []string `json:"lines"`
 	Read  []string `json:"read"`
+	// Label is what a reader of the labels gets for the labelled entry after a row that sets a label: the label, or "undefined" for a cleared one.
+	Label string `json:"label,omitempty"`
 }
 
 // nullMembersGolden reads the records the pinned Pi package wrote, in order (testdata/entry-null-members-pi.jsonl).
@@ -175,13 +178,16 @@ func TestSessionEntryNullMembersMatchPi(t *testing.T) {
 		name     string
 		from, to int
 		err      error
+		label    string
 	}
 	var rows []pendingRow
+	var labelSeen string
 	row := func(name string, action func() error) {
 		t.Helper()
 		from := len(fileLines())
+		labelSeen = ""
 		err := action()
-		rows = append(rows, pendingRow{name, from, len(fileLines()), err})
+		rows = append(rows, pendingRow{name, from, len(fileLines()), err, labelSeen})
 	}
 	in := func() *icodingagent.Session { return h.session.Inner() }
 	appendID := func(_ string, err error) error { return err }
@@ -290,6 +296,34 @@ func TestSessionEntryNullMembersMatchPi(t *testing.T) {
 	row("extension sendMessage display omitted", send(`{"customType":"extension-message","content":"x"}`, false))
 	row("extension sendMessage display omitted, triggerTurn", send(`{"customType":"extension-message","content":"x"}`, true))
 
+	// pi.setLabel as the host takes it from an extension: without a label, with a null one, an empty one and a value, each after a label a reader can
+	// see cleared.
+	bridge := subprocess.NewUIBridge(nil)
+	BindSessionReadActions(bridge, func() *Session { return h.session }, h.session.CWD(), t.TempDir())
+	setLabel := func(name, member string) {
+		row("extension setLabel "+name, func() error {
+			id := boundaryLastUser(t, h)
+			for _, label := range []string{`,"label":"mark"`, member} {
+				result, err := bridge.HandleCall("null-members", &subprocess.CallPayload{Method: "setLabel", Args: json.RawMessage(fmt.Sprintf(`{"entryId":%q%s}`, id, label))})
+				if err != nil {
+					return err
+				}
+				if result != nil && result.Error != nil {
+					return fmt.Errorf("setLabel: %+v", result.Error)
+				}
+			}
+			labelSeen = "undefined"
+			if label, ok := in().GetLabel(id); ok {
+				labelSeen = label
+			}
+			return nil
+		})
+	}
+	setLabel("omitted", "")
+	setLabel("null", `,"label":null`)
+	setLabel("empty", `,"label":""`)
+	setLabel("value", `,"label":"x"`)
+
 	entries, err := icodingagent.LoadEntriesFromFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -306,7 +340,7 @@ func TestSessionEntryNullMembersMatchPi(t *testing.T) {
 	lines := fileLines()
 	seen := map[string]bool{}
 	for _, pending := range rows {
-		record := nullMembersRecord{Row: pending.name, Lines: []string{}, Read: []string{}}
+		record := nullMembersRecord{Row: pending.name, Lines: []string{}, Read: []string{}, Label: pending.label}
 		if pending.err != nil {
 			record.Error = pending.err.Error()
 		}

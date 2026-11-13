@@ -13,14 +13,17 @@ const jsRows = process.env.NULL_MEMBERS_JS === "1";
 const dir = mkdtempSync(join(tmpdir(), "null-members-"));
 const usage = {input: 1, output: 2, cacheRead: 0, cacheWrite: 0, totalTokens: 3, cost: {input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0}};
 const rows = [];
+// What a reader of the labels gets for the labelled entry after a row that sets a label.
+let labelSeen;
 const linesOf = file => (file && existsSync(file) ? readFileSync(file, "utf8").split("\n").filter(Boolean) : []);
 // row records the lines an action adds to the session file. A row a Go caller cannot write is a JavaScript row.
 async function row(name, file, action, js = false) {
  if (js && !jsRows) return;
  const from = linesOf(file()).length;
  let error = "";
+ labelSeen = undefined;
  try { await action(); } catch (e) { error = e instanceof Error ? e.message : String(e); }
- rows.push({name, file: file(), from, to: linesOf(file()).length, error, js});
+ rows.push({name, file: file(), from, to: linesOf(file()).length, error, js, label: labelSeen});
 }
 const norm = line => line
  .replace(/"(id|parentId|targetId|firstKeptEntryId|fromId)":"[0-9a-f]{8}"/g, '"$1":"#"')
@@ -117,6 +120,17 @@ await draft("draft custom_message display omitted", [{type: "custom_message", cu
 await draft("draft custom_message content omitted", [{type: "custom_message", customType: "draft-message", display: true}]);
 await row("extension sendMessage display omitted", file, async () => { pi.sendMessage({customType: "extension-message", content: "x"}); await idle(); });
 await row("extension sendMessage display omitted, triggerTurn", file, async () => { pi.sendMessage({customType: "extension-message", content: "x"}, {triggerTurn: true}); await idle(); });
+// pi.setLabel without a label, with a null one, an empty one and a value, each after a label a reader can see cleared.
+const setLabel = (name, ...label) => row(`extension setLabel ${name}`, file, () => {
+ const id = lastUser();
+ pi.setLabel(id, "mark");
+ pi.setLabel(id, ...label);
+ labelSeen = String(h.sessionManager.getLabel(id));
+});
+await setLabel("omitted");
+await setLabel("null", null);
+await setLabel("empty", "");
+await setLabel("value", "x");
 // JavaScript rows: values the declarations do not allow, and JSON.stringify's rules.
 await row("js api compaction fromHook null", file, () => sm.appendCompaction("api-compaction", userId, 10, undefined, null), true);
 await row("js api branch_summary fromHook null", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch", undefined, null), true);
@@ -124,15 +138,11 @@ await row("js api context_edit replacement null", file, () => sm.appendContextEd
 await row("js api context_edit replacement value", file, () => sm.appendContextEdit(userId, {content: "c"}), true);
 await row("js api toolResult details omitted", file, () => sm.appendMessage({role: "toolResult", toolCallId: "c1", toolName: "t", content: [{type: "text", text: "r"}], isError: false, timestamp: 3}), true);
 await row("js api toolResult details null", file, () => sm.appendMessage({role: "toolResult", toolCallId: "c1", toolName: "t", content: [{type: "text", text: "r"}], details: null, isError: false, timestamp: 3}), true);
-await row("js extension setLabel value", file, () => pi.setLabel(lastUser(), "x"), true);
-await row("js extension setLabel omitted", file, () => pi.setLabel(lastUser()), true);
-await row("js extension setLabel null", file, () => pi.setLabel(lastUser(), null), true);
 await draft("js draft custom_message display null", [{type: "custom_message", customType: "draft-message", content: "x", display: null}], true);
 await draft("js draft custom_message content null", [{type: "custom_message", customType: "draft-message", content: null, display: true}], true);
 await draft("js draft custom data NaN", [{type: "custom", customType: "draft-custom", data: NaN}], true);
 await draft("js draft compaction usage in another member order", [{type: "compaction", summary: "draft-compaction", usage: {cost: {total: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0}, totalTokens: 3, output: 2, input: 1, cacheRead: 0, cacheWrite: 0, extra: 1}}], true);
 await row("js extension sendMessage display null", file, async () => { pi.sendMessage({customType: "extension-message", content: "x", display: null}); await idle(); }, true);
-await row("js extension setLabel empty", file, () => pi.setLabel(lastUser(), ""), true);
 await row("js extension setSessionName null", file, () => pi.setSessionName(null), true);
 await row("js extension setSessionName undefined", file, () => pi.setSessionName(undefined), true);
 await row("js extension appendEntry data NaN", file, () => pi.appendEntry("extension-custom", NaN), true);
@@ -176,7 +186,7 @@ await row("js api custom data bigint", file, () => sm.appendCustomEntry("api-cus
 
 const reloaded = new Map();
 for (const path of new Set(rows.map(entry => entry.file))) reloaded.set(path, new Map(SessionManager.open(path).getEntries().map(entry => [entry.id, entry])));
-for (const {name, file: path, from, to, error, js} of rows) {
+for (const {name, file: path, from, to, error, js, label} of rows) {
  const lines = [], reads = [];
  for (const line of linesOf(path).slice(from, to)) {
   const entry = JSON.parse(line);
@@ -184,7 +194,7 @@ for (const {name, file: path, from, to, error, js} of rows) {
   lines.push(norm(line));
   reads.push(read(reloaded.get(path).get(entry.id)));
  }
- console.log((js ? "NULL_MEMBERS_JS " : "NULL_MEMBERS ") + JSON.stringify({row: name, error, lines, read: reads}));
+ console.log((js ? "NULL_MEMBERS_JS " : "NULL_MEMBERS ") + JSON.stringify({row: name, error, lines, read: reads, ...(label === undefined ? {} : {label})}));
 }
 if (errors.length > 0) console.log("NULL_MEMBERS " + JSON.stringify({row: "extension errors", error: errors.join("; "), lines: [], read: []}));
 h.cleanup();

@@ -365,7 +365,7 @@ type API interface {
 	// upstream: types.ts:1184
 	GetSessionName() string
 
-	// SetLabel sets or clears a label on an entry. Pass empty string to clear.
+	// SetLabel sets or clears a label on an entry. Pass empty string to clear: the entry then holds `"label":""`, as Pi's setLabel(entryId, "") writes it.
 	// upstream: types.ts:1187
 	SetLabel(entryID string, label string)
 

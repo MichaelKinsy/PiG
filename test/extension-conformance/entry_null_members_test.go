@@ -59,12 +59,12 @@ func entryNullMemberLines(t *testing.T, path string) []string {
 		if err := json.Unmarshal(entries[i+3].Raw(), &members); err != nil {
 			t.Fatal(err)
 		}
-		names := map[string][]string{`"custom"`: {"data"}, `"custom_message"`: {"details"}, `"compaction"`: {"details", "usage"}}[string(members["type"])]
+		names := map[string][]string{`"custom"`: {"data"}, `"custom_message"`: {"details"}, `"compaction"`: {"details", "usage"}, `"label"`: {"label"}}[string(members["type"])]
 		states := make([]string, 0, len(names))
 		for _, name := range names {
 			state := "undefined"
 			if value, present := members[name]; present {
-				state = map[byte]string{'n': "null", '{': "object"}[value[0]]
+				state = map[byte]string{'n': "null", '{': "object", '"': "string"}[value[0]]
 			}
 			states = append(states, name+"="+state)
 		}
@@ -179,6 +179,96 @@ func TestEntryMemberNullAndOmittedAcrossSDKs(t *testing.T) {
 			}
 			if got, want := strings.Join(entryNullMemberLines(t, session.Path())[4:], "\n"), strings.Join(wantEntryNullMemberDrafts, "\n"); got != want {
 				t.Errorf("the drafts left the lines\n%s\nwant\n%s", got, want)
+			}
+		})
+	}
+}
+
+// wantLabelMemberCalls are the session file's lines for the label a reader can see cleared and for the three calls every SDK's label_members command
+// makes, with identities and times replaced, and what a reader of the reloaded file gets for the label member. The lines are the ones the pinned Pi
+// package writes for pi.setLabel(id), pi.setLabel(id, null) and pi.setLabel(id, "") (coding/testdata/entry-null-members-pi.jsonl, rows
+// "extension setLabel ...").
+var wantLabelMemberCalls = []string{
+	`{"type":"label","id":"#","parentId":"#","timestamp":"T","targetId":"00000001","label":"mark"} => label=string`,
+	`{"type":"label","id":"#","parentId":"#","timestamp":"T","targetId":"00000001"} => label=undefined`,
+	`{"type":"label","id":"#","parentId":"#","timestamp":"T","targetId":"00000001","label":null} => label=null`,
+	`{"type":"label","id":"#","parentId":"#","timestamp":"T","targetId":"00000001","label":""} => label=string`,
+}
+
+// Pi: packages/coding-agent/src/core/agent-session.ts:3575 (setLabel hands its label to appendLabelChange as given) and
+// packages/coding-agent/src/core/session-manager.ts:1452-1464 (appendLabelChange stores it, and JSON.stringify writes a null, an empty string, and no
+// member for undefined; `if (label)` clears the label for all three). An extension says the three in its own language: Node setLabel(id), null and "";
+// Go SetLabelValue with nil and json.RawMessage("null"), and SetLabel with ""; Python set_label(id), pig_sdk.NULL and ""; Rust set_label_opt with None
+// and Some(Value::Null), and set_label with ""; Lisp ctx-set-label without a label, :NULL and "". The row binds each to the session FILE's line, so an
+// SDK that sends another form for one of them fails, isolated, packed and fused.
+func TestSetLabelOmittedNullAndEmptyAcrossSDKs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	for _, test := range append(allHarnessCases(), packedSDKHarnessCases()...) {
+		t.Run(test.name, func(t *testing.T) {
+			h := test.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("label members complete")
+				}
+			})
+			dir := t.TempDir()
+			session, err := icodingagent.NewSessionManagerWithDir(dir, filepath.Join(dir, "sessions")).Create("", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			const target = "00000001"
+			for _, line := range []string{
+				`{"type":"message","id":"00000001","parentId":null,"timestamp":"2026-01-01T00:00:00.001Z","message":{"role":"user","content":"u","timestamp":1}}`,
+				`{"type":"message","id":"00000002","parentId":"00000001","timestamp":"2026-01-01T00:00:00.002Z","message":{"role":"assistant","content":[{"type":"text","text":"a"}],"api":"faux","provider":"faux","model":"faux-1","usage":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":2}}`,
+			} {
+				if err := session.AppendEntry(json.RawMessage(line)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			// The session's writer behind the host action, as a mode binds it (agent-session.ts _bindExtensionCore).
+			setLabel := func(entryID string, label *string, null bool) error {
+				_, err := session.AppendLabelEntry(icodingagent.LabelEntry{TargetID: entryID, Label: label, LabelNull: null})
+				return err
+			}
+			mark, empty := "mark", ""
+			if err := setLabel(target, &mark, false); err != nil {
+				t.Fatal(err)
+			}
+			if test.name != "inproc-go" {
+				if h.bridge == nil {
+					t.Fatal("the harness has no host bridge to bind the session's writer on")
+				}
+				h.bridge.SetHostAction("setLabel", setLabel)
+				command, ok := findCommand(h.runner, "label_members")
+				if !ok {
+					t.Fatal("label_members command not registered")
+				}
+				if err := command.Handler(t.Context(), target); err != nil {
+					t.Fatalf("label_members command: %v", err)
+				}
+				waitFor(t, func() bool { return len(session.GetEntries()) >= 6 })
+			} else {
+				// The in-process reference: the session's own API with the three forms.
+				for _, call := range []func() error{
+					func() error { return setLabel(target, nil, false) },
+					func() error { return setLabel(target, nil, true) },
+					func() error { return setLabel(target, &empty, false) },
+				} {
+					if err := call(); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if got, want := strings.Join(entryNullMemberLines(t, session.Path()), "\n"), strings.Join(wantLabelMemberCalls, "\n"); got != want {
+				t.Errorf("the calls left the lines\n%s\nwant\n%s", got, want)
+			}
+			if label, ok := session.GetLabel(target); ok {
+				t.Errorf("a reader of the labels gets %q, want the label cleared", label)
 			}
 		})
 	}

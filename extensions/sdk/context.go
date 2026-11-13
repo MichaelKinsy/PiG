@@ -762,10 +762,20 @@ func (c Context) SetSessionName(name string) error {
 	return nil
 }
 
-// SetLabel sets or clears an entry label. The host's failure is returned, as
-// upstream's setLabel throws when the session cannot record the label.
+// SetLabel sets or clears an entry label. The label is written as given: an empty one clears the label and its entry holds `"label":""`, as Pi's
+// setLabel(entryId, "") writes it. The host's failure is returned, as upstream's setLabel throws when the session cannot record the label.
 func (c Context) SetLabel(entryID, label string) error {
-	result, err := c.callHost("setLabel", map[string]string{"entryId": entryID, "label": label})
+	return c.SetLabelValue(entryID, label)
+}
+
+// SetLabelValue is SetLabel for every form Pi's setLabel(entryId, label?) takes. A nil label is the call without a label, whose entry has no label
+// member; json.RawMessage("null") is a null label, written as null; a string is written as given. All but a string that is not empty clear the label.
+func (c Context) SetLabelValue(entryID string, label any) error {
+	args := map[string]any{"entryId": entryID}
+	if label != nil {
+		args["label"] = label
+	}
+	result, err := c.callHost("setLabel", args)
 	if err != nil {
 		return err
 	}

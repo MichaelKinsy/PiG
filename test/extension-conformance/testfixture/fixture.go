@@ -2247,6 +2247,17 @@ func Extension() *sdk.Extension {
 		}
 		return ctx.SendMessage("conformance-null-explicit", "x", false, sdk.SendMessageOptions{Details: json.RawMessage("null")})
 	})
+	// label_members calls setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for
+	// each. Go's nil is the call without a label and json.RawMessage("null") is its null.
+	ext.Command("label_members", "Set a label that is omitted, null and empty", func(ctx sdk.Context, args string) error {
+		if err := ctx.SetLabelValue(args, nil); err != nil {
+			return err
+		}
+		if err := ctx.SetLabelValue(args, json.RawMessage("null")); err != nil {
+			return err
+		}
+		return ctx.SetLabel(args, "")
+	})
 	// append-entries-probe appends one custom entry for each comma-separated type in order. Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
 	ext.Command("append-entries-probe", "Append a custom entry for each comma-separated type", func(ctx sdk.Context, args string) error {
 		for customType := range strings.SplitSeq(args, ",") {

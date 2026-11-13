@@ -315,6 +315,12 @@
                  (pig:ctx-append-entry ctx "conformance-null-explicit" :null)
                  (pig:ctx-send-message ctx "conformance-null-omitted" "x" :display nil)
                  (pig:ctx-send-message ctx "conformance-null-explicit" "x" :display nil :details :null)))
+  ;; setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+  (pig:command ext "label_members" "Set a label that is omitted, null and empty"
+               (lambda (ctx args)
+                 (pig:ctx-set-label ctx args)
+                 (pig:ctx-set-label ctx args :null)
+                 (pig:ctx-set-label ctx args "")))
   (pig:command ext "append-entries-probe" "Append a custom entry for each comma-separated type"
                (lambda (ctx args)
                  (let ((start 0))

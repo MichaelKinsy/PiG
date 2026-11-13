@@ -419,7 +419,9 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   "(values success error-message) for the model named MODEL."
   (success-and-error ctx "setModel" (obj "model" model)))
 (defun ctx-set-thinking-level (ctx level) (ctx-call-host ctx "setThinkingLevel" (obj "level" level)) nil)
-(defun ctx-set-label (ctx entry-id label) (ctx-call-host ctx "setLabel" (obj "entryId" entry-id "label" label)) nil)
+(defun ctx-set-label (ctx entry-id &optional label)
+  "LABEL NIL (or no LABEL) leaves the entry without a label member, as Pi's setLabel(entryId) does; :NULL writes it as null, as setLabel(entryId, null) does; a string is written as given. All but a string that is not empty clear the label."
+  (ctx-call-host ctx "setLabel" (if (null label) (obj "entryId" entry-id) (obj "entryId" entry-id "label" label))) nil)
 (defun ctx-wait-for-idle (ctx) (ctx-call-host ctx "waitForIdle") nil)
 (defun ctx-yield (ctx)
   "Stand for Pi's first `await`: end the host's busy hold for this request (host call \"yield\")."

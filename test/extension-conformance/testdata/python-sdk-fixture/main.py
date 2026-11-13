@@ -2876,6 +2876,14 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("entry_null_members", "Append entries and send messages with an omitted and a null member", entry_null_members)
 
+    def label_members(ctx: pig_sdk.Context, args: str) -> None:
+        # setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+        ctx.set_label(args)
+        ctx.set_label(args, pig_sdk.NULL)
+        ctx.set_label(args, "")
+
+    ext.command("label_members", "Set a label that is omitted, null and empty", label_members)
+
     def append_entries_probe(ctx: pig_sdk.Context, args: str) -> None:
         # Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
         for custom_type in args.split(","):

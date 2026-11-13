@@ -3298,8 +3298,12 @@ class Context:
     def set_session_name(self, name: str) -> None:
         self._call("setSessionName", {"name": name})
 
-    def set_label(self, entry_id: str, label: str) -> None:
-        self._call("setLabel", {"entryId": entry_id, "label": label})
+    def set_label(self, entry_id: str, label: Any = None) -> None:
+        """Set or clear an entry label. ``None`` (or no argument) leaves the entry without a ``label`` member, as Pi's ``setLabel(entryId)`` does; ``NULL`` writes it as null, as ``setLabel(entryId, null)`` does; a string is written as given. All but a string that is not empty clear the label."""
+        args: dict[str, Any] = {"entryId": entry_id}
+        if label is not None:
+            args["label"] = label
+        self._call("setLabel", args)
 
     def get_flag(self, name: str) -> Any:
         """Read the host value or first registered default, preserving falsy overrides."""

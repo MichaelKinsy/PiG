@@ -3444,14 +3444,31 @@ impl Context {
         )
     }
 
-    /// Set or clear a label for a session entry.
-    /// Sets or clears an entry label. The host's failure is returned, as
-    /// upstream's setLabel throws when the session cannot record the label.
+    /// Sets or clears an entry label. The label is written as given: an empty one clears the label
+    /// and its entry holds `"label":""`, as Pi's `setLabel(entryId, "")` writes it. The host's
+    /// failure is returned, as upstream's setLabel throws when the session cannot record the label.
     pub fn set_label(&self, entry_id: &str, label: &str) -> io::Result<()> {
-        call_result_to_io(self.call_wire(
-            "setLabel",
-            Some(serde_json::json!({"entryId": entry_id, "label": label})),
-        )?)
+        self.set_label_opt(entry_id, Some(serde_json::Value::String(label.to_string())))
+    }
+
+    /// Sets or clears an entry label in every form Pi's `setLabel(entryId, label?)` takes: `None`
+    /// is the call without a label, whose entry has no `label` member; `Some(Value::Null)` is a
+    /// null label, written as null; a string is written as given. All but a string that is not
+    /// empty clear the label.
+    pub fn set_label_opt(
+        &self,
+        entry_id: &str,
+        label: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        let mut args = serde_json::Map::new();
+        args.insert(
+            "entryId".into(),
+            serde_json::Value::String(entry_id.to_string()),
+        );
+        if let Some(label) = label {
+            args.insert("label".into(), label);
+        }
+        call_result_to_io(self.call_wire("setLabel", Some(serde_json::Value::Object(args)))?)
     }
 
     /// Return the host flag value or its first registered default; false and empty strings remain values. `None` is Pi's undefined; a host failure is an error, not the default.

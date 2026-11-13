@@ -3348,8 +3348,15 @@ func conformanceActions(actions *[]string) *subprocess.HostCallbacks {
 			*actions = append(*actions, fmt.Sprintf("appendEntry:%s:%v", customType, data))
 			return nil
 		},
-		SetLabel: func(entryID, label string) error {
-			*actions = append(*actions, "setLabel:"+entryID+":"+label)
+		SetLabel: func(entryID string, label *string, null bool) error {
+			text := "undefined"
+			switch {
+			case label != nil:
+				text = *label
+			case null:
+				text = "null"
+			}
+			*actions = append(*actions, "setLabel:"+entryID+":"+text)
 			return nil
 		},
 	}

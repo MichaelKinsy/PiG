@@ -5448,6 +5448,21 @@ fn main() {
             }
         },
     );
+    // setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+    ext.command(
+        "label_members",
+        "Set a label that is omitted, null and empty",
+        |ctx, args| {
+            let result = ctx
+                .set_label_opt(args, None)
+                .and_then(|_| ctx.set_label_opt(args, Some(Value::Null)))
+                .and_then(|_| ctx.set_label(args, ""));
+            match result {
+                Ok(_) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command(
         "append-entries-probe",
         "Append a custom entry for each comma-separated type",

@@ -431,14 +431,11 @@ func (g *GraphExtensionRunner) bindBridges(actionIDs, contextIDs callbackIDs) {
 			bridge.SetHostAction("getSessionName", actions.GetSessionName)
 		}
 		if actions.SetLabel != nil {
-			bridge.SetHostAction("setLabel", func(entryID, label string) error {
+			bridge.SetHostAction("setLabel", func(entryID string, label *string, null bool) error {
 				if err := live(); err != nil {
 					return err
 				}
-				if label == "" {
-					return actions.SetLabel(entryID, nil)
-				}
-				return actions.SetLabel(entryID, &label)
+				return actions.ApplyLabel(entryID, label, null)
 			})
 		}
 		if actions.GetActiveTools != nil {

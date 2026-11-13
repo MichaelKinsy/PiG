@@ -1767,6 +1767,12 @@ export default function (pi) {
     pi.sendMessage({ customType: "conformance-null-omitted", content: "x", display: false });
     pi.sendMessage({ customType: "conformance-null-explicit", content: "x", display: false, details: null });
   } });
+  // setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+  pi.registerCommand("label_members", { description: "Set a label that is omitted, null and empty", handler: async (args) => {
+    pi.setLabel(args);
+    pi.setLabel(args, null);
+    pi.setLabel(args, "");
+  } });
   pi.registerCommand("append-entries-probe", { description: "Append a custom entry for each comma-separated type", handler: async (args) => { for (const customType of String(args).split(",")) pi.appendEntry(customType, `data-of-${customType}`); } });
   pi.registerCommand("scoped-models-probe", { description: "Report the model scope", handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.scopedModels), "info") });
   pi.registerCommand("ui-availability", {
