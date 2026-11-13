@@ -31375,6 +31375,30 @@
       ]
     },
     {
+      "id": "BF-8f81668",
+      "title": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the…",
+      "symptom": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).",
+      "rootCause": ".upstream/current holds the pinned release's bytes: the readers of the mirror apply the recorded post-release fixes themselves (pi-post-release-backports.mjs --read-mirror), each exactly once. Once a backport changes a provider data file (Pi 1397070024, the four qwen-token-plan lists, which came with 14-on-line), a mirror made after it held the patched lists, and on a fresh clone",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8f816685ff",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
+        "ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData",
+        "internal/upstreammirror/upstreammirror_test.go::TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply"
+      ]
+    },
+    {
       "id": "BF-8f88d43",
       "title": "On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is…",
       "symptom": "On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit.",
@@ -40314,115 +40338,6 @@
       "tests": [
         "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
         "mcp/oauth/oauth_test.go::TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet"
-      ]
-    },
-    {
-      "id": "BF-b01478f",
-      "title": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the…",
-      "symptom": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).",
-      "rootCause": "The six pairs of Pi (#12116, #12066: a relative path pattern of find is anchored at the search path, like grep's glob) for pi-coding-agent/core/tools/find.js, as a block of their own after the block of (#12044, the leading \"./\"), which patches the same file. It is the second block on one key: the table joins the blocks of a key in the order written since the commit before this one (). The comment line and the pairs are follow/pi-main-15's bytes (); only the lines that open and close the entry changed.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2c7db1a655",
-          "date": "2026-11-11"
-        },
-        {
-          "hash": "7b66371088",
-          "date": "2026-11-11"
-        },
-        {
-          "hash": "86376a7777",
-          "date": "2026-11-11"
-        },
-        {
-          "hash": "f55df43e29",
-          "date": "2026-11-11"
-        },
-        {
-          "hash": "210ff7a814",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "39f43e9438",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "8a4185de22",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "93d41f24a6",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "f0c8b9662f",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "f9bef61b43",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "b01478f8f2",
-          "date": "2026-11-13"
-        }
-      ],
-      "tests": [
-        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
-        "ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback",
-        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin",
-        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream",
-        "ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing",
-        "ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan",
-        "ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan",
-        "ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData",
-        "ai/qwen_token_plan_models_test.go::TestQwenTokenPlanKeepsAPerPlanKeyAwayFromTheOtherPlan",
-        "ai/qwen_token_plan_models_test.go::TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne",
-        "ai/qwen_token_plan_models_test.go::TestQwenTokenPlanProvidersShareOneCatalogPerRegion",
-        "chord/next/telemetryingest/ingest_upstream_test.go::TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
-        "coding/cli/model_resolver_patterns_upstream_test.go::TestModelResolverScopeUpstream",
-        "coding/cli/model_scope_session_replacement_upstream_test.go::TestModelScopeWarningsOnSessionReplacement",
-        "coding/cli/startup_diagnostics_order_test.go::TestStartupDiagnosticOrderMatchesPi",
-        "coding/extension/host/subprocess/internal/noderuntimepack/pack_test.go::TestCommittedBlocksAreWhatEncodeWrites",
-        "coding/extension/host/subprocess/runtime_node_vendor_script_test.go::TestVendorPiDistIsIdempotentOnTheCommittedTree",
-        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestPinnedPiPackagesCarryTheRecordedFixesOnce",
-        "durable/harness/harness_hook_tasks_test.go::TestAfterToolsTasks",
-        "durable/harness/harness_hook_tasks_test.go::TestHookTasksRecovery",
-        "durable/harness/harness_hook_tasks_test.go::TestOnYieldTasks",
-        "durable/interop/interop_test.go::TestScriptedSessionJsonlFilesMatchPiDurable",
-        "durable/interop/interop_test.go::TestScriptedSessionStoresMatchPiDurable",
-        "durable/interop/interop_test.go::TestScriptedSessionsViewIdentically",
-        "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable",
-        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder",
-        "internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesThePinnedPiPage",
-        "internal/codingagent/configschema/render_settings_test.go::TestRenderedSettingsSchemaIsByteEqualToTheUpstreamMirror",
-        "internal/codingagent/configschema/render_test.go::TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
-        "internal/codingagent/export/ansi_html_oracle_test.go::TestAnsiToHTMLMatchesPiOracle",
-        "internal/codingagent/export/ansi_links_case_test.go::TestAnsiToHTMLSchemeCaseFoldsOnlyASCIILetters",
-        "internal/codingagent/llama/vendored_default_test.go::TestVendoredPiDistDefaultServerURLMatchesGo",
-        "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
-        "internal/codingagent/model_scope_runtime_test.go::TestResolveModelScopeWithDiagnosticsPropagatesRuntimeErrors",
-        "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown",
-        "internal/codingagent/tools/find_ancestor_glob_upstream_test.go::TestFindPathGlobsDoNotMatchAboveTheSearchPath",
-        "internal/codingagent/tools/find_ancestor_glob_windows_branch_test.go::TestFindWindowsPathPatternDoesNotMatchAboveTheSearchPath",
-        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments",
-        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern",
-        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline",
-        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit",
-        "internal/upstreammirror/upstreammirror_test.go::TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply",
-        "test/parity/interface-closure/autobind/mirror_guard_test.go::TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild",
-        "test/perfgate/binary_packages_test.go::TestLinkedPackagesTargetsAreReleaseTargets",
-        "test/perfgate/binary_packages_test.go::TestReleaseBinaryLinksOnlyAllowedPackages",
-        "tui/editor_handle_input_contract_test.go::TestEditorSharedKeyProbesDump",
-        "tui/keystroke_gc_norace_test.go::TestEditorKeystrokeHeapBytesAndCollectorWork",
-        "tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce"
       ]
     },
     {

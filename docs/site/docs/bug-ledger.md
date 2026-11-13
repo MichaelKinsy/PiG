@@ -1144,6 +1144,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f241ca](#bf-8f241ca) | A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8f81668](#bf-8f81668) | The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | 0.7.0 |
 | [BF-8fbbd2d](#bf-8fbbd2d) | Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer… | PiG's own defect | All platforms | Unreleased |
 | [BF-8fead2d](#bf-8fead2d) | fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks… | PiG's own defect | All platforms | Unreleased |
@@ -1467,7 +1468,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-afb14da](#bf-afb14da) | fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server | PiG's own defect | All platforms | Unreleased |
 | [BF-aff6631](#bf-aff6631) | A code mode script in a loop can no longer freeze the whole process | PiG's own defect | All platforms | 0.7.0 |
 | [BF-affc944](#bf-affc944) | Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
-| [BF-b01478f](#bf-b01478f) | The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the… | PiG's own defect | All platforms | Unreleased |
 | [BF-b02876b](#bf-b02876b) | `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b04bb32](#bf-b04bb32) | fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers… | PiG's own defect | All platforms | Unreleased |
 | [BF-b0608a9](#bf-b0608a9) | OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL… | PiG's own defect | All platforms | 0.5.0 |
@@ -17646,6 +17646,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/rpc_compaction_thinking_only_test.go::TestRPCCompactionSurvivesThinkingOnlyMessagesTheRequestsOmit`, `internal/codingagent/compaction/serialization_oracle_test.go::TestSerializeConversationMatchesPiOracle`, `internal/codingagent/compaction/serialization_upstream_test.go::TestSerializeConversationUpstream`, `internal/codingagent/compaction/utils_test.go::TestSerializeConversation_AssistantThinkingIsOmitted`, `test/docs-drift/bug_ledger_test.go::TestBugLedgerTestsExist`, `test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules`, `test/docs-drift/divergences_test.go::TestDivergenceLedgerEqualsItsRecordFiles`, `test/docs-drift/divergences_test.go::TestEveryActiveDivergenceIsInTheBundle` and 1 more in docs/bug-ledger.json
 - **Release note:** Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed thinking is often not in the live context, so including it could make the summarization request larger than the context it summarizes and compaction fail on every attempt.
 
+### BF-8f81668
+
+**The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).
+- **Root cause:** .upstream/current holds the pinned release's bytes: the readers of the mirror apply the recorded post-release fixes themselves (pi-post-release-backports.mjs --read-mirror), each exactly once. Once a backport changes a provider data file (Pi 1397070024, the four qwen-token-plan lists, which came with 14-on-line), a mirror made after it held the patched lists, and on a fresh clone
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8f816685ff` (2026-11-13)
+- **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData`, `internal/upstreammirror/upstreammirror_test.go::TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply`
+- **Release note:** The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).
+
 ### BF-8f88d43
 
 **On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is…**
@@ -22160,20 +22174,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `affc944ad8` (2026-10-05)
 - **Tests:** `ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification`, `mcp/oauth/oauth_test.go::TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet`
 - **Release note:** Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are retried.
-
-### BF-b01478f
-
-**The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).
-- **Root cause:** The six pairs of Pi (#12116, #12066: a relative path pattern of find is anchored at the search path, like grep's glob) for pi-coding-agent/core/tools/find.js, as a block of their own after the block of (#12044, the leading "./"), which patches the same file. It is the second block on one key: the table joins the blocks of a key in the order written since the commit before this one (). The comment line and the pairs are follow/pi-main-15's bytes (); only the lines that open and close the entry changed.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `2c7db1a655` (2026-11-11), `7b66371088` (2026-11-11), `86376a7777` (2026-11-11), `f55df43e29` (2026-11-11), `210ff7a814` (2026-11-12), `39f43e9438` (2026-11-12), `8a4185de22` (2026-11-12), `93d41f24a6` (2026-11-12), `f0c8b9662f` (2026-11-12), `f9bef61b43` (2026-11-12), `b01478f8f2` (2026-11-13)
-- **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback`, `ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin`, `ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream`, `ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing`, `ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan`, `ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan`, `ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData` and 40 more in docs/bug-ledger.json
-- **Release note:** The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).
 
 ### BF-b02876b
 
