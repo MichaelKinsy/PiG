@@ -929,10 +929,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/test/examples/30-host-root.ts` | `chord/next/host/host_example_30_test.go`, `chord/next/host/host_root.go`, `chord/next/host/host_ctx.go` | ✅ |
 | `packages/chord/test/examples/31-parked-dependencies.ts` | `chord/next/host/host_example_31_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go` | ✅ |
 | `packages/chord/test/examples/32-startup.ts` | `chord/next/host/host_example_32_test.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/host_host.go` | ✅ |
-| `packages/chord/test/examples/53-app/main.ts` | `(no Go twin: example 53, the app kit's notes app (its API, two plugins, a worker kind, the owner link))` | ⬜ |
-| `packages/chord/test/examples/54-app-sessions/main.ts` | `(no Go twin: example 54, sign-ins and device pairing with example 53's app; Pi ff7414d51 renames it 54-app-sign-ins/main.ts)` | ⬜ |
-| `packages/chord/test/examples/56-web/main.ts` | `(no Go twin: example 56, the web surface of an app (its headless page))` | ⬜ |
-| `packages/chord/test/examples/59-chat/main.ts` | `(no Go twin: example 59, a chat with the ephemeral login)` | ⬜ |
 | `packages/chord/test/support.ts` | `(Pi test scaffolding; ported as the shared helpers in chord/next/host/host_next_support_test.go, tested by host_next_support_helpers_test.go; its fidelity is evidenced by the ported slice and example tests built on it. Forced difference: holdNextCommit holds the next commit step at the statements that close its writes, since the store type is concrete)` | n/a |
 | `packages/chord/src/node/http/admission.ts` | `chord/nextnode/http/admission.go` | ✅ |
 | `packages/chord/src/node/http/authenticate.ts` | `chord/nextnode/http/authenticate.go` | ✅ |

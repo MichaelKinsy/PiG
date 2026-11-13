@@ -3,10 +3,12 @@ to = "1.5.2+ff7414d5"
 # Pi ff7414d5130e (2026-11-13): feat(chord): the app kit's sign-ins (was Sessions). One row per path the commit removes,
 # adds or changes (git counts 39 files with its three renames as one each: 42 paths).
 # For the lane that moves the pin past this commit: PORT_MAP's rows of packages/chord/src/node/app/sessions.ts and
-# ephemeral-sessions.ts and of the example 54-app-sessions/main.ts, and the test-mapping rows of sessions.test.ts and
-# ephemeral-sessions.test.ts, keep the pin's paths until then: their upstream paths change at that pin move
-# (sign-ins.ts, ephemeral-sign-ins.ts, 54-app-sign-ins/main.ts, sign-ins.test.ts, ephemeral-sign-ins.test.ts): rename
-# the rows; no file was lost.
+# ephemeral-sessions.ts, and the test-mapping rows of sessions.test.ts and ephemeral-sessions.test.ts, keep the pin's
+# paths until then: their upstream paths change at that pin move (sign-ins.ts, ephemeral-sign-ins.ts, sign-ins.test.ts,
+# ephemeral-sign-ins.test.ts): rename the rows; no file was lost. With that rename leave: the three entries of
+# test/parity/interface-closure/autobind/renames.json for pkg:chord/app#Sessions, #SessionInfo and #SessionKind, and the
+# reviewed decision of pkg:chord/app#SESSION_COOKIE in autobind/reviewed-decisions.json (the pin's ids are then SignIns,
+# SignInInfo, SignInKind and SIGN_IN_COOKIE, which the name rules find).
 
 [[files]]
 path = "packages/chord/docs/decisions.md"
@@ -158,58 +160,58 @@ rationale = "ff7414d51: one word of a comment (an outdated page whose sign-in en
 [[files]]
 path = "packages/chord/test/examples/53-app/app/v1/server.ts"
 change = "modified"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = "ff7414d51: the example's server API exports SignIns (was Sessions). No Go twin of this example exists (PORT_MAP: not started, rowed at this commit); nothing is ported here."
+rationale = "ff7414d51: the example's server API exports SignIns (was Sessions). Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
 
 [[files]]
 path = "packages/chord/test/examples/53-app/main.ts"
 change = "modified"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = "ff7414d51: two comments say sign-in. No Go twin of this example exists (PORT_MAP: not started, rowed at this commit); nothing is ported here."
+rationale = "ff7414d51: two comments say sign-in. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
 
 [[files]]
 path = "packages/chord/test/examples/53-app/plugins/notes/server.ts"
 change = "modified"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = "ff7414d51: one comment says sign-in. No Go twin of this example exists (PORT_MAP: not started, rowed at this commit); nothing is ported here."
+rationale = "ff7414d51: one comment says sign-in. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
 
 [[files]]
 path = "packages/chord/test/examples/53-app/start.ts"
 change = "modified"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = "ff7414d51: one comment says sign-ins. No Go twin of this example exists (PORT_MAP: not started, rowed at this commit); nothing is ported here."
+rationale = "ff7414d51: one comment says sign-ins. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
 
 [[files]]
 path = "packages/chord/test/examples/54-app-sessions/main.ts"
 change = "removed"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = "ff7414d51: the example is renamed 54-app-sign-ins/main.ts (the next row). No Go twin of this example exists (PORT_MAP: not started, rowed at this commit); nothing is ported here."
+rationale = "ff7414d51: the example is renamed 54-app-sign-ins/main.ts (the next row). Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
 
 [[files]]
 path = "packages/chord/test/examples/54-app-sign-ins/main.ts"
 change = "added"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = "ff7414d51: the example gets SignIns from the app's host, prints `4. sign-ins:` and revokes the paired device's. No Go twin of this example exists (PORT_MAP: not started, rowed at this commit); nothing is ported here. Its pairing flow and the list are run by pairing_upstream_test.go; its printed text by nothing."
+rationale = "ff7414d51: the example gets SignIns from the app's host, prints `4. sign-ins:` and revokes the paired device's. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's. Its pairing flow and the list are run by pairing_upstream_test.go; its printed text by nothing."
 
 [[files]]
 path = "packages/chord/test/examples/56-web/headless.ts"
 change = "modified"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = "ff7414d51: one comment says the sign-in token. No Go twin of this example exists (PORT_MAP: not started, rowed at this commit); nothing is ported here."
+rationale = "ff7414d51: one comment says the sign-in token. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
 
 [[files]]
 path = "packages/chord/test/examples/59-chat/main.ts"
 change = "modified"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = "ff7414d51: one comment says her sign-in cookie. No Go twin of this example exists (PORT_MAP: not started, rowed at this commit); nothing is ported here."
+rationale = "ff7414d51: one comment says her sign-in cookie. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
 
 [[files]]
 path = "packages/chord/test/examples/61-tutorial/main.ts"
