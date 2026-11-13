@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 	"weak"
@@ -1258,6 +1259,30 @@ func backCall(t *testing.T, side string, raised, dependentFirst bool) (string, t
 			t.Fatalf("a reload failed %+v", report.Failed)
 		}
 	}
+	// Adapted: a condition barrier before the gate (no open old attempt), because Go's memory links deliver per link and
+	// not through one process-wide queue. Pi's memory link delivers by `queueMicrotask` (link.ts `MemoryLink.send`): one
+	// queue for every link of the process, so the seal of the dependent's old attempt (its successor's readiness needs a
+	// hold round trip that the reload started) is always ahead of a `ping` that is one hop behind the gate. Since the
+	// references of one host share a hold, `work`'s `ctx.get(Dependent)` joins the kept root's live hold and `ping` is
+	// that one hop; inside the drain window an old-flag call runs on the old attempt in Pi and here alike. The raised
+	// cases keep the old attempt open by design: no barrier there. Bounded: it fails with its own message.
+	if !raised {
+		dependentHost := rel.Server.(*chordHost)
+		if side == "server" {
+			dependentHost = worker.(*chordHost)
+		}
+		scopeEventually(t, "the dependent's old attempt sealed (its successor's requests ready, its calls drained)", func() bool {
+			sealed := true
+			dependentHost.loop().Run(func() {
+				for identity, object := range dependentHost.objects {
+					if containsText(identity, dependent.Name) && object.openOldAttempt() != nil {
+						sealed = false
+					}
+				}
+			})
+			return sealed
+		})
+	}
 	opened := time.Now()
 	gate.open.fire()
 	outcome := receive(t, running)
@@ -1303,4 +1328,152 @@ func TestOldWorkAcrossHostsTheSameWithTheDependentsHostReloadedFirstItsReadiness
 			t.Fatalf("%s: answer = %q after %v, want \"v1 work -> v1 ping -> v1 x\" within a second", side, answer, took)
 		}
 	}
+}
+
+// Ports the describe 'cancelling one reference's calls on a shared hold (decision "References share one wire hold")' of
+// consumer.test.ts.
+
+// sharedCallers is Pi's `shared(calls)`: a client on a raw parent announcing a call window of calls, and two references
+// sharing one live hold.
+type sharedCallers struct {
+	peer *RawPeer
+	a, b *Reference
+	hold int
+}
+
+func sharedCallersOn(t testing.TB, calls int) *sharedCallers {
+	t.Helper()
+	client := newHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(client.Load(nil, background))
+	near, far := link.MemoryLinkPair()
+	must(t, client.Connect(near, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+	peer := newRawPeer(t, far, rawPeerOptions{Calls: calls})
+	peer.Next("hello")
+	a := mustHold(t, client, Notes, jsonObject("session", "S1"))
+	b := mustHold(t, client, Notes, jsonObject("session", "S1"))
+	hold := bindNext(t, peer)
+	waitLive(t, b)
+	return &sharedCallers{peer: peer, a: a, b: b, hold: hold}
+}
+
+// sharedWire is Pi's `wire(peer, texts)`: the calls, aborts and releases on the wire, as `call:<text>`, `abort:<text>`,
+// `release`.
+func sharedWire(t testing.TB, peer *RawPeer, texts map[int]string) []string {
+	t.Helper()
+	wire := []string{}
+	for _, message := range peer.Received() {
+		switch m := message.(type) {
+		case *link.CallMessage:
+			args, is := partValue(t, m.Args).(*delta.JsonObject)
+			if !is {
+				t.Fatalf("call %d has no object arguments", m.Call)
+			}
+			text, _ := args.Value("text").(string)
+			texts[m.Call] = text
+			wire = append(wire, "call:"+text)
+		case *link.AbortMessage:
+			wire = append(wire, "abort:"+texts[m.Call])
+		case *link.ReleaseMessage:
+			wire = append(wire, "release")
+		}
+	}
+	return wire
+}
+
+func sharedResult(t testing.TB, call int, value float64) *link.ResultMessage {
+	t.Helper()
+	part, err := link.JsonPart(value)
+	must(t, err)
+	return &link.ResultMessage{Call: call, Value: part}
+}
+
+// consumer.test.ts › cancelling one reference's calls on a shared hold (decision "References share one wire hold") › a
+// finite window: the released one's queued call leaves unsent, its sent one is aborted, the other's queued call goes out
+func TestCancellingOneReferencesCallsOnASharedHoldAFiniteWindowTheReleasedOnesQueuedCallLeavesUnsentItsSentOneIsAbortedTheOthersQueuedCallGoesOut(t *testing.T) {
+	s := sharedCallersOn(t, 1)
+	a1 := startCall(t, s.a, "add", jsonObject("text", "A1"), background)
+	a2 := startCall(t, s.a, "add", jsonObject("text", "A2"), background)
+	sibling := startCall(t, s.b, "add", jsonObject("text", "B1"), background)
+	// PiG's own: the order the released reference's calls reject in (Pi's case awaits them together): the waiting one
+	// (queue order), then the sent one.
+	var orderMu sync.Mutex
+	var order []string
+	loop := s.a.binding.loop
+	for tag, result := range map[string]*parkedCallResult{"A1": a1, "A2": a2} {
+		result.then(loop, func(any, error) {
+			orderMu.Lock()
+			order = append(order, tag)
+			orderMu.Unlock()
+		})
+	}
+	rhSync(t, s.peer)
+	texts := map[int]string{}
+	requireStrings(t, sharedWire(t, s.peer, texts), []string{"call:A1"})
+	s.a.Release()
+	rhSync(t, s.peer)
+	requireStrings(t, sharedWire(t, s.peer, texts), []string{"call:A1", "abort:A1", "call:B1"})
+	for _, result := range []*parkedCallResult{a1, a2} {
+		_, err := result.wait(background)
+		requireChordError(t, err, data.CodeReleased, "")
+	}
+	rhWaitFor(t, func() bool { orderMu.Lock(); defer orderMu.Unlock(); return len(order) == 2 })
+	orderMu.Lock()
+	requireStrings(t, slices.Clone(order), []string{"A2", "A1"})
+	orderMu.Unlock()
+	var last *link.CallMessage
+	for _, message := range s.peer.Received() {
+		if call, is := message.(*link.CallMessage); is {
+			last = call
+		}
+	}
+	s.peer.Send(sharedResult(t, last.Call, 3))
+	value, err := sibling.wait(background)
+	must(t, err)
+	if value != float64(3) {
+		t.Fatalf("the sibling's call = %v, want 3", value)
+	}
+}
+
+// consumer.test.ts › cancelling one reference's calls on a shared hold (decision "References share one wire hold") ›
+// several sent calls are aborted newest first, a reply crossing the release is ignored, the last release sends release
+func TestCancellingOneReferencesCallsOnASharedHoldSeveralSentCallsAreAbortedNewestFirstAReplyCrossingTheReleaseIsIgnoredTheLastReleaseSendsRelease(t *testing.T) {
+	s := sharedCallersOn(t, 3)
+	type tracked struct {
+		tag    string
+		result *parkedCallResult
+	}
+	calls := []tracked{
+		{"A1", startCall(t, s.a, "add", jsonObject("text", "A1"), background)},
+		{"B1", startCall(t, s.b, "add", jsonObject("text", "B1"), background)},
+		{"A2", startCall(t, s.a, "add", jsonObject("text", "A2"), background)},
+		{"B2", startCall(t, s.b, "add", jsonObject("text", "B2"), background)},
+	}
+	rhSync(t, s.peer)
+	texts := map[int]string{}
+	requireStrings(t, sharedWire(t, s.peer, texts), []string{"call:A1", "call:B1", "call:A2"})
+	ids := map[string]int{}
+	for id, text := range texts {
+		ids[text] = id
+	}
+	s.a.Release()
+	// The provider answered A1 before it saw the abort: the reply crosses the release and is dropped here.
+	s.peer.Send(sharedResult(t, ids["A1"], 1))
+	rhSync(t, s.peer)
+	requireStrings(t, sharedWire(t, s.peer, texts), []string{"call:A1", "call:B1", "call:A2", "abort:A2", "abort:A1", "call:B2"})
+	s.peer.Send(sharedResult(t, ids["B1"], 2))
+	rhSync(t, s.peer)
+	s.b.Release()
+	settled := []string{}
+	for _, call := range calls {
+		if _, err := call.result.wait(background); err != nil {
+			settled = append(settled, call.tag+":"+string(chordOf(t, err).Code))
+		} else {
+			settled = append(settled, call.tag+":ok")
+		}
+	}
+	rhSync(t, s.peer)
+	requireStrings(t, sharedWire(t, s.peer, texts)[6:], []string{"release"})
+	// Each call settled once: the released one's with `released`, B2 by the last release.
+	slices.Sort(settled)
+	requireStrings(t, settled, []string{"A1:released", "A2:released", "B1:ok", "B2:released"})
 }

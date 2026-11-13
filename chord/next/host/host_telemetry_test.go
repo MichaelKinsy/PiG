@@ -460,7 +460,7 @@ func TestAcrossHostsStartsANewRootForAWellFormedCarrierTheServersAdapterDoesNotK
 	}
 }
 
-func TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt(t *testing.T) {
+func TestReHoldsCarryTheCarrierOnlyOnAnObjectsFirstHoldARootLinkedToItsGetterSharedWorkAReHoldAfterAReconnectIsAFreshRootLinkedToIt(t *testing.T) {
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	rel := relay(t, allRecord(recorder))
 	var notes *Reference
@@ -492,8 +492,11 @@ func TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectI
 	if len(holds) != 4 {
 		t.Fatalf("holds = %d, want 4 (the first and three re-holds)", len(holds))
 	}
-	if !childOf(holds[0], load) {
-		t.Errorf("the first hold is not a child of the page load")
+	if holds[0].ParentID != nil {
+		t.Errorf("the first hold has a parent: shared work is a root on the host's adapter")
+	}
+	if !linksTo(holds[0], load) {
+		t.Errorf("the first hold links %v, want its getter (the page load)", linksOf(holds[0]))
 	}
 	for _, hold := range holds[1:] {
 		if hold.ParentID != nil {
