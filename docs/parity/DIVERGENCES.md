@@ -3485,7 +3485,7 @@ Pi bug: none.
 
 Scope: `nodeConnectionFailure` (`ai/errors.go`): the connection-error cause of the three streaming APIs and the OpenAI SDK transport.
 
-Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-08 at the reviewer's request, reviews/follow-ai3.md).
+Owner decision: approved (owner, 2026-11-13T14:52:18Z: "proceed with recommendations."; the line of that decision for this record: "D520 APPROVED (a connection reset at accept is reported on the response read, a Go dial limitation; error text only)."). Drafted by the FollowAi lane on 2026-11-08 at the reviewer's request, reviews/follow-ai3.md.
 
 SCRUTINIZED:approved
 
