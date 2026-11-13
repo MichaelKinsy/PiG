@@ -1,20 +1,10 @@
-// Run Pi's Agent class (packages/agent/src/agent.ts, imported as-is with types stripped) over scripted programs from stdin.
+// Run Pi's Agent class (pi-agent-core/agent.js of the vendored Pi runtime: the pinned build's compiled packages/agent/src/agent.ts plus the Pi commits PiG carries ahead of the pin, automation/gen/pi-post-release-backports.mjs) over scripted programs from stdin.
 // A program scripts the stream function, the initial state, the listeners and a sequence of operations (prompt, continue, queues, reset, abort); the output per program is, for every operation, the error it threw and a snapshot of the agent state, plus the events the listeners saw each with a state snapshot.
-// usage: node agent_class_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-ai)
-import module from "node:module";
+// usage: node agent_class_oracle.mjs <pi-dist dir>   (coding/extension/host/subprocess/runtime-node/shims/pi-dist: internal/pioracle.Root)
 import { pathToFileURL } from "node:url";
-import { chordSourceURL } from "../../durable/internal/oraclesupport/chord_resolve.mjs";
-const packages = process.argv[2].replace(/\/?$/, "/");
-module.registerHooks({
-	resolve(specifier, context, next) {
-		const chordSource = chordSourceURL(packages, specifier);
-		if (chordSource) return next(chordSource, context);
-		if (specifier.startsWith("@earendil-works/pi-ai")) return next(specifier, { ...context, parentURL: pathToFileURL(process.env.PI_INTEROP_DIR).href });
-		return next(specifier, context);
-	},
-});
-const { Agent } = await import(pathToFileURL(`${packages}agent/src/agent.ts`).href);
-const { createAssistantMessageEventStream } = await import("@earendil-works/pi-ai");
+const dist = process.argv[2].replace(/\/?$/, "/");
+const { Agent } = await import(pathToFileURL(`${dist}pi-agent-core/agent.js`).href);
+const { createAssistantMessageEventStream } = await import(pathToFileURL(`${dist}pi-ai/sdk-bundle/index.js`).href);
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
