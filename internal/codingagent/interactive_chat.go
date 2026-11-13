@@ -433,11 +433,26 @@ func (m *InteractiveMode) updateTerminalTitle() {
 	if session := m.currentSession(); session != nil {
 		name = session.GetSessionName()
 	}
-	setTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
+	m.setTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
 }
 
-// setTerminalTitle writes the terminal title; tests replace it.
-var setTerminalTitle = tui.SetTerminalTitle
+// setTerminalTitle writes title on the terminal the renderer draws on, as every title write of Pi's interactive mode does
+// (interactive-mode.ts `this.ui.terminal.setTitle`): the session's title, an extension's title and the clear when the mode stops. The
+// process terminal is that terminal only when the mode was given no other, so the title never goes past the renderer to the process's
+// stdout.
+func (m *InteractiveMode) setTerminalTitle(title string) {
+	if m.tuiInst != nil {
+		m.tuiInst.Terminal().SetTitle(title)
+	}
+}
+
+// setTerminalProgress turns the OSC 9;4 progress indicator of the terminal the renderer draws on on or off (interactive-mode.ts
+// `this.ui.terminal.setProgress`).
+func (m *InteractiveMode) setTerminalProgress(active bool) {
+	if m.tuiInst != nil {
+		m.tuiInst.Terminal().SetProgress(active)
+	}
+}
 
 // appendBorderedNotice wraps the supplied body components between two
 // warning-colored DynamicBorders, mirroring upstream's

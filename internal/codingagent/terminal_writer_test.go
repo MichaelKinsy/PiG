@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"slices"
@@ -34,6 +35,26 @@ type sizedTerminal struct{ *tui.ProcessTerminal }
 
 func (sizedTerminal) Columns() int { return 100 }
 func (sizedTerminal) Rows() int    { return 30 }
+
+// setTerminalTitle and setTerminalProgress are the mode's only writers of the title and the progress indicator. They write on the
+// renderer's terminal, and a mode that has no renderer yet writes nothing.
+func TestTitleAndProgressWritersUseTheRenderersTerminal(t *testing.T) {
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work/project"})
+	m.setTerminalTitle("before the renderer")
+	m.setTerminalProgress(true)
+	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
+	terminal := recordTerminalCalls(t, m)
+	m.setTerminalTitle("a title")
+	m.setTerminalTitle("")
+	m.setTerminalProgress(true)
+	m.setTerminalProgress(false)
+	if titles, want := terminal.takeTitles(), []string{"a title", ""}; !slices.Equal(titles, want) {
+		t.Errorf("the renderer's terminal received the titles %q, want %q", titles, want)
+	}
+	if progress, want := terminal.takeProgress(), []bool{true, false}; !slices.Equal(progress, want) {
+		t.Errorf("the renderer's terminal received the progress calls %v, want %v", progress, want)
+	}
+}
 
 // terminalOptionMode is a mode whose renderer draws on InteractiveModeOptions.Terminal (interactive-mode.ts:447 `terminal?: Terminal`,
 // :626), here a terminal that is not the process terminal and writes to the returned recorder. Terminal progress is on.
@@ -138,7 +159,7 @@ func TestTitleAndProgressOnAFrontendSurface(t *testing.T) {
 // session/28-session-reload-ui, whose lines are read from that stdout), carries no escape sequence: neither OSC 0 nor OSC 9;4.
 func TestTitleAndProgressStayOffTheProcessStdout(t *testing.T) {
 	const child = "^(TestSessionTitleIsWrittenOnTheRenderersTerminal|TestTitleIsWrittenOnTheTerminalOption|TestProgressIsWrittenOnTheTerminalOption|" +
-		"TestTitleAndProgressOnAFrontendSurface|TestSessionStartNotifyOriginalReload.*|TestReloadWritesTheSessionTitleOnTheRenderersTerminal)$"
+		"TestTitleAndProgressWritersUseTheRenderersTerminal|TestTitleAndProgressOnAFrontendSurface|TestSessionStartNotifyOriginalReload.*|TestReloadWritesTheSessionTitleOnTheRenderersTerminal)$"
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
