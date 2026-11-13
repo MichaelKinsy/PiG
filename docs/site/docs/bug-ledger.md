@@ -431,6 +431,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | 0.7.0 |
 | [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | PiG's own defect | Windows | Unreleased |
+| [BF-3fe8180](#bf-3fe8180) | OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with… | PiG's own defect | All platforms | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
 | [BF-402f61c](#bf-402f61c) | A custom message keeps the member order of its `content` blocks everywhere the host holds it | PiG's own defect | All platforms | Unreleased |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
@@ -7774,6 +7775,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3fe717aa8a` (2026-11-05)
 - **Tests:** `internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go::TestBashTimeoutAfterShellExit11613`
 - **Release note:** A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout. A shell still running at the deadline keeps the plain timeout message, and custom operations that fail with `timeout:N` are unchanged (D243).
+
+### BF-3fe8180
+
+**OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with their members in the order the source lists them, as Pi does; PiG wrote each sorted by key.
+- **Root cause:** Three objects of an openai-completions request are supplied by a catalog entry, models.json, an extension or the caller, and Pi writes each with its members in the order the source lists them. PiG held them in Go maps, which encoding/json writes sorted.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3fe81801cc` (2026-11-13)
+- **Tests:** `ai/openai_compat_objects_test.go::TestBundledCatalogCompatObjectsRoundTrip`, `ai/openai_compat_objects_test.go::TestMergeOpenAICompatSpreadsObjectMembers`, `ai/openai_compat_objects_test.go::TestOpenAICompatKeepsObjectMemberOrder`, `ai/openai_compat_objects_test.go::TestResolveSamplingParamsInOrder`, `coding/extension/host/subprocess/model_stream_sampling_order_test.go::TestDecodeModelStreamRequestKeepsSamplingParamsOrder`, `coding/model_member_order_wire_test.go::TestSuppliedObjectsReachTheWireInTheirSourceOrder`, `internal/codingagent/model_registry_member_order_test.go::TestSamplingParamsMergeKeepsSpreadOrder`, `internal/codingagent/model_registry_merge_compat_fields_test.go::TestMergeCompatSpreadsEveryScalarCompatField` and 2 more in docs/bug-ledger.json
+- **Release note:** OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with their members in the order the source lists them, as Pi does; PiG wrote each sorted by key. This holds for `chat_template_kwargs` / `chat_template_args` (compat `chatTemplateKwargs` / `chatTemplateArgs`), for `provider` and its nested objects such as `max_price` (compat `openRouterRouting`), and for the sampling parameters at the top level of the request (`samplingParams`, `samplingParamsByThinkingLevel` and a request's own). The content was the same. The order is kept from `models.json`, from a provider an extension registers and from a request an extension streams with; a provider entry's compat merged with a model's and with a model override's follows Pi's spread (the base's members in the base's order, an overridden member in its place, new members after them). The sampling parameters of OpenAI Responses and Azure OpenAI Responses requests follow the same order. Go callers: `ai.Model` and `ai.StreamOptions` gain `SamplingParamsOrder` (`ai.Model` also `SamplingParamsByThinkingLevelOrder`) beside the maps, and `ai.MergeOpenAICompat` merges two compats as Pi's `mergeCompat` does; a caller that sets only the map still sends its members sorted.
 
 ### BF-4027b34
 
