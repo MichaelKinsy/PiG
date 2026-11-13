@@ -1253,6 +1253,36 @@ patch("5b5be2c316e0", "pi-coding-agent/modes/interactive/components/tool-executi
 ]);
 // END backport 5b5be2c316e0
 
+// BEGIN backport 86918f9eeb
+// 86918f9eeb (#12110, closes #12019): GitHub Copilot's chat-completions models send reasoning_effort, and Copilot's reasoning count is read.
+// parseChunkUsage reads the top-level `usage.reasoning_tokens` when `usage.completion_tokens_details.reasoning_tokens` is missing or falsy
+// (every openai-completions provider; Copilot reports the count there). ai/openai.go parseChunkUsage and ai/openai_chunk_jsread.go have the change.
+patch("86918f9eeb", "pi-ai/api/openai-completions.js", [
+    [`        reasoning: rawUsage.completion_tokens_details?.reasoning_tokens || 0,
+`, `        ${note("86918f9eeb").trim()}
+        reasoning: rawUsage.completion_tokens_details?.reasoning_tokens || rawUsage.reasoning_tokens || 0,
+`],
+]);
+// END backport 86918f9eeb
+
+// BEGIN backport 86918f9eeb
+// The catalog side of 86918f9eeb: packages/ai/catalog/providers/github-copilot.ts takes `compat.supportsReasoningEffort` of a Copilot chat-completions
+// model from models.dev's effort options (it was false for all), so catalog/build.ts also gives the model the thinkingLevelMap of that effort list.
+// The provider data carries it as the result of Pi's generation over the release's data, which holds three such records (gemini-4-carbon, which the
+// commit also names, is not in the release's data and is not added):
+// * gemini-4-argon and kimi-k3: the release's record with the flag true and the map is byte for byte the record Pi's generator writes (the pinned
+//   mirror with the commit's github-copilot.ts, PI_CATALOG_OVERLAY of test/parity/testdata/catalog-generation/equivalence.sh) over the tree's recorded
+//   models.dev snapshot (cmd/gen-models/testdata/catalog-generation/fixtures.tar.gz): efforts low/medium/high and low/high/max.
+// * gemini-3.8-flash: INFERENCE: Pi's generator had no recorded github-copilot/gemini-3.8-flash effort list in the tree's snapshot; low/medium/high is
+//   the release's own mapping for that model under google, google-vertex, opencode, openrouter and radius, and models.dev live on 2026-11-13 agrees.
+//   At the next pin the generated catalog replaces this block: compare gemini-3.8-flash under github-copilot.
+patch("86918f9eeb", "pi-ai/providers/data/github-copilot.json", [
+    ['"chat:gemini-3.8-flash":{"id":"gemini-3.8-flash","name":"Gemini 3.8 Flash","api":"openai-completions","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":true,"input":["text","image"],"cost":{"input":0.75,"output":3.75,"cacheRead":0.075,"cacheWrite":0},"contextWindow":1000000,"maxTokens":64000,"headers":{"User-Agent":"GitHubCopilotChat/0.35.0","Editor-Version":"vscode/1.107.0","Editor-Plugin-Version":"copilot-chat/0.35.0","Copilot-Integration-Id":"vscode-chat"},"compat":{"supportsStrictMode":true,"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false}', '"chat:gemini-3.8-flash":{"id":"gemini-3.8-flash","name":"Gemini 3.8 Flash","api":"openai-completions","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":true,"input":["text","image"],"cost":{"input":0.75,"output":3.75,"cacheRead":0.075,"cacheWrite":0},"contextWindow":1000000,"maxTokens":64000,"headers":{"User-Agent":"GitHubCopilotChat/0.35.0","Editor-Version":"vscode/1.107.0","Editor-Plugin-Version":"copilot-chat/0.35.0","Copilot-Integration-Id":"vscode-chat"},"compat":{"supportsStrictMode":true,"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":"medium","high":"high","xhigh":null,"max":null}'],
+    ['"chat:gemini-4-argon":{"id":"gemini-4-argon","name":"Gemini 4 Argon","api":"openai-completions","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":true,"input":["text","image"],"cost":{"input":2,"output":10,"cacheRead":0.1,"cacheWrite":0},"contextWindow":1048576,"maxTokens":65536,"headers":{"User-Agent":"GitHubCopilotChat/0.35.0","Editor-Version":"vscode/1.107.0","Editor-Plugin-Version":"copilot-chat/0.35.0","Copilot-Integration-Id":"vscode-chat"},"compat":{"supportsStrictMode":true,"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false}', '"chat:gemini-4-argon":{"id":"gemini-4-argon","name":"Gemini 4 Argon","api":"openai-completions","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":true,"input":["text","image"],"cost":{"input":2,"output":10,"cacheRead":0.1,"cacheWrite":0},"contextWindow":1048576,"maxTokens":65536,"headers":{"User-Agent":"GitHubCopilotChat/0.35.0","Editor-Version":"vscode/1.107.0","Editor-Plugin-Version":"copilot-chat/0.35.0","Copilot-Integration-Id":"vscode-chat"},"compat":{"supportsStrictMode":true,"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":"medium","high":"high","xhigh":null,"max":null}'],
+    ['"chat:kimi-k3":{"id":"kimi-k3","name":"Kimi K3","api":"openai-completions","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":true,"input":["text","image"],"cost":{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":0},"contextWindow":1048576,"maxTokens":131072,"headers":{"User-Agent":"GitHubCopilotChat/0.35.0","Editor-Version":"vscode/1.107.0","Editor-Plugin-Version":"copilot-chat/0.35.0","Copilot-Integration-Id":"vscode-chat"},"compat":{"supportsStrictMode":true,"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":false,"supportsMidConvoSystemMessages":true}', '"chat:kimi-k3":{"id":"kimi-k3","name":"Kimi K3","api":"openai-completions","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":true,"input":["text","image"],"cost":{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":0},"contextWindow":1048576,"maxTokens":131072,"headers":{"User-Agent":"GitHubCopilotChat/0.35.0","Editor-Version":"vscode/1.107.0","Editor-Plugin-Version":"copilot-chat/0.35.0","Copilot-Integration-Id":"vscode-chat"},"compat":{"supportsStrictMode":true,"supportsStore":false,"supportsDeveloperRole":false,"supportsReasoningEffort":true,"supportsMidConvoSystemMessages":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"}'],
+]);
+// END backport 86918f9eeb
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

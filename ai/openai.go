@@ -583,6 +583,8 @@ type oaiUsage struct {
 	CompletionTokensDetails *struct {
 		ReasoningTokens int `json:"reasoning_tokens,omitempty"`
 	} `json:"completion_tokens_details,omitempty"`
+	// ReasoningTokens is the count at the top level of usage, where GitHub Copilot reports it (Pi 86918f9eeb, #12019).
+	ReasoningTokens int `json:"reasoning_tokens,omitempty"`
 	// OpenRouter adds billing fields to streamed usage at runtime, although the OpenAI SDK does not type them (openai-completions.ts parseChunkUsage).
 	openRouterUsageAccounting
 }
@@ -605,9 +607,13 @@ func parseChunkUsage(raw *oaiUsage, cost ModelCost, openRouter bool) *Usage {
 		cacheReadTokens = *raw.CachedTokens
 	}
 	input := max(0, raw.PromptTokens-cacheReadTokens-cacheWriteTokens)
+	// `completion_tokens_details?.reasoning_tokens || rawUsage.reasoning_tokens || 0`: the top-level count when the nested one is missing or 0.
 	reasoning := 0
 	if raw.CompletionTokensDetails != nil {
 		reasoning = raw.CompletionTokensDetails.ReasoningTokens
+	}
+	if reasoning == 0 {
+		reasoning = raw.ReasoningTokens
 	}
 	usage := &Usage{
 		Input:       input,
