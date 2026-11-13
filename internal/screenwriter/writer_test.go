@@ -11,6 +11,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 	"unicode/utf8"
@@ -693,16 +694,24 @@ func TestOutsideWrites(t *testing.T) {
 	}
 }
 
-// The settle timer writes under the terminal's lock, once, after the frames stop, and not after the screen is left.
+// The settle timer writes under the terminal's lock, once for a settled frame and not before the settle time has passed since it, and not after
+// the screen is left.
 func TestSettleTimer(t *testing.T) {
+	const settle = 20 * time.Millisecond
 	locked := make(chan struct{}, 1)
 	emitted := make(chan string, 4)
+	var settleRecords atomic.Int32
 	w := New(Options{
 		Size:   func() (int, int) { return 20, 5 },
-		Settle: 20 * time.Millisecond,
+		Settle: settle,
 		Lock:   func() { locked <- struct{}{} },
 		Unlock: func() { <-locked },
 		Emit:   func(data string) { emitted <- strings.Clone(data) },
+		Record: func(kind byte, _, _ string) {
+			if kind == RecordSettle {
+				settleRecords.Add(1)
+			}
+		},
 	})
 	write := func(data string) {
 		locked <- struct{}{}
@@ -712,9 +721,22 @@ func TestSettleTimer(t *testing.T) {
 	for _, data := range gridterm.SplitWrites(started) {
 		write(data)
 	}
+	written := time.Now()
 	write(frame(line(2, "hello world")))
 	if got, want := <-emitted, syncBegin+line(2, "hello world")+at(1, 1)+syncEnd; got != want {
 		t.Errorf("the settle write is %q, want %q", got, want)
+	}
+	if since := time.Since(written); since < settle {
+		t.Errorf("the settle write came %v after the frame, before the settle time of %v", since, settle)
+	}
+	// One settle write for a settled frame: while no frame comes, none follows it, and the record log holds one record of its kind.
+	select {
+	case again := <-emitted:
+		t.Errorf("a second settle write for the same frame: %q", again)
+	case <-time.After(5 * settle):
+	}
+	if n := settleRecords.Load(); n != 1 {
+		t.Errorf("%d records of the settle write's kind for one settled frame, want 1", n)
 	}
 	write(frame(line(2, "hello world!")))
 	write("\x1b[?1049l")

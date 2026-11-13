@@ -40,7 +40,9 @@ type screenWriterRun struct {
 // and the environment variable set to env. prepare runs before the first renderer is mounted.
 func startScreenWriterRun(t *testing.T, env, terminal, tuiMode string, prepare func(m *InteractiveMode)) *screenWriterRun {
 	t.Helper()
-	// The choice is the process's: the tests after this one start from the default.
+	// The choice is the process's, and a terminal gets its screen writer when it is built: the terminal of this run is built with
+	// one, whatever the default is, and the start of interactive mode then keeps or drops it as the setting says. The tests after
+	// this one find the process as this one found it at this line.
 	t.Cleanup(func() { tui.SetScreenWriter(true) })
 	tui.SetScreenWriter(true)
 	dir := t.TempDir()
@@ -173,8 +175,8 @@ func TestScreenWriterChoiceIsMadeBeforeTheFirstFrame(t *testing.T) {
 	}{
 		{"setting writer", "", `{"screenWriter":"writer"}`, true},
 		{"setting pi", "", `{"screenWriter":"pi"}`, false},
-		{"no setting", "", ``, true},
-		{"invalid setting", "", `{"screenWriter":"fast"}`, true},
+		{"no setting", "", ``, screenWriterByDefault},
+		{"invalid setting", "", `{"screenWriter":"fast"}`, screenWriterByDefault},
 		{"environment pi over setting writer", "pi", `{"screenWriter":"writer"}`, false},
 		{"environment 0 over setting writer", "0", `{"screenWriter":"writer"}`, false},
 		{"environment 1 over setting pi", "1", `{"screenWriter":"pi"}`, true},
@@ -262,9 +264,35 @@ func TestScreenWriterSettingChangeWaitsForTheNextStart(t *testing.T) {
 	}
 }
 
-// terminal.screenWriter is "writer" unless it is "pi", is read from the global file only, and a rewrite of the settings file keeps it.
+// screenWriterByDefault is whether the default of terminal.screenWriter is the screen writer. The tests of this file say "the
+// default" through it and through TerminalScreenWriterDefault, so they hold for either value of that one constant.
+const screenWriterByDefault = TerminalScreenWriterDefault == TerminalScreenWriterWriter
+
+// A value of terminal.screenWriter that is neither "writer" nor "pi", and the key left out, mean the default, whichever of the two
+// the default is; the two values mean themselves under either default.
+func TestTerminalScreenWriterUnderEitherDefault(t *testing.T) {
+	for _, byDefault := range []string{TerminalScreenWriterWriter, TerminalScreenWriterPi} {
+		for value, want := range map[string]string{"writer": TerminalScreenWriterWriter, "pi": TerminalScreenWriterPi, "": byDefault, "Writer": byDefault, "PI": byDefault, "0": byDefault, "1": byDefault, "fast": byDefault} {
+			if got := terminalScreenWriterOr(value, byDefault); got != want {
+				t.Errorf("with the default %q, terminal.screenWriter %q reads as %q, want %q", byDefault, value, got, want)
+			}
+		}
+	}
+	if terminalScreenWriterOr(TerminalScreenWriterDefault, "") == "" {
+		t.Errorf("the default %q is neither value of terminal.screenWriter", TerminalScreenWriterDefault)
+	}
+	if got := (Settings{}).GetTerminalScreenWriter(); got != TerminalScreenWriterDefault {
+		t.Errorf("with the key left out the setting reads %q, want the default %q", got, TerminalScreenWriterDefault)
+	}
+}
+
+// terminal.screenWriter is the default unless it names the other value, is read from the global file only, and a rewrite of the
+// settings file keeps it.
 func TestTerminalScreenWriterSetting(t *testing.T) {
-	const byDefault, other = TerminalScreenWriterWriter, TerminalScreenWriterPi
+	byDefault, other := TerminalScreenWriterDefault, TerminalScreenWriterPi
+	if byDefault == TerminalScreenWriterPi {
+		other = TerminalScreenWriterWriter
+	}
 	agentDir, cwd := t.TempDir(), t.TempDir()
 	if got := NewSettingsManager(cwd, agentDir).GetTerminalScreenWriter(); got != byDefault {
 		t.Fatalf("with no settings file = %q, want the default %q", got, byDefault)

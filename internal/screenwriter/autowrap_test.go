@@ -164,20 +164,20 @@ func TestTranslationResumesWithWholeRows(t *testing.T) {
 		step(write)
 	}
 	step(frame(line(2, text("two")), line(3, text("three"))))
-	if out := step(frame(line(2, text("two!")), line(3, text("three")))); strings.Contains(out, "\x1b[2K") {
+	if out := step(frame(line(2, text("tWo")), line(3, text("three")))); strings.Contains(out, "\x1b[2K") {
 		t.Fatalf("with autowrap off the changed row was written whole: %q", out)
 	}
 	step("\x1b[?7h")
-	wrapped := frame(line(2, text("two!!")), line(3, text("three")))
+	wrapped := frame(line(2, text("tWo!")), line(3, text("three")))
 	if out := step(wrapped); out != wrapped {
 		t.Fatalf("with autowrap on the frame was sent as %q", out)
 	}
 	step("\x1b[?7l")
-	if out := step(frame(line(2, text("two!!!")), line(3, text("three")))); strings.Count(out, "\x1b[2K") != 2 {
+	if out := step(frame(line(2, text("tWo!!")), line(3, text("three")))); strings.Count(out, "\x1b[2K") != 2 {
 		t.Errorf("the first frame after autowrap was turned off wrote %d of its 2 rows whole: %q", strings.Count(out, "\x1b[2K"), out)
 	}
-	step(frame(line(2, text("two!!!")), line(3, text("three"))))
-	if out := step(frame(line(2, text("two!!!!")), line(3, text("three")))); strings.Contains(out, "\x1b[2K") || out == "" {
+	step(frame(line(2, text("tWo!!")), line(3, text("three"))))
+	if out := step(frame(line(2, text("tWO!!")), line(3, text("three")))); strings.Contains(out, "\x1b[2K") || out == "" {
 		t.Errorf("translation did not resume in place: %q", out)
 	}
 }

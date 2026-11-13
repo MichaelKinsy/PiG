@@ -105,7 +105,7 @@ func tmuxCommand(socket string, args ...string) (string, error) {
 // cellsShown is how many cells each row of a capture has.
 func cellsShown(capture string) []int {
 	var cells []int
-	for _, row := range strings.Split(strings.TrimSuffix(capture, "\n"), "\n") {
+	for row := range strings.SplitSeq(strings.TrimSuffix(capture, "\n"), "\n") {
 		n := 0
 		for row != "" {
 			cluster, width := segmentRepo(row)

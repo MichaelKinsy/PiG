@@ -108,6 +108,33 @@ func tmuxCases() []tmuxCase {
 	add("first cell at a quarter, in place", cols, enter, at(2, 1)+erase+pad("a", cols), at(2, 1)+pad(strings.Repeat(" ", 29)+"x", cols))
 	add("cell at a half after text, in place", cols, enter, at(2, 1)+erase+pad(x(40), cols), at(2, 1)+pad("abc"+strings.Repeat(" ", 56)+"x", cols))
 	add("first cell at a quarter, addressed", cols, enter, at(2, 1)+erase+at(2, 30)+"x")
+	// An image's rows under an overlay, in the three frames the alternate screen writes for them (the image, an overlay over it, the
+	// image again once the overlay is closed), each followed by a text row as the screen writer sends it after a frame it sent as it
+	// came: whole, and then grown in place. For a Kitty terminal a frame that draws an image deletes the placements, erases every
+	// row and writes the text rows and then the image's; for iTerm2 it erases the screen and writes every row, the image's with the
+	// cursor moved up first. tmux shows no image: it stores no cell for one and leaves the cursor where it was.
+	const narrow = 40
+	kitty, iterm, unplace := "\x1b_Ga=T,f=100,q=2,C=1,c=4,r=3,i=7;AAAA\x1b\\", "\x1b]1337;File=inline=1;width=4;height=3:AAAA\x07", "\x1b_Ga=d,d=a,q=2\x1b\\"
+	text := func(row int, s string) string { return at(row, 1) + pad(s, narrow) + reset }
+	whole := func(row int, s string) string { return at(row, 1) + erase + s + reset }
+	erased := ""
+	for row := 1; row <= 6; row++ {
+		erased += at(row, 1) + erase
+	}
+	add("Kitty image rows under an overlay", narrow, enter,
+		unplace+erased+text(1, "top")+text(5, "after")+at(2, 1)+kitty+reset,
+		whole(5, pad("after!", narrow)), at(5, 1)+"after!!",
+		unplace+erased+text(1, "top")+text(3, " PANEL")+text(5, "after!!"),
+		whole(3, pad(" PANEL!", narrow)), at(3, 1)+" PANEL!!",
+		unplace+erased+text(1, "top")+text(5, "after!!")+at(2, 1)+kitty+reset,
+		whole(3, pad("x", narrow)), at(3, 1)+"xy")
+	add("iTerm2 image rows under an overlay", narrow, enter,
+		"\x1b[2J"+whole(1, pad("top", narrow))+whole(2, "")+whole(3, "")+whole(4, "\x1b[2A"+iterm)+whole(5, pad("after", narrow)),
+		whole(5, pad("after!", narrow)), at(5, 1)+"after!!",
+		"\x1b[2J"+whole(1, pad("top", narrow))+whole(2, "")+whole(3, pad(" PANEL", narrow))+whole(4, "")+whole(5, pad("after!!", narrow)),
+		whole(3, pad(" PANEL!", narrow)), at(3, 1)+" PANEL!!",
+		"\x1b[2J"+whole(1, pad("top", narrow))+whole(2, "")+whole(3, "")+whole(4, "\x1b[2A"+iterm)+whole(5, pad("after!!", narrow)),
+		whole(3, pad("x", narrow)), at(3, 1)+"xy")
 	resized := tmuxCase{name: "another size", cols: cols, rows: 6, steps: []tmuxStep{{write: enter}, {write: at(2, 1) + erase + x(100) + at(3, 1) + erase + strings.Repeat("y", 10)},
 		{cols: 60, rows: 6}, {write: at(3, 1) + strings.Repeat("y", 20)}, {cols: 160, rows: 6}, {write: at(3, 1) + strings.Repeat("y", 30)}, {write: at(2, 1) + erase + "x"},
 		{write: at(4, 1) + erase + strings.Repeat("z", 39)}}}

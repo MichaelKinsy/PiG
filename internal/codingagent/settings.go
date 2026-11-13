@@ -1698,13 +1698,22 @@ const (
 	TerminalScreenWriterPi     = "pi"
 )
 
-// GetTerminalScreenWriter returns the terminal.screenWriter setting, TerminalScreenWriterWriter or TerminalScreenWriterPi. The key unset, and any other value, is "writer".
+// TerminalScreenWriterDefault is what terminal.screenWriter means when the key is unset or holds neither value: the one place
+// that says what a fullscreen terminal is sent when nobody chose (D624). Nothing else in the tree names the default.
+const TerminalScreenWriterDefault = TerminalScreenWriterWriter
+
+// GetTerminalScreenWriter returns the terminal.screenWriter setting, TerminalScreenWriterWriter or TerminalScreenWriterPi. The key unset, and any other value, is TerminalScreenWriterDefault.
 // pig divergence (D624): see Settings.TerminalScreenWriter.
 func (s Settings) GetTerminalScreenWriter() string {
-	if s.TerminalScreenWriter == TerminalScreenWriterPi {
-		return TerminalScreenWriterPi
+	return terminalScreenWriterOr(s.TerminalScreenWriter, TerminalScreenWriterDefault)
+}
+
+// terminalScreenWriterOr is value when it is one of the two values of terminal.screenWriter, byDefault otherwise.
+func terminalScreenWriterOr(value, byDefault string) string {
+	if value == TerminalScreenWriterWriter || value == TerminalScreenWriterPi {
+		return value
 	}
-	return TerminalScreenWriterWriter
+	return byDefault
 }
 
 // The values of terminal.framePacing.
