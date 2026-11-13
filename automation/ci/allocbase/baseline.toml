@@ -2974,6 +2974,16 @@ benchmark = "BenchmarkDecodeFileEntryPiFixture"
 allocs = 260917
 
 [[benchmark]]
+package = "./internal/sessionentry"
+benchmark = "BenchmarkDecodeOptionalMemberEntries"
+allocs = 71862
+
+[[benchmark]]
+package = "./internal/sessionentry"
+benchmark = "BenchmarkEncodeOptionalMemberEntries"
+allocs = 62
+
+[[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenDoRender"
 allocs = 14
