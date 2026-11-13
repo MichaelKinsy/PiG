@@ -45,13 +45,10 @@ func readCacheDietWorkflow(t *testing.T, name string) cacheDietWorkflow {
 }
 
 // A pull request's caches are visible to that pull request alone, so a copy of the Go build cache or the Cargo targets per pull request filled the repository's cache
-// limit and evicted main's. The big caches are saved from main and from a release branch's dispatch only: ci.yml and security.yml restore them with actions/cache/restore
-// and save them with actions/cache/save under CACHE_SAVE, which no pull request run or merge queue run satisfies.
+// limit and evicted main's. Every cache is saved only by the nightly scheduled run on main, a dispatch there, and a dispatch on a release branch: ci.yml and
+// security.yml restore with actions/cache/restore and save with actions/cache/save under CACHE_SAVE, which no pull request, merge queue or push run satisfies.
 func TestBigCachesSaveOnlyFromMainAndReleaseDispatch(t *testing.T) {
-	const want = "${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/'))) }}"
-	big := []string{"gocache-", "gomod-", "cargo-", "node-cache-", "durable-cf-host-"}
-	// The macOS jobs keep setup-go's cache: one entry per go.sum that cache-warm.yml saves from main, not one per commit or pull request.
-	setupGoCache := map[string]bool{"ci.yml/macos": true}
+	const want = "${{ (github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/')) }}"
 	for _, name := range []string{"ci.yml", "security.yml"} {
 		workflow := readCacheDietWorkflow(t, name)
 		if got := workflow.Env["CACHE_SAVE"]; got != want {
@@ -68,13 +65,10 @@ func TestBigCachesSaveOnlyFromMainAndReleaseDispatch(t *testing.T) {
 						t.Errorf("%s job %s: save step %q is not conditioned on env.CACHE_SAVE (if: %q)", name, jobName, step.Name, step.If)
 					}
 				case strings.HasPrefix(step.Uses, "actions/cache@"):
-					for _, prefix := range big {
-						if strings.HasPrefix(key, prefix) {
-							t.Errorf("%s job %s: step %q restores and saves the %s cache with actions/cache; use actions/cache/restore and a save step under env.CACHE_SAVE", name, jobName, step.Name, prefix)
-						}
-					}
+					// Every cache, not only the big ones: a small exact-key cache a pull request saves is still one copy per pull request.
+					t.Errorf("%s job %s: step %q (key %q) restores and saves with actions/cache; use actions/cache/restore and a save step under env.CACHE_SAVE", name, jobName, step.Name, key)
 				case strings.HasPrefix(step.Uses, "actions/setup-go@"):
-					if cache, _ := step.With["cache"].(bool); cache && !setupGoCache[name+"/"+jobName] {
+					if cache, _ := step.With["cache"].(bool); cache {
 						t.Errorf("%s job %s: setup-go caches on every run, including a pull request's; restore gomod- and gocache- explicitly", name, jobName)
 					}
 				case strings.HasPrefix(step.Uses, "actions/setup-node@"):
@@ -141,5 +135,54 @@ func TestCIImagesCancelsOnlySupersededPullRequestRuns(t *testing.T) {
 	workflow := readCacheDietWorkflow(t, "ci-images.yml")
 	if got := workflow.Concurrency.CancelInProgress; got != "${{ github.event_name == 'pull_request' }}" {
 		t.Errorf("ci-images.yml cancel-in-progress = %v, want it true for a pull request only", got)
+	}
+}
+
+// The weekly CI run became the nightly one, because it is the only scheduled run that saves caches.
+func TestCIRunsNightlyOnMainAndSavesCachesOnlyFromIt(t *testing.T) {
+	workflow := readCacheDietWorkflow(t, "ci.yml")
+	schedule, _ := workflow.On["schedule"].([]any)
+	if len(schedule) != 1 {
+		t.Fatalf("ci.yml schedule = %v, want one cron", workflow.On["schedule"])
+	}
+	cron, _ := schedule[0].(map[string]any)["cron"].(string)
+	if fields := strings.Fields(cron); len(fields) != 5 || fields[2] != "*" || fields[3] != "*" || fields[4] != "*" {
+		t.Errorf("ci.yml cron = %q, want a nightly one (every day of the week)", cron)
+	}
+}
+
+// A lockfile change is the one case where a whole cache goes invalid, so cache-warm.yml runs on a push to main only for one.
+func TestCacheWarmRunsOnlyForALockfileChange(t *testing.T) {
+	workflow := readCacheDietWorkflow(t, "cache-warm.yml")
+	if _, ok := workflow.On["schedule"]; ok {
+		t.Error("cache-warm.yml has a schedule; the nightly CI run saves the caches")
+	}
+	push, _ := workflow.On["push"].(map[string]any)
+	paths, _ := push["paths"].([]any)
+	if len(paths) == 0 {
+		t.Error("cache-warm.yml runs on every push to main; limit it to the lockfiles")
+	}
+	for _, p := range paths {
+		if !strings.HasSuffix(p.(string), "go.sum") && !strings.HasSuffix(p.(string), "Cargo.lock") && !strings.HasSuffix(p.(string), "package-lock.json") {
+			t.Errorf("cache-warm.yml push path %q is not a lockfile", p)
+		}
+	}
+}
+
+// The eight portmap shards' keys share the prefix portmap-coverage-, so pruning by it kept one shard's ledger and deleted the other seven.
+func TestCachePruneKeepsOnePortmapLedgerPerShard(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	if strings.Contains(text, "gocache-macOS- golangci-lint-Linux- pi-oracle-Linux- pi-oracle-Windows- pi-oracle-macOS-; do") == false {
+		t.Error("the prune loop's prefix list changed; update this test")
+	}
+	if strings.Contains(text, "Windows- portmap-coverage- ") {
+		t.Error("cache-prune groups every portmap shard under portmap-coverage-, so it keeps one shard's ledger")
+	}
+	if !strings.Contains(text, `sub("-[0-9a-f]{40}$"; "")`) {
+		t.Error("cache-prune does not group the portmap ledgers by shard (the key without its commit)")
 	}
 }

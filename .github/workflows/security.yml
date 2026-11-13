@@ -20,7 +20,7 @@ env:
   # The big caches (Go modules and build output, Cargo, npm, the Durable Cloudflare host's TinyGo) are saved only from main (the weekly run and a dispatch there, and cache-warm.yml)
   # and from a dispatch on a release branch. A pull request restores main's and saves none: its own copies are visible to that pull request alone, a handful of them filled
   # the repository's cache limit and evicted main's. Every save step tests this.
-  CACHE_SAVE: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/'))) }}
+  CACHE_SAVE: ${{ (github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/')) }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

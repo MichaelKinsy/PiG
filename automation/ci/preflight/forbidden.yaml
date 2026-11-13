@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: MIT
+
+- id: opaque-field
+  code: FG001
+  description: opaque encrypted or signature value
+  exclude-pattern: &vendored '(^|/)(third_party|\.upstream|node_modules|vendor|runtime-node/shims|automation/ci/fixtureguard|automation/ci/preflight)/'
+  pattern: '(?i)(?:encrypted_content|reasoning_opaque|thinking_signature|thought_?signature|encrypted_reasoning|reasoning_encrypted_content|redacted_data|signature)\\*["'']?\s*[:=]\s*\\*["'']([A-Za-z0-9+/_=-]{80,})'
+  value: {not: '^[0-9a-fA-F]+$'}
+
+- id: redacted-thinking
+  code: FG001
+  description: redacted thinking payload
+  exclude-pattern: *vendored
+  pattern: '\\*"data\\*"\s*:\s*\\*"([A-Za-z0-9+/_=-]{80,})'
+  also: 'redacted_thinking'
+  value: {not: '^[0-9a-fA-F]+$'}
+
+- id: base64-blob
+  code: FG001
+  description: base64-like blob
+  exclude-pattern: *vendored
+  match: base64-blob
+  with: {min: 4096}
+
+- id: billing-row
+  code: FG002
+  description: provider billing or quota row
+  exclude-pattern: *vendored
+  pattern: '(?i)\b(?:copilot_usage|cost_per_batch|total_nano_aiu|quota_snapshots|premium_interactions|copilot_quota[a-z_]*|x-copilot-[a-z-]+)\b'
+
+- id: request-id
+  code: FG002
+  description: provider request-id value
+  exclude-pattern: *vendored
+  pattern: '(?i)\b(?:x-request-id|x-github-request-id|x-ms-request-id|x-ms-client-request-id|apim-request-id|request-id|x-amzn-requestid|cf-ray)\\*["'']?\s*[:=,]\s*\\*["'']?\s*([0-9A-Za-z:._-]{20,})'
+  value: {random: {digits: 6, distinct: 8}}
+
+- id: request-id-har
+  code: FG002
+  description: provider request-id value in a HAR header
+  exclude-pattern: *vendored
+  pattern: '(?i)\b(?:x-request-id|x-github-request-id|x-ms-request-id|x-ms-client-request-id|apim-request-id|request-id|x-amzn-requestid|cf-ray)\\*"\s*,\s*\\*"value\\*"\s*:\s*\\*"([0-9A-Za-z:._-]{20,})'
+  value: {random: {digits: 6, distinct: 8}}
+
+- id: provider-id
+  code: FG003
+  description: real-looking provider id
+  path-pattern: &fixtures '(?i)(^|/)(testdata|fixtures?|__fixtures__)/|^test/.*\.(json|jsonl|ndjson|sse|txt|log|toml|yaml|yml|har|http)$'
+  exclude-pattern: *vendored
+  pattern: 'chatcmpl-[A-Za-z0-9]{16,}|\b(?:toolu|req)_(?:[a-z]{4}_)?(?:01)?[A-Za-z0-9]{16,}|\bmsg_(?:[a-z]{4}_)?(?:01)?[A-Za-z0-9]{20,}|\bresp_[0-9a-f]{24,}|\brs_[0-9a-f]{24,}|\bcall_[A-Za-z0-9]{20,}|\bfc_[0-9a-f]{24,}|\bgen-[0-9]{9,}-[A-Za-z0-9]{10,}'
+
+- id: provider-time
+  code: FG003
+  description: real-looking provider timestamp
+  path-pattern: *fixtures
+  exclude-pattern: *vendored
+  match: captured-time
+
+- id: home-path
+  code: FG004
+  description: absolute home path of a non-placeholder account
+  path-pattern: *fixtures
+  exclude-pattern: *vendored
+  match: home-path
+  with:
+    placeholders: [me, me2, user, user2, you, u, x, example, tester, someone, victim, owner, foo, alice, bob, test, name, username, runner, pig, public, default, shared]
+  allow:
+    - path: test/parity/scenarios/extensions-runtime/testdata/ext/overlay-qa-tests.ts
+      reason: Pi 1.2.0's packages/coding-agent/examples/extensions/overlay-qa-tests.ts byte for byte (see 84-overlay-focus.toml); the /Users/<name>/ strings are upstream's published example source, not a capture.
+    - path: tui/internal/hljs/testdata/corpus.json
+      reason: highlight.js language sample corpus; the /home/kew string is a RenderMan RIB search-path sample in a public highlighter test input, not an account path.
+    - path: internal/nodepath/testdata/resolve_cases.json
+      reason: Oracle corpus for Node's path.win32.resolve; C:\Users\session. is a trailing-dot normalization case, not an account path.
+
+- id: reasoning-text
+  code: FG005
+  description: natural-language reasoning text in stream or session fields
+  exclude-pattern: *vendored
+  match: prose
+  with: {min-chars: 500, min-distinct-words: 50}
+
+- id: private-term
+  code: FG006
+  description: a term of the private denylist (PIG_PRIVATE_TERMS_FILE, a file outside the repository)
+  match: terms
+  with: {env: PIG_PRIVATE_TERMS_FILE}
+
+- id: go-stray
+  code: PIN
+  description: a Go release other than the one of variables/versions.yaml
+  path-pattern: '(^|/)(Dockerfile[^/]*|Makefile|go\.mod|go\.work|devcontainer\.json|toolchains\.lock|metadata\.env|[^/]+\.(sh|mk|ya?ml|toml|env))$'
+  exclude-pattern: '(^|/)(\.upstream|node_modules|testdata|evidence)/|(^|/)[^/]*_test\.[^/]+$|^automation/ci/preflight/'
+  pattern: '\bgo(1\.\d+\.\d+)\b|\bgolang:(1\.\d+\.\d+)\b|(?i:\bgo[-_]?version)\s*[=:]\s*[''"]?(1\.\d+\.\d+)'
+  value: {not-in: ['{{ versions.go }}']}
+
+- id: workflow-literal-version
+  code: PIN
+  description: a workflow writes a Go or Node version instead of reading .go-version or .node-version
+  paths: ['.github/workflows/*.yml', '.github/workflows/*.yaml']
+  pattern: '^\s*(go-version|node-version|GO_VERSION|NODE_VERSION):'
