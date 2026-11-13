@@ -409,7 +409,7 @@ func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
 
 	onNode := shut
 	onNode.NodeKey = "pick"
-	if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "n", Slot: uiview.SlotPanel, Content: uiview.Content{View: viewList("choose"), Intents: []uiview.IntentDecl{onNode}}}); err == nil || !strings.Contains(err.Error(), "is dismiss and names a node") {
+	if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "n", Slot: uiview.SlotPanel, View: viewList("choose"), Intents: []uiview.IntentDecl{onNode}}); err == nil || !strings.Contains(err.Error(), "is dismiss and names a node") {
 		t.Fatalf("a panel whose dismiss intent names a node: the mount returned %v, want the registry to refuse it", err)
 	}
 	f.mount("b", uiview.SlotPanel, uiview.Content{
