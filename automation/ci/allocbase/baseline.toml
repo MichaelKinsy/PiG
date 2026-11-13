@@ -3240,6 +3240,16 @@ allocs = 136618
 
 [[benchmark]]
 package = "./internal/codingagent"
+benchmark = "BenchmarkWriteCardFrames/warm=on/200KB"
+allocs = 1835842
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkWriteCardFrames/warm=on/50KB"
+allocs = 434473
+
+[[benchmark]]
+package = "./internal/codingagent"
 benchmark = "BenchmarkWriteRenderCallLargeArguments/200-lines"
 allocs = 81
 
