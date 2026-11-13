@@ -2775,7 +2775,21 @@ export default function (pi) {
     if (event.entries.length !== 2 || event.context.contextEntries.length !== 2 || event.entries[0].customType !== "kept" || event.entries[1].customType !== "before-error") {
       throw new Error("lost boundary mutation or preview");
     }
-    return { entries: [{ type: "custom", customType: "conformance-boundary" }], continue: true };
+    // One draft with a null replacement, one without the member, and a compaction that keeps nothing.
+    return {
+      entries: [
+        { type: "custom", customType: "conformance-boundary" },
+        { type: "context_edit", targetId: "conformance-failed-attempt", replacement: null },
+        { type: "context_edit", targetId: "conformance-omitted-member" },
+        { type: "compaction", summary: "conformance-summary", firstKeptEntryId: null, details: { format: "conformance-checkpoint" } },
+      ],
+      continue: true,
+    };
+  });
+  pi.on("agent_before_settle", (event, ctx) => {
+    if (event.entries.length !== 4) throw new Error(`boundary result reached the next handler as ${event.entries.length} entries`);
+    const member = (index, key) => (key in event.entries[index] ? (event.entries[index][key] === null ? "null" : "value") : "absent");
+    ctx.ui.notify(`agent_before_settle_drafts:${event.entries.length}:${member(1, "replacement")}:${member(2, "replacement")}:${member(3, "firstKeptEntryId")}:${event.entries[3].details?.format}`, "info");
   });
   pi.on("session_start", async (event, ctx) => {
     ctx.ui.notify(`session_start:${event.reason ?? ""}`, "info");

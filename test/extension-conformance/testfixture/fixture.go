@@ -3886,10 +3886,38 @@ func Extension() *sdk.Extension {
 		if len(entries) != 2 || len(preview["contextEntries"].([]any)) != 2 || entries[0].(map[string]any)["customType"] != "kept" || entries[1].(map[string]any)["customType"] != "before-error" {
 			return nil, errors.New("lost boundary mutation or preview")
 		}
+		// One draft with a null replacement, one without the member, and a compaction that keeps nothing: Pi omits the target of the first, rejects the second
+		// (session-manager.ts appendContextEdit) and keeps no entry before the third (appendCompaction).
 		return map[string]any{
-			"entries":  []any{map[string]any{"type": "custom", "customType": "conformance-boundary"}},
+			"entries": []any{
+				map[string]any{"type": "custom", "customType": "conformance-boundary"},
+				map[string]any{"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": nil},
+				map[string]any{"type": "context_edit", "targetId": "conformance-omitted-member"},
+				map[string]any{"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": nil, "details": map[string]any{"format": "conformance-checkpoint"}},
+			},
 			"continue": true,
 		}, nil
+	})
+	ext.OnEvent("agent_before_settle", func(ctx sdk.Context, data map[string]any) (any, error) {
+		entries, _ := data["entries"].([]any)
+		if len(entries) != 4 {
+			return nil, fmt.Errorf("boundary result reached the next handler as %d entries", len(entries))
+		}
+		member := func(index int, key string) string {
+			entry, _ := entries[index].(map[string]any)
+			value, present := entry[key]
+			switch {
+			case !present:
+				return "absent"
+			case value == nil:
+				return "null"
+			}
+			return "value"
+		}
+		compaction, _ := entries[3].(map[string]any)
+		details, _ := compaction["details"].(map[string]any)
+		ctx.Notify(fmt.Sprintf("agent_before_settle_drafts:%d:%s:%s:%s:%v", len(entries), member(1, "replacement"), member(2, "replacement"), member(3, "firstKeptEntryId"), details["format"]), "info")
+		return nil, nil
 	})
 	ext.OnSessionStart(func(ctx sdk.Context, data map[string]any) (any, error) {
 		ctx.Notify("session_start:"+fmt.Sprint(data["reason"]), "info")

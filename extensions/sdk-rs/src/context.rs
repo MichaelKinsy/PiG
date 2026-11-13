@@ -2182,6 +2182,9 @@ pub(crate) fn model_identity(model: &serde_json::Value) -> (String, String) {
 }
 
 /// Context provides access to the host's UI and session state.
+/// It has no method that continues a turn or appends a compaction at a turn's end: a `turn_end` or `agent_before_settle` handler does both with its result,
+/// `entries` (custom, custom_message, context_edit and compaction drafts) and `continue` (one more provider request, no new user message). See "Own compaction
+/// and continue after an overflow" in the extensions guide.
 /// Passed to every handler function. Clones share the connection, cancellation and live session state, so retained callbacks can own a context without copying that state.
 #[derive(Clone)]
 pub struct Context {

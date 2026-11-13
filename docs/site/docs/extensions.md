@@ -392,6 +392,63 @@ build:
 
 A Standard Binary build fails if any selected extension would use a subprocess.
 
+## Own compaction and continue after an overflow
+
+An extension that writes its own summaries can continue a turn after the provider refuses a request for its size. Look for this in the handler results, not on the context. No context method continues a turn. The `turn_end` and `agent_before_settle` handlers return `entries` and `continue`. `entries` appends session entries. `continue: true` asks for one more provider request from the context as it then is. PiG adds no user message, and it does not send the failed attempt again once an entry omits it or a compaction replaces it.
+
+A failed attempt reaches `turn_end` with `outcome: "error"`, the assistant `message`, and its `messageEntryId`. Classify the message with `isContextOverflow` from `@earendil-works/pi-ai` (`sdk.IsContextOverflow` in Go, `is_context_overflow` in Python and Rust, `context-overflow-p` in Lisp). The handler can make its own summary request before it returns. The Session waits for the handler.
+
+Choose one of three variants:
+
+| Variant | What the handlers return | Next provider request |
+|---|---|---|
+| Replace the history | `turn_end` with `outcome: "error"` returns `entries: [{ type: "compaction", summary, firstKeptEntryId: null, details }]`. `agent_before_settle` returns `{ continue: true }` once. | The system prompt and the summary. The prompt and the failed attempt are absent. |
+| Keep the prompt | `agent_before_settle` with `outcome: "error"` returns `entries: [{ type: "context_edit", targetId, replacement: null }, { type: "compaction", summary, firstKeptEntryId }]` and `continue: true`. `targetId` is the failed attempt's entry. `firstKeptEntryId` is the prompt's entry. | The system prompt, the summary, and the same prompt once. |
+| Answer the built-in recovery | `session_before_compact` with `reason: "overflow"` returns `{ compaction: { summary, firstKeptEntryId, tokensBefore, details } }`. | PiG omits the failed attempt, stores the summary, and continues by itself. |
+
+```typescript
+import { isContextOverflow } from "@earendil-works/pi-ai";
+
+let continueOnce = false;
+pi.on("turn_end", async (event) => {
+  if (event.outcome !== "error" || !isContextOverflow(event.message)) return;
+  const summary = await summarize(event.context.contextMessages); // the extension's own request
+  continueOnce = true;
+  return { entries: [{ type: "compaction", summary, firstKeptEntryId: null, details: { format: "my-checkpoint" } }] };
+});
+pi.on("agent_before_settle", () => {
+  if (!continueOnce) return;
+  continueOnce = false;
+  return { continue: true };
+});
+```
+
+```go
+ext.OnEvent(sdk.EventAgentBeforeSettle, func(ctx sdk.Context, data map[string]any) (any, error) {
+	if data["outcome"] != "error" || failedEntryID == "" {
+		return nil, nil
+	}
+	return map[string]any{
+		"entries": []any{
+			map[string]any{"type": "context_edit", "targetId": failedEntryID, "replacement": nil},
+			map[string]any{"type": "compaction", "summary": summary, "firstKeptEntryId": promptEntryID},
+		},
+		"continue": true,
+	}, nil
+})
+```
+
+These rules apply to every SDK and to isolated, packed, and fused extensions:
+
+- Return the continuation from `agent_before_settle`. A `continue: true` from `turn_end` does not continue a turn that ended with an error.
+- Remove the failed attempt before you continue. PiG refuses `continue: true` while the failed attempt is the last message of the context, and reports `agent_before_settle requested continuation without runnable model context`.
+- Write `replacement: null` to omit an entry. A `context_edit` draft without the `replacement` member is invalid. PiG reports `Invalid boundary entries: Context edit replacement must be null or contain string/array content` and appends nothing. A `compaction` draft without `firstKeptEntryId` keeps nothing, as a null one does.
+- Count your own attempts. Each `agent_before_settle` result continues once. If the extension does not continue, the run settles with the provider's error.
+- No setting gives an extension the ownership of compaction. The handlers do. When `compaction.enabled` is on, the built-in recovery handles an overflow first, unless a compaction entry is newer than the failed response, as in the first variant. Every compaction that PiG starts asks `session_before_compact` first. This includes the check after the continued response when its usage exceeds the context window. Return `compaction` to supply the result, or `cancel: true` to stop the operation.
+- The failed attempt stays in the session file. A resumed session replays the compacted context without it.
+
+`TestExtensionOwnedCompactionContinuesAfterOverflow` and the parity scenario `session/38-overflow-owner-boundaries` compare each variant with the pinned Pi package.
+
 ## Connection and liveness model
 
 PiG cannot guarantee that an extension connection never fails. An extension process can crash, be killed, deadlock, exhaust a resource, or lose its transport.

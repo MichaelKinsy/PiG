@@ -125,6 +125,10 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 
 ;;; ---------------------------------------------------------------- the context
 
+;;; The context has no function that continues a turn or appends a compaction at a turn's end: a turn_end or agent_before_settle handler does both with its
+;;; result, "entries" (custom, custom_message, context_edit and compaction drafts) and "continue" (one more provider request, no new user message). See "Own
+;;; compaction and continue after an overflow" in the extensions guide.
+
 (defstruct (ctx (:constructor %make-ctx (extension request tool-call-id request-id tool-context-p tool-args tool-index)))
   extension
   request

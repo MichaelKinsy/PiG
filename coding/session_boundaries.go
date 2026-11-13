@@ -266,6 +266,10 @@ func applyBoundaryDrafts(manager *icodingagent.Session, drafts []extension.Sessi
 		case "custom_message":
 			id, err = manager.AppendCustomMessageEntry(draft.CustomType, draft.Content, draft.Display, draft.Details)
 		case "context_edit":
+			if draft.ReplacementUndefined {
+				// upstream: session-manager.ts:1371-1379 (appendContextEdit rejects a replacement that is not null and has no content: undefined is one).
+				return nil, icodingagent.ErrContextEditReplacement
+			}
 			var replacement *icodingagent.ContextEditReplacement
 			if raw := bytes.TrimSpace(draft.Replacement); len(raw) > 0 && !bytes.Equal(raw, []byte("null")) {
 				replacement = &icodingagent.ContextEditReplacement{}
