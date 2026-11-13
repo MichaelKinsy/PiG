@@ -314,7 +314,7 @@ A view client outside the process, such as a web page behind a bridge, can attac
 viewEndpoint: socket
 ```
 
-With `socket`, an interactive session serves the view carrier on the Unix socket `<agent directory>/view-endpoint/<pid>.sock`. Only your own user can connect, and a client can only draw the mounted views and raise the intents they declare: it cannot prompt the agent or read the session. The terminal and every connected client show the same mounts. A reload, a new session and the exit close the connections and remove the socket. `none` is the default: nothing listens. Print, JSON and RPC mode ignore the key, and on Windows no socket is served. The lines a client speaks are in `docs/ui-view-carrier.md`.
+With `socket`, an interactive session serves the view carrier on the Unix socket `<agent directory>/view-endpoint/<pid>.sock`. Only your own user can connect, and a client can only draw the mounted views and raise the intents they declare: it cannot prompt the agent or read the session. The terminal and every connected client show the same mounts. A new session and the exit close the connections and remove the socket; a reload keeps them. `none` is the default: nothing listens. Print, JSON and RPC mode ignore the key, and on Windows no socket is served. The lines a client speaks are in `docs/ui-view-carrier.md`.
 
 ## Origins
 

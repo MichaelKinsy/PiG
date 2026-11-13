@@ -107,6 +107,7 @@ func (e *Endpoint) post(host viewcarrier.Host) {
 	e.ops = append(e.ops, host)
 	if !e.working {
 		e.working = true
+		//portlint:allow golifetime the worker ends when its queue is empty, and Close waits for that through idle
 		go e.work()
 	}
 }
@@ -224,10 +225,9 @@ func (s *server) admit(c net.Conn) {
 		return
 	}
 	s.conns[k] = struct{}{}
-	s.work.Add(2)
+	s.work.Go(k.write)
+	s.work.Go(k.read)
 	s.mu.Unlock()
-	go k.write()
-	go k.read()
 }
 
 // close ends the server: no further connection, every connection closed, the socket removed, every goroutine ended.
@@ -265,7 +265,6 @@ type conn struct {
 
 // read serves the connection's commands until it ends, then ends its attachment.
 func (k *conn) read() {
-	defer k.s.work.Done()
 	carrier := viewcarrier.New(viewcarrier.Transport{
 		Host:    func() viewcarrier.Host { return k.s.host },
 		Write:   k.queue,
@@ -392,7 +391,6 @@ func (k *conn) flushed(ctx context.Context) bool {
 
 // write is the connection's one writer. It alone waits on the client.
 func (k *conn) write() {
-	defer k.s.work.Done()
 	for {
 		k.mu.Lock()
 		for len(k.out) == 0 && !k.closed {

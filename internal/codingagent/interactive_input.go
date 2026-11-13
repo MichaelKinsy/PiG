@@ -99,6 +99,17 @@ func (m *InteractiveMode) emergencyTerminalExit(reason string) {
 	if m.opts.TerminateExtensionProcesses != nil {
 		m.opts.TerminateExtensionProcesses()
 	}
+	// pig additive (D614): the view endpoint's socket does not outlive the session. It writes nothing to the terminal,
+	// and it gets a second: nothing may hold this exit.
+	closed := make(chan struct{})
+	go func() {
+		m.closeViewEndpoint()
+		close(closed)
+	}()
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+	}
 	EndSessionMarker()
 	// Pi's process.exit(129) runs the TUI's exit handler, which restores the terminal modes (9df819de, #11170).
 	tui.RestoreTerminalOnExit()

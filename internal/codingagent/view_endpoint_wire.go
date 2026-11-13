@@ -12,8 +12,9 @@ import (
 // created, served and removed on the endpoint's own goroutines.
 
 // attachViewEndpoint serves the view registry of the bound build's extension bridge on the session's socket. The
-// socket lives as long as the bridge is bound: a reload or a session replacement unbinds it, which closes every
-// connection and removes the socket, and the next bridge is served under the same path.
+// socket lives as long as the bridge is bound: a session replacement unbinds it, which closes every connection and
+// removes the socket, and the next bridge is served under the same path. A reload keeps the bridge, so it keeps the
+// connections.
 func (m *InteractiveMode) attachViewEndpoint(bridge SubprocessUIBridge) {
 	if !m.opts.ViewEndpoint {
 		return

@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -70,6 +71,7 @@ type fixture struct {
 // shortDir returns a directory whose path leaves room for a socket name: a socket address holds 104 bytes on macOS.
 func shortDir(t *testing.T) string {
 	t.Helper()
+	//portlint:allow hardtmp a socket path must stay under the 104-byte sun_path of macOS, which a scoped TMPDIR exceeds
 	dir, err := os.MkdirTemp("/tmp", "ve")
 	if err != nil {
 		t.Fatal(err)
@@ -204,7 +206,8 @@ func (c *client) next() map[string]any {
 	_ = c.c.SetReadDeadline(time.Now().Add(20 * time.Second))
 	line, err := c.r.ReadString('\n')
 	if err != nil {
-		if ne, ok := err.(net.Error); ok && ne.Timeout() {
+		var ne net.Error
+		if errors.As(err, &ne) && ne.Timeout() {
 			c.t.Fatal("the client was written nothing for 20 s")
 		}
 		return nil
@@ -439,15 +442,54 @@ func TestTheDirectoryAndTheSocketMustBeThisUsersOwn(t *testing.T) {
 		stale(t, dead, 0o600)
 		stale(t, live, 0o600)
 		stale(t, note, 0o600)
+		// A socket named for a process that ended, which somebody still serves: a process of another pid namespace.
+		gone2 := exec.Command("true")
+		if err := gone2.Run(); err != nil {
+			t.Skip("no true command")
+		}
+		served := filepath.Join(f.dir, strconv.Itoa(gone2.Process.Pid)+".sock")
+		other, err := net.Listen("unix", served)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = other.Close() }()
+		if err := os.Chmod(served, 0o600); err != nil {
+			t.Fatal(err)
+		}
 		path := f.serve()
 		dial(t, path).attach()
 		if _, err := os.Lstat(dead); err == nil {
 			t.Error("the socket of a process that ended was kept")
 		}
-		for _, kept := range []string{live, note} {
+		for _, kept := range []string{live, note, served} {
 			if _, err := os.Lstat(kept); err != nil {
-				t.Errorf("%s was removed: it is not the socket of a process that ended", kept)
+				t.Errorf("%s was removed: it is not the socket of a process that ended, or somebody serves it", kept)
 			}
+		}
+		if c, err := net.Dial("unix", served); err != nil {
+			t.Errorf("the socket somebody serves no longer accepts: %v", err)
+		} else {
+			_ = c.Close()
+		}
+	})
+	t.Run("a socket somebody serves at the socket's path", func(t *testing.T) {
+		f := newFixture(t)
+		if err := os.Mkdir(f.dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		other, err := net.Listen("unix", filepath.Join(f.dir, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = other.Close() }()
+		if err := os.Chmod(filepath.Join(f.dir, name), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		refused(t, f, "is served by another process")
+		if c, err := net.Dial("unix", filepath.Join(f.dir, name)); err != nil {
+			t.Fatalf("the other process's socket no longer accepts: %v", err)
+		} else {
+			_ = c.Close()
 		}
 	})
 }
@@ -468,8 +510,8 @@ func TestUnbindClosesEveryConnectionAndCloseLeavesNothing(t *testing.T) {
 	first := f.h
 	f.e.Unbind()
 	f.settle()
-	if a.next() != nil && a.next() != nil {
-		t.Fatal("the connection with the intent in flight was not closed")
+	// The connection with the intent in flight ends; next fails the test when it does not.
+	for a.next() != nil {
 	}
 	for b.next() != nil {
 	}
@@ -743,5 +785,32 @@ func TestAClientThatConnectsWhileTheHostIsUnboundIsNeverLeftAttached(t *testing.
 		if h.reg.Abilities() != nil {
 			t.Fatalf("host %d of %d still holds an attachment after it was unbound", i, len(hosts))
 		}
+	}
+}
+
+// pig additive (D614): Close waits for no client. With a client that attached and reads nothing, its queue full and
+// its writer blocked, Close returns at once, the socket is gone and the connection is closed.
+func TestCloseDoesNotWaitForAClientThatDoesNotRead(t *testing.T) {
+	f := newFixture(t)
+	path := f.serve()
+	stalled := dial(t, path)
+	stalled.attach()
+	ref := f.mount("board", "0")
+	pad := strings.Repeat("x", 16<<10)
+	for i := 1; i <= 600; i++ {
+		ref = f.update(ref, strconv.Itoa(i)+pad)
+	}
+	start := time.Now()
+	f.e.Close()
+	if took := time.Since(start); took > 5*time.Second {
+		t.Fatalf("Close took %v with a client that does not read", took)
+	}
+	if _, err := os.Lstat(path); err == nil {
+		t.Fatal("Close left the socket")
+	}
+	if f.h.reg.Abilities() != nil {
+		t.Fatal("Close left the attachment of the client that does not read")
+	}
+	for stalled.next() != nil {
 	}
 }

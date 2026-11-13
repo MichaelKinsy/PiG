@@ -5,6 +5,7 @@ package integration
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -27,6 +28,7 @@ const uiViewEndpointAbilities = `{"slots":["panel","widget-above","widget-below"
 // 108 on Linux, and a test's own temporary directory carries the test's name.
 func uiViewShortHome(t *testing.T) string {
 	t.Helper()
+	//portlint:allow hardtmp a socket path must stay under the 104-byte sun_path of macOS, which a scoped TMPDIR exceeds
 	home, err := os.MkdirTemp("/tmp", "pv")
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +90,8 @@ func (w *uiViewWire) next() (map[string]any, string) {
 	_ = w.c.SetReadDeadline(time.Now().Add(2 * time.Minute))
 	line, err := w.r.ReadString('\n')
 	if err != nil {
-		if ne, ok := err.(net.Error); ok && ne.Timeout() {
+		var ne net.Error
+		if errors.As(err, &ne) && ne.Timeout() {
 			w.t.Fatal("the client was written nothing for 2 minutes")
 		}
 		return nil, ""
@@ -204,35 +207,48 @@ func TestUIViewEndpointClientThatDoesNotReadDoesNotHoldTheTerminal(t *testing.T)
 	}
 }
 
-// A reload and a new session end the registry the clients were attached to: each connection is closed, the socket is
-// removed, and the next extension host is served under the same path with a registry of its own.
-func TestUIViewEndpointReloadAndNewSessionCloseTheConnections(t *testing.T) {
+// A reload keeps the extension host and its registry, so a client on the socket keeps its connection and its
+// attachment and is sent nothing because of the reload: a resync under the same attachment returns the mounts as they
+// are. A new session replaces the host: the connection is closed, the socket removed, and the next host is served under
+// the same path with a registry of its own.
+func TestUIViewEndpointReloadKeepsAndNewSessionClosesTheConnection(t *testing.T) {
 	run := startUIViewAt(t, uiViewShortHome(t), "shared.yaml", "fullscreen", true)
 	path, _ := uiViewSocket(t, run)
-	for _, command := range []string{"reload", "new"} {
-		wire := uiViewDial(t, run)
-		wire.attach()
-		run.send("/vmount\r")
-		run.settle("fixture panel", "Alpha item")
-		panel, _ := wire.until("ui_view", "Alpha item")
-		run.send("/" + command + "\r")
-		if !wire.ended() {
-			t.Fatalf("/%s left the connection open", command)
-		}
-		// The connection is gone, so a command of the old attachment has nowhere to go; the client connects again.
-		again := uiViewDial(t, run)
-		if got, _ := uiViewSocket(t, run); got != path {
-			t.Fatalf("after /%s the socket is %s, was %s", command, got, path)
-		}
-		if snapshots := again.attach(); len(snapshots) != 0 {
-			t.Fatalf("after /%s the new registry holds %d mounts of the old one", command, len(snapshots))
-		}
-		if again.attachment == "" || panel == nil {
-			t.Fatal("no attachment")
-		}
-		run.settle()
-		_ = again.c.Close()
+	wire := uiViewDial(t, run)
+	wire.attach()
+	run.send("/vmount\r")
+	run.settle("fixture panel", "Alpha item")
+	wire.until("ui_view", "Alpha item")
+
+	// The panel's list holds the focus: Escape returns it to the editor, where the command is typed.
+	run.sendKey("Escape")
+	run.settle()
+	run.send("/reload\r")
+	run.settle("Reloaded")
+	wire.send(`{"id":"r","type":"ui_view_resync","attachment":` + wire.attachment + `}`)
+	reply, line := wire.until("response", `"id":"r"`)
+	if reply["success"] != true || !strings.Contains(line, "Alpha item") || !strings.Contains(line, `"state":"live"`) {
+		t.Fatalf("after the reload a resync under the same attachment = %s", line)
 	}
+	if got, _ := uiViewSocket(t, run); got != path {
+		t.Fatalf("after /reload the socket is %s, was %s", got, path)
+	}
+
+	run.send("/new\r")
+	if !wire.ended() {
+		t.Fatal("/new left the connection open")
+	}
+	again := uiViewDial(t, run)
+	if got, _ := uiViewSocket(t, run); got != path {
+		t.Fatalf("after /new the socket is %s, was %s", got, path)
+	}
+	if snapshots := again.attach(); len(snapshots) != 0 {
+		t.Fatalf("after /new the registry holds %d mounts of the session before", len(snapshots))
+	}
+	run.settle()
+	run.send("/vmount\r")
+	run.settle("fixture panel", "Alpha item")
+	again.until("ui_view", "Alpha item")
 }
 
 // The socket is removed when the session ends: by /quit and by each signal that ends pig.
@@ -251,12 +267,15 @@ func TestUIViewEndpointSocketIsRemovedAtExit(t *testing.T) {
 			run := startUIViewAt(t, uiViewShortHome(t), "shared.yaml", "fullscreen", true)
 			wire := uiViewDial(t, run)
 			wire.attach()
+			// A second client that reads nothing must not hold the exit.
+			stalled := uiViewDial(t, run)
+			stalled.attach()
 			path, pid := uiViewSocket(t, run)
 			e.end(run, pid)
 			if !wire.ended() {
 				t.Fatal("the connection outlived the session")
 			}
-			if !waitFor(30*time.Second, func() bool {
+			if !waitFor(15*time.Second, func() bool {
 				_, err := os.Lstat(path)
 				return err != nil && syscall.Kill(pid, 0) != nil
 			}) {

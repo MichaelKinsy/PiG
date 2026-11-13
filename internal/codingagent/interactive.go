@@ -28,8 +28,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/installchange"
-	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/internal/viewendpoint"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // SubprocessUIBridge is the interface satisfied by *subprocess.UIBridge

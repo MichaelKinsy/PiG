@@ -24,6 +24,7 @@ import (
 func BenchmarkUpdateWithSocketClients(b *testing.B) {
 	for _, clients := range []int{0, 1, 7} {
 		b.Run(strconv.Itoa(clients), func(b *testing.B) {
+			//portlint:allow hardtmp a socket path must stay under the 104-byte sun_path of macOS, which a scoped TMPDIR exceeds
 			dir, err := os.MkdirTemp("/tmp", "ve")
 			if err != nil {
 				b.Fatal(err)
@@ -60,19 +61,23 @@ func BenchmarkUpdateWithSocketClients(b *testing.B) {
 				}
 				go func() { _, _ = io.Copy(io.Discard, r) }()
 			}
-			mount, err := uiview.DecodeMount([]byte(`{"key":"board","slot":"panel","view":{"root":{"kind":"text","text":"0"}}}`))
-			if err != nil {
-				b.Fatal(err)
+			// DecodeMount and Mount return *uiview.Error: their results get names of their own, so no nil pointer is
+			// read as a non-nil error.
+			mount, decodeErr := uiview.DecodeMount([]byte(`{"key":"board","slot":"panel","view":{"root":{"kind":"text","text":"0"}}}`))
+			if decodeErr != nil {
+				b.Fatal(decodeErr)
 			}
-			st, err := h.reg.Mount("p", mount)
-			if err != nil {
-				b.Fatal(err)
+			st, mountErr := h.reg.Mount("p", mount)
+			if mountErr != nil {
+				b.Fatal(mountErr)
 			}
 			ref := st.Mount
 			pad := strings.Repeat("x", 2048)
 			b.ReportAllocs()
+			n := 0
 			for b.Loop() {
-				u, err := uiview.DecodeUpdate(fmt.Appendf(nil, `{"mount":{"key":%q,"epoch":%d,"rev":%d},"view":{"root":{"kind":"text","text":%q}}}`, ref.Key, ref.Epoch, ref.Rev, pad))
+				n++
+				u, err := uiview.DecodeUpdate(fmt.Appendf(nil, `{"mount":{"key":%q,"epoch":%d,"rev":%d},"view":{"root":{"kind":"text","text":%q}}}`, ref.Key, ref.Epoch, ref.Rev, strconv.Itoa(n)+pad))
 				if err != nil {
 					b.Fatal(err)
 				}

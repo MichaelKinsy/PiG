@@ -48,7 +48,7 @@ func listen(dir string, uid int) (listener net.Listener, path string, own os.Fil
 	}
 	// A process that had this pid before ended without removing its socket.
 	if !removeStale(path, uid) {
-		return nil, "", nil, fmt.Errorf("%s exists and is not a socket of mode 0600 that this user owns; no view endpoint is served", path)
+		return nil, "", nil, fmt.Errorf("%s exists and is served by another process or is not a socket of mode 0600 that this user owns; no view endpoint is served", path)
 	}
 	// bind fails on a path that exists, a link included, so it creates the socket or nothing. Until the chmod the
 	// socket has the mode the umask leaves it, inside a directory nobody else can enter.
@@ -85,7 +85,9 @@ func listen(dir string, uid int) (listener net.Listener, path string, own os.Fil
 	return listener, path, own, nil
 }
 
-// removeStale removes path when it is this user's own socket and reports whether path is free.
+// removeStale removes path when it is this user's own socket and nobody serves it, and reports whether path is free.
+// The refused connect is the proof that no process serves the socket: a pid proves nothing about a process in another
+// pid namespace that shares the directory.
 func removeStale(path string, uid int) bool {
 	info, err := os.Lstat(path) //perf:ok cold: one stat per bound extension host
 	if errors.Is(err, os.ErrNotExist) {
@@ -94,10 +96,18 @@ func removeStale(path string, uid int) bool {
 	if err != nil || !ours(info, os.ModeSocket, uid) {
 		return false
 	}
+	c, err := net.Dial("unix", path)
+	if err == nil {
+		_ = c.Close()
+		return false
+	}
+	if !errors.Is(err, syscall.ECONNREFUSED) {
+		return false
+	}
 	return os.Remove(path) == nil
 }
 
-// sweep removes the sockets in dir that are named for a process that no longer exists.
+// sweep removes the sockets in dir that are named for a process that no longer exists and that nobody serves.
 func sweep(dir string, uid int) {
 	d, err := os.Open(dir)
 	if err != nil {
