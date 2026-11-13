@@ -105,6 +105,11 @@ allocs = 30
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaReflect"
+allocs = 19
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkAnthropicNativeOAuthLogin"
 allocs = 630
 
@@ -121,7 +126,7 @@ allocs = 2641
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAnthropicSSEInitialBlocks"
-allocs = 2128
+allocs = 1994
 
 [[benchmark]]
 package = "./ai"
@@ -146,12 +151,12 @@ allocs = 7
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAssistantMessageDecode"
-allocs = 95
+allocs = 85
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAssistantMessageEncode"
-allocs = 36
+allocs = 24
 
 [[benchmark]]
 package = "./ai"
@@ -186,7 +191,7 @@ allocs = 0
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAssistantMessageObservation/mixed/marshal-shallow"
-allocs = 329
+allocs = 202
 
 [[benchmark]]
 package = "./ai"
@@ -216,7 +221,7 @@ allocs = 1
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAssistantMessageObservation/text/marshal-shallow"
-allocs = 36
+allocs = 22
 
 [[benchmark]]
 package = "./ai"
@@ -266,82 +271,87 @@ allocs = 4
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/bash/coerced"
-allocs = 18
+allocs = 15
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/bash/coerced/via-tool"
-allocs = 33
+allocs = 30
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/bash/valid"
-allocs = 33
+allocs = 27
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/bash/valid/via-tool"
-allocs = 25
+allocs = 22
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/edit/coerced"
-allocs = 26
+allocs = 20
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/edit/coerced/via-tool"
-allocs = 52
+allocs = 46
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/edit/valid"
-allocs = 65
+allocs = 51
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/edit/valid/via-tool"
-allocs = 48
+allocs = 42
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/read/coerced"
-allocs = 21
+allocs = 16
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/read/coerced/via-tool"
-allocs = 39
+allocs = 34
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/read/valid"
-allocs = 41
-
-[[benchmark]]
-package = "./ai"
-benchmark = "BenchmarkBuiltinToolArgumentValidation/read/valid/via-tool"
 allocs = 32
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/read/valid/via-tool"
+allocs = 27
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/write/coerced"
-allocs = 14
+allocs = 9
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/write/coerced/via-tool"
-allocs = 29
+allocs = 24
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/write/valid"
-allocs = 36
+allocs = 30
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkBuiltinToolArgumentValidation/write/valid/via-tool"
-allocs = 27
+allocs = 24
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkCatalogModelJSONAll"
+allocs = 30688
 
 [[benchmark]]
 package = "./ai"
@@ -431,7 +441,7 @@ allocs = 1092
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCredentialProviderKeyRewrite"
-allocs = 498
+allocs = 460
 
 [[benchmark]]
 package = "./ai"
@@ -471,12 +481,12 @@ allocs = 18
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkFileModelsStoreCachedCatalog/4096"
-allocs = 643208
+allocs = 389253
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkFileModelsStoreCachedCatalog/8"
-allocs = 1285
+allocs = 787
 
 [[benchmark]]
 package = "./ai"
@@ -560,8 +570,13 @@ allocs = 0
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkMistralParseEvent"
+allocs = 16
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkMistralReplayTransform"
-allocs = 1925
+allocs = 1540
 
 [[benchmark]]
 package = "./ai"
@@ -571,7 +586,7 @@ allocs = 68
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkMistralWirePayload"
-allocs = 305
+allocs = 28
 
 [[benchmark]]
 package = "./ai"
@@ -720,48 +735,98 @@ allocs = 3
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/orderedCatalogPairs/jsontext"
+allocs = 38
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/orderedCatalogPairs/v1"
+allocs = 69
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/orderedJSONObject/jsontext"
+allocs = 41
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/orderedJSONObject/v1"
+allocs = 62
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/parseStoredModels/jsontext"
+allocs = 41
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/parseStoredModels/v1"
+allocs = 62
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/readJSONObjectMembers/jsontext"
+allocs = 41
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/readJSONObjectMembers/v1"
+allocs = 62
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/readSchemaObjectOrder/jsontext"
+allocs = 81
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkOrderedObjectReaders/readSchemaObjectOrder/v1"
+allocs = 150
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkOrderedToolSchemaRoundTrip"
-allocs = 348
+allocs = 320
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPAOpenAIReasoningDetails/encrypted/n=10"
-allocs = 718
+allocs = 649
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPAOpenAIReasoningDetails/encrypted/n=100"
-allocs = 6352
+allocs = 5653
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPAOpenAIReasoningDetails/encrypted/n=1000"
-allocs = 63171
+allocs = 56168
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPAOpenAIReasoningDetails/encrypted/n=10000"
-allocs = 630743
+allocs = 560741
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPAOpenAIReasoningDetails/mergedtext/n=10"
-allocs = 511
+allocs = 462
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPAOpenAIReasoningDetails/mergedtext/n=100"
-allocs = 4118
+allocs = 3619
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPAOpenAIReasoningDetails/mergedtext/n=1000"
-allocs = 40156
+allocs = 35157
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkPAOpenAIReasoningDetails/mergedtext/n=10000"
-allocs = 400464
+allocs = 350463
 
 [[benchmark]]
 package = "./ai"
@@ -786,7 +851,7 @@ allocs = 10684
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderRequestLongHistory/mistral-text"
-allocs = 3335
+allocs = 2935
 
 [[benchmark]]
 package = "./ai"
@@ -880,6 +945,16 @@ allocs = 65870
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkRequestBodyWrite/copy"
+allocs = 91
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkRequestBodyWrite/vectored"
+allocs = 103
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkRequestLargeWriteFollowUp/completions"
 allocs = 81
 
@@ -887,6 +962,31 @@ allocs = 81
 package = "./ai"
 benchmark = "BenchmarkRequestLargeWriteFollowUp/responses"
 allocs = 37
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkResolveCatalogRecordAllAfterGC"
+allocs = 0
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkResolveCatalogRecordAlternateChunks"
+allocs = 8
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkResolveCatalogRecordParallel"
+allocs = 1
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkResolveCatalogRecordSameRow"
+allocs = 4
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkResolveCatalogRecordSequentialAll"
+allocs = 89
 
 [[benchmark]]
 package = "./ai"
@@ -906,12 +1006,12 @@ allocs = 1202
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkRuntimeCredentialEnumeration/256"
-allocs = 7825
+allocs = 6596
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkRuntimeCredentialEnumeration/3"
-allocs = 108
+allocs = 93
 
 [[benchmark]]
 package = "./ai"
@@ -960,6 +1060,11 @@ allocs = 30
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkSplicedBodyOfEqualToolOutputs"
+allocs = 395
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkStreamToolCallArguments/anthropic/250KB"
 allocs = 289061
 
@@ -996,7 +1101,7 @@ allocs = 276
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkStreamingToolJSONRepair"
-allocs = 797
+allocs = 734
 
 [[benchmark]]
 package = "./ai"
@@ -1006,32 +1111,32 @@ allocs = 31
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkThinkingSignatureJSON/#00"
-allocs = 37
+allocs = 32
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkThinkingSignatureJSON/,\"thinkingSignature\":\"\""
-allocs = 15
+allocs = 10
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkThinkingSignatureJSON/,\"thinkingSignature\":\"signed\""
-allocs = 16
+allocs = 11
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkToolArgumentValidation/edits-1"
-allocs = 62
+allocs = 53
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkToolArgumentValidation/edits-1000"
-allocs = 14022
+allocs = 11019
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkToolArgumentValidation/read"
-allocs = 45
+allocs = 37
 
 [[benchmark]]
 package = "./ai"
@@ -1051,7 +1156,7 @@ allocs = 64
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkToolResultMessageEncode"
-allocs = 50
+allocs = 43
 
 [[benchmark]]
 package = "./ai"
