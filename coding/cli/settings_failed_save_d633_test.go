@@ -24,7 +24,7 @@ func holdSettingsLock(t *testing.T, dir string) {
 	if err := os.Mkdir(lock, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	ahead := time.Now().Add(time.Hour)
+	ahead := time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC)
 	if err := os.Chtimes(lock, ahead, ahead); err != nil {
 		t.Fatal(err)
 	}
