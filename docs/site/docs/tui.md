@@ -169,14 +169,20 @@ When the active Piglet sets `viewClient: terminal` (PiG Standard does), an exten
 | Above the editor, after the widgets | views mounted in the `widget-above` slot, at most 10 rows each |
 | Directly above the editor | panels (the `panel` slot), at most half the terminal's rows each |
 | Below the editor, after the widgets | views mounted in the `widget-below` slot, at most 10 rows each |
+| Over the screen, in a titled frame | dialogs (the `dialog` slot), eight tenths of the terminal's columns and rows |
 
 | Key | Effect |
 |---|---|
 | F6 | Move the focus from the editor to the first panel that takes keys, then to the next, then back to the editor. |
 | Escape in a panel | Return the focus to the editor. A second Escape interrupts the agent as usual. |
 | Up, Down, Enter and typing in a panel | Go to the panel's list or input. |
+| Keys in a dialog | Go to the dialog's list or input, then to the keys the dialog names on its last row. |
+| Escape in a dialog | Ask the dialog's extension to close it, when the extension takes that request: the dialog closes if the extension closes it. In every other dialog, and at a second Escape in a dialog that is still open, return the focus to the editor: the dialog folds into one row above the editor, `<title>: F6 to enter`, until its extension closes it. The next Escape interrupts the agent as usual. |
+| F6 while a dialog is open | Open the dialog again with the focus, or leave it for the editor. |
 
-In fullscreen mode a click on a panel focuses it. A view taller than its place ends with `... (view truncated)`. F6 is a fixed key and is active only while a panel that takes keys is on screen.
+In fullscreen mode a click on a panel focuses it. A view taller than its place ends with `... (view truncated)`. F6 is a fixed key and is active only while a panel that takes keys or a dialog is on screen.
+
+A dialog's frame is on the screen only while a dialog has the keyboard, so it never covers what you type. A dialog opens with the keyboard unless you are typing in the editor: then it waits as the row above the editor and F6 opens it.
 
 ## Focused custom components
 

@@ -1,0 +1,10 @@
+{"id":"w3","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":1},"intent":"demo.pick","arg":{"value":"green"},"nodeKey":"colors"}
+{"id":"w4","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":2},"intent":"demo.pick","arg":{"value":"blue"},"nodeKey":"colors"}
+{"id":"w5","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":3},"intent":"demo.tap","arg":{},"nodeKey":"tap"}
+{"id":"w6","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":4},"intent":"demo.tap","arg":{},"nodeKey":"tap"}
+{"id":"w7","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":5},"intent":"demo.tap","arg":{},"nodeKey":"tap"}
+{"id":"w8","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":6},"intent":"demo.rename","arg":{"value":"Ada"},"nodeKey":"name"}
+{"id":"w9","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":7},"intent":"demo.pref","arg":{"item":"wrap","value":"off"},"nodeKey":"prefs"}
+{"id":"w10","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":8},"intent":"demo.pref","arg":{"item":"wrap","value":"on"},"nodeKey":"prefs"}
+{"id":"w11","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":9},"intent":"demo.note","arg":{"value":"a note"},"nodeKey":"notes"}
+{"id":"w12","type":"ui_view_intent","attachment":1,"plugin":"demo-extension","mount":{"key":"demo","epoch":1,"rev":10},"intent":"demo.close","arg":{}}

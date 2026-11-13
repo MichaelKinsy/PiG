@@ -14,7 +14,7 @@ import (
 // drives each remaining ai.OpenAICompat field (requiresToolResultName and its siblings) through mergeCompat with the three states
 // the spread distinguishes: the override wins over a base value, the base survives an override that leaves the key out, and the
 // override supplies a key the base lacks.
-// mutation-checked: the mutant "mergeCompat ignores the override's RequiresToolResultName" (model_registry.go:1820-1822) fails it.
+// mutation-checked: the mutant "mergeCompat ignores the override's RequiresToolResultName" (ai/openai_compat_objects.go MergeOpenAICompat) fails it.
 func TestMergeCompatSpreadsEveryScalarCompatField(t *testing.T) {
 	nested := map[string]bool{"OpenRouterRouting": true, "ChatTemplateKwargs": true, "VercelGatewayRouting": true, "ChatTemplateArgs": true}
 	typ := reflect.TypeFor[ai.OpenAICompat]()
@@ -46,7 +46,8 @@ func TestMergeCompatSpreadsEveryScalarCompatField(t *testing.T) {
 	}
 	for i := range typ.NumField() {
 		name := typ.Field(i).Name
-		if nested[name] {
+		// The unexported member order of the nested objects is merged with them (ai TestMergeOpenAICompatSpreadsObjectMembers).
+		if nested[name] || !typ.Field(i).IsExported() {
 			continue
 		}
 		t.Run(name, func(t *testing.T) {

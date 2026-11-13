@@ -907,6 +907,25 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                              (attempt "gesture" (list (pig:obj "gesture" "pinch" "intent" "fx.tap")))
                              (attempt "arg" (list (b-go "a" "x")))
                              (attempt "ok" (list (b-go "ctrl+shift+p" n) (b-go "shift+ctrl+q" (1+ n))))))))))
+      ;; D614 slot dialog: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDialog).
+      (pig:command ext "ui_view_dialog" "Mount a titled view with a bound key in the dialog slot, hide it and show it"
+                   (lambda (ctx args)
+                     (let* ((space (position #\Space args))
+                            (key (subseq args 0 space))
+                            (n (parse-integer args :start (1+ space)))
+                            (st (handler-case
+                                    (pig:ctx-mount-view ctx "dlg" "dialog" (view-text ctx "-dlg")
+                                                        :title (format nil "Chart ~D" n)
+                                                        :intents (list (pig:view-intent "fx.add" (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n"))
+                                                                                        :answer (pig:view-shape "object" :properties (list (cons "sum" int)) :required '("sum"))))
+                                                        :bindings (list (pig:obj "key" key "intent" "fx.add" "arg" (pig:obj "n" n))))
+                                  (pig:host-call-error (e) (pig:host-call-error-code e)))))
+                       (if (stringp st)
+                           (kp-notify ctx (format nil "view-d-mounted:~A" st))
+                           (let ((mount (pig:view-status-mount st)))
+                             (kp-notify ctx (format nil "view-d-mounted:~A" (pig:view-status-state st)))
+                             (kp-notify ctx (format nil "view-d-hidden:~A" (pig:view-status-state (pig:ctx-hide-view ctx mount))))
+                             (kp-notify ctx (format nil "view-d-shown:~A" (pig:view-status-state (pig:ctx-show-view ctx mount)))))))))
       ;; D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
       (flet ((tap () (pig:view-intent "fx.tap" (pig:view-shape "object")))
              (closing (name &rest members)

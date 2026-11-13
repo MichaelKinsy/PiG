@@ -1214,6 +1214,25 @@ export default function (pi) {
     await attempt("arg", [goTo("a", "x")]);
     await attempt("ok", [goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n + 1)]);
   } });
+  // D614 slot dialog: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDialog).
+  pi.registerCommand("ui_view_dialog", { description: "Mount a titled view with a bound key in the dialog slot, hide it and show it", handler: async (args, ctx) => {
+    const [key, number] = args.split(" ");
+    const n = Number(number);
+    let st;
+    try {
+      st = await ctx.ui.mountView({
+        key: "dlg", slot: "dialog", title: `Chart ${n}`, view: viewText(ctx, "-dlg"),
+        intents: [{ name: "fx.add", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] }, answer: { type: "object", properties: { sum: { type: "integer" } }, required: ["sum"] } }],
+        bindings: [{ key, intent: "fx.add", arg: { n } }],
+      });
+    } catch (err) {
+      ctx.ui.notify(`view-d-mounted:${err.code}`, "info");
+      return;
+    }
+    ctx.ui.notify(`view-d-mounted:${st.state}`, "info");
+    ctx.ui.notify(`view-d-hidden:${(await ctx.ui.hideView(st.mount)).state}`, "info");
+    ctx.ui.notify(`view-d-shown:${(await ctx.ui.showView(st.mount)).state}`, "info");
+  } });
   // D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
   pi.registerCommand("ui_view_dismiss", { description: "Mount a dialog with a dismiss intent and probe what the host refuses", handler: async (args, ctx) => {
     const object = { type: "object" };

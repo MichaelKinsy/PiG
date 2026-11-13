@@ -54,10 +54,20 @@ func apiModelOf(definition *extension.ProviderModelConfig, provider string, cost
 	if provider == "" || definition.ID == "" || definition.API == "" {
 		return nil, fmt.Errorf("API model requires provider, id and api")
 	}
+	// The model object as the extension wrote it gives the member order of its sampling parameters and compat objects; a model that reached
+	// here as a decoded map has lost it, and its maps are sent sorted.
+	raw, _ := definition.Definition()
+	samplingOrder, samplingLevelOrder := decodeSamplingOrder(raw)
 	var compat *ai.ModelCompat
 	if definition.Compat != nil {
 		if err := subprocessDecodeJSON(definition.Compat, &compat, "API model.compat"); err != nil {
 			return nil, err
+		}
+		var written struct {
+			Compat *ai.ModelCompat `json:"compat"`
+		}
+		if json.Unmarshal(raw, &written) == nil && written.Compat != nil {
+			compat = written.Compat
 		}
 	}
 	var thinking ai.ThinkingLevel
@@ -67,7 +77,7 @@ func apiModelOf(definition *extension.ProviderModelConfig, provider string, cost
 	return &ai.Model{
 		ID: definition.ID, DisplayName: definition.Name,
 		Input: definition.Input, InputLimits: definition.InputLimits,
-		ThinkingLevelMap: definition.ThinkingLevelMap, SamplingParams: definition.SamplingParams, SamplingParamsByThinkingLevel: definition.SamplingParamsByThinkingLevel, PromptCache: definition.PromptCache,
+		ThinkingLevelMap: definition.ThinkingLevelMap, SamplingParams: definition.SamplingParams, SamplingParamsByThinkingLevel: definition.SamplingParamsByThinkingLevel, SamplingParamsOrder: samplingOrder, SamplingParamsByThinkingLevelOrder: samplingLevelOrder, PromptCache: definition.PromptCache,
 		ProviderMeta: ai.ProviderMetadata{ProviderID: provider, API: definition.API, BaseURL: definition.BaseURL, Headers: definition.Headers, Compat: compat, Reasoning: definition.Reasoning},
 		Capabilities: ai.ModelCapabilities{
 			MaxThinking: thinking, SupportsImages: slices.Contains(definition.Input, "image"), SupportsToolUse: true,

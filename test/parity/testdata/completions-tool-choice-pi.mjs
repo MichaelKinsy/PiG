@@ -23,6 +23,6 @@ for (const test of cases) {
     if(test.strict) context.tools = tools.map(tool=>({...tool,constrainedSampling:{type:"json_schema",strict:"prefer"}}));
     const result=await (test.raw?complete:completeSimple)(model,context,options);
     if(result.stopReason==="error") throw new Error(result.errorMessage);
-    console.log(JSON.stringify({case:test.name,choice:body.tool_choice??null,toolStream:body.tool_stream??null,thinking:body.thinking?{clear_thinking:body.thinking.clear_thinking,type:body.thinking.type}:null,effort:body.reasoning_effort??null,reasoning:body.reasoning??null,role:body.messages[0].role,required:body.tools?.[0]?.function?.parameters?.required??null,strict:body.tools?.[0]?.function?.strict??null}));
+    console.log(JSON.stringify({case:test.name,choice:body.tool_choice??null,toolStream:body.tool_stream??null,thinking:body.thinking??null,effort:body.reasoning_effort??null,reasoning:body.reasoning??null,role:body.messages[0].role,required:body.tools?.[0]?.function?.parameters?.required??null,strict:body.tools?.[0]?.function?.strict??null}));
   } finally {await new Promise(resolve=>server.close(resolve));}
 }

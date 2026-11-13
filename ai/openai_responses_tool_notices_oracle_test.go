@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // pi: packages/ai/src/api/openai-responses-shared.ts renderIncrementalToolsNotice, renderToolRemovalNotice
@@ -154,7 +153,7 @@ func TestOpenAIResponsesToolChangeNoticesMatchPi(t *testing.T) {
 		add(fmt.Sprintf("random %d", i), json.RawMessage(context))
 	}
 	want := piPayloads(t, "testdata/openai_responses_payload.mjs", probes)
-	failures := 0
+	failures, reordered := 0, 0
 	classes := map[string]int{}
 	var notices, stillUnavailable, multiStillUnavailable, removals, multiRemovals int
 	for i, p := range probes {
@@ -190,7 +189,7 @@ func TestOpenAIResponsesToolChangeNoticesMatchPi(t *testing.T) {
 		}
 		var got string
 		options := ai.StreamOptions{APIKey: p.APIKey, OnPayload: func(payload any, _ *ai.Model) (any, error) {
-			encoded, err := sdkjson.Marshal(payload)
+			encoded, err := ai.MarshalRequestBody(payload)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -205,9 +204,13 @@ func TestOpenAIResponsesToolChangeNoticesMatchPi(t *testing.T) {
 			t.Fatalf("%s: PiG produced no payload", labels[i])
 		}
 		comparePayload(t, labels[i], got, want[i], &failures, classes)
+		comparePayloadBytes(t, labels[i], got, want[i], &reordered)
 	}
 	if failures > 0 {
 		t.Fatalf("%d of %d probes differ from Pi: %v", failures, len(probes), classes)
+	}
+	if reordered > 0 {
+		t.Errorf("%d of %d probes write Pi's payload in another member order", reordered, len(probes))
 	}
 	// The denominators come from Pi's payloads: a corpus that never reached a branch would pass it vacuously.
 	for name, count := range map[string]int{"incremental notices": notices, "Still unavailable lines": stillUnavailable, "multi-name Still unavailable lines": multiStillUnavailable, "removal notices": removals, "multi-name removal notices": multiRemovals} {

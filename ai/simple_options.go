@@ -206,7 +206,7 @@ func ClampMaxTokensToContext(model *Model, context TranscriptContext, maxTokens 
 }
 
 // ResolveSamplingParams merges the model's sampling defaults, the overrides for the effective thinking level, and the request's sampling keys, later keys winning. The level is first clamped to one the model supports. It returns nil when none of the three is set.
-// Mirrors upstream resolveSamplingParams (simple-options.ts:24-34).
+// Mirrors upstream resolveSamplingParams (simple-options.ts:37-47).
 func ResolveSamplingParams(model *Model, thinkingLevel ModelThinkingLevel, requestParams SamplingParams) SamplingParams {
 	var defaults SamplingParams
 	var levelParams SamplingParams

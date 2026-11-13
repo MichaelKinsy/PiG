@@ -46,6 +46,9 @@ type OpenAIConfig struct {
 	SamplingParams map[string]any
 	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level.
 	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
+	// SamplingParamsOrder and SamplingParamsByThinkingLevelOrder are Model.SamplingParamsOrder and Model.SamplingParamsByThinkingLevelOrder.
+	SamplingParamsOrder                []string
+	SamplingParamsByThinkingLevelOrder map[ModelThinkingLevel][]string
 	// Env holds provider-scoped environment overrides that take precedence over
 	// the process environment when resolving provider configuration such as
 	// PI_CACHE_RETENTION and Cloudflare base-URL placeholders. Mirrors the
@@ -167,6 +170,10 @@ type OpenAICompat struct {
 	// Extra holds the members PiG does not model, as written. Pi's compat schemas allow additional properties and a compat object keeps
 	// them (model-config.ts getProvider, provider-composer.ts mergeCompat), so a custom API can read its own compat settings.
 	Extra map[string]json.RawMessage `json:"-"`
+	// objectOrder is the member order of OpenRouterRouting, ChatTemplateKwargs and ChatTemplateArgs, nested objects included, where the JSON the
+	// compat was decoded from or a merge of two compats lists them in another order than the sorted one encoding/json writes. A compat
+	// built in Go has none.
+	objectOrder schemaObjectOrder
 }
 
 func ptrBool(v bool) *bool { return new(v) }
@@ -230,7 +237,7 @@ func (p *openAIProvider) thinkingModel() *Model {
 
 // samplingModel is the model view resolveSamplingParams reads: reasoning support and the thinking map clamp the level, and the configured defaults and per-level overrides are merged.
 func (p *openAIProvider) samplingModel(reasoning bool) *Model {
-	model := &Model{SamplingParams: p.cfg.SamplingParams, SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel}
+	model := &Model{SamplingParams: p.cfg.SamplingParams, SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel, SamplingParamsOrder: p.cfg.SamplingParamsOrder, SamplingParamsByThinkingLevelOrder: p.cfg.SamplingParamsByThinkingLevelOrder}
 	if reasoning {
 		model.ProviderMeta.Reasoning = true
 		model.ThinkingLevelMap = p.thinkingModel().ThinkingLevelMap
@@ -337,18 +344,22 @@ func (p *openAIProvider) Close() error { return nil }
 // ─── Request / response wire types ───────────────────────────────────────────
 
 type oaiMessage struct {
-	Role             string               `json:"role"`
-	Content          any                  `json:"content"` // string | []oaiContentPart
-	ToolCallID       string               `json:"tool_call_id,omitempty"`
-	ToolName         string               `json:"name,omitempty"` // for tool results when requiresToolResultName=true
+	Role       string `json:"role"`
+	Content    any    `json:"content"` // string | []oaiContentPart
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	ToolName   string `json:"name,omitempty"` // for tool results when requiresToolResultName=true
+	// The field a thinking block replays under is assigned before tool_calls (openai-completions.ts:1342, :1356).
+	Reasoning        string               `json:"reasoning,omitempty"`
+	ReasoningContent *string              `json:"reasoning_content,omitempty"`
+	ReasoningText    string               `json:"reasoning_text,omitempty"`
 	ToolCalls        []oaiRequestToolCall `json:"tool_calls,omitempty"`
 	ReasoningDetails []json.RawMessage    `json:"reasoning_details,omitempty"`
-	ReasoningContent *string              `json:"reasoning_content,omitempty"`
-	Reasoning        string               `json:"reasoning,omitempty"`
-	ReasoningText    string               `json:"reasoning_text,omitempty"`
 	// Tools makes a tool-bearing system message that loads tools in place
 	// (Kimi mid-conversation tool additions).
 	Tools []oaiTool `json:"tools,omitempty"`
+	// reasoningContentLast marks the empty reasoning_content of compat.requiresReasoningContentOnAssistantMessages, which Pi assigns
+	// after tool_calls and reasoning_details (openai-completions.ts:1383-1387).
+	reasoningContentLast bool
 }
 
 // MarshalJSON sends a tool-bearing system message as {role, tools} without
@@ -364,13 +375,24 @@ func (message oaiMessage) MarshalJSON() ([]byte, error) {
 
 func (message oaiMessage) wire() any {
 	type wire oaiMessage
-	if message.Tools == nil {
-		return wire(message)
+	switch {
+	case message.Tools != nil:
+		return struct {
+			Role  string    `json:"role"`
+			Tools []oaiTool `json:"tools"`
+		}{message.Role, message.Tools}
+	case message.reasoningContentLast:
+		return struct {
+			Role             string               `json:"role"`
+			Content          any                  `json:"content"`
+			Reasoning        string               `json:"reasoning,omitempty"`
+			ReasoningText    string               `json:"reasoning_text,omitempty"`
+			ToolCalls        []oaiRequestToolCall `json:"tool_calls,omitempty"`        //portlint:allow emptydrop Pi sets tool_calls only when the message has calls (openai-completions.ts:1355)
+			ReasoningDetails []json.RawMessage    `json:"reasoning_details,omitempty"` //portlint:allow emptydrop Pi sets reasoning_details only when it kept some (openai-completions.ts:1378)
+			ReasoningContent *string              `json:"reasoning_content,omitempty"`
+		}{message.Role, message.Content, message.Reasoning, message.ReasoningText, message.ToolCalls, message.ReasoningDetails, message.ReasoningContent}
 	}
-	return struct {
-		Role  string    `json:"role"`
-		Tools []oaiTool `json:"tools"`
-	}{message.Role, message.Tools}
+	return wire(message)
 }
 
 // oaiCacheControl mirrors Anthropic's cache_control annotation.
@@ -546,6 +568,13 @@ type oaiRequest struct {
 	// preferences. Mirrors openai-completions.ts:988-1000.
 	Provider        any `json:"provider,omitempty"`
 	ProviderOptions any `json:"providerOptions,omitempty"`
+}
+
+// oaiThinkingToggle is the `thinking` member of the zai and deepseek formats, with the members in the order of Pi's literals
+// (openai-completions.ts:876, :917-919).
+type oaiThinkingToggle struct {
+	Type          string `json:"type"`
+	ClearThinking *bool  `json:"clear_thinking,omitempty"`
 }
 
 // SSE chunk types
@@ -865,6 +894,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 			}
 			if options.reasoningContentOnAssistant && converted.ReasoningContent == nil {
 				converted.ReasoningContent = new("")
+				converted.reasoningContentLast = true
 			}
 			// An assistant message needs content or tool calls; reasoning fields alone do not keep it.
 			hasContent := false
@@ -1491,6 +1521,10 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		return nil, err
 	}
 	msgs, tools, grammarProps := conversion.chat, conversion.tools.RequestTools, conversion.grammarProps
+	if msgs == nil {
+		// convertMessages returns an array: a transcript that converts to no message is "messages":[] (openai-completions.ts:804-806, :816-818).
+		msgs = []oaiMessage{}
+	}
 
 	req := oaiRequest{
 		Model:    cmp.Or(p.cfg.requestModel, p.cfg.Model),
@@ -1613,9 +1647,9 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		case "zai":
 			if reasoningOn {
 				// Z.ai clears prior-turn reasoning_content by default; Pi opts out.
-				req.Thinking = map[string]any{"type": "enabled", "clear_thinking": false}
+				req.Thinking = oaiThinkingToggle{Type: "enabled", ClearThinking: new(false)}
 			} else {
-				req.Thinking = map[string]any{"type": "disabled"}
+				req.Thinking = oaiThinkingToggle{Type: "disabled"}
 			}
 			if reasoningOn && supportsRE {
 				if mapped, exists := model.ThinkingLevelMap[ModelThinkingLevel(clamped)]; !exists || mapped != nil {
@@ -1626,14 +1660,14 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			req.EnableThinking = &reasoningOn
 			req.ReasoningEffort = qwenReasoningEffort(reasoningOn, supportsRE, mappedEffort)
 		case "qwen-chat-template":
-			req.ChatTemplateKwargs = map[string]any{"enable_thinking": reasoningOn, "preserve_thinking": true}
+			req.ChatTemplateKwargs = oaiQwenChatTemplateKwargs{EnableThinking: reasoningOn, PreserveThinking: true}
 		case "chat-template":
 			if resolved := resolveChatTemplateValues(p.compat().ChatTemplateKwargs, reasoningOn, templateEffort, thinkingBudget); resolved != nil {
-				req.ChatTemplateKwargs = resolved
+				req.ChatTemplateKwargs = p.compat().requestObject(resolved, "chatTemplateKwargs")
 			}
 		case "baseten":
 			if resolved := resolveChatTemplateValues(p.compat().ChatTemplateArgs, reasoningOn, templateEffort, thinkingBudget); resolved != nil {
-				req.ChatTemplateArgs = resolved
+				req.ChatTemplateArgs = p.compat().requestObject(resolved, "chatTemplateArgs")
 			}
 			// openai-completions.ts:919-924: the requested level's mapped value, or the off value when reasoning is off; a null entry is unsupported and an absent off entry sends nothing.
 			if value, emit := templateEffort(); supportsRE && emit {
@@ -1641,11 +1675,11 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			}
 		case "deepseek":
 			if reasoningOn {
-				req.Thinking = map[string]any{"type": "enabled"}
+				req.Thinking = oaiThinkingToggle{Type: "enabled"}
 			} else if _, emit := offEffort(); emit {
 				// 0.79.5: suppress thinking:{disabled} when thinkingLevelMap.off is
 				// explicitly null; still send it when off is absent or a value.
-				req.Thinking = map[string]any{"type": "disabled"}
+				req.Thinking = oaiThinkingToggle{Type: "disabled"}
 			}
 			if reasoningOn && supportsRE {
 				req.ReasoningEffort = new(mappedEffort())
@@ -1705,7 +1739,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// OpenRouter provider routing preferences. Mirrors openai-completions.ts:613
 	// (no baseURL gate as of 0.79.1: applies whenever compat sets it).
 	if p.compat().OpenRouterRouting != nil {
-		req.Provider = p.compat().OpenRouterRouting
+		req.Provider = p.compat().requestObject(p.compat().OpenRouterRouting, "openRouterRouting")
 	}
 	// Vercel AI Gateway provider routing preferences. Pi applies them to every request whose compat sets them, with no base URL gate (openai-completions.ts:992-1001).
 	if p.compat().VercelGatewayRouting != nil && (p.compat().VercelGatewayRouting.Only != nil || p.compat().VercelGatewayRouting.Order != nil) {
@@ -1745,7 +1779,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 
 	payload := any(req)
 	// Last so model and request sampling parameters override named request fields (openai-completions.ts:1004-1007).
-	if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams); samplingParams != nil {
+	if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams, opts.SamplingParamsOrder); samplingParams != nil {
 		assigned, err := assignSamplingParams(req, oaiRequestLiteralKeys, keys, samplingParams)
 		if err != nil {
 			return nil, fmt.Errorf("openai: %w", err)
@@ -1837,6 +1871,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	requestContext, abort := context.WithCancel(httpReq.Context())
 	builder.abort = abort
 	httpReq = httpReq.WithContext(requestContext)
+	//portlint:allow asyncorder Pi's stream() starts a detached async IIFE and returns the stream (openai-completions.ts:320, :717); the stream owns this goroutine, which sends the request and runs the body pipeline as a turn of the stream's continuation executor (responseTurn in streamResponse), the ordering point with the consumer; coding's TestRPC33ObservationMatrix holds every observation of an immediate, delayed or held consumer of this API to Pi's
 	go builder.runResponse(func() error { return p.streamResponse(ctx, httpReq, opts, builder, grammarProps) })
 	return builder.stream, nil
 }
