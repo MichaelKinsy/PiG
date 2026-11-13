@@ -7095,9 +7095,10 @@
         "internal/codingagent/session_selector_async_test.go#TestSessionSelectorLoadCancellationAndFailure",
         "internal/codingagent/session_selector_owner_test.go#TestSessionSelectorAsyncOwnerLoops",
         "test/parity/scenarios/session/31-session-selector-path-delete.toml",
-        "test/parity/scenarios/session/32-session-selector-async-scopes.toml"
+        "test/parity/scenarios/session/32-session-selector-async-scopes.toml",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestUpstreamSessionSelectorKeepsTheNextSessionSelectedWhenAProgressiveReloadAfterDeleteStartsWithAnotherSession"
       ],
-      "rationale": "All eight original sites (108,132,156,187,219,253,289,328) pass on the composed union of 7f1804e9e and 0ffc8b3d7 under -race -count=1. The six synchronous cases retain query/delete variants, clear-before-delete, active-row rejection and canonical symlink/subtree ordering. Both async cases retain Current scope after late All completion and preserve one progressive All load with touched selection. Synchronous fixtures await immediate loader settlement without restoring the old active-row filter. Additional owner-loop, cancellation, failure, progress and completed-signal guards pass. This closes the eight-case file, not unrelated selector mutation lifecycle obligations."
+      "rationale": "All eight original sites (108,132,156,187,219,253,289,328) pass on the composed union of 7f1804e9e and 0ffc8b3d7 under -race -count=1. The six synchronous cases retain query/delete variants, clear-before-delete, active-row rejection and canonical symlink/subtree ordering. Both async cases retain Current scope after late All completion and preserve one progressive All load with touched selection. Synchronous fixtures await immediate loader settlement without restoring the old active-row filter. Additional owner-loop, cancellation, failure, progress and completed-signal guards pass. This closes the eight-case file, not unrelated selector mutation lifecycle obligations. Pi a635f3901 (#12111) adds a ninth case at :359, `keeps the next session selected when a progressive reload after delete starts with another session`, ported with its real files and deletion (red before the port: s5 selected, not s2); the hash stays the pin's, which the inventory holds, and the file at a635f3901 is sha256:abf76fa56532f56a1e9b46d8b8075f27cc06fc546e7f4cc8e637e3473152e5a9."
     },
     {
       "path": "packages/coding-agent/test/session-selector-rename.test.ts",
@@ -7108,9 +7109,10 @@
         "internal/codingagent/session_selector_rename_lifecycle_test.go",
         "tui/text_input_rename_utf16_test.go#TestInputSetTextRetainsUTF16Cursor",
         "test/parity/scenarios/session/10-session-selector-rename.toml",
-        "docs/parity/session-selector-rename.md"
+        "docs/parity/session-selector-rename.md",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession"
       ],
-      "rationale": "All three original cases41/60/79 preserve the exact sessions, hint assertions, Kitty Ctrl+R, X, Enter, rename-mode assertions and single callback(path,XOld). The published Pi0.87.1 adapter executes unchanged original bodies. The shared Input preserves/clamps UTF-16 offsets, including surrogate-half insertion and deletion. Five compiling mutations fail hints, cursor retention, scalar rounding, persistent Input and blank-submit guards; three also fail the exact-output Pi pair. This closes the three-case test file, not every selector storage/error/refresh lifecycle."
+      "rationale": "All three original cases41/60/79 preserve the exact sessions, hint assertions, Kitty Ctrl+R, X, Enter, rename-mode assertions and single callback(path,XOld). The published Pi0.87.1 adapter executes unchanged original bodies. The shared Input preserves/clamps UTF-16 offsets, including surrogate-half insertion and deletion. Five compiling mutations fail hints, cursor retention, scalar rounding, persistent Input and blank-submit guards; three also fail the exact-output Pi pair. This closes the three-case test file, not every selector storage/error/refresh lifecycle. Pi a635f3901 (#12111) adds a fourth case at :112, `keeps the renamed session selected when the reload starts with another session`, ported with the same loader and keys (red before the port: s5 selected, not s3); the hash stays the pin's, which the inventory holds, and the file at a635f3901 is sha256:af451f1ffd1e91ff687d1f286e7582e42a29c1b5e8bfc42da797ee9916807ad4."
     },
     {
       "path": "packages/coding-agent/test/session-selector-search.test.ts",

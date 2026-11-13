@@ -67,10 +67,12 @@ type SessionSelectorComponent struct {
 	filtered         []sessionDisplayNode
 	selected         int
 	selectionTouched bool
-	done             bool
-	cancelled        bool
-	selectedPath     string
-	operationError   error
+	// pendingSelectedPath is the session to select once it appears, while a progressive reload has not yet delivered it.
+	pendingSelectedPath string
+	done                bool
+	cancelled           bool
+	selectedPath        string
+	operationError      error
 
 	confirmDelete string
 	statusState   sessionSelectorStatus
@@ -317,7 +319,7 @@ func (s *SessionSelectorComponent) HandleInput(data string) {
 					deleted := func(session SessionInfo) bool { return session.Path == pathToDelete }
 					s.current = slices.DeleteFunc(slices.Clone(s.current), deleted)
 					s.all = slices.DeleteFunc(slices.Clone(s.all), deleted)
-					s.refilterLoadedSessions()
+					s.refilterLoadedSessions(false)
 					msg := "Session deleted"
 					if result.method == sessionDeleteTrash {
 						msg = "Session moved to trash"
@@ -367,6 +369,7 @@ func (s *SessionSelectorComponent) HandleInput(data string) {
 	}
 	// session-selector.ts handleInput sets selectionTouched before the first list action and checks the list actions in this order.
 	s.selectionTouched = true
+	s.pendingSelectedPath = ""
 	switch {
 	case kb.Matches(data, tui.KBSelectUp):
 		s.move(-1)

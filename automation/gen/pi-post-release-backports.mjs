@@ -333,6 +333,76 @@ export function stripAnsiEscapes(text) {
         this._restoredToolNames = new Set(this.getActiveToolNames());
         this._buildRuntime({`],
   ],
+  // a635f3901 (#12111): the /resume picker keeps its selection while the session list reloads progressively.
+  "pi-coding-agent/modes/interactive/components/session-selector.js": [
+    ["    selectionTouched = false;\n    searchInput;\n",
+      `    selectionTouched = false;
+    ${note("a635f3901").trim()}
+    // Session to select once it appears, while a progressive reload has not yet delivered it
+    pendingSelectedPath;
+    searchInput;
+`],
+    [`    setSessions(sessions, showCwd) {
+        const selectedPath = this.selectionTouched ? this.getSelectedSessionPath() : undefined;
+        this.allSessions = sessions;
+        this.showCwd = showCwd;
+        this.filterSessions(this.searchInput.getValue());
+        if (!this.selectionTouched) {
+            this.selectedIndex = 0;
+        }
+        else if (selectedPath) {
+            const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
+            if (selectedIndex >= 0)
+                this.selectedIndex = selectedIndex;
+        }
+    }
+`, `    ${note("a635f3901").trim()}
+    /**
+     * @param partial true when more sessions are still loading; a selected session missing from a
+     * partial list stays the selection target until it arrives
+     */
+    setSessions(sessions, showCwd, partial = false) {
+        const pendingPath = this.selectionTouched ? this.pendingSelectedPath : undefined;
+        const selectedPath = this.selectionTouched ? (pendingPath ?? this.getSelectedSessionPath()) : undefined;
+        this.allSessions = sessions;
+        this.showCwd = showCwd;
+        this.filterSessions(this.searchInput.getValue());
+        if (!this.selectionTouched) {
+            this.selectedIndex = 0;
+        }
+        else if (selectedPath) {
+            const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
+            if (selectedIndex >= 0) {
+                this.selectedIndex = selectedIndex;
+                this.pendingSelectedPath = undefined;
+            }
+            else if (partial) {
+                // The selected session may not have loaded yet: keep it as the target instead of
+                // adopting whichever session the index now points to.
+                this.pendingSelectedPath = selectedPath;
+            }
+            else {
+                this.pendingSelectedPath = undefined;
+            }
+        }
+    }
+`],
+    ["        this.selectionTouched = true;\n        // Up arrow\n",
+      `        this.selectionTouched = true;
+        ${note("a635f3901").trim()}
+        this.pendingSelectedPath = undefined;
+        // Up arrow
+`],
+    ["                if (scope === this.scope)\n                    this.sessionList.setSessions(sessions, showCwd);\n",
+      `                ${note("a635f3901").trim()}
+                if (scope === this.scope)
+                    this.sessionList.setSessions(sessions, showCwd, true);
+`],
+    ['        this.sessionList.setSessions(sessions ?? [], this.scope === "all");\n',
+      `        ${note("a635f3901").trim()}
+        this.sessionList.setSessions(sessions ?? [], this.scope === "all", loading || sessions === null);
+`],
+  ],
   // 406e719a6bff (#12049): a tool schema with a node that has no type, enum or anyOf is not sent strict (OpenAI strict mode rejects it).
   "pi-ai/api/constrained-sampling.js": [
     [`        }
