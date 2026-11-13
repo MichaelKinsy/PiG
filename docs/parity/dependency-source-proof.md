@@ -92,6 +92,23 @@ Advancing `.node-version` fails the guard until the snapshot is re-captured from
 
 The capture follows the steps below with the three files and `LICENSE` extracted from the 0.3.3 archive after its `dist.integrity` matched the one `package-lock.json` records for Pi's build.
 
+## The oracle's carried dependency
+
+The parity oracle is the pinned Pi plus the Pi commits the release line ports ahead of the pin (`docs/parity/upstream-pin.md`, Carried work). One of them, f72f799a4 (#12103), needs a newer dependency than the pin installs, so the oracle installs that one package at the carried version. This is test-oracle tooling: PiG's product has no `@google/genai`. Its Go body encoder is a port of the SDK's converters, though: `ai/google_wire.go` writes a request body in their member order and names the version it mirrors (`geminiMirroredSDKVersion`, 2.32.0), and `make pin-check` and `TestGoogleWireMirrorsTheInstalledSDK` fail when that is not the version the oracle installs, so an SDK update in Pi is seen as a port obligation.
+
+| Property | Proof |
+|---|---|
+| Carried for | Pi f72f799a4: the Google adapters pass the caller's `fetch` to the SDK, which takes one (`httpOptions.fetch`) only from 2.32.0 on. Entry `dependency("f72f799a4", "pi-ai", ...)` of `automation/gen/pi-post-release-backports.mjs` |
+| Exact dependency | `@google/genai` 2.32.0 in place of the pin's 2.21.0, the exact pin of `packages/ai/package.json` |
+| Integrity | `sha512-60c79uXpR0a47bmGqDxbXEBuQUalNmwo5mx5kqb91jIW4FoqpsLSt86DeVhRhtH5+s/16Wqxt3sXzFQn2U1OHQ==`, the entry `node_modules/@google/genai` of Pi's `package-lock.json` and of `packages/coding-agent/install-lock/package-lock.json` at f72f799a4, read from the Pi git (`git show f72f799a4:package-lock.json`), never from the registry |
+| Transitive entries | None. At f72f799a4 both locks change that entry's version, archive and integrity and pi-ai's range, and nothing else; the entry's own dependencies (`google-auth-library` ^10.3.0, `p-retry` ^4.6.2, `protobufjs` ^7.5.4, `ws` ^8.18.0) are those of 2.21.0. The entry records them, and the build stops when they differ from the frozen closure's entry or from the manifest of the installed archive |
+| Install | `npm ci` of the frozen closure with that one lock entry in place (`oracle.carried_closure`): npm verifies the archive against the integrity, and `check-oracle` compares the installed tree with the same lock. `automation/pin/frozen/<commit>.closure.json.gz` is not rewritten and stays the source of every other entry |
+| Digest | No separate one: the stamp's `closure_sha256` is the digest of the lock after the carried entry, the oracle's key is made of it, and the backports digest covers the entry's text. `check-oracle` prints the closure digest, the frozen one and the carried dependency |
+| Bundle | The `pi` bin runs Pi's bundle, which contains the SDK: for the one bundler run that makes the oracle's bundle, the source build's 2.21.0 is replaced by a copy of the installed archive and put back |
+| Loud failures | An archive that does not match the integrity: `npm ci` fails (EINTEGRITY). A frozen closure that no longer installs 2.21.0 (a re-pin that already holds the commit): the build stops naming the entry and says to delete it, `make pin-check` fails on the same check without a build, and `make pin-bump` classifies the entry *carried* and deletes it with the commit's blocks. A source build that does not resolve one copy of 2.21.0: the build stops |
+
+The oracle carries the commit's behaviour: the SDK, the three compiled adapters (`pi-ai/api/google-generative-ai.js`, `google-shared.js` and `google-vertex.js`, byte for byte what Pi's build of the commit emits) and the `pi` bundle made of both. It deliberately does not carry what authors and inventories derive from the installed package, which follows the pin until the re-pin: `pi-ai/package.json` keeps the range 2.21.0 (so `npm ls` in the oracle reports the installed SDK as invalid) and `google-shared.d.ts` keeps the declaration of `mapStopReasonString`, so `extensions/sdk-ts` and `test/parity/interfaces` do not move; the six source maps of the adapters are not carried either.
+
 ## Capture and review
 
 1. Read the exact dependency version from the current upstream manifest.

@@ -21,6 +21,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "4cfea9786 (#12046) adds bun build's --compile-autoload-package-json to the build:binary script so Pi's Bun-compiled standalone binary resolves extension dependencies through package.json main/exports. PiG ships no Bun-compiled pi binary: its extension runtime runs on Node, which resolves main/exports natively."
+oracle = "not carried: 4cfea9786 changes the build:binary script of Pi's Bun binary only; no dependency and no file the oracle runs changes."
 
 [[files]]
 path = "scripts/build-binaries.sh"

@@ -19,6 +19,9 @@
 // tests that read the mirror's docs and schemas read them through `--read-mirror <mirror> <path>` (internal/upstreammirror.ReadPicked), the
 // pinned file plus the entries of packageFileBackports and backportPatches that cover it.
 // `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned build's.
+// A commit that also moves a dependency a Pi package pins exactly carries that as a `dependency(...)` entry in a block of its own (oracle only; see `dependency` below).
+// What a commit's blocks deliberately leave at the pin is said in them, one `// not carried: <file> (<what>): <reason>` line per file. The sync ledger rows of a followed
+// commit answer for the oracle too (automation/pin/carried.py oracle_ledger_problems, which `pin.py check-oracle` runs).
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -31,6 +34,12 @@ const messageThreadsDefault = ["Default: true for provider anthropic with a base
 
 const blocks = [];
 const patch = (id, key, patches) => blocks.push({ id, key, patches, table: "dist" });
+// dependency carries a dependency change of a Pi commit: the Pi package `pkg` (pi-ai) pins `dep.name` exactly, at `dep.from` in the pinned build and at `dep.to` from
+// the commit on. `resolved`, `integrity` and `dependencies` are the entry of `dep.to` in Pi's own package-lock.json at the commit (read from the Pi git, never from the
+// registry). The oracle build (automation/pin/oracle.py carried_closure) installs the frozen closure with this lock entry in place of the pinned one, so `npm ci`
+// verifies the archive against the integrity, and has Pi's bundler read the installed copy. No file of the installed package is rewritten (its package.json keeps the
+// pin's range: published ranges follow the pin), and the vendored runtime installs no carried dependency. `--classify` reads the package's package.json (classifyDependency).
+const dependency = (id, pkg, dep) => blocks.push({ id, key: `${pkg}/package.json`, table: "dependency", dependency: { id, package: pkg, ...dep } });
 const packageFile = (id, key, patches) => blocks.push({ id, key, patches, table: "package" });
 
 // BEGIN backport b3c2e4a6bef8
@@ -95,6 +104,95 @@ patch("5b4d7d3df", "pi-tui/components/markdown.js", [
 `],
 ]);
 // END backport 5b4d7d3df
+
+// BEGIN backport 787005a40
+// 787005a40 (#12109): an overlay hides the Kitty and iTerm2 images it covers, and they are drawn again once it no longer covers them.
+patch("787005a40", "pi-tui/terminal-image.js", [
+    ['import { pathToFileURL } from "node:url";\n', `import { pathToFileURL } from "node:url";\n${note("787005a40")}import { visibleWidth } from "./utils.js";\n`],
+    [`    return line.includes(KITTY_PREFIX) || line.includes(ITERM2_PREFIX);
+}
+`, `    return line.includes(KITTY_PREFIX) || line.includes(ITERM2_PREFIX);
+}
+${note("787005a40")}/**
+ * Return the cells an image line draws over. Kitty places the image at the line and extends it
+ * downward; iTerm2 lines move the cursor up before drawing, so the image ends at the line.
+ */
+export function getImageLineExtent(line) {
+    const kittyStart = line.indexOf(KITTY_PREFIX);
+    if (kittyStart !== -1) {
+        const controls = /\\x1b_G([^;]*);/.exec(line)?.[1] ?? "";
+        const columnValue = /(?:^|,)c=(\\d+)(?:,|$)/.exec(controls)?.[1];
+        const columns = columnValue === undefined
+            ? getRegisteredKittyImageMetadataFromControls(controls)?.columns
+            : Number.parseInt(columnValue, 10);
+        const startCol = visibleWidth(line.slice(0, kittyStart));
+        const rows = getKittyImagePlacementRows(line) ?? 1;
+        return { firstRow: 0, lastRow: rows - 1, startCol, endCol: startCol + (columns ?? Infinity) };
+    }
+    const iterm2Start = line.indexOf(ITERM2_PREFIX);
+    if (iterm2Start === -1)
+        return undefined;
+    const before = line.slice(0, iterm2Start);
+    const moveUp = /\\x1b\\[(\\d+)A$/.exec(before);
+    // Only a plain cell count is a known width; \`auto\`, pixel and percent widths depend on the image.
+    const columnValue = /[;=]width=(\\d+)[;:]/.exec(line.slice(iterm2Start))?.[1];
+    // visibleWidth counts the cursor-up sequence as text, so measure only what precedes it.
+    const startCol = visibleWidth(moveUp ? before.slice(0, moveUp.index) : before);
+    return {
+        firstRow: moveUp ? -Number.parseInt(moveUp[1], 10) : 0,
+        lastRow: 0,
+        startCol,
+        endCol: startCol + (columnValue === undefined ? Infinity : Number.parseInt(columnValue, 10)),
+    };
+}
+/** Remove Kitty and iTerm2 image sequences, including iTerm2's cursor-up prefix, keeping the text. */
+export function stripImageSequences(line) {
+    return line.replace(/\\x1b_G[^\\x1b]*\\x1b\\\\/g, "").replace(/(?:\\x1b\\[\\d+A)?\\x1b\\]1337;File=[^\\x07]*\\x07/g, "");
+}
+`],
+]);
+// END backport 787005a40
+
+// BEGIN backport 787005a40
+patch("787005a40", "pi-tui/tui.js", [
+    ['import { getCapabilities, isImageLine, setCellDimensions } from "./terminal-image.js";\n',
+      `${note("787005a40")}import { getCapabilities, getImageLineExtent, getMaxKittyImageRows, isImageLine, setCellDimensions, stripImageSequences, } from "./terminal-image.js";\n`],
+    ['}\nexport const VIEWPORT_TUI = Symbol.for("@earendil-works/pi-tui/viewport");\n',
+      `}\n${note("787005a40")}/**
+ * Drop image placements that intersect an overlay rectangle (\`row\` is viewport-relative).
+ * Terminals draw images above text, so an overlay cannot paint over them. The renderers delete a
+ * placement once its line changes and draw it again when the overlay no longer covers it.
+ * Images beside the overlay stay; on the row holding such an image's sequence the overlay is not
+ * drawn, because \`compositeTuiLine\` passes image lines through.
+ */
+function hideImagesUnderOverlay(lines, overlay, viewportStart) {
+    if (overlay.height === 0)
+        return;
+    // Kitty images extend downward, so an image line above the viewport can still reach into it.
+    for (let index = Math.max(0, viewportStart - getMaxKittyImageRows()); index < lines.length; index++) {
+        const line = lines[index];
+        const extent = getImageLineExtent(line);
+        if (!extent)
+            continue;
+        const firstRow = index + extent.firstRow - viewportStart;
+        const lastRow = index + extent.lastRow - viewportStart;
+        if (firstRow < overlay.row + overlay.height &&
+            lastRow >= overlay.row &&
+            extent.startCol < overlay.col + overlay.width &&
+            extent.endCol > overlay.col) {
+            lines[index] = stripImageSequences(line);
+        }
+    }
+}
+export const VIEWPORT_TUI = Symbol.for("@earendil-works/pi-tui/viewport");\n`],
+    ["        // Composite each overlay\n        for (const { overlayLines, row, col, w } of rendered) {\n",
+      `        ${note("787005a40").trim()}
+        // Composite each overlay, back to front. Hiding images per overlay also hides images drawn by overlays below it.
+        for (const { overlayLines, row, col, w } of rendered) {
+            hideImagesUnderOverlay(result, { row, col, width: w, height: overlayLines.length }, viewportStart);
+`],
+]);
+// END backport 787005a40
 
 // BEGIN backport bbfc6c7ce
 // bbfc6c7ce (#12044): the find tool ignores a leading ./ in its pattern.
@@ -297,6 +395,79 @@ patch("3345c2925", "pi-coding-agent/core/agent-session.js", [
 ]);
 // END backport 3345c2925
 
+// BEGIN backport a635f3901
+// a635f3901 (#12111): the /resume picker keeps its selection while the session list reloads progressively.
+patch("a635f3901", "pi-coding-agent/modes/interactive/components/session-selector.js", [
+    ["    selectionTouched = false;\n    searchInput;\n",
+      `    selectionTouched = false;
+    ${note("a635f3901").trim()}
+    // Session to select once it appears, while a progressive reload has not yet delivered it
+    pendingSelectedPath;
+    searchInput;
+`],
+    [`    setSessions(sessions, showCwd) {
+        const selectedPath = this.selectionTouched ? this.getSelectedSessionPath() : undefined;
+        this.allSessions = sessions;
+        this.showCwd = showCwd;
+        this.filterSessions(this.searchInput.getValue());
+        if (!this.selectionTouched) {
+            this.selectedIndex = 0;
+        }
+        else if (selectedPath) {
+            const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
+            if (selectedIndex >= 0)
+                this.selectedIndex = selectedIndex;
+        }
+    }
+`, `    ${note("a635f3901").trim()}
+    /**
+     * @param partial true when more sessions are still loading; a selected session missing from a
+     * partial list stays the selection target until it arrives
+     */
+    setSessions(sessions, showCwd, partial = false) {
+        const pendingPath = this.selectionTouched ? this.pendingSelectedPath : undefined;
+        const selectedPath = this.selectionTouched ? (pendingPath ?? this.getSelectedSessionPath()) : undefined;
+        this.allSessions = sessions;
+        this.showCwd = showCwd;
+        this.filterSessions(this.searchInput.getValue());
+        if (!this.selectionTouched) {
+            this.selectedIndex = 0;
+        }
+        else if (selectedPath) {
+            const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
+            if (selectedIndex >= 0) {
+                this.selectedIndex = selectedIndex;
+                this.pendingSelectedPath = undefined;
+            }
+            else if (partial) {
+                // The selected session may not have loaded yet: keep it as the target instead of
+                // adopting whichever session the index now points to.
+                this.pendingSelectedPath = selectedPath;
+            }
+            else {
+                this.pendingSelectedPath = undefined;
+            }
+        }
+    }
+`],
+    ["        this.selectionTouched = true;\n        // Up arrow\n",
+      `        this.selectionTouched = true;
+        ${note("a635f3901").trim()}
+        this.pendingSelectedPath = undefined;
+        // Up arrow
+`],
+    ["                if (scope === this.scope)\n                    this.sessionList.setSessions(sessions, showCwd);\n",
+      `                ${note("a635f3901").trim()}
+                if (scope === this.scope)
+                    this.sessionList.setSessions(sessions, showCwd, true);
+`],
+    ['        this.sessionList.setSessions(sessions ?? [], this.scope === "all");\n',
+      `        ${note("a635f3901").trim()}
+        this.sessionList.setSessions(sessions ?? [], this.scope === "all", loading || sessions === null);
+`],
+]);
+// END backport a635f3901
+
 // BEGIN backport 406e719a6bff
 // 406e719a6bff (#12049): a tool schema with a node that has no type, enum or anyOf is not sent strict (OpenAI strict mode rejects it).
 patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
@@ -344,11 +515,162 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 ]);
 // END backport aa47cedce
 
+// BEGIN backport f72f799a4
+// f72f799a4 (#12103; 22f456d73 #12108 after it changes Pi's changelog and a test only): the Google adapters hand the caller's fetch to @google/genai, which takes one
+// (httpOptions.fetch) from 2.32.0 on, so the commit moves pi-ai's exact pin of the SDK. The lock entry below is the one Pi's package-lock.json and
+// packages/coding-agent/install-lock/package-lock.json hold at f72f799a4; both locks change nothing else but pi-ai's range, and the entry's own dependencies are those of 2.21.0.
+// Oracle only: the vendored runtime's Google adapters are bridge stubs that run PiG's Go adapters (D74), which carry the behaviour, and it installs no SDK. PiG has no
+// @google/genai at all: its Go body encoder mirrors the SDK's converters (ai/google_wire.go, which names the mirrored version). The oracle is Pi and installs the SDK.
+// The oracle carries the commit's BEHAVIOUR (the SDK, the three adapters, the bundle of both). What authors and inventories derive from the installed package stays the pin's:
+// not carried: pi-ai/package.json (`"@google/genai": "2.32.0"`): published ranges follow the pin until the re-pin (extensions/sdk-ts/package.json derives its peer range from the installed manifest); the lock the oracle installs names 2.32.0, the manifest on disk 2.21.0. Re-pin worklist: arrives with the pin.
+// not carried: pi-ai/api/google-shared.d.ts (drops `mapStopReasonString`, which google-shared.js below no longer exports): declarations follow the pin until the re-pin (extensions/sdk-ts/pi-pin.d.ts and test/parity/interfaces derive from the installed declarations). Re-pin worklist: arrives with the pin.
+// not carried: pi-ai/api/google-{generative-ai,shared,vertex}.js.map and .d.ts.map: nothing imports through a source map and Pi's bundler runs with source maps off.
+dependency("f72f799a4", "pi-ai", {
+    name: "@google/genai",
+    from: "2.21.0",
+    to: "2.32.0",
+    resolved: "https://registry.npmjs.org/@google/genai/-/genai-2.32.0.tgz",
+    integrity: "sha512-60c79uXpR0a47bmGqDxbXEBuQUalNmwo5mx5kqb91jIW4FoqpsLSt86DeVhRhtH5+s/16Wqxt3sXzFQn2U1OHQ==",
+    dependencies: { "google-auth-library": "^10.3.0", "p-retry": "^4.6.2", protobufjs: "^7.5.4", ws: "^8.18.0" },
+});
+// END backport f72f799a4
+
+// BEGIN backport f72f799a4
+// The compiled output of the three adapters, byte for byte what Pi's build of f72f799a4 emits (no note line): Pi built at the commit and at its parent differs in
+// these three files, google-shared.d.ts and their source maps only, and the pinned build equals the parent's in all of them.
+packageFile("f72f799a4", "pi-ai/api/google-generative-ai.js", [
+    [`            if (options?.fetch && options.fetch !== globalThis.fetch) {
+                throw new Error("Custom fetch is not supported by the Google Generative AI adapter");
+            }
+`,
+      ``],
+    [`            const client = createClient(model, apiKey, options?.headers, options?.identity);
+`,
+      `            const client = createClient(model, apiKey, options?.headers, options?.identity, options?.fetch);
+`],
+    [`function createClient(model, apiKey, optionsHeaders, identity) {
+    const httpOptions = {};
+`,
+      `function createClient(model, apiKey, optionsHeaders, identity, fetch) {
+    // Always pass fetch: without one, @google/genai adds a per-request dispatcher that disables
+    // undici's header and body timeouts, bypassing the idle timeouts of the global dispatcher.
+    const httpOptions = { fetch: fetch ?? globalThis.fetch };
+`],
+    [`    return new GoogleGenAI({
+        apiKey,
+        httpOptions: Object.keys(httpOptions).length > 0 ? httpOptions : undefined,
+    });
+`,
+      `    return new GoogleGenAI({ apiKey, httpOptions });
+`],
+    [`        }),
+    };
+`,
+      `        }),
+        // Off for now, until we have evaluated the implications of the SDK's automatic continuation
+        // (extra requests and stream resumes inside the SDK). A CONTINUATION finish ends the turn as "length".
+        automaticContinuation: false,
+    };
+`],
+]);
+// END backport f72f799a4
+
+// BEGIN backport f72f799a4
+packageFile("f72f799a4", "pi-ai/api/google-shared.js", [
+    [`        case FinishReason.MAX_TOKENS:
+            return "length";
+`,
+      `        case FinishReason.MAX_TOKENS:
+        // Per-request token limit reached before generation completed; pi does not resume with the continuation token.
+        case FinishReason.CONTINUATION:
+            return "length";
+`],
+    [`    }
+}
+/**
+ * Map string finish reason to our StopReason (for raw API responses).
+ */
+export function mapStopReasonString(reason) {
+    switch (reason) {
+        case "STOP":
+            return "stop";
+        case "MAX_TOKENS":
+            return "length";
+        default:
+            return "error";
+`,
+      ``],
+]);
+// END backport f72f799a4
+
+// BEGIN backport f72f799a4
+packageFile("f72f799a4", "pi-ai/api/google-vertex.js", [
+    [`            if (options?.fetch && options.fetch !== globalThis.fetch) {
+                throw new Error("Custom fetch is not supported by the Google Vertex adapter");
+            }
+`,
+      ``],
+    [`                ? createClientWithApiKey(model, apiKey, options?.headers, options?.identity)
+                : createClient(model, resolveProject(options), resolveLocation(options), options?.headers, options?.env, options?.identity);
+`,
+      `                ? createClientWithApiKey(model, apiKey, options?.headers, options?.identity, options?.fetch)
+                : createClient(model, resolveProject(options), resolveLocation(options), options?.headers, options?.env, options?.identity, options?.fetch);
+`],
+    [`function createClient(model, project, location, optionsHeaders, env, identity) {
+`,
+      `function createClient(model, project, location, optionsHeaders, env, identity, fetch) {
+`],
+    [`        ...(googleAuthOptions ? { googleAuthOptions } : {}),
+        httpOptions: buildHttpOptions(model, optionsHeaders, identity),
+    });
+`,
+      `        ...(googleAuthOptions ? { googleAuthOptions } : {}),
+        httpOptions: buildHttpOptions(model, optionsHeaders, identity, fetch),
+    });
+`],
+    [`function createClientWithApiKey(model, apiKey, optionsHeaders, identity) {
+`,
+      `function createClientWithApiKey(model, apiKey, optionsHeaders, identity, fetch) {
+`],
+    [`        apiVersion: API_VERSION,
+        httpOptions: buildHttpOptions(model, optionsHeaders, identity),
+    });
+`,
+      `        apiVersion: API_VERSION,
+        httpOptions: buildHttpOptions(model, optionsHeaders, identity, fetch),
+    });
+`],
+    [`function buildHttpOptions(model, optionsHeaders, identity) {
+    const httpOptions = {};
+`,
+      `function buildHttpOptions(model, optionsHeaders, identity, fetch) {
+    // Always pass fetch: without one, @google/genai adds a per-request dispatcher that disables
+    // undici's header and body timeouts, bypassing the idle timeouts of the global dispatcher.
+    const httpOptions = { fetch: fetch ?? globalThis.fetch };
+`],
+    [`    return Object.keys(httpOptions).length > 0 ? httpOptions : undefined;
+`,
+      `    return httpOptions;
+`],
+    [`        }),
+    };
+`,
+      `        }),
+        // Off for now, until we have evaluated the implications of the SDK's automatic continuation
+        // (extra requests and stream resumes inside the SDK). A CONTINUATION finish ends the turn as "length".
+        automaticContinuation: false,
+    };
+`],
+]);
+// END backport f72f799a4
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
 export const backportPatches = tableOf("dist");
 export const packageFileBackports = tableOf("package");
+// carriedDependencies lists the `dependency` entries: {id, package, name, from, to, resolved, integrity, dependencies}.
+export const carriedDependencies = blocks.filter((b) => b.dependency).map((b) => b.dependency);
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
 
@@ -439,6 +761,16 @@ function firstDifference(before, text) {
   return `the entry's text occurs ${count(text, before)} times in the file`;
 }
 
+// classifyDependency says whether the Pi package installed at `root` still pins a carried dependency at the version the entry replaces ("pending"), pins the carried
+// version ("carried": the target holds the commit and the entry must go), or pins anything else ("conflict" with its old pin gone, which the caller settles with the
+// commit's ancestry: a target past the commit pins a later version).
+function classifyDependency({ id, key, dependency: dep }, root) {
+  const pinned = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).dependencies?.[dep.name];
+  const state = pinned === dep.from ? "pending" : pinned === dep.to ? "carried" : "conflict";
+  const detail = state === "conflict" ? `conflict: the package pins ${dep.name} ${pinned ?? "nowhere"}, the entry moves ${dep.from} to ${dep.to}` : "";
+  return { id, key, state, beforeGone: state !== "pending", detail };
+}
+
 // classifyBackports says, for every block of a package in `packages`, whether the installed package is still the one the block was written for
 // ("pending": each patch's before-text occurs once and its after-text not at all), already carries the block's change ("carried": each
 // after-text occurs once, a removal's before-text not at all), or is neither ("conflict", with the file and the first differing line).
@@ -446,9 +778,14 @@ function firstDifference(before, text) {
 // asking whether the target contains the Pi commit.
 export function classifyBackports(packages) {
   const results = [];
-  for (const { id, key, patches } of blocks) {
+  for (const block of blocks) {
+    const { id, key, patches } = block;
     const [name, ...rest] = key.split("/");
     if (!(name in packages)) continue;
+    if (block.dependency) {
+      results.push(classifyDependency(block, packages[name]));
+      continue;
+    }
     const text = readFileSync(join(packages[name], packageLocation(name, rest)), "utf8");
     const states = patches.map(([before, after]) => {
       const nb = count(text, before);
@@ -499,6 +836,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   else if (mode === "--package-files") process.stdout.write(JSON.stringify(packageBackportFiles(packagesOf(args))));
   else if (mode === "--verify-packages") verifyPackageBackports(packagesOf(args));
   else if (mode === "--classify") process.stdout.write(JSON.stringify(classifyBackports(packagesOf(args))));
+  else if (mode === "--dependencies") process.stdout.write(JSON.stringify(carriedDependencies));
   else if (mode === "--read-mirror") process.stdout.write(readMirrorFile(args[0], args[1]));
   else if (mode === "--verify-mirror") verifyMirrorBackports(args[0]);
   else applyBackportPatches(mode);

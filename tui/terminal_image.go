@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -331,6 +332,173 @@ func SetCapabilities(caps TerminalCapabilities) {
 // IsImageLine reports whether the line contains Kitty or iTerm2 image protocol bytes.
 // Mirrors upstream terminal-image.ts isImageLine().
 func IsImageLine(line string) bool { return widthx.IsImageLine(line) }
+
+// iterm2Prefix begins an iTerm2 inline image sequence. Mirrors upstream ITERM2_PREFIX.
+const iterm2Prefix = "\x1b]1337;File="
+
+// imageExtentUnbounded is upstream's Infinity for the cells of an image line: a count the line does not state, or one beyond
+// every terminal's size. Its sum with a row or column of a frame fits a 32-bit int.
+const imageExtentUnbounded = 1 << 30
+
+// imageLineExtent is the cells covered by the image placement on an image line. Rows are relative to the line; columns are
+// absolute, with endCol exclusive and imageExtentUnbounded when the image width cannot be read. Mirrors upstream ImageLineExtent.
+type imageLineExtent struct {
+	firstRow, lastRow, startCol, endCol int
+}
+
+// getImageLineExtent returns the cells an image line draws over. Kitty places the image at the line and extends it
+// downward; iTerm2 lines move the cursor up before drawing, so the image ends at the line. Mirrors upstream
+// getImageLineExtent. An image line carries the image's payload and the overlay compositor reads every image line of the
+// viewport each frame, so upstream's regular expressions over the line are byte searches here.
+func getImageLineExtent(line string) (imageLineExtent, bool) {
+	if leading, command, isKitty := strings.Cut(line, kittyPrefix); isKitty {
+		// /\x1b_G([^;]*);/: the controls of the first command, none when no ";" follows it.
+		controls, _, found := strings.Cut(command, ";")
+		if !found {
+			controls = ""
+		}
+		metadata, registered := getRegisteredKittyImageMetadataFromControls(controls)
+		startCol := widthx.VisibleWidth(leading)
+		endCol := imageExtentUnbounded
+		if value := kittyImageColumnsPattern.FindStringSubmatch(controls); value != nil {
+			endCol = min(startCol+parseImageExtentCount(value[1]), imageExtentUnbounded)
+		} else if registered {
+			endCol = min(startCol+metadata.Columns, imageExtentUnbounded)
+		}
+		// getKittyImagePlacementRows(line) ?? 1: the explicit `r=` rows, else the registered image's.
+		rows := 1
+		if explicit, ok := getExplicitKittyImageRows(controls); ok {
+			rows = explicit
+		} else if registered {
+			rows = metadata.Rows
+		}
+		return imageLineExtent{firstRow: 0, lastRow: min(rows-1, imageExtentUnbounded), startCol: startCol, endCol: endCol}, true
+	}
+	iterm2Start := strings.Index(line, iterm2Prefix)
+	if iterm2Start == -1 {
+		return imageLineExtent{}, false
+	}
+	// visibleWidth counts the cursor-up sequence as text, so measure only what precedes it.
+	before := line[:iterm2Start]
+	firstRow := 0
+	if moveUp, count, ok := trailingCursorUp(before); ok {
+		before = before[:moveUp]
+		firstRow = -parseImageExtentCount(count)
+	}
+	startCol := widthx.VisibleWidth(before)
+	endCol := imageExtentUnbounded
+	// Only a plain cell count is a known width; `auto`, pixel and percent widths depend on the image.
+	if columns, ok := iterm2WidthCells(line[iterm2Start:]); ok {
+		endCol = min(startCol+columns, imageExtentUnbounded)
+	}
+	return imageLineExtent{firstRow: firstRow, lastRow: 0, startCol: startCol, endCol: endCol}, true
+}
+
+// parseImageExtentCount is Number.parseInt of a run of ASCII digits, capped at imageExtentUnbounded.
+func parseImageExtentCount(digits string) int {
+	count, err := strconv.Atoi(digits)
+	if err != nil || count > imageExtentUnbounded {
+		return imageExtentUnbounded
+	}
+	return count
+}
+
+// trailingCursorUp matches upstream's /\x1b\[(\d+)A$/ against text: the index the sequence starts at and its digits.
+func trailingCursorUp(text string) (start int, count string, ok bool) {
+	end := len(text) - 1
+	if end < 0 || text[end] != 'A' {
+		return 0, "", false
+	}
+	digits := end
+	for digits > 0 && text[digits-1] >= '0' && text[digits-1] <= '9' {
+		digits--
+	}
+	if digits == end || !strings.HasSuffix(text[:digits], "\x1b[") {
+		return 0, "", false
+	}
+	return digits - len("\x1b["), text[digits:end], true
+}
+
+// iterm2WidthCells is the first match of upstream's /[;=]width=(\d+)[;:]/ in text, the line from its iTerm2 sequence on.
+func iterm2WidthCells(text string) (int, bool) {
+	const key = "width="
+	for from := 0; ; {
+		at := strings.Index(text[from:], key)
+		if at == -1 {
+			return 0, false
+		}
+		at += from
+		digits := at + len(key)
+		end := digits
+		for end < len(text) && text[end] >= '0' && text[end] <= '9' {
+			end++
+		}
+		if at > 0 && (text[at-1] == ';' || text[at-1] == '=') && end > digits && end < len(text) && (text[end] == ';' || text[end] == ':') {
+			return parseImageExtentCount(text[digits:end]), true
+		}
+		from = at + 1
+	}
+}
+
+// stripImageSequences removes Kitty and iTerm2 image sequences, including iTerm2's cursor-up prefix, keeping the text.
+// Mirrors upstream stripImageSequences: /\x1b_G[^\x1b]*\x1b\\/g, then /(?:\x1b\[\d+A)?\x1b\]1337;File=[^\x07]*\x07/g.
+func stripImageSequences(line string) string {
+	return stripITerm2ImageSequences(stripKittyImageSequences(line))
+}
+
+func stripKittyImageSequences(line string) string {
+	var kept strings.Builder
+	copied := 0
+	for start := strings.Index(line, kittyPrefix); start != -1; {
+		// The body runs to the next ESC, which has to begin the terminator; when it does not, a command may start at it.
+		body := start + len(kittyPrefix)
+		escape := strings.IndexByte(line[body:], '\x1b')
+		if escape == -1 {
+			break
+		}
+		next := body + escape
+		if strings.HasPrefix(line[next:], "\x1b\\") {
+			kept.WriteString(line[copied:start])
+			next += len("\x1b\\")
+			copied = next
+		}
+		if start = strings.Index(line[next:], kittyPrefix); start != -1 {
+			start += next
+		}
+	}
+	if copied == 0 {
+		return line
+	}
+	kept.WriteString(line[copied:])
+	return kept.String()
+}
+
+func stripITerm2ImageSequences(line string) string {
+	var kept strings.Builder
+	copied := 0
+	for {
+		start := strings.Index(line[copied:], iterm2Prefix)
+		if start == -1 {
+			break
+		}
+		start += copied
+		bell := strings.IndexByte(line[start+len(iterm2Prefix):], '\x07')
+		if bell == -1 {
+			break
+		}
+		end := start + len(iterm2Prefix) + bell + 1
+		if moveUp, _, ok := trailingCursorUp(line[copied:start]); ok {
+			start = copied + moveUp
+		}
+		kept.WriteString(line[copied:start])
+		copied = end
+	}
+	if copied == 0 {
+		return line
+	}
+	kept.WriteString(line[copied:])
+	return kept.String()
+}
 
 func AllocateImageID() int {
 	return int(rand.Uint32()%0xfffffffe) + 1
