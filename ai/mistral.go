@@ -306,7 +306,18 @@ func mistralToolChoice(choice any) any {
 		return choice
 	}
 	function, _ := object["function"].(map[string]any)
-	return map[string]any{"type": "function", "function": map[string]any{"name": function["name"]}}
+	return mistralFunctionChoice{Type: "function", Function: mistralFunctionName{Name: function["name"]}}
+}
+
+// mistralFunctionChoice is the tool choice mapToolChoice builds for a named function: type, then function (mistral-conversations.ts:902-905).
+type mistralFunctionChoice struct {
+	Type     string              `json:"type"`
+	Function mistralFunctionName `json:"function"`
+}
+
+// mistralFunctionName is the function member of mistralFunctionChoice: the caller's name and nothing else of the caller's object.
+type mistralFunctionName struct {
+	Name any `json:"name"`
 }
 
 func (p *mistralProvider) resolveModel() *Model {
@@ -542,6 +553,7 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	builder.setProviderEventObserver(opts, model)
 	_, builder.managed = resp.Body.(*observedResponseBody)
 	streamOwnsRequest = true
+	//portlint:allow asyncorder Pi's stream() starts a detached async IIFE and returns the stream (mistral-conversations.ts:134, :178); the stream owns this goroutine, which runs the body after the response headers as a turn of the stream's continuation executor (responseTurn below), the ordering point with the consumer; TestMistralDirectMatchesPiTickOrder holds each delivered event and the state the consumer sees there to Pi's
 	go func() {
 		defer finishRequest()
 		_ = builder.responseTurn(func() error {

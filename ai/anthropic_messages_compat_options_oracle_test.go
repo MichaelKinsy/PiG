@@ -122,6 +122,7 @@ func TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi(t *testing.T) {
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, "testdata/anthropic_messages_compat_options.mjs", probesWithRawOptions(probes))
+	g.requireReplayCoverage(t, want, anthropicReplay)
 	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {

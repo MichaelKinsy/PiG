@@ -130,29 +130,31 @@ func modelDefinitionEntry(providerID string, prov providerConfig, md modelDefini
 	}
 
 	return ModelEntry{
-		Type:                          md.Type,
-		CatalogRecord:                 record,
-		ProviderID:                    providerID,
-		ModelID:                       md.ID,
-		BaseURL:                       baseURL,
-		DisplayName:                   name,
-		API:                           api,
-		Compat:                        compat,
-		Reasoning:                     reasoning,
-		ThinkingLevelMap:              cloneThinkingLevelMap(md.ThinkingLevelMap),
-		SamplingParams:                maps.Clone(md.SamplingParams),
-		SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(md.SamplingParamsByThinkingLevel),
-		Input:                         input,
-		InputLimits:                   md.InputLimits.Clone(),
-		ContextWindow:                 ctxWindow,
-		MaxTokens:                     maxTokens,
-		InputCost:                     inputCost,
-		OutputCost:                    outputCost,
-		CacheReadCost:                 cacheReadCost,
-		CacheWriteCost:                cacheWriteCost,
-		CostTiers:                     costTiers,
-		PromptCache:                   maps.Clone(md.PromptCache),
-		Insecure:                      prov.Insecure,
+		Type:                               md.Type,
+		CatalogRecord:                      record,
+		ProviderID:                         providerID,
+		ModelID:                            md.ID,
+		BaseURL:                            baseURL,
+		DisplayName:                        name,
+		API:                                api,
+		Compat:                             compat,
+		Reasoning:                          reasoning,
+		ThinkingLevelMap:                   cloneThinkingLevelMap(md.ThinkingLevelMap),
+		SamplingParams:                     maps.Clone(md.SamplingParams),
+		SamplingParamsByThinkingLevel:      cloneSamplingParamsByThinkingLevel(md.SamplingParamsByThinkingLevel),
+		SamplingParamsOrder:                md.samplingOrder,
+		SamplingParamsByThinkingLevelOrder: md.samplingLevelOrder,
+		Input:                              input,
+		InputLimits:                        md.InputLimits.Clone(),
+		ContextWindow:                      ctxWindow,
+		MaxTokens:                          maxTokens,
+		InputCost:                          inputCost,
+		OutputCost:                         outputCost,
+		CacheReadCost:                      cacheReadCost,
+		CacheWriteCost:                     cacheWriteCost,
+		CostTiers:                          costTiers,
+		PromptCache:                        maps.Clone(md.PromptCache),
+		Insecure:                           prov.Insecure,
 	}
 }
 
@@ -167,12 +169,9 @@ func applyModelOverride(e *ModelEntry, ovr modelOverrideJSON) {
 		e.ThinkingLevelMap = mergeThinkingLevelMaps(e.ThinkingLevelMap, ovr.ThinkingLevelMap)
 	}
 	if ovr.SamplingParams != nil {
-		if e.SamplingParams == nil {
-			e.SamplingParams = make(map[string]any, len(ovr.SamplingParams))
-		}
-		maps.Copy(e.SamplingParams, ovr.SamplingParams)
+		e.SamplingParams, e.SamplingParamsOrder = mergeSamplingParams(e.SamplingParams, e.SamplingParamsOrder, ovr.SamplingParams, ovr.samplingOrder)
 	}
-	e.SamplingParamsByThinkingLevel = mergeSamplingParamsByThinkingLevel(e.SamplingParamsByThinkingLevel, ovr.SamplingParamsByThinkingLevel)
+	e.SamplingParamsByThinkingLevel, e.SamplingParamsByThinkingLevelOrder = mergeSamplingParamsByThinkingLevel(e.SamplingParamsByThinkingLevel, e.SamplingParamsByThinkingLevelOrder, ovr.SamplingParamsByThinkingLevel, ovr.samplingLevelOrder)
 	e.InputLimits = mergeModelInputLimits(e.InputLimits, ovr.InputLimits)
 	if ovr.Input != nil {
 		e.Input = slices.Clone(*ovr.Input)

@@ -495,6 +495,10 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 			}
 		}
 	}
+	// pig additive (D614): the row that stands for the dialogs is the row directly above the editor.
+	if m.viewWaitRow != nil {
+		above = append(above, m.viewWaitRow)
+	}
 	// pig divergence (D228): the one-time copy tip sits under the editor, after the below-editor widgets.
 	if m.queueCopyTip != nil {
 		below = append(below, m.queueCopyTip)
@@ -1244,6 +1248,26 @@ func subprocessRequestMetadata(raw any, path string) (map[string]string, []strin
 	return values, keys, nil
 }
 
+// subprocessSamplingParams reads samplingParams, an object. An *orderedjson.Object (the subprocess bridge's decoding of an object whose
+// members are not in sorted order) also gives the member order, which the provider keeps on the wire.
+func subprocessSamplingParams(raw any) (map[string]any, []string, error) {
+	ordered, ok := raw.(*orderedjson.Object)
+	if !ok {
+		object, ok := raw.(map[string]any)
+		if !ok {
+			return nil, nil, fmt.Errorf("model request.samplingParams must be an object")
+		}
+		return object, nil, nil
+	}
+	keys := ordered.Keys()
+	object := make(map[string]any, len(keys))
+	for _, key := range keys {
+		value, _ := ordered.Get(key)
+		object[key] = orderedjson.Value(value)
+	}
+	return object, keys, nil
+}
+
 func subprocessProviderHeaders(raw any, path string) (ai.ProviderHeaders, error) {
 	object, ok := raw.(map[string]any)
 	if !ok {
@@ -1302,11 +1326,11 @@ func subprocessStreamOptions(request map[string]any, defaults ai.StreamOptions) 
 		options.TemperatureSet = true
 	}
 	if raw, exists := request["samplingParams"]; exists {
-		object, ok := raw.(map[string]any)
-		if !ok {
-			return ai.StreamOptions{}, fmt.Errorf("model request.samplingParams must be an object")
+		object, order, err := subprocessSamplingParams(raw)
+		if err != nil {
+			return ai.StreamOptions{}, err
 		}
-		options.SamplingParams = object
+		options.SamplingParams, options.SamplingParamsOrder = object, order
 	}
 	if raw, exists := request["thinkingBudgets"]; exists {
 		object, ok := raw.(map[string]any)

@@ -15,7 +15,8 @@ import (
 var openAICompatMembers = sync.OnceValue(func() map[string]struct{} { return orderedjson.JSONNames(reflect.TypeFor[OpenAICompat]()) })
 
 // MarshalJSON preserves an explicit empty fallback list, which disables server-side fallback rather than inheriting catalog defaults, and
-// writes the unmodeled members (Extra) after the modeled ones.
+// writes the unmodeled members (Extra) after the modeled ones. openRouterRouting, chatTemplateKwargs and chatTemplateArgs are written in
+// the member order the compat records for them.
 func (compat OpenAICompat) MarshalJSON() ([]byte, error) {
 	type fields OpenAICompat
 	var fallbacks *[]AnthropicAllowedFallbackModel
@@ -29,11 +30,17 @@ func (compat OpenAICompat) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if compat.objectOrder != nil {
+		if data, err = compat.marshalObjectsInOrder(data); err != nil {
+			return nil, err
+		}
+	}
 	return orderedjson.AppendMembers(data, compat.Extra)
 }
 
 // UnmarshalJSON decodes the modeled members and keeps every other member of the object in Extra, as Pi's compat object keeps an
-// additional property.
+// additional property. It records the member order of openRouterRouting, chatTemplateKwargs and chatTemplateArgs, which Pi sends or
+// enumerates as the object lists them.
 func (compat *OpenAICompat) UnmarshalJSON(data []byte) error {
 	type fields OpenAICompat
 	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
@@ -46,6 +53,11 @@ func (compat *OpenAICompat) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &members); err != nil {
 		return err
 	}
+	order, err := readCompatObjectOrder(members)
+	if err != nil {
+		return err
+	}
+	compat.objectOrder = order
 	compat.Extra = nil
 	known := openAICompatMembers()
 	for name, value := range members {

@@ -5,6 +5,7 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -85,24 +86,60 @@ func (runtime *ModelRuntime) modelObjectOrigin(model *ai.Model) *modelObjectOrig
 // sameModelObject reports whether two models are the same model object: their Pi model objects have the same members with the same values. The order of
 // the members is not compared, because an SDK's object type may not keep it.
 func sameModelObject(left, right *ai.Model) bool {
-	decode := func(model *ai.Model) (any, bool) {
-		object, err := extension.ModelObject(model)
-		if err != nil || object == nil {
-			return nil, false
-		}
-		var value any
-		//portlint:allow mapkeyorder the two objects are compared member by member; no one observes the order of these copies
-		if err := json.Unmarshal(object, &value); err != nil {
-			return nil, false
-		}
-		return value, true
-	}
-	a, ok := decode(left)
-	if !ok {
+	a, err := extension.ModelObject(left)
+	if err != nil || a == nil {
 		return false
 	}
-	b, ok := decode(right)
-	return ok && reflect.DeepEqual(a, b)
+	b, err := extension.ModelObject(right)
+	if err != nil || b == nil {
+		return false
+	}
+	return sameModelObjectJSON(a, b)
+}
+
+// sameModelObjectJSON reports whether two JSON texts hold the same value: an object's members by name whatever their order (a repeated name counts with
+// its last value), an array's elements in order, a number by its float64 value and a string by its text. A text that is not JSON, or that holds a
+// number float64 cannot hold, equals nothing.
+func sameModelObjectJSON(left, right json.RawMessage) bool {
+	var a, b modelObjectValue
+	return json.Unmarshal(left, &a) == nil && json.Unmarshal(right, &b) == nil && reflect.DeepEqual(a, b)
+}
+
+// modelObjectValue is one JSON value of a model object, decoded only to be compared. The zero value is null.
+type modelObjectValue struct {
+	kind    byte // '{', '[', '"', '0' for a number, 't' for a boolean; 0 for null
+	members map[string]modelObjectValue
+	items   []modelObjectValue
+	text    string
+	number  float64
+	boolean bool
+}
+
+func (value *modelObjectValue) UnmarshalJSON(data []byte) error {
+	*value = modelObjectValue{}
+	if len(data) == 0 {
+		return errors.New("empty JSON value")
+	}
+	switch data[0] {
+	case 'n':
+		return nil
+	case '{':
+		value.kind = '{'
+		//portlint:allow mapkeyorder the two objects are compared member by member; no one observes the order of these copies
+		return json.Unmarshal(data, &value.members)
+	case '[':
+		value.kind = '['
+		return json.Unmarshal(data, &value.items)
+	case '"':
+		value.kind = '"'
+		return json.Unmarshal(data, &value.text)
+	case 't', 'f':
+		value.kind = 't'
+		return json.Unmarshal(data, &value.boolean)
+	default:
+		value.kind = '0'
+		return json.Unmarshal(data, &value.number)
+	}
 }
 
 // sameModelMetadata reports whether two models differ at most in their backend.

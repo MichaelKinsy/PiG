@@ -67,6 +67,14 @@
       "bundle": "how-pig-works.md"
     },
     {
+      "site": "event-bus.md",
+      "bundle": "event-bus.md"
+    },
+    {
+      "site": "go-hot-reload.md",
+      "bundle": "go-hot-reload.md"
+    },
+    {
       "site": "trust.md",
       "bundle": "trust.md"
     },

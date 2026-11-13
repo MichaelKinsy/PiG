@@ -593,21 +593,20 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 			Details    any                      `json:"details,omitempty"`
 		}{d.Type, d.CustomType, d.Content, draftDisplay(d.Display, d.DisplayAbsent, d.DisplayNull), d.Details})
 	case SessionBoundaryDraftContextEdit:
-		if d.ReplacementUndefined {
-			// The next handler is handed the draft as the extension wrote it, without the member.
-			return json.Marshal(struct {
-				Type     SessionBoundaryDraftType `json:"type"`
-				TargetID string                   `json:"targetId"`
-			}{d.Type, d.TargetID})
-		}
+		// One struct writes both forms: `omitempty` leaves the member out only for an empty value, and only the undefined draft has one, because a defined
+		// draft without a value is given null here.
 		replacement := d.Replacement
-		if len(replacement) == 0 {
+		switch {
+		case d.ReplacementUndefined:
+			// The next handler is handed the draft as the extension wrote it, without the member.
+			replacement = nil
+		case len(replacement) == 0:
 			replacement = json.RawMessage("null")
 		}
 		return json.Marshal(struct {
 			Type        SessionBoundaryDraftType `json:"type"`
 			TargetID    string                   `json:"targetId"`
-			Replacement json.RawMessage          `json:"replacement"`
+			Replacement json.RawMessage          `json:"replacement,omitempty"`
 		}{d.Type, d.TargetID, replacement})
 	case SessionBoundaryDraftCompaction:
 		return json.Marshal(struct {

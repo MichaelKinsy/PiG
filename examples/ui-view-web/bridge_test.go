@@ -346,7 +346,9 @@ func TestPageDrawsFocusesAndRaisesIntents(t *testing.T) {
 	browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.focus(); form.elements.message.value = "/ui-demo"; form.requestSubmit(); })()`)
 	browser.Wait(`document.querySelector('[data-key="demo"]') !== null`)
 	got := browser.String(`JSON.stringify(["colors","name","tap","prefs","notes","log"].map((id) => { const el = document.querySelector('[id$="-' + id + '"]'); return [el?.tagName, el?.tabIndex, el?.getAttribute("aria-label"), el?.getAttribute("role")].join("/"); }))`)
-	if want := `["DIV/1/Color/list","INPUT/2/Name/","DIV/3/Tap counter/button","DIV/4/Preferences/listbox","TEXTAREA/5/Notes/","DIV/6/Log/region"]`; got != want {
+	// A select-list is a listbox whatever role its a11y record names (its items are options), and a mouse-region with
+	// the role button is a button element, which needs no role attribute.
+	if want := `["DIV/1/Color/listbox","INPUT/2/Name/","BUTTON/3/Tap counter/","DIV/4/Preferences/listbox","TEXTAREA/5/Notes/","DIV/6/Log/region"]`; got != want {
 		t.Errorf("the id-carrying nodes are drawn as\n  %s\nwant\n  %s", got, want)
 	}
 	browser.Wait(`document.activeElement.id.endsWith("-colors")`)
@@ -371,7 +373,11 @@ func TestPageDrawsFocusesAndRaisesIntents(t *testing.T) {
 	browser.Run(key("Enter"))
 	browser.Wait(`document.querySelector('[data-key="demo"] .text').textContent.startsWith("Hello Ada")`)
 	// The mount ends: the panel goes and the focus returns to where it was before the mount.
-	browser.Run(`[...document.querySelectorAll('[data-key="demo"] header button')].find((b) => b.textContent === "demo.close").click()`)
+	// The mount's own intent is a button that reads the intent's verb and carries its name.
+	if got := browser.String(`(() => { const b = document.querySelector('[data-key="demo"] header button[data-intent="demo.close"]'); return [b.textContent, b.title].join(); })()`); got != "Close,demo.close" {
+		t.Errorf("the button of demo.close reads and is titled %s, want Close,demo.close", got)
+	}
+	browser.Run(`document.querySelector('[data-key="demo"] header button[data-intent="demo.close"]').click()`)
 	browser.Wait(`document.querySelector('[data-key="demo"]') === null && document.activeElement.name === "message"`)
 	if got := browser.String(`String(window.uiView.reports) + "/" + String(window.uiView.resyncs)`); got != "0/0" {
 		t.Errorf("reports/resyncs = %s, want 0/0", got)
@@ -382,7 +388,18 @@ func TestPageDrawsFocusesAndRaisesIntents(t *testing.T) {
 // and a function that sends a line as the user does: `/fx-a mount <content>`, `/fx-b update <content>`.
 func openFixtures(t *testing.T) (*browsertest.Browser, func(line string)) {
 	t.Helper()
-	b := startBridge(t, "-e", "testdata/fixture-a.mjs", "-e", "testdata/fixture-b.mjs")
+	return openWith(t, "testdata/fixture-a.mjs", "testdata/fixture-b.mjs")
+}
+
+// openWith opens the page of a bridge whose session loads the named extensions, and returns the browser and a function
+// that sends a line through the page's prompt.
+func openWith(t *testing.T, extensions ...string) (*browsertest.Browser, func(line string)) {
+	t.Helper()
+	var load []string
+	for _, extension := range extensions {
+		load = append(load, "-e", extension)
+	}
+	b := startBridge(t, load...)
 	browser := browsertest.Start(t)
 	browser.Open(b.base + "/?token=" + b.token)
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
@@ -399,7 +416,8 @@ func openFixtures(t *testing.T) (*browsertest.Browser, func(line string)) {
 // TestPageLaysOutStacks checks the geometry the page computes for the layout members of a view: an hstack's children
 // with `stack {basis: 0, grow: 1}` are columns of one width side by side whatever their text, `gap` is cells between
 // children, `align` places a shorter child, a `basis` is a width in cells, and the padding of a box and of a text is
-// what the view says (a text's default is one cell each way). A cell is 1ch wide and one line high.
+// what the view says (a text's default is one cell each way). A cell is the page's spacing tokens: 8 px wide and 16 px
+// high in the default look.
 func TestPageLaysOutStacks(t *testing.T) {
 	browser, send := openFixtures(t)
 	send(`/fx-a mount {"view":{"root":{"kind":"vstack","gap":1,"children":[` +
@@ -415,17 +433,17 @@ func TestPageLaysOutStacks(t *testing.T) {
 	got := browser.String(`(() => {
 		const view = document.querySelector('[data-key="fx-a"] .vstack');
 		const probe = document.createElement("div");
-		probe.style.cssText = "width: 10ch; height: 0";
+		probe.style.cssText = "width: calc(10 * var(--col)); height: calc(10 * var(--row)); flex: none";
 		view.append(probe);
-		const col = probe.getBoundingClientRect().width / 10;
+		const col = probe.getBoundingClientRect().width / 10, row = probe.getBoundingClientRect().height / 10;
 		probe.remove();
-		const row = parseFloat(getComputedStyle(view).lineHeight);
 		const rect = (el) => el.getBoundingClientRect();
 		const near = (a, b) => Math.abs(a - b) < 0.75;
 		const [cells, ends, box, fixed] = view.children;
 		const c = [...cells.children].map(rect), e = [...ends.children].map(rect);
 		const boxStyle = getComputedStyle(box), textStyle = getComputedStyle(box.firstChild);
 		return JSON.stringify({
+			cell: col + "x" + row,
 			equalColumns: near(c[0].width, c[1].width) && near(c[1].width, c[2].width) && c[0].width > col,
 			sameRow: near(c[0].top, c[1].top) && near(c[1].top, c[2].top) && c[0].left < c[1].left && c[1].left < c[2].left,
 			columnGap: near(c[1].left - c[0].right, 2 * col) && near(c[2].left - c[1].right, 2 * col),
@@ -436,7 +454,7 @@ func TestPageLaysOutStacks(t *testing.T) {
 			basis: near(rect(fixed.children[0]).width, 10 * col) && near(rect(fixed.children[1]).right, rect(fixed).right),
 		});
 	})()`)
-	if want := `{"equalColumns":true,"sameRow":true,"columnGap":true,"rowGap":true,"alignEnd":true,"boxPadding":true,"textPadding":true,"basis":true}`; got != want {
+	if want := `{"cell":"8x16","equalColumns":true,"sameRow":true,"columnGap":true,"rowGap":true,"alignEnd":true,"boxPadding":true,"textPadding":true,"basis":true}`; got != want {
 		t.Errorf("the layout is\n  %s\nwant\n  %s", got, want)
 	}
 }
