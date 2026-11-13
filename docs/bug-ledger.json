@@ -53493,6 +53493,29 @@
       ]
     },
     {
+      "id": "BF-ede5183",
+      "title": "A PiG that runs without a model API now says so when a request for that API carries no API key",
+      "symptom": "A PiG that runs without a model API now says so when a request for that API carries no API key.",
+      "rootCause": "A request for mistral-conversations in a build or a Piglet that strips it, sent without an API key, ended with \"No API key for provider: mistral\": the plain stream (apiStreamProvider) and the simple stream (streamSimpleAs) of an API resolved the request's key before they built the provider, and only the provider constructor reports a strip. google-vertex and bedrock-converse-stream take no key there, so they already reported the strip; Mistral told the user to supply a key for an API the binary does not have.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A PiG that runs without a model API now says so when a request for that API carries no API key. A Piglet Binary whose `strip.apis` (D92) names `mistral-conversations` (build tag `pig_strip_mistral_conversations`), and Stock PiG running a Piglet file with that strip, answered such a request with `No API key for provider: mistral`; the request now ends with `Provider mistral: API mistral-conversations is stripped from this Piglet (strip.apis: mistral-conversations)`, with a key and without one, as it already did for `google-vertex` and `bedrock-converse-stream`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ede518330c",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "ai/compat_api_streams_oracle_test.go::TestCompatAPIStreamsMatchPi",
+        "ai/strip_before_credentials_test.go::TestStrippedAPIReportsTheStripBeforeTheCredentialCheck"
+      ]
+    },
+    {
       "id": "BF-ededef9",
       "title": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a…",
       "symptom": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated.",
