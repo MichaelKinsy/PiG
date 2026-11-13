@@ -1589,12 +1589,11 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		integer := map[string]sdk.ViewShape{"n": {Type: "integer"}}
-		st, err := ctx.MountView(sdk.ViewMount{Key: "dlg", Slot: sdk.ViewSlotDialog, ViewContent: sdk.ViewContent{
+		st, err := ctx.MountView(sdk.ViewMount{Key: "dlg", Slot: sdk.ViewSlotDialog,
 			Title: fmt.Sprintf("Chart %d", n), View: viewText(ctx, "-dlg"),
 			Intents: []sdk.ViewIntent{{Name: "fx.add", Arg: sdk.ViewShape{Type: "object", Properties: integer, Required: []string{"n"}},
 				Answer: &sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"sum": {Type: "integer"}}, Required: []string{"sum"}}}},
-			Bindings: []sdk.ViewBinding{{Key: key, Intent: "fx.add", Arg: map[string]any{"n": n}}},
-		}})
+			Bindings: []sdk.ViewBinding{{Key: key, Intent: "fx.add", Arg: map[string]any{"n": n}}}})
 		if err != nil {
 			ve, ok := errors.AsType[*sdk.ViewError](err)
 			if !ok {
