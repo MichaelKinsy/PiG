@@ -215896,8 +215896,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_selector_upstream_test.go#TestSettingsSelectorUpstream",
-        "test:internal/codingagent/modal_shutdown_test.go#TestModalSelectorsReleaseOnShutdown",
-        "test:internal/codingagent/native_selectors_test.go#TestNativeSettingsSelectorIsOneNode"
+        "test:internal/codingagent/d2_product_name_test.go#TestShowHardwareCursorDescriptionNamesPiG",
+        "test:internal/codingagent/modal_shutdown_test.go#TestModalSelectorsReleaseOnShutdown"
       ]
     },
     {
@@ -308771,7 +308771,7 @@
       "evidence": [
         "test:tui/settings_list_render_oracle_test.go#TestSettingsListRenderMatchesPi",
         "test:tui/settings_list_theme_upstream_test.go#TestSettingsListUsesInjectedTheme",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupValueSpelling"
+        "test:internal/codingagent/d2_product_name_test.go#TestShowHardwareCursorDescriptionNamesPiG"
       ]
     },
     {

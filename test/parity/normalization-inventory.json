@@ -489,6 +489,12 @@
           "pattern": "parity-cli-[0-9a-z-]+-(pig|pi)-[0-9]+",
           "with": "parity-cli-run",
           "reason": "D2: replace only this scenario's allocated temporary root."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "not a valid pig? session:",
+          "with": "not a valid <app> session:",
+          "reason": "D2 (Product name in messages): the diagnostic names the product that prints it; the rest of the line stays compared."
         }
       ]
     },

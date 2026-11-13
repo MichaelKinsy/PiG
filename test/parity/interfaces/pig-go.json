@@ -314840,17 +314840,6 @@
       "shapeHash": "sha256:8ec104a34a1bbde4b0778e08e58ffadf9a296875eac42e9119e4edb23a925af9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#showHardwareCursorDescription",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "showHardwareCursorDescription",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "string"
-      },
-      "shapeHash": "sha256:00404e686415370f1711c4d7acfa2905444d3cf23cef2e10c47d445ebe690f96"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#showLoginAuthTypeSelector",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "showLoginAuthTypeSelector",
