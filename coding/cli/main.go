@@ -701,6 +701,8 @@ func Main(args []string, options *MainOptions) {
 	tui.SetChalkModifiers(chalkStdoutColor())
 	// The pig command serves the test-only test-faux provider under PIG_TEST_FAUX=1; an embedder that leaves the call out does not link it.
 	coding.EnableTestFauxProvider()
+	// Every command of pig may load an extension, whose views the host then builds: a session's host, a renderer of a host without a UI bridge, preview-login, validation.
+	enableViews()
 	// upstream: packages/coding-agent/src/main.ts:574 resetTimings(); PI_TIMING=1 prints the report before the mode runs.
 	timings.ResetTimings()
 	// main.ts:575: the built-in extensions, then the program's own.

@@ -25,7 +25,6 @@ func init() {
 			c.fg(n.SpinnerColor)
 			c.fg(n.MessageColor)
 		},
-		build:     buildCancellableLoader,
 		focusable: true,
 	})
 }
