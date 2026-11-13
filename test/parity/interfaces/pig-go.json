@@ -123484,6 +123484,17 @@
       "shapeHash": "sha256:145a8ae9aeaf50ae195a216d66dd576da59e8ee126e0959a23b552cf421a6f6c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.CallerOnOwnerLoop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.CallerOnOwnerLoop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.Command",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.Command",
@@ -123559,6 +123570,17 @@
         "type": "func(ctx context.Context) context.Context"
       },
       "shapeHash": "sha256:366d096859c2719867db797767571a760dd33d980fb8931079e27bb882464837"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.DrainMcpServersChanges",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.DrainMcpServersChanges",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.Emit",
@@ -124155,17 +124177,6 @@
       "shapeHash": "sha256:366d096859c2719867db797767571a760dd33d980fb8931079e27bb882464837"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.drainMcpServersChanges",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
-      "name": "Runner.drainMcpServersChanges",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.drainUIPromptEvents",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.drainUIPromptEvents",
@@ -124197,6 +124208,17 @@
         "type": "func(err *github.com/MichaelKinsy/PiG/coding/extension.ExtensionError)"
       },
       "shapeHash": "sha256:6277fca04fa201b26b6bbfb29bea21bae0a6c8c9490a0d29fbdd338578ca6c5a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.emitMcpServersChange",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.emitMcpServersChange",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, event github.com/MichaelKinsy/PiG/coding/extension.McpServersChangeEvent, enter func())"
+      },
+      "shapeHash": "sha256:0300be9bca854ac203031e0f45f200b07f272ff2f18a0612a45e388959da9aa1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.emitUIPromptEvent",
@@ -124296,6 +124318,17 @@
         "type": "func() []github.com/MichaelKinsy/PiG/coding/extension.ResolvedCommand"
       },
       "shapeHash": "sha256:d900bf0f2a913aa34ceac11bb2262376dee5f0a75f0f29a9e15758fa9dae9310"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.startMcpServersChange",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.startMcpServersChange",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event github.com/MichaelKinsy/PiG/coding/extension.McpServersChangeEvent) \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:14c9648166095f17ca33f701ad6347b959f2a3c29606f2b19b10cbe622a91ff0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#ShortcutEntry",
@@ -124670,6 +124703,17 @@
         "type": "func(result any) any"
       },
       "shapeHash": "sha256:90b3dd946d072645e6fe9d55c717b95e0603c4afa2e78630bb22e6784563199d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#ownerLoop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "ownerLoop",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "ownerLoop"
+      },
+      "shapeHash": "sha256:8c863b20a0186e8903cedba65e4365f387d0f6540dbed9c48177f2faa2a835d1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#providerRegistry",
@@ -170388,6 +170432,17 @@
       "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#CommandContext.yield",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "CommandContext.yield",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:abf75cdd06446e4f2096decc25f9a3b8a701a6dd8afd11fe16223fb0b76991c3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Connection",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "Connection",
@@ -170892,6 +170947,17 @@
         "type": "func(message string)"
       },
       "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#EventContext.yield",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "EventContext.yield",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:abf75cdd06446e4f2096decc25f9a3b8a701a6dd8afd11fe16223fb0b76991c3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension",
@@ -256263,6 +256329,17 @@
         "type": "func(message string, kind string)"
       },
       "shapeHash": "sha256:2c2ae80189e68f65f628f3f2e323508aec8f52578d9f72fb301d72675c6b834b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtUIContext.OnOwnerLoop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExtUIContext.OnOwnerLoop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtUIContext.OnRemoteTerminalInput",

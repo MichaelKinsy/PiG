@@ -955,6 +955,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7163ab3](#bf-7163ab3) | A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7177d5f](#bf-7177d5f) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
 | [BF-725e104](#bf-725e104) | The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks… | PiG's own defect | Windows | 0.5.2 |
+| [BF-72bf4f2](#bf-72bf4f2) | extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms)… | PiG's own defect | All platforms | Unreleased |
 | [BF-72db80f](#bf-72db80f) | fix(durable): a streamed partial commits the text of its own events | PiG's own defect | All platforms | Unreleased |
 | [BF-72e0ca2](#bf-72e0ca2) | A Kitty image in a padded or colored box, or with text beside it, is no longer dropped from the fullscreen… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-72e7ab2](#bf-72e7ab2) | A tool card whose `app.tools.expand` key is unbound shows an empty key in ".. | PiG's own defect | All platforms | 0.5.0 |
@@ -15058,6 +15059,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `725e104b55` (2026-10-20)
 - **Tests:** None recorded.
 - **Release note:** The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks `accessSync` and `spawnSync`, PiG's Windows alias and Unix cases match them case for case, and the native Windows check ran and passed on the Windows runner. The release gate no longer reports it as an open hot-path gap.
+
+### BF-72bf4f2
+
+**extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms) reached the built-in MCP extension only after the call had returned, and a second server registered while an earlier one was still connecting waited until that connection attempt had ended or timed out.
+- **Root cause:** The listener of Pi calls `void this.emit(...)` and then reports unhandled servers (runner.ts:465-468); emit runs the first handler to its first await on the stack of registerMcpServer (runner.ts:1103-1110), and every registration is a chain of its own. PiG queued the events and delivered them on one goroutine, one at a time: the registration returned before its handler started, and the event of a second server waited until the first handler had ended, that is until the first server had connected or its connection attempt had failed.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `72bf4f2ebd` (2026-11-13)
+- **Tests:** `coding/extension/host/inproc/mcp_change_order_async_exta_test.go::TestRunnerMcpServersChangeDrainWaitsForTheRunningEmissions`, `coding/mcpext/runtime_registration_async_test.go::TestAnInvalidatedRunnerEndsTheMcpServersChangeHandlersWaitForItsConnections`, `test/extension-conformance/mcp_register_run_test.go::TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall`
+- **Release note:** extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms) reached the built-in MCP extension only after the call had returned, and a second server registered while an earlier one was still connecting waited until that connection attempt had ended or timed out. Pi runs the first `mcp_servers_change` handler up to its first await inside the registering call, and every registration starts its own delivery: when `registerMcpServer` returns, the built-in MCP extension has listed the server, hidden the tools of a server it replaced and activated the discovery tool, and a server registered while another still connects starts connecting at once. PiG now does the same when the first handler runs in the PiG process (the built-in MCP extension, or a compiled-in Go extension). Still different from Pi: the handlers after the first run beside the registering code instead of after its synchronous run; and the call does not wait for a first handler that lives in a subprocess extension (possible only when the built-in MCP extension is replaced or disabled), nor when the registration is made on the interactive input loop. Affected release: v0.7.0, the only release with this code (it came with 3dd4d752e8; no earlier tag has `mcp_servers_change`).
 
 ### BF-72db80f
 
