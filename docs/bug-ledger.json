@@ -1172,6 +1172,34 @@
       ]
     },
     {
+      "id": "BF-07d55d4",
+      "title": "Print, JSON and RPC modes: a stdout write that fails with ENOBUFS, EAGAIN or EWOULDBLOCK (a slow or…",
+      "symptom": "Print, JSON and RPC modes: a stdout write that fails with ENOBUFS, EAGAIN or EWOULDBLOCK (a slow or non-blocking pipe) is now retried every 10 ms without losing or repeating bytes, as Pi does; any other write error still ends the process with exit code 1.",
+      "rootCause": "Port of core/output-guard.ts writeRawStdoutChunk: the raw stdout writer retries ENOBUFS/EAGAIN/EWOULDBLOCK every 10 ms without limit, resumes after a partial write, and returns any other error so the ordered stdout queue (print, json, rpc) reports it and exits 1.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Print, JSON and RPC modes: a stdout write that fails with ENOBUFS, EAGAIN or EWOULDBLOCK (a slow or non-blocking pipe) is now retried every 10 ms without losing or repeating bytes, as Pi does; any other write error still ends the process with exit code 1.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "07d55d4709",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/stdout_retry_async_modelsb_test.go::TestStdoutQueueOverRawWriterReportsAClosedReader",
+        "coding/cli/stdout_retry_async_modelsb_test.go::TestStdoutQueueWaitCoversTheRetryPause",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutDoesNotRetryOtherErrors",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutRetriesTransientErrorsAfterTenMilliseconds",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutRetryHoldsTheChunkUntilThePauseEnds",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutRetryResumesAfterAPartialWrite",
+        "internal/codingagent/output_guard_retry_async_modelsb_test.go::TestRawStdoutWriterKeepsOrderAcrossAStalledReader"
+      ]
+    },
+    {
       "id": "BF-07da4ea",
       "title": "A configured package or `-e` source that cannot be installed no longer ends startup",
       "symptom": "A configured package or `-e` source that cannot be installed no longer ends startup.",
@@ -2302,6 +2330,31 @@
         "internal/codingagent/session_tool_cards_oracle_test.go::TestBuiltinToolCardsWithoutRegisteredDefinitionMatchPi",
         "internal/codingagent/session_tool_cards_oracle_test.go::TestUnregisteredToolCardsMatchPi",
         "internal/codingagent/tick_render_test.go::TestTimerDrivenFramesReachTerminalWithoutInput"
+      ]
+    },
+    {
+      "id": "BF-0ca206e",
+      "title": "An interactive start now prints the warnings about extensions still in a deprecated directory, with the…",
+      "symptom": "The warnings were computed and dropped.",
+      "rootCause": "Ports migrations.ts showDeprecationWarnings: warnings and the migration and documentation links print, stdin goes to raw mode, one key is awaited and the mode is restored. main.go no longer discards the warnings of RunMigrations.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An interactive start now prints the warnings about extensions still in a deprecated directory, with the migration guide and documentation links, and waits for one key before the TUI starts, as Pi does. Before, the warnings were computed and dropped.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0ca206e73e",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/deprecation_warnings_async_wcli_test.go::TestDeprecationWarningsAreSilentWithoutWarnings",
+        "coding/cli/deprecation_warnings_async_wcli_test.go::TestDeprecationWarningsPrintThenWaitForOneKey",
+        "coding/cli/deprecation_warnings_async_wcli_test.go::TestDeprecationWarningsRawModeFailureAndEndedInput",
+        "internal/codingagent/migrations_test.go::TestMigrationDocsURLsUseEarendilWorksRepo"
       ]
     },
     {
@@ -7972,6 +8025,33 @@
       ]
     },
     {
+      "id": "BF-2dc09ec",
+      "title": "Resource reload: an extension load hook or project-trust callback that reloads the resources with the context…",
+      "symptom": "Resource reload: an extension load hook or project-trust callback that reloads the resources with the context it received no longer deadlocks on the loader's operation lock; the nested reload runs inside the outer one, as Pi's unlocked reload does.",
+      "rootCause": "Pi has no lock around resource-loader reload(): a callback that calls reload() interleaves with it and resolves. DefaultResourceLoader.ReloadWith and LoadProjectTrustExtensions held opMu while the project-trust callback and the extension load hook ran, so a nested ReloadWith deadlocked. The context handed to those callbacks now marks the loader as held and a call made with it runs inside the outer operation. Tests: trust decision order, failures and caller context (project trust), overlapping reloads end in the last input state, serialisation.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resource reload: an extension load hook or project-trust callback that reloads the resources with the context it received no longer deadlocks on the loader's operation lock; the nested reload runs inside the outer one, as Pi's unlocked reload does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2dc09ec10c",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContext",
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderManyOverlappingReloadsEndInTheSameState",
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderOverlappingReloadsEndInTheLastInputsState",
+        "coding/resource_loader_trust_async_modelsb_test.go::TestDefaultResourceLoaderReloadHoldsTheOperationLockDuringTheExtensionLoad",
+        "coding/resource_loader_trust_async_modelsb_test.go::TestDefaultResourceLoaderTrustCallbackRunsBetweenBootstrapAndFinalLoad",
+        "coding/resource_loader_trust_async_modelsb_test.go::TestDefaultResourceLoaderTrustFailuresRejectTheReloadAndKeepThePreviousResult"
+      ]
+    },
+    {
       "id": "BF-2deefc0",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -10942,6 +11022,56 @@
       ],
       "tests": [
         "extensions/sdk-py/bundle_test.go::TestEveryPackageSourceIsBundled"
+      ]
+    },
+    {
+      "id": "BF-3cb88af",
+      "title": "SDK: `CreateAgentSessionServicesOptions.ModelRuntimeSignal` bounds only the creation of the model runtime, as…",
+      "symptom": "SDK: `CreateAgentSessionServicesOptions.ModelRuntimeSignal` bounds only the creation of the model runtime, as Pi's `modelRuntimeSignal` does.",
+      "rootCause": "createAgentSessionServices (agent-session-services.ts:140-146) hands modelRuntimeSignal to ModelRuntime.create alone; the resource reload (:154) and the local refresh after the extension registrations (:194) take no signal. CreateAgentSessionServices ran both under the signal, so a reload still running when the signal fired failed the creation. They now run under a context the signal does not cancel.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "SDK: `CreateAgentSessionServicesOptions.ModelRuntimeSignal` bounds only the creation of the model runtime, as Pi's `modelRuntimeSignal` does. A resource reload still running when the signal fired made `CreateAgentSessionServices` fail, and the model refresh after the extensions loaded was skipped; both now run to their end.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3cb88affbc",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/services_async_wcli2_test.go::TestServicesLocalRefreshAfterTheReloadOutlivesTheModelRuntimeSignal",
+        "coding/services_async_wcli2_test.go::TestServicesModelRuntimeCreateEndsAtTheModelRuntimeSignal",
+        "coding/services_async_wcli2_test.go::TestServicesReloadOutlivesTheModelRuntimeSignal",
+        "internal/codingagent/startup_ui_stop_order_async_wcli2_test.go::TestRunStartupComponentClearsAndSettlesBeforeStoppingTheTerminalReader"
+      ]
+    },
+    {
+      "id": "BF-3cb88af-2",
+      "title": "Startup prompts (project trust, the missing-directory choice, startup text input) keep reading the terminal…",
+      "symptom": "Startup prompts (project trust, the missing-directory choice, startup text input) keep reading the terminal until the prompt has been cleared and 25 ms have passed, as Pi does.",
+      "rootCause": "createAgentSessionServices (agent-session-services.ts:140-146) hands modelRuntimeSignal to ModelRuntime.create alone; the resource reload (:154) and the local refresh after the extension registrations (:194) take no signal. CreateAgentSessionServices ran both under the signal, so a reload still running when the signal fired failed the creation. They now run under a context the signal does not cancel.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Startup prompts (project trust, the missing-directory choice, startup text input) keep reading the terminal until the prompt has been cleared and 25 ms have passed, as Pi does. The terminal was handed back to line mode before the prompt was cleared, so keys typed in that moment could be echoed onto the screen.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3cb88affbc",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/services_async_wcli2_test.go::TestServicesLocalRefreshAfterTheReloadOutlivesTheModelRuntimeSignal",
+        "coding/services_async_wcli2_test.go::TestServicesModelRuntimeCreateEndsAtTheModelRuntimeSignal",
+        "coding/services_async_wcli2_test.go::TestServicesReloadOutlivesTheModelRuntimeSignal",
+        "internal/codingagent/startup_ui_stop_order_async_wcli2_test.go::TestRunStartupComponentClearsAndSettlesBeforeStoppingTheTerminalReader"
       ]
     },
     {
@@ -15600,6 +15730,32 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-5213cab",
+      "title": "Checking for available package updates now queries at most four npm registries or Git remotes at a time, as…",
+      "symptom": "Checking for available package updates now queries at most four npm registries or Git remotes at a time, as Pi does, instead of five.",
+      "rootCause": "UPDATE_CHECK_CONCURRENCY is 4 in Pi; PiG used 5.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Checking for available package updates now queries at most four npm registries or Git remotes at a time, as Pi does, instead of five.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5213caba73",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/packagemanager/package_async_ext_b_test.go::TestLocalGitUpdateTargetSurvivesAFailingSetHead",
+        "internal/packagemanager/package_async_ext_b_test.go::TestRefreshTemporaryGitSourceReportsPullAroundTheAwaitedUpdate",
+        "internal/packagemanager/package_async_ext_b_unix_test.go::TestCheckForAvailableUpdatesRunsFourChecksAtATimeAndJoinsAll",
+        "internal/packagemanager/package_async_ext_b_unix_test.go::TestResolveAsksOnMissingOneSourceAtATimeAfterTheInstallOfThePreviousOne",
+        "internal/packagemanager/package_async_ext_b_unix_test.go::TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails"
+      ]
     },
     {
       "id": "BF-5229b7d",
@@ -23005,6 +23161,33 @@
       ]
     },
     {
+      "id": "BF-68dfec5",
+      "title": "Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system…",
+      "symptom": "Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system prompt) that calls the resource loader, and a project-trust callback or extension load that calls `ExtendResources` or `Close`, no longer block forever on the loader's operation lock; the call runs inside the reload in progress, as Pi's unlocked reload does.",
+      "rootCause": "Pi's DefaultResourceLoader.reload() has no lock (resource-loader.ts:541-710), so a callback of a running reload may call the loader: reload(), extendResources() and the other methods run at once. PiG serialises ReloadWith, LoadProjectTrustExtensions, ExtendResources and Close with opMu, and a call made from a callback waited for the lock its own operation held.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system prompt) that calls the resource loader, and a project-trust callback or extension load that calls `ExtendResources` or `Close`, no longer block forever on the loader's operation lock; the call runs inside the reload in progress, as Pi's unlocked reload does. Reloads that overlap from outside still wait for each other (D632).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "68dfec5e1a",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContext",
+        "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayExtendAndClose",
+        "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContextOnAnotherGoroutine",
+        "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderContextOfAnEndedReloadDoesNotBypassTheOperationLock",
+        "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderOverrideMayCallTheLoader",
+        "coding/resource_loader_reentry_async_test.go::TestPiOverlappingReloadsMixTheirResultsD632"
+      ]
+    },
+    {
       "id": "BF-68f8761",
       "title": "`insecure: true` on a provider an extension registers with `refreshModels` now reaches the request transport",
       "symptom": "`insecure: true` on a provider an extension registers with `refreshModels` now reaches the request transport.",
@@ -24747,6 +24930,35 @@
       ],
       "tests": [
         "telemetry/memory_events_test.go::TestInMemoryStoredSpanKeepsEachEventsOwnTime"
+      ]
+    },
+    {
+      "id": "BF-6f9cf77",
+      "title": "RPC mode: an extension dialog whose signal is already aborted now resolves its default without writing an…",
+      "symptom": "RPC mode: an extension dialog whose signal is already aborted now resolves its default without writing an extension_ui_request, as Pi does; the client no longer sees a dialog it cannot answer.",
+      "rootCause": "rpcUIContext.request returns ctx.Err() before writing extension_ui_request (rpc-mode.ts:101).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: an extension dialog whose signal is already aborted now resolves its default without writing an extension_ui_request, as Pi does; the client no longer sees a dialog it cannot answer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6f9cf779f7",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_async_modes_test.go::TestRPCAbortBashAnswersWhileTheBashCommandIsInFlight",
+        "coding/cli/rpc_async_modes_test.go::TestRPCAgentSubscriberWaitsForStdoutBackpressureOnEveryEvent",
+        "coding/cli/rpc_async_modes_test.go::TestRPCParseErrorAndRejectedHandlerAnswerInOrderAndTheLoopContinues",
+        "coding/cli/rpc_dialog_async_modes_test.go::TestRPCUIDialogWithAnAbortedSignalWritesNoRequest",
+        "coding/cli/rpc_dialog_async_modes_test.go::TestRPCUIEditorDialogHasNoTimeoutAndResolvesOnTheResponse",
+        "internal/codingagent/external_editor_async_modes_test.go::TestExternalEditorHandoffChild",
+        "internal/codingagent/external_editor_async_modes_test.go::TestExternalEditorHandoffOrdering",
+        "internal/codingagent/theme_controller_async_modes_test.go::TestThemeControllerFailedColorQueryAppliesNoColors"
       ]
     },
     {
@@ -40883,6 +41095,31 @@
       ]
     },
     {
+      "id": "BF-b91a454",
+      "title": "`pig --list-models` now checks credentials again before it prints, as Pi does",
+      "symptom": "`pig --list-models` now checks credentials again before it prints, as Pi does.",
+      "rootCause": "listModels (cli/list-models.ts:29-115) warns of modelRuntime.getError() (:34-37) and then awaits modelRuntime.getAvailable(undefined, { signal }) (:39) under main.ts:951 AbortSignal.timeout(15_000): a full availability pass (model-runtime.ts:343-386, 490-506) that stats auth.json for every credential read and reloads it under its lock when it changed. main does not catch its rejection.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig --list-models` now checks credentials again before it prints, as Pi does. When `auth.json` cannot be read (for example it is not valid JSON) the run warns `Availability refresh: \u003cerror\u003e`, reports the error and exits with status 1 instead of printing a table and exiting 0; a check that takes longer than 15 s ends the same way with a timeout error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b91a45414f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_list_async_wcli2_test.go::TestListModelsEndsAtItsSignalWithoutATable",
+        "coding/cli/model_list_async_wcli2_test.go::TestListModelsListsStoredOAuthAndConfiguredKeyProvidersWithoutRefreshing",
+        "coding/cli/model_list_async_wcli2_test.go::TestListModelsWarnsOfTheLoadErrorBeforeTheTable",
+        "coding/cli/model_list_reject_async_wcli2_test.go::TestListModelsEndsWithTheAvailabilityFailure"
+      ]
+    },
+    {
       "id": "BF-b96952c",
       "title": "fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job…",
       "symptom": "fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job fails its start",
@@ -51417,6 +51654,68 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e5f76fe",
+      "title": "Settings: a change whose save failed (for example while another process held the settings lock) is now saved…",
+      "symptom": "Settings: a change whose save failed (for example while another process held the settings lock) is now saved by the next successful save of the same file, as Pi does; before, it stayed in effect until the restart and was then lost.",
+      "rootCause": "Finding fixed here: Pi clears the fields a setter marked only when a write of their scope succeeds (:578-584), so the write after a failed one also saves what the failed one did not, with new keys in the order they were first changed; PiG saved only the last setter change. Reload and a trust change forget what was not saved, as Pi does (:481, :511-514).",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Settings: a change whose save failed (for example while another process held the settings lock) is now saved by the next successful save of the same file, as Pi does; before, it stayed in effect until the restart and was then lost.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5f76fefde",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/settings_flush_writes_async_test.go::TestFlushSettingsWritesWaitsForAWriteInProgress",
+        "internal/codingagent/settings_flush_writes_async_test.go::TestSettingsWriteThatEndsItsGoroutineDoesNotStrandTheQueue",
+        "internal/codingagent/settings_write_queue_async_test.go::TestQueuedProjectWriteIsRefusedWhenTheTrustWasWithdrawnBeforeItRuns",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsFlushAndReloadWaitForAWriteInProgress",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsAndWritesAfterIt",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsNilAndItsFailureIsOnlyRecorded",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSettersOfSeveralGoroutinesWriteInOrderAndReturnAfterTheirOwnWrite",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteAfterAFailedOneSavesWhatItDidNotSave",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteFailureIsRecordedOnceAndTheQueueGoesOn",
+        "internal/codingagent/settings_write_queue_oracle_test.go::TestSettingsWriteQueueErrorPathMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-e5f76fe-2",
+      "title": "Settings: an extension settings storage whose lock callback changes a setting no longer blocks forever; the…",
+      "symptom": "Settings: an extension settings storage whose lock callback changes a setting no longer blocks forever; the change is saved after the save in progress, as in Pi.",
+      "rootCause": "Finding fixed here: Pi clears the fields a setter marked only when a write of their scope succeeds (:578-584), so the write after a failed one also saves what the failed one did not, with new keys in the order they were first changed; PiG saved only the last setter change. Reload and a trust change forget what was not saved, as Pi does (:481, :511-514).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Settings: an extension settings storage whose lock callback changes a setting no longer blocks forever; the change is saved after the save in progress, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5f76fefde",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/settings_flush_writes_async_test.go::TestFlushSettingsWritesWaitsForAWriteInProgress",
+        "internal/codingagent/settings_flush_writes_async_test.go::TestSettingsWriteThatEndsItsGoroutineDoesNotStrandTheQueue",
+        "internal/codingagent/settings_write_queue_async_test.go::TestQueuedProjectWriteIsRefusedWhenTheTrustWasWithdrawnBeforeItRuns",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsFlushAndReloadWaitForAWriteInProgress",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsAndWritesAfterIt",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsNilAndItsFailureIsOnlyRecorded",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSettersOfSeveralGoroutinesWriteInOrderAndReturnAfterTheirOwnWrite",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteAfterAFailedOneSavesWhatItDidNotSave",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteFailureIsRecordedOnceAndTheQueueGoesOn",
+        "internal/codingagent/settings_write_queue_oracle_test.go::TestSettingsWriteQueueErrorPathMatchesPi"
+      ]
     },
     {
       "id": "BF-e5f9fdd",
