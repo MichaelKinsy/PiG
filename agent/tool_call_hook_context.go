@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"slices"
 )
 
 // ToolCallHookContext is what Pi hands a tool-call hook beside the call itself: the assistant message that issued the call and the agent context at that point.
@@ -13,7 +12,12 @@ import (
 type ToolCallHookContext struct {
 	// AssistantMessage issued the tool call. Nil for a RunToolCall made without one.
 	AssistantMessage *AssistantMessage
-	// Context is the agent context (messages and tools) the call runs in.
+	// Context is the agent context (messages and tools) the call runs in. Its Messages are the run's own array, cut at its length, the
+	// same one for every call of the assistant message, as in Pi: what a hook or a tool replaces in place changes the run, and the
+	// other calls and the next request see it; an append goes to an array of the caller's own. The run does not touch the array while
+	// the calls run, and no two calls' hooks write it at the same time: a sequential batch runs one call at a time, the before hooks
+	// of a parallel batch run one after another, and its after hooks follow the order the tools settled. The tools of a parallel batch
+	// do run at the same time: code that reads or writes the messages while another call's tool or hook may do so synchronizes with it.
 	Context AgentContext
 }
 
@@ -30,7 +34,7 @@ func ToolCallHookContextFrom(ctx context.Context) (ToolCallHookContext, bool) {
 	return hookContext, ok
 }
 
-// toolCallHookContext snapshots the loop's state for the hooks of one assistant message's calls.
-func (r *loopRun) toolCallHookContext(assistant *AssistantMessage) ToolCallHookContext {
-	return ToolCallHookContext{AssistantMessage: assistant, Context: AgentContext{Messages: slices.Clone(r.context), Tools: r.h.tools()}}
+// toolCallHookContext is the loop's state for the hooks of an assistant message's calls, with messages as the context's messages.
+func (r *loopRun) toolCallHookContext(assistant *AssistantMessage, messages []AgentMessage) ToolCallHookContext {
+	return ToolCallHookContext{AssistantMessage: assistant, Context: AgentContext{Messages: messages, Tools: r.h.tools()}}
 }

@@ -168,7 +168,7 @@ def signal_probe(binary, root, mode):
         server.server_close()
 
 
-def command_ready_fixture(root, env, busy=False):
+def command_ready_fixture(root, env, busy=False, record_shutdown=False):
     """The extension's /wire-ready command writes the readiness marker.
 
     With busy, it first starts a status ticker, so the session is still working when the probe acts; session_shutdown
@@ -176,14 +176,22 @@ def command_ready_fixture(root, env, busy=False):
     that loses its terminal has nothing left in its event loop: Node ends the stdin handle at EOF, drops the
     unreferenced SIGHUP listener and exits 0 without touching the terminal. Pi exits 129 only when something
     writes after the hangup (interactive-mode.ts emergencyTerminalExit on the write's EIO), so without a
-    ticker the outcome depends on whether a throttled render happens to be pending at that moment."""
+    ticker the outcome depends on whether a throttled render happens to be pending at that moment.
+
+    With record_shutdown, the session_shutdown handler appends the event's reason to the file WIRE_SHUTDOWN names, awaits
+    a timer and appends "settled": what an extension sees of the shutdown, and whether the exit waited for it."""
     ready = root / "ready"
     env["WIRE_READY"] = str(ready)
     if busy:
         env["WIRE_BUSY"] = "1"
+    shutdown = '() => clearInterval(ticker)'
+    if record_shutdown:
+        env["WIRE_SHUTDOWN"] = str(root / "shutdown")
+        shutdown = ('async (event) => { clearInterval(ticker); appendFileSync(process.env.WIRE_SHUTDOWN, event.reason + "\\n");'
+                    'await new Promise((resolve) => setTimeout(resolve, 50)); appendFileSync(process.env.WIRE_SHUTDOWN, "settled\\n"); }')
     extension = root / "ready.mjs"
-    extension.write_text('import {writeFileSync} from "node:fs"; export default function(pi) {'
-                         'let ticker; pi.on("session_shutdown", () => clearInterval(ticker));'
+    extension.write_text('import {appendFileSync, writeFileSync} from "node:fs"; export default function(pi) {'
+                         'let ticker; pi.on("session_shutdown", ' + shutdown + ');'
                          'pi.registerCommand("wire-ready", {handler: async (_args, ctx) => {'
                          'if (process.env.WIRE_BUSY) { let tick = 0; ticker = setInterval(() => ctx.ui.setStatus("wire", String(++tick)), 5); }'
                          'writeFileSync(process.env.WIRE_READY,"ready");}});}')
@@ -209,21 +217,35 @@ def terminal_probe(binary, root, case):
     and the shutdown's terminal writes meet EIO (interactive-mode.ts shutdown fromSignal, then emergencyTerminalExit):
     129 without any pending render. Without a controlling terminal no SIGHUP arrives, and an idle Pi in a repository
     stays alive until some write fails. In a plain directory an idle Pi has nothing left in its loop, so it can exit
-    0 before the handler runs (D186; D102 states the live-terminal half of this)."""
+    0 before the handler runs (D186; D102 states the live-terminal half of this).
+
+    disconnect-repo-shutdown is disconnect-repo with an extension that records its session_shutdown: Pi's SIGHUP handler
+    awaits runtimeHost.dispose(), which emits the event with the reason "quit", before the terminal writes that fail
+    (interactive-mode.ts shutdown fromSignal), so the handler's awaited write lands before the exit 129."""
     action = "live-hup" if case == "live-hup" else "disconnect"
     cwd, env, args = setup(root, "http://127.0.0.1:1/v1")
     spawn = {}
-    if case == "disconnect-repo":
+    repo = case in ("disconnect-repo", "disconnect-repo-shutdown")
+    if repo:
         subprocess.run(["git", "init", "-q"], cwd=cwd, env=env, check=True)
-    ready, extension = command_ready_fixture(root, env, busy=case != "disconnect-repo")
+    ready, extension = command_ready_fixture(root, env, busy=not repo, record_shutdown=case == "disconnect-repo-shutdown")
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 35, 100, 0, 0))
-    if case == "disconnect-repo":
+    if repo:
         spawn["preexec_fn"] = lambda: fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
     try:
         with child([*binary, *args, "-e", str(extension), "/wire-ready"], cwd=cwd, env=env,
                    stdin=slave, stdout=slave, stderr=slave, **spawn) as proc:
             wait_command_ready(master, proc, ready)
+            if case == "disconnect-repo-shutdown":
+                # Let the startup renders finish. A write to the dead terminal during the handler's await ends Pi under
+                # it (emergencyTerminalExit on the write's EIO), and the handler's second line is then never written:
+                # Pi recorded ["quit"] alone when the terminal closed right after the readiness marker.
+                quiet = time.monotonic() + 0.5
+                while time.monotonic() < quiet:
+                    if select.select([master], [], [], 0.05)[0]:
+                        os.read(master, 65536)
+                        quiet = time.monotonic() + 0.5
             if action == "disconnect":
                 os.close(master)
                 master = None
@@ -238,7 +260,11 @@ def terminal_probe(binary, root, case):
                 else:
                     time.sleep(0.02)
             status = proc.wait()
-            emit({"case": case, "returncode": status})
+            result = {"case": case, "returncode": status}
+            if case == "disconnect-repo-shutdown":
+                recorded = root / "shutdown"
+                result["shutdown"] = recorded.read_text().split() if recorded.exists() else []
+            emit(result)
             assert status == (129 if action == "disconnect" else 0), status
     finally:
         if master is not None:
@@ -380,7 +406,7 @@ def tool_signal_probe(binary, root, sig, shutdown=None, mode="json"):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bin", default=os.environ.get("PIG_PARITY_PIG_BIN"))
-    parser.add_argument("--case", choices=["session", "print", "json", "json-tool-term", "json-tool-hup", "json-tool-throwing-shutdown", "json-tool-slow-shutdown", "text-tool-throwing-shutdown", "text-tool-slow-shutdown", "disconnect", "disconnect-repo", "live-hup", "modal-shutdown"], required=True, action="append")
+    parser.add_argument("--case", choices=["session", "print", "json", "json-tool-term", "json-tool-hup", "json-tool-throwing-shutdown", "json-tool-slow-shutdown", "text-tool-throwing-shutdown", "text-tool-slow-shutdown", "disconnect", "disconnect-repo", "disconnect-repo-shutdown", "live-hup", "modal-shutdown"], required=True, action="append")
     options = parser.parse_args()
     if not options.bin:
         parser.error("--bin or PIG_PARITY_PIG_BIN is required")
@@ -403,6 +429,8 @@ def main():
                 tool_signal_probe(binary, root, signal.SIGHUP)
             elif case == "modal-shutdown":
                 modal_shutdown_probe(binary, root)
+            elif case == "disconnect-repo-shutdown":
+                terminal_probe(binary, root, case)
             elif case.endswith("-shutdown"):
                 mode, _, shutdown, _ = case.split("-")
                 tool_signal_probe(binary, root, signal.SIGTERM, shutdown=shutdown, mode=mode)

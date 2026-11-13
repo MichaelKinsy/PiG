@@ -19,6 +19,10 @@ func TestProviderRequestBodiesWriteCharactersAsJSONStringifyDoes(t *testing.T) {
 	// The long text takes openai-completions' spliced encoding of large message strings.
 	for _, text := range []string{"a <b> & c \u2028 d \u2029 e", strings.Repeat("a <b> & c \u2028 d \u2029 e ", 4096)} {
 		for _, api := range []ai.API{ai.APIOpenAICompletions, ai.APIOpenAIResponses, ai.APIAnthropicMessages, ai.APIGoogleGenerativeAI, ai.APIMistralConversations, ai.APIAzureOpenAIResponses, ai.APIOpenAICodexResponses} {
+			if !ai.BuiltAPI(api) {
+				// A build with this API's pig_strip tag has no provider for the row.
+				continue
+			}
 			t.Run(string(api), func(t *testing.T) {
 				var body []byte
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

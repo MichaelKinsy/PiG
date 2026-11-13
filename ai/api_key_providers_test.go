@@ -3,7 +3,6 @@ package ai
 // pi: packages/ai/src/auth/oauth/github-copilot.ts
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -44,16 +43,17 @@ func TestAPIKeyProvidersMatchPinnedProviderDefinitions(t *testing.T) {
 	identity := regexp.MustCompile(`id: "([^"]+)",\s+name: "([^"]+)"`)
 	want := map[string]string{"radius": "Radius"}
 	for _, path := range paths {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
+		data := readPinnedMirror(t, filepath.ToSlash(path))
 		if !strings.Contains(string(data), "apiKey:") {
 			continue
 		}
 		if match := identity.FindSubmatch(data); match != nil {
 			want[string(match[1])] = string(match[2])
 		}
+	}
+	// A build with a pig_strip_<api> tag has no login for the provider it strips.
+	for _, id := range BuiltStrippedProviders() {
+		delete(want, id)
 	}
 	got := APIKeyProviders()
 	for id, name := range want {
@@ -126,8 +126,8 @@ func TestAPIKeyProvidersCoverCatalogEnvAuth(t *testing.T) {
 		"anthropic":                     "Anthropic",
 		"github-copilot":                "GitHub Copilot",
 		"meta":                          "Meta",
-		"qwen-token-plan":               "Qwen Token Plan",
-		"qwen-token-plan-cn":            "Qwen Token Plan CN",
+		"qwen-token-plan":               "Qwen Token Plan Team",
+		"qwen-token-plan-cn":            "Qwen Token Plan Team CN",
 		"qwen-token-plan-individual":    "Qwen Token Plan Individual",
 		"qwen-token-plan-individual-cn": "Qwen Token Plan Individual CN",
 	}

@@ -76,10 +76,19 @@ type fetchResponse struct {
 
 func (r fetchResponse) ok() bool { return r.status >= 200 && r.status <= 299 }
 
+// requestContext is the signal of one request: the caller's joined with a 15 s timeout of the request's own (client.ts:193-194 and huggingface.ts:75-76, `AbortSignal.any([signal, AbortSignal.timeout(15_000)])`). The request's own timer starts only when the caller has no deadline or one that is due later. Under a caller's deadline that is due earlier or at the same instant, the caller's signal alone ends the request. That is Pi's order: syncCatalog creates its `AbortSignal.timeout(15_000)` (index.ts:51) before any request it bounds, and Node fires the timers of one delay in creation order, so the caller's signal is aborted before a request's own timer can fire. The order is observable: a refresh is aborted, and index.ts:60 reports "Model catalog refresh timed out.", only by the caller's own signal (models.ts:575, :639 and model-runtime.ts:925 read no other), while a request's own timeout that ended the refresh first would be reported as the refresh's error. Two Go timers that are due at the same instant fire in either order.
+func requestContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	own := time.Now().Add(requestTimeout)
+	if deadline, ok := ctx.Deadline(); ok && !deadline.After(own) {
+		return context.WithCancel(ctx)
+	}
+	return context.WithDeadlineCause(ctx, own, timeoutError{})
+}
+
 // fetchJSON performs one request under the upstream 15 s timeout combined with
 // ctx, then parses the body like `await response.json()` inside try/catch.
 func fetchJSON(ctx context.Context, method, url string, headers http.Header, body []byte) (fetchResponse, error) {
-	requestCtx, cancel := context.WithTimeoutCause(ctx, requestTimeout, timeoutError{})
+	requestCtx, cancel := requestContext(ctx)
 	defer cancel()
 	var reader io.Reader
 	if body != nil {

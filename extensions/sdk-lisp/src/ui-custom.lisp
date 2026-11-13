@@ -12,14 +12,17 @@
 
 (defstruct (custom-component
             (:constructor make-custom-component
-                (&key render view handle-input handle-view-event handle-mouse set-invalidate dispose on-focus captures-viewport-input)))
+                (&key render view handle-input handle-view-event handle-mouse set-invalidate invalidate dispose on-focus captures-viewport-input)))
   "A focused ui.custom component. RENDER is (lambda (width)) returning rows; VIEW is (lambda (width)) returning a kit view;
 HANDLE-INPUT is (lambda (data)); HANDLE-VIEW-EVENT is (lambda (kit-event)); HANDLE-MOUSE is (lambda (mouse-event)). Each returns a
 CUSTOM-RESULT, or NIL to stay open. SET-INVALIDATE is (lambda (callback)): the component calls CALLBACK, a function of no arguments, to
-ask for a render, and is called with NIL when it unmounts. DISPOSE runs after unmounting. ON-FOCUS is (lambda (focused-p)).
+ask for a render, and is called with NIL when it unmounts. INVALIDATE is (lambda ()), Pi's optional Component.invalidate: the host's
+TUI was invalidated (a theme change, a cell-size report, a change of image support), the theme change is applied before it runs, and
+the component is rendered after it, with or without an INVALIDATE. It runs on the component's worker, in order with its input.
+DISPOSE runs after unmounting. ON-FOCUS is (lambda (focused-p)).
 CAPTURES-VIEWPORT-INPUT (Pi's Component.capturesViewportInput) is a boolean or a function of no arguments returning one; it is read each time a frame is
 drawn and sent as capturesViewportInput when true, and a frame goes out when only it changed."
-  render view handle-input handle-view-event handle-mouse set-invalidate dispose on-focus captures-viewport-input)
+  render view handle-input handle-view-event handle-mouse set-invalidate invalidate dispose on-focus captures-viewport-input)
 
 (defstruct (custom-result (:constructor make-custom-result (&key done value)))
   "What a component's handler returns: DONE closes the component, ctx-custom returning VALUE."
@@ -176,6 +179,9 @@ drawn and sent as capturesViewportInput when true, and a frame goes out when onl
            (funcall (uc-ov-on-handle ov) (make-overlay-handle ext key ov)))
          (return-from uc-handle-event nil))
         (:focus (uc-apply-focus ov data))
+        ;; Pi's TUI.invalidate reached the component (tui.ts:951-954): DATA is how many times
+        (:invalidate (let ((invalidate (custom-component-invalidate c)))
+                       (when invalidate (dotimes (i data) (declare (ignorable i)) (funcall invalidate)))))
         (:input (run (custom-component-handle-input c) data))
         (:mouse (run (custom-component-handle-mouse c) data)
          ;; Pi's renderer draws again after press, click, drag and wheel only
@@ -289,6 +295,11 @@ sends OPTIONS alone, which the host reports as unsupported."
 (def-notify "ui.custom.focus" (ext args)
   (let* ((key (let ((k (jget args "key"))) (if (stringp k) k ""))) (ov (uc-find ext key)))
     (when (and ov (not (uc-enqueue ov :focus (eq (jget args "focused") t)))) (uc-close-full ext key))))
+
+(def-notify "ui.custom.invalidate" (ext args)
+  ;; the theme_change that precedes it on the connection is applied by now; the worker runs the component's INVALIDATE and renders
+  (let* ((key (let ((k (jget args "key"))) (if (stringp k) k ""))) (count (uc-int (jget args "count"))) (ov (uc-find ext key)))
+    (when (and ov (plusp count) (not (uc-enqueue ov :invalidate count))) (uc-close-full ext key))))
 
 (def-notify "ui.custom.input" (ext args)
   (let* ((key (let ((k (jget args "key"))) (if (stringp k) k ""))) (ov (uc-find ext key)))

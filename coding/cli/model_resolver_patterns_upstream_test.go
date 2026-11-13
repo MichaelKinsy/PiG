@@ -2,7 +2,6 @@ package cli
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -36,21 +35,7 @@ func TestModelResolverScopeUpstream(t *testing.T) {
 			t.Fatalf("diagnostics=%+v", got.Diagnostics)
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/model-resolver.test.ts:256
-	t.Run("resolveModelScope preserves CLI warning output", func(t *testing.T) {
-		scoped, warnings := resolveModelScopeFromModels([]string{"missing"}, upstreamResolverModels())
-		if len(scoped) != 0 || len(warnings) != 1 {
-			t.Fatalf("scope=%v, warnings=%v", scoped, warnings)
-		}
-		stderr := captureStderr(t, func() {
-			for _, warning := range warnings {
-				printModelDiagnostic(warning)
-			}
-		})
-		if !strings.Contains(stderr, `Warning: No models match pattern "missing"`) {
-			t.Fatalf("stderr=%q", stderr)
-		}
-	})
+	// Pi bacd45b9c (#11973) removed "resolveModelScope preserves CLI warning output" with resolveModelScope: the warnings are startup diagnostics (TestStartupDiagnosticOrderMatchesPi, TestModelScopeWarningsOnSessionReplacement).
 	for _, tc := range []struct{ name, pattern, thinking string }{
 		// .upstream/v0.87.1/packages/coding-agent/test/model-resolver.test.ts:273
 		{"resolves bracketed model ids as exact references before glob matching", "custom/bracketed-model[1m]", ""},

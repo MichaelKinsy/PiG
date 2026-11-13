@@ -2681,7 +2681,8 @@ export class Runtime {
       }),
       setModel: async (model) => {
         if (!this.conn || !this.hostReady) throw new Error("Extension runtime not initialized");
-        const result = await this.call("setModel", { model: `${model.provider}/${model.id}` });
+        // The Session takes the object as given (agent-session.ts setModel: `this.agent.state.model = model`), so the whole object crosses, with the members the extension left on it.
+        const result = await this.call("setModel", { model });
         if (result?.error) throw new Error(result.error);
         return result?.success === true;
       },
@@ -4948,6 +4949,22 @@ export class Runtime {
       case "ui.custom.opened": {
         const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
         this.customOverlays.get(args?.key)?.onMounted?.(args);
+        return;
+      }
+      case "ui.custom.invalidate": {
+        // The host's TUI was invalidated: Pi's TUI.invalidate calls invalidate() on every mounted root and every overlay's component
+        // (tui.ts:951-954), and the next frame draws what the component builds then. A theme_change with the new palette precedes
+        // this on the connection when the palette changed. count is how many invalidations the host counted since the last notify.
+        const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
+        const overlay = this.customOverlays.get(args?.key);
+        const count = Number.isInteger(args?.count) ? args.count : 0;
+        if (!overlay?.active || !overlay.component || count < 1) return;
+        try {
+          for (let i = 0; i < count; i++) overlay.component.invalidate?.();
+          overlay.renderFrame();
+        } catch (err) {
+          overlay.reject?.(err instanceof Error ? err : new Error(String(err)));
+        }
         return;
       }
       case "ui.custom.focus": {

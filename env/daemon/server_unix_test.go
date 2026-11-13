@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -111,16 +112,23 @@ func TestServeDoesNotReturnWhileTheSignalExitEndsTheProcess(t *testing.T) {
 	})
 	returned := make(chan error, 1)
 	exits := make(chan int, 1)
+	// The exit hook returns where os.Exit would not, so this Serve stays blocked for the rest of the test binary and its ping
+	// goroutine keeps ticking. Without OnSilence the silence exit would end the test process with os.Exit(0) once the limit
+	// passed; the hook only records, because it can run after this test ended.
+	var silent atomic.Bool
 	go func() {
-		returned <- Serve(inputReader, outputWriter, "tok", Options{exit: func(code int) {
-			// The input is closed under the read by now: give Serve every chance to return before the exit ends the process.
-			select {
-			case err := <-returned:
-				t.Errorf("Serve returned %v while the signal exit was ending the process", err)
-			case <-time.After(250 * time.Millisecond):
-			}
-			exits <- code
-		}})
+		returned <- Serve(inputReader, outputWriter, "tok", Options{
+			OnSilence: func() { silent.Store(true) },
+			exit: func(code int) {
+				// The input is closed under the read by now: give Serve every chance to return before the exit ends the process.
+				select {
+				case err := <-returned:
+					t.Errorf("Serve returned %v while the signal exit was ending the process", err)
+				case <-time.After(250 * time.Millisecond):
+				}
+				exits <- code
+			},
+		})
 	}()
 	_ = outputReader.SetReadDeadline(time.Now().Add(10 * time.Second))
 	if line, err := bufio.NewReader(outputReader).ReadString('\n'); err != nil || line != "PI-ENV tok\n" {
@@ -137,5 +145,8 @@ func TestServeDoesNotReturnWhileTheSignalExitEndsTheProcess(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the signal exit did not end the process")
+	}
+	if silent.Load() {
+		t.Error("the silence exit fired while the signal exit was ending the process")
 	}
 }

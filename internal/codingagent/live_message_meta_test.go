@@ -78,7 +78,7 @@ func requireNoIdentity(t *testing.T, seen []liveMetaSeen, messageType extension.
 // Pi's live entry_appended custom_message calls addMessageToChat(createCustomMessage(...)) with no options (interactive-mode.ts:3563-3575).
 func TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity(t *testing.T) {
 	dir, sess := liveMetaSession(t)
-	entry, err := sess.customMessageEntry("note", "live body", true, nil, true)
+	entry, err := sess.customMessageEntry(CustomMessageEntry{CustomType: "note", Content: "live body", Display: true, Details: nil}, true)
 	if err != nil || entry.ID == "" || entry.Timestamp == "" {
 		t.Fatalf("entry %+v, %v", entry, err)
 	}
@@ -139,7 +139,7 @@ func TestBoundaryCompactionSummaryHandsTheTransformersNoIdentity(t *testing.T) {
 // A restored transcript still hands each persisted entry's identity to the surfaces (renderSessionEntries fills messageMeta).
 func TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity(t *testing.T) {
 	dir, sess := liveMetaSession(t)
-	custom, err := sess.customMessageEntry("note", "restored body", true, nil, true)
+	custom, err := sess.customMessageEntry(CustomMessageEntry{CustomType: "note", Content: "restored body", Display: true, Details: nil}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

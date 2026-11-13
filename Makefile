@@ -261,6 +261,14 @@ piglet-strip-ids-drift: ## Fail when the Piglet strip ID table or the schema str
 piglet-strip-build: ## Vet every package and build cmd/pig with every Piglet strip build tag, and run the tests written for a stripped build (D92)
 	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && ./automation/ci/go-vet.sh -tags "$$tags" && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig && go test -tags "$$tags" -count=1 -run '^TestStrippedMcpBuild' ./internal/codingagent
 
+# piglet-strip-matrix took 2610 s (43.5 minutes) at 8 CPUs in its default mode, so it is a release gate (release-check) and a nightly job
+# (.github/workflows/nightly.yml), not a part of ci-contracts; piglet-strip-guard is the part of it a pull request runs.
+piglet-strip-matrix: ## Check cmd/pig under each Piglet strip build tag that strips a model API alone, and under all tags (slow; release-check and nightly): vet every package, test ./ai/ against the set's red list (automation/ci/stripmatrix/red) with ./ai/providers/... and ./durable/harness/..., and run the stripped binary (--list-models, provider-bridge, an extension's complete()). STRIP_MATRIX_SETS=all takes every tag alone, with vet and the binary; STRIP_MATRIX_TESTS=all also runs the tests for every set
+	@go run ./automation/ci/stripmatrix -sets $(or $(STRIP_MATRIX_SETS),api) -tests $(or $(STRIP_MATRIX_TESTS),api)
+
+piglet-strip-guard: ## Vet ./ai/... and its tests, live files included, under each Piglet strip build tag that strips a model API alone and under all tags: the fast part of piglet-strip-matrix (ci-contracts)
+	@go run ./automation/ci/stripmatrix -guard
+
 # The SDK bundles are pure Go to regenerate (go generate in each SDK directory): the Go SDK's bundle in the root module (internal/gosdkbundle), the Python, Rust and Lisp bundles (extensions/sdk-py, sdk-rs, sdk-lisp) are sdk.zst, the SDK's files as one zstd frame, and bundle_pack.go, which embeds it with the file list and the staging hash (automation/gen/packsdk). The nested module extensions/sdk keeps the bundle it was published with, a gzip copy of each source under .gz and bundle_embed.go (automation/gen/embed-bundle.go). Each generator keeps an existing frame or copy that already holds the source's text, so only a stale one is rewritten.
 sdk-bundles: ## Regenerate the packed SDK bundles (sdk.zst, bundle_pack.go) of the Go, Python, Rust and Lisp SDKs, and the nested Go SDK module's own gzip bundle, from their sources (go generate)
 	@for dir in extensions/sdk internal/gosdkbundle extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs; do (cd $$dir && go generate .) || exit 1; done
@@ -268,7 +276,7 @@ sdk-bundles: ## Regenerate the packed SDK bundles (sdk.zst, bundle_pack.go) of t
 sdk-bundles-drift: ## Fail when a packed SDK bundle differs from its sources (regenerate with make sdk-bundles)
 	@./automation/ci/sdk-bundles-drift.sh
 
-.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build piglet-strip-matrix piglet-strip-guard changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 
@@ -642,8 +650,9 @@ qc: parity-bin ## Build a fresh pig, then run the smoke and focused parity QC
 	@PIG_BIN="$(PARITY_PIG_BIN)" ./automation/ci/qc-smoke.sh
 
 # Release gate. Tighter than `check`: parity-live must pass, coverage
-# must not regress, no new entries in docs/parity/DIVERGENCES.md without justification.
-release-check: parity-live parity-perf test-timing ## Release gate: live, perf and timing parity, no new divergences, no coverage loss
+# must not regress, no new entries in docs/parity/DIVERGENCES.md without justification, and the Piglet strip
+# matrix (piglet-strip-matrix, default mode) must hold for the builds that strip a model API.
+release-check: parity-live parity-perf test-timing piglet-strip-matrix ## Release gate: live, perf and timing parity, the Piglet strip matrix, no new divergences, no coverage loss
 	@./automation/ci/check-divergence-delta.sh
 	@python3 -B -m unittest discover -s automation/ci -p test_check_coverage_delta.py
 	@./automation/ci/check-coverage-delta.sh
@@ -799,6 +808,7 @@ port-lens: ## Render the static port report (overview, port map, divergences, bu
 
 upstream-mirror: parity-deps ## Mirror the pinned Pi source into .upstream/current
 	@./automation/gen/mirror-upstream.sh
+	@python3 -B automation/ci/check-port-map-drift.py --apps
 
 # Oracle tests of Pi work the Go port carries ahead of the committed pin: Pi 473515f9c, suspendable work (signals, tool parks, hook tasks, the
 # generation at task version 3), and Pi 5e24c6b1f, code mode namespaces declared by extensions (Extension.namespace). The pin's own Pi has none

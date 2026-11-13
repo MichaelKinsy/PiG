@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -180,6 +182,88 @@ func TestShapeValidate(t *testing.T) {
 	deep := Shape{Type: "array", MaxItems: 1, Items: &Shape{Type: "array", MaxItems: 1, Items: &Shape{Type: "array", MaxItems: 1, Items: &Shape{Type: "array", MaxItems: 1, Items: &Shape{Type: "boolean"}}}}}
 	if deep.check() == nil {
 		t.Error("depth 5 shape accepted")
+	}
+}
+
+// TestShapeValidateErrorPaths pins the text of a validation error: the path names the member and the item, at every depth.
+func TestShapeValidateErrorPaths(t *testing.T) {
+	row := Shape{Type: "object", Properties: map[string]Shape{"n": {Type: "integer"}, "l": {Type: "array", MaxItems: 2, Items: &Shape{Type: "string"}}}, Required: []string{"n"}}
+	rows := Shape{Type: "array", MaxItems: 3, Items: &row}
+	grid := Shape{Type: "array", MaxItems: 2, Items: &Shape{Type: "array", MaxItems: 2, Items: &Shape{Type: "number"}}}
+	flags := Shape{Type: "array", MaxItems: 12, Items: &Shape{Type: "boolean"}}
+	for _, c := range []struct {
+		shape     Shape
+		raw, want string
+	}{
+		{row, `7`, `value is not an object`},
+		{row, `{"n":"x"}`, `value.n is not a number`},
+		{row, `{"n":1,"l":["a",5]}`, `value.l[1] is not a string`},
+		{row, `{"n":1,"l":["a","b","c"]}`, `value.l has 3 items, at most 2`},
+		{rows, `[{"n":1},{"n":1.5}]`, `value[1].n is not a safe integer`},
+		{rows, `[{"n":1},{"n":1},{"n":1,"l":[ "a" , true ]}]`, `value[2].l[1] is not a string`},
+		{rows, `[{"n":1},{"n":1,"z":0}]`, `value[1] has unknown member "z"`},
+		{rows, `[{"n":1},{}]`, `value[1] lacks required member "n"`},
+		{grid, `[[1],[2,"x"]]`, `value[1][1] is not a number`},
+		{grid, `[[1],5]`, `value[1] is not an array`},
+		{flags, `[true,true,true,true,true,true,true,true,true,true,0]`, `value[10] is not a boolean`},
+	} {
+		if err := c.shape.check(); err != nil {
+			t.Fatalf("%s: shape: %v", c.raw, err)
+		}
+		if err := c.shape.Validate(json.RawMessage(c.raw)); err == nil || err.Error() != c.want {
+			t.Errorf("%s: err = %v, want %q", c.raw, err, c.want)
+		}
+	}
+}
+
+// TestCheckRefusesWhatDecodeRefuses: a record built in Go is refused by Check with the code and the text its JSON form
+// is refused with by the decoder, and a record the decoder takes passes.
+func TestCheckRefusesWhatDecodeRefuses(t *testing.T) {
+	view := json.RawMessage(`{"root":{"kind":"text","text":"x"}}`)
+	same := func(name string, got, want *Error) {
+		t.Helper()
+		if want == nil || got == nil || got.Code != want.Code || got.Message != want.Message {
+			t.Errorf("%s: Check = %v, Decode = %v", name, got, want)
+		}
+	}
+	for _, c := range []struct {
+		name, raw, text string
+		args            MountArgs
+	}{
+		{"no key", `{"slot":"panel","view":{"root":{"kind":"text","text":"x"}}}`, "key must be 1..128 bytes", MountArgs{Slot: SlotPanel, View: view}},
+		{"long key", `{"key":"` + strings.Repeat("k", 129) + `","slot":"panel","view":{"root":{"kind":"text","text":"x"}}}`, "key must be 1..128 bytes", MountArgs{Key: strings.Repeat("k", 129), Slot: SlotPanel, View: view}},
+		{"unknown slot", `{"key":"k","slot":"nowhere","view":{"root":{"kind":"text","text":"x"}}}`, `unknown slot "nowhere"`, MountArgs{Key: "k", Slot: "nowhere", View: view}},
+		{"no target", `{"key":"k","slot":"message","view":{"root":{"kind":"text","text":"x"}}}`, `slot "message" needs a target`, MountArgs{Key: "k", Slot: SlotMessage, View: view}},
+		{"target on a panel", `{"key":"k","slot":"panel","target":{"toolCallId":"t"},"view":{"root":{"kind":"text","text":"x"}}}`, `target does not fit slot "panel"`, MountArgs{Key: "k", Slot: SlotPanel, Target: &Target{ToolCallID: "t"}, View: view}},
+		{"no root", `{"key":"k","slot":"panel","view":{}}`, "view must be an object with a root", MountArgs{Key: "k", Slot: SlotPanel, View: json.RawMessage(`{}`)}},
+	} {
+		_, want := DecodeMount([]byte(c.raw))
+		if want == nil || want.Code != CodeInvalid || want.Message != c.text {
+			t.Errorf("%s: DecodeMount = %v, want invalid %q", c.name, want, c.text)
+		}
+		same(c.name, c.args.Check(), want)
+	}
+	for _, c := range []struct {
+		name, raw, text string
+		args            UpdateArgs
+	}{
+		{"no mount key", `{"mount":{"key":"","epoch":1,"rev":1},"view":{"root":{"kind":"text","text":"x"}}}`, "mount.key is required", UpdateArgs{Mount: Ref{Epoch: 1, Rev: 1}, View: view}},
+		{"no root", `{"mount":{"key":"k","epoch":1,"rev":1},"view":{}}`, "view must be an object with a root", UpdateArgs{Mount: Ref{Key: "k", Epoch: 1, Rev: 1}, View: json.RawMessage(`{}`)}},
+	} {
+		_, want := DecodeUpdate([]byte(c.raw))
+		if want == nil || want.Code != CodeInvalid || want.Message != c.text {
+			t.Errorf("%s: DecodeUpdate = %v, want invalid %q", c.name, want, c.text)
+		}
+		same(c.name, c.args.Check(), want)
+	}
+	mount := MountArgs{Key: "k", Slot: SlotPanel, View: view, Intents: []IntentDecl{{Name: "p.go", Arg: Shape{Type: "integer"}}}}
+	decoded, derr := DecodeMount([]byte(`{"key":"k","slot":"panel","view":{"root":{"kind":"text","text":"x"}},"intents":[{"name":"p.go","arg":{"type":"integer"}}]}`))
+	if err := mount.Check(); err != nil || derr != nil || !reflect.DeepEqual(mount, decoded) {
+		t.Errorf("a good mount: Check = %v, Decode = %v\nbuilt   %+v\ndecoded %+v", err, derr, mount, decoded)
+	}
+	update := UpdateArgs{Mount: Ref{Key: "k", Epoch: 1, Rev: 1}, View: view}
+	if err := update.Check(); err != nil {
+		t.Errorf("a good update: Check = %v", err)
 	}
 }
 

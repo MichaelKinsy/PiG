@@ -48,6 +48,10 @@ type View struct {
 
 // Container is upstream Container: its children rendered one after another.
 type Container struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Children []Node
 }
 
@@ -62,6 +66,10 @@ func (c *Container) AddChild(child Node) { c.Children = append(c.Children, child
 // Box is upstream Box(paddingX, paddingY, bgFn): its children inside padding,
 // on the background token Bg ("" for none).
 type Box struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	PaddingX int
 	PaddingY int
 	Bg       string
@@ -79,6 +87,10 @@ func (b *Box) AddChild(child Node) { b.Children = append(b.Children, child) }
 // Text is upstream Text(text, paddingX, paddingY, customBgFn): wrapped text
 // on the background token Bg ("" for none).
 type Text struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Text     string
 	PaddingX int
 	PaddingY int
@@ -93,6 +105,10 @@ func NewText(text string, paddingX, paddingY int) *Text {
 // TruncatedText is upstream TruncatedText(text, paddingX, paddingY): one line
 // cut to the width.
 type TruncatedText struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Text     string
 	PaddingX int
 	PaddingY int
@@ -118,6 +134,10 @@ type TextStyle struct {
 // Markdown is upstream Markdown(text, paddingX, paddingY, getMarkdownTheme(),
 // defaultTextStyle, {renderLatex}).
 type Markdown struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Text             string
 	PaddingX         int
 	PaddingY         int
@@ -134,6 +154,10 @@ func NewMarkdown(text string, paddingX, paddingY int) *Markdown {
 
 // Spacer is upstream Spacer(lines): empty rows.
 type Spacer struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Lines int
 }
 
@@ -143,6 +167,10 @@ func NewSpacer(lines int) *Spacer { return &Spacer{Lines: lines} }
 // DynamicBorder is coding-agent's DynamicBorder: a full-width rule in the
 // foreground token Color ("" for upstream's default "border").
 type DynamicBorder struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Color string
 }
 
@@ -231,6 +259,10 @@ func (l *SettingsList) SetFilter(filter string) { l.Filter = &filter }
 // its bytes the first time a frame on the connection references them, and
 // only its [Image.Ref] after that.
 type Image struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	MimeType       string
 	MaxWidthCells  *int
 	MaxHeightCells *int
@@ -275,6 +307,10 @@ type LoaderIndicator struct {
 // Loader is upstream Loader(tui, spinnerColorFn, messageColorFn, message,
 // indicator). The host animates it.
 type Loader struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Message string
 	// SpinnerColor and MessageColor are foreground tokens ("" for none).
 	SpinnerColor string
@@ -311,6 +347,10 @@ func Entry(node Node, options StackEntryOptions) StackEntry {
 
 // HStack is upstream HStack(children, {gap, align}): children side by side.
 type HStack struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Children []StackChild
 	Gap      int
 	// Align is "stretch", "start", "center" or "end"; "" is upstream's
@@ -327,6 +367,10 @@ func (s *HStack) AddChild(child StackChild) { s.Children = append(s.Children, ch
 // VStack is upstream VStack(children, {gap, align}): children one below
 // another.
 type VStack struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Children []StackChild
 	Gap      int
 	// Align is "stretch", "start", "center" or "end"; "" is upstream's
@@ -344,6 +388,10 @@ func (s *VStack) AddChild(child StackChild) { s.Children = append(s.Children, ch
 // Progress and List are PiG's frontend-only annotations: the SDK sends them,
 // and the image's bytes, only while a frontend draws the session.
 type Lines struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Lines []string
 	// Image says the rows depict this image.
 	Image *LinesImage

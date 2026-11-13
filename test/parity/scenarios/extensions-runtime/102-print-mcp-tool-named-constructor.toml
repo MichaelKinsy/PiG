@@ -1,0 +1,65 @@
+# Behavior family: extensions-runtime
+# Scenario: print mode with an MCP server whose exposure is `direct` and which has a tool named like a member of
+# Object.prototype (`constructor`).
+#
+# Pi's getMcpToolExposure reads `overrides[toolName]` on a plain object (packages/coding-agent/src/core/mcp-servers.ts:171-173):
+# for the tool `constructor` it returns the inherited Object function where an exposure string is promised, so the tool is
+# not offered as a direct tool and the model's call of `mcp__docs__constructor` finds no tool.
+#
+# pig divergence (D645): PiG's overrides hold own entries only, so the tool gets its server's exposure, `direct`, and the
+# call runs.
+#
+# Upstream evidence (Pi 1.5.2 source build b4afdddf oracle, Linux amd64 host in the CI image, Node 24.22.2, 2026-11-13, 3 runs,
+# test-faux):
+#   PI_CODING_AGENT_DIR=<empty agent dir> pi -e test-faux-provider.ts -e mcp-tool-named-constructor.mjs \
+#     --model test-faux/faux-1 -p 'Run: ext tool mcp__docs__constructor {"query":"cards"}'
+#   output: "ext-tool-error: Tool mcp__docs__constructor not found"; exit: 0
+#   The same command with 'Run: ext tool mcp__docs__search {"query":"cards"}': "ext-tool-done: mcp-hit: search cards", exit 0,
+#   on both sides. PiG with the first prompt: "ext-tool-done: mcp-hit: constructor cards", exit 0. With the override lookup
+#   made to answer the Object function's name for this tool, as Pi's does, the PiG side fails.
+#   Where Pi puts the tool instead (hidden, or behind code mode) was not run.
+#
+# The built-in MCP extension is part of the surface, so the default --no-extensions is not passed.
+#
+# The ordinary path beside it is asserted equal in scenario 103-print-mcp-tool-beside-constructor.
+#
+# lint-known-gap: no equality comparator, because the two outputs differ by design under divergence D645 (Pi does not offer
+# the tool, PiG runs it); the assertions state each side's output.
+
+name = "102-print-mcp-tool-named-constructor"
+description = "An MCP tool named constructor of a direct server runs in PiG's print mode; Pi does not offer it"
+covers = [
+  "packages/coding-agent/src/core/mcp-servers.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/mcp-tool-named-constructor.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/mcp-tool-named-constructor.mjs",
+]
+
+[print]
+prompt = "Run: ext tool mcp__docs__constructor {\"query\":\"cards\"}"
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+pig_contains = ["ext-tool-done: mcp-hit: constructor cards"]
+pig_not_contain = ["not found"]
+pi_contains = ["ext-tool-error: Tool mcp__docs__constructor not found"]
+pi_not_contain = ["mcp-hit"]
+runs = 3
+
+[diverge]
+pig_contains = ["ext-tool-done: mcp-hit: constructor cards"]
+pi_contains = ["ext-tool-error: Tool mcp__docs__constructor not found"]
+reason = "D645 SCRUTINIZED:approved. Pi reads a tool's exposure override from a plain object and gets the inherited Object function for a tool named constructor, so the tool of a direct server is not offered; PiG's overrides hold own entries only, so the tool gets the server's exposure and runs."

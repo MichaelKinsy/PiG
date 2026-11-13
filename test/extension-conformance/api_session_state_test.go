@@ -141,7 +141,7 @@ func TestConformance_ExtensionAPISetModel(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = session.Close() })
 			var api extension.API = modelSessionAPI{session: session}
-			h.bridge.SetHostAction("setModel", func(_ context.Context, ref string) (bool, error) {
+			setModelBySpec(h.bridge, func(_ context.Context, ref string) (bool, error) {
 				provider, id, _ := strings.Cut(ref, "/")
 				return api.SetModel(ai.GetBuiltinModel(provider, id))
 			})

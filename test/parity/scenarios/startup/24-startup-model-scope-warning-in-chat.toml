@@ -1,0 +1,44 @@
+# Behavior family: startup
+# Surface: an unmatched --models/enabledModels pattern is a startup diagnostic shown in the chat, not a line printed on the terminal.
+#
+# Upstream evidence (Pi bacd45b9c, #11973, #11264): main.ts createRuntime appends resolveModelScopeWithDiagnostics' warnings to the runtime's
+# diagnostics, and interactive-mode.ts run() shows each startup diagnostic with showWarning: a Spacer(1) and
+# ThemedText(theme.fg("warning", `Warning: ${message}`), 1, 0) in the chat container. Before that commit resolveModelScope printed
+# console.warn(chalk.yellow(...)) at column 0 before the UI started. With `--models fixture/model-two,github-copilot/nope` the chat shows
+#
+#    Warning: No models match pattern "github-copilot/nope"
+#
+# The crop runs from the warning to the start of the editor's top border, which follows the chat: a warning printed above the UI instead
+# is followed by the header, not by the border, and fails the comparison. Both binaries must paint the crop byte-identically with SGR preserved.
+
+name = "24-startup-model-scope-warning-in-chat"
+description = "An unmatched model scope pattern is shown once as a chat warning at startup, as pi does."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-model-scope-main"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-model-scope-main", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--models", "fixture/model-two,github-copilot/nope", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--models", "fixture/model-two,github-copilot/nope", "--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+settle_seconds = 1
+capture_start = "Warning: No models match pattern"
+capture_end_regex = "─{10}"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Warning: No models match pattern \"github-copilot/nope\""]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

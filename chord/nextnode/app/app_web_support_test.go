@@ -121,6 +121,22 @@ func chooseLocale(t testing.TB, s started, locale string) {
 	}
 }
 
+// chooseTheme has the owner choose the light theme id.
+func chooseTheme(t testing.TB, s started, id string) {
+	t.Helper()
+	_, err := s.app.Host.Root(func(ctx host.Ctx) (any, error) {
+		choice, err := ctx.Get(nextsurfaces.ThemeChoice, delta.NewJsonObject(0), host.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		defer choice.Release()
+		return choice.Call("choose", delta.JsonObjectOf("dark", nil, "light", id), ctx)
+	}, context.Background(), host.RootOptions{Principal: testOwner})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // browserNumber is expression's value (a number) in the page.
 func browserNumber(t testing.TB, b *browsertest.Browser, expression string) float64 {
 	t.Helper()

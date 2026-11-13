@@ -1132,3 +1132,51 @@ func TestObjectALiveObjectFailingIsRecoveredByRefRetryANewAttemptTheDocumentsAsT
 		t.Fatalf("list = %v, want {items: [a]}", value)
 	}
 }
+
+// --- calls for a reference (decision "References share one wire hold") ----------------------------------------------
+
+var objWho = mustContract(contracts.Local("app.who", contracts.LocalDeclaration{Params: contracts.Params{},
+	Version: 1, Members: []contracts.LocalEntry{contracts.Mem("who", contracts.NewMethod(contracts.Str(), contracts.Str()))},
+}))
+
+// object.test.ts: calls for a reference › run as the reference's binding's caller; a local object keeps no replica counts
+// (Pi main 47e9d74f9)
+func TestObjectCallsForAReferenceRunAsTheReferencesBindingsCallerALocalObjectKeepsNoReplicaCounts(t *testing.T) {
+	host := newHost(t, HostOptions{Principal: ownerPrincipal(), OnError: noopOnError})
+	_, err := host.Load([]HostFacet{{Name: "@test/who", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(objWho, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Methods: map[string]contracts.MethodFunction{"who": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					principal := exCtx(ctx).Principal()
+					if principal == nil {
+						return "none", nil
+					}
+					return principalKind(principal), nil
+				}},
+			}}, nil
+		}, ServeOptions{})
+	})}}, background)
+	must(t, err)
+	who := mustGet(t, host, objWho, jsonObject())
+	got, err := who.Call("who", "?", background)
+	must(t, err)
+	if got != "owner" {
+		t.Fatalf("who = %v, want owner", got)
+	}
+	h := host.(*chordHost)
+	var object *chordObject
+	h.enter(func() {
+		for _, each := range h.objects {
+			if each.label() == "app.who" {
+				object = each
+			}
+		}
+	})
+	if object == nil {
+		t.Fatal("no object app.who")
+	}
+	if generation, counted := object.generationOf("who"); counted {
+		t.Fatalf("generationOf = %d, want none", generation)
+	}
+	must(t, host.Close(background))
+}

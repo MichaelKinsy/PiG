@@ -35,7 +35,6 @@ func init() {
 				c.fail("negative scrollbarHideDelayMs")
 			}
 		},
-		build:    buildScrollView,
 		children: 1,
 	})
 }

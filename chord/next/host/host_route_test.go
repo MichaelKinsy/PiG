@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -854,5 +855,266 @@ func TestResolveSpansMarkAResolveThatRejectedFailedResolveFailedARootLinkedToThe
 	}
 	if relayed.Status.Error == nil || relayed.Status.Error.Name != "relay_failed" || relayed.Status.Error.Message != "session|S1: no worker" {
 		t.Errorf("relay status = %+v, want relay_failed: session|S1: no worker", relayed.Status.Error)
+	}
+}
+
+// Ports the describe 'routes and references sharing one wire hold (decision "References share one wire hold")' of
+// route.test.ts.
+
+// sharedRouteWorker is the worker of session S1 and its served references.
+func sharedRouteReferences(t *testing.T, r *relayed) float64 {
+	t.Helper()
+	key := Session.Address(jsonObject("id", "S1")).Key
+	r.WorkerLoaded(t, key)
+	r.Transported()
+	return rhActivityReferences(t, r.Worker(key))
+}
+
+// route.test.ts › routes and references sharing one wire hold (decision "References share one wire hold") › a reference
+// joining a hold whose resolve failed resolves the address again: both live on one hold
+func TestRoutesAndReferencesSharingOneWireHoldAReferenceJoiningAHoldWhoseResolveFailedResolvesTheAddressAgainBothLiveOnOneHold(t *testing.T) {
+	var fail atomic.Bool
+	fail.Store(true)
+	var resolves atomic.Int32
+	r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
+		resolves.Add(1)
+		if fail.Load() {
+			return resolved{}, errors.New("no worker")
+		}
+		return worker(), nil
+	}})
+	a, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+	must(t, err)
+	r.Transported()
+	if state := rhState(a); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+		t.Fatalf("a = %+v, want failed waiting", state)
+	}
+	fail.Store(false)
+	b, err := r.Server.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
+	must(t, err)
+	r.Transported()
+	if got := []RefStateKind{rhRefState(a), rhRefState(b)}; got[0] != RefStateLive || got[1] != RefStateLive || resolves.Load() != 2 {
+		t.Fatalf("states = %v after %d resolves, want [live live] after 2", got, resolves.Load())
+	}
+	if got := sharedRouteReferences(t, r); got != 1 {
+		t.Fatalf("the worker's references = %v, want 1", got)
+	}
+}
+
+// route.test.ts › routes and references sharing one wire hold (decision "References share one wire hold") › a suspended
+// address: a held reference stays loading, a new one holds on its own and fails unavailable
+func TestRoutesAndReferencesSharingOneWireHoldASuspendedAddressAHeldReferenceStaysLoadingANewOneHoldsOnItsOwnAndFailsUnavailable(t *testing.T) {
+	gate := newSignal()
+	r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
+		gate.await(t, ctx)
+		return worker(), nil
+	}})
+	a, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+	must(t, err)
+	r.Transported()
+	r.Route.Suspend(Session.Address(jsonObject("id", "S1")))
+	b, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+	must(t, err)
+	if kind := rhRefState(a); kind != RefStateLoading {
+		t.Fatalf("a = %v, want loading", kind)
+	}
+	state := rhState(b)
+	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting || state.Cause.Error.Code != data.CodeUnavailable ||
+		state.Cause.Error.Message != "session|S1: suspended" {
+		t.Fatalf("b = %+v, want failed waiting unavailable \"session|S1: suspended\"", state)
+	}
+	gate.fire()
+	// The running resolve still links the address: both go live, each on its own hold.
+	untilKind(t, a, RefStateLive)
+	untilKind(t, b, RefStateLive)
+	if got := sharedRouteReferences(t, r); got != 2 {
+		t.Fatalf("the worker's references = %v, want 2", got)
+	}
+}
+
+// sharedRouteInner collects the references a re-entering resolver makes.
+type sharedRouteInner struct {
+	mu     sync.Mutex
+	refs   []*Reference
+	server chan Host
+}
+
+func newSharedRouteInner() *sharedRouteInner { return &sharedRouteInner{server: make(chan Host, 1)} }
+
+// hold is `server.hold(PlacedNotes, S1, context)` from inside the resolver; it returns the reference and how many the
+// resolver made so far.
+func (inner *sharedRouteInner) hold(t testing.TB) (*Reference, int) {
+	server := <-inner.server
+	inner.server <- server
+	ref, err := server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+	if err != nil {
+		t.Errorf("the resolver's hold: %v", err)
+		return nil, 0
+	}
+	inner.mu.Lock()
+	defer inner.mu.Unlock()
+	inner.refs = append(inner.refs, ref)
+	return ref, len(inner.refs)
+}
+
+func (inner *sharedRouteInner) len() int {
+	inner.mu.Lock()
+	defer inner.mu.Unlock()
+	return len(inner.refs)
+}
+
+func (inner *sharedRouteInner) first(t testing.TB) *Reference {
+	t.Helper()
+	inner.mu.Lock()
+	defer inner.mu.Unlock()
+	if len(inner.refs) == 0 {
+		t.Fatal("the resolver made no reference")
+	}
+	return inner.refs[0]
+}
+
+// route.test.ts › routes and references sharing one wire hold (decision "References share one wire hold") › a resolver
+// re-entering for the same key finds the stored object: one hold; its own reference released there is not the last
+func TestRoutesAndReferencesSharingOneWireHoldAResolverReEnteringForTheSameKeyFindsTheStoredObjectOneHoldItsOwnReferenceReleasedThereIsNotTheLast(t *testing.T) {
+	inner := newSharedRouteInner()
+	r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
+		if joined, made := inner.hold(t); made == 1 {
+			joined.Release()
+		}
+		return worker(), nil
+	}})
+	inner.server <- r.Server
+	a, err := r.Server.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
+	must(t, err)
+	r.Transported()
+	if got := []RefStateKind{rhRefState(a), rhRefState(inner.first(t))}; got[0] != RefStateLive || got[1] != RefStateEnded {
+		t.Fatalf("states = %v, want [live ended]", got)
+	}
+	if got := sharedRouteReferences(t, r); got != 1 {
+		t.Fatalf("the worker's references = %v, want 1", got)
+	}
+}
+
+// route.test.ts › routes and references sharing one wire hold (decision "References share one wire hold") › a resolver
+// that fails after re-entering fails both references waiting; the next request resolves again
+func TestRoutesAndReferencesSharingOneWireHoldAResolverThatFailsAfterReEnteringFailsBothReferencesWaitingTheNextRequestResolvesAgain(t *testing.T) {
+	inner := newSharedRouteInner()
+	var fail atomic.Bool
+	fail.Store(true)
+	r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
+		if inner.len() == 0 {
+			inner.hold(t)
+		}
+		if fail.Load() {
+			return resolved{}, errors.New("no worker")
+		}
+		return worker(), nil
+	}})
+	inner.server <- r.Server
+	a, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+	must(t, err)
+	r.Transported()
+	for index, ref := range []*Reference{a, inner.first(t)} {
+		state := rhState(ref)
+		if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting || state.Cause.Error.Message != "session|S1: no worker" {
+			t.Fatalf("reference %d = %+v, want failed waiting \"session|S1: no worker\"", index, state)
+		}
+	}
+	fail.Store(false)
+	_, err = r.Server.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
+	must(t, err)
+	if got := []RefStateKind{rhRefState(a), rhRefState(inner.first(t))}; got[0] != RefStateLive || got[1] != RefStateLive {
+		t.Fatalf("states = %v, want [live live]", got)
+	}
+	if got := sharedRouteReferences(t, r); got != 1 {
+		t.Fatalf("the worker's references = %v, want 1", got)
+	}
+}
+
+// route.test.ts › routes and references sharing one wire hold (decision "References share one wire hold") ›
+// too_large/part: A1 retrying alone re-enters the resolver, which finds C's new entry; A2 and C release in any order
+func TestRoutesAndReferencesSharingOneWireHoldTooLargePartA1RetryingAloneReEntersTheResolverWhichFindsCsNewEntryA2AndCReleaseInAnyOrder(t *testing.T) {
+	workers := newRawWorkers(t, rawWorkerOptions{Limits: link.PartLimits{Part: new(64.0)}})
+	inner := newSharedRouteInner()
+	var reenter, fail atomic.Bool
+	r := relay(t, relayedOptions{Resolve: func(address contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
+		if reenter.Load() {
+			inner.hold(t)
+		}
+		if fail.Load() {
+			return resolved{}, errors.New("no worker")
+		}
+		return workers.Resolve(address, worker, ctx)
+	}})
+	inner.server <- r.Server
+	hold := func() *Reference {
+		ref, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+		must(t, err)
+		return ref
+	}
+	tooLarge := func(ref *Reference) bool {
+		state := rhState(ref)
+		return state.Kind == RefStateFailed && state.Cause.Kind == data.FailureBroken && string(state.Cause.Error.Code) == "too_large"
+	}
+	waiting := func(ref *Reference) bool {
+		state := rhState(ref)
+		return state.Kind == RefStateFailed && state.Cause.Kind == data.FailureWaiting
+	}
+	a1, a2 := hold(), hold()
+	r.Transported()
+	peer := workers.At(t, 0)
+	id := peer.Next("hold").(*link.HoldMessage).Hold
+	bindHold(t, peer, id)
+	rhSync(t, peer)
+	ops, err := link.JsonPart([]any{[]any{"r", strings.Repeat("x", 100)}})
+	must(t, err)
+	peer.Send(&link.StateMessage{Holds: []link.StateEntry{{
+		Hold: id, Members: []link.StateMember{{Member: editorWire(t).State["notes"], Ops: ops}},
+		Failed: []link.FailedMember{}, Retired: link.NoRetired,
+	}}})
+	rhSync(t, peer)
+	if !tooLarge(a1) || !tooLarge(a2) {
+		t.Fatalf("a1 = %+v, a2 = %+v, want both failed broken too_large", rhState(a1), rhState(a2))
+	}
+	c := hold()
+	owned := peer.Next("hold").(*link.HoldMessage).Hold
+	bindHold(t, peer, owned)
+	untilKind(t, c, RefStateLive)
+	// The link drops and the address fails to resolve: C waits unlinked, so A1's placement resolves it again.
+	fail.Store(true)
+	peer.Close()
+	untilState(t, c, func(state *RefState) bool {
+		return state.Kind == RefStateFailed && state.Cause.Kind == data.FailureWaiting
+	})
+	if !waiting(c) {
+		t.Fatalf("c = %+v, want failed waiting", rhState(c))
+	}
+	fail.Store(false)
+	reenter.Store(true)
+	a1.Retry()
+	r.Transported()
+	next := workers.At(t, 1)
+	for range 2 {
+		bindHold(t, next, next.Next("hold").(*link.HoldMessage).Hold)
+	}
+	untilKind(t, a1, RefStateLive)
+	untilKind(t, c, RefStateLive)
+	reentered := inner.first(t)
+	untilKind(t, reentered, RefStateLive)
+	if kind := rhRefState(a2); kind != RefStateFailed {
+		t.Fatalf("a2 = %v, want failed", kind)
+	}
+	// Two holds on the new link: C's re-hold (the re-entered reference joined it) and A1's private one.
+	a2.Release()
+	c.Release()
+	rhSync(t, next)
+	if releases := takenOf(next, "release"); releases != 0 {
+		t.Fatalf("releases after A2 and C let go = %d, want 0", releases)
+	}
+	reentered.Release()
+	a1.Release()
+	rhSync(t, next)
+	if releases := takenOf(next, "release"); releases != 2 {
+		t.Fatalf("releases after the last references let go = %d, want 2", releases)
 	}
 }

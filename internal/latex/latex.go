@@ -602,6 +602,7 @@ func (p *parser) parseCommand() string {
 		return "‖"
 	case command == "not":
 		value := trimJS(p.parseRequiredArgument(false))
+		// pig divergence (D645): the table is a Go map with no inherited members, so \not{constructor} strikes the text like any other argument; Pi's plain NEGATED_SYMBOLS object answers with the inherited function and draws its source text.
 		if negated, ok := latexNegatedSymbols()[value]; ok {
 			return " " + negated + " "
 		}
@@ -616,6 +617,7 @@ func (p *parser) parseCommand() string {
 		return p.parseOperator(command, "bracket", true, true)
 	}
 
+	// pig divergence (D645): the table is a Go map with no inherited members, so a command named like an Object.prototype member (\constructor, \toString) is no symbol and the expression is not converted; Pi's plain SYMBOLS object answers with the inherited function and draws its source text.
 	if symbol, ok := latexSymbols()[command]; ok {
 		if latexDisplayLimitSymbols()[command] {
 			return p.parseOperator(symbol, "script", true, false)

@@ -69,3 +69,27 @@ func TestLiteLLMContextWindowExceededIsOverflow(t *testing.T) {
 		}
 	}
 }
+
+// Pi 4699b5b26 packages/ai/test/retry.test.ts:65,77 (#12128): a provider error that reports only a Node socket error code is retried;
+// a code inside a longer identifier is not.
+func TestNodeSocketErrorCodesAreRetryable(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want bool
+	}{
+		{"read ECONNRESET", true},
+		{"connect ETIMEDOUT 140.82.113.3:443", true},
+		{"write EPIPE", true},
+		{"connect ECONNREFUSED 127.0.0.1:443", true},
+		{"ECONNABORTED", true},
+		{"Connection reset by peer", true},
+		{"Invalid value EXECONNRESET", false},
+		{"Unknown field ETIMEDOUTX", false},
+		{"Invalid key ERR_EPIPE_ID", false},
+	} {
+		message := jobj("role", "assistant", "stopReason", "error", "errorMessage", tc.text)
+		if got := IsRetryableAssistantError(message); got != tc.want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", tc.text, got, tc.want)
+		}
+	}
+}

@@ -10,7 +10,7 @@ import (
 func TestCompletionsToolOnlyContentUsesCompatNullability(t *testing.T) {
 	for _, required := range []bool{false, true} {
 		provider := &openAIProvider{cfg: OpenAIConfig{Compat: &OpenAICompat{RequiresAssistantAfterToolResult: new(required)}}}
-		messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{Content: []AssistantContentBlock{ToolCall{ID: "call", Name: "tool", Arguments: JsonObject{}}}}}, nil, "system", toolAnchors{}, false)
+		messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{Content: []AssistantContentBlock{ToolCall{ID: "call", Name: "tool", Arguments: JsonObject{}}}}}, nil, "system", toolAnchors{}, false, 0)
 		if err != nil || len(messages) != 1 {
 			t.Fatalf("messages=%#v err=%v", messages, err)
 		}

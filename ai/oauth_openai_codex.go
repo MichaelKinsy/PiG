@@ -265,6 +265,10 @@ func postCodexDeviceJSON(ctx context.Context, urlStr string, payload any) (int, 
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		// fetchWithLoginCancellation (openai-codex.ts:111): a fetch that fails after the signal aborted is "Login cancelled".
+		if ctx.Err() != nil {
+			return 0, nil, errors.New("Login cancelled")
+		}
 		return 0, nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()

@@ -144,6 +144,12 @@ Detached Go work must have an owner that:
 
 A naked `go func()` with ignored error is not a valid translation of a Promise.
 
+### `session_shutdown` when the terminal goes away
+
+A closed terminal window, `tmux kill-session` or a dropped connection ends an interactive session with exit status 129. The extension still gets `session_shutdown` with the reason `quit` first, as on SIGTERM, SIGHUP and a normal quit, in every SDK and every realization. Write the last record there: the host waits for the handler before it stops the extension's process.
+
+The wait is one second, because nobody can see or stop a process whose terminal is gone. Do the flush first and keep it short; a handler that is still running after a second is cut. Do not use the terminal: `notify`, `setStatus` and widgets show nothing, and a dialog is never answered, so a handler that waits for one runs into the second. Files, sockets and child processes behave as usual. Pi runs the same handler when its SIGHUP handler runs, awaits it without a limit, and ends at once if anything writes to the dead terminal meanwhile (D186).
+
 ### UI and cancellation
 
 Upstream Promise-based dialogs (`select`, `confirm`, `input`, `editor`) map to blocking Go SDK calls because the handler is already off the host UI loop. In interactive mode that includes the `input` event: a handler registered for it runs on its own goroutine, one dispatch at a time, and the rest of the prompt path is applied on the owner loop when the handlers return. An input handler may therefore open a dialog and wait for the answer. With no `input` handler loaded there is nothing that can suspend the dispatch, and the prompt path stays synchronous, because several of the loop's guarantees are stated in terms of a submission being fully dispatched before the loop reads the next keystroke.
@@ -227,6 +233,19 @@ To draw Pi's own components (container, box, text, truncated text, markdown, spa
 | tool renderers | `ToolRenderers.CallView`/`ResultView` | `render_call_view`/`render_result_view`, `ToolRendererSet { call_view, result_view }` | `call_view=`/`result_view=` |
 | message/entry renderers | `MessageViewRenderer`/`EntryViewRenderer` | `message_view_renderer`/`entry_view_renderer` | `message_view_renderer`/`entry_view_renderer` |
 | message/entry renderer events and state | `MessageViewEvent`/`EntryViewEvent`, `options.State` | `message_view_event`/`entry_view_event`, `options.state` | `message_view_event`/`entry_view_event`, `options.state` |
+
+A node of any kind can carry an id, a string unique in the view. The records of a mounted view (`a11y`, `focus`, a drawing's `node`; see [Plugin UI mounts](#plugin-ui-mounts-d614)) name a node by its id, and the host keeps the component of a node with an id across frames. Set it with the Go field `ID`, Rust's `.id("…")`, Python's `id=`, Lisp's `:id`, or the `id` member of a Node view's node object.
+
+| node kinds | id | colour members (theme tokens) |
+|---|---|---|
+| container, hstack, vstack, spacer, truncated text, lines, user message, diff | optional | none |
+| box, text | optional | `bg`, a background token. Neither has a `color` member, and the host draws none it is sent: for coloured text use markdown's default text style, or a drawing |
+| markdown | optional | `defaultTextStyle`: `color` (foreground), `bgColor` (background) |
+| dynamic border | optional | `color` (foreground, default `border`) |
+| image | optional | `fallbackColor` (foreground) |
+| loader | optional | `spinnerColor`, `messageColor` (foreground) |
+| assistant message, tool execution, bash execution, branch summary, compaction summary, skill invocation, custom message | optional | none |
+| select list, settings list, input, editor, scroll view, mouse region, grid, cancellable loader, bordered loader | given when the node is built | input `placeholderColor`, editor `borderColor`, scroll view `scrollbarTrackColor` and `scrollbarThumbColor`, a grid cell's and chip's `color` |
 
 A card that a click expands is written as Pi writes it, with the pieces the SDK cannot give as closures: Pi's renderer keeps the card's state in a `WeakMap` keyed by the message and returns a component whose `MouseRegion` flips it. The SDK renderer returns a view with a `mouse-region` node (`types: ["click"]`), keeps the state in `options.state` (one map per displayed message, the same for the renderer and the event handler, dropped when the transcript drops the message), and flips it in the handler it registers with `MessageViewEvent` (Rust `message_view_event`, Python `message_view_event`, Lisp `message-view-event`). The host answers the click from the region's description and the extension hears of it with the next render request, which draws the card again; the Node SDK needs nothing new, because its renderer is Pi's own. See D276 (`docs/additive-features.md`).
 
@@ -390,7 +409,32 @@ The Go SDK changes that the upgrade reports since 0.4.1:
 - `Context.ConfigHome` returns `(string, error)`.
 - `HostHelpers.HighlightCode` has no `markdown` parameter: `getMarkdownTheme().highlightCode` is `highlightCode`.
 
+- `Context.SetModel` takes a model object (`map[string]any`) instead of the `provider/id` string, and `Context.SetModelNamed` takes the string. The upgrade rewrites a call whose argument is a string; it lists a call whose argument has another type.
+
 `make sdk-apidiff` fails an incompatible change to an extension SDK package that has no upgrade rule or release note.
+
+## Switching the model (`setModel`)
+
+`setModel` takes a model object, as Pi's `pi.setModel(model)` does. The Session uses the object you pass: its context window, input limits, base URL, API, compat and headers, with the credentials of its provider. Take a model from the model registry and pass it as it is or edited, or build one by hand for a provider PiG knows. The call answers false, and changes nothing, when the provider has no configured auth. The session file records the provider and the id only, so a resumed session restores the model by those.
+
+| SDK | Model object | `provider/id` string |
+|---|---|---|
+| Node | `await pi.setModel(model)` | none, as Pi |
+| Go | `ctx.SetModel(model)` with a `map[string]any` | `ctx.SetModelNamed("provider/id")` |
+| Python | `ctx.set_model(model)` with a `dict` | `ctx.set_model("provider/id")` |
+| Rust | `ctx.set_model(&model)` with a `serde_json::Value` | `ctx.set_model("provider/id")` |
+| Lisp | `(pig:ctx-set-model ctx model)` with an object | `(pig:ctx-set-model ctx "provider/id")` |
+
+The string form asks the host for the model object of the name and then sets it. It is two host calls: the object the first call returned is the one set, and an error of the first call is returned without setting. For an id the registry does not list, the host builds a model from the provider, with no context window.
+
+When the registry's entry for the object's provider and id changes later (the provider is registered again, `models.json` changes, a catalog refresh brings a new record), the Session takes the registry's model and an edit is gone; set the object again from a `model_select` or `before_agent_start` handler to keep it (D626).
+
+Migration from an SDK before 0.8.0:
+
+- Node: the call is unchanged. An edited or hand-built object used to be reduced to its provider and id and looked up in the registry; now it is used as passed. An object that carries only `provider` and `id` is therefore a model with no API or limits: pass `ctx.modelRegistry.find(provider, id)` instead.
+- Python, Rust, Lisp: a `provider/id` string still works and answers what it answered. The call also takes a model object.
+- Go: `ctx.SetModel("provider/id")` becomes `ctx.SetModelNamed("provider/id")`; `pig extension upgrade` rewrites it. `ctx.SetModel(model)` takes the object.
+- The wire has one shape and no negotiation: an extension built with an older SDK is refused at `setModel` with `setModel: model must be a model object`. Rebuild it with the 0.8.0 SDK.
 
 ## Go SDK nullable values
 
@@ -594,6 +638,8 @@ An extension that draws the model's thinking itself, for example in an activity 
 
 ## Plugin UI mounts (D614)
 
+The page for authors is `docs/site/docs/ui-views.md` (the built-in docs page `ui-views`). Its examples run in `coding/cli/docs_ui_views_test.go`.
+
 An extension can mount a view in a slot that the attached client draws, update it, and answer the user's intents. The view is a
 D107 view, so every SDK builds it with its kit. No client is attached by default: read the abilities first and mount only if
 there are any, and mount when a client arrives (step 12).
@@ -619,7 +665,7 @@ there are any, and mount when a client arrives (step 12).
    asset. Read `abilities.drawing` first: a client that does not draw the profile makes the call fail with `unsupported`, and more
    shapes than it states fail with `limit`. `regions` turn a gesture inside a shape into one of your declared intents.
 7. Describe nodes to assistive technology with `a11y` and make them focusable with `focus`. Both name view nodes by their `id`,
-   so give those nodes an id.
+   so give those nodes an id: a node of any kind takes one (the table of node kinds under the component kit above).
 8. Bind keys and gestures with `bindings` (at most 32): each entry has a `key` (a key id such as `d`, `shift+left`, `ctrl+shift+p`
    or `ctrl++`) or a `gesture` (`swipe-left`, `swipe-right`, `swipe-up`, `swipe-down`), the `intent` it raises, and optionally a
    constant `arg` and a `name` the client shows. The intent is one you declared without a `nodeKey`; several bindings may raise it

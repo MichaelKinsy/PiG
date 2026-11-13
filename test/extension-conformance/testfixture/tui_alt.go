@@ -296,7 +296,7 @@ func tuiAltFrameProbe(ctx sdk.Context, _ string) error {
 	must(err)
 	docInv, ovInv = 0, 0
 	must(screen.Invalidate())
-	f = append(f, fmt.Sprintf("invalidate=%t/%t", docInv > 0, ovInv > 0))
+	f = append(f, fmt.Sprintf("invalidate=%d/%d", docInv, ovInv))
 	must(ov2.Hide())
 	var mutLog []string
 	armed, mutInv := false, 0
@@ -338,7 +338,7 @@ func tuiAltFrameProbe(ctx sdk.Context, _ string) error {
 		r = append(r, fmt.Sprintf("scroll=%d/%t", val(screen.ViewportTop()), val(screen.IsFollowingOutput())))
 		mutInv = 0
 		must(screen.Invalidate())
-		r = append(r, fmt.Sprintf("invalidate=%t", mutInv > 0), fmt.Sprintf("lines=%d", len(val(screen.GetScreenLines()).([]string))))
+		r = append(r, fmt.Sprintf("invalidate=%d", mutInv), fmt.Sprintf("lines=%d", len(val(screen.GetScreenLines()).([]string))))
 		mutLog = append(mutLog, strings.Join(r, ","))
 		return []string{"MUT"}
 	}

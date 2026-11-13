@@ -31,6 +31,7 @@ func (r *Runner) onMcpServersChange() {
 	r.mcp.draining = true
 	r.mcp.mu.Unlock()
 	if start {
+		//portlint:allow asyncorder the queue under r.mcp.mu is the ordering point: this one drainer delivers the events in the order the listener queued them, and nothing waits for it, as nothing waits for upstream's `void this.emit` (runner.ts:465-468)
 		go r.drainMcpServersChanges()
 	}
 	r.ReportUnhandledMcpServers()

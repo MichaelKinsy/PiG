@@ -8,7 +8,8 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Pi: packages/coding-agent/src/core/agent-session.ts getLastAssistantText (4347): the last assistant message that is not an aborted one without content,
+// Pi: packages/coding-agent/src/core/agent-session.ts getLastAssistantText: the last assistant message that is not one without text from a turn that
+// did not end normally (stopReason other than "stop", Pi ede360e4d; before it only an aborted message without content was skipped),
 // every text block joined, trimmed with String.prototype.trim, undefined when that is empty. RPC get_last_assistant_text and /copy read it.
 func TestSessionLastAssistantText(t *testing.T) {
 	assistant := func(stop ai.StopReason, blocks ...ai.AssistantContentBlock) agent.AgentMessage {
@@ -25,7 +26,7 @@ func TestSessionLastAssistantText(t *testing.T) {
 		{"joined blocks", []agent.AgentMessage{assistant(ai.StopReasonStop, text("a "), ai.ThinkingContent{Thinking: "t"}, text(" b"))}, new("a  b")},
 		{"trimmed", []agent.AgentMessage{assistant(ai.StopReasonStop, text("\ufeff\n  answer \u00a0\t"))}, new("answer")},
 		{"whitespace only", []agent.AgentMessage{assistant(ai.StopReasonStop, text(" \n"))}, nil},
-		{"empty errored message is the last one", []agent.AgentMessage{assistant(ai.StopReasonStop, text("earlier")), assistant(ai.StopReasonError)}, nil},
+		{"empty errored message is skipped", []agent.AgentMessage{assistant(ai.StopReasonStop, text("earlier")), assistant(ai.StopReasonError)}, new("earlier")},
 		{"aborted without content is skipped", []agent.AgentMessage{assistant(ai.StopReasonStop, text("earlier")), assistant(ai.StopReasonAborted)}, new("earlier")},
 		{"aborted with content counts", []agent.AgentMessage{assistant(ai.StopReasonStop, text("earlier")), assistant(ai.StopReasonAborted, text("partial"))}, new("partial")},
 		{"U+0085 is not trimmed", []agent.AgentMessage{assistant(ai.StopReasonStop, text("\u0085x\u0085"))}, new("\u0085x\u0085")},

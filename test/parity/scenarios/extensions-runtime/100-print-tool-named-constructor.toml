@@ -1,0 +1,60 @@
+# Behavior family: extensions-runtime
+# Scenario: print mode with an extension tool whose name is a member of Object.prototype (`constructor`).
+#
+# Pi builds the system prompt before the first request and reads `toolGuidelines[name] ?? []` on a plain object
+# (packages/coding-agent/src/core/system-prompt.ts:119): for a selected tool named `constructor` the lookup returns the
+# inherited Object function, the rules loop iterates it, and print mode ends with the TypeError before any turn.
+#
+# pig divergence (D645): PiG's guidelines and snippets are Go maps with no inherited members, so the tool has no guideline
+# and no snippet, the prompt is built, and the model's call of the tool runs.
+#
+# Upstream evidence (Pi 1.5.2 source build b4afdddf oracle, Linux amd64 host in the CI image, Node 24.22.2, 2026-11-13, 3 runs,
+# test-faux):
+#   PI_CODING_AGENT_DIR=<empty agent dir> pi --no-extensions -e test-faux-provider.ts -e tool-named-constructor.mjs \
+#     --model test-faux/faux-1 -p 'Run: ext tool constructor {}'
+#   stdout: empty; stderr: "function is not iterable (cannot read property Symbol(Symbol.iterator))"; exit: 1
+#   The same command with a tool named `plain` and 'Run: ext tool plain {}': "ext-tool-done: ran plain", exit 0, on both sides.
+#   PiG with the same extension and prompt: "ext-tool-done: ran constructor", exit 0. With the rules loop made to panic for
+#   this name, as Pi throws, the PiG side fails.
+#
+# The ordinary path beside it is asserted equal in scenario 101-print-tool-named-plain.
+#
+# lint-known-gap: no equality comparator, because the two outputs differ by design under divergence D645 (Pi cannot build
+# the prompt, PiG runs the turn); the assertions state each side's output and exit code.
+
+name = "100-print-tool-named-constructor"
+description = "An extension tool named constructor runs in PiG's print mode; Pi fails to build the system prompt"
+covers = [
+  "packages/coding-agent/src/core/system-prompt.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/tool-named-constructor.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/tool-named-constructor.mjs",
+]
+
+[print]
+prompt = "Run: ext tool constructor {}"
+timeout_seconds = 30
+
+[assert]
+pig_exit_code = 0
+pi_exit_code = 1
+pig_contains = ["ext-tool-done: ran constructor"]
+pig_not_contain = ["is not iterable"]
+pi_contains = ["function is not iterable"]
+pi_not_contain = ["ext-tool-done"]
+runs = 3
+
+[diverge]
+pig_contains = ["ext-tool-done: ran constructor"]
+pi_contains = ["function is not iterable"]
+reason = "D645 SCRUTINIZED:approved. Pi reads the guidelines of a selected tool from a plain object, finds the inherited Object function for a tool named constructor and throws while it builds the system prompt; PiG's Go map has no such entry, so the prompt is built and the tool runs."

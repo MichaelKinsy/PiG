@@ -41,12 +41,12 @@ import (
 // `StartServer` (slice 13 §1, §5; decisions "The app kit, point 1" to "point 5"): the server of an app built with the kit. It lays out
 // the data directory, opens the server's store, creates the server host, the HTTP component and one workers component per worker
 // kind, the plugins component over the app's required root and the user's root, loads the server's plugins with the kit's own facets
-// (the start-data object, sessions, the owner link, pairing, files), and gives the app the controls it needs: the owner link,
+// (the start-data object, sign-ins, the owner link, pairing, files), and gives the app the controls it needs: the owner link,
 // `ApplyChanges`, export and import per address.
 //
 // Forced Go differences (D460, D462). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
 // facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host delegates to (D605: the remote types placed on the server that no Go facet serves go over its link),
-// and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460); so do `Files` and `FilesFolder`, `Files`'
+// and the local types plugins use (AppInfo, SignIns) reach the Go facets through plugins.BridgedFacet (D460); so do `Files` and `FilesFolder`, `Files`'
 // keyed member `summary` as a copy the Node host keeps of the Go object's documents. The server's host and the plugins' NodeHost are two hosts with a store each
 // (D462). The server's own code is its executable, recorded after the listen (`BaseWatched`) where Pi compares the static import graph
 // of its start script; one changed since the process started is marked as a base change until a restart (`editedSinceStart`); one under the Go build cache (`go run`, `go test`) is never compared, as Pi skips an entry under `node_modules`;
@@ -154,13 +154,13 @@ type AppPrincipals struct {
 	Owner  data.Principal
 }
 
-// AppLimits are the bounds of what public endpoints, clients and imports may cost (0 is the default): live ephemeral sessions
+// AppLimits are the bounds of what public endpoints, clients and imports may cost (0 is the default): live ephemeral sign-ins
 // (1,000; past it the oldest ends, signed out), pairings under way that anonymous clients started (100 in all, 10 per client address;
 // past them 429; the owner's own are not counted), uploads under way per `Files` object (64; past it `unavailable`, `busy`), an
 // archive's unpacked bytes (4 GiB) and entries (100,000).
 type AppLimits struct {
 	Uploads            int
-	EphemeralSessions  int
+	EphemeralSignIns   int
 	PendingPairings    int
 	PairingsPerAddress int
 	ImportBytes        int64
@@ -352,7 +352,7 @@ type App struct {
 	Web *AppSurface
 	// Tui is the terminal surface, when the app has one: its base bundle's hash once built.
 	Tui *AppSurface
-	// OwnerTokenFile is the owner token file's path (a device session of the owner, mode 0600).
+	// OwnerTokenFile is the owner token file's path (a device sign-in of the owner, mode 0600).
 	OwnerTokenFile string
 
 	store   store.Store
@@ -469,7 +469,7 @@ func inGoBuildCache(path string) bool {
 func (a *App) start(opened openedServer, ctx context.Context) error {
 	options := a.options
 	limits := options.Limits
-	sessions := CreateSessions(opened.cookieSecret, SessionLimits{MaxEphemeral: limits.EphemeralSessions})
+	signIns := CreateSignIns(opened.cookieSecret, SignInLimits{MaxEphemeral: limits.EphemeralSignIns})
 	hostOptions := host.HostOptions{
 		Address: nil, Principal: options.Principal.Server, Store: opened.store,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(),
@@ -493,7 +493,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	httpOptions := chordhttp.HttpOptions{
 		Listen: listen,
 		Links: &chordhttp.LinksOptions{Path: "/chord", Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
-			return sessions.Opened(request), nil
+			return signIns.Opened(request), nil
 		}},
 		OnError: func(err chordhttp.HttpError) { a.report(AppErrorHTTP, err) },
 	}
@@ -554,7 +554,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	core := []host.HostFacet{
 		{Name: "chord.http", Facet: a.HTTP.Facet()},
 		{Name: "chord.app.info", Facet: AppInfoFacet(AppInfoValues{DataDir: opened.layout.DataDir, Name: options.Name, Version: version, Owner: owner})},
-		{Name: "chord.app.sessions", Facet: sessions.Facet},
+		{Name: "chord.app.sign-ins", Facet: signIns.Facet},
 		{Name: "chord.app.owner", Facet: OwnerFacet(link, owner)},
 		{Name: "chord.app.pairing", Facet: PairingFacet(NewPairings(PairingLimits{MaxPending: limits.PendingPairings, PerAddress: limits.PairingsPerAddress}), owner)},
 		{Name: "chord.app.files", Facet: FilesFacet(filepath.Join(opened.layout.Server, "files"), options.Files, limits.Uploads)},
@@ -647,7 +647,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		ParentServes: h.Serves,
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.info", Host: h, Contracts: []*contracts.Contract{AppInfo}},
-			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
+			{Name: "chord.app.sign-ins", Host: h, Contracts: []*contracts.Contract{SignIns}},
 			{Name: "chord.app.files", Host: h, Contracts: []*contracts.Contract{Files, FilesFolder}},
 		},
 	}, ctx)
@@ -729,7 +729,7 @@ func (w *workerHosts) get(principalKey string) (string, bool) {
 }
 
 // checkOwner refuses an owner the kit could not recognize or that would act as the server (a declaration policy the types cannot
-// express): sessions keep the owner as JSON, so a value that is not strict JSON would never match it again; the server's principal
+// express): sign-ins keep the owner as JSON, so a value that is not strict JSON would never match it again; the server's principal
 // reaches every worker's kit objects.
 func checkOwner(owner, server data.Principal, ctx context.Context) error {
 	if !chordjson.IsValue(owner) {

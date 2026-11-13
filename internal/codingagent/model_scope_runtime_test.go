@@ -3,7 +3,6 @@ package codingagent
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 )
 
@@ -40,33 +39,10 @@ func TestResolveModelScopeWithDiagnosticsUsesTheRuntimesAvailableModels(t *testi
 	}
 }
 
-// upstream: the awaited getAvailable rejection propagates; resolveModelScope console.warns chalk.yellow(`Warning: ${message}`) per diagnostic and returns only the scope (model-resolver.ts:372-382).
-func TestResolveModelScopePropagatesRuntimeErrorsAndWarnsPerDiagnostic(t *testing.T) {
+// upstream: the awaited getAvailable rejection propagates (model-resolver.ts resolveModelScopeWithDiagnostics). Pi bacd45b9c (#11973) removed resolveModelScope, the variant that printed each diagnostic with console.warn, and its test: the diagnostics are returned.
+func TestResolveModelScopeWithDiagnosticsPropagatesRuntimeErrors(t *testing.T) {
 	boom := errors.New("auth refresh failed")
 	if _, err := ResolveModelScopeWithDiagnostics(t.Context(), []string{"x"}, &scopeRuntime{err: boom}); !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want %v", err, boom)
-	}
-	var plain, colored strings.Builder
-	runtime := &scopeRuntime{models: []RuntimeModel{{Provider: "p", ID: "alpha"}}}
-	scoped, err := resolveModelScopeWarningTo(t.Context(), &plain, false, []string{"p/alpha", "nope", "nada"}, runtime)
-	if err != nil || len(scoped) != 1 {
-		t.Fatalf("scoped = %+v, err = %v", scoped, err)
-	}
-	result, _ := ResolveModelScopeWithDiagnostics(t.Context(), []string{"p/alpha", "nope", "nada"}, runtime)
-	if len(result.Diagnostics) != 2 {
-		t.Fatalf("diagnostics = %+v", result.Diagnostics)
-	}
-	want := "Warning: " + result.Diagnostics[0].Message + "\nWarning: " + result.Diagnostics[1].Message + "\n"
-	if plain.String() != want {
-		t.Fatalf("warnings = %q, want %q (console.warn per diagnostic, in pattern order)", plain.String(), want)
-	}
-	if _, err := resolveModelScopeWarningTo(t.Context(), &colored, true, []string{"nope"}, runtime); err != nil {
-		t.Fatal(err)
-	}
-	if want := "\x1b[33mWarning: " + result.Diagnostics[0].Message + "\x1b[39m\n"; colored.String() != want {
-		t.Fatalf("colored warning = %q, want chalk.yellow %q", colored.String(), want)
-	}
-	if _, err := ResolveModelScope(t.Context(), nil, &scopeRuntime{err: boom}); !errors.Is(err, boom) {
-		t.Fatalf("ResolveModelScope err = %v", err)
 	}
 }

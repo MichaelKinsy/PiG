@@ -89,10 +89,22 @@ export function createBridge({ port, wireError, host }) {
 		const reference = request.hold === true ? target.hold(contract, request.params, context, options) : await target.get(contract, request.params, context, options);
 		// The handle is the Go side's: it registered the reference before it sent this request.
 		const { handle } = request;
+		// Tapped as soon as this side has the reference, before anything is awaited: what its event members receive from now
+		// on goes to the Go side, listener there or not, as a hold over a link is tapped when it binds (events.mjs `tap`).
+		// `request.events` are the type's event members in the order the Go side indexes them (none for a type without any). A released reference forwards
+		// nothing more (Pi host/reference.ts:605-611, `forwardEvents`: "nothing for a released reference"), so its release is its untap.
+		events.tap(reference, handle, request.events);
 		const held = { reference, members: request.contract.normal.members, state: undefined };
 		handles.set(handle, held);
 		// The state's changes follow in order, numbered from 1 (the reply shows change 0): the Go side keeps the latest.
-		held.state = await reference.state.watch(BACKGROUND_CONTEXT);
+		try {
+			held.state = await reference.state.watch(BACKGROUND_CONTEXT);
+		} catch (error) {
+			// The request fails, so the Go side forgets the handle and releases nothing: nothing may stay tapped or held for it.
+			handles.delete(handle);
+			reference.release();
+			throw error;
+		}
 		const state = wireState(held.state.value);
 		afterReply(() => {
 			let seq = 0;

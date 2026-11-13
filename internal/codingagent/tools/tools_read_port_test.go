@@ -2,6 +2,9 @@ package tools
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -107,6 +110,40 @@ func TestToolsReadPort(t *testing.T) {
 		requireTextParts(t, result, []string{"Read image file [image/png]"}, nil)
 		if len(result.Images()) == 0 || result.Images()[0].MimeType != "image/png" || result.Images()[0].Data == "" {
 			t.Fatalf("images = %+v", result.Images())
+		}
+	})
+	// Pi 4be4cb4f5e9c packages/coding-agent/test/tools.test.ts:240; the card half is internal/codingagent
+	// TestReadKeepsTextOnlyImageWarningOutOfWhatTheModelGetsUpstream. Here: details.imageUnsupportedByModel is the selected model's id,
+	// set only for a model without image input (read.ts:292), as the session stores it and as an extension receives it.
+	t.Run("should keep a text-only model's image warning out of what the model gets", func(t *testing.T) {
+		data, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg==")
+		if err != nil {
+			t.Fatal(err)
+		}
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "text-model.png"), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		for _, tc := range []struct {
+			name           string
+			supportsImages *bool
+			want           string
+		}{
+			{"text-only model", new(bool), `{"imageUnsupportedByModel":"text-only"}`},
+			{"vision model", func() *bool { yes := true; return &yes }(), `null`},
+			{"no model", nil, `null`},
+		} {
+			ctx := agent.WithToolEnvironment(t.Context(), agent.ToolEnvironment{Model: "text-only", SupportsImages: tc.supportsImages})
+			result := runFileTool(t, &ReadTool{CWD: dir}, ctx, map[string]any{"path": "text-model.png"})
+			if result.Text() != "Read image file [image/png]" || len(result.Images()) != 1 {
+				t.Fatalf("%s: result = %+v", tc.name, result)
+			}
+			if raw, err := json.Marshal(result.Details); err != nil || string(raw) != tc.want {
+				t.Errorf("%s: stored details = %s, %v, want %s", tc.name, raw, err, tc.want)
+			}
+			if raw, err := json.Marshal(extension.ToolResultDetailsFor(result.Details)); err != nil || string(raw) != tc.want {
+				t.Errorf("%s: extension details = %s, %v, want %s", tc.name, raw, err, tc.want)
+			}
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:222

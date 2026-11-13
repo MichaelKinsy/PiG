@@ -926,7 +926,9 @@ type StreamOptions struct {
 	DisableContinuation bool
 	// ToolChoice selects provider-neutral automatic/no-tool behavior (a ToolChoice or its string) or a
 	// provider-specific choice object. Anthropic and Bedrock also accept "any" and
-	// {"type":"tool","name":...}.
+	// {"type":"tool","name":...}. Pi sends the caller's object with its members in the caller's order; a Go map
+	// is written with its keys sorted, so a caller that has an order passes the object's JSON text
+	// (json.RawMessage), as the extension bridge does, or a struct.
 	ToolChoice any
 	// Debug asks a pi-messages backend for debug metadata such as routing response headers (pi-messages.ts PiMessagesOptions.debug).
 	Debug bool `json:"debug,omitempty"`

@@ -91,28 +91,31 @@ import (
 )
 
 type scenario struct {
-	Name             string             `toml:"name"`
-	Description      string             `toml:"description"`
-	Covers           []string           `toml:"covers"`
-	Tags             []string           `toml:"tags"`
-	Driver           string             `toml:"driver"`
-	OpenAIFixture    bool               `toml:"openai_fixture"`
-	ProviderFixture  string             `toml:"provider_fixture"`
-	ChangelogFixture string             `toml:"changelog_fixture"`
-	Model            string             `toml:"model"`
-	Group            string             `toml:"group"`
-	Assert           assertBlock        `toml:"assert"`
-	Env              envBlock           `toml:"env"`
-	Tmux             tmuxBlock          `toml:"tmux"`
-	Cli              cliBlock           `toml:"cli"`
-	Print            printBlock         `toml:"print"`
-	RPC              rpcBlock           `toml:"rpc"`
-	ExtensionHost    extensionHostBlock `toml:"extension_host"`
-	Diverge          divergeBlock       `toml:"diverge"`
+	Name            string   `toml:"name"`
+	Description     string   `toml:"description"`
+	Covers          []string `toml:"covers"`
+	Tags            []string `toml:"tags"`
+	Driver          string   `toml:"driver"`
+	OpenAIFixture   bool     `toml:"openai_fixture"`
+	ProviderFixture string   `toml:"provider_fixture"`
+	// ProviderFixtureBasePath and ProviderFixtureCompat shape the fixture's model (test/parity/runner/schema.go).
+	ProviderFixtureBasePath string             `toml:"provider_fixture_base_path"`
+	ProviderFixtureCompat   map[string]any     `toml:"provider_fixture_compat"`
+	ChangelogFixture        string             `toml:"changelog_fixture"`
+	Model                   string             `toml:"model"`
+	Group                   string             `toml:"group"`
+	Assert                  assertBlock        `toml:"assert"`
+	Env                     envBlock           `toml:"env"`
+	Tmux                    tmuxBlock          `toml:"tmux"`
+	Cli                     cliBlock           `toml:"cli"`
+	Print                   printBlock         `toml:"print"`
+	RPC                     rpcBlock           `toml:"rpc"`
+	ExtensionHost           extensionHostBlock `toml:"extension_host"`
+	Diverge                 divergeBlock       `toml:"diverge"`
 }
 
 // providerFixtureAPIs lists the APIs the runner's provider fixture serves (test/parity/runner/provider_fixture.go).
-var providerFixtureAPIs = []string{"openai-completions", "mistral-conversations", "anthropic-messages", "google-generative-ai"}
+var providerFixtureAPIs = []string{"openai-completions", "openai-responses", "mistral-conversations", "anthropic-messages", "google-generative-ai"}
 
 type assertBlock struct {
 	JSONOutputEqual         bool                    `toml:"json_output_equal"`
@@ -242,6 +245,7 @@ type tmuxStepBlock struct {
 type finalFrameBlock struct {
 	Text              string `toml:"text"`
 	QuietMilliseconds int    `toml:"quiet_milliseconds"`
+	WriteLog          string `toml:"write_log"`
 }
 
 type frameWatchBlock struct {
@@ -450,8 +454,23 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 	if sc.ProviderFixture != "" && !slices.Contains(providerFixtureAPIs, sc.ProviderFixture) {
 		out = append(out, violation{path, "provider-fixture-api", fmt.Sprintf("provider_fixture %q is not one of %s", sc.ProviderFixture, strings.Join(providerFixtureAPIs, ", "))})
 	}
+	if sc.ProviderFixture == "" && !sc.OpenAIFixture && (sc.ProviderFixtureBasePath != "" || len(sc.ProviderFixtureCompat) > 0) {
+		out = append(out, violation{path, "provider-fixture-option", "provider_fixture_base_path and provider_fixture_compat require provider_fixture or openai_fixture"})
+	}
+	if base := sc.ProviderFixtureBasePath; base != "" && (!strings.HasPrefix(base, "/") || strings.HasSuffix(base, "/")) {
+		out = append(out, violation{path, "provider-fixture-base-path", fmt.Sprintf("provider_fixture_base_path %q must start with a slash and not end with one", base)})
+	}
 	if len(sc.RPC.InputLines) > 0 && len(sc.RPC.Steps) > 0 {
 		out = append(out, violation{path, "rpc-input-conflict", "rpc input_lines and steps are mutually exclusive"})
+	}
+	for i, step := range sc.Tmux.Steps {
+		// A final_frame that reads a write log reads the file both binaries were told to write: a log one side does not write would fail every run.
+		if step.FinalFrame == nil || step.FinalFrame.WriteLog == "" {
+			continue
+		}
+		if want := "PI_TUI_WRITE_LOG=" + step.FinalFrame.WriteLog; !slices.Contains(sc.Env.Pig, want) || !slices.Contains(sc.Env.Pi, want) {
+			out = append(out, violation{path, "final-frame-write-log", fmt.Sprintf("tmux step %d final_frame write_log requires %s in env.pig and env.pi", i+1, want)})
+		}
 	}
 	for i, step := range sc.RPC.Steps {
 		if strings.TrimSpace(step.Line) == "" {

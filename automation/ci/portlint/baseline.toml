@@ -846,30 +846,6 @@ snippet = "Headers                       map[string]string                `json:
 
 [[hit]]
 check = "emptydrop"
-file = "ai/anthropic.go"
-func = "(decl)"
-snippet = "Betas      []string          `json:\"betas,omitempty\" requestsplice:\"read\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/anthropic.go"
-func = "(decl)"
-snippet = "System     []anthSystemBlock `json:\"system,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/anthropic.go"
-func = "(decl)"
-snippet = "Tools      []anthTool        `json:\"tools,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/anthropic.go"
-func = "(decl)"
-snippet = "Fallbacks   []anthFallback `json:\"fallbacks,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
 file = "ai/auth.go"
 func = "(decl)"
 snippet = "Env map[string]string `json:\"env,omitempty\"`"
@@ -2744,24 +2720,6 @@ check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.handleGetCommands"
 snippet = "result, _ := json.Marshal(map[string]any{\"commands\": commands})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": false, \"error\": \"not ready\"})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": false, \"error\": err.Error()})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": ok})"
 
 [[hit]]
 check = "mapkeyorder"
