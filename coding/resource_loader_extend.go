@@ -257,8 +257,8 @@ func (l *DefaultResourceLoader) themesFromPaths(paths []string, metadata *pathMe
 
 // ExtendResources adds the skills, prompt templates and themes extensions contributed to the ones the last Reload found (resource-loader.ts extendResources). Each path records its metadata as the source info of the resources under it; the loader then reloads the collection from the previous paths plus the new ones. A path that cannot be resolved fails the call, and collections updated before it stay updated.
 func (l *DefaultResourceLoader) ExtendResources(paths ResourceExtensionPaths) error {
-	l.opMu.Lock()
-	defer l.opMu.Unlock()
+	_, leave := l.takeOperation(nil)
+	defer leave()
 	skillPaths, err := l.normalizeExtensionPaths(paths.SkillPaths)
 	if err != nil {
 		return err

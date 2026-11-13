@@ -26,6 +26,12 @@ type reloadFixture struct {
 
 func newReloadFixture(t *testing.T, hook func(context.Context, ExtensionLoadRequest) error) *reloadFixture {
 	t.Helper()
+	return newReloadFixtureWith(t, hook, nil)
+}
+
+// newReloadFixtureWith is newReloadFixture whose loader options configure may change before the loader is built.
+func newReloadFixtureWith(t *testing.T, hook func(context.Context, ExtensionLoadRequest) error, configure func(*DefaultResourceLoaderOptions)) *reloadFixture {
+	t.Helper()
 	root := t.TempDir()
 	f := &reloadFixture{root: root, agent: filepath.Join(root, "agent")}
 	for _, dir := range []string{"project", "agent"} {
@@ -43,7 +49,7 @@ func newReloadFixture(t *testing.T, hook func(context.Context, ExtensionLoadRequ
 			t.Fatal(err)
 		}
 	}
-	f.loader = NewDefaultResourceLoader(DefaultResourceLoaderOptions{
+	options := DefaultResourceLoaderOptions{
 		CWD: filepath.Join(root, "project"), AgentDir: f.agent, NoContextFiles: true,
 		LoadExtensions: func(ctx context.Context, request ExtensionLoadRequest) (LoadExtensionsResult, error) {
 			if hook != nil {
@@ -53,7 +59,11 @@ func newReloadFixture(t *testing.T, hook func(context.Context, ExtensionLoadRequ
 			}
 			return LoadExtensionsResult{Extensions: []extension.Extension{}}, nil
 		},
-	})
+	}
+	if configure != nil {
+		configure(&options)
+	}
+	f.loader = NewDefaultResourceLoader(options)
 	// A reload that never returns holds the operation lock, so a Close behind it would hang the package instead of failing the test.
 	t.Cleanup(func() {
 		closed := make(chan struct{})
@@ -229,4 +239,3 @@ func TestDefaultResourceLoaderCallbackMayReloadWithItsContext(t *testing.T) {
 		})
 	}
 }
-

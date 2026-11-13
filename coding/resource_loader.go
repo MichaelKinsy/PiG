@@ -11,11 +11,13 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -126,8 +128,9 @@ type DefaultResourceLoader struct {
 	settings *SettingsManager
 	options  DefaultResourceLoaderOptions
 
-	// opMu serialises Reload and ExtendResources, which rewrite the state below.
-	opMu sync.Mutex
+	// opMu serialises Reload, LoadProjectTrustExtensions, ExtendResources and Close, which rewrite the state below. operation is the one that holds it, nil when none does.
+	opMu      sync.Mutex
+	operation atomic.Pointer[loaderOperation]
 	// lastSkillPaths, lastPromptPaths and lastThemePaths are the paths of the last reload or extension; resourceMetadata is the metadata of the last reload (resource-loader.ts resourceMetadataByPath); extensionSources are the source infos ExtendResources recorded. They are touched only under opMu.
 	lastSkillPaths, lastPromptPaths, lastThemePaths []string
 	resourceMetadata                                *pathMetadataIndex
@@ -697,16 +700,36 @@ func resolveResourceLoader(svcs *AgentSessionServices, supplied ResourceLoader) 
 	return &resourceLoaderRef{loader: loader, promptFromLoader: true}, nil
 }
 
-// operationHeldKey marks a context handed to the callbacks of an operation that holds a loader\x27s opMu; its value is that loader.
+// loaderOperation is a Reload, LoadProjectTrustExtensions, ExtendResources or Close in progress, which holds its loader's opMu. goroutine is the one it runs on.
+type loaderOperation struct{ goroutine uint64 }
+
+// operationHeldKey marks a context handed to the callbacks of an operation; its value is that operation.
 type operationHeldKey struct{}
 
-// enterOperation takes opMu for a Reload or LoadProjectTrustExtensions and returns the context its callbacks receive, which marks the loader as held.
-// Pi has no lock: a callback of a running reload() that calls reload() interleaves with it and resolves (resource-loader.ts:541-710). A call
-// whose ctx came from such a callback runs inside the outer operation, without waiting for opMu, which that operation holds until its callback returns.
+// enterOperation is takeOperation for an operation with callbacks that receive a context: the returned context marks them as running inside it.
 func (l *DefaultResourceLoader) enterOperation(ctx context.Context) (context.Context, func()) {
-	if ctx.Value(operationHeldKey{}) == l {
-		return ctx, func() {}
+	operation, leave := l.takeOperation(ctx.Value(operationHeldKey{}))
+	if operation == nil {
+		return ctx, leave
+	}
+	return context.WithValue(ctx, operationHeldKey{}, operation), leave
+}
+
+// takeOperation takes opMu for an operation and returns it with the function that ends it. held is the operation mark of the caller's context, nil without one.
+//
+// Pi has no lock: a callback of a running reload() that calls reload(), extendResources() or another method of the loader runs it at once (resource-loader.ts:541-710). A call made from inside the operation in progress therefore runs inside it, without waiting for opMu, which that operation holds until its callback returns; the returned operation is then nil. A call is inside the operation when it runs on the operation's goroutine (an override or any other callback that gets no context) or carries the context the operation handed to its callback. That context stops marking anything once its operation has ended.
+//
+// pig divergence (D632): operations that overlap from outside wait for each other, where Pi's reloads interleave at their awaits.
+func (l *DefaultResourceLoader) takeOperation(held any) (*loaderOperation, func()) {
+	self := goroutineid.Current()
+	if current := l.operation.Load(); current != nil && (held == current || current.goroutine == self) {
+		return nil, func() {}
 	}
 	l.opMu.Lock()
-	return context.WithValue(ctx, operationHeldKey{}, l), l.opMu.Unlock
+	operation := &loaderOperation{goroutine: self}
+	l.operation.Store(operation)
+	return operation, func() {
+		l.operation.Store(nil)
+		l.opMu.Unlock()
+	}
 }
