@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -84,6 +85,42 @@ var markdownContractTransforms = map[string]func(markdown string, width int) str
 	"width":  func(_ string, width int) string { return strconv.Itoa(width) },
 }
 
+// markdownContractHighlightedFence opens a code block of a language highlight.js highlights, of those the documents of these tests name.
+var markdownContractHighlightedFence = regexp.MustCompile("```(go|js|py)\n")
+
+// rendersHighlightedCode reports whether a render of the probe draws such a code block under a stock theme, whose highlighter is highlight.js.
+func (p markdownContractProbe) rendersHighlightedCode() bool {
+	if p.Theme == "tagged" {
+		return false
+	}
+	text := p.Text
+	for _, op := range p.Ops {
+		switch op.Op {
+		case "setText":
+			text = op.Text
+		case "render":
+			if markdownContractHighlightedFence.MatchString(text) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// markdownContractProbesOfBuild returns the probes in their order, those that render highlighted code as rows of withHighlightedCode: a build that strips
+// syntax-highlight leaves them out.
+func markdownContractProbesOfBuild(probes []markdownContractProbe) []markdownContractProbe {
+	out := make([]markdownContractProbe, 0, len(probes))
+	for _, p := range probes {
+		if p.rendersHighlightedCode() {
+			out = append(out, withHighlightedCode(p)...)
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
 // build is the Pig component of a probe, with the callbacks it makes appended to log.
 func (p markdownContractProbe) build(log *markdownContractLog) *Markdown {
 	var theme *MarkdownTheme
@@ -141,6 +178,7 @@ func piMarkdownContract(t *testing.T, probes []markdownContractProbe) [][]markdo
 // keeps the highlighting per block source and PiG per language and code, so PiG's calls must be among Pi's.
 func compareMarkdownContract(t *testing.T, probes []markdownContractProbe) int {
 	t.Helper()
+	probes = markdownContractProbesOfBuild(probes)
 	differences, rowFailures := markdownContractDifferences(t, probes)
 	reported := map[string]bool{}
 	for i := range probes {

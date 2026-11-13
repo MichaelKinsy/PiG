@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"os/exec"
+	"slices"
 	"strings"
 	"testing"
 
@@ -25,11 +26,11 @@ func TestMarkdownNestedCodeWithLoneSurrogatesMatchesPi(t *testing.T) {
 			for fill := width - 10; fill <= width; fill++ {
 				code := strings.Repeat("a", fill) + unit + "\nnext"
 				fenced := "```js\n" + code + "\n```"
-				for _, text := range []string{
-					prefix("> ", fenced), "- ```js\n" + prefix("  ", code+"\n```"), prefix("    ", code),
+				for _, text := range slices.Concat(withHighlightedCode(prefix("> ", fenced), "- ```js\n"+prefix("  ", code+"\n```")), []string{
+					prefix("    ", code),
 					"para\n\n" + prefix("    ", code), "1. item\n\n" + prefix("       ", code), "~~~\n" + code + "\n~~~",
 					"```\n" + code + "\n```", prefix("> ", "text\n\n"+prefix("    ", code)),
-				} {
+				}) {
 					probes = append(probes, probe{text, 0, width}, probe{text, 1, width})
 				}
 			}
