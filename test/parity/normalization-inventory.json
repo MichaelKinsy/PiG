@@ -6260,6 +6260,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/oauth/33-login-partner-rows-release-brand-style.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Select provider to configure",
+            "capture_end": "(3/42)"
+          },
+          "reason": "Owned visible surface: /login API-key picker: after the selection passes the animated Radius and OpenRouter rows, the picker is byte-identical with the selection on the third row.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/print/02-print-extension-command.toml",
       "transforms": [
         {
