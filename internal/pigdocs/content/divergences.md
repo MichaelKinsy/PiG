@@ -192,3 +192,5 @@ Do not write a new divergence when:
 - The change is a pure refactor with no observable effect.
 - The change restores parity that had drifted (parity is the goal, drift is a bug).
 - The change is internal to runtime cells, since D20 already covers them generically.
+
+A new active divergence gets exactly one row on this page: the last row of the table under "Behavior differences", never a line at the end of this file; `make docs-drift` fails on a row outside that table, on an id with two rows, and on a row without an active record.
