@@ -194753,6 +194753,17 @@
       "shapeHash": "sha256:57a1530933575644fe89714c61bcc784144219b650f7633a1fa4fdf88908bd0f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#MountArgs.Check",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "MountArgs.Check",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *Error"
+      },
+      "shapeHash": "sha256:e8690eb6a8f042fba4535198d846fc183086ea91410b8657134093a5ee65ce91"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#MountArgs.check",
       "package": "github.com/MichaelKinsy/PiG/coding/uiview",
       "name": "MountArgs.check",
@@ -195474,9 +195485,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(raw []byte, at string) error"
+        "type": "func(raw []byte, at *shapePath) error"
       },
-      "shapeHash": "sha256:2e53d704442690d515b4d58292ffd90245520d14e49d6e673e9cc27aa79db427"
+      "shapeHash": "sha256:5a59ee2078aeb1e25a28e50eb534bb1a7cdf84521b707193dbf19750e4f171d6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#Sink",
@@ -195851,6 +195862,17 @@
         "type": "UpdateArgs"
       },
       "shapeHash": "sha256:3c72e4722bb11a224f76f6c9a9e3b5ee1c8c953428af6e07c0a033a4b0cfc145"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#UpdateArgs.Check",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "UpdateArgs.Check",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *Error"
+      },
+      "shapeHash": "sha256:e8690eb6a8f042fba4535198d846fc183086ea91410b8657134093a5ee65ce91"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#UpdateArgs.check",
@@ -196808,6 +196830,39 @@
         "type": "map[string]int"
       },
       "shapeHash": "sha256:55997d3b2b308f41fcd7c041718ecf9c137f65b1d0dbce96af0aeb71f9df2507"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#shapePath",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "shapePath",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "shapePath"
+      },
+      "shapeHash": "sha256:30322abb342bea7bd0791fb70f28950e8b362520f2ffc4b71efefdbb226c15ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#shapePath.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "shapePath.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#shapePath.appendTo",
+      "package": "github.com/MichaelKinsy/PiG/coding/uiview",
+      "name": "shapePath.appendTo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b []byte) []byte"
+      },
+      "shapeHash": "sha256:127eda13626e708ddbba49943acb06f0776590bcc8c9330b583f2ec13d2358a2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/uiview#shared",
@@ -328698,6 +328753,28 @@
         "type": "func(parent string, text string) (string, error)"
       },
       "shapeHash": "sha256:3c686beceba016617870d965d36117c90241a7b0aa7bb05ae71af1566e33585d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#hex32",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen",
+      "name": "hex32",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(v uint32) string"
+      },
+      "shapeHash": "sha256:735c784513ec804f984bae61671141cc4d748863c88877167f505cce3809493e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#hex64",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen",
+      "name": "hex64",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(v uint64) string"
+      },
+      "shapeHash": "sha256:cea2a34b7ffbe093d46a3eae1c33286ea43b8fd0029d94d976c4e336f8e78738"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#splitWords",
