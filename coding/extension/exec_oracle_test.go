@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"os/exec"
 	"path/filepath"
@@ -68,11 +69,11 @@ func execScenarios(dir string) []execScenario {
 		{Command: "sh", Args: []string{"-c", "exit 7"}, CWD: dir},
 	}...)
 	// maxBuffer: caps below, at and above the output, caps that split a character (e2 82 ac, f0 9f 99 82), a flood that only the cap ends, a zero cap, and values execCommand rejects.
-	// An endless writer that is a child of sh (`yes`, `yes >&2` under dash) has no fixed result in Pi: exec.ts closes the pipes
-	// (Node's destroy() closes the descriptor at once) and signals the child a few microseconds later, so on a busy host the writer
-	// can die of SIGPIPE and sh can exit with that status, 141, before SIGTERM lands; Pi's own runs show both 1 and 141. `exec yes` makes sh the
-	// writer, which ends by a signal or by EPIPE and so resolves as 1 whichever comes first, and `yes; echo done` leaves sh to die of
-	// the SIGPIPE its own write meets, so neither depends on that race.
+	// The code of a truncated result is a race in Pi itself: exec.ts closes both pipes and then sends SIGTERM (exec.ts:111-113), and by then the command
+	// has exited (its own code, 1 for a 0), or it dies of the SIGPIPE its next write meets (141) or of the SIGTERM (143). The printf rows end by
+	// themselves and report 1 unless the SIGTERM is quicker than their exit; `exec yes` makes the endless writer the command itself; `yes; echo done`
+	// leaves sh waiting for it, to die of the SIGTERM or, once yes is gone, of the SIGPIPE its own echo meets. TestExecCommandMatchesPi counts the codes
+	// of these rows over execTruncatedRuns runs on each side (truncatedCodeFaults).
 	for _, script := range []string{"printf 'a€🙂'", "printf 'a€🙂' >&2", "printf 'ab' ; printf 'cd' >&2", "printf '\\342'; printf '\\360' >&2", "printf '\\342\\202'", "exec yes", "exec yes >&2", "yes; echo done", "printf x"} {
 		limits := []float64{0, 1, 2, 3, 4, 5, 8, 9, 1000, 536870888}
 		if strings.Contains(script, "yes") {
@@ -152,13 +153,117 @@ func pigExecOutcome(ctx context.Context, scenario execScenario) execOutcome {
 	return normalized
 }
 
-// truncatedCodesAgree reports whether a truncated result of PiG and one of Pi carry codes that the two sides may reach for the same command. A
-// truncated result is never 0, and what it is depends on what reaches the child first: its exit after the pipes close (1), a SIGPIPE its own write
-// meets (141, Pi's `yes`) or the SIGTERM exec.ts sends (143, a83b75a07 reports a signal as 128 + its number). Pi closes the pipes and signals the
-// child a few microseconds later, so its runs show all three; PiG signals first (exec.go), so its runs show 1 and 143 and never 141. Measured on
-// the 87 maxBuffer rows of execScenarios, 400 runs each (200 on one worker, 200 on eight), truncated results: Pi 1 x9219, 141 x5355, 143 x4626; PiG 1 x8316, 143 x10884, 141 x0.
-func truncatedCodesAgree(pig, pi int) bool {
-	return slices.Contains([]int{1, 143}, pig) && slices.Contains([]int{1, 141, 143}, pi)
+// execTruncatedRuns is how many times TestExecCommandMatchesPi runs each row whose output exceeds the cap, on each side, for the codes those runs report.
+const execTruncatedRuns = 40
+
+// codeCounts is how many truncated runs ended with each code.
+type codeCounts map[int]int
+
+func (c codeCounts) runs() int {
+	total := 0
+	for _, n := range c {
+		total += n
+	}
+	return total
+}
+
+// mostly is the code of more than half of the runs, when there is one.
+func (c codeCounts) mostly() (int, bool) {
+	runs := c.runs()
+	for code, n := range c {
+		if 2*n > runs {
+			return code, true
+		}
+	}
+	return 0, false
+}
+
+func (c codeCounts) String() string {
+	parts := make([]string, 0, len(c))
+	for _, code := range slices.Sorted(maps.Keys(c)) {
+		parts = append(parts, fmt.Sprintf("%d x%d", code, c[code]))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// execSocketResetScript is the maxBuffer script whose codes in Pi are those of a socket pair, which PiG does not give a command:
+// yes is the command itself and writes its stdout. Node's stdio are socket pairs, and the first write to a socket whose peer closed with unread data
+// fails with ECONNRESET and no SIGPIPE, so yes goes on to report "yes: standard output: Connection reset by peer" on stderr: it exits 1 when it gets
+// that far, the SIGTERM ends it while it reports (143), or the report meets the closed stderr (141). The write of a pipe raises SIGPIPE at once, so
+// PiG's yes ends 141 unless the SIGTERM lands in the few microseconds before. Measured on xd6702 (96 CPUs, dash as sh), one row at a time: Pi 1 in
+// 257 of 3600 runs (7%) inside one Node process of 34800 calls, and in 167 and 159 of 360 (46%, 44%) inside Node processes of 240 calls, where the
+// JavaScript between Pi's close and its signal is not yet compiled; of 1200 runs with stderr in a file, Pi's 16 that ended 1 all held that report and
+// 664 of its 920 that ended 143 held its beginning. PiG: 141 in 3571 of 3600 and 143 in 29, never 1. `exec yes >&2` and `yes; echo done` do not
+// show it: there the write that meets the reset is followed by one that meets SIGPIPE, in the same process or in sh.
+const execSocketResetScript = "exec yes"
+
+// truncatedCodeFaults compares the codes PiG and Pi reported for the truncated runs of one script (its rows differ only in the cap, which the first
+// chunk that crosses it ends), counted over the same number of runs in the same test run, and returns what differs. No set of codes is written here: Pi's
+// runs name them.
+//
+// The code of a truncated run is what reaches the command first after exec.ts closed the pipes and sent SIGTERM (exec.ts:111-113): its own exit (1),
+// the SIGPIPE of its next write (141) or the SIGTERM (143). No such row has one code in Pi: over 400 runs of each row, one at a time, a printf row,
+// which ends by itself, reported 143 in 2 of 8400 runs of Pi (181 of 9408 with 64 at once) and, with the pipes closed first, in 4 of 8400 of PiG, and
+// `yes; echo done` reported 141 in 66 of 3600 for Pi and 3 of 3600 for PiG. A sample therefore cannot hold every code a side can report, and a code
+// one side reports once in thousands of runs is no difference; comparing the two samples code by code would fail on those. What is compared is the
+// code a side reports for more than half of its runs:
+//
+//   - Pi's must be one PiG reports. Signalling before closing the pipes fails here: PiG then never reports the 141 of most of Pi's runs of
+//     `exec yes >&2`. No share has to stay on one side of the half for this to hold: where the two sides give a command the same thing, each code
+//     that can be Pi's most frequent was at least 14% of PiG's runs in every form measured (one at a time, 16 and 64 at once), so 360 runs hold it.
+//     socketReset (execSocketResetScript) leaves this out: Pi's shares are the socket's there, 1 can be its most frequent code and PiG never
+//     reports it, and the 143 the socket makes frequent in Pi was 29 of PiG's 3600 runs.
+//   - PiG's must be one Pi reports, on every script.
+//   - every code PiG reports must be one Pi reports for some truncated row of the same run (piAll).
+func truncatedCodeFaults(pig, pi, piAll codeCounts, socketReset bool) []string {
+	var faults []string
+	if code, ok := pi.mostly(); ok && !socketReset && pig[code] == 0 {
+		faults = append(faults, fmt.Sprintf("Pig never reports %d, the code of %d of Pi's %d runs", code, pi[code], pi.runs()))
+	}
+	if code, ok := pig.mostly(); ok && pi[code] == 0 {
+		faults = append(faults, fmt.Sprintf("Pig reports %d in %d of %d runs, and Pi never does", code, pig[code], pig.runs()))
+	}
+	for _, code := range slices.Sorted(maps.Keys(pig)) {
+		if piAll[code] == 0 {
+			faults = append(faults, fmt.Sprintf("Pig reports %d, which Pi reports for no truncated row", code))
+		}
+	}
+	return faults
+}
+
+// sampleTruncatedCodes runs every row of rows execTruncatedRuns times through Pi, in one Node process as the test's other rows, and then through PiG,
+// and returns the codes of each side per script. Every run of either side must be truncated and killed.
+func sampleTruncatedCodes(t *testing.T, rows []execScenario) (pi, pig map[string]codeCounts) {
+	t.Helper()
+	list := make([]execScenario, 0, len(rows)*execTruncatedRuns)
+	for range execTruncatedRuns {
+		list = append(list, rows...)
+	}
+	piOutcomes := piExecOutcomes(t, list)
+	pigOutcomes := make([]execOutcome, len(list))
+	for i, scenario := range list {
+		pigOutcomes[i] = pigExecOutcome(context.Background(), scenario)
+	}
+	count := func(side string, outcomes []execOutcome) map[string]codeCounts {
+		counts := map[string]codeCounts{}
+		complete := map[string]int{}
+		for i, outcome := range outcomes {
+			script := list[i].Args[1]
+			if !outcome.Truncated || !outcome.Killed {
+				complete[script]++
+				continue
+			}
+			if counts[script] == nil {
+				counts[script] = codeCounts{}
+			}
+			counts[script][outcome.Code]++
+		}
+		for script, n := range complete {
+			t.Errorf("%s: %d runs of %q over its cap were not truncated and killed", side, n, script)
+		}
+		return counts
+	}
+	return count("Pi", piOutcomes), count("Pig", pigOutcomes)
 }
 
 // execOracleScript is testdata/exec.mjs, which a test that changes its working
@@ -214,6 +319,8 @@ func TestExecCommandMatchesPi(t *testing.T) {
 	scenarios := execScenarios(dir)
 	expected := piExecOutcomes(t, scenarios)
 	failures := 0
+	// The rows whose output both sides truncated: their codes are compared over execTruncatedRuns runs below, everything else here.
+	var truncated []execScenario
 	for i, scenario := range scenarios {
 		ctx := context.Background()
 		if scenario.Aborted {
@@ -224,8 +331,8 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		normalized := pigExecOutcome(ctx, scenario)
 		raw, _ := json.Marshal(normalized)
 		want := expected[i]
-		// The codes a truncated result may carry are a race between the exit, SIGPIPE and SIGTERM: see truncatedCodesAgree.
-		if normalized.Truncated && want.Truncated && truncatedCodesAgree(normalized.Code, want.Code) {
+		if normalized.Truncated && want.Truncated {
+			truncated = append(truncated, scenario)
 			normalized.Code, want.Code = 1, 1
 		}
 		if normalized.Thrown != "" && want.Thrown != "" {
@@ -261,5 +368,18 @@ func TestExecCommandMatchesPi(t *testing.T) {
 	}
 	if failures > 8 {
 		t.Errorf("%d of %d scenarios differ from Pi", failures, len(scenarios))
+	}
+	pi, pig := sampleTruncatedCodes(t, truncated)
+	piAll := codeCounts{}
+	for _, counts := range pi {
+		for code, n := range counts {
+			piAll[code] += n
+		}
+	}
+	for _, script := range slices.Sorted(maps.Keys(pi)) {
+		t.Logf("truncated runs of %q: Pig %s | Pi %s", script, pig[script], pi[script])
+		for _, fault := range truncatedCodeFaults(pig[script], pi[script], piAll, script == execSocketResetScript) {
+			t.Errorf("truncated runs of %q: %s\n  Pig %s\n  Pi  %s", script, fault, pig[script], pi[script])
+		}
 	}
 }
