@@ -23507,6 +23507,28 @@
       ]
     },
     {
+      "id": "BF-88cf285",
+      "title": "`TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before…",
+      "symptom": "`TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output \"ahead of the reply\" (2.7 MB against Pi's own daemon in one CI run).",
+      "rootCause": "`TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output \"ahead of the reply\" (2.7 MB against Pi's own daemon in one CI run).",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output \"ahead of the reply\" (2.7 MB against Pi's own daemon in one CI run). The defect was the test's: no daemon changes. Both daemons send a small reply ahead of the command output still in their queue, and the test bounds the output that arrives ahead of that reply. It read as soon as it had sent its request, or as soon as the request's effect (a `mkdir`) showed, which leaves the time until a worker of the daemon is scheduled to queue the reply: with the `mkdir` wait, 1.57 MB arrived ahead of the reply of PiG's daemon once in 400 runs on a loaded machine. The reply now answers the first of two chunk writes to one handle and the test reads once the second chunk is in the file: a daemon runs a handle's chunk writes in order, so the first reply is queued by then, and exactly one 64 KiB frame is ahead of it on both daemons. The command prints numbered lines instead of zeros, so the test also fails when output is missing, repeated or out of order.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "88cf2855e3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "env/daemon_wire_exec_oracle_test.go::TestDaemonRepliesBeforeBulkOutputLikePisDaemon"
+      ]
+    },
+    {
       "id": "BF-892827f",
       "title": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted…",
       "symptom": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted, the Host read the client's `getSignal` function again and again without end, one call to the client each, and sent every runtime a new `run_signal` frame each time.",
