@@ -3,7 +3,7 @@
 
 `make pin-bump` retires the entries the target Pi already holds, so the committed script can have any number of entries, none after a bump.
 The tests of the script's machinery (classifying, applying, retiring blocks) therefore never read the committed entries: they run the committed
-code of the script with the entries of testdata/backport-entries.mjs.txt (Pi's own text at v1.5.2) spliced in place of the committed ones.
+code of the script with the entries of testdata/backport-entries.mjs.txt (Pi's own text at the release they were written for; the fixture does not follow the pin) spliced in place of the committed ones.
 """
 from __future__ import annotations
 
