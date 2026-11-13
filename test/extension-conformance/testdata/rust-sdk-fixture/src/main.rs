@@ -4361,6 +4361,73 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+    ext.command(
+        "ui_view_dismiss",
+        "Mount a dialog with a dismiss intent and probe what the host refuses",
+        |ctx, args| {
+            let tap = || pig_sdk::ViewIntent {
+                name: "fx.tap".into(),
+                arg: pig_sdk::ViewShape::new("object"),
+                ..Default::default()
+            };
+            let closing = |name: &str| pig_sdk::ViewIntent {
+                name: name.into(),
+                arg: pig_sdk::ViewShape::new("object"),
+                dismiss: true,
+                ..Default::default()
+            };
+            let mut mount = view_mount(
+                "dismiss",
+                view_text(ctx, "-dismiss"),
+                vec![tap(), closing(args)],
+            );
+            mount.slot = "dialog".into();
+            let st = match ctx.mount_view(mount) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-d-mounted:{}", st.state), "info");
+            let attempt = |label: &str, intents: Vec<pig_sdk::ViewIntent>| {
+                let mut update = x_update(&st.mount);
+                update.view = view_text(ctx, "-dismiss");
+                update.intents = intents;
+                ctx.notify(
+                    &format!("view-d-{label}:{}", x_code(ctx.update_view(update))),
+                    "info",
+                );
+            };
+            attempt(
+                "two",
+                vec![tap(), closing(args), closing(&format!("{args}2"))],
+            );
+            attempt(
+                "node",
+                vec![
+                    tap(),
+                    pig_sdk::ViewIntent {
+                        node_key: "n".into(),
+                        ..closing(args)
+                    },
+                ],
+            );
+            attempt(
+                "arg",
+                vec![
+                    tap(),
+                    pig_sdk::ViewIntent {
+                        arg: pig_sdk::ViewShape::object(
+                            &[("value", pig_sdk::ViewShape::new("string"))],
+                            &["value"],
+                        ),
+                        ..closing(args)
+                    },
+                ],
+            );
+            attempt("ok", vec![closing(args), tap()]);
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "ui_view_extras_end",
         "Read the notices of the extras mount and finish it with a result",
@@ -4595,6 +4662,21 @@ fn main() {
         },
     );
     ext.on_view_intent(|inv| match inv.intent.as_str() {
+        // The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+        name if name.starts_with("fx.close-") => {
+            if inv.arg != json!({}) {
+                return pig_sdk::ViewIntentResult::refused("dismiss takes {}");
+            }
+            let removed = inv.context.remove_view(&pig_sdk::ViewRef {
+                key: inv.mount.key.clone(),
+                epoch: inv.mount.epoch,
+                rev: inv.rev,
+            });
+            match removed {
+                Ok(_) => pig_sdk::ViewIntentResult::done(json!({})),
+                Err(e) => pig_sdk::ViewIntentResult::failed(&e.to_string()),
+            }
+        }
         "fx.redraw" | "fx.foreign" => redraw_intent(&inv),
         // The user opened the hidden view: its handler shows it.
         "fx.reopen" => {

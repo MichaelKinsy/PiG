@@ -29,6 +29,7 @@ func TestViewAmendmentWire(t *testing.T) {
 		{"focus", ViewFocus{Node: "n", Request: "mount", Restore: "previous"}, `{"node":"n","request":"mount","restore":"previous"}`},
 		{"focus on update", ViewFocus{Node: "n", Request: "update"}, `{"node":"n","request":"update"}`},
 		{"intent a hidden mount takes", ViewIntent{Name: "x.open", Arg: ViewShape{Type: "object"}, WhenHidden: true}, `{"name":"x.open","arg":{"type":"object"},"whenHidden":true}`},
+		{"intent the user's dismissal raises", ViewIntent{Name: "x.close", Arg: ViewShape{Type: "object"}, Dismiss: true}, `{"name":"x.close","arg":{"type":"object"},"dismiss":true}`},
 		{"key binding", ViewBinding{Key: "shift+left", Intent: "x.page", Arg: map[string]any{}, Name: "Back"}, `{"key":"shift+left","intent":"x.page","arg":{},"name":"Back"}`},
 		{"gesture binding", ViewBinding{Gesture: "swipe-left", Intent: "x.page"}, `{"gesture":"swipe-left","intent":"x.page"}`},
 	}

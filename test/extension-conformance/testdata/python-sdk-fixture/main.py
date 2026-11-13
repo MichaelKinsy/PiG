@@ -2472,6 +2472,12 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"view-events:{view_watch['events']}", "info")
 
     def view_intent(inv):
+        if inv.intent.startswith("fx.close-"):
+            # The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+            if inv.arg != {}:
+                return pig_sdk.ViewIntentResult("refused", error="dismiss takes {}")
+            inv.context.remove_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev))
+            return pig_sdk.ViewIntentResult("done")
         if inv.intent in ("fx.redraw", "fx.foreign"):
             return view_redraw_intent(inv)
         if inv.intent == "fx.reopen":
@@ -2706,6 +2712,27 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_view_dialog", "Mount a titled view with a bound key in the dialog slot, hide it and show it", view_dialog_probe)
     ext.command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", view_bindings_probe)
+
+    # D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+    def view_dismiss_probe(ctx, args):
+        obj = pig_sdk.ViewShape("object")
+        tap = pig_sdk.ViewIntent("fx.tap", obj)
+
+        def closing(name, **members):
+            return pig_sdk.ViewIntent(name, members.pop("arg", obj), dismiss=True, **members)
+
+        st = ctx.mount_view("dismiss", "dialog", view_text(ctx, "-dismiss"), intents=[tap, closing(args)])
+        ctx.notify(f"view-d-mounted:{st.state}", "info")
+
+        def attempt(label, intents):
+            ctx.notify(f"view-d-{label}:{x_code(lambda: ctx.update_view(st.mount, view_text(ctx, '-dismiss'), intents=intents))}", "info")
+
+        attempt("two", [tap, closing(args), closing(args + "2")])
+        attempt("node", [tap, closing(args, node_key="n")])
+        attempt("arg", [tap, closing(args, arg=pig_sdk.ViewShape("object", properties={"value": pig_sdk.ViewShape("string")}, required=("value",)))])
+        attempt("ok", [closing(args), tap])
+
+    ext.command("ui_view_dismiss", "Mount a dialog with a dismiss intent and probe what the host refuses", view_dismiss_probe)
     ext.command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", view_extras_probe)
     ext.command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", view_extras_end_probe)
     ext.command("ui_view_abilities", "Report the replicated client abilities", view_abilities_probe)
