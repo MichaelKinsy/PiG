@@ -39786,6 +39786,32 @@
       "tests": []
     },
     {
+      "id": "BF-adc27a4",
+      "title": "A Chord host's link no longer drops the messages its transport delivered before closing when the close…",
+      "symptom": "A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first.",
+      "rootCause": "While the goroutine that set a link end's listener was still handing the queue over, the transport's goroutine could deliver another message (queued behind the hand-over) and then end: ended() closed the end at once and cleared the queue, so that message, and whatever else of the queue the listener had not reached, was dropped, and the close was told ahead of it. Pi's one thread finishes the hand-over inside onMessage before it hears of a close, so there the listener gets every message the transport delivered before it ended. The form with the messages queued before the listener was set is as old as the link layer (v0.7.0); the form with a message arriving during the hand-over came with.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first. The listener now gets them in order and the close after them, as in Pi, where the hand-over is finished before a close is heard; a link closed from its own side still drops what it has not delivered.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "adc27a4cbe",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/next/link/link_end_test.go::TestALinkEndHandsOverWhatArrivedBeforeItsTransportEndedThenEnds",
+        "chord/next/link/link_end_test.go::TestALinkEndWhoseListenerPanicsDuringTheHandOver",
+        "chord/next/link/link_end_transports_test.go::TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce",
+        "chord/next/link/link_end_transports_test.go::TestALinkHandsOverWhatArrivedBeforeItsTransportEndedThenCloses",
+        "chord/next/link/link_end_transports_test.go::TestALinkToldOfItsCloseHasLeftItsTransport"
+      ]
+    },
+    {
       "id": "BF-ae1ee6d",
       "title": "The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded…",
       "symptom": "A URL from a login server could end a terminal hyperlink early or send its own escape sequences.",
@@ -55638,6 +55664,29 @@
         "coding/extension/host/subprocess/generation_retirement_test.go::TestReplacedGenerationCallsFailWithThePiStaleMessage",
         "test/extension-conformance/sdkscenario_test.go::TestSDKScenarios",
         "test/parity/scenarios/extensions-runtime/77-reload-stale-context.toml"
+      ]
+    },
+    {
+      "id": "BF-f32ec14",
+      "title": "fix(chord): a link end keeps nothing of the queue it handed over",
+      "symptom": "fix(chord): a link end keeps nothing of the queue it handed over",
+      "rootCause": "LinkEnd.OnMessage hands the queue over one message at a time () and moved on with `end.queued = end.queued[1:]`, so every message it had handed over stayed in the queue's array, and the drained queue, empty, still pointed into that array. An end whose listener is set does not queue again, so nothing replaced the array before the close: a link that queued ahead of its listener (a child's link queues until its start message) kept those messages for as long as it lived.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f32ec14fc9",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNoMessageItHandedOverWhileALaterOneIsWithTheListener",
+        "chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNoQueuedMessageAfterItsEnd",
+        "chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNothingOfTheQueueItHandedOver"
       ]
     },
     {
