@@ -51014,6 +51014,33 @@
       ]
     },
     {
+      "id": "BF-dec362c",
+      "title": "`read` no longer stores a note that the current model does not support images, which was replayed to the…",
+      "symptom": "`read` no longer stores a note that the current model does not support images, which was replayed to the model as stale text after a switch to a vision model.",
+      "rootCause": "read appended \"[Current model does not support images. The image will be omitted from this request.]\" to the result text of an image read under a model without image input. The text is stored in the session, so after a switch to a vision model the next request sent the image together with a note that was no longer true.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`read` no longer stores a note that the current model does not support images, which was replayed to the model as stale text after a switch to a vision model. The image is still replaced with a placeholder per request for a model without image input; the read result names that model in `details.imageUnsupportedByModel`, and the read card shows `[\u003cmodel\u003e does not support images; it saw a placeholder instead]` from it, collapsed and expanded. A session that already holds the old note keeps it as written. The durable `read` no longer adds the matching `info` diagnostic and names the model in its details the same way (Pi 4be4cb4f5e9c, #12139).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dec362c82f",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "durable/tools/coding_tools_pi_oracle_test.go::TestReadOfImagesMatchesPi",
+        "durable/tools/read_images_test.go::TestReadNamesAModelThatTakesNoImagesInDetails",
+        "internal/codingagent/read_image_unsupported_upstream_test.go::TestReadCardDrawsTheImageWarningFromDetails",
+        "internal/codingagent/read_image_unsupported_upstream_test.go::TestReadResultStoredWithTheOldImageNoteStaysAsWritten",
+        "internal/codingagent/tools/read_images_test.go::TestReadImageModelProfileOverridesFallback",
+        "internal/codingagent/tools/tools_read_port_test.go::TestToolsReadPort"
+      ]
+    },
+    {
       "id": "BF-dec54eb",
       "title": "fix(tui): Container.Render is safe beside a frame that borrows the window",
       "symptom": "fix(tui): Container.Render is safe beside a frame that borrows the window",

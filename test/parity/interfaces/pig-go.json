@@ -24979,6 +24979,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#TestFauxInput",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "TestFauxInput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []string"
+      },
+      "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#TestFauxMaxTokens",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "TestFauxMaxTokens",
