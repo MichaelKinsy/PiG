@@ -29,18 +29,18 @@ func BuiltStrippedProviders() []string {
 	return providers
 }
 
-// builtAPI reports whether this test binary links api: it is not one of BuiltStrippedAPIs.
-func builtAPI(api API) bool { return !slices.Contains(BuiltStrippedAPIs(), string(api)) }
+// BuiltAPI reports whether this test binary links api: it is not one of BuiltStrippedAPIs.
+func BuiltAPI(api API) bool { return !slices.Contains(BuiltStrippedAPIs(), string(api)) }
 
 // strippedAPIMessage is the error a request for provider's api reports in a build that strips the API.
 func strippedAPIMessage(provider string, api API) string {
 	return fmt.Sprintf("Provider %s: API %s is stripped from this Piglet (strip.apis: %s)", provider, api, api)
 }
 
-// builtCatalogModel reports whether this test binary links the API of the catalog model named provider/id. An unknown model counts as built, so the test that names it fails on its own lookup.
-func builtCatalogModel(spec string) bool {
+// BuiltCatalogModel reports whether this test binary links the API of the catalog model named provider/id. An unknown model counts as built, so the test that names it fails on its own lookup.
+func BuiltCatalogModel(spec string) bool {
 	model, ok := LookupModelExact(spec)
-	return !ok || builtAPI(model.API)
+	return !ok || BuiltAPI(model.API)
 }
 
 // panics reports whether call panics.

@@ -1,53 +1,5 @@
 # Tests of ./ai/ that fail in a build with every strip tag. One per line: the test, then why.
 # make piglet-strip-matrix fails when one of them passes (remove its line) and when a test not listed here fails.
-TestBedrockProviderConstructs expects the stripped API in the built-in registry
-TestBedrockStreamSimpleThinkingBudgetsMatchPi expects a result of the stripped API and gets the strip error
-TestCompatAPIStreamsMatchPi compares the stripped API with the Pi oracle
-TestContextOverflowMatrixUpstream builds a provider of the stripped API for a table row
-TestCrossProviderHandoffUpstream hands a transcript to and from the stripped API's provider
-TestEmptyMessagesUpstream expects a result of the stripped API and gets the strip error
-TestFetchOptionUpstream counts a request of the stripped API
-TestGoogleRequestPreservesEmptyText builds a provider of the stripped API for a table row
-TestGoogleVertexPayloadMatchesPi compares the stripped API with the Pi oracle
-TestGoogleVertexResponseMatchesPi compares the stripped API with the Pi oracle
-TestImageToolResultMatrixUpstream expects a result of the stripped API and gets the strip error
-TestListModelsAllocatesOnlyFilteredCatalog expects the full catalog with the stripped provider's models
-TestLookupBuiltInProvider expects the stripped API in the built-in registry
-TestMistralMessagesPayloadMatchesPi compares the stripped API with the Pi oracle
-TestMistralPayloadModeAndEffortMatchPi compares the stripped API with the Pi oracle
-TestMistralRawPromptModeOptionIsSentIndependentlyOfReasoningControls expects a result of the stripped API and gets the strip error
-TestMistralReasoningEffortFallsBackToHighForAnUnmappedLevel expects a result of the stripped API and gets the strip error
-TestMistralReasoningModeUpstream expects a result of the stripped API and gets the strip error
-TestMistralResponseMatchesPi compares the stripped API with the Pi oracle
-TestMistralStreamSimpleSendsOnlyTheDerivedReasoningControls expects a result of the stripped API and gets the strip error
-TestMistralTranscriptPayloadMatchesPi compares the stripped API with the Pi oracle
-TestOpenRouterRoutingVariantsMirrorTheirBaseEntries expects the full catalog with the stripped provider's models
-TestProviderAbortMatchesPi compares the stripped API with the Pi oracle
-TestProviderCatalogExportsMatchPinnedData expects the full catalog with the stripped provider's models
-TestProviderDefaultUserAgent builds a provider of the stripped API for a table row
-TestProviderErrorResponseEventsMatchPi compares the stripped API with the Pi oracle
-TestProviderIdentityHeadersMatchPi compares the stripped API with the Pi oracle
-TestProviderIdentityUserAgents builds a provider of the stripped API for a table row
-TestProviderPayloadHookReceivesModelAPIAndPayload builds a provider of the stripped API for a table row
-TestProviderRequestBodiesWriteCharactersAsJSONStringifyDoes expects a result of the stripped API and gets the strip error
-TestProviderRequestBodiesWriteMarkupLiterally expects a request of the stripped API
-TestProviderRequestHeadersMatchPi compares the stripped API with the Pi oracle
-TestProviderRequestsLeaveAFrozenTranscriptUnchanged expects a request of the stripped API
-TestProviderRetryMatchesPi compares the stripped API with the Pi oracle
-TestProviderStreamEventsUpstream builds a provider of the stripped API for a table row
-TestProviderUsageCostMatchesUpstream builds a provider of the stripped API for a table row
-TestProviderUserAgentOverridePrecedence builds a provider of the stripped API for a table row
-TestRegisteredAPIs expects the stripped API in the built-in registry
-TestRepairToolFlowReachesEveryProviderPayload expects a request of the stripped API
-TestRequestBuildAllocationsAreLinearInTheHistory builds a provider of the stripped API for a table row
-TestRequestBuildDoesNotCopyWhatItDoesNotSend builds a provider of the stripped API for a table row
-TestRequestBuildLeavesTheTranscriptUnchanged builds a provider of the stripped API for a table row
-TestResponseIDUpstream builds a provider of the stripped API for a table row
-TestResponseOracleCountsOnlyTheProbeClientsRequests compares the stripped API with the Pi oracle
-TestStreamUpstream builds a provider of the stripped API for a table row
-TestTokensOnAbortUpstream builds a provider of the stripped API for a table row
-TestToolCallWithoutResultUpstream builds a provider of the stripped API for a table row
-TestToolSchemaKeepsAuthoredOrderInProviderRequests expects the full catalog with the stripped provider's models
-TestTotalTokensUpstream builds a provider of the stripped API for a table row
-TestUnicodeSurrogateUpstream builds a provider of the stripped API for a table row
-TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort expects a request of the stripped API
+# The expectation tables of the other ai tests take the stripped APIs of a tagged build from ai/strip_built_test.go (BuiltAPI, BuiltStrippedAPIs, BuiltStrippedProviders).
+TestListModelsAllocatesOnlyFilteredCatalog ai.ListModels of a provider whose API is stripped returns an empty slice whose capacity is the provider's whole catalog (202 for amazon-bedrock), so the test's check that the capacity equals the length fails in the stripped provider's subtest. The contents are right; the allocation is a product finding, not an expectation row.
+TestCompatAPIStreamsMatchPi the subtest "mistralConversationsApi without credentials" expects the strip message and the stream of the stripped mistral-conversations API ends with "No API key for provider: mistral": without a key the credential check answers before the strip does (google-vertex and bedrock-converse-stream report the strip there). A product finding, not an expectation row.

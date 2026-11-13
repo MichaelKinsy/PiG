@@ -39,6 +39,10 @@ func TestResponseIDUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:115
 		{"OpenAI Codex Provider/should expose responseId", "openai-codex", "gpt-6.1-sol", APIOpenAICodexResponses, false},
 	} {
+		if !BuiltAPI(tc.api) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
 			options := StreamOptions{Transport: TransportSSE}

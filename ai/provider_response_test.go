@@ -51,7 +51,7 @@ func TestProviderResponseBoundaries(t *testing.T) {
 	// A build with a pig_strip_<api> tag has no provider for that API's row.
 	strippable := map[string]API{"mistral": APIMistralConversations, "bedrock": APIBedrockConverseStream}
 	for _, test := range cases {
-		if api, ok := strippable[test.name]; ok && !builtAPI(api) {
+		if api, ok := strippable[test.name]; ok && !BuiltAPI(api) {
 			continue
 		}
 		for _, status := range []int{200, 403} {

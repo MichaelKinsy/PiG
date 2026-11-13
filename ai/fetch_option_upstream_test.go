@@ -94,11 +94,14 @@ func TestFetchOptionUpstream(t *testing.T) {
 				customCalls.Add(1)
 				return &http.Response{StatusCode: http.StatusUnauthorized, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"upstream rejected request"}}`)), Request: request}, nil
 			})}
+			// built counts the APIs of the row this build links: all of tc.apis in the default build.
+			built := int32(0)
 			for _, api := range tc.apis {
-				if !builtAPI(api) {
+				if !BuiltAPI(api) {
 					// A build with this API's pig_strip tag has no provider to hand the client to.
 					continue
 				}
+				built++
 				message := fetchOptionResult(t, fetchOptionProvider(api, fallback.URL), custom)
 				if tc.rejects {
 					name := "Google Generative AI"
@@ -110,7 +113,7 @@ func TestFetchOptionUpstream(t *testing.T) {
 					}
 				}
 			}
-			want := int32(len(tc.apis))
+			want := built
 			if tc.rejects {
 				want = 0
 			}

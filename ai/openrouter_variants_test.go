@@ -76,7 +76,14 @@ func TestOpenRouterRoutingVariantsMirrorTheirBaseEntries(t *testing.T) {
 			t.Errorf("%s lists a routing variant: only OpenRouter has them", provider)
 		}
 	}
-	if got, want := len(ListModels("")), len(GeneratedModels)+len(listed)-len(bases); got != want {
+	// The whole list holds the catalog models of the APIs this build links: all of GeneratedModels in the default build.
+	built := 0
+	for i := range GeneratedModels {
+		if BuiltAPI(GeneratedModels[i].API) {
+			built++
+		}
+	}
+	if got, want := len(ListModels("")), built+len(listed)-len(bases); got != want {
 		t.Errorf("the whole list has %d entries, want %d", got, want)
 	}
 }
