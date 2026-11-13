@@ -368,6 +368,7 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 			Activate:     m.activate,
 			Leave:        m.leave,
 			TerminalRows: func() int { return c.ui.size().rows },
+			RowBudget:    func() int { return m.slot.rows(c.ui.size().rows) },
 		})
 		c.mounts[key] = m
 		c.order = append(c.order, m)

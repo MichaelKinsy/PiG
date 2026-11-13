@@ -23,7 +23,7 @@ import base64
 import hashlib
 import threading
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol, TypeAlias, Union
 
 __all__ = [
@@ -1725,3 +1725,94 @@ class MouseRegion(_Node):
 
 
 __all__ += ["MouseRegion", "ScrollView"]
+
+
+@dataclass
+class GridChip:
+    """One event of a :class:`GridCell`: its text (at most 256 bytes) and its
+    colour (a theme token, ``#rrggbb`` or ``#rrggbbaa``)."""
+
+    text: str
+    color: str | None = None
+
+    def _encode(self) -> dict[str, Any]:
+        out: dict[str, Any] = {"text": self.text}
+        _put(out, "color", self.color)
+        return out
+
+
+@dataclass
+class GridCell:
+    """One cell of a :class:`Grid`. ``value`` names it in the intent a choice
+    raises (at most 256 bytes; a cell without one cannot be chosen), ``label``
+    is its first line (at most 64 bytes), ``mark`` ``"current"`` draws it as
+    today, ``dim`` as outside the shown range, and ``color`` tints the label (a
+    theme token, ``#rrggbb`` or ``#rrggbbaa``). ``chips`` are the events it
+    shows (at most 8) and ``more`` counts the events the sender left out (0 to
+    9999). A member left ``None``, ``False`` or empty is not sent."""
+
+    value: str | None = None
+    label: str | None = None
+    mark: str | None = None
+    dim: bool = False
+    color: str | None = None
+    chips: list[GridChip] = field(default_factory=list)
+    more: int | None = None
+
+    def _encode(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        _put(out, "value", self.value)
+        _put(out, "label", self.label)
+        _put(out, "mark", self.mark)
+        if self.dim:
+            out["dim"] = True
+        _put(out, "color", self.color)
+        if self.chips:
+            out["chips"] = [chip._encode() for chip in self.chips]
+        _put(out, "more", self.more)
+        return out
+
+
+class Grid(_Node):
+    """The grid node of D614 (the cell form): a calendar-style grid of equal
+    columns whose cells are data, not nodes, so a month of events is one node.
+    The host is its only validator and answers a mount or an update that
+    breaks a rule with code ``invalid``: ``columns`` is 1 to 16, ``head`` is
+    absent or one label a column (64 bytes each), ``chip_rows`` 1 to 8
+    (``None`` takes the host's 3), at most 128 cells in at most 32 rows (the
+    last row may be short), cell values unique and ``selected`` one of them.
+    ``id`` is required and unique within the view; an intent whose
+    ``node_key`` is that id is raised with ``{"value": <the cell's value>}``
+    when the user chooses a cell."""
+
+    kind = "grid"
+
+    def __init__(
+        self,
+        id: str,  # noqa: A002 - the wire's name
+        columns: int,
+        cells: Sequence[GridCell],
+        *,
+        head: Sequence[str] | None = None,
+        chip_rows: int | None = None,
+        selected: str | None = None,
+    ) -> None:
+        self.id = str(id)
+        self.columns = columns
+        self.cells = list(cells)
+        self.head = list(head) if head is not None else None
+        self.chip_rows = chip_rows
+        self.selected = selected
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {"id": self.id, "columns": self.columns}
+        _put(out, "chipRows", self.chip_rows)
+        if self.head:
+            out["head"] = list(self.head)
+        if self.cells:
+            out["cells"] = [cell._encode() for cell in self.cells]
+        _put(out, "selected", self.selected)
+        return out
+
+
+__all__ += ["Grid", "GridCell", "GridChip"]

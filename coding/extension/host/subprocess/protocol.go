@@ -1266,6 +1266,8 @@ type ViewNode struct {
 
 	// ViewWidgetFields are the fields of the widget kinds (view_widget_wire.go).
 	ViewWidgetFields
+	// ViewGridFields are the fields of a grid (view_grid_wire.go).
+	ViewGridFields
 }
 
 // viewNodeWire is a ViewNode with its "message" as raw JSON: a loader's
@@ -1285,6 +1287,12 @@ func (n *ViewNode) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*n = ViewNode(wire.viewNodeFields)
+	if n.Kind == ViewKindGrid {
+		// pig additive (D614): a grid is read strictly, in the node, its cells and its chips.
+		if err := decodeGridNode(data); err != nil {
+			return err
+		}
+	}
 	if len(wire.Message) == 0 || string(wire.Message) == "null" {
 		return nil
 	}
