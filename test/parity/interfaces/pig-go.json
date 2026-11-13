@@ -123484,6 +123484,17 @@
       "shapeHash": "sha256:145a8ae9aeaf50ae195a216d66dd576da59e8ee126e0959a23b552cf421a6f6c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.CallerOnOwnerLoop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.CallerOnOwnerLoop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.Command",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.Command",
@@ -124670,6 +124681,17 @@
         "type": "func(result any) any"
       },
       "shapeHash": "sha256:90b3dd946d072645e6fe9d55c717b95e0603c4afa2e78630bb22e6784563199d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#ownerLoop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "ownerLoop",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "ownerLoop"
+      },
+      "shapeHash": "sha256:8c863b20a0186e8903cedba65e4365f387d0f6540dbed9c48177f2faa2a835d1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#providerRegistry",
@@ -256263,6 +256285,17 @@
         "type": "func(message string, kind string)"
       },
       "shapeHash": "sha256:2c2ae80189e68f65f628f3f2e323508aec8f52578d9f72fb301d72675c6b834b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtUIContext.OnOwnerLoop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExtUIContext.OnOwnerLoop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtUIContext.OnRemoteTerminalInput",
