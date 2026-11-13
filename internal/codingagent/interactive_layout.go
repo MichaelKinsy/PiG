@@ -60,6 +60,7 @@ func (m *InteractiveMode) onTerminalHeightChange(height int) {
 	if m.opts.SubprocessHost != nil {
 		m.opts.SubprocessHost.NotifyHeight(height)
 	}
+	m.viewClientResized()
 	if dialog := m.shownExtensionDialog(); dialog != nil {
 		m.setExtensionDialogViewMode(true, m.extensionDialogLines(dialog.component))
 	}

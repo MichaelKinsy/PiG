@@ -102,6 +102,7 @@ type Piglet struct {
 	Skills           []SkillEntry        `yaml:"skills,omitempty"`
 	Discovery        *Discovery          `yaml:"discovery,omitempty"`
 	ContextFiles     string              `yaml:"contextFiles,omitempty"` // pig additive (D211): trusted-only withholds an untrusted project's context files.
+	ViewClient       string              `yaml:"viewClient,omitempty"`   // pig additive (D614): terminal attaches the TUI as a view client of an interactive session.
 	SystemPrompt     *PromptRef          `yaml:"systemPrompt,omitempty"`
 	AgentEnv         *AgentEnvironment   `yaml:"agentEnv,omitempty"`
 	Model            *ModelConfig        `yaml:"model,omitempty"`
@@ -490,6 +491,9 @@ func (p *Piglet) Validate() error {
 	if err := validateContextFiles(p.ContextFiles); err != nil {
 		return err
 	}
+	if err := validateViewClient(p.ViewClient); err != nil {
+		return err
+	}
 	if err := validateStrip("strip", p.Strip); err != nil {
 		return err
 	}
@@ -628,6 +632,8 @@ var (
 	agentRuntimeModes = []string{"inject", "image"}
 	// agentPolicyPresets are the agentEnv.policy.preset values.
 	agentPolicyPresets = []string{"minimal", "standard", "elevated"}
+	// viewClients are the viewClient values.
+	viewClients = []string{ViewClientNone, ViewClientTerminal}
 	// extensionRealizations are the build.extensionRealization values.
 	extensionRealizations = []string{"fused"}
 )
@@ -693,6 +699,25 @@ func validateContextFiles(mode string) error {
 		return nil
 	}
 	return fmt.Errorf("contextFiles must be %q or %q, got %q", ContextFilesAll, ContextFilesTrustedOnly, mode)
+}
+
+// View clients a Piglet may select. ViewClientNone is Stock PiG: an interactive session attaches no client to its view
+// registry, so an extension's mount fails unsupported. ViewClientTerminal attaches the TUI.
+const (
+	ViewClientNone     = "none"
+	ViewClientTerminal = "terminal"
+)
+
+func validateViewClient(client string) error {
+	if client == "" || slices.Contains(viewClients, client) {
+		return nil
+	}
+	return fmt.Errorf("viewClient must be %q or %q, got %q", ViewClientNone, ViewClientTerminal, client)
+}
+
+// TerminalViewClient reports whether the Piglet attaches the TUI as a view client. A nil Piglet does not.
+func (p *Piglet) TerminalViewClient() bool {
+	return p != nil && p.ViewClient == ViewClientTerminal
 }
 
 // WithholdsUntrustedContextFiles reports whether the Piglet withholds an untrusted project's context files. A nil Piglet does not.

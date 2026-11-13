@@ -1,0 +1,9 @@
+name: ui-view-off
+description: "The view fixture with no view client."
+extensions:
+  - name: viewfx
+    origins:
+      - local:fixture
+discovery:
+  extensions: []
+  skills: []
