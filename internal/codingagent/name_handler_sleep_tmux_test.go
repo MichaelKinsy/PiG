@@ -6,9 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The terminal stays live while a subprocess extension's session_info_changed handler sleeps. `/name` runs on the owner loop (handleSubmit ->
@@ -82,18 +85,30 @@ def new_extension() -> pig_sdk.Extension:
 		return string(out), err
 	}
 	home, agentDir := filepath.Join(work, "home"), filepath.Join(work, "agent")
-	if out, err := tmux("new-session", "-d", "-s", "pig", "-x", "120", "-y", "40", "-c", filepath.Join(work, "cwd"),
+	// tmux runs a command given as separate arguments itself, without a shell, so the pane's process is pig. new-session prints its process
+	// ID, which is also the ID of the terminal session that pig leads.
+	created, err := tmux("new-session", "-d", "-P", "-F", "#{pane_pid}", "-s", "pig", "-x", "120", "-y", "40", "-c", filepath.Join(work, "cwd"),
 		"-e", "HOME="+home, "-e", "USERPROFILE="+home, "-e", "PIG_HOME="+home, "-e", "PI_HOME="+home,
 		"-e", "PIG_CODING_AGENT_DIR="+agentDir, "-e", "PI_CODING_AGENT_DIR="+agentDir,
 		"-e", "PI_OFFLINE=1", "-e", "TERM=xterm-256color", "-e", "ANTHROPIC_API_KEY=test-key",
-		pig, "--offline", "-e", extension); err != nil {
-		t.Fatalf("tmux new-session: %v: %s", err, out)
+		pig, "--offline", "-e", extension)
+	if err != nil {
+		t.Fatalf("tmux new-session: %v: %s", err, created)
 	}
+	pigPID, pidErr := strconv.Atoi(strings.TrimSpace(created))
+	// This cleanup runs before the removal of work, which t.TempDir registered first. kill-server hangs pig's terminal up and returns, and pig
+	// then writes its exit record into the agent directory, so the cleanup returns only when pig's terminal session has no process left.
 	t.Cleanup(func() {
 		// The handler ends with the release file whether or not the test reached it.
 		_ = os.WriteFile(release, nil, 0o600)
 		_ = exec.Command("tmux", "-L", socket, "kill-server").Run()
+		if pidErr == nil {
+			testenv.AwaitSessionExit(t, "pig", pigPID, testenv.LiveSessionProcesses)
+		}
 	})
+	if pidErr != nil {
+		t.Fatalf("tmux new-session printed %q, want the process ID of pig: %v", created, pidErr)
+	}
 	var pane string
 	// shows polls the pane until it satisfies want, and reports whether it did before the deadline.
 	shows := func(within time.Duration, want func(pane string) bool) bool {
