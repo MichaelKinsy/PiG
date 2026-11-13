@@ -3516,7 +3516,7 @@ Pi bug: Not a Pi bug.
 
 Scope: `chord/nextnode/plugins/plugins_watcher_identity_other.go`, the `base` mark of `pluginWatcher` on DragonFly, Solaris and illumos, and AIX.
 
-Owner decision: owner sign-off pending (drafted by the FollowChordPlugins lane on 2026-11-08).
+Owner decision: approved (owner, 2026-11-13T01:13:59Z: "Proceed with recommendations."; the line of that decision for this record: "D540: confirmed APPROVED; remove the 'sign-off pending' line."). Drafted by the FollowChordPlugins lane on 2026-11-08.
 
 SCRUTINIZED:approved
 
@@ -3712,6 +3712,30 @@ Call-site markers: `tui/loader.go` (`requestStepRender`), `tui/tui.go` (`Request
 Evidence: `tui/render_within_test.go` (`TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn`, `TestFrameDrawnWithinTheDelayCarriesTheChange`, `TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor`, `TestRequestRenderWithinDuringAFrameAsksForTheNextFrame`, `TestLoaderAnimationStepAsksForItsFrameWithin`, `TestLoaderTickStepAsksForNoFrame`, `TestCancelRenderWithinDropsTheWaitingStepFrame`) and `internal/codingagent/status_tick_within_test.go` (`TestStatusTickAsksForItsFrameWithinTheStepDelay`, `TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `TestRemovingTheIndicatorCancelsItsWaitingStepFrame`).
 
 Parity allowance: the frame count differs from Pi's on a streaming call (3,278 against 3,951 frames in 66 s of the `write:50` cell) and the final screen is identical; the frames of a spinner step that another frame draws are not written; the settled screen and every frame a request other than a spinner step asks for are Pi's.
+
+## D626 A model object an extension set is replaced by the registry's model only when the registry's entry for its provider and id changes
+
+What: Pi's `_refreshCurrentModelFromRegistry` (`packages/coding-agent/src/core/agent-session.ts:3501-3513`) replaces the Session's model with `getModel(provider, id)` unless that is absent or the same object (`refreshedModel === currentModel`), and it runs only after an extension's `registerProvider`, `registerNativeProvider`, `unregisterProvider`, `registerVirtualModel` or `unregisterVirtualModel` (`agent-session.ts:3626-3645`). So Pi distinguishes two objects an extension may pass to `pi.setModel`: a registry model edited in place is the registry's own object and keeps its edit until the registry composes that model again, while an edited copy (`{...model, contextWindow}`) or an object built by hand for an id the registry lists is replaced by the registry's model at the next of those five calls, made by any extension for any provider. PiG keeps every such object until the registry's entry for that provider and id changes, and then takes the registry's model: an edited copy survives another extension's provider or virtual-model (un)registration where Pi drops it. An object of an id the registry does not list is kept in both, and one whose id the registry starts to list is replaced in both.
+
+PiG also refreshes on every committed registry change (`Session.refreshCurrentModelFromRegistry` observes `ModelRegistry.ObserveChanges`: a remote catalog refresh, a `models.json` reload, a credential-driven recomposition, as well as the five calls), where Pi's Session keeps its model object across the changes that are not one of the five calls. A request for a model the host built from a name also takes the registry's current model of that name (`ModelRuntime.prepareRequest`), where Pi's request sends the model it is given. Both predate this record and were not recorded: for a model taken from the registry they give the Session and its requests the registry's current entry, which Pi's Session only gets when the model is selected again. A model object an extension set is sent as it is, as in Pi.
+
+Why: the extension wire carries the model object as JSON, not its identity, so the host cannot tell an in-place edit from a copy. Replacing every object that differs from the registry's entry would make the upstream-tested shape (issue 9631: an edited registry model set from `before_agent_start`) lose its edit at PiG's own background catalog refreshes, which Pi does not have. Keeping the object until its entry changes is Pi's in-place case, and for a model set from the registry unchanged it is what PiG did before.
+
+Pi bug: none.
+
+Scope: `coding.Session.refreshCurrentModelFromRegistry`, `coding.ModelRuntime.BindModelObject` and `coding.ModelRuntime.prepareRequest`; a model object set through an SDK's `setModel` over the extension wire that differs from the registry's model of the same provider and id. A model the registry lists, set unchanged by its object or by its `provider/id` name, is not in scope: it follows the registry as before.
+
+Owner decision: approved (owner, 2026-11-13T01:13:59Z: "Proceed with recommendations."; the line of that decision for this record: "D626 APPROVED (setModel object kept until its registry entry changes)."). Drafted by the SetModelImpl lane on 2026-11-12.
+
+SCRUTINIZED:approved
+
+Remove when: the extension wire can tell an in-place edit of a registry model from a copy, or Pi changes the rule of `_refreshCurrentModelFromRegistry`.
+
+Call-site markers: `coding/model_catalog_backend.go` (`keepsModelObject`).
+
+Evidence: `coding/session_model_object_refresh_test.go` (`TestRegistryChangeAndTheModelObjectOfTheSession`: a registry model as it is, a named model, an edited registry model, hand-built objects with a listed and an unlisted id, each across an unrelated registry change and a change of the model's own entry by an extension re-registration, a `models.json` edit and a remote catalog refresh).
+
+Parity allowance: observable only to an extension that passes `setModel` an edited copy of a registry model, or a hand-built object with a listed id, while another registration of a provider or virtual model happens during the session.
 
 ## D628 auth.json is read once per availability pass, where Pi stats it on every credential read
 
