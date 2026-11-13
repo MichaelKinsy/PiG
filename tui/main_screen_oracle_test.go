@@ -68,6 +68,11 @@ func TestMainScreenFramesMatchPiOracle(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(ResetCapabilitiesCache)
+	// The generator runs in a fresh Node process that registers no Kitty image, so getMaxKittyImageRows is 0 there and an overlay hides
+	// no image whose line is above the viewport (hideImagesUnderOverlay). Start from that empty registry, not from the rows earlier tests
+	// registered, and leave none behind.
+	resetKittyRegistry(t)
+	t.Cleanup(func() { resetKittyRegistry(t) })
 	// A step that overflows writes pi-tui-crash.log; keep it out of the shared temporary directory. The comparison checks only the message prefix.
 	logDir := t.TempDir()
 	failures := 0

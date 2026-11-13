@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // node runs a script of this directory and returns its standard output.
@@ -86,9 +87,7 @@ func programDir(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
-	if err := os.Symlink(filepath.Join(pioracle.Project(t), "node_modules"), filepath.Join(dir, "node_modules")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.RequireDirectoryLink(t, filepath.Join(pioracle.Project(t), "node_modules"), filepath.Join(dir, "node_modules"))
 	return dir
 }
 

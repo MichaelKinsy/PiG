@@ -289,6 +289,9 @@ func mergePiglets(base, child *Piglet) (*Piglet, error) {
 	if child.present["contextFiles"] {
 		result.ContextFiles = child.ContextFiles
 	}
+	if child.present["viewClient"] {
+		result.ViewClient = child.ViewClient
+	}
 	if child.present["systemPrompt"] {
 		result.SystemPrompt = child.SystemPrompt
 	}
@@ -867,7 +870,7 @@ func clonePiglet(p *Piglet) *Piglet {
 	return &Piglet{
 		Name: p.Name, Description: p.Description,
 		Extends: extends, BuiltinTools: cloneStringList(p.BuiltinTools), Packages: maps.Clone(p.Packages), Extensions: extensions, Skills: skills,
-		Discovery: discovery, ContextFiles: p.ContextFiles, SystemPrompt: prompt, AgentEnv: environment, Model: model, Slots: slots,
+		Discovery: discovery, ContextFiles: p.ContextFiles, ViewClient: p.ViewClient, SystemPrompt: prompt, AgentEnv: environment, Model: model, Slots: slots,
 		Build: build, Release: release, Secrets: slices.Clone(p.Secrets), Strip: cloneStrip(p.Strip),
 		sourceDir: p.sourceDir, sourcePath: p.sourcePath, present: maps.Clone(p.present), nullFields: maps.Clone(p.nullFields),
 		lineage: slices.Clone(p.lineage), effectiveDigest: p.effectiveDigest, graphDigest: p.graphDigest,

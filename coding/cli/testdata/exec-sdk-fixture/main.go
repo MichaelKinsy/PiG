@@ -35,7 +35,7 @@ func main() {
 		return nil
 	})
 	// exec_abort_probe runs a command that never ends on its own and aborts its signal: pi.exec kills the command and resolves with
-	// killed set and code 0, in every mode.
+	// killed set and code 143, in every mode.
 	ext.Command("exec_abort_probe", "abort the signal of a running pi.exec", func(ctx sdk.Context, _ string) error {
 		helper := os.Getenv("PIG_TEST_EXEC_HELPER_PATH")
 		if helper == "" {
@@ -48,8 +48,8 @@ func main() {
 		if err != nil {
 			return fmt.Errorf("exec: %w", err)
 		}
-		if !result.Killed || result.ExitCode != 0 {
-			return fmt.Errorf("exec killed = %t, code = %d, want killed with code 0", result.Killed, result.ExitCode)
+		if !result.Killed || result.ExitCode != 143 {
+			return fmt.Errorf("exec killed = %t, code = %d, want killed with code 143", result.Killed, result.ExitCode)
 		}
 		return nil
 	})

@@ -11,8 +11,8 @@ import (
 // the cache holds one entry per built-in tool.
 var decodedParameters sync.Map // string -> ai.ToolSchema
 
-// toolSchemaWithParameters retains the declaration's JSON property order alongside its mutable parameter map. A Go map literal cannot carry the enumeration order of Pi's Type.Object declarations. Every call returns its own parameter map.
-func toolSchemaWithParameters(definition ai.ToolSchema, parameters string) ai.ToolSchema {
+// toolSchemaWithParameters retains the declaration's JSON property order alongside its mutable parameter map. A Go map literal cannot carry the enumeration order of Pi's Type.Object declarations. A call returns its own parameter map, except with borrow: then the map is the decoded literal itself, shared by every borrower and every session of the process, which no one may modify (nothing here does: the cache is only read and copied).
+func toolSchemaWithParameters(definition ai.ToolSchema, parameters string, borrow bool) ai.ToolSchema {
 	cached, ok := decodedParameters.Load(parameters)
 	if !ok {
 		var decoded ai.ToolSchema
@@ -22,7 +22,9 @@ func toolSchemaWithParameters(definition ai.ToolSchema, parameters string) ai.To
 		cached, _ = decodedParameters.LoadOrStore(parameters, decoded)
 	}
 	ordered := cached.(ai.ToolSchema)
-	ordered.Parameters = cloneSchemaObject(ordered.Parameters)
+	if !borrow {
+		ordered.Parameters = cloneSchemaObject(ordered.Parameters)
+	}
 	ordered.Name = definition.Name
 	ordered.Description = definition.Description
 	ordered.PromptGuidelines = definition.PromptGuidelines

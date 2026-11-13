@@ -174,8 +174,14 @@ type InteractiveMode struct {
 	editorFactory   extension.EditorFactory
 	widgetContainer *tui.Container
 	// widgetMu guards the widget state below: the extension processes' widgets (bridgeWidgets) and the host-process ones (inprocessWidgets).
-	widgetMu         sync.Mutex
-	bridgeWidgets    map[string]*subprocess.PushProxy
+	widgetMu      sync.Mutex
+	bridgeWidgets map[string]*subprocess.PushProxy
+	// viewMounts is the plugin mounts the terminal view client draws (D614), in mount order; widgetMu guards it. It is empty unless a Piglet selected the client and an extension mounted a view.
+	viewMounts []*viewMount
+	// viewTabRow is the tab row the view client draws above the panel mounts, nil while it draws none; widgetMu guards it.
+	viewTabRow *viewTabs
+	// viewClient is the terminal's attachment to the bound build's view registry, nil unless a Piglet selected it.
+	viewClient       atomic.Pointer[viewClient]
 	inprocessWidgets []inprocessWidget
 	// widgetSeq counts widget sets across both hosts; bridgeWidgetSeqs is the sequence each extension-process widget got when it was set, by its
 	// bridge insertion order, so the layout interleaves the hosts in the order Pi's one Map per side keeps.
@@ -384,6 +390,10 @@ type InteractiveMode struct {
 	branchSummaryCancel context.CancelFunc
 	// frameHold is true while a tree navigation holds the frames its selection requested (holdFrames). Owner loop only.
 	frameHold bool
+	// eventRegionOpen is true between the Session's markers that open and close a task of Pi's event loop (eventRegionMarker), and eventRegion holds, in order, the events that arrived meanwhile: they are applied together when the task closes. eventRegionUpdate says which part of the message the message_update collected last reports (collectEvent), and is eventRegionNoUpdate whenever eventRegion is empty. Owner loop only.
+	eventRegionOpen   bool
+	eventRegion       []agent.AgentEvent
+	eventRegionUpdate int
 	// framePacingInstalled is whether the renderer has the adaptive frame pacing policy (installFramePacing); framePacingAllowed is the policy's gate, stored by the owner loop before each throttled frame (allowFramePacing) and loaded by the renderer.
 	framePacingInstalled bool
 	framePacingAllowed   atomic.Bool
@@ -680,6 +690,8 @@ type InteractiveMode struct {
 	frameTimer       atomic.Pointer[frameTimer]
 	kernelFrameTimer bool
 	renderWakeCh     <-chan time.Time
+	// frameDue is the deadline of the throttled frame the renderer armed and the loop has not run yet, in Unix nanoseconds, and 0 when there is none (armFrameTimer, runScheduledRender).
+	frameDue atomic.Int64
 
 	// Extension errors reported from any goroutine wait here until the main
 	// loop shows them; extensionErrorWakeCh (capacity 1) wakes the loop.
@@ -716,7 +728,7 @@ func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 			})
 		}
 		// After the repaint is queued, so the collection never delays it.
-		releaseStartupHeap()
+		m.releaseStartupHeapWhenIdle(ctx)
 	})
 }
 
@@ -820,9 +832,11 @@ var frameOutputIsTerminal = func() bool { return term.IsTerminal(int(os.Stdout.F
 func (m *InteractiveMode) armFrameTimer(due time.Time) {
 	timer := *m.frameTimer.Load()
 	if due.IsZero() {
+		m.frameDue.Store(0)
 		timer.Stop()
 		return
 	}
+	m.frameDue.Store(due.UnixNano())
 	timer.Reset(time.Until(due))
 }
 
@@ -835,6 +849,10 @@ func (m *InteractiveMode) runScheduledRender() {
 	}
 	m.allowFramePacing()
 	m.tuiInst.RunDueRender()
+	if due := m.frameDue.Load(); due != 0 && time.Until(time.Unix(0, due)) <= 0 {
+		// RunDueRender ran the frame of that deadline; a frame requested while it ran has a later one.
+		m.frameDue.CompareAndSwap(due, 0)
+	}
 	m.wakeSpinner()
 }
 
@@ -1308,6 +1326,12 @@ type InteractiveModeOptions struct {
 
 	// ReplacementResources returns the cwd-bound options of the build that owns session.
 	ReplacementResources func(session InteractiveSessionHandle) InteractiveReplacement
+
+	// TerminalViewClient attaches the TUI as a client of the plugin view registry of SubprocessUIBridge, so the views
+	// extensions mount (ui.view) are drawn in the terminal. A Piglet's viewClient: terminal sets it.
+	//
+	// pig additive (D614).
+	TerminalViewClient bool
 
 	// SubprocessUIBridge, when non-nil, is the UI bridge for subprocess
 	// extensions. Run() wires it to the TUI after creation via

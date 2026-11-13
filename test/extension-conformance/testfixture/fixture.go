@@ -179,6 +179,9 @@ func kitImagePNG(n int) []byte {
 // for byte.
 const kitKindsPNG = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082"
 
+// viewCancelledTag is the tag of the last ui.view.intent whose handler saw its request cancelled.
+var viewCancelledTag atomic.Value
+
 type focusedList struct {
 	items    []string
 	selected int
@@ -1175,6 +1178,399 @@ func Extension() *sdk.Extension {
 			eventProbeOff = nil
 		}
 		return nil
+	})
+	// D614 plugin UI mounts: the conformance probe every SDK fixture implements the same way. Every number and name it
+	// reports comes from the host, so an SDK that never makes the call cannot produce it (conformance TestConformance_UIViewMounts).
+	viewText := func(ctx sdk.Context, suffix string) kit.View {
+		ab := ctx.ViewAbilities()
+		n := 0
+		if ab != nil {
+			n = ab.Limits.IntentArgBytes
+		}
+		return kit.View{Root: &kit.Text{Text: fmt.Sprintf("fixture-view-%d%s", n, suffix)}}
+	}
+	ext.Command("ui_view_abilities", "Report the replicated client abilities", func(ctx sdk.Context, args string) error {
+		ab := ctx.ViewAbilities()
+		if ab == nil {
+			ctx.Notify("view-abilities:none", "info")
+			return nil
+		}
+		slots := make([]string, len(ab.Slots))
+		for i, s := range ab.Slots {
+			slots[i] = string(s)
+		}
+		ctx.Notify(fmt.Sprintf("view-abilities:mounts=%d,argbytes=%d,slots=%s,nodes=%s,markdown=%t", ab.Limits.Mounts, ab.Limits.IntentArgBytes, strings.Join(slots, "+"), strings.Join(ab.Nodes, "+"), ab.Markdown), "info")
+		return nil
+	})
+	ext.Command("ui_view_probe", "Mount, update, hide, show, finish and remove a view", func(ctx sdk.Context, args string) error {
+		code := func(err error) string {
+			if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+				return string(ve.Code)
+			}
+			return "none"
+		}
+		st, err := ctx.MountView(sdk.ViewMount{Key: "probe", Slot: sdk.ViewSlotPanel, View: viewText(ctx, "")})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-mounted:epoch=%d,rev=%d,state=%s", st.Mount.Epoch, st.Mount.Rev, st.State), "info")
+		first := st.Mount
+		st, err = ctx.UpdateView(sdk.ViewUpdate{Mount: first, View: viewText(ctx, "-2")})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-updated:rev=%d", st.Mount.Rev), "info")
+		_, err = ctx.UpdateView(sdk.ViewUpdate{Mount: first, View: viewText(ctx, "-stale")})
+		ctx.Notify("view-stale:"+code(err), "info")
+		cur := st.Mount
+		if st, err = ctx.HideView(cur); err != nil {
+			return err
+		}
+		ctx.Notify("view-hidden:"+string(st.State), "info")
+		if st, err = ctx.ShowView(cur); err != nil {
+			return err
+		}
+		ctx.Notify("view-shown:"+string(st.State), "info")
+		if st, err = ctx.FinishView(cur); err != nil {
+			return err
+		}
+		ctx.Notify("view-finished:"+string(st.State), "info")
+		_, err = ctx.RemoveView(cur)
+		ctx.Notify("view-terminal:"+code(err), "info")
+		st, err = ctx.ViewState("probe")
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-final:"+string(st.State), "info")
+		intents := []sdk.ViewIntent{
+			{Name: "fx.add", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"n": {Type: "integer"}}, Required: []string{"n"}}, Answer: &sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"sum": {Type: "integer"}}, Required: []string{"sum"}}},
+			{Name: "fx.wait", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"tag": {Type: "string"}}, Required: []string{"tag"}}, Cancellable: true, TimeoutMs: 5000},
+		}
+		st, err = ctx.MountView(sdk.ViewMount{Key: "probe2", Slot: sdk.ViewSlotPanel, View: viewText(ctx, "-live"), Intents: intents})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-second:epoch=%d,rev=%d", st.Mount.Epoch, st.Mount.Rev), "info")
+		return nil
+	})
+	ext.Command("ui_view_cancelled", "Report the intent whose handler was cancelled", func(ctx sdk.Context, args string) error {
+		tag, _ := viewCancelledTag.Load().(string)
+		ctx.Notify("intent-cancelled:"+tag, "info")
+		return nil
+	})
+	ext.Command("ui_view_state", "Report the state of the second mount", func(ctx sdk.Context, args string) error {
+		st, err := ctx.ViewState("probe2")
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-state:%s:%s", st.State, st.Reason), "info")
+		return nil
+	})
+	// D614 amendment: claims and alternatives, drawing, a11y and focus, diagnostics and the finish result, the same way
+	// in every SDK fixture (conformance TestConformance_UIViewExtras). The alternative's predicate, the shape counts and
+	// the result are built from what the host replicated, so an SDK that drops a member or answers from a constant fails.
+	viewClaim := func(claims []sdk.ViewClaim, name string) any {
+		for _, c := range claims {
+			if c.Name == name {
+				return c.Value
+			}
+		}
+		return nil
+	}
+	viewPicked := func(ab *sdk.ViewAbilities) int64 {
+		for _, sc := range ab.SlotClaims {
+			if sc.Slot == sdk.ViewSlotPanel {
+				n, _ := viewClaim(sc.Claims, "display.colors").(int64)
+				return n
+			}
+		}
+		return 0
+	}
+	viewList := func(id, label string) kit.View {
+		return kit.View{Root: kit.NewSelectList(id, []kit.SelectItem{{Value: id, Label: label}}, 5)}
+	}
+	ext.Command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", func(ctx sdk.Context, args string) error {
+		code := func(err error) string {
+			if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+				return string(ve.Code)
+			}
+			return "none"
+		}
+		ab := ctx.ViewAbilities()
+		if ab == nil || ab.Drawing == nil {
+			return errors.New("ui_view_extras: the client states no drawing abilities")
+		}
+		picked := viewPicked(ab)
+		gestures, _ := viewClaim(ab.Claims, "input.gestures").([]string)
+		ctx.Notify(fmt.Sprintf("view-x-claims:colors=%v,kind=%v,gestures=%s,hover=%v,panel.colors=%d,profiles=%s,shapes=%d,pixels=%d",
+			viewClaim(ab.Claims, "display.colors"), viewClaim(ab.Claims, "display.kind"), strings.Join(gestures, "+"), viewClaim(ab.Claims, "display.hover"),
+			picked, strings.Join(ab.Drawing.Profiles, "+"), ab.Drawing.Shapes, ab.Drawing.Pixels), "info")
+		rects := func(n int) []sdk.ViewDrawShape {
+			out := make([]sdk.ViewDrawShape, n)
+			for i := range out {
+				out[i] = sdk.ViewDrawShape{Kind: "rect", Width: 1, Height: 1}
+			}
+			return out
+		}
+		scene := func(shapes []sdk.ViewDrawShape) *sdk.ViewDrawing {
+			return &sdk.ViewDrawing{Profile: "scene", Shapes: shapes}
+		}
+		base := func() kit.View { return viewList("base", "fixture-x-base") }
+		drawing := scene(rects(ab.Drawing.Shapes - 1))
+		drawing.Regions = []sdk.ViewRegion{{Key: "r", Shape: sdk.ViewDrawShape{Kind: "rect", Width: 4, Height: 4}, Gestures: []string{"activate"}, Intent: "fx.tap", Name: "Tap"}}
+		yes := true
+		st, err := ctx.MountView(sdk.ViewMount{Key: "extras", Slot: sdk.ViewSlotPanel,
+			View:    base(),
+			Intents: []sdk.ViewIntent{{Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}}},
+			Alternatives: []sdk.ViewAlternative{{
+				When:    sdk.ViewWhen{Any: []sdk.ViewWhenAll{{All: []sdk.ViewClause{{Claim: "display.colors", Op: "equals", Value: picked}}}}},
+				View:    viewList("alt", fmt.Sprintf("fixture-x-alt-%d", picked)),
+				Drawing: drawing,
+			}},
+			A11y: []sdk.ViewA11y{
+				{Node: "alt", Name: fmt.Sprintf("Extras %d", picked), Role: "button", Checked: &yes, Relations: []sdk.ViewRelation{{Kind: "describedBy", Target: "base"}}},
+				{Node: "base", Name: "Base"},
+			},
+			Focus: []sdk.ViewFocus{{Node: "alt", Request: "mount", Restore: "previous"}}})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-x-mounted:"+string(st.State), "info")
+		attempt := func(label string, c sdk.ViewContent) {
+			c.View = base()
+			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: c})
+			ctx.Notify("view-x-"+label+":"+code(err), "info")
+		}
+		alts := make([]sdk.ViewAlternative, 9)
+		for i := range alts {
+			alts[i] = sdk.ViewAlternative{When: sdk.ViewWhen{Any: []sdk.ViewWhenAll{{All: []sdk.ViewClause{{Claim: "display.hover", Op: "present"}}}}}, View: base()}
+		}
+		attempt("alts", sdk.ViewContent{Alternatives: alts})
+		nested := sdk.ViewDrawShape{Kind: "rect", Width: 1, Height: 1}
+		for range 8 {
+			nested = sdk.ViewDrawShape{Kind: "group", Children: []sdk.ViewDrawShape{nested}}
+		}
+		attempt("nest", sdk.ViewContent{Drawing: scene([]sdk.ViewDrawShape{nested})})
+		points := make([]sdk.ViewPoint, 1025)
+		for i := range points {
+			points[i] = sdk.ViewPoint{X: float64(i), Y: float64(i)}
+		}
+		attempt("points", sdk.ViewContent{Drawing: scene([]sdk.ViewDrawShape{{Kind: "polyline", Points: points}})})
+		attempt("shapes", sdk.ViewContent{Drawing: scene(rects(4097))})
+		a11y := make([]sdk.ViewA11y, 257)
+		for i := range a11y {
+			a11y[i] = sdk.ViewA11y{Node: fmt.Sprintf("n%d", i)}
+		}
+		attempt("a11y", sdk.ViewContent{A11y: a11y})
+		attempt("over", sdk.ViewContent{Drawing: scene(rects(ab.Drawing.Shapes + 1))})
+		attempt("pixels", sdk.ViewContent{
+			Drawing: &sdk.ViewDrawing{Profile: "pixels", Pixels: &sdk.ViewPixels{Width: 2, Height: 2, Asset: "img", Scaling: "nearest"}},
+			Assets:  []sdk.ViewAsset{{ID: "img", MIME: "image/png", Size: 4, SHA256: strings.Repeat("a", 64), Delivery: "inline"}},
+		})
+		old := st.Mount
+		old.Rev += 50
+		stale := "none"
+		for range 3 {
+			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: old, View: base()})
+			stale = code(err)
+		}
+		ctx.Notify("view-x-stale:"+stale, "info")
+		notices, err := ctx.ViewDiagnostics("extras")
+		if err != nil {
+			return err
+		}
+		count := map[string]int{}
+		for _, n := range notices {
+			if n.Path == "update" {
+				count[n.Code] += n.Count
+			}
+		}
+		ctx.Notify(fmt.Sprintf("view-x-diag:invalid=%d,limit=%d,unsupported=%d,stale=%d", count["invalid"], count["limit"], count["unsupported"], count["stale"]), "info")
+		_, err = ctx.FinishViewWith(st.Mount, strings.Repeat("r", 65536))
+		ctx.Notify("view-x-bigresult:"+code(err), "info")
+		return nil
+	})
+	ext.Command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", func(ctx sdk.Context, args string) error {
+		ab := ctx.ViewAbilities()
+		if ab == nil {
+			return errors.New("ui_view_extras_end: no client")
+		}
+		st, err := ctx.ViewState("extras")
+		if err != nil {
+			return err
+		}
+		notices, err := ctx.ViewDiagnostics("extras")
+		if err != nil {
+			return err
+		}
+		last := ""
+		if len(notices) > 0 {
+			last = notices[len(notices)-1].Path
+		}
+		ctx.Notify(fmt.Sprintf("view-x-diag2:n=%d,last=%s", len(notices), last), "info")
+		picked := func(st sdk.ViewStatus) int64 {
+			var res struct {
+				Picked int64 `json:"picked"`
+			}
+			_ = json.Unmarshal(st.Result, &res)
+			return res.Picked
+		}
+		done, err := ctx.FinishViewWith(st.Mount, map[string]any{"picked": viewPicked(ab)})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-x-finished:%s,picked=%d", done.State, picked(done)), "info")
+		cur, err := ctx.ViewState("extras")
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-x-state:%s,picked=%d", cur.State, picked(cur)), "info")
+		return nil
+	})
+	redrawIntent := registerViewRows(ext)
+	// D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
+	// shows it and updates it with a focus request, the same way in every SDK fixture (conformance
+	// TestConformance_UIViewToolShowsAndFocuses). The title and the node are the caller's.
+	ext.Command("ui_view_tool", "Register the tool that shows a titled view", func(ctx sdk.Context, args string) error {
+		ctx.RegisterTool(sdk.ToolDefinition{Name: "view_show", Label: "view_show", Description: "Mount, show and focus a titled view", Parameters: sdk.Schema{"type": "object"}, Execute: func(ctx sdk.Context, params map[string]any) (any, error) {
+			title, _ := params["title"].(string)
+			node, _ := params["node"].(string)
+			if op, _ := params["op"].(string); op == "hide" {
+				st, err := ctx.ViewState("shown")
+				if err == nil {
+					st, err = ctx.HideView(st.Mount)
+				}
+				if err != nil {
+					return nil, err
+				}
+				return "view-tool:" + string(st.State), nil
+			}
+			content := func(title, request string) sdk.ViewContent {
+				return sdk.ViewContent{Title: title, View: viewList(node, "fixture-shown"),
+					Intents: []sdk.ViewIntent{{Name: "fx.reopen", Arg: sdk.ViewShape{Type: "object"}, WhenHidden: true}, {Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}}},
+					Focus:   []sdk.ViewFocus{{Node: node, Request: request}}}
+			}
+			st, err := ctx.MountView(sdk.ViewMount{Key: "shown", Slot: sdk.ViewSlotPanel, ViewContent: content(title, "")})
+			if err == nil {
+				st, err = ctx.HideView(st.Mount)
+			}
+			if err == nil {
+				st, err = ctx.ShowView(st.Mount)
+			}
+			if err == nil {
+				st, err = ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(title+"/2", "update")})
+			}
+			if err != nil {
+				return nil, err
+			}
+			return fmt.Sprintf("view-tool:%s,rev=%d", st.State, st.Mount.Rev), nil
+		}})
+		return nil
+	})
+	// D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The
+	// argument is the row's token: the cell values, the selection and one chip text are built from it.
+	ext.Command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", func(ctx sdk.Context, args string) error {
+		tok := strings.TrimSpace(args)
+		code := func(err error) string {
+			if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+				return string(ve.Code)
+			}
+			return "none"
+		}
+		cells := []kit.GridCell{{Label: "30", Dim: true}, {Label: "31", Dim: true}}
+		for d := 1; d <= 28; d++ {
+			cell := kit.GridCell{Value: fmt.Sprintf("%s-%d", tok, d), Label: strconv.Itoa(d)}
+			switch d {
+			case 1:
+				cell.Chips = []kit.GridChip{{Text: tok + " standup", Color: "#3366cc"}, {Text: "lunch", Color: "accent"}}
+				cell.More = 2
+			case 2:
+				cell.Mark, cell.Color = "current", "#ff000080"
+			case 3:
+				cell.Chips = []kit.GridChip{{Text: "plain"}}
+			case 28:
+				cell.Label = ""
+			}
+			cells = append(cells, cell)
+		}
+		month := kit.NewGrid("month", 7, cells)
+		month.Head = []string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
+		month.ChipRows = new(2)
+		month.Selected = tok + "-2"
+		content := func(grid *kit.Grid) sdk.ViewContent {
+			return sdk.ViewContent{
+				View:     kit.View{Root: kit.NewContainer(kit.NewText("Month "+tok, 0, 0), grid)},
+				Intents:  []sdk.ViewIntent{{Name: "fx.pick", NodeKey: "month", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"value": {Type: "string"}}, Required: []string{"value"}}}},
+				Fallback: kit.NewText("grid-fallback "+tok, 0, 0),
+			}
+		}
+		st, err := ctx.MountView(sdk.ViewMount{Key: "grid", Slot: sdk.ViewSlotPanel, ViewContent: content(month)})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-g-mounted:"+string(st.State), "info")
+		attempt := func(label string, columns int, cells []kit.GridCell) {
+			_, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(kit.NewGrid("month", columns, cells))})
+			ctx.Notify("view-g-"+label+":"+code(err), "info")
+		}
+		many := make([]kit.GridCell, 129)
+		for i := range many {
+			many[i] = kit.GridCell{Label: "x"}
+		}
+		attempt("cells", 7, many)
+		chips := make([]kit.GridChip, 9)
+		for i := range chips {
+			chips[i] = kit.GridChip{Text: "c"}
+		}
+		attempt("chips", 7, []kit.GridCell{{Value: "a", Chips: chips}})
+		attempt("columns", 17, []kit.GridCell{{Value: "a"}})
+		attempt("mark", 7, []kit.GridCell{{Value: "a", Mark: tok}})
+		cur, err := ctx.ViewState("grid")
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-g-state:%s,rev=%d", cur.State, cur.Mount.Rev), "info")
+		return nil
+	})
+	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
+		switch in.Intent {
+		case "fx.redraw", "fx.foreign":
+			return redrawIntent(in)
+		case "fx.reopen":
+			// The user opened the hidden view: its handler shows it.
+			if _, err := in.Context.ShowView(sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev}); err != nil {
+				return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+			}
+			return sdk.ViewIntentResult{Outcome: "done"}
+		case "fx.pick":
+			var arg struct {
+				Value string `json:"value"`
+			}
+			_ = json.Unmarshal(in.Arg, &arg)
+			answer, _ := json.Marshal(map[string]string{"node": in.NodeKey, "picked": arg.Value})
+			return sdk.ViewIntentResult{Outcome: "done", Answer: answer}
+		case "fx.add":
+			var arg struct {
+				N int `json:"n"`
+			}
+			_ = json.Unmarshal(in.Arg, &arg)
+			sum := arg.N * 2
+			if ab := in.Context.ViewAbilities(); ab != nil {
+				sum += ab.Limits.IntentArgBytes
+			}
+			return sdk.ViewIntentResult{Outcome: "done", Answer: json.RawMessage(fmt.Sprintf(`{"sum":%d}`, sum))}
+		case "fx.wait":
+			var arg struct {
+				Tag string `json:"tag"`
+			}
+			_ = json.Unmarshal(in.Arg, &arg)
+			in.Context.Notify("intent-started:"+arg.Tag, "info")
+			<-in.Context.Done()
+			// A call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled.
+			viewCancelledTag.Store(arg.Tag)
+			return sdk.ViewIntentResult{Outcome: "done", Answer: json.RawMessage(`{}`)}
+		}
+		return sdk.ViewIntentResult{Outcome: "refused", Error: "unknown intent"}
 	})
 	ext.Command("report_geometry", "Report observed terminal geometry", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("geometry:%dx%d", ctx.Width(), ctx.Height()), "info")

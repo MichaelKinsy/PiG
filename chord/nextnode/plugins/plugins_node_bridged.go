@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/hostevents"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -63,8 +64,7 @@ type bridgedWire struct {
 	Contracts []*ContractData `json:"contracts"`
 }
 
-// validBridged checks the facets and returns their names' set: names are unique, a facet that has not failed has a host and
-// contracts that are local.
+// validBridged checks the facets: names are unique, and a facet that has not failed has a host and contracts that are local.
 func validBridged(facets []BridgedFacet) error {
 	names := map[string]bool{}
 	for _, facet := range facets {
@@ -196,6 +196,12 @@ type bridgedServing struct {
 	watches    map[int]chord.WatchHandle[delta.JsonValue]
 	running    map[int]context.CancelFunc
 	mirrors    map[int]*bridgedMirror
+	// ports are the event ports of the Go hosts whose objects the proxies hold (one per host, opened with its first
+	// reference of a type with event members), and tapped the port each such reference is tapped on, by its handle.
+	ports  map[host.Host]hostevents.Port
+	tapped map[int]hostevents.Port
+	// ended is whether the process ended (releaseAll ran): nothing is tapped any more.
+	ended bool
 }
 
 // serving is the Go side's state for the Node host's requests, made when the first arrives: its context ends with the
@@ -206,7 +212,7 @@ func (h *NodeHost) serving() *bridgedServing {
 	if h.bridge.served == nil {
 		served := &bridgedServing{
 			life: h.life, references: map[int]*host.Reference{}, watches: map[int]chord.WatchHandle[delta.JsonValue]{}, running: map[int]context.CancelFunc{},
-			mirrors: map[int]*bridgedMirror{},
+			mirrors: map[int]*bridgedMirror{}, ports: map[host.Host]hostevents.Port{}, tapped: map[int]hostevents.Port{},
 		}
 		h.bridge.served = served
 		//portlint:allow golifetime ends with the process: the context of every request the Node host made ends with it
@@ -219,15 +225,19 @@ func (h *NodeHost) serving() *bridgedServing {
 }
 
 // releaseAll ends the holds the proxies had when the process ended, as Pi ends a host's holds when the host closes: each
-// Go reference is released and each watch stopped, so a Go host that outlives the Node host keeps nothing for it. The
-// context of `life` is already done, so a request still running releases what it acquires after this ran.
+// Go reference is released, each watch stopped and each event port closed, so a Go host that outlives the Node host keeps
+// nothing for it. The context of `life` is already done, so a request still running releases what it acquires after this ran.
 func (served *bridgedServing) releaseAll() {
 	served.mu.Lock()
-	references, watches := served.references, served.watches
+	references, watches, ports := served.references, served.watches, served.ports
 	served.references = map[int]*host.Reference{}
 	served.watches = map[int]chord.WatchHandle[delta.JsonValue]{}
+	served.ports, served.tapped, served.ended = map[host.Host]hostevents.Port{}, map[int]hostevents.Port{}, true
 	served.mu.Unlock()
 	served.endMirrors(func(*bridgedMirror) bool { return true })
+	for _, port := range ports {
+		port.Close()
+	}
 	for _, watch := range watches {
 		_, _ = watch.Stop()
 	}
@@ -313,9 +323,14 @@ func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 		serving.mu.Lock()
 		reference := serving.references[message.Handle]
 		delete(serving.references, message.Handle)
+		port := serving.tapped[message.Handle]
+		delete(serving.tapped, message.Handle)
 		serving.mu.Unlock()
 		if reference != nil {
 			h.serving().endMirrors(func(m *bridgedMirror) bool { return m.handle == message.Handle })
+			if port != nil {
+				port.Untap(message.Handle)
+			}
 			reference.Release()
 		}
 	case "unmirror":
@@ -405,14 +420,90 @@ func (h *NodeHost) bridgedGet(ctx context.Context, facet, name string, params js
 	handle := serving.nextHandle
 	serving.references[handle] = reference
 	serving.mu.Unlock()
-	if ctx.Err() != nil {
+	answer := map[string]any{"handle": handle}
+	forget := func() {
 		serving.mu.Lock()
 		delete(serving.references, handle)
+		port := serving.tapped[handle]
+		delete(serving.tapped, handle)
 		serving.mu.Unlock()
+		if port != nil {
+			port.Untap(handle)
+		}
 		reference.Release()
+	}
+	// Tapped at the bind, before the answer: an event the Go object emits once the proxy is live is sent, listener or not,
+	// as a hold over a link is tapped when it binds (Pi remote/hold.ts:590-594).
+	if hasEvents(contract) {
+		members, err := serving.tap(goHost, reference, handle, h.events.event)
+		if err != nil {
+			forget()
+			return nil, err
+		}
+		answer["events"] = members
+	}
+	if ctx.Err() != nil {
+		forget()
 		return nil, context.Cause(ctx)
 	}
-	return map[string]any{"handle": handle}, nil
+	return answer, nil
+}
+
+// hasEvents is whether the local contract has an event member.
+func hasEvents(contract *contracts.Contract) bool {
+	declared, err := contracts.ContractDataOf(contract)
+	if err != nil {
+		return false
+	}
+	return declared.Versions[len(declared.Versions)-1].Variants.Value(contracts.LocalVariant).Events.Len() > 0
+}
+
+// tap taps reference, held as handle, on the event port of goHost (opened with the first reference tapped on that host):
+// the port's messages go to send with the port, which only queues them. It returns the type's event members in the order an
+// entry's member indexes. The port is opened and tapped outside the lock: both enter the Go host's loop.
+func (served *bridgedServing) tap(goHost host.Host, reference *host.Reference, handle int, send func(hostevents.Port, []hostevents.Entry)) ([]string, error) {
+	served.mu.Lock()
+	port, ended := served.ports[goHost], served.ended
+	served.mu.Unlock()
+	if ended {
+		return nil, context.Cause(served.life)
+	}
+	if port == nil {
+		var opened hostevents.Port
+		opened, err := hostevents.Open(reference, func(entries []hostevents.Entry) { send(opened, entries) })
+		if err != nil {
+			return nil, err
+		}
+		served.mu.Lock()
+		switch {
+		case served.ended:
+			served.mu.Unlock()
+			opened.Close()
+			return nil, context.Cause(served.life)
+		case served.ports[goHost] != nil:
+			// Another request of this host opened it meanwhile: one port per host, one window.
+			port = served.ports[goHost]
+			served.mu.Unlock()
+			opened.Close()
+		default:
+			served.ports[goHost] = opened
+			port = opened
+			served.mu.Unlock()
+		}
+	}
+	members, err := port.Tap(reference, handle)
+	if err != nil {
+		return nil, err
+	}
+	served.mu.Lock()
+	if served.ended {
+		served.mu.Unlock()
+		port.Untap(handle)
+		return nil, context.Cause(served.life)
+	}
+	served.tapped[handle] = port
+	served.mu.Unlock()
+	return members, nil
 }
 
 func (h *NodeHost) bridgedReference(handle int) (*host.Reference, error) {
@@ -516,8 +607,15 @@ func (h *NodeHost) bridgedCall(ctx context.Context, handle int, method string, a
 	if err != nil {
 		return nil, err
 	}
+	// What the call emitted is queued for the channel by now: its flush ran before Call returned.
+	emitted := h.events.mark()
 	// The commits of the call reached the copies of the reference's keyed members before its answer is sent.
 	if err := h.serving().flushMirrors(ctx, handle); err != nil {
+		return nil, err
+	}
+	// And it is written before the answer, so the proxy's listeners are called before the plugin's call returns, as over a
+	// link (Pi remote/provider.ts:382-391). Only that: what other objects emit meanwhile does not hold the answer.
+	if err := h.events.wait(emitted, ctx); err != nil {
 		return nil, err
 	}
 	return map[string]any{"result": wireEncode(result)}, nil

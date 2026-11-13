@@ -15,11 +15,12 @@ import (
 // the sleeping epoll_wait returns for when the kernel's high-resolution timer expires. One goroutine reads the descriptor: it is parked in the network
 // poller while no deadline is armed or due and takes no timer wake of its own.
 type kernelFrameTimer struct {
-	// c holds the tick of the latest expiry the owner loop has not received yet.
+	// c holds the tick of the latest expiry the owner loop has not received yet. A tick is the zero time: it tells the loop to wake, not when.
 	c chan time.Time
 
 	file *os.File
-	done chan struct{}
+	// done is closed once the reading goroutine has ended. The timer holds the receiving side only: the reader has the one sending side.
+	done <-chan struct{}
 
 	mu     sync.Mutex // orders Reset and Stop with Close: the descriptor's number may be another file's once Close returned
 	fd     int
@@ -32,8 +33,13 @@ func newKernelFrameTimer() frameTimer {
 	if err != nil {
 		return nil
 	}
-	d := &kernelFrameTimer{c: make(chan time.Time, 1), file: os.NewFile(uintptr(fd), "frame-deadline"), done: make(chan struct{}), fd: fd}
-	go d.read()
+	done := make(chan struct{})
+	d := &kernelFrameTimer{c: make(chan time.Time, 1), file: os.NewFile(uintptr(fd), "frame-deadline"), done: done, fd: fd}
+	// The timer's own goroutine: Close ends it by closing the descriptor and returns once it has closed done.
+	go func() {
+		defer close(done)
+		d.read()
+	}()
 	return d
 }
 
@@ -41,7 +47,6 @@ func (d *kernelFrameTimer) C() <-chan time.Time { return d.c }
 
 // read turns each expiry into a tick until Close closes the descriptor.
 func (d *kernelFrameTimer) read() {
-	defer close(d.done)
 	var expirations [8]byte
 	for {
 		if _, err := d.file.Read(expirations[:]); err != nil {
@@ -52,7 +57,7 @@ func (d *kernelFrameTimer) read() {
 		default:
 		}
 		select {
-		case d.c <- time.Now():
+		case d.c <- time.Time{}:
 		default:
 		}
 	}
@@ -92,7 +97,7 @@ func (d *kernelFrameTimer) set(after time.Duration, tick bool) {
 			default:
 			}
 			select {
-			case d.c <- time.Now():
+			case d.c <- time.Time{}:
 			default:
 			}
 		}

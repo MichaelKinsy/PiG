@@ -219,6 +219,7 @@ func TestSchemaEnumsMatchParserSets(t *testing.T) {
 	}{
 		{"tools", "properties/tools/items", agenttools.BuiltinToolNames()},
 		{"extends.remove.slots", "$defs/removeSpec/properties/slots/items", slotIDs},
+		{"viewClient", "properties/viewClient", viewClients},
 		{"discovery.extensions", "$defs/discovery/properties/extensions/items", discoverySources},
 		{"discovery.skills", "$defs/discovery/properties/skills/items", discoverySources},
 		{"agentEnv.pigRuntime.mode", "$defs/agentPigRuntime/properties/mode", agentRuntimeModes},
@@ -271,6 +272,7 @@ func TestSchemaAgreesWithParserOnEveryValueOfASet(t *testing.T) {
 	}
 	for _, tc := range []location{
 		{"tools", "name: x\ntools: [%s]\n", agenttools.BuiltinToolNames(), []string{"properties/tools/items"}},
+		{"viewClient", "name: x\nviewClient: %s\n", viewClients, []string{"properties/viewClient"}},
 		{"discovery.extensions", "name: x\ndiscovery:\n  extensions: [%s]\n", discoverySources, []string{"$defs/discovery/properties/extensions/items"}},
 		{"discovery.skills", "name: x\ndiscovery:\n  skills: [%s]\n", discoverySources, []string{"$defs/discovery/properties/skills/items"}},
 		{"extends.remove.slots", "name: x\nextends:\n  source: local:./base.yaml\n  remove:\n    slots: [%s]\n", slotIDs, []string{"$defs/removeSpec/properties/slots/items"}},

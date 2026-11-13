@@ -78,13 +78,101 @@ func (m *InteractiveMode) finalizeRunningTools() {
 // setTerminalProgress writes the OSC 9;4 terminal progress indicator.
 var setTerminalProgress = tui.SetTerminalProgress
 
+// handleAgentEvent takes one item of the Session's Events on the owner loop.
+//
+// Pi's frame is a timer callback (packages/tui/src/tui.ts:1033-1090 requestRender), so it cannot begin between two events that Pi's loop handles in one task: the events of a response the provider delivered in one run, and the message_end, tool_execution_start, turn_end and agent_end the loop emits behind them without awaiting anything (packages/agent/src/agent-loop.ts:262-263, 296-299, 329). The Session marks the bounds of such a task (eventRegionMarker). The loop takes the frame timer and the events from one select, so between the markers it only collects the events, and applies them all in the iteration that takes the closing marker: a frame that falls due meanwhile draws the state before the task, as Pi's timer does when it fires before the task, and the frame after it draws the whole task.
+//
+// No frame, dialog or input waits for a marker. A producer that waits inside a task delays that task's events only, and a task that closes early is drawn as it was without markers. A task of one message_update, the chunk of a provider that streams, arrives without markers and is applied as it arrives (coding.Session, sessionEventRegions).
+//
+// Applying a task's events at its close, rather than as they arrive with only the frame timer kept out of the task, makes the task one change of the mode's state: every paint sees all of it or none, the paint after a keystroke and the one a dialog asks for by name included, and a task whose end went unreported would hold back its own events, never the screen. What is collected is kept small (collectEvent).
 func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
-	// Each assistant message owns one block updated from authoritative event snapshots.
 	if barrier, ok := ev.(eventBarrier); ok {
+		if marker, ok := ev.(eventRegionMarker); ok {
+			if open, bounds := marker.EventRegion(); bounds {
+				m.setEventRegion(open)
+				return
+			}
+		}
 		// Every earlier event has now been handled on this loop.
+		m.applyEventRegion()
 		barrier.AcknowledgeEvent()
 		return
 	}
+	if m.eventRegionOpen {
+		m.collectEvent(ev)
+		switch ev.(type) {
+		case agent.AgentEndEvent, agent.AgentSettledEvent:
+			// The run is over, so its task is, whatever became of the closing marker.
+			m.setEventRegion(false)
+		}
+		return
+	}
+	m.applyAgentEvent(ev)
+}
+
+// setEventRegion opens a task's region, or closes it and applies the events collected in it.
+func (m *InteractiveMode) setEventRegion(open bool) {
+	m.eventRegionOpen = open
+	if !open {
+		m.applyEventRegion()
+	}
+}
+
+// The values of InteractiveMode.eventRegionUpdate: the part of the message that the message_update collected last reports.
+const (
+	// eventRegionNoUpdate: the event collected last is no message_update, or none is collected.
+	eventRegionNoUpdate = iota
+	// eventRegionMessageUpdate: it reports no tool call.
+	eventRegionMessageUpdate
+	// eventRegionToolCallUpdate plus a content index: it reports the tool call of that block.
+	eventRegionToolCallUpdate
+)
+
+// collectEvent keeps ev for the close of the task that runs.
+//
+// A message_update that follows another of the same part of the message takes its place. Pi applies every message_update of a task before the frame that follows the task, and each is applied from what it carries alone (interactive-mode.ts handleEvent message_update: the message, and for a tool call its block's arguments), so the later of two for one part leaves what both would have left: the message block is set from the later message, and the card of the tool call at one content index is created once and given the later arguments. A response that arrives in one piece is one task of hundreds of updates; held until the close they would be so many messages kept alive for the collector to trace and so many blocks set for one frame. Updates for different tool calls, and the events between them, keep their order.
+func (m *InteractiveMode) collectEvent(ev agent.AgentEvent) {
+	part := eventRegionNoUpdate
+	if update, ok := ev.(agent.MessageUpdateEvent); ok {
+		part = eventRegionMessageUpdate
+		switch event := update.AssistantMessageEvent.(type) {
+		case ai.ToolCallStartEvent:
+			part = toolCallUpdatePart(event.ContentIndex)
+		case ai.ToolCallDeltaEvent:
+			part = toolCallUpdatePart(event.ContentIndex)
+		case ai.ToolCallEndEvent:
+			part = toolCallUpdatePart(event.ContentIndex)
+		}
+		if part != eventRegionNoUpdate && part == m.eventRegionUpdate {
+			m.eventRegion[len(m.eventRegion)-1] = ev
+			return
+		}
+	}
+	m.eventRegionUpdate = part
+	m.eventRegion = append(m.eventRegion, ev)
+}
+
+// toolCallUpdatePart is the eventRegionUpdate value of a message_update that reports the tool call of the block at index. An index that is no block's names no part, so such an update is kept beside its neighbours.
+func toolCallUpdatePart(index int) int {
+	if index < 0 {
+		return eventRegionNoUpdate
+	}
+	return eventRegionToolCallUpdate + index
+}
+
+// applyEventRegion applies the collected events in the order they arrived, in this one iteration of the loop.
+func (m *InteractiveMode) applyEventRegion() {
+	events := m.eventRegion
+	m.eventRegion, m.eventRegionUpdate = m.eventRegion[:0], eventRegionNoUpdate
+	for i, ev := range events {
+		events[i] = nil
+		m.applyAgentEvent(ev)
+	}
+}
+
+// applyAgentEvent updates the mode for one Session event.
+func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
+	// Each assistant message owns one block updated from authoritative event snapshots.
 	m.programStatusReporter().HandleEvent(ev)
 	switch e := ev.(type) {
 	case agent.SessionInfoChangedEvent:
@@ -407,7 +495,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			m.toolMu.Unlock()
 			m.appendToChat(comp)
 		}
-		m.tuiInst.Render()
+		// upstream: tool-execution.ts markExecutionStarted runs updateDisplay, the card's renderers, at the event, so a renderer's
+		// clock starts here; interactive-mode.ts:3754 then requests the frame, which the throttle draws.
+		comp.Render(m.tuiInst.Width())
+		m.tuiInst.RequestRender()
 
 	case agent.ToolExecutionUpdateEvent:
 		// Live streaming update from a long-running tool (e.g. bash).
@@ -473,7 +564,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		final.Result = retainToolResult(e.ToolName, result)
 		final.DurationMs = e.DurationMs
 		comp.UpdateResult(final, false)
-		m.tuiInst.Render()
+		// upstream: tool-execution.ts updateResult runs updateDisplay at the event; interactive-mode.ts:3773 then requests the
+		// frame, which the throttle draws.
+		comp.Render(m.tuiInst.Width())
+		m.tuiInst.RequestRender()
 
 	case agent.CompactionStartEvent:
 		// Central abort routing handles Esc and Ctrl+C during compaction.

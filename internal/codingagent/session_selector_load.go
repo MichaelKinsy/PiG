@@ -165,7 +165,7 @@ func (s *SessionSelectorComponent) loadScope(scope sessionScope) {
 		if partial != nil {
 			s.setScopeSessions(scope, slices.Clone(partial))
 			if scope == s.scope {
-				s.refilterLoadedSessions()
+				s.refilterLoadedSessions(true)
 			}
 		}
 		if scope != s.scope {
@@ -200,7 +200,7 @@ func (s *SessionSelectorComponent) finishLoad(scope sessionScope, result session
 			s.loading = false
 			s.loadProgress = nil
 			s.setStatusMessage("Failed to load sessions: "+result.err.Error(), true, sessionSelectorLoadErrorTimeout)
-			s.refilterLoadedSessions()
+			s.refilterLoadedSessions(false)
 		}
 		return
 	}
@@ -214,24 +214,35 @@ func (s *SessionSelectorComponent) finishLoad(scope sessionScope, result session
 	}
 	s.loading = false
 	s.loadProgress = nil
-	s.refilterLoadedSessions()
+	s.refilterLoadedSessions(false)
 }
 
-// Preserve the touched path across progressive snapshots rather than its previous numeric index.
-func (s *SessionSelectorComponent) refilterLoadedSessions() {
+// refilterLoadedSessions is SessionList.setSessions over the visible scope's sessions: it preserves the touched path across
+// progressive snapshots rather than its previous numeric index. partial is true while more sessions are still loading; a
+// selected session missing from a partial list stays the selection target until it arrives.
+func (s *SessionSelectorComponent) refilterLoadedSessions(partial bool) {
 	var selectedPath string
-	if s.selectionTouched && s.highlighted() {
-		selectedPath = s.filtered[s.selected].Session.Path
+	if s.selectionTouched {
+		selectedPath = s.pendingSelectedPath
+		if selectedPath == "" && s.highlighted() {
+			selectedPath = s.filtered[s.selected].Session.Path
+		}
 	}
 	s.refilter()
 	if !s.selectionTouched {
 		s.selected = 0
 	} else if selectedPath != "" {
-		for i, node := range s.filtered {
-			if node.Session.Path == selectedPath {
-				s.selected = i
-				break
-			}
+		selectedIndex := slices.IndexFunc(s.filtered, func(node sessionDisplayNode) bool { return node.Session.Path == selectedPath })
+		switch {
+		case selectedIndex >= 0:
+			s.selected = selectedIndex
+			s.pendingSelectedPath = ""
+		case partial:
+			// The selected session may not have loaded yet: keep it as the target instead of adopting whichever session the
+			// index now points to.
+			s.pendingSelectedPath = selectedPath
+		default:
+			s.pendingSelectedPath = ""
 		}
 	}
 }
@@ -292,7 +303,7 @@ func (s *SessionSelectorComponent) toggleScope() {
 	sessions := s.scopeSessions(s.scope)
 	s.loading = s.scopeLoad(s.scope) != nil
 	s.loadProgress = nil
-	s.refilterLoadedSessions()
+	s.refilterLoadedSessions(s.loading || sessions == nil)
 	if sessions == nil && !s.loading {
 		s.loadScope(s.scope)
 	}

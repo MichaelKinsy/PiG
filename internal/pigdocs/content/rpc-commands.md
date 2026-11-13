@@ -65,7 +65,7 @@ PiG acknowledges the prompt after extension input handling and model authenticat
 {"id":"prompt-2","type":"prompt","message":"Review this change","metadata":{"task_id":"task-42"}}
 ```
 
-RPC prompt input accepts text and optional images. If the Agent is already running, set `streamingBehavior` to `steer` or `followUp`. PiG rejects a second prompt without this field.
+RPC prompt input accepts text and optional images. If the Agent is already running, set `streamingBehavior` to `steer` or `followUp`. PiG rejects a second prompt without this field. A prompt without it that arrives while an earlier prompt is still being admitted, for example two `prompt` commands written to standard input in one chunk, is rejected with the same error, `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`; Pi 1.5.2 answers such a prompt `started` and never runs it (D629).
 
 The Agent counts as running from the moment PiG accepts a prompt, including while extension `before_agent_start` handlers run. A prompt with `streamingBehavior` sent in that time joins the starting run, and an `abort` stops the run as soon as it starts. This is new in Pi 1.3.0. In Pi 1.1.0, a second prompt sent in that time started a second run, which failed with `Agent is already processing`.
 

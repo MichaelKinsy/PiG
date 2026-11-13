@@ -410,6 +410,39 @@ func TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles(t *testing.T
 	}
 }
 
+// Pi 53af02378 (webSurface and tuiSurface take tsconfig; app.ts spreads options.web and options.tui into them): an app whose web and terminal
+// entries import a package that exports only an unbuilt dist/ builds both bases through the given tsconfig's `paths` (without it
+// the imports do not resolve: TestConditionsResolvesThroughAGivenTsconfigsPaths...).
+func TestAppSurfacesBuildTheirBasesThroughAGivenTsconfigsPathsPi53af02378(t *testing.T) {
+	dir := t.TempDir()
+	for file, body := range map[string]string{
+		"workspace/aiish/package.json":          `{"name":"aiish","type":"module","exports":{"./utils/*":{"import":"./dist/utils/*.js"}}}`,
+		"workspace/aiish/src/utils/estimate.ts": "export const from: string = \"paths\";\n",
+		"tsconfig.json":                         `{"compilerOptions":{"paths":{"aiish/*":["./workspace/aiish/src/*.ts"]}}}`,
+		"web.ts":                                "import { from } from \"aiish/utils/estimate\";\nglobalThis.started = from;\n",
+		"tui.ts":                                "import { from } from \"aiish/utils/estimate\";\nglobalThis.started = from;\n",
+	} {
+		path := filepath.Join(dir, filepath.FromSlash(file))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tuiAPI := surfacesFixture(t, "tui", "api.ts")
+	tsconfig := filepath.Join(dir, "tsconfig.json")
+	s := startTestApp(t, nil, func(o *AppOptions) {
+		withWeb(filepath.Join(dir, "web.ts"), false)(o)
+		o.Web.Tsconfig = tsconfig
+		o.Kinds = append(o.Kinds, AppKindEntry{Name: "tui", Kind: AppKind{Platform: model.PlatformNode, Packages: map[string]string{"@test/app/v1/tui": tuiAPI}}})
+		o.Tui = &AppTui{Entry: filepath.Join(dir, "tui.ts"), Conditions: []string{}, Tsconfig: tsconfig}
+	})
+	if s.app.Web.Base() == "" || s.app.Tui.Base() == "" {
+		t.Fatalf("web base %q, tui base %q: a base did not build through the tsconfig", s.app.Web.Base(), s.app.Tui.Base())
+	}
+}
+
 func TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins(t *testing.T) {
 	s := surfaceApp(t)
 	if err := os.WriteFile(filepath.Join(s.root, "lines", "tui.ts"), []byte("import { defineFacet } from \"@test/app/v1\";\nexport default defineFacet(() => { void 1; });"), 0o644); err != nil {

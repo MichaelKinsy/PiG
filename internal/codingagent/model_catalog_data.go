@@ -168,11 +168,40 @@ func (r *ModelRegistry) GetAllModelData() []*ai.Model {
 	return models
 }
 
-// ModelDataSource is one model of GetAllModelData before it is built. A plain bundled catalog's model is its catalog entry (Generated), whose
-// ToModel is the model GetAllModelData lists; any other provider's model is that model (Model).
+// ModelDataSource is one model of GetAllModelData before it is built. A plain bundled catalog's model is identified by its catalog entry
+// (Generated) and, for an OpenRouter routing variant, by the listing's name for it (Listed): Entry is the entry whose ToModel is the model
+// GetAllModelData lists. Any other provider's model is that model (Model).
 type ModelDataSource struct {
+	// Generated is the catalog entry of a plain bundled catalog's model, or the entry a routing variant is derived from.
 	Generated *ai.GeneratedModel
-	Model     *ai.Model
+	// Listed names a routing variant of Generated; it is nil for Generated itself.
+	Listed *ai.ListedOpenRouterModel
+	Model  *ai.Model
+}
+
+// ID is the id of a plain bundled catalog's model.
+func (s ModelDataSource) ID() string {
+	if s.Listed != nil {
+		return s.Listed.ID
+	}
+	return s.Generated.ID
+}
+
+// Name is the name of a plain bundled catalog's model.
+func (s ModelDataSource) Name() string {
+	if s.Listed != nil {
+		return s.Listed.Name
+	}
+	return s.Generated.DisplayName
+}
+
+// Entry is the catalog entry of a plain bundled catalog's model. A routing variant is derived from its model when it is first asked for
+// (ai.HeldOpenRouterVariant), so a caller that keeps few models builds few variants.
+func (s ModelDataSource) Entry() *ai.GeneratedModel {
+	if s.Listed != nil {
+		return ai.HeldOpenRouterVariant(s.Generated, s.Listed.VariantName())
+	}
+	return s.Generated
 }
 
 // GetAllModelDataSources is GetAllModelData for a caller that reads every model's identity and builds few models: it lists the same models,
@@ -180,9 +209,28 @@ type ModelDataSource struct {
 func (r *ModelRegistry) GetAllModelDataSources() []ModelDataSource {
 	var sources []ModelDataSource
 	for _, id := range r.modelProviderIDs() {
-		if plain, ok := r.plainGeneratedModels(id); ok {
-			for _, generated := range ai.OfferedGeneratedModels(plain) {
-				sources = append(sources, ModelDataSource{Generated: generated})
+		if r.isPlainGenerated(id) {
+			catalog, listing := builtinChatCatalogListing(id)
+			offered := ai.OfferedGeneratedModels(catalog)
+			switch {
+			case listing == nil:
+				for _, generated := range offered {
+					sources = append(sources, ModelDataSource{Generated: generated})
+				}
+			case len(offered) == len(catalog):
+				// pig divergence (D199): a routing variant is offered when its model is (it repeats the model's API), so the listing names the offered models and no variant is built to list it.
+				for i := range listing {
+					listed := &listing[i]
+					source := ModelDataSource{Generated: &catalog[listed.Base]}
+					if listed.Variant != 0 {
+						source.Listed = listed
+					}
+					sources = append(sources, source)
+				}
+			default:
+				for _, generated := range ai.OfferedGeneratedModels(builtinChatCatalogListed(id)) {
+					sources = append(sources, ModelDataSource{Generated: generated})
+				}
 			}
 			continue
 		}

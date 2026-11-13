@@ -30,6 +30,30 @@ var corpusGlobs = []string{
 
 const repoRoot = "../.."
 
+// generatedPages names the pages of the corpus that a generator writes from the commit history and the changelog, not a person: the bug fix ledger, on the site and in the agent docs bundle. Their text quotes release notes and commit messages, so a command, a package or a make target in one is a quotation of what someone typed then, not something the page tells a reader to type. A check of what the docs tell a reader to do reads handWritten(corpus(t)), so that a new check cannot forget them.
+var generatedPages = []string{"bug-ledger.md"}
+
+// generatedPage reports whether the corpus page rel is one of generatedPages.
+func generatedPage(rel string) bool {
+	for _, name := range generatedPages {
+		if strings.HasSuffix(rel, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// handWritten returns the sources without the generated pages.
+func handWritten(sources []docSource) []docSource {
+	var out []docSource
+	for _, src := range sources {
+		if !generatedPage(src.Rel) {
+			out = append(out, src)
+		}
+	}
+	return out
+}
+
 type docSource struct {
 	Rel  string
 	Body string

@@ -1,0 +1,16 @@
+# ui_view_intent_cancel is the transport's request cancel: its id is the id of the intent request. Its own reply comes first, then the intent's result, cancelled.
+C: {"id":"1","type":"ui_view_attach","abilities":{"slots":["panel","tool-card"],"nodes":["text","box"],"markdown":true,"imageFormats":["png"],"limits":{"nodes":64,"depth":8,"snapshotBytes":4096,"textBytes":1024,"mounts":8,"intentArgBytes":64},"input":{"keyboard":true,"pointer":true,"text":false},"claims":[{"name":"display.colors","value":256}],"slotClaims":[{"slot":"panel","claims":[{"name":"display.colors","value":16}]}],"drawing":{"profiles":["scene"],"shapes":8,"pixels":0}}}
+H: {"id":"1","type":"response","command":"ui_view_attach","success":true,"data":{"attachment":1,"seq":0,"snapshots":[]}}
+H: {"type":"ui_view","attachment":1,"seq":1,"snapshot":{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":1},"state":"live","view":{"root":{"kind":"text","text":"one"}},"intents":[{"name":"wait","arg":{"type":"object"},"cancellable":true,"timeoutMs":60000}],"digest":"4a6980fc1bbafa55e0a677095bf7ed97e34eaa267486853220971d779ff16858"}}
+C: {"id":"2","type":"ui_view_intent","attachment":1,"plugin":"p","mount":{"key":"k","epoch":1,"rev":1},"intent":"wait","arg":{}}
+# The plugin's handler is running.
+C: {"id":"2","type":"ui_view_intent_cancel"}
+H: {"id":"2","type":"response","command":"ui_view_intent_cancel","success":true,"data":{}}
+H: {"id":"2","type":"response","command":"ui_view_intent","success":true,"data":{"ticket":"t1","outcome":"cancelled"}}
+# No intent in flight has the id any more.
+C: {"id":"2","type":"ui_view_intent_cancel"}
+H: {"id":"2","type":"response","command":"ui_view_intent_cancel","success":false,"error":"not_found: no intent in flight has this id","code":"not_found"}
+C: {"type":"ui_view_intent_cancel"}
+H: {"type":"response","command":"ui_view_intent_cancel","success":false,"error":"invalid: id is required","code":"invalid"}
+C: {"id":"3","type":"ui_view_intent_cancel","attachment":1}
+H: {"id":"3","type":"response","command":"ui_view_intent_cancel","success":false,"error":"invalid: unknown field \"attachment\"","code":"invalid"}

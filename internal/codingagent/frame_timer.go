@@ -6,7 +6,8 @@ import "time"
 // event loop. A tick is a wake, not a promise that the armed deadline has passed: the renderer checks the frame's due time itself (tui RunDueRender).
 // The runtime's timer is the default (runtimeFrameTimer); newKernelFrameTimer gives a more exact one where the system has one (frame_timer_linux.go).
 type frameTimer interface {
-	// C is the channel the ticks arrive on, the same one for the life of the timer.
+	// C is the channel the ticks arrive on, the same one for the life of the timer. The value of a tick is not a time to use: the runtime's timer
+	// sends the time it fired at, the kernel timer the zero time.
 	C() <-chan time.Time
 	// Reset arms the timer to tick once the given time has passed, replacing a deadline armed before.
 	Reset(after time.Duration)

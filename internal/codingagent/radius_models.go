@@ -292,14 +292,20 @@ func radiusCredentialKey(credential ai.Credential) string {
 	return credential.Key
 }
 
+// storedCredential reads providerID's stored credential for a synchronous lookup that has no operation to read in (Resolve, usingOAuth).
 func (r *ModelRegistry) storedCredential(providerID string) (ai.Credential, bool) {
+	return r.storedCredentialIn(context.Background(), providerID)
+}
+
+// storedCredentialIn is storedCredential with its read made in ctx's operation.
+func (r *ModelRegistry) storedCredentialIn(ctx context.Context, providerID string) (ai.Credential, bool) {
 	r.mu.RLock()
 	storage := r.credentialStore
 	r.mu.RUnlock()
 	if storage == nil {
 		return ai.Credential{}, false
 	}
-	credential, err := storage.Read(context.Background(), providerID)
+	credential, err := storage.Read(ctx, providerID)
 	if err != nil || credential == nil {
 		return ai.Credential{}, false
 	}
@@ -310,7 +316,7 @@ func (r *ModelRegistry) storedCredential(providerID string) (ai.Credential, bool
 // API key (model-runtime.ts RuntimeCredentials answers the credential read
 // with {type: "api_key", key}), a stored credential, configured API key, or
 // RADIUS_API_KEY.
-func (r *ModelRegistry) radiusHasAuth(providerID string) bool {
+func (r *ModelRegistry) radiusHasAuth(ctx context.Context, providerID string) bool {
 	r.mu.RLock()
 	runtime := r.runtimeCredentials.Load()
 	r.mu.RUnlock()
@@ -319,7 +325,7 @@ func (r *ModelRegistry) radiusHasAuth(providerID string) bool {
 			return true
 		}
 	}
-	if _, ok := r.storedCredential(providerID); ok {
+	if _, ok := r.storedCredentialIn(ctx, providerID); ok {
 		return true
 	}
 	if raw, env, ok := r.radiusConfiguredKey(providerID); ok {
@@ -329,8 +335,8 @@ func (r *ModelRegistry) radiusHasAuth(providerID string) bool {
 }
 
 // radiusEntries returns the effective models of every Radius provider,
-// limited to providers with configured auth when authenticated is set.
-func (r *ModelRegistry) radiusEntries(authenticated bool) []ModelEntry {
+// limited to the providers hasAuth accepts when it is set.
+func (r *ModelRegistry) radiusEntries(hasAuth func(providerID string) bool) []ModelEntry {
 	r.mu.RLock()
 	providers := make([]*ai.RadiusProvider, 0, len(r.radius))
 	for providerID := range r.radius {
@@ -341,7 +347,7 @@ func (r *ModelRegistry) radiusEntries(authenticated bool) []ModelEntry {
 	r.mu.RUnlock()
 	var entries []ModelEntry
 	for _, provider := range providers {
-		if authenticated && !r.radiusHasAuth(provider.ID()) {
+		if hasAuth != nil && !hasAuth(provider.ID()) {
 			continue
 		}
 		r.mu.RLock()

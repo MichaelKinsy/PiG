@@ -92,6 +92,9 @@ type hostEvents struct {
 	counter_      int64
 	subscriptions int64
 	list          []*eventEntry
+	// window is the host's event window (`HostOptions.EventWindow`), for a consumer that is not a link (Go only:
+	// host_events_port.go); a link reads its host's.
+	window int
 }
 
 func newHostEvents(loop eventsLoop, metrics *chordtelemetry.Instruments, report eventReport) *hostEvents {

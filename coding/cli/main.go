@@ -61,6 +61,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/frontendpack"
+	_ "github.com/MichaelKinsy/PiG/internal/memprofrate" // pig additive (D627): its init turns heap-profile sampling off
 	"github.com/MichaelKinsy/PiG/internal/nativeplatform"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
@@ -1187,6 +1188,8 @@ func Main(args []string, options *MainOptions) {
 	flags.Name = sessionName
 	// pig additive (D211): the active Piglet decides whether an untrusted project loads its context files.
 	flags.ContextFilesTrustedOnly = activePiglet.WithholdsUntrustedContextFiles()
+	// pig additive (D614): the active Piglet decides whether the TUI draws the views extensions mount.
+	flags.TerminalViewClient = activePiglet.TerminalViewClient()
 	timings.Time("createSessionManager")
 	// The builder is Pi's createRuntime closure: every mode builds its first Session
 	// and every replacement Session from the same process-fixed inputs.
@@ -1622,6 +1625,7 @@ func Main(args []string, options *MainOptions) {
 	if subprocBridge != nil {
 		iopts.SubprocessUIBridge = subprocBridge
 	}
+	iopts.TerminalViewClient = flags.TerminalViewClient
 	if subprocHost != nil {
 		iopts.SubprocessHost = subprocHost
 		// /reload recompiles these, and it is the command reached for after

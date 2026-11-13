@@ -1,0 +1,10 @@
+name: ui-view-on
+description: "The view fixture with the terminal view client."
+viewClient: terminal
+extensions:
+  - name: viewfx
+    origins:
+      - local:fixture
+discovery:
+  extensions: []
+  skills: []

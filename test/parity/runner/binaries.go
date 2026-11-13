@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // BinaryRef describes one binary to run a scenario against.
@@ -338,7 +339,8 @@ func oracleCommitMismatch(bin string) string {
 		if json.Unmarshal(data, &stamp) != nil || stamp.Commit != coding.UpstreamCommit {
 			return fmt.Sprintf("the Pi at %s is the build of Pi commit %q, want %s", bin, stamp.Commit, coding.UpstreamCommit)
 		}
-		return ""
+		// The backports patch compiled output and pi runs a bundle of it: the oracle must run the bundle its build made from the patched output.
+		return pioracle.BundleProblem(real, data)
 	}
 	if !publishedOracleAllowed() {
 		return fmt.Sprintf("the Pi at %s is a published package, not the source build of pinned commit %s (make parity-deps builds it; PIG_PARITY_PI_PUBLISHED=1 opts into the published release of a tag pin)", bin, coding.UpstreamCommit)

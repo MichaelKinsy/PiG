@@ -7,6 +7,8 @@ import (
 	"os"
 	"runtime"
 	"slices"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -306,4 +308,161 @@ func TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer(t *testing.T) {
 		t.Fatal("the first frame of a run armed a deadline in the kernel")
 	}
 	m.tuiInst.RunDueRender()
+}
+
+// kernelTimerReaders counts the goroutines that read a kernel timer's descriptor.
+func kernelTimerReaders() int {
+	stacks := make([]byte, 1<<20)
+	for {
+		n := runtime.Stack(stacks, true)
+		if n < len(stacks) {
+			return strings.Count(string(stacks[:n]), "(*kernelFrameTimer).read(")
+		}
+		stacks = make([]byte, 2*len(stacks))
+	}
+}
+
+// timerDescriptors counts the timerfd descriptors the process holds.
+func timerDescriptors(t *testing.T) int {
+	t.Helper()
+	entries, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		t.Skipf("the open descriptors cannot be listed: %v", err)
+	}
+	count := 0
+	for _, entry := range entries {
+		if target, err := os.Readlink("/proc/self/fd/" + entry.Name()); err == nil && strings.Contains(target, "timerfd") {
+			count++
+		}
+	}
+	return count
+}
+
+// Every kernel timer has one reading goroutine and one descriptor, and Close leaves neither: whether the deadline is armed, expired, stopped or
+// was never set, and when several goroutines close the timer at once.
+func TestKernelFrameTimerCloseLeavesNoGoroutineAndNoDescriptor(t *testing.T) {
+	readers, descriptors := kernelTimerReaders(), timerDescriptors(t)
+	const timers = 16
+	var opened []*kernelFrameTimer
+	defer func() {
+		for _, d := range opened {
+			d.Close()
+		}
+	}()
+	for i := range timers {
+		d, _ := newKernelFrameTimer().(*kernelFrameTimer)
+		if d == nil {
+			t.Skip("no timerfd on this kernel")
+		}
+		opened = append(opened, d)
+		switch i % 4 {
+		case 1:
+			d.Reset(time.Hour)
+		case 2:
+			d.Reset(time.Nanosecond)
+		case 3:
+			d.Reset(time.Millisecond)
+			d.Stop()
+		}
+	}
+	// A reader counts once it has started.
+	for started := time.Now(); kernelTimerReaders() != readers+timers && time.Since(started) < 5*time.Second; {
+		time.Sleep(time.Millisecond)
+	}
+	if got, fds := kernelTimerReaders(), timerDescriptors(t); got != readers+timers || fds != descriptors+timers {
+		t.Fatalf("%d open timers have %d reading goroutines and %d descriptors, want %d of each", timers, got-readers, fds-descriptors, timers)
+	}
+	for i, d := range opened {
+		if i%2 == 0 {
+			d.Close()
+		} else {
+			var closers sync.WaitGroup
+			for range 4 {
+				closers.Go(d.Close)
+			}
+			closers.Wait()
+		}
+		select {
+		case <-d.done:
+		default:
+			t.Fatalf("Close of timer %d returned while its reader still runs", i)
+		}
+	}
+	if got, fds := kernelTimerReaders(), timerDescriptors(t); got != readers || fds != descriptors {
+		t.Fatalf("the closed timers left %d reading goroutines and %d descriptors", got-readers, fds-descriptors)
+	}
+}
+
+// The end of a run (Stop) leaves neither the reading goroutine nor the descriptor of the kernel timer its owner loop took.
+func TestStopOfARunLeavesNoKernelTimerGoroutineAndNoDescriptor(t *testing.T) {
+	frameOutputIs(t, true)
+	readers, descriptors := kernelTimerReaders(), timerDescriptors(t)
+	m := newPendingDisplayHarness(t)
+	m.opts.KernelFrameDeadline = true
+	m.installRenderDispatcher()
+	if kernelTimerOf(m) == nil {
+		t.Skip("no timerfd on this kernel")
+	}
+	m.tuiInst.Start()
+	m.tuiInst.RequestRender()
+	if fds := timerDescriptors(t); fds != descriptors+1 {
+		t.Fatalf("the run holds %d timer descriptors, want 1", fds-descriptors)
+	}
+	if err := m.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if got, fds := kernelTimerReaders(), timerDescriptors(t); got != readers || fds != descriptors {
+		t.Fatalf("the stopped run left %d reading goroutines and %d timer descriptors", got-readers, fds-descriptors)
+	}
+}
+
+// A tick of the kernel timer is the zero time on both of its ways to the owner loop, the expiry the reader takes from the descriptor and the
+// deadline that had passed when Reset was called: the loop is told to wake and reads no clock value from the tick.
+func TestKernelFrameTimerTickCarriesNoTime(t *testing.T) {
+	d, _ := newKernelFrameTimer().(*kernelFrameTimer)
+	if d == nil {
+		t.Skip("no timerfd on this kernel")
+	}
+	defer d.Close()
+	for _, after := range []time.Duration{time.Millisecond, 0} {
+		d.Reset(after)
+		select {
+		case at := <-d.C():
+			if !at.IsZero() {
+				t.Fatalf("the tick of Reset(%v) carries the time %v, want the zero time", after, at)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("no tick for Reset(%v)", after)
+		}
+	}
+}
+
+// BenchmarkKernelFrameTimer measures the timer's three paths: a deadline armed and replaced before it expires (a throttled frame that is
+// stopped), a deadline that had passed (the tick comes from Reset), and an expiry (the tick comes from the reading goroutine).
+func BenchmarkKernelFrameTimer(b *testing.B) {
+	bench := func(name string, step func(d *kernelFrameTimer)) {
+		b.Run(name, func(b *testing.B) {
+			d, _ := newKernelFrameTimer().(*kernelFrameTimer)
+			if d == nil {
+				b.Skip("no timerfd on this kernel")
+			}
+			defer d.Close()
+			b.ReportAllocs()
+			for b.Loop() {
+				step(d)
+			}
+		})
+	}
+	bench("ArmAndStop", func(d *kernelFrameTimer) {
+		d.Reset(16 * time.Millisecond)
+		d.Stop()
+	})
+	bench("DueAtOnce", func(d *kernelFrameTimer) {
+		d.Reset(0)
+		<-d.c
+	})
+	bench("Expiry", func(d *kernelFrameTimer) {
+		d.Reset(time.Nanosecond)
+		<-d.c
+	})
 }

@@ -1,4 +1,5 @@
-import "@earendil-works/pi-coding-agent";
+/// <reference path="./pi-pin.d.ts" />
+import type { MarkdownTransformContext, Theme } from "@earendil-works/pi-coding-agent";
 import "@earendil-works/pi-tui";
 
 export type * from "@earendil-works/pi-coding-agent";
@@ -90,6 +91,239 @@ export interface PiGExtensionSourceInfo {
   baseDir?: string;
 }
 
+/** D614: where a client draws a plugin mount. */
+export type PiGViewSlot = "notify" | "status" | "widget-above" | "widget-below" | "header" | "footer" | "dialog" | "overlay" | "panel" | "tool-card" | "message" | "entry";
+/** D614: the closed JSON subset an intent argument or answer is checked against (depth 4, enum at most 32, object at most 32 properties, array at most 64 items). */
+export interface PiGViewShape {
+  type: "boolean" | "string" | "integer" | "number" | "enum" | "object" | "array";
+  enum?: string[];
+  properties?: Record<string, PiGViewShape>;
+  required?: string[];
+  items?: PiGViewShape;
+  maxItems?: number;
+}
+export interface PiGViewIntent {
+  /** "<extension>.<verb>". */
+  name: string;
+  nodeKey?: string;
+  arg: PiGViewShape;
+  answer?: PiGViewShape;
+  cancellable?: boolean;
+  /** 100..300000; default 30000. */
+  timeoutMs?: number;
+  /**
+   * Lets a client raise the intent while the mount is hidden: it is how the user opens a view the extension hid, and the
+   * handler shows the mount. At most one intent of a mount has it; it names no node and its `arg` accepts `{}`.
+   */
+  whenHidden?: boolean;
+}
+export interface PiGViewAsset {
+  id: string;
+  mime: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+  size: number;
+  sha256: string;
+  delivery: "inline" | "managed";
+}
+/** The D107 wire view, `{ root: { kind: "text", text: "..." } }`. */
+export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
+/** D614: one event of a grid cell: its text (at most 256 bytes) and its colour (a theme token, "#rrggbb" or "#rrggbbaa"). */
+export type PiGViewGridChip = { text: string; color?: string };
+/**
+ * D614: one cell of a {@link PiGViewGrid}. `value` names it in the intent a choice raises (at most 256 bytes, unique in the grid; a cell
+ * without one cannot be chosen), `label` is its first line (at most 64 bytes), `mark` draws it as today, `dim` as outside the shown range,
+ * `color` tints the label, `chips` are the events it shows (at most 8) and `more` counts the events the sender left out (0..9999).
+ */
+export type PiGViewGridCell = { value?: string; label?: string; mark?: "current"; dim?: boolean; color?: string; chips?: PiGViewGridChip[]; more?: number };
+/**
+ * D614: the grid node of the D107 view, a calendar-style grid of equal columns whose cells are data. Use it as the `root` of a
+ * {@link PiGWireView} or as a child of a container node. The host is its only validator: `columns` is 1..16, `head` is absent or one label a
+ * column (64 bytes each), `chipRows` 1..8 (default 3), at most 128 cells in at most 32 rows, `selected` one of the cell values, and a member
+ * the record lacks rejects the call with code `invalid`. An intent whose `nodeKey` is the grid's `id` is raised with `{ value }` of the cell
+ * the user chose.
+ */
+export type PiGViewGrid = { kind: "grid"; id: string; columns: number; head?: string[]; chipRows?: number; selected?: string; cells: PiGViewGridCell[] };
+/** One fact the attached client states about itself, named "<area>.<fact>". */
+export interface PiGViewClaim {
+  name: string;
+  value: boolean | number | string | string[];
+}
+/** Tests one claim: present, equals (boolean, integer or string), contains (every listed string is claimed) or atLeast (integer). */
+export interface PiGViewClause {
+  claim: string;
+  op: "present" | "equals" | "contains" | "atLeast";
+  value?: boolean | number | string | string[];
+}
+/** Holds when any group holds; a group holds when all its clauses do. At most 8 groups of 8 clauses. */
+export interface PiGViewWhen {
+  any: { all: PiGViewClause[] }[];
+}
+export interface PiGViewStroke {
+  color: string;
+  width: number;
+}
+/** One shape of a scene; a member of another kind rejects the drawing. A color is "#rrggbb", "#rrggbbaa" or a theme color token. */
+export interface PiGViewDrawShape {
+  kind: "group" | "rect" | "ellipse" | "line" | "polyline" | "path" | "text" | "image";
+  key?: string;
+  fill?: string;
+  stroke?: PiGViewStroke;
+  opacity?: number;
+  /** Six numbers. */
+  transform?: number[];
+  children?: PiGViewDrawShape[];
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  radius?: number;
+  cx?: number;
+  cy?: number;
+  rx?: number;
+  ry?: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  /** 2..1024 vertices of a polyline. */
+  points?: { x: number; y: number }[];
+  closed?: boolean;
+  /** 1..1024 steps of a path; the first is a move. */
+  commands?: { op: "move" | "line" | "quad" | "cubic" | "close"; x?: number; y?: number; x1?: number; y1?: number; x2?: number; y2?: number }[];
+  text?: string;
+  size?: number;
+  align?: "start" | "center" | "end";
+  asset?: string;
+}
+/** Turns a gesture inside `shape` (a rect, an ellipse or a closed polyline) into a declared intent; the client hit-tests. */
+export interface PiGViewRegion {
+  key: string;
+  shape: PiGViewDrawShape;
+  gestures: ("activate" | "press" | "release" | "drag")[];
+  intent: string;
+  name: string;
+  role?: string;
+}
+/** A scene of at most 4096 shapes nested 8 deep, or a pixel grid over an image asset, with at most 64 regions. */
+export interface PiGViewDrawing {
+  profile: "scene" | "pixels";
+  /** The id of the view node the drawing fills. */
+  node?: string;
+  viewport?: { x: number; y: number; width: number; height: number; fit: "contain" | "cover" | "stretch" };
+  shapes?: PiGViewDrawShape[];
+  pixels?: { width: number; height: number; asset: string; scaling: "nearest" | "smooth" };
+  regions?: PiGViewRegion[];
+}
+/** A view a client is sent in place of the mount's view when `when` holds for that client's claims. */
+export interface PiGViewAlternative {
+  when: PiGViewWhen;
+  view: PiGWireView;
+  drawing?: PiGViewDrawing;
+}
+/** Describes the view node with id `node` to assistive technology. */
+export interface PiGViewA11y {
+  node: string;
+  name?: string;
+  description?: string;
+  role?: string;
+  selected?: boolean;
+  checked?: boolean;
+  expanded?: boolean;
+  busy?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
+  required?: boolean;
+  invalid?: boolean;
+  relations?: { kind: "labelledBy" | "describedBy" | "controls" | "owns"; target: string }[];
+}
+/**
+ * Makes the node with id `node` focusable; the order of the entries is the focus order. `request` asks for the focus when
+ * the mount is first drawn (`mount`) or when the revision that carries it is first drawn (`update`); a client that does not
+ * give it leaves an `unfocused` notice.
+ */
+export interface PiGViewFocus {
+  node: string;
+  request?: "mount" | "update";
+  restore?: "previous" | "self";
+}
+/** One diagnostic of a mount; `count` is how often it happened. */
+export interface PiGViewNotice {
+  code: "invalid" | "unsupported" | "limit" | "stale" | "terminal" | "refused" | "failed" | "timeout" | "undrawn" | "unfocused";
+  severity: "info" | "warning" | "error";
+  message?: string;
+  path?: string;
+  claim?: string;
+  intent?: string;
+  measured?: number;
+  limit?: number;
+  epoch: number;
+  rev?: number;
+  count: number;
+}
+export interface PiGViewContent {
+  /** The short text a client labels the mount with, in a tab or a list of views: at most 64 bytes on one line. */
+  title?: string;
+  view: PiGWireView;
+  intents?: PiGViewIntent[];
+  assets?: PiGViewAsset[];
+  fallback?: Record<string, unknown>;
+  /** At most 8; the first whose `when` holds for a client's claims is what that client draws. */
+  alternatives?: PiGViewAlternative[];
+  drawing?: PiGViewDrawing;
+  /** At most 256 entries. */
+  a11y?: PiGViewA11y[];
+  /** At most 256 entries; at most one requests the focus. */
+  focus?: PiGViewFocus[];
+}
+export interface PiGViewMount extends PiGViewContent {
+  key: string;
+  slot: PiGViewSlot;
+  target?: { toolCallId?: string; messageType?: string; entryType?: string };
+}
+/** One revision of one mount incarnation: pass the ref the last operation returned to the next update. */
+export interface PiGViewRef {
+  key: string;
+  epoch: number;
+  rev: number;
+}
+export interface PiGViewStatus {
+  mount: PiGViewRef;
+  state: "live" | "hidden" | "finished" | "removed" | "broken";
+  /** Set for `broken`. */
+  reason?: "session_replaced" | "owner_gone" | "shutdown";
+  /** The result a finished mount was given. */
+  result?: unknown;
+}
+/** What the attached client draws. */
+export interface PiGViewAbilities {
+  slots: PiGViewSlot[];
+  nodes: string[];
+  markdown: boolean;
+  imageFormats: string[];
+  limits: { nodes: number; depth: number; snapshotBytes: number; textBytes: number; mounts: number; intentArgBytes: number };
+  input: { keyboard: boolean; pointer: boolean; text: boolean };
+  /** Further facts the client states about itself; with several clients attached, the claims all of them share. */
+  claims?: PiGViewClaim[];
+  /** Claims that replace the same-named ones for mounts of one slot. */
+  slotClaims?: { slot: PiGViewSlot; claims: PiGViewClaim[] }[];
+  /** The drawing profiles the client draws; absent when it draws none. */
+  drawing?: { profiles: ("scene" | "pixels")[]; shapes: number; pixels: number };
+}
+export interface PiGViewIntentInvocation {
+  mount: PiGViewRef;
+  rev: number;
+  nodeKey: string;
+  intent: string;
+  arg: unknown;
+  ticket: string;
+  /** Aborts when the host cancels a cancellable intent; an answer after that is dropped. */
+  signal: AbortSignal;
+}
+export interface PiGViewIntentResult {
+  outcome: "done" | "refused" | "failed";
+  answer?: unknown;
+  error?: string;
+}
+
 declare module "@earendil-works/pi-coding-agent" {
   interface ExtensionAPI {
     /**
@@ -98,6 +332,19 @@ declare module "@earendil-works/pi-coding-agent" {
      * factory made were delivered. Pi has no such hook.
      */
     onLoaded(handler: (ctx: ExtensionContext) => void | Promise<void>): void;
+    /**
+     * Answer the intents of this extension's mounts (D614). A bare return value is the answer of a `done` outcome. A
+     * later call replaces the handler.
+     */
+    onViewIntent(handler: (invocation: PiGViewIntentInvocation, ctx: ExtensionContext) => PiGViewIntentResult | unknown | Promise<PiGViewIntentResult | unknown>): void;
+    /**
+     * Run `handler` when what the attached client draws changed (D614): the first client attached, the abilities
+     * changed, or the last client left (`null`; a client that draws no slot is a record with no slots).
+     * `ctx.ui.viewAbilities()` already reports the new value, so a mount made in the handler is checked against that
+     * client. The state an extension starts in is not a change, and a session no client attaches to never runs the
+     * handler. Handlers run in registration order, one change at a time; the host does not wait for them.
+     */
+    onViewAbilities(handler: (abilities: PiGViewAbilities | null, ctx: ExtensionContext) => void | Promise<void>): void;
   }
   interface ExtensionContext {
     /** The provenance the loader stamped on this extension; undefined when the host holds none. */
@@ -160,6 +407,21 @@ declare module "@earendil-works/pi-coding-agent" {
      * leaves /sprite when the extension unloads.
      */
     registerSprite(definition: PiGSpriteDefinition): Promise<void>;
+    /** What the attached client draws (D614), or null while none is attached. */
+    viewAbilities(): PiGViewAbilities | null;
+    /** Mount a view in a slot the attached client draws. Rejects with an Error whose `code` is invalid, unsupported, limit, stale, terminal or not_found. */
+    mountView(mount: PiGViewMount): Promise<PiGViewStatus>;
+    /** Replace the content of a mount; stale unless `mount` carries the epoch and rev the last operation returned. */
+    updateView(mount: PiGViewRef, content: PiGViewContent): Promise<PiGViewStatus>;
+    hideView(mount: PiGViewRef): Promise<PiGViewStatus>;
+    showView(mount: PiGViewRef): Promise<PiGViewStatus>;
+    /** End a mount as completed. Terminal: a later operation fails with code `terminal`. */
+    finishView(mount: PiGViewRef, result?: unknown): Promise<PiGViewStatus>;
+    /** End a mount as withdrawn. Terminal. */
+    removeView(mount: PiGViewRef): Promise<PiGViewStatus>;
+    viewState(key: string): Promise<PiGViewStatus>;
+    /** The notices of the mount under `key`, oldest first; the host keeps at most 32 and counts repeats. */
+    viewDiagnostics(key: string): Promise<PiGViewNotice[]>;
   }
   interface ExtensionAPI {
     /**

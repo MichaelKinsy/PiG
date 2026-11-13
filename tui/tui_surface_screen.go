@@ -174,7 +174,7 @@ func (t *TuiSurface) Click(click frontend.Click) {
 	t.mu.Lock()
 	var comp Component
 	height := 0
-	if t.started && !t.stopped {
+	if t.started && !t.stopped.Load() {
 		for c, state := range t.ids {
 			if state.id == click.Node && state.mounted {
 				comp, height = c, len(state.rendered)

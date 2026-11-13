@@ -103,7 +103,7 @@ func TestSetWidgetFrameWithWidthIsNotRewrapped(t *testing.T) {
 // A string list widget renders through Text components that cache their last
 // layout, so Render writes proxy state and must exclude concurrent renders.
 func TestSetWidgetStringContentRendersConcurrently(t *testing.T) {
-	proxy := NewPushProxy(nil, nil)
+	proxy := NewPushProxy(nil)
 	proxy.UpdateContent([]string{"a row that wraps at the narrower of the two widths"})
 	var wg sync.WaitGroup
 	for _, width := range []int{20, 33} {

@@ -1,13 +1,13 @@
-// Declaration drift between two builds of Pi's TypeScript packages.
+// Declaration drift between two builds of Pi's TypeScript packages, and the bundle of one build's declarations read back as a build.
 //
 // A tree is a Map from "@earendil-works/<package>/<path>" to text: each package's package.json (its name, types and exports) and every
-// declaration file under its dist/. Both trees are laid out as one node_modules in memory and read through the TypeScript checker, so the
+// declaration file under its dist/ (the pinned build's tree also has the JSON files there, which the comparison does not read). Both trees are laid out as one node_modules in memory and read through the TypeScript checker, so the
 // published build and the pinned source build are compared the same way, whatever the directories they came from.
 //
 // A declaration is a top-level statement, compared as printed without comments. The public surface is what an extension author can name:
 // every symbol exported by an entry point of a package's exports map (its `types` file when the package has no map), and every top-level
-// declaration those declarations mention, transitively. A difference in a declaration of the public surface is a failure; a difference
-// elsewhere in the declaration files is reported separately.
+// declaration those declarations mention, transitively. `compare` reports a difference in a declaration of the public surface apart
+// from a difference elsewhere in the declaration files.
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -16,33 +16,47 @@ const ts = require("typescript");
 const SCOPE = "@earendil-works/";
 const ROOT = "/virtual/node_modules/";
 const PACKAGES = ["pi-coding-agent", "pi-ai", "pi-tui", "pi-agent-core"];
+const PRIVATE = "pi-pin:";
 
-export { PACKAGES };
+export { PACKAGES, PRIVATE, SCOPE };
 
-function entryPoints(manifest, files, name) {
-  const wanted = new Set();
-  const add = (target) => {
-    if (typeof target !== "string") return;
+// exposed maps each specifier of a package an author can import to the declaration file it names: the `types` targets of the exports
+// map, a `*` pattern once per file it matches, or the `types` file of a package without a map.
+function exposed(manifest, files, name) {
+  const found = new Map();
+  const add = (subpath, target) => {
+    if (typeof target !== "string" || !target.endsWith(".d.ts")) return;
+    const specifier = name + subpath.slice(1);
     const path = target.replace(/^\.\//, "");
     if (!path.includes("*")) {
-      wanted.add(`${name}/${path}`);
+      found.set(specifier, `${name}/${path}`);
       return;
     }
     const [head, tail] = path.split("*");
     for (const file of files) {
-      if (file.startsWith(`${name}/${head}`) && file.endsWith(tail)) wanted.add(file);
+      if (file.startsWith(`${name}/${head}`) && file.endsWith(tail)) found.set(specifier.replace("*", file.slice(name.length + 1 + head.length, file.length - tail.length)), file);
     }
   };
-  const walk = (value) => {
-    if (typeof value === "string") return;
-    for (const [condition, target] of Object.entries(value ?? {})) {
-      if (condition === "types") add(target);
-      else if (typeof target === "object") walk(target);
+  const walk = (subpath, value) => {
+    if (typeof value !== "object") return;
+    for (const [key, target] of Object.entries(value ?? {})) {
+      if (key === "types") add(subpath, target);
+      else walk(key.startsWith(".") ? key : subpath, target);
     }
   };
-  if (manifest.exports) walk(manifest.exports);
-  else add(manifest.types);
-  return [...wanted].filter((file) => file.endsWith(".d.ts")).sort();
+  if (manifest.exports) walk(".", manifest.exports);
+  else add(".", manifest.types);
+  return found;
+}
+
+// specifiers maps every specifier a tree's packages expose to its declaration file, in specifier order.
+export function specifiers(tree) {
+  const files = [...tree.keys()];
+  const found = [];
+  for (const name of new Set(files.map((path) => path.split("/").slice(0, 2).join("/")))) {
+    found.push(...exposed(JSON.parse(tree.get(`${name}/package.json`)), files, name));
+  }
+  return new Map(found.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
 function program(tree) {
@@ -67,13 +81,121 @@ function program(tree) {
     directoryExists: (name) => directories.has(name),
     realpath: (name) => name,
   };
-  const roots = [];
-  const names = new Set([...tree.keys()].map((path) => path.split("/").slice(0, 2).join("/")));
-  for (const name of [...names].sort()) {
-    const manifest = JSON.parse(tree.get(`${name}/package.json`));
-    roots.push(...entryPoints(manifest, tree.keys(), name).map((path) => ROOT + path));
+  const roots = [...new Set(specifiers(tree).values())].sort().map((path) => ROOT + path);
+  return { program: ts.createProgram(roots, options, host), roots, files, options, host };
+}
+
+// moduleSpecifiers lists the string literals under a node that name a module: those of imports, re-exports and import types.
+export function moduleSpecifiers(node, found = []) {
+  if (ts.isStringLiteral(node)) {
+    const parent = node.parent;
+    const named = (ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) && parent.moduleSpecifier === node;
+    const typed = ts.isLiteralTypeNode(parent) && ts.isImportTypeNode(parent.parent) && parent.parent.argument === parent;
+    if (named || typed || ts.isExternalModuleReference(parent)) found.push(node);
   }
-  return { program: ts.createProgram(roots, options, host), roots, files };
+  ts.forEachChild(node, (child) => {
+    moduleSpecifiers(child, found);
+  });
+  return found;
+}
+
+// splice applies [start, end, replacement] edits to a text.
+export function splice(text, edits) {
+  let result = text;
+  for (const [start, end, replacement] of [...edits].sort((a, b) => b[0] - a[0])) result = result.slice(0, start) + replacement + result.slice(end);
+  return result;
+}
+
+// relativeSpecifier is the specifier by which the declaration file `from` imports the declaration file `to` (tree paths).
+function relativeSpecifier(from, to) {
+  const here = from.split("/").slice(0, -1);
+  const there = to.replace(/\.d\.ts$/, ".js").split("/");
+  let same = 0;
+  while (same < here.length && same < there.length - 1 && here[same] === there[same]) same++;
+  return [...(same === here.length ? ["."] : here.slice(same).map(() => "..")), ...there.slice(same)].join("/");
+}
+
+// normalized returns the declaration files a tree's entry points reach in the form a tree and its bundle are compared in: every module
+// specifier that resolves to a file of the tree is the relative path to that file, and no top-level statement has the `declare`
+// modifier (a declaration file implies it, and a block of an ambient module forbids it).
+export function normalized(tree) {
+  const built = program(tree);
+  const result = new Map();
+  for (const [path, text] of tree) if (path.endsWith("/package.json")) result.set(path, text);
+  for (const source of built.program.getSourceFiles()) {
+    if (!built.files.has(source.fileName)) continue;
+    const file = source.fileName.slice(ROOT.length);
+    const edits = [];
+    for (const literal of moduleSpecifiers(source)) {
+      const mode = ts.getModeForUsageLocation(source, literal, built.options);
+      const resolved = ts.resolveModuleName(literal.text, source.fileName, built.options, built.host, undefined, undefined, mode).resolvedModule?.resolvedFileName;
+      if (resolved && built.files.has(resolved)) edits.push([literal.getStart(source), literal.end, JSON.stringify(relativeSpecifier(file, resolved.slice(ROOT.length)))]);
+    }
+    for (const statement of source.statements) {
+      const modifier = ts.canHaveModifiers(statement) ? ts.getModifiers(statement)?.find((found) => found.kind === ts.SyntaxKind.DeclareKeyword) : undefined;
+      if (modifier) edits.push([modifier.getStart(source), modifier.end, ""]);
+    }
+    result.set(file, splice(source.text, edits));
+  }
+  return result;
+}
+
+// blockNames maps every declaration file of a tree to the name of its block in the bundle: the specifier that exposes it, its path as
+// an author imports it when its package has no exports map, else a private specifier, which no package name can equal. A JSON file has
+// a private specifier too.
+export function blockNames(tree) {
+  const exposing = new Map();
+  for (const [specifier, file] of specifiers(tree)) {
+    if (exposing.has(file)) throw new Error(`${exposing.get(file)} and ${specifier} expose one file, ${file}`);
+    exposing.set(file, specifier);
+  }
+  const names = new Map();
+  for (const file of [...tree.keys()].sort()) {
+    if (file.endsWith(".json") && !file.endsWith("/package.json")) names.set(file, PRIVATE + file);
+    if (!file.endsWith(".d.ts")) continue;
+    const mapped = JSON.parse(tree.get(`${file.split("/").slice(0, 2).join("/")}/package.json`)).exports !== undefined;
+    names.set(file, exposing.get(file) ?? (mapped ? PRIVATE + file.replace(/\.d\.ts$/, "") : file.replace(/\.d\.ts$/, ".js")));
+  }
+  return names;
+}
+
+function blocks(text) {
+  const source = ts.createSourceFile("/bundle.d.ts", text, ts.ScriptTarget.ES2022, true);
+  for (const statement of source.statements) {
+    if (!ts.isModuleDeclaration(statement) || !ts.isStringLiteral(statement.name) || !statement.body || !ts.isModuleBlock(statement.body)) {
+      throw new Error(`the bundle has a statement that is no module block: ${statement.getText(source).slice(0, 80)}`);
+    }
+  }
+  return { source, statements: source.statements };
+}
+
+// blockSpecifiers lists the module names a bundle declares.
+export function blockSpecifiers(text) {
+  return blocks(text).statements.map((statement) => statement.name.text);
+}
+
+// unbundle reads a bundle back as a tree: each block is the declaration file its name stands for among the files of `tree`, beside the
+// manifests of `tree`, and a private specifier is the relative path to its file.
+export function unbundle(text, tree) {
+  const { source, statements } = blocks(text);
+  const files = new Map([...blockNames(tree)].map(([file, name]) => [name, file]));
+  const result = new Map();
+  for (const [path, manifest] of tree) if (path.endsWith("/package.json")) result.set(path, manifest);
+  for (const statement of statements) {
+    const file = files.get(statement.name.text);
+    if (!file) throw new Error(`the bundle's block ${statement.name.text} stands for no declaration file of the build`);
+    if (result.has(file)) throw new Error(`the bundle has two blocks ${statement.name.text}`);
+    const start = statement.body.statements.pos;
+    const edits = [];
+    for (const literal of moduleSpecifiers(statement.body)) {
+      if (!literal.text.startsWith(PRIVATE)) continue;
+      const target = files.get(literal.text);
+      if (!target) throw new Error(`${statement.name.text} imports ${literal.text}, which stands for no declaration file of the build`);
+      edits.push([literal.getStart(source) - start, literal.end - start, JSON.stringify(relativeSpecifier(file, target))]);
+    }
+    result.set(file, splice(text.slice(start, statement.body.statements.end), edits));
+  }
+  return result;
 }
 
 const printer = ts.createPrinter({ removeComments: true, newLine: ts.NewLineKind.LineFeed });

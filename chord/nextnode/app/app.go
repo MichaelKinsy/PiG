@@ -566,6 +566,8 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if options.Telemetry != nil {
 		core = append(core, host.HostFacet{Name: "chord.telemetry", Facet: telemetryingest.IngestFacet(telemetryingest.IngestOptions{
 			Target: options.Telemetry,
+			// Every link of the kit's server is signed in: its pages are the app's own people's.
+			Admit: func(data.Principal) bool { return true },
 			WorkerHost: func(principal data.Principal) (string, bool) {
 				return workerHosts.get(data.PrincipalKey(principal, chordctx.Background(), nil))
 			},
