@@ -72,8 +72,12 @@ func TestStrippedAPIBuiltinProviders(t *testing.T) {
 			}
 			model := strippedCatalogModel(t, tc.provider)
 			for name, stream := range map[string]func() (*AssistantMessageEventStream, error){
-				"Stream":       func() (*AssistantMessageEventStream, error) { return entry.Stream(t.Context(), model, NormalizeContext(Context{}), StreamOptions{}) },
-				"StreamSimple": func() (*AssistantMessageEventStream, error) { return entry.StreamSimple(t.Context(), model, NormalizeContext(Context{}), StreamOptions{}) },
+				"Stream": func() (*AssistantMessageEventStream, error) {
+					return entry.Stream(t.Context(), model, NormalizeContext(Context{}), StreamOptions{})
+				},
+				"StreamSimple": func() (*AssistantMessageEventStream, error) {
+					return entry.StreamSimple(t.Context(), model, NormalizeContext(Context{}), StreamOptions{})
+				},
 			} {
 				if events, err := stream(); events != nil || err == nil || err.Error() != tc.want {
 					t.Fatalf("%s.%s = %v, %v; want %q", tc.provider, name, events, err, tc.want)
