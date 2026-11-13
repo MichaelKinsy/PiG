@@ -152,6 +152,8 @@ Pass extension definitions through `coding.RuntimeOptions` when your application
 
 Use a Piglet when the composition should also be usable from the `pig` executable or built as a Piglet Binary.
 
+An extension shows a GUI in the terminal and in a web page with views: [Extension views](ui-views.md) (D614).
+
 ## Cancellation and shutdown
 
 Pass a `context.Context` to session operations. Cancel it when the calling operation ends.

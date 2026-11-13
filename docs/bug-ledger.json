@@ -11520,6 +11520,26 @@
       "tests": []
     },
     {
+      "id": "BF-3bf8080",
+      "title": "`pig docs show divergences` lists every active divergence in one table, each once",
+      "symptom": "`pig docs show divergences` lists every active divergence in one table, each once.",
+      "rootCause": "D540 had rows at lines 180 and 195 and D605 at lines 182 and 197, with different wording.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig docs show divergences` lists every active divergence in one table, each once. A blank line inside the table and rows added after the page's last section had left 80 of its 143 rows outside the table, and D540 and D605 each had two rows with different wording.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3bf80808ee",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-3c2dde4",
       "title": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC…",
       "symptom": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it.",
@@ -14898,6 +14918,26 @@
       ]
     },
     {
+      "id": "BF-49e7c6d",
+      "title": "agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place…",
+      "symptom": "agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place in its context (`call.Context.Messages[i] = m`) never reached the run: with two or more calls each call wrote a copy, so the batch's other calls and the next model request did not see it.",
+      "rootCause": "The copy itself raced: since (in no release) the second call's copy was taken after the first call's goroutine had started, so a tool writing the array it kept from its before hook raced with slices.Clone (-race: 1 run in 20 on the parent). With the copy gone the run no longer reads the array while calls run.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place in its context (`call.Context.Messages[i] = m`) never reached the run: with two or more calls each call wrote a copy, so the batch's other calls and the next model request did not see it. Pi hands every call of the batch one live context: the other calls read the new message and the next request carries it. Every call now receives the run's own messages, as the calls of a sequential batch do. The after hooks of a batch still run one at a time; the tools of a parallel batch run at the same time, so a tool that reads or writes a message another call's code may touch at that moment has to lock with it. No extension is affected: the hook context never reaches an extension. Of the releases, v0.7.0 has the lost write (its hooks receive a copy of the messages that the run never reads back; v0.2.0 and v0.3.0 hand hooks no context). The change also removes a data race of the per-call copy (the second call's copy was taken after the first call's goroutine had started), which was never released.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "49e7c6d8bc",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-4a0bc3d",
       "title": "The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session…",
       "symptom": "The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session on every render.",
@@ -14960,7 +15000,6 @@
         "chord/nextnode/app/app_surfaces_test.go::TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
         "chord/nextnode/app/app_surfaces_test.go::TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
         "chord/nextnode/app/app_surfaces_test.go::TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
-        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother",
@@ -14996,7 +15035,6 @@
         "chord/nextnode/app/app_surfaces_test.go::TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
         "chord/nextnode/app/app_surfaces_test.go::TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
         "chord/nextnode/app/app_surfaces_test.go::TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
-        "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother",
@@ -16932,6 +16970,26 @@
       ]
     },
     {
+      "id": "BF-5425648",
+      "title": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always…",
+      "symptom": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always answered with the cancellation's error.",
+      "rootCause": "The context is now read first, and once, when forward returns. forward returns without an error only because the context is done or because the stream has ended and every event of it was sent, so a result is answered only when the context was not done at that read; the select is gone. The context is the record of the cancel and is done before an author can see it, so the cancel and the end need no lock to order them. A cancel that arrives after the read leaves the result, as in the Node, Rust, Lisp and Python SDKs, which read the cancel once after their forwarding loop.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always answered with the cancellation's error. The SDK chose between that error and the stream's result with a `select` on the request's context and the stream's end; a provider that ends its stream when it sees the cancel makes both ready, and Go then picks at random, so the cancelled request was answered with the provider's result now and then (5 of 30 runs with the extension loaded in process, 1 of 30 as a subprocess), where the Rust, Lisp and Python SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window has been in the SDK since 0.3.0. A cancel that arrives after the stream ended and was forwarded still leaves the result.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5425648cb7",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-54283ce",
       "title": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
       "symptom": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
@@ -18151,6 +18209,26 @@
         "coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream",
         "coding/model_runtime_injected_credentials_test.go::TestInjectedCredentialStoreAvailabilityReadsProvidersConcurrently"
       ]
+    },
+    {
+      "id": "BF-57f113b",
+      "title": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event…",
+      "symptom": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it.",
+      "rootCause": "The Go, Python and Lisp SDKs queued the event the author pushed and a forwarding goroutine or thread encoded it later, while the author's code could still append to the shared partial message: the host then received later text (every text_delta showing the finished message under load) and, in Go, the forwarder's read of the author's map raced the author's writes. Push and End now take the event, and the result, at the call: the Go SDK encodes the event on the author's goroutine and the forwarder writes those bytes, the Python and Lisp SDKs queue a copy. The result the author reads is still its own message. Events the SDK builds or decodes itself are queued as they are. The Rust SDK takes…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), so the host sees each event as it was at the push, which is stronger than Pi's own guarantee (D615): Pi's consumer reads the shared message at its own turn, so after a synchronous burst of pushes or between microtask awaits it shows later changes. The event and the message the provider reads back (`Events()`, `result()`) are still its own objects, and a value of a kind JSON has no copy of (a lock, a cycle) ends the request instead of raising in the provider's `Push`. The Rust SDK takes the event by value and is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "57f113ba40",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-58f6697",
@@ -19451,6 +19529,170 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-5f449b5",
+      "title": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its…",
+      "symptom": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.",
+      "rootCause": "The release line carries Pi fixes picked after the pinned v1.5.2 (the 0.8.0 sync ledger).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it. PiG's `Invalidate` set a flag on the root of the screen and reached no component, where Pi's `TUI.invalidate` calls `invalidate()` on every mounted root and every overlay's component. It now reaches both, the host tells a subprocess extension's component (`ui.custom.invalidate`, after the new palette), the Node runtime calls its `invalidate()`, and a theme set invalidates twice as Pi's does. Extensions on the Go, Python, Rust and Lisp runtimes follow too: see the entry on the component's invalidate in every SDK.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7b66371088",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "f55df43e29",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "70f016651d",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "7d64c8a1e2",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "2e82be6163",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "557b2210a1",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "5f449b50d4",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "98d708f331",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "b0d8eb3988",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e516ccd06b",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e84bbf2122",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenAStalledConnectionCloses",
+        "coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenTheComponentsContextEnds",
+        "coding/extension/host/subprocess/runtime_node_vendor_script_test.go::TestVendorPiDistIsIdempotentOnTheCommittedTree",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestPinnedPiPackagesCarryTheRecordedFixesOnce",
+        "extensions/sdk-py/tests/test_overlay_invalidate.py",
+        "extensions/sdk/remote_overlay_host_invalidate_test.go::TestHostInvalidateQueuedForAClosedComponentIsDropped",
+        "internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesThePinnedPiPage",
+        "internal/codingagent/configschema/render_settings_test.go::TestRenderedSettingsSchemaIsByteEqualToTheUpstreamMirror",
+        "internal/codingagent/configschema/render_test.go::TestRenderedSchemasAreByteEqualToTheUpstreamMirror",
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop",
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidationsCoalesceWhileTheConnectionHasNoRoom",
+        "internal/codingagent/llama/vendored_default_test.go::TestVendoredPiDistDefaultServerURLMatchesGo",
+        "internal/upstreammirror/upstreammirror_test.go::TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply",
+        "test/extension-conformance/overlay_invalidate_test.go::TestCustomOverlayInvalidateReachesSDKs",
+        "test/extension-conformance/overlay_invalidate_test.go::TestThemeReadWithoutAMountedComponentFollowsTheHostAcrossSDKs",
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml",
+        "test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml",
+        "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+        "test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml",
+        "tui/container_theme_walk_test.go::TestContainerThemeCheckDoesNotRepeatTheWalk",
+        "tui/editor_handle_input_contract_test.go::TestEditorSharedKeyProbesDump",
+        "tui/keystroke_gc_norace_test.go::TestEditorKeystrokeHeapBytesAndCollectorWork",
+        "tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce",
+        "tui/tui_invalidate_test.go::TestAltScreenStartInvalidatesOverlayComponentsWhenITerm2ImagesAreDropped",
+        "tui/tui_invalidate_test.go::TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "tui/tui_invalidate_test.go::TestInvalidateReachesMountedRootsAndEveryOverlayComponent",
+        "tui/tui_invalidate_test.go::TestOverlayBookkeepingInvalidatesNoComponent"
+      ]
+    },
+    {
+      "id": "BF-5f449b5-2",
+      "title": "An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times…",
+      "symptom": "An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times by one theme change where Pi invalidates it twice.",
+      "rootCause": "Pi's Container has no such check. The walk now records the theme it invalidated a container's children under, and the render's check leaves them alone for that theme; a container no walk reached still tells its children at the render. Scenarios extensions-runtime 104 and 105 (escaped-equal to Pi, inv=2); TestContainerThemeCheckDoesNotRepeatTheWalk.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times by one theme change where Pi invalidates it twice. The count is Pi's now.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5f449b50d4",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+        "tui/container_theme_walk_test.go::TestContainerThemeCheckDoesNotRepeatTheWalk"
+      ]
+    },
+    {
+      "id": "BF-5f449b5-3",
+      "title": "An extension that stopped reading its connection while its component was being invalidated could hold the…",
+      "symptom": "An extension that stopped reading its connection while its component was being invalidated could hold the delivery of that component's keys until the connection ended.",
+      "rootCause": "Pi's Container has no such check. The walk now records the theme it invalidated a container's children under, and the render's check leaves them alone for that theme; a container no walk reached still tells its children at the render. Scenarios extensions-runtime 104 and 105 (escaped-equal to Pi, inv=2); TestContainerThemeCheckDoesNotRepeatTheWalk.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that stopped reading its connection while its component was being invalidated could hold the delivery of that component's keys until the connection ended. Invalidations that cannot be sent are now sent as one message with their count, and the wait ends when the component closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e82be6163",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "5f449b50d4",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "b0d8eb3988",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e516ccd06b",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e84bbf2122",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenAStalledConnectionCloses",
+        "coding/extension/host/subprocess/custom_overlay_invalidate_queue_test.go::TestCustomOverlayInvalidateIsReleasedWhenTheComponentsContextEnds",
+        "extensions/sdk-py/tests/test_overlay_invalidate.py",
+        "extensions/sdk/remote_overlay_host_invalidate_test.go::TestHostInvalidateQueuedForAClosedComponentIsDropped",
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop",
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidationsCoalesceWhileTheConnectionHasNoRoom",
+        "test/extension-conformance/overlay_invalidate_test.go::TestCustomOverlayInvalidateReachesSDKs",
+        "test/extension-conformance/overlay_invalidate_test.go::TestThemeReadWithoutAMountedComponentFollowsTheHostAcrossSDKs",
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs",
+        "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+        "tui/container_theme_walk_test.go::TestContainerThemeCheckDoesNotRepeatTheWalk"
+      ]
     },
     {
       "id": "BF-5f4a0b2",
@@ -32142,6 +32384,134 @@
       ]
     },
     {
+      "id": "BF-8e93ec8",
+      "title": "A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client…",
+      "symptom": "A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client writes it on or that passes for another label.",
+      "rootCause": "The key \"+\". ParseBindingKey refused \"+\" because it cut the id at every \"+\". It now reads the modifiers as Pi's parseKeyId does, so \"+\" and \"ctrl++\" are keys, and shift with it is refused like shift with any symbol.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A view's `title`, its `key` and the `name` of a key binding could hold text that breaks the line a client writes it on or that passes for another label. The host now answers `invalid` for one that holds a control character, a line separator or a control that reorders the text around it (U+202A to U+202E and U+2066 to U+2069). The direction marks of Arabic and Hebrew text (U+200E, U+200F, U+061C) are accepted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e93ec85d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/bindings_test.go::TestBindingsAccepted",
+        "coding/uiview/bindings_test.go::TestBindingsRefused",
+        "coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine",
+        "coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire",
+        "internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsAreTheRowsOfTheReservedTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsKeepTheUsersKeys",
+        "test/extension-conformance/ui_view_bindings_test.go::TestConformance_UIViewBindings"
+      ]
+    },
+    {
+      "id": "BF-8e93ec8-2",
+      "title": "An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi",
+      "symptom": "An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi.",
+      "rootCause": "The key \"+\". ParseBindingKey refused \"+\" because it cut the id at every \"+\". It now reads the modifiers as Pi's parseKeyId does, so \"+\" and \"ctrl++\" are keys, and shift with it is refused like shift with any symbol.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension can bind `+`: `+` and `ctrl++` are key ids, as in Pi. The host refused them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e93ec85d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/bindings_test.go::TestBindingsAccepted",
+        "coding/uiview/bindings_test.go::TestBindingsRefused",
+        "coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine",
+        "coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire",
+        "internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsAreTheRowsOfTheReservedTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsKeepTheUsersKeys",
+        "test/extension-conformance/ui_view_bindings_test.go::TestConformance_UIViewBindings"
+      ]
+    },
+    {
+      "id": "BF-8e93ec8-3",
+      "title": "In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an…",
+      "symptom": "In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an extension's binding, also after you change `keybindings.json` and run `/reload`.",
+      "rootCause": "The key \"+\". ParseBindingKey refused \"+\" because it cut the id at every \"+\". It now reads the modifiers as Pi's parseKeyId does, so \"+\" and \"ctrl++\" are keys, and shift with it is refused like shift with any symbol.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the terminal, a key your keybindings give to interrupt, clear, exit or suspend no longer raises an extension's binding, also after you change `keybindings.json` and run `/reload`. The extension reads one notice for such a binding.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e93ec85d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/bindings_test.go::TestBindingsAccepted",
+        "coding/uiview/bindings_test.go::TestBindingsRefused",
+        "coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine",
+        "coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire",
+        "internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsAreTheRowsOfTheReservedTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsKeepTheUsersKeys",
+        "test/extension-conformance/ui_view_bindings_test.go::TestConformance_UIViewBindings"
+      ]
+    },
+    {
+      "id": "BF-8e93ec8-4",
+      "title": "A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the…",
+      "symptom": "A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the same checks as an extension: `Registry.Mount` and `Registry.Update` answer `invalid` for what `DecodeMount` and `DecodeUpdate` refuse.",
+      "rootCause": "The key \"+\". ParseBindingKey refused \"+\" because it cut the id at every \"+\". It now reads the modifiers as Pi's parseKeyId does, so \"+\" and \"ctrl++\" are keys, and shift with it is refused like shift with any symbol.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go program that mounts a view through `uiview.Registry` with a record it built itself is now held to the same checks as an extension: `Registry.Mount` and `Registry.Update` answer `invalid` for what `DecodeMount` and `DecodeUpdate` refuse.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e93ec85d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/bindings_test.go::TestBindingsAccepted",
+        "coding/uiview/bindings_test.go::TestBindingsRefused",
+        "coding/uiview/label_test.go::TestLabelsHoldNoControlThatBreaksOrReordersALine",
+        "coding/uiview/typed_content_test.go::TestTypedContentIsCheckedLikeARecordOffTheWire",
+        "internal/codingagent/view_client_bindings_test.go::TestTerminalViewClientGivesNoBindingAKeyOfAReservedAction",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientAHandlerThatNeverAnswersHoldsNoKey",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientBindingKeyTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientDrawsAHintRowForTheFocusedMount",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsAreTheRowsOfTheReservedTable",
+        "internal/codingagent/view_client_bindings_test.go::TestViewClientReservedActionsKeepTheUsersKeys",
+        "test/extension-conformance/ui_view_bindings_test.go::TestConformance_UIViewBindings"
+      ]
+    },
+    {
       "id": "BF-8eb1202",
       "title": "An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`…",
       "symptom": "An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`, `delta.tool_calls` or `function.arguments`, a non-object `choices` or `delta`, a non-string `delta.role` or tool call `type`, a falsy `custom`, a tool call element that is not an object) is read as Pi's JavaScript reads it: the member is ignored, tool-call arguments append their string form, a `tool_calls` string makes one empty tool call per character, any other `tool_calls` value that is not an array ends the turn with `choice.delta.tool_calls is not iterable`, non-empty array content (or an object with a positive `length`) appends its string form, a truthy `finish_reason` that is not a string ends the turn with `Provider finish_reason: \u003cits string form\u003e`, a usage that is not an object resets the counts to 0, a falsy count or a details member that is not an object reads as 0, and a prompt count that is not a number counts as its Number() when that is an integer.",
@@ -35636,6 +36006,26 @@
         "durable/core/host/cf/test/output-sanitize.test.ts",
         "durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences"
       ]
+    },
+    {
+      "id": "BF-98a2e8d",
+      "title": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of…",
+      "symptom": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request.",
+      "rootCause": "drain read the context only before it took the next event. A cancel, and a push by an author that saw it, between that read and the take sent the host one event that was pushed after the cancel. drain now reads the context again once it has taken the event: an author that saw the cancel pushed after the context was done, so the read after the take sees it. The Rust, Lisp, Python and Node SDKs read the cancel after the take as well. The read at the top of the loop stays: it keeps a cancelled consumer from waiting for the delivery lock.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of its request. The forwarder read the request's cancellation before it took the next event, so a cancel and a later push that both landed between the two sent the host one more event; it now reads the cancellation again once it has the event, as the Rust, Lisp, Python and Node SDKs do. The window was two statements wide (no run of the conformance row showed it) and has been in the SDK since 0.3.0; PiG's host has ended its own stream at the cancel, so the extra event was on the wire only.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98a2e8d071",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-98f0403",
@@ -40958,6 +41348,26 @@
         "chord/next/link/link_end_transports_test.go::TestALinkHandsOverWhatArrivedBeforeItsTransportEndedThenCloses",
         "chord/next/link/link_end_transports_test.go::TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
+    },
+    {
+      "id": "BF-adddfb8",
+      "title": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always…",
+      "symptom": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error.",
+      "rootCause": "The read loop of the Python SDK handles an ordinary cancel of a provider_stream_simple request in two steps: under the state lock it ends the request's provider stream (end(None)) and marks the request cancelled, and after the lock it sets the request's signal. The request's thread decided between a result and the abort by the signal alone. A thread that ran between the two steps saw the stream ended and the signal not set, and answered the request with a null result and no error, where the Go SDK answers the cancellation's error and the Lisp SDK, whose stream is ended by a subscriber of the signal, the abort.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error. The SDK's read loop ended the request's provider stream before it set the request's signal, and the request's thread, when it ran between the two, answered the request with a null result and no error, where the Go, Rust and Lisp SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window is older than the push snapshot of provider stream events (the release line had the same order before this change) and a few bytecodes wide: none of 150 unforced runs of a cancel in the middle of a push burst hit it, and holding the signal back by 0.3 s hit it every time.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "adddfb8a1a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ae1ee6d",
@@ -54278,6 +54688,28 @@
       ]
     },
     {
+      "id": "BF-e84bbf2",
+      "title": "The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated…",
+      "symptom": "The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated twice per `invalidate()` where Pi invalidates them once.",
+      "rootCause": "Since Invalidate became Pi's TUI.invalidate, the TuiAltScreen bridge of the Go, Rust, Python and Lisp SDKs invalidated an extension's components twice per call: the renderer's walk, then the bridge's own loop (during a frame the loop at once and the walk when the frame ended). Pi's class, which the Node runtime serves, calls each mounted component once. The bridge now flags the root and keeps its loop, which runs at once, so a render that invalidates reads its own invalidation back (TestTuiAltScreenFrameReadsAcrossSDKs).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated twice per `invalidate()` where Pi invalidates them once. The count is Pi's now.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e84bbf2122",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-e88f858",
       "title": "Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports…",
       "symptom": "Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it (\"Connection error.: read ECONNRESET\", \"terminated: other side closed (UND_ERR_SOCKET)\") instead of a bare \"Connection error.\" or \"terminated\".",
@@ -60018,6 +60450,28 @@
       ]
     },
     {
+      "id": "BF-fb93e73",
+      "title": "A view node of every kind can carry an id in the component kits of the Go, Rust, Python and Lisp SDKs (Go the…",
+      "symptom": "Only the kinds that need an id took one there, so an `a11y` record, a `focus` record or a drawing's `node` of a mounted view could not name a container, box, text, truncated text, markdown, spacer, dynamic border, image, loader, stack, lines, user message or diff node, while a Node extension, whose view is a plain object, could.",
+      "rootCause": "The wire gives every view node an id, and the records of a mounted view (a11y, focus, a drawing node) name a node by it. A Node view is a plain object, so it could give any node one. The kits of the Go, Python, Rust and Lisp SDKs gave an id only to the kinds that need one, so those records could not name a container, box, text, truncated text, markdown, spacer, dynamic border, image, loader, stack, lines, user message or diff there.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A view node of every kind can carry an id in the component kits of the Go, Rust, Python and Lisp SDKs (Go the field `ID`, Rust `.id(\"…\")`, Python `id=`, Lisp `:id`). Before, only the kinds that need an id took one there, so an `a11y` record, a `focus` record or a drawing's `node` of a mounted view could not name a container, box, text, truncated text, markdown, spacer, dynamic border, image, loader, stack, lines, user message or diff node, while a Node extension, whose view is a plain object, could. A `text` or `box` node has no `color` member in any SDK: its colour is `bg`, and the host draws no `color` it is sent on those kinds.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fb93e7325d",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/ui_view_node_ids_test.go::TestConformance_UIViewNodeIds"
+      ]
+    },
+    {
       "id": "BF-fba9b47",
       "title": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
       "symptom": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
@@ -60123,6 +60577,28 @@
         "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens",
         "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive",
         "chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest"
+      ]
+    },
+    {
+      "id": "BF-fc028ee",
+      "title": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or…",
+      "symptom": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.",
+      "rootCause": "The page rebuilt a mount on every changed digest, so an update of one node (a new mail in the list) erased a half-typed reply in another and could drop the focus. A mount now keeps its element and the new view is morphed into the drawn one: a node of the same kind under the same id keeps its element, so an input or editor keeps its text, selection and the focus; a value the extension changes still replaces the text; a text node that moved to another parent hands its text and the focus to its new element. Nodes with an id are matched by id only, so a node that is gone never lends its text to another id.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fc028ee6d6",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "examples/ui-view-web/bridge_test.go::TestPageKeepsTypedTextAcrossUpdates"
       ]
     },
     {
@@ -61339,6 +61815,10 @@
     {
       "id": "D607",
       "title": "The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime…"
+    },
+    {
+      "id": "D615",
+      "title": "The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider…"
     },
     {
       "id": "D616",

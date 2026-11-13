@@ -13,7 +13,7 @@ import (
 
 // Ports packages/chord/test/node/app/ephemeral.test.ts (Pi main c23b9ec1): tests of the ephemeral login plugin (slice 13 §3): a public
 // route taking a name signs the browser in as a fresh `{ kind: "user", id, name }` with a cookie that ends with the browser, and the
-// session ends with the server. The app is the whole app (StartServer, as Pi's testApp): the login facet is loaded through
+// sign-in ends with the server. The app is the whole app (StartServer, as Pi's testApp): the login facet is loaded through
 // AppOptions.Facets, where Pi's app loads it with a one-line plugin (a TypeScript plugin cannot import a Go facet), and `whoami` is the tests' route facet.
 
 func mustDecode(t *testing.T, body []byte) delta.JsonValue {
@@ -74,7 +74,7 @@ func TestEphemeralLoginSignsInUnderAPickedNameAsAFreshUserEachLoginItsOwn(t *tes
 	}
 }
 
-func TestEphemeralLoginEndsItsSessionsWithTheServer(t *testing.T) {
+func TestEphemeralLoginEndsItsSignInsWithTheServer(t *testing.T) {
 	first := loginApp(t, nil)
 	set := logIn(t, first, "ada").headers.Get("set-cookie")
 	if err := first.app.Close(background); err != nil {
@@ -82,6 +82,6 @@ func TestEphemeralLoginEndsItsSessionsWithTheServer(t *testing.T) {
 	}
 	second := loginApp(t, &first)
 	if status := sendTo(t, second.port, "GET", "/whoami", map[string]string{"cookie": strings.SplitN(set, ";", 2)[0]}, "").status; status != 401 {
-		t.Fatalf("the session outlived its server: %d, want 401", status)
+		t.Fatalf("the sign-in outlived its server: %d, want 401", status)
 	}
 }

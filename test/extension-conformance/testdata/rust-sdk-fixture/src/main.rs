@@ -966,6 +966,7 @@ fn row_panel_mount(
         drawing: None,
         a11y: vec![],
         focus: vec![],
+        bindings: vec![],
     }
 }
 
@@ -1031,6 +1032,7 @@ fn redraw_intent(inv: &pig_sdk::ViewIntentInvocation) -> pig_sdk::ViewIntentResu
         drawing: None,
         a11y: vec![],
         focus: vec![],
+        bindings: vec![],
     }) {
         Ok(st) => pig_sdk::ViewIntentResult::done(serde_json::json!({"rev": st.mount.rev})),
         Err(e) => pig_sdk::ViewIntentResult::failed(&e.to_string()),
@@ -3600,6 +3602,95 @@ fn main() {
         },
     );
     ext.command(
+        "overlay-invalidate-probe",
+        "Count the host's invalidations of a mounted overlay and draw the theme",
+        |ctx, args| {
+            fn row(ctx: &pig_sdk::Context) -> String {
+                let theme = ctx.theme();
+                format!("{}|{}", theme.name, theme.fg("accent", "x"))
+            }
+            fn input(data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+                if data == "q" {
+                    return Ok(RemoteComponentResult::done(Some(json!("closed"))));
+                }
+                Ok(RemoteComponentResult::pending())
+            }
+            struct InvalidateProbe {
+                ctx: pig_sdk::Context,
+                invalidations: u64,
+                kept: String,
+            }
+            impl RemoteComponent for InvalidateProbe {
+                fn render(&self, _width: u32) -> Vec<String> {
+                    vec![format!(
+                        "inv={} kept={} live={}",
+                        self.invalidations,
+                        self.kept,
+                        self.ctx.theme().name
+                    )]
+                }
+                fn invalidate(&mut self) {
+                    self.invalidations += 1;
+                    self.kept = row(&self.ctx);
+                }
+                fn handle_input(
+                    &mut self,
+                    data: &pig_sdk::JsString,
+                ) -> Result<RemoteComponentResult, String> {
+                    input(data)
+                }
+            }
+            // No invalidate: the host's invalidation renders it again all the same.
+            struct PlainThemeProbe(pig_sdk::Context);
+            impl RemoteComponent for PlainThemeProbe {
+                fn render(&self, _width: u32) -> Vec<String> {
+                    vec![format!("plain live={}", row(&self.0))]
+                }
+                fn handle_input(
+                    &mut self,
+                    data: &pig_sdk::JsString,
+                ) -> Result<RemoteComponentResult, String> {
+                    input(data)
+                }
+            }
+            let on_handle = |_overlay: pig_sdk::OverlayHandle| {};
+            let result = if args.trim() == "plain" {
+                ctx.custom_component_with_handle(
+                    PlainThemeProbe(ctx.clone()),
+                    json!({"overlay": true}),
+                    on_handle,
+                )
+            } else {
+                ctx.custom_component_with_handle(
+                    InvalidateProbe {
+                        ctx: ctx.clone(),
+                        invalidations: 0,
+                        kept: row(ctx),
+                    },
+                    json!({"overlay": true}),
+                    on_handle,
+                )
+            };
+            if let Err(err) = result {
+                return CommandResult::Error(err.to_string());
+            }
+            ctx.notify("overlay-invalidate=ok", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "theme-read-probe",
+        "Report the theme the extension holds, with no component mounted",
+        |ctx, _args| {
+            let theme = ctx.theme();
+            ctx.notify(
+                &format!("theme-read={}|{}", theme.name, theme.fg("accent", "x")),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "overlay-focus-probe",
         "Render the focus the host publishes to a mounted overlay",
         |ctx, _args| {
@@ -3875,6 +3966,7 @@ fn main() {
             drawing: None,
             a11y: vec![],
             focus: vec![],
+            bindings: vec![],
         }
     }
     ext.command(
@@ -3929,6 +4021,7 @@ fn main() {
                 drawing: None,
                 a11y: vec![],
                 focus: vec![],
+                bindings: vec![],
             }) {
                 Ok(st) => st,
                 Err(e) => return CommandResult::Error(e.to_string()),
@@ -3945,6 +4038,7 @@ fn main() {
                 drawing: None,
                 a11y: vec![],
                 focus: vec![],
+                bindings: vec![],
             });
             ctx.notify(&format!("view-stale:{}", code(stale)), "info");
             let cur = st.mount.clone();
@@ -4074,6 +4168,7 @@ fn main() {
             drawing: None,
             a11y: vec![],
             focus: vec![],
+            bindings: vec![],
         }
     }
     fn x_when(claim: &str, op: &str, value: Option<Value>) -> pig_sdk::ViewWhen {
@@ -4149,6 +4244,7 @@ fn main() {
                     pig_sdk::ViewA11y { node: "base".into(), name: "Base".into(), ..Default::default() },
                 ],
                 focus: vec![pig_sdk::ViewFocus { node: "alt".into(), request: "mount".into(), restore: "previous".into() }],
+                bindings: vec![],
             }) {
                 Ok(st) => st,
                 Err(e) => return CommandResult::Error(e.to_string()),
@@ -4203,6 +4299,172 @@ fn main() {
             let count = |code: &str| notices.iter().filter(|n| n.code == code && n.path == "update").map(|n| n.count).sum::<u64>();
             ctx.notify(&format!("view-x-diag:invalid={},limit={},unsupported={},stale={}", count("invalid"), count("limit"), count("unsupported"), count("stale")), "info");
             ctx.notify(&format!("view-x-bigresult:{}", x_code(ctx.finish_view_with(&st.mount, json!("r".repeat(65536))))), "info");
+            CommandResult::Ok
+        },
+    );
+    // D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+    fn b_intents() -> Vec<pig_sdk::ViewIntent> {
+        vec![
+            pig_sdk::ViewIntent {
+                name: "fx.go".into(),
+                arg: pig_sdk::ViewShape::object(
+                    &[("n", pig_sdk::ViewShape::new("integer"))],
+                    &["n"],
+                ),
+                ..Default::default()
+            },
+            pig_sdk::ViewIntent {
+                name: "fx.tap".into(),
+                arg: pig_sdk::ViewShape::new("object"),
+                ..Default::default()
+            },
+        ]
+    }
+    fn b_go(key: &str, n: Value) -> pig_sdk::ViewBinding {
+        pig_sdk::ViewBinding {
+            key: key.into(),
+            intent: "fx.go".into(),
+            arg: Some(json!({ "n": n })),
+            ..Default::default()
+        }
+    }
+    fn b_tap(key: &str) -> pig_sdk::ViewBinding {
+        pig_sdk::ViewBinding {
+            key: key.into(),
+            intent: "fx.tap".into(),
+            ..Default::default()
+        }
+    }
+    ext.command(
+        "ui_view_bindings",
+        "Mount a view with bindings and probe what the host refuses",
+        |ctx, args| {
+            let Some((key, number)) = args.split_once(' ') else {
+                return CommandResult::Error("want a key and a number".into());
+            };
+            let Ok(n) = number.parse::<i64>() else {
+                return CommandResult::Error("want a number".into());
+            };
+            let mut mount = view_mount("bind", view_text(ctx, "-bind"), b_intents());
+            mount.bindings = vec![
+                pig_sdk::ViewBinding {
+                    name: format!("Go {n}"),
+                    ..b_go(key, json!(n))
+                },
+                b_go("w", json!(n + 1)),
+                pig_sdk::ViewBinding {
+                    gesture: "swipe-left".into(),
+                    intent: "fx.tap".into(),
+                    ..Default::default()
+                },
+            ];
+            let st = match ctx.mount_view(mount) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-b-mounted:{}", st.state), "info");
+            let attempt = |label: &str, bindings: Vec<pig_sdk::ViewBinding>| {
+                let mut update = x_update(&st.mount);
+                update.view = view_text(ctx, "-bind");
+                update.intents = b_intents();
+                update.bindings = bindings;
+                ctx.notify(
+                    &format!("view-b-{label}:{}", x_code(ctx.update_view(update))),
+                    "info",
+                );
+            };
+            attempt(
+                "many",
+                "abcdefghijklmnopqrstuvwxyz0123456"
+                    .chars()
+                    .map(|c| b_tap(&c.to_string()))
+                    .collect(),
+            );
+            attempt("reserved", vec![b_tap("shift+tab")]);
+            attempt("order", vec![b_tap("ctrl+shift+p"), b_tap("shift+ctrl+p")]);
+            attempt(
+                "gesture",
+                vec![pig_sdk::ViewBinding {
+                    gesture: "pinch".into(),
+                    intent: "fx.tap".into(),
+                    ..Default::default()
+                }],
+            );
+            attempt("arg", vec![b_go("a", json!("x"))]);
+            attempt(
+                "ok",
+                vec![
+                    b_go("ctrl+shift+p", json!(n)),
+                    b_go("shift+ctrl+q", json!(n + 1)),
+                ],
+            );
+            CommandResult::Ok
+        },
+    );
+    // D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+    ext.command(
+        "ui_view_dismiss",
+        "Mount a dialog with a dismiss intent and probe what the host refuses",
+        |ctx, args| {
+            let tap = || pig_sdk::ViewIntent {
+                name: "fx.tap".into(),
+                arg: pig_sdk::ViewShape::new("object"),
+                ..Default::default()
+            };
+            let closing = |name: &str| pig_sdk::ViewIntent {
+                name: name.into(),
+                arg: pig_sdk::ViewShape::new("object"),
+                dismiss: true,
+                ..Default::default()
+            };
+            let mut mount = view_mount(
+                "dismiss",
+                view_text(ctx, "-dismiss"),
+                vec![tap(), closing(args)],
+            );
+            mount.slot = "dialog".into();
+            let st = match ctx.mount_view(mount) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-d-mounted:{}", st.state), "info");
+            let attempt = |label: &str, intents: Vec<pig_sdk::ViewIntent>| {
+                let mut update = x_update(&st.mount);
+                update.view = view_text(ctx, "-dismiss");
+                update.intents = intents;
+                ctx.notify(
+                    &format!("view-d-{label}:{}", x_code(ctx.update_view(update))),
+                    "info",
+                );
+            };
+            attempt(
+                "two",
+                vec![tap(), closing(args), closing(&format!("{args}2"))],
+            );
+            attempt(
+                "node",
+                vec![
+                    tap(),
+                    pig_sdk::ViewIntent {
+                        node_key: "n".into(),
+                        ..closing(args)
+                    },
+                ],
+            );
+            attempt(
+                "arg",
+                vec![
+                    tap(),
+                    pig_sdk::ViewIntent {
+                        arg: pig_sdk::ViewShape::object(
+                            &[("value", pig_sdk::ViewShape::new("string"))],
+                            &["value"],
+                        ),
+                        ..closing(args)
+                    },
+                ],
+            );
+            attempt("ok", vec![closing(args), tap()]);
             CommandResult::Ok
         },
     );
@@ -4311,6 +4573,7 @@ fn main() {
                             drawing: None,
                             a11y: vec![],
                             focus: focus(""),
+                            bindings: vec![],
                         })?;
                         let st = ctx.hide_view(&st.mount)?;
                         let st = ctx.show_view(&st.mount)?;
@@ -4325,6 +4588,7 @@ fn main() {
                             drawing: None,
                             a11y: vec![],
                             focus: focus("update"),
+                            bindings: vec![],
                         })?;
                         Ok(format!("view-tool:{},rev={}", st.state, st.mount.rev))
                     };
@@ -4412,6 +4676,7 @@ fn main() {
                     drawing: None,
                     a11y: vec![],
                     focus: vec![],
+                    bindings: vec![],
                 };
                 ctx.notify(
                     &format!("view-g-{label}:{}", x_code(ctx.update_view(update))),
@@ -4436,7 +4701,55 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The
+    // argument is the row's token: the ids of the container, the text and the box are built from it.
+    ext.command(
+        "ui_view_node_ids",
+        "Mount a view whose container, text and box carry an id",
+        |ctx, args| {
+            let tok = args.trim();
+            let root = Container::new()
+                .id(format!("{tok}-root"))
+                .child(
+                    kit::Text::new(format!("Label {tok}"), 0, 0)
+                        .id(format!("{tok}-label"))
+                        .bg("selectedBg"),
+                )
+                .child(
+                    kit::Box::new(1, 0)
+                        .id(format!("{tok}-frame"))
+                        .bg("toolPendingBg")
+                        .child(kit::Text::new("inside", 0, 0)),
+                );
+            let mut mount = view_mount("ids", kit::View::new(root), vec![]);
+            mount.a11y = vec![pig_sdk::ViewA11y {
+                node: format!("{tok}-label"),
+                name: format!("Label {tok}"),
+                ..Default::default()
+            }];
+            match ctx.mount_view(mount) {
+                Ok(st) => ctx.notify(&format!("view-i-mounted:{}", st.state), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
     ext.on_view_intent(|inv| match inv.intent.as_str() {
+        // The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+        name if name.starts_with("fx.close-") => {
+            if inv.arg != json!({}) {
+                return pig_sdk::ViewIntentResult::refused("dismiss takes {}");
+            }
+            let removed = inv.context.remove_view(&pig_sdk::ViewRef {
+                key: inv.mount.key.clone(),
+                epoch: inv.mount.epoch,
+                rev: inv.rev,
+            });
+            match removed {
+                Ok(_) => pig_sdk::ViewIntentResult::done(json!({})),
+                Err(e) => pig_sdk::ViewIntentResult::failed(&e.to_string()),
+            }
+        }
         "fx.redraw" | "fx.foreign" => redraw_intent(&inv),
         // The user opened the hidden view: its handler shows it.
         "fx.reopen" => {
@@ -9004,7 +9317,7 @@ impl MutDoc {
         screen.invalidate()?;
         r.push(format!(
             "invalidate={}",
-            self.invalidations.load(Ordering::SeqCst) > 0
+            self.invalidations.load(Ordering::SeqCst)
         ));
         r.push(format!("lines={}", screen.get_screen_lines()?.len()));
         Ok(r.join(","))
@@ -9119,8 +9432,8 @@ fn tui_alt_frame_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     screen.invalidate()?;
     f.push(format!(
         "invalidate={}/{}",
-        doc.invalidations.load(Ordering::SeqCst) > 0,
-        ov.invalidations.load(Ordering::SeqCst) > 0
+        doc.invalidations.load(Ordering::SeqCst),
+        ov.invalidations.load(Ordering::SeqCst)
     ));
     ov2.hide()?;
     let link = Arc::new(std::sync::OnceLock::new());

@@ -1211,6 +1211,10 @@ class _RemoteOverlayState:
         """Queue the host's ui.custom.focus behind the input already queued."""
         return self._enqueue("focus", focused)
 
+    def enqueue_invalidate(self, count: int) -> bool:
+        """Queue the host's ui.custom.invalidate (its TUI was invalidated ``count`` times) behind the input already queued."""
+        return self._enqueue("invalidate", count)
+
     @property
     def is_view(self) -> bool:
         """Whether the component describes its frames as kit views."""
@@ -1594,18 +1598,47 @@ def _forward_model_stream(stream, stopped, emit):
     # pig additive (D19): only SDK-owned waits observe transport shutdown; user iterator overrides remain callable.
     token = _model_stream_transport.set((stream, stopped))
     try:
-        for event in stream.events():
+        for event in _wire_events(stream):
             emit(event)
     finally:
         _model_stream_transport.reset(token)
 
 
+def _wire_events(stream):
+    """The events of stream as the host receives them. A stream the SDK made and did not override yields each event as it was when the author pushed it; any other stream is
+    iterated as Pi iterates it."""
+    return stream._wire_events() if type(stream).events is ModelEventStream.events else stream.events()
+
+
+def _wire_result_of(stream):
+    """The result of stream as the host receives it (see [_wire_events]); an overridden result() answers as Pi's does."""
+    return stream._wire_result() if type(stream).result is ModelEventStream.result else stream.result()
+
+
+def _json_snapshot(value: Any) -> Any:
+    """A copy of value that shares no dict or list with it. The plain JSON containers are copied here, because ``copy.deepcopy`` costs ten times as much on a message; any other
+    object (a dataclass, a tuple of them) is deep-copied."""
+    kind = type(value)
+    if kind is dict:
+        return {key: _json_snapshot(member) for key, member in value.items()}
+    if kind is list:
+        return [_json_snapshot(member) for member in value]
+    if value is None or kind is str or kind is int or kind is float or kind is bool:
+        return value
+    return copy.deepcopy(value)
+
+
 class ModelEventStream:
     def __init__(self) -> None:
         self._condition = threading.Condition()
-        self._events: deque[dict[str, Any]] = deque()
+        # Each item is (event, wire, error): the event as the author pushed it, a copy of it as it was at the push (the SDK's own events are their own copy), and the error of
+        # copying it. events() yields the event; the forwarder to the host sends the wire and fails the request with the error.
+        self._events: deque[tuple[dict[str, Any], dict[str, Any], BaseException | None]] = deque()
         self._terminal = False
         self._result: dict[str, Any] | None = None
+        # The result as it was when the author ended the stream, which is what the host receives; _result is the author's own message.
+        self._result_wire: dict[str, Any] | None = None
+        self._result_error: BaseException | None = None
         self._started = threading.Event()
         self._start_error = None
         # A stream made by create_assistant_message_event_stream times its response as pi-ai's AssistantMessageEventStream does (see _time_message); one the SDK makes for a
@@ -1632,32 +1665,66 @@ class ModelEventStream:
                 self._started.set()
 
     def push(self, event: dict[str, Any]) -> None:
+        """Publish an event in source order. The host receives the event as it was when push returned: it is copied here, so the author may go on changing the message it shows,
+        and the forwarder thread never reads a dict the author is changing. In-process iteration yields the event itself. That is stronger than Pi, whose consumer reads the shared
+        message at its own turn: after a synchronous burst of pushes or between microtask awaits it can see later changes (D615). A value that cannot be copied fails the request
+        that forwards the stream, and does not raise here."""
+        self._enqueue(event, True)
+
+    def _enqueue(self, event: dict[str, Any], by_author: bool) -> None:
+        """Queue event; a done or error event ends the stream. The SDK's own events (by_author false) are queued as they are, because nobody else holds them."""
         with self._condition:
             if self._terminal:
                 return
-            self._events.append(event)
-            if event.get("type") in {"done", "error"}:
-                self._time_message(event.get("message") if event.get("type") == "done" else event.get("error"))
+            kind = event.get("type")
+            ends = kind in {"done", "error"}
+            key = "message" if kind == "done" else "error"
+            final = event.get(key) if ends else None
+            if ends:
+                self._time_message(final)
+            wire, error = event, None
+            if by_author:
+                # pig divergence (D615): the host receives the event as it was at the push, where Pi's consumer reads the shared message at its own turn.
+                try:
+                    wire = _json_snapshot(event)
+                except Exception as exc:  # noqa: BLE001 - the request that forwards the stream fails with it
+                    wire, error = None, exc
+            self._events.append((event, wire, error))
+            if ends:
                 self._terminal = True
-                self._result = event.get("message") if event.get("type") == "done" else event.get("error")
+                self._result = final
+                self._result_wire = wire.get(key) if wire is not None and by_author else final
+                self._result_error = error
             self._condition.notify_all()
 
     def end(self, result: dict[str, Any] | None) -> None:
+        """Complete iteration and resolve the final provider result, as it is now."""
         with self._condition:
             if self._terminal:
                 return
             self._time_message(result)
             self._terminal = True
             self._result = result
+            try:
+                self._result_wire = _json_snapshot(result)
+            except Exception as exc:  # noqa: BLE001 - the request that forwards the stream fails with it
+                self._result_error = exc
             self._condition.notify_all()
 
     def events(self):
         """Yield ordered events; transport shutdown releases only the SDK forwarding wait."""
+        return self._iterate(False)
+
+    def _wire_events(self):
+        """Yield the events as the host receives them: each as it was when the author pushed it. An event that could not be copied raises the error of copying it."""
+        return self._iterate(True)
+
+    def _iterate(self, wire):
         scope = _model_stream_transport.get()
         stopped = scope[1] if scope is not None and scope[0] is self else None
-        return self._events_until(stopped)
+        return self._events_until(stopped, wire)
 
-    def _events_until(self, stopped):
+    def _events_until(self, stopped, wire):
         unsubscribe = stopped.subscribe(self._wake_transport) if stopped is not None else lambda: None
         try:
             while True:
@@ -1667,10 +1734,15 @@ class ModelEventStream:
                         self._condition.wait()
                     self._check_transport(stopped)
                     if self._events:
-                        event = self._events.popleft()
+                        event, shown, error = self._events.popleft()
                     else:
                         return
-                yield event
+                if wire:
+                    if error is not None:
+                        raise error
+                    yield shown
+                else:
+                    yield event
         finally:
             unsubscribe()
 
@@ -1688,6 +1760,15 @@ class ModelEventStream:
             while not self._terminal:
                 self._condition.wait()
             return self._result
+
+    def _wire_result(self) -> dict[str, Any] | None:
+        """The final message as the host receives it: as it was when the author ended the stream. It raises the error of copying it."""
+        with self._condition:
+            while not self._terminal:
+                self._condition.wait()
+            if self._result_error is not None:
+                raise self._result_error
+            return self._result_wire
 
 
 def create_assistant_message_event_stream() -> ModelEventStream:
@@ -1935,7 +2016,7 @@ class ModelRegistry:
                 call.update({name: True for name in callbacks})
                 self._context._call("modelStream", call)
             except Exception as exc:  # noqa: BLE001 - transport failure becomes terminal model error
-                stream.push(_model_stream_error_event(exc, model))
+                stream._enqueue(_model_stream_error_event(exc, model), False)
             finally:
                 with extension._model_stream_lock:
                     extension._model_streams.pop(stream_id, None)
@@ -3519,7 +3600,7 @@ class Context:
             wire["images"] = [{"ref": i.ref, "mimeType": i.mime_type, "data": base64.b64encode(i.data).decode("ascii")} for i in encoded.images]
         return wire
 
-    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any, alternatives: Any = (), drawing: Any = None, a11y: Any = (), focus: Any = (), title: str = "") -> dict[str, Any]:
+    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any, alternatives: Any = (), drawing: Any = None, a11y: Any = (), focus: Any = (), bindings: Any = (), title: str = "") -> dict[str, Any]:
         fallback_wire = None if fallback is None else self.extension._views.encode(kit.View(root=fallback)).body
         alts = []
         for alt in alternatives or ():
@@ -3527,7 +3608,7 @@ class Context:
             if alt.get("drawing") is not None:
                 entry["drawing"] = alt["drawing"]
             alts.append(entry)
-        return _ui_view.encode_content(self._view_wire(view), intents, assets, fallback_wire, alts, drawing, a11y, focus, title)
+        return _ui_view.encode_content(self._view_wire(view), intents, assets, fallback_wire, alts, drawing, a11y, focus, bindings, title)
 
     def mount_view(
         self,
@@ -3544,6 +3625,7 @@ class Context:
         drawing: Any = None,
         a11y: Any = (),
         focus: Any = (),
+        bindings: Any = (),
     ) -> ViewStatus:
         """Mount ``view`` in a slot the attached client draws. ``key`` names the mount among this extension's.
 
@@ -3551,9 +3633,12 @@ class Context:
         "drawing": ...}``; a client draws the first whose ``when`` holds for its claims. ``drawing`` is the wire record
         (``profile`` ``scene`` with ``shapes`` or ``pixels`` with ``pixels``, and ``regions``); ``a11y`` and ``focus`` are
         lists of wire records naming view nodes by id (at most 256 each); a focus record's ``request`` is ``"mount"`` or
-        ``"update"``. ``title`` is the short text a client labels the mount with (at most 64 bytes on one line). The host
-        checks every bound."""
-        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, title)
+        ``"update"``. ``title`` is the short text a client labels the mount with (at most 64 bytes on one line). ``bindings``
+        (at most 32) are wire records ``{"key" or "gesture", "intent", "arg", "name"}`` that tie a key id (``"d"``,
+        ``"shift+left"``) or a gesture (``"swipe-left"``, ``"swipe-right"``, ``"swipe-up"``, ``"swipe-down"``) to an intent that
+        names no node; a client fires one only while the mount holds the focus and the focused node did not take the key. The
+        host checks every bound."""
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings, title)
         args["key"], args["slot"] = key, slot
         if target is not None:
             args["target"] = target._wire()
@@ -3572,9 +3657,10 @@ class Context:
         drawing: Any = None,
         a11y: Any = (),
         focus: Any = (),
+        bindings: Any = (),
     ) -> ViewStatus:
         """Replace the content of a mount, its ``title`` included. Fails with ``ViewError`` code ``"stale"`` unless ``mount`` carries the epoch and rev the last operation returned."""
-        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, title)
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings, title)
         args["mount"] = mount._wire()
         return self._view_call("ui.view.update", args)
 
@@ -6025,7 +6111,7 @@ class Extension:
                 if args.get("started"):
                     stream.mark_started()
                 else:
-                    stream.push(args.get("event") or {})
+                    stream._enqueue(args.get("event") or {}, False)
             return
         if _editor_component.editor_notify(self, method, args):
             return
@@ -6051,6 +6137,17 @@ class Extension:
             with self._overlay_lock:
                 overlay = self._overlays.get(key)
             if overlay is not None and not overlay.enqueue_focus(bool(args.get("focused"))):
+                self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
+            return
+        if method == "ui.custom.invalidate":
+            # The theme_change that precedes it on the connection is applied by now; the component's worker runs invalidate() and renders.
+            key = str(args.get("key") or "")
+            count = args.get("count")
+            if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+                return
+            with self._overlay_lock:
+                overlay = self._overlays.get(key)
+            if overlay is not None and not overlay.enqueue_invalidate(count):
                 self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
             return
         if method == "ui.custom.input":
@@ -6295,13 +6392,18 @@ class Extension:
                     if cancel.is_set():
                         stream.end(None)
                 try:
-                    for event in stream.events():
+                    for event in _wire_events(stream):
                         if cancel.is_set():
                             raise RuntimeError("provider stream aborted")
                         self._notify("provider_stream_event", {"request_id": req_id, "result": event})
-                    if cancel.is_set():
+                    # The read loop ends the stream of a cancelled request before it sets the request's signal, and writes the request's state with that end under the state lock:
+                    # the state shows a cancel the signal does not show yet, so a stream the cancel ended is never answered as one its author ended.
+                    with self._state_lock:
+                        parent = self._request_parents.get(req_id)
+                        aborted = cancel.is_set() or (parent is not None and parent.state == "cancelled")
+                    if aborted:
                         raise RuntimeError("provider stream aborted")
-                    self._respond(req_id, stream.result(), None)
+                    self._respond(req_id, _wire_result_of(stream), None)
                 finally:
                     with self._state_lock:
                         self._provider_active.pop(req_id, None)
@@ -6888,6 +6990,13 @@ class Extension:
                     continue
                 if kind == "focus":
                     overlay.apply_focus(bool(data))
+                elif kind == "invalidate":
+                    # Pi's optional Component.invalidate(): the host's TUI was invalidated (a theme change, a cell-size report, a change
+                    # of image support). A component without it is rendered again all the same.
+                    invalidate = getattr(overlay.component, "invalidate", None)
+                    if callable(invalidate):
+                        for _ in range(data):
+                            invalidate()
                 elif kind in ("input", "view_event", "mouse"):
                     if kind == "input":
                         result = overlay.component.handle_input(data or "")

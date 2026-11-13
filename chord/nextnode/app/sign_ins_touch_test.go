@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsclock"
 )
 
-// bearerRequest is a request carrying only its headers: what the sessions' authenticator reads of a bearer token.
+// bearerRequest is a request carrying only its headers: what the sign-ins' authenticator reads of a bearer token.
 type bearerRequest struct {
 	chordhttp.HttpRequest
 	header http.Header
@@ -46,9 +46,9 @@ func authenticateWith(t *testing.T, s *kitServer, ctx context.Context, token str
 
 func lastUsed(t *testing.T, s *kitServer, id string) float64 {
 	t.Helper()
-	found := session(t, s, id)
+	found := listedSignIn(t, s, id)
 	if found == nil {
-		t.Fatalf("session %s is not listed", id)
+		t.Fatalf("sign-in %s is not listed", id)
 	}
 	return found.(*delta.JsonObject).Value("lastUsed").(float64)
 }
@@ -56,7 +56,7 @@ func lastUsed(t *testing.T, s *kitServer, id string) float64 {
 // Pi's authentication does not await the touch of `lastUsed`: `void document.change(fn, context).catch(() => {})` on the request's
 // context, so a request that goes away before the write took the line cancels it (the touch is dropped, a later request makes it
 // again). The write is tied to the request's cancel, as Pi's.
-func TestASessionsTouchIsDroppedWhenItsRequestWasCancelled(t *testing.T) {
+func TestASignInsTouchIsDroppedWhenItsRequestWasCancelled(t *testing.T) {
 	s := newKitServer(t, kitServerOptions{})
 	defer s.close()
 	id, token, _ := s.issue(delta.JsonObjectOf("kind", "owner"), "b", "browser")
@@ -68,7 +68,7 @@ func TestASessionsTouchIsDroppedWhenItsRequestWasCancelled(t *testing.T) {
 	if principal := authenticateWith(t, s, gone, token); principal == nil {
 		t.Fatal("the token was refused: authentication does not wait for the touch")
 	}
-	sessionWrites.Wait()
+	signInWrites.Wait()
 	if after := lastUsed(t, s, id); after != before {
 		t.Fatalf("lastUsed moved %v -> %v: the touch of a cancelled request was written, want it dropped", before, after)
 	}
@@ -76,7 +76,7 @@ func TestASessionsTouchIsDroppedWhenItsRequestWasCancelled(t *testing.T) {
 
 // Pi's request AbortController is aborted by a disconnect or by close, never for a request that finished: the touch of a request
 // that answered at once still lands. (Go ends the request's context with ErrRequestFinished then: that end is no abort.)
-func TestASessionsTouchOfAFinishedRequestStillLands(t *testing.T) {
+func TestASignInsTouchOfAFinishedRequestStillLands(t *testing.T) {
 	s := newKitServer(t, kitServerOptions{})
 	defer s.close()
 	id, token, _ := s.issue(delta.JsonObjectOf("kind", "owner"), "b", "browser")
@@ -88,7 +88,7 @@ func TestASessionsTouchOfAFinishedRequestStillLands(t *testing.T) {
 		t.Fatal("the token was refused")
 	}
 	cancel(chordhttp.ErrRequestFinished)
-	sessionWrites.Wait()
+	signInWrites.Wait()
 	if after := lastUsed(t, s, id); after <= before {
 		t.Fatalf("lastUsed %v -> %v: the touch of a finished request was dropped", before, after)
 	}

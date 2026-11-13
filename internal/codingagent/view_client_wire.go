@@ -39,6 +39,7 @@ func (m *InteractiveMode) attachTerminalViewClient(bridge SubprocessUIBridge) {
 		confirms:    func(data string) bool { return m.keybindings.Matches(data, string(tui.KBSelectConfirm)) },
 		listen:      func(listener *tui.TuiInputListener) func() { return m.tuiInst.AddInputListener(listener) },
 		interrupts:  func(data string) bool { return m.keybindings.Matches(data, string(AppInterrupt)) },
+		reserved:    func(data string) string { return viewReservedAction(m.keybindings, data) },
 		notify:      (&ExtUIContext{m: m}).Notify,
 		size: func() viewSize {
 			return viewSize{columns: m.tuiInst.Width(), rows: m.tuiInst.Height(), pointer: m.altScreen != nil}

@@ -4,6 +4,8 @@ PiG provides a Go-native terminal interface that follows the observable behavior
 
 This page describes the PiG user and extension boundary. It does not expose PiG's internal TUI packages as a stable application SDK.
 
+An extension draws in the terminal and in a web page with views: [Extension views](ui-views.md) (D614).
+
 ## Start the TUI
 
 Run `pig` without print or RPC mode:

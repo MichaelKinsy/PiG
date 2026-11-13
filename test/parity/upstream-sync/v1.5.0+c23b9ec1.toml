@@ -2147,7 +2147,7 @@ rationale = "New at c23b9ec1: HostData, the facet a running worker serves so the
 path = "packages/chord/src/node/app/ephemeral-sessions.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/nextnode/app/ephemeral_sessions_test.go"]
+evidence = ["test:chord/nextnode/app/ephemeral_sign_ins_test.go"]
 rationale = "Ported: every upstream case of the module's Pi test file has a Go test in the evidence files on this branch (test-mapping disposition ported)."
 
 [[files]]
@@ -2245,7 +2245,7 @@ rationale = "Ported: every upstream case of the module's Pi test file has a Go t
 path = "packages/chord/src/node/app/sessions.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/nextnode/app/sessions_upstream_test.go"]
+evidence = ["test:chord/nextnode/app/sign_ins_upstream_test.go"]
 rationale = "Ported: every upstream case of the module's Pi test file has a Go test in the evidence files on this branch (test-mapping disposition ported)."
 
 [[files]]
@@ -2470,7 +2470,7 @@ rationale = "New at c23b9ec1: a client kind's base bundle (conditions, inputs wi
 path = "packages/chord/src/node/surfaces/current.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/nextnode/surfaces/surfaces_current_test.go#TestScriptsFacetRefusesAnUnknownSurface", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession"]
+evidence = ["test:chord/nextnode/surfaces/surfaces_current_test.go#TestScriptsFacetRefusesAnUnknownSurface", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn"]
 rationale = "New at c23b9ec1: the scripts objects a surface serves (the current base hash answered publicly, the set of scripts). Go: surfaces_current.go; surfaces_current_test.go (TestScriptsFacetRefusesAnUnknownSurface) and app_surfaces_test.go TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession."
 
 [[files]]

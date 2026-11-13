@@ -111,7 +111,10 @@
 (defun kit-enc-node (enc node depth)
   (when (>= depth +kit-max-depth+) (error "kit: view deeper than ~D nodes" +kit-max-depth+))
   (unless (kit-node-p node) (error "kit: ~S is not a kit node" node))
-  (let ((out (obj "kind" (kit-node-kind node))))
+  (let ((out (obj "kind" (kit-node-kind node))) (id (kit-get node :id)))
+    ;; Every kind may carry an id (an a11y, focus or drawing record of a mounted view names a node by it); the kinds that
+    ;; need one write it with their fields.
+    (when (and (stringp id) (plusp (length id))) (setf (gethash "id" out) id))
     (funcall (gethash (kit-node-kind node) *kit-encoders*) node enc depth out)
     out))
 
@@ -195,15 +198,15 @@
 
 ;;; containers --------------------------------------------------------------------------------------
 
-(defun kit-container (&optional children) (kit-new "container" :children (copy-list children)))
+(defun kit-container (&optional children &key id) (kit-new "container" :id id :children (copy-list children)))
 (def-kit-encoder "container" (node enc depth out) (kit-out-children enc out (kit-get node :children) depth))
 
 (defun kit-container-add-child (container child)
   "addChild; returns the container."
   (kit-put container :children (append (kit-get container :children) (list child))) container)
 
-(defun kit-box (&optional (padding-x 1) (padding-y 1) &key bg children)
-  (kit-new "box" :padding-x padding-x :padding-y padding-y :bg bg :children (copy-list children)))
+(defun kit-box (&optional (padding-x 1) (padding-y 1) &key bg children id)
+  (kit-new "box" :id id :padding-x padding-x :padding-y padding-y :bg bg :children (copy-list children)))
 (def-kit-encoder "box" (node enc depth out)
   (kit-out-children enc out (kit-get node :children) depth)
   (setf (gethash "paddingX" out) (kit-get node :padding-x) (gethash "paddingY" out) (kit-get node :padding-y))
@@ -211,31 +214,31 @@
 
 (defun kit-box-add-child (box child) (kit-container-add-child box child))
 
-(defun kit-text (&optional (text "") (padding-x 1) (padding-y 1) &key bg)
-  (kit-new "text" :text text :padding-x padding-x :padding-y padding-y :bg bg))
+(defun kit-text (&optional (text "") (padding-x 1) (padding-y 1) &key bg id)
+  (kit-new "text" :id id :text text :padding-x padding-x :padding-y padding-y :bg bg))
 (def-kit-encoder "text" (node enc depth out)
   (setf (gethash "text" out) (kit-get node :text) (gethash "paddingX" out) (kit-get node :padding-x)
         (gethash "paddingY" out) (kit-get node :padding-y))
   (kit-out out "bg" (kit-get node :bg)))
 
-(defun kit-truncated-text (text &optional (padding-x 0) (padding-y 0))
-  (kit-new "truncated-text" :text text :padding-x padding-x :padding-y padding-y))
+(defun kit-truncated-text (text &optional (padding-x 0) (padding-y 0) &key id)
+  (kit-new "truncated-text" :id id :text text :padding-x padding-x :padding-y padding-y))
 (def-kit-encoder "truncated-text" (node enc depth out)
   (setf (gethash "text" out) (kit-get node :text) (gethash "paddingX" out) (kit-get node :padding-x)
         (gethash "paddingY" out) (kit-get node :padding-y)))
 
-(defun kit-markdown (text &optional (padding-x 0) (padding-y 0) &key default-text-style render-latex)
-  (kit-new "markdown" :text text :padding-x padding-x :padding-y padding-y :style default-text-style :latex render-latex))
+(defun kit-markdown (text &optional (padding-x 0) (padding-y 0) &key default-text-style render-latex id)
+  (kit-new "markdown" :id id :text text :padding-x padding-x :padding-y padding-y :style default-text-style :latex render-latex))
 (def-kit-encoder "markdown" (node enc depth out)
   (setf (gethash "text" out) (kit-get node :text) (gethash "paddingX" out) (kit-get node :padding-x)
         (gethash "paddingY" out) (kit-get node :padding-y))
   (kit-out out "defaultTextStyle" (kit-get node :style))
   (kit-out out "renderLatex" (kit-get node :latex)))
 
-(defun kit-spacer (&optional (lines 1)) (kit-new "spacer" :lines lines))
+(defun kit-spacer (&optional (lines 1) &key id) (kit-new "spacer" :id id :lines lines))
 (def-kit-encoder "spacer" (node enc depth out) (setf (gethash "lines" out) (kit-get node :lines)))
 
-(defun kit-dynamic-border (&optional (color "border")) (kit-new "dynamic-border" :color color))
+(defun kit-dynamic-border (&optional (color "border") &key id) (kit-new "dynamic-border" :id id :color color))
 (def-kit-encoder "dynamic-border" (node enc depth out) (setf (gethash "color" out) (kit-get node :color)))
 
 (defun kit-select-list (id items &optional (max-visible 5) &key layout selected-index filter)
@@ -271,9 +274,9 @@
   (when (kit-get node :enable-search) (setf (gethash "enableSearch" out) t))
   (kit-out-state node out (:selected-index "selectedIndex") (:filter "filter")))
 
-(defun kit-image (data mime-type &key max-width-cells max-height-cells filename fallback-color)
+(defun kit-image (data mime-type &key max-width-cells max-height-cells filename fallback-color id)
   "Image(base64Data, mimeType): DATA is the decoded octets. A connection sends the bytes once; later frames name the ref."
-  (kit-new "image" :image (kit-image-data data mime-type) :max-width-cells max-width-cells :max-height-cells max-height-cells
+  (kit-new "image" :id id :image (kit-image-data data mime-type) :max-width-cells max-width-cells :max-height-cells max-height-cells
                    :filename filename :fallback-color fallback-color))
 (defun kit-image-ref (node) "The lowercase hex SHA-256 of the image's bytes." (kit-img-ref (kit-get node :image)))
 (def-kit-encoder "image" (node enc depth out)
@@ -283,8 +286,8 @@
                    (:filename "filename") (:fallback-color "fallbackColor"))
     (kit-enc-add-image enc image)))
 
-(defun kit-loader (&optional (message "Loading...") &key spinner-color message-color indicator frame)
-  (kit-new "loader" :message message :spinner-color spinner-color :message-color message-color :indicator indicator :frame frame))
+(defun kit-loader (&optional (message "Loading...") &key spinner-color message-color indicator frame id)
+  (kit-new "loader" :id id :message message :spinner-color spinner-color :message-color message-color :indicator indicator :frame frame))
 (defun kit-loader-fields (node out)
   (setf (gethash "message" out) (kit-get node :message))
   (kit-out-state node out (:spinner-color "spinnerColor") (:message-color "messageColor") (:indicator "indicator") (:frame "frame")))
@@ -297,8 +300,8 @@
   "A stack child with its options; BASIS NIL is \"auto\"."
   (%kit-stack-entry component basis grow shrink min-size max-size))
 
-(defun kit-hstack (&optional children &key gap align) (kit-new "hstack" :children (copy-list children) :gap gap :align align))
-(defun kit-vstack (&optional children &key gap align) (kit-new "vstack" :children (copy-list children) :gap gap :align align))
+(defun kit-hstack (&optional children &key gap align id) (kit-new "hstack" :id id :children (copy-list children) :gap gap :align align))
+(defun kit-vstack (&optional children &key gap align id) (kit-new "vstack" :id id :children (copy-list children) :gap gap :align align))
 (defun kit-stack-add-child (stack child) (kit-container-add-child stack child))
 (flet ((encode-stack (node enc depth out)
          (when (kit-get node :children)
@@ -320,9 +323,9 @@
          (kit-out-state node out (:gap "gap") (:align "align"))))
   (setf (gethash "hstack" *kit-encoders*) #'encode-stack (gethash "vstack" *kit-encoders*) #'encode-stack))
 
-(defun kit-lines (content &key list)
+(defun kit-lines (content &key list id)
   "Rows a component of the extension's own drew, shown verbatim. LIST is a KIT-LIST annotation (one item per row)."
-  (kit-new "lines" :content (mapcar #'princ-to-string content) :list list :image nil :progress nil))
+  (kit-new "lines" :id id :content (mapcar #'princ-to-string content) :list list :image nil :progress nil))
 (defun kit-lines-image (node data mime-type)
   "Frontend-only: the rows depict this image. Returns NODE."
   (kit-put node :image (kit-image-data data mime-type)) node)
@@ -341,7 +344,7 @@
 
 ;;; conversation kinds ----------------------------------------------------------------------------
 
-(defun kit-user-message (text &optional (output-pad 1)) (kit-new "user-message" :text text :output-pad output-pad))
+(defun kit-user-message (text &optional (output-pad 1) &key id) (kit-new "user-message" :id id :text text :output-pad output-pad))
 (defun kit-user-message-set-output-pad (node padding) (kit-put node :output-pad padding))
 (def-kit-encoder "user-message" (node enc depth out)
   (setf (gethash "text" out) (kit-get node :text) (gethash "outputPad" out) (kit-get node :output-pad)))
@@ -443,9 +446,9 @@
   (when (plusp (length (kit-get node :output))) (setf (gethash "output" out) (kit-get node :output)))
   (when (kit-get node :complete) (setf (gethash "complete" out) (kit-get node :complete))))
 
-(defun kit-diff (diff &key (file-path "") (padding-x 0) (padding-y 0))
+(defun kit-diff (diff &key (file-path "") (padding-x 0) (padding-y 0) id)
   "renderDiff(diff, {filePath}) drawn in a Text(..., paddingX, paddingY), as Pi's edit renderer draws it."
-  (kit-new "diff" :diff diff :file-path file-path :padding-x padding-x :padding-y padding-y))
+  (kit-new "diff" :id id :diff diff :file-path file-path :padding-x padding-x :padding-y padding-y))
 (def-kit-encoder "diff" (node enc depth out)
   (setf (gethash "paddingX" out) (kit-get node :padding-x) (gethash "paddingY" out) (kit-get node :padding-y)
         (gethash "diff" out) (kit-get node :diff))

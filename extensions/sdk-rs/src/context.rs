@@ -72,6 +72,12 @@ pub trait RemoteComponent: Send {
     /// Raw input preserves lone UTF-16 units just like terminal listeners.
     fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String>;
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
+    /// Pi's optional `Component.invalidate()`: the host's TUI was invalidated (a theme change, a cell-size report, a change
+    /// of image support; Pi's `TUI.invalidate`, tui.ts:951-954), so the component drops what it kept from the state before.
+    /// A theme change is applied first, and a frame is rendered after it. It runs on the worker
+    /// [`Self::handle_input`] runs on, in order with the input. The default does nothing, and the component is rendered again
+    /// all the same.
+    fn invalidate(&mut self) {}
     fn dispose(&mut self) {}
     /// Whether the component captures viewport input, as an upstream component with
     /// `capturesViewportInput` does: the host's fullscreen viewport keys (scroll, page) go to it instead
@@ -121,6 +127,12 @@ pub trait ViewComponent: Send {
         Ok(RemoteComponentResult::pending())
     }
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
+    /// Pi's optional `Component.invalidate()`: the host's TUI was invalidated (a theme change, a cell-size report, a change
+    /// of image support; Pi's `TUI.invalidate`, tui.ts:951-954), so the component drops what it kept from the state before.
+    /// A theme change is applied first, and a frame is rendered after it. It runs on the worker
+    /// [`Self::handle_input`] runs on, in order with the input. The default does nothing, and the component is rendered again
+    /// all the same.
+    fn invalidate(&mut self) {}
     fn dispose(&mut self) {}
     /// Whether the component captures viewport input; see
     /// [`RemoteComponent::captures_viewport_input`]. The default is false.
@@ -148,6 +160,12 @@ pub(crate) enum OverlayComponent {
 }
 
 impl OverlayComponent {
+    fn invalidate(&mut self) {
+        match self {
+            OverlayComponent::Lines(component) => component.invalidate(),
+            OverlayComponent::View(component) => component.invalidate(),
+        }
+    }
     fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String> {
         match self {
             OverlayComponent::Lines(component) => component.handle_input(data),
@@ -291,6 +309,8 @@ enum RemoteComponentEvent {
     Opened(OverlayState),
     /// The host's `ui.custom.focus`: the component lost (false) or regained (true) TUI focus.
     Focus(bool),
+    /// The host's `ui.custom.invalidate`: its TUI was invalidated this many times.
+    Invalidate(u64),
     Stop,
 }
 
@@ -490,6 +510,11 @@ impl RemoteOverlay {
     /// Queues the host's `ui.custom.focus` behind the input already queued.
     pub(crate) fn send_focus(&self, focused: bool) -> Result<(), String> {
         self.send(RemoteComponentEvent::Focus(focused))
+    }
+
+    /// Queues the host's `ui.custom.invalidate` behind the input already queued.
+    pub(crate) fn send_invalidate(&self, count: u64) -> Result<(), String> {
+        self.send(RemoteComponentEvent::Invalidate(count))
     }
 
     /// Queues a `ui.view.event` behind the input already queued.
@@ -719,6 +744,27 @@ fn run_remote_component_worker(worker: RemoteComponentWorker) {
                 // handle's is_focused reads, and the component renders again.
                 overlay.handle_state.lock().unwrap().focused = focused;
                 render_remote_component_frame(&conn, &key, &overlay, width.load(Ordering::Relaxed))
+            }
+            RemoteComponentEvent::Invalidate(count) => {
+                // Pi's TUI.invalidate reached the component (tui.ts:951-954): the theme_change that preceded this on the connection
+                // is applied, the component drops what it kept, and the frame it builds now goes out.
+                let outcome = {
+                    let mut state = overlay.state.lock().unwrap();
+                    crate::diagnostic::recover(|| {
+                        for _ in 0..count {
+                            state.component.invalidate();
+                        }
+                    })
+                };
+                match outcome {
+                    Ok(()) => render_remote_component_frame(
+                        &conn,
+                        &key,
+                        &overlay,
+                        width.load(Ordering::Relaxed),
+                    ),
+                    Err(_) => Err(io::Error::other("focused invalidate panicked")),
+                }
             }
             RemoteComponentEvent::Stop => break,
         };
@@ -8412,5 +8458,98 @@ mod dialog_value_tests {
             (Value::Null, false)
         );
         assert_eq!(dialog_value(&json!({}), "text"), (Value::Null, false));
+    }
+}
+
+#[cfg(test)]
+mod overlay_invalidate_tests {
+    use super::*;
+    use std::io::Read;
+    use std::os::unix::net::UnixStream;
+    use std::sync::atomic::AtomicUsize;
+
+    struct Probe {
+        invalidations: Arc<AtomicUsize>,
+        renders: Arc<AtomicUsize>,
+    }
+
+    impl RemoteComponent for Probe {
+        fn render(&self, _width: u32) -> Vec<String> {
+            self.renders.fetch_add(1, Ordering::SeqCst);
+            vec!["row".to_string()]
+        }
+        fn handle_input(
+            &mut self,
+            _data: &crate::JsString,
+        ) -> Result<RemoteComponentResult, String> {
+            Ok(RemoteComponentResult::pending())
+        }
+        fn invalidate(&mut self) {
+            self.invalidations.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    /// The host's `ui.custom.invalidate` is one event of the component's serial queue. A component that closed while the event
+    /// was queued is not invalidated and not rendered, and nothing is sent: the event is dropped without an error.
+    #[test]
+    fn an_invalidate_queued_for_a_closed_component_is_dropped() {
+        let invalidations = Arc::new(AtomicUsize::new(0));
+        let renders = Arc::new(AtomicUsize::new(0));
+        let (events_tx, events_rx) = sync_channel(64);
+        let overlay: RemoteComponentRef = Arc::new(RemoteOverlay {
+            state: Mutex::new(RemoteComponentState {
+                component: OverlayComponent::Lines(Box::new(Probe {
+                    invalidations: invalidations.clone(),
+                    renders: renders.clone(),
+                })),
+                last_lines: Vec::new(),
+                last_captures: false,
+                last_view: None,
+                seq: 0,
+                last_render: None,
+                layout: None,
+            }),
+            events: events_tx,
+            active: AtomicBool::new(true),
+            render_pending: AtomicBool::new(false),
+            view_refs: Mutex::new(Vec::new()),
+            force_view: AtomicBool::new(false),
+            on_handle: Mutex::new(None),
+            handle_state: Mutex::new(OverlayState::default()),
+        });
+        overlay
+            .send_invalidate(2)
+            .expect("queued while the component is mounted");
+        // The component closed before its worker took the event.
+        overlay.stop();
+        let (stream, mut peer) = UnixStream::pair().unwrap();
+        peer.set_nonblocking(true).unwrap();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        run_remote_component_worker(RemoteComponentWorker {
+            conn: Arc::new(Connection::new(stream)),
+            key: "custom-1".to_string(),
+            overlay: overlay.clone(),
+            width: Arc::new(AtomicU32::new(80)),
+            events: events_rx,
+            done: done_tx,
+            request_parent: None,
+            request_id: String::new(),
+        });
+        done_rx.recv().expect("the worker ended");
+        assert_eq!(
+            invalidations.load(Ordering::SeqCst),
+            0,
+            "no invalidate after the close"
+        );
+        assert_eq!(
+            renders.load(Ordering::SeqCst),
+            0,
+            "no render after the close"
+        );
+        let mut byte = [0u8; 1];
+        assert!(
+            !matches!(peer.read(&mut byte), Ok(read) if read > 0),
+            "nothing is sent for the dropped event"
+        );
     }
 }

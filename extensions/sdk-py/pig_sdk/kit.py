@@ -143,6 +143,9 @@ class _Encoder:
         if not isinstance(node, _Node):
             raise TypeError(f"kit: {node!r} is not a kit node")
         out: dict[str, Any] = {"kind": node.kind}
+        # Every kind may carry an id; the kinds that need one write it with their fields.
+        if node.id:
+            out["id"] = node.id
         out.update(node._fields(self, depth))
         return out
 
@@ -152,6 +155,8 @@ class _Encoder:
 
 class _Node:
     kind = ""
+    #: The node's id: an a11y, focus or drawing record of a mounted view names a node by it. None sends none.
+    id: str | None = None
 
     def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
         raise NotImplementedError
@@ -169,7 +174,8 @@ class Container(_Node):
 
     kind = "container"
 
-    def __init__(self, children: list[Node] | None = None) -> None:
+    def __init__(self, children: list[Node] | None = None, *, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.children: list[Node] = list(children or [])
 
     def add_child(self, child: Node) -> Container:
@@ -187,7 +193,8 @@ class Box(_Node):
 
     kind = "box"
 
-    def __init__(self, padding_x: int = 1, padding_y: int = 1, *, bg: str | None = None, children: list[Node] | None = None) -> None:
+    def __init__(self, padding_x: int = 1, padding_y: int = 1, *, bg: str | None = None, children: list[Node] | None = None, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.padding_x = int(padding_x)
         self.padding_y = int(padding_y)
         self.bg = bg
@@ -210,7 +217,8 @@ class Text(_Node):
 
     kind = "text"
 
-    def __init__(self, text: str = "", padding_x: int = 1, padding_y: int = 1, *, bg: str | None = None) -> None:
+    def __init__(self, text: str = "", padding_x: int = 1, padding_y: int = 1, *, bg: str | None = None, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.text = str(text)
         self.padding_x = int(padding_x)
         self.padding_y = int(padding_y)
@@ -227,7 +235,8 @@ class TruncatedText(_Node):
 
     kind = "truncated-text"
 
-    def __init__(self, text: str, padding_x: int = 0, padding_y: int = 0) -> None:
+    def __init__(self, text: str, padding_x: int = 0, padding_y: int = 0, *, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.text = str(text)
         self.padding_x = int(padding_x)
         self.padding_y = int(padding_y)
@@ -272,7 +281,9 @@ class Markdown(_Node):
         *,
         default_text_style: TextStyle | None = None,
         render_latex: bool | None = None,
+        id: str | None = None,  # noqa: A002 - the wire's name
     ) -> None:
+        self.id = id
         self.text = str(text)
         self.padding_x = int(padding_x)
         self.padding_y = int(padding_y)
@@ -292,7 +303,8 @@ class Spacer(_Node):
 
     kind = "spacer"
 
-    def __init__(self, lines: int = 1) -> None:
+    def __init__(self, lines: int = 1, *, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.lines = int(lines)
 
     def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
@@ -305,7 +317,8 @@ class DynamicBorder(_Node):
 
     kind = "dynamic-border"
 
-    def __init__(self, color: str = "border") -> None:
+    def __init__(self, color: str = "border", *, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.color = str(color)
 
     def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
@@ -455,7 +468,9 @@ class Image(_Node):
         max_height_cells: int | None = None,
         filename: str | None = None,
         fallback_color: str | None = None,
+        id: str | None = None,  # noqa: A002 - the wire's name
     ) -> None:
+        self.id = id
         self._image = _ImageData(data, mime_type)
         self.max_width_cells = max_width_cells
         self.max_height_cells = max_height_cells
@@ -512,7 +527,9 @@ class Loader(_Node):
         message_color: str | None = None,
         indicator: LoaderIndicator | None = None,
         frame: int | None = None,
+        id: str | None = None,  # noqa: A002 - the wire's name
     ) -> None:
+        self.id = id
         self.message = str(message)
         self.spinner_color = spinner_color
         self.message_color = message_color
@@ -552,7 +569,8 @@ class StackEntry:
 
 
 class _Stack(_Node):
-    def __init__(self, children: list[Node | StackEntry] | None = None, *, gap: int | None = None, align: Align | None = None) -> None:
+    def __init__(self, children: list[Node | StackEntry] | None = None, *, gap: int | None = None, align: Align | None = None, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.children: list[Node | StackEntry] = list(children or [])
         self.gap = gap
         self.align = align
@@ -635,7 +653,8 @@ class Lines(_Node):
 
     kind = "lines"
 
-    def __init__(self, content: list[str], *, list: List | None = None) -> None:  # noqa: A002 - the wire's name
+    def __init__(self, content: list[str], *, list: List | None = None, id: str | None = None) -> None:  # noqa: A002 - the wire's names
+        self.id = id
         self.content = [str(line) for line in content]
         self.list = list
         self._image: _ImageData | None = None
@@ -683,7 +702,8 @@ class UserMessage(_Node):
 
     kind = "user-message"
 
-    def __init__(self, text: str, output_pad: int = 1) -> None:
+    def __init__(self, text: str, output_pad: int = 1, *, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.text = str(text)
         self.output_pad = int(output_pad)
 
@@ -1024,7 +1044,8 @@ class Diff(_Node):
 
     kind = "diff"
 
-    def __init__(self, diff: str, *, file_path: str = "", padding_x: int = 0, padding_y: int = 0) -> None:
+    def __init__(self, diff: str, *, file_path: str = "", padding_x: int = 0, padding_y: int = 0, id: str | None = None) -> None:  # noqa: A002 - the wire's name
+        self.id = id
         self.diff = str(diff)
         self.file_path = str(file_path)
         self.padding_x = int(padding_x)

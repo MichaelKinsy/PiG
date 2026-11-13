@@ -26,7 +26,9 @@ type interactiveThemeState struct {
 	currentThemeSetting atomic.Pointer[string]
 	activeThemeName     atomic.Pointer[string]
 	autoSyncEnabled     atomic.Bool
-	output              io.Writer
+	// replaced is the callback Pi's interactive mode registers with onThemeChange (interactive-mode.ts:1147); startThemeWatcher sets it on the main loop.
+	replaced func()
+	output   io.Writer
 	// terminalColors is the last reported colors; a query that times out keeps them instead of erasing them. Owner loop only.
 	terminalColors *tui.TerminalColors
 	// colorQuery is closed when the latest color query completed or timed out and its colors applied. Owner loop only.
@@ -133,12 +135,26 @@ func (theme presentationTheme) applyThemeName(name string, showError bool) error
 		active = tui.SystemThemeName
 	}
 	theme.state.activeThemeName.Store(&active)
+	if err == nil {
+		theme.themeReplaced()
+	}
 	theme.notifyChanged()
 	if err != nil && showError {
 		// The name appears verbatim, without Go quoting or escaping.
 		theme.showError("Failed to load theme \"" + name + "\": " + err.Error() + "\nFell back to the system theme.")
 	}
 	return err
+}
+
+// themeReplaced runs the callback Pi's interactive mode registers with theme.ts onThemeChange (interactive-mode.ts:1147-1151; here
+// startThemeWatcher sets it, and a controller without an interactive mode has none), which
+// setTheme and setThemeInstance call once the theme is replaced (theme.ts:710, 730), before the controller's own invalidation: it
+// invalidates the UI, so a component is told twice per theme set, as an extension's invalidate() counts it. The render that
+// callback requests is the one each caller here requests, and the editor reads its border color from the active theme at render.
+func (theme presentationTheme) themeReplaced() {
+	if replaced := theme.state.replaced; replaced != nil {
+		replaced()
+	}
 }
 
 func (theme presentationTheme) notifyChanged() {
@@ -164,6 +180,7 @@ func (theme presentationTheme) setThemeName(name string, showError bool) error {
 func (theme presentationTheme) setThemeInstance(instance *tui.Theme) {
 	theme.setAutoSync(false)
 	tui.SetThemeInstance(instance)
+	theme.themeReplaced()
 	name := tui.InMemoryThemeName
 	theme.state.activeThemeName.Store(&name)
 	theme.notifyChanged()
@@ -183,6 +200,7 @@ func (theme presentationTheme) previewTheme(setting string) {
 	if err := tui.SetThemeByNameChecked(name, true); err != nil {
 		return
 	}
+	theme.themeReplaced()
 	if ui := theme.renderer(); ui != nil {
 		ui.Invalidate()
 		ui.RequestRender()

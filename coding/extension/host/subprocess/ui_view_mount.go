@@ -37,6 +37,24 @@ func (b *UIBridge) SetClientAbilities(a *uiview.ClientAbilities) *uiview.Error {
 // ViewsSessionReplaced ends every mount, as the session they belong to was replaced.
 func (b *UIBridge) ViewsSessionReplaced() { b.views.Break("", uiview.ReasonSessionReplaced) }
 
+// SupersedeViews ends every mount of the named extensions as broken with reason owner_gone: a reload replaces their
+// instances, and a mount belongs to the instance that made it, as Pi's reload removes everything an extension drew
+// before the extensions load again (interactive-mode.ts handleReloadCommand, resetExtensionUI). The host calls it
+// before a replacement starts, so the instance that follows mounts its keys under a new epoch. The connection of an
+// instance that is being replaced mounts nothing more: a mount made after this point would outlive its instance.
+func (b *UIBridge) SupersedeViews(extNames []string) {
+	b.mu.Lock()
+	for _, name := range extNames {
+		if conn := b.extConns[name]; conn != nil {
+			b.viewSuperseded[conn] = struct{}{}
+		}
+	}
+	b.mu.Unlock()
+	for _, name := range extNames {
+		b.views.Break(name, uiview.ReasonOwnerGone)
+	}
+}
+
 // ViewsShutdown ends every mount, as the host is shutting down.
 func (b *UIBridge) ViewsShutdown() { b.views.Break("", uiview.ReasonShutdown) }
 
@@ -123,7 +141,7 @@ func (b *UIBridge) answeringTicket(extName string, call *CallPayload) string {
 	return s
 }
 
-func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResultPayload, error) {
+func (b *UIBridge) handleViewCall(extName string, owner *Conn, call *CallPayload) (*CallResultPayload, error) {
 	// pig additive (D614): the plugin name chord is the host's; an extension of that name mounts nothing.
 	if extName == reservedViewPlugin {
 		return viewError(&uiview.Error{Code: uiview.CodeInvalid, Message: "the plugin name " + reservedViewPlugin + " is reserved for the host"})
@@ -136,6 +154,12 @@ func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResul
 		a, err := uiview.DecodeMount(call.Args)
 		if err != nil {
 			return viewError(err)
+		}
+		b.mu.RLock()
+		_, superseded := b.viewSuperseded[owner]
+		b.mu.RUnlock()
+		if superseded {
+			return viewError(&uiview.Error{Code: uiview.CodeTerminal, Message: "a reload is replacing this instance of the extension: it mounts nothing more"})
 		}
 		a.Answering = b.answeringTicket(extName, call)
 		if gerr := checkMountGrids(&a.Content); gerr != nil {
