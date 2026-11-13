@@ -161,6 +161,7 @@ func (w *dialogAnswerTap) answered() [][]string {
 	return out
 }
 
+// mutation-checked: without supersedeGenerations in Host.Reload node-packed gets no answer, for the select in flight either (the host drops the calls its prompt handlers make), and node-isolated is served; with every generation superseded, as in bf60a5312160, the packed Go, Python and Rust rows fail after the reload: the cell's replacement did not load.
 func TestConformance_CallsOfAGenerationAReloadReplacesAgreeAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")

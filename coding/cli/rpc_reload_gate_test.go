@@ -3,6 +3,7 @@ package cli
 import "testing"
 
 // Pi's session.reload() awaits session_shutdown, the loaders, session_start and resources_discover in one chain, and the command that awaited ctx.reload() goes on in the microtasks of its end (agent-session.ts:3815-3861, rpc-mode.ts:345-347), so its loop reads no stdin line inside the chain unless a handler of it waits on a timer or I/O. The gate holds input from the reload's start to the end of its hold, and admits it only while such a handler waits.
+// mutation-checked: with rpcSettleGate.openLocked ignoring the reloads the gate holds, input is admitted while a reload runs.
 func TestRPCSettleGateHoldsInputThroughAReload(t *testing.T) {
 	g := &rpcSettleGate{}
 	report := g.tailHandlerReporter()
