@@ -68,8 +68,12 @@ type viewSurface struct {
 	mouseTarget   *tui.TuiMouseDispatchTarget
 	mouseReleased bool
 	loaderGen     uint64
-	// loaderTimers counts the surface's armed loader timers.
-	loaderTimers int
+	// draws counts the times the surface was drawn (Render, FrontendView). A loader is animated while its surface is drawn: its timer is
+	// armed again only when the surface was drawn since it was armed. loadersParked is set when a timer ended because nothing had drawn
+	// the surface, and the next draw starts the loaders again. loaderTimers counts the surface's armed loader timers.
+	draws         uint64
+	loadersParked bool
+	loaderTimers  int
 	// cardChanged reports that a tool card drew again on its own since the
 	// surface last counted a revision.
 	cardChanged atomic.Bool
@@ -270,6 +274,7 @@ func (s *viewSurface) Render(width int) []string {
 	if f.lines != nil {
 		return slices.Clone(f.lines)
 	}
+	s.drawnLocked()
 	if s.cardChanged.Swap(false) {
 		s.rev++
 	}
@@ -418,6 +423,7 @@ func (s *viewSurface) FrontendView(width int) *frontend.View {
 		return nil
 	}
 	if f.lines == nil {
+		s.drawnLocked()
 		if s.cardChanged.Swap(false) {
 			s.rev++
 		}
@@ -1135,9 +1141,11 @@ func (b *viewBuilder) loader(n *ViewNode, out *frontend.ViewNode) tui.Component 
 }
 
 // startLoadersLocked animates the frame's loaders (host-owned, §4.4): one
-// owned timer per loader, stopped by the next frame or close.
+// owned timer per loader, stopped by the next frame or close, and not armed
+// again once nothing draws the surface (scheduleLoaderLocked).
 func (s *viewSurface) startLoadersLocked() {
 	s.loaderGen++
+	s.loadersParked = false
 	if s.frame == nil || s.frame.lines != nil || !viewLoaderAnimation.Load() {
 		return
 	}
@@ -1146,26 +1154,47 @@ func (s *viewSurface) startLoadersLocked() {
 		if len(l.loader.Frames) <= 1 {
 			continue
 		}
-		s.loaderTimers++
-		s.scheduleLoader(gen, l)
+		s.scheduleLoaderLocked(gen, l)
 	}
 }
 
-func (s *viewSurface) scheduleLoader(gen uint64, l *viewLoader) {
+// drawnLocked counts a draw of the surface and starts the loaders that stopped because nothing drew it. They start before the draw is
+// counted, so their first tick sees it. s.mu is held.
+func (s *viewSurface) drawnLocked() {
+	if s.loadersParked {
+		s.startLoadersLocked()
+	}
+	s.draws++
+}
+
+// scheduleLoaderLocked arms one tick of a loader. The tick advances the loader, asks for a repaint and arms the next tick, but only when
+// the surface was drawn since this one was armed: a surface has no owner that closes it when the component that shows it leaves the
+// screen (a renderer's view goes with its transcript component, which a rebuilt transcript drops without a call), and a timer that armed
+// itself for ever kept the dropped view, its repaint callback and its connection, one for every time the transcript was rebuilt. A
+// surface that is drawn asks for the next draw with every tick, so its loaders run on; one that nothing draws has no timer after one
+// interval, and drawing it again starts them (drawnLocked). s.mu is held.
+func (s *viewSurface) scheduleLoaderLocked(gen uint64, l *viewLoader) {
+	drawn := s.draws
+	s.loaderTimers++
 	time.AfterFunc(l.interval, func() {
 		s.mu.Lock()
+		s.loaderTimers--
 		if s.closed || s.loaderGen != gen {
-			s.loaderTimers--
+			s.mu.Unlock()
+			return
+		}
+		if s.draws == drawn {
+			s.loadersParked = true
 			s.mu.Unlock()
 			return
 		}
 		l.loader.Tick()
 		s.rev++
 		repaint := s.repaint
+		s.scheduleLoaderLocked(gen, l)
 		s.mu.Unlock()
 		if repaint != nil {
 			repaint()
 		}
-		s.scheduleLoader(gen, l)
 	})
 }
