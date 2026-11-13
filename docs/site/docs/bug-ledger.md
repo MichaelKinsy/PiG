@@ -1423,6 +1423,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa48a25](#bf-aa48a25) | A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
+| [BF-aa954ac](#bf-aa954ac) | `--model <provider>/<id>` with an id the catalog does not know, under a provider an extension registers with… | PiG's own defect | All platforms | Unreleased |
 | [BF-aabd300](#bf-aabd300) | An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab0ee71](#bf-ab0ee71) | Hiding an overlay whose preFocus is another overlay, such as a panel focused when the overlay was shown over… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab1d070](#bf-ab1d070) | A durable code mode script's journal now records the calls a script had issued after a batch of results in… | PiG's own defect | All platforms | 0.7.0 |
@@ -21550,6 +21551,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8cc072521` (2026-10-08), `056bbfb74e` (2026-10-09), `2c04c1445a` (2026-10-09), `aa69959a64` (2026-10-09), `da99854d1b` (2026-10-09)
 - **Tests:** `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`, `internal/evals/report_oracle_test.go::TestEvalReportMatchesPiOnSeededDesigns`, `tui/fuzzy_oracle_test.go::TestFuzzyMatchesPiOnSeededProbes`, `tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput` and 2 more in docs/bug-ledger.json
 - **Release note:** Key matching follows Pi for more terminal inputs and key identifiers. Unmodified `enter` and `tab` no longer match an xterm modifyOtherKeys sequence. A sequence number with a sign (`ESC [ 1 ; +5 A`) or an event field with no digits (`ESC [ 1 ; 5 : A`) is no longer read as a key. Modifier and codepoint numbers are read as JavaScript numbers, so very large values wrap and round as in Pi. A key identifier part that names no modifier, such as `meta` in `meta+a`, is ignored as in Pi instead of making the identifier match nothing, and identifiers are lowercased as JavaScript's `toLowerCase` does.
+
+### BF-aa954ac
+
+**`--model <provider>/<id>` with an id the catalog does not know, under a provider an extension registers with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `--model <provider>/<id>` with an id the catalog does not know, under a provider an extension registers with its own models or a provider `models.json` defines, started with none of the provider's model data.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `aa954ac08f` (2026-11-13), `e261af0cdc` (2026-11-13)
+- **Tests:** `coding/cli/custom_model_fallback_rpc_test.go::TestRPCCustomModelIDKeepsTheProvidersLimitsCostAndCompat`, `coding/cli/custom_model_fallback_test.go::TestStartupCustomModelIDIsACopyOfTheProvidersModel`, `internal/codingagent/model_registry_fallback_test.go::TestResolveFallbackModelKeepsTheModelAndResolvesTheProvidersConnection`, `test/parity/scenarios/model-resolver-selector/31-custom-model-id-extension-provider-print.toml`
+- **Release note:** `--model <provider>/<id>` with an id the catalog does not know, under a provider an extension registers with its own models or a provider `models.json` defines, started with none of the provider's model data. The footer showed a context window of 0 (`0.0%/0`), the turn cost nothing, images were not accepted and the provider's compat flags were ignored; the request the provider received asked for almost no output (`max_completion_tokens: 1` on openai-completions, `max_output_tokens: 16` on openai-responses, where Pi sends the model's limit) and addressed a reasoning model with a developer message even where the provider declares `supportsDeveloperRole: false`. In print mode a reply cut short for length then ended with exit status 1 and the partial answer on stdout, where Pi recovers and ends with status 0. Under a built-in provider whose default model `models.json` overrides, the id took the catalog's values instead of the overridden ones. As in Pi, such an id now starts as a copy of the provider's default model, or its first model, under that id: its window, output limit, prices, input kinds and compat flags, with the provider's own request headers. Present since 0.7.0.
 
 ### BF-aabd300
 

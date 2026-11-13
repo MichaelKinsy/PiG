@@ -38943,6 +38943,35 @@
       ]
     },
     {
+      "id": "BF-aa954ac",
+      "title": "`--model \u003cprovider\u003e/\u003cid\u003e` with an id the catalog does not know, under a provider an extension registers with…",
+      "symptom": "`--model \u003cprovider\u003e/\u003cid\u003e` with an id the catalog does not know, under a provider an extension registers with its own models or a provider `models.json` defines, started with none of the provider's model data.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`--model \u003cprovider\u003e/\u003cid\u003e` with an id the catalog does not know, under a provider an extension registers with its own models or a provider `models.json` defines, started with none of the provider's model data. The footer showed a context window of 0 (`0.0%/0`), the turn cost nothing, images were not accepted and the provider's compat flags were ignored; the request the provider received asked for almost no output (`max_completion_tokens: 1` on openai-completions, `max_output_tokens: 16` on openai-responses, where Pi sends the model's limit) and addressed a reasoning model with a developer message even where the provider declares `supportsDeveloperRole: false`. In print mode a reply cut short for length then ended with exit status 1 and the partial answer on stdout, where Pi recovers and ends with status 0. Under a built-in provider whose default model `models.json` overrides, the id took the catalog's values instead of the overridden ones. As in Pi, such an id now starts as a copy of the provider's default model, or its first model, under that id: its window, output limit, prices, input kinds and compat flags, with the provider's own request headers. Present since 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aa954ac08f",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e261af0cdc",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/custom_model_fallback_rpc_test.go::TestRPCCustomModelIDKeepsTheProvidersLimitsCostAndCompat",
+        "coding/cli/custom_model_fallback_test.go::TestStartupCustomModelIDIsACopyOfTheProvidersModel",
+        "internal/codingagent/model_registry_fallback_test.go::TestResolveFallbackModelKeepsTheModelAndResolvesTheProvidersConnection",
+        "test/parity/scenarios/model-resolver-selector/31-custom-model-id-extension-provider-print.toml"
+      ]
+    },
+    {
       "id": "BF-aabd300",
       "title": "An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or…",
       "symptom": "An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or array is skipped as Pi skips it, instead of ending the reply with a decode error; a null Responses event fails with Pi's TypeError message.",
