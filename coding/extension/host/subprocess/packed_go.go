@@ -952,6 +952,9 @@ func (h *Host) watchPackedProcess(process *packedProcessState) {
 		}
 		<-exited
 	}
+	if h.deathGate != nil {
+		defer h.deathGate(deathSeenByWatcher, process.key)()
+	}
 	err := process.exitErr()
 	if process.stopping.Load() || h.shuttingDown.Load() || (process.parent != nil && process.parent.Err() != nil) {
 		return

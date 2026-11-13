@@ -494,6 +494,8 @@ type Host struct {
 
 	// acceptGate is a test seam over an extension's Accept (acceptGateFunc). Production leaves it nil.
 	acceptGate acceptGateFunc
+	// deathGate is a test seam over the two observations of a process's end (deathGateFunc). Production leaves it nil.
+	deathGate deathGateFunc
 
 	runtimeDrainHandler func()
 	// runtimeDrains holds, per Node process and report, the connections that reported it. Guarded by h.mu.
@@ -5004,6 +5006,9 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	}
 
 	// Connection closed: extension exited.
+	if h.deathGate != nil {
+		defer h.deathGate(deathSeenByConnection, me.config.Name)()
+	}
 	// Only record a crash if this wasn't a graceful shutdown (of this
 	// extension or the whole host).
 	if me.shuttingDown.Load() || h.shuttingDown.Load() {
@@ -5120,6 +5125,19 @@ func (h *Host) awaitClosedProcess(me *managedExt) {
 		<-exited
 	}
 }
+
+// deathGateFunc lets a test order the two ways the end of a packed process reaches the host, which a loaded machine orders either way: each member's connection
+// loop sees its connection close (deathSeenByConnection, with the member's name) and the process's watcher sees the process reaped (deathSeenByWatcher, with the
+// cell's key). Each calls the gate before it acts on what it saw, and calls the function the gate returned once it has acted. An isolated extension's process is
+// seen by its connection loop alone.
+type deathGateFunc func(seenBy deathObserver, name string) (acted func())
+
+type deathObserver string
+
+const (
+	deathSeenByConnection deathObserver = "connection"
+	deathSeenByWatcher    deathObserver = "watcher"
+)
 
 // sharedProcessEnded reports whether the native process a packed member shares ended within the heartbeat deadline that bounds how long a process may outlive a
 // closed connection (D56), after one of its members' connections closed. It never stops the process, which serves the other members: one that is still running

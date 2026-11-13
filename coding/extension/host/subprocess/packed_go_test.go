@@ -402,11 +402,13 @@ func TestHost_ReloadSupersededNativePackedProcessExitIsStale(t *testing.T) {
 
 // TestHost_KillingPackedProcessNeverClaimsItRemainedAlive is the direct
 // regression test for ATTACK-POINTS #5: killing a real packed Go process
-// used to race two notice paths (each member's own connection-close handler
-// vs. watchPackedProcess), and whichever member's handler won the race
-// falsely reported "packed member connection closed while shared process
-// remained alive" even though the whole process had just been killed. It
-// also covers #9: the notice must surface the packed cell's stderr log path.
+// reaches the host as each member's closed connection and as the process's
+// exit, and a member whose connection handler came first was reported with
+// "packed member connection closed while shared process remained alive"
+// even though the whole process had just been killed. The end of the process
+// is its watcher's to report: each member's notice is the quarantine notice
+// that names both. It also covers #9: the notice must surface the packed
+// cell's stderr log path.
 func TestHost_KillingPackedProcessNeverClaimsItRemainedAlive(t *testing.T) {
 	rootA := writePackedFactoryModule(t, "example.com/killpack/a", "kill-a", "tool_a")
 	rootB := writePackedFactoryModule(t, "example.com/killpack/b", "kill-b", "tool_b")
@@ -461,32 +463,12 @@ func TestHost_KillingPackedProcessNeverClaimsItRemainedAlive(t *testing.T) {
 	if len(reasons) != 2 {
 		t.Fatalf("crash notices = %#v, want notices for both kill-a and kill-b", reasons)
 	}
-	// Which of the two racing detectors (this member's own connection-close
-	// handler, or watchPackedProcess reaping the killed process) reaches a
-	// given member first is nondeterministic. A member's notice is therefore
-	// either the plain connection-close form, a quarantine notice naming all
-	// members still attached when the process exit is observed, or (when the
-	// sibling handler removed itself first) a quarantine notice naming only
-	// this remaining member. Every form is accurate about what that detector
-	// stopped. What must never appear is the ATTACK-POINTS #5 lie that the
-	// shared process "remained alive".
-	logSuffix := "(stderr: " + stderrLogPath + ")"
+	// A member's connection handler waits for the process and leaves its end to the watcher, so no member is reported with the plain
+	// connection-closed notice, whichever of the two the host saw first (TestProcessDeathIsReportedOnceInEitherOrder orders them).
+	want := "packed process exited: signal: killed; kill-a, kill-b stopped; /reload restarts them (stderr: " + stderrLogPath + ")"
 	for name, reason := range reasons {
-		if strings.Contains(reason, "remained alive") {
-			t.Fatalf("%s crash reason falsely claims the shared process remained alive: %q", name, reason)
-		}
-		if !strings.HasSuffix(reason, logSuffix) {
-			t.Fatalf("%s crash reason %q does not surface the stderr log path %q", name, reason, stderrLogPath)
-		}
-		// Native packed members are not restarted automatically, so every notice names the recovery: the user sees only whichever detector won.
-		if !strings.Contains(reason, "/reload restarts") {
-			t.Fatalf("%s crash reason %q does not say that /reload restarts the stopped extension", name, reason)
-		}
-		plain := "packed member connection closed; /reload restarts it " + logSuffix
-		quarantined := strings.Contains(reason, "/reload restarts them") &&
-			(strings.Contains(reason, "kill-a, kill-b stopped") || strings.Contains(reason, name+" stopped"))
-		if reason != plain && !quarantined {
-			t.Fatalf("%s crash reason %q is neither the plain connection-closed notice nor an accurate quarantine notice", name, reason)
+		if reason != want {
+			t.Fatalf("%s crash reason = %q, want %q", name, reason, want)
 		}
 	}
 }
