@@ -1,12 +1,12 @@
 package subprocess
 
 import (
-	"runtime"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // pig additive (D614): a client that attaches changes the abilities every extension reads, and the bridge pushes them
@@ -15,7 +15,7 @@ import (
 func TestStatePushWorkerEndsWhenIdle(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		b := NewUIBridge(func() {})
-		before := runtime.NumGoroutine()
+		before := testenv.LiveGoroutines()
 		var pushes atomic.Int32
 		b.OnStateChanged = func() { pushes.Add(1) }
 		abilities := uiview.ClientAbilities{
@@ -29,7 +29,7 @@ func TestStatePushWorkerEndsWhenIdle(t *testing.T) {
 		if n := pushes.Load(); n != 1 {
 			t.Fatalf("attaching a client pushed the state %d times, want 1", n)
 		}
-		if n := runtime.NumGoroutine() - before; n != 0 {
+		if n := testenv.LiveGoroutines() - before; n != 0 {
 			t.Fatalf("after the push the bridge holds %d goroutine(s)", n)
 		}
 		b.SetFrontend(true)

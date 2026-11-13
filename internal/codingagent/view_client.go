@@ -85,7 +85,7 @@ func viewSlotOf(slot uiview.Slot) *viewSlot {
 // that does not drain them before the registry's gap rule applies.
 var terminalViewLimits = uiview.Limits{Nodes: 512, Depth: 16, SnapshotBytes: 262144, TextBytes: 65536, Mounts: 16, IntentArgBytes: 4096}
 
-const viewQueueLimit = 64
+const viewQueueLimit = 64 // pig additive (D614): deliveries the client keeps for a loop that does not drain them
 
 // pig additive (D614): the key that moves the keyboard focus to the next focusable panel and, after the last, back to the
 // editor. It is not a keybinding id: Pi's keybinding table has no row for it.
@@ -550,7 +550,7 @@ func intentArgument(shape uiview.Shape, value *string, item string) (json.RawMes
 			return nil, false
 		}
 	}
-	arg, err := json.Marshal(members)
+	arg, err := json.Marshal(members) //portlint:allow mapkeyorder pig additive (D614), no Pi counterpart: the argument has at most the members item and value, and the registry and the extension read it as an object
 	return arg, err == nil
 }
 
