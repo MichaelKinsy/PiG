@@ -23,7 +23,8 @@ const deadTerminalShutdownBound = time.Second
 const deadTerminalHandlerWait = 50 * time.Millisecond
 
 // deadTerminalProbeExtension is the Node fixture; testdata/dead-terminal/deadterm is the same extension on the Go SDK, and
-// deadTerminalRustExtension and deadTerminalLispExtension are it on the Rust and Lisp SDKs. Each
+// deadTerminalPythonExtension, deadTerminalRustExtension and deadTerminalLispExtension are it on the Python, Rust and Lisp
+// SDKs. Each
 // appends "ready pid=<its process>" at session_start and, at session_shutdown, the reason before and after a wait of
 // PIG_DEAD_TERMINAL_WAIT_MS that the host has to sit through, to the file PIG_DEAD_TERMINAL_MARKER names.
 const deadTerminalProbeExtension = `import { appendFileSync } from "node:fs";
@@ -36,6 +37,34 @@ export default function (pi) {
     mark("session_shutdown settled reason=" + event.reason);
   });
 }
+`
+
+const deadTerminalPythonExtension = `import os
+import time
+
+import pig_sdk
+
+
+def mark(line):
+    with open(os.environ["PIG_DEAD_TERMINAL_MARKER"], "a") as marker:
+        marker.write(line + "\n")
+
+
+def new_extension() -> pig_sdk.Extension:
+    ext = pig_sdk.Extension("deadterm_py")
+
+    def started(ctx, data):
+        mark(f"ready pid={os.getpid()}")
+
+    def shutdown(ctx, data):
+        reason = data.get("reason", "")
+        mark(f"session_shutdown reason={reason}")
+        time.sleep(int(os.environ["PIG_DEAD_TERMINAL_WAIT_MS"]) / 1000)
+        mark(f"session_shutdown settled reason={reason}")
+
+    ext.on_event("session_start", started)
+    ext.on_event("session_shutdown", shutdown)
+    return ext
 `
 
 const deadTerminalRustCargo = `[package]
@@ -160,7 +189,7 @@ type deadTerminalSession struct {
 // as an exact standalone, which is always an isolated process; and the factory fused into a Piglet Binary, where it runs
 // in the pig process. Each runs under an interactive shell, which dies of the hangup as a user's does, and under a shell
 // that ignores SIGHUP and records pig's exit status, idle and with a turn in flight (the faux provider's bash call that
-// sleeps). The Rust and Lisp rows are the factory of each SDK in its packed cell, idle under the shell that records the
+// sleeps). The Python, Rust and Lisp rows are the factory of each SDK in its packed cell, idle under the shell that records the
 // status: the event reaches every SDK through the same emission, so one setup shows that the SDK's handler is awaited.
 // No process of the session, and no extension process, is left behind.
 func TestDeadTerminalEmitsSessionShutdownToExtensions(t *testing.T) {
@@ -195,6 +224,10 @@ func TestDeadTerminalEmitsSessionShutdownToExtensions(t *testing.T) {
 		}},
 		// The Piglet Binary registers the extension in the pig process itself.
 		{name: "go fused", members: 1, fused: true, args: func(string) []string { return nil }},
+		// The file is named after the identity the factory registers.
+		{name: "python packed", members: 1, cell: "python", idleOnly: true, args: func(dir string) []string {
+			return []string{"-e", writeDeadTerminalFile(t, dir, "deadterm_py.py", deadTerminalPythonExtension)}
+		}},
 		{name: "rust packed", members: 1, cell: "rust", idleOnly: true, args: func(dir string) []string {
 			writeDeadTerminalFile(t, dir, "deadterm-rs/Cargo.toml", deadTerminalRustCargo)
 			return []string{"-e", filepath.Dir(filepath.Dir(writeDeadTerminalFile(t, dir, "deadterm-rs/src/lib.rs", deadTerminalRustExtension)))}
