@@ -990,6 +990,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-7838047](#bf-7838047) | `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or… | PiG's own defect | All platforms | Unreleased |
 | [BF-787c354](#bf-787c354) | Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on… | PiG's own defect | All platforms | Unreleased |
 | [BF-78c4c6c](#bf-78c4c6c) | `pig piglet add` now names the offending bundled path and where it came from (for example `Package herdr… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-78f1007](#bf-78f1007) | The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before… | PiG's own defect | All platforms | 0.7.0 |
@@ -1255,6 +1256,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9515bcb](#bf-9515bcb) | Code mode: a deterministic run's clocks round like `Math.round` (0.49999999999999994 ms read 1 ms), and a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-951b35a](#bf-951b35a) | The pi-env daemon no longer loses the end of a program's output when the program exits while the link is… | PiG's own defect | All platforms | Unreleased |
 | [BF-958e80d](#bf-958e80d) | A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-959646e](#bf-959646e) | Kitty and iTerm2 images no longer cover an overlay drawn over them | PiG's own defect | All platforms | Unreleased |
 | [BF-959a66e](#bf-959a66e) | fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no… | PiG's own defect | All platforms | Unreleased |
 | [BF-95a5f79](#bf-95a5f79) | RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-95db124](#bf-95db124) | A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of… | PiG's own defect | All platforms | Unreleased |
@@ -15501,6 +15503,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as Pi's do (the `additionalProperties`, `propertyNames` and `unevaluatedProperties` lists and the order of the errors); they came out in sorted key order.
 
+### BF-7838047
+
+**`/resume` no longer selects an unrelated session while its list reloads after a session is deleted or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or renamed: the selected session stays selected through the partial lists of the reload.
+- **Root cause:** After a delete or a rename the picker reloads its list progressively, and the first partial list holds only the session that finished loading first. A touched selection that is missing from a partial list is now kept as the target (pendingSelectedPath) and selected again once it arrives, instead of becoming whichever session the clamped index points to. A complete list ends the wait, and so does a key that moves the selection or types a search; the scope toggle waits while the scope it switches to is loading or not yet loaded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7838047e30` (2026-11-12)
+- **Tests:** `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheReloadAfterADelete`, `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestSessionSelectorKeepsTheSelectedSessionWhenTheScopeToggledToHasNotLoadedYet`, `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestSessionSelectorMovingOrSearchingDuringAProgressiveReloadGivesUpTheAwaitedSession`, `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestUpstreamSessionSelectorKeepsTheNextSessionSelectedWhenAProgressiveReloadAfterDeleteStartsWithAnotherSession`, `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession`
+- **Release note:** `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or renamed: the selected session stays selected through the partial lists of the reload.
+
 ### BF-787c354
 
 **Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on…**
@@ -19181,6 +19197,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4935bcbfcc` (2026-10-25), `958e80d99f` (2026-10-25)
 - **Tests:** `ai/tool_call_nonfinite_test.go::FuzzToolArgumentNumberLiterals`, `ai/tool_call_nonfinite_test.go::TestCellPublishesNonFiniteArguments`, `ai/tool_call_nonfinite_test.go::TestNonFiniteArgumentsAreValidCloneAndSerializeAsStringify`, `ai/tool_call_nonfinite_test.go::TestNonFiniteArgumentsDoNotExcuseOtherFaults`, `ai/tool_call_nonfinite_test.go::TestStreamedNonFiniteArgumentsDoNotPanic`, `ai/tool_call_nonfinite_test.go::TestStreamedNonFiniteArgumentsMatchPi`, `ai/transcript_frozen_test.go::TestFrozenContextStillValidatesAndStillCopiesTheCallersTools`, `ai/transcript_test.go::TestNormalizeContextAcceptsNonFiniteToolArguments` and 3 more in docs/bug-ledger.json
 - **Release note:** A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session with a panic (`clone validated JSON value: json: unsupported value: +Inf`). Pi reads such a number as an infinity, keeps it in the call's arguments, and writes `null` wherever it serializes them (events, the session file, requests); PiG now does the same, for a streamed argument text, a tool call a Go caller or the faux provider supplies, and an Anthropic `content_block_start` input, which used to end the turn with a decode error.
+
+### BF-959646e
+
+**Kitty and iTerm2 images no longer cover an overlay drawn over them**
+
+- **Source:** PiG's own defect
+- **Symptom:** Kitty and iTerm2 images no longer cover an overlay drawn over them.
+- **Root cause:** An image under an overlay left a hole in it, and a Kitty image also covered the overlay's text on the rows below its image line. While the overlays are composited back to front, hideImagesUnderOverlay now removes from the frame's lines every image placement an overlay overlaps by row and by column; the renderers' change detection deletes the image and draws it again once the overlay no longer covers it. An image beside an overlay stays. Ports getImageLineExtent and stripImageSequences of packages/tui/src/terminal-image.ts, hideImagesUnderOverlay of packages/tui/src/tui.ts and the nine cases of packages/tui/test/overlay-terminal-image.test.ts; each frame of a case must equal the bytes Pi…
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `959646e66a` (2026-11-12)
+- **Tests:** `tui/image_line_extent_oracle_test.go::TestImageLineExtentAndStripMatchPi`, `tui/main_screen_oracle_test.go::TestMainScreenFramesMatchPiOracle`, `tui/overlay_terminal_image_upstream_test.go::TestFullscreenOverlayKeepsAnImageBesideItThatSharesItsRows`, `tui/overlay_terminal_image_upstream_test.go::TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem`, `tui/overlay_terminal_image_upstream_test.go::TestGetImageLineExtentReadsTheCellsAnImageLineCovers`, `tui/overlay_terminal_image_upstream_test.go::TestLaterOverlayHidesAnImageInsideAnEarlierOverlay`, `tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAKittyImageWhoseLineIsAboveTheViewport`, `tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAnITerm2ImageWhenItCoversRowsAboveItsImageLine` and 5 more in docs/bug-ledger.json
+- **Release note:** Kitty and iTerm2 images no longer cover an overlay drawn over them. An image that an overlay overlaps by row and column is removed while the overlay is open and drawn again when it closes, on the main screen and in fullscreen mode; an image beside an overlay, such as a sidebar, stays visible.
 
 ### BF-959a66e
 

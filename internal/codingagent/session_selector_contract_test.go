@@ -153,6 +153,7 @@ func sessionContractFixtures() map[string][2][]sessionOracleInfo {
 		"one":           {small[:1], small[:1]},
 		"empty":         {{}, {}},
 		"empty-current": {{}, all},
+		"disjoint":      {ages, text},
 	}
 }
 
@@ -457,7 +458,12 @@ func sessionListInputCases() []sessionContractCase {
 		{name: "tab/lists-the-all-scope-after-an-empty-current-scope", fixture: "empty-current", keys: []string{skTab}, check: sessionWantRows(10)},
 		{name: "tab/empty-everywhere-says-so", fixture: "empty", keys: []string{skTab}, check: sessionWantContains("No sessions found")},
 		{name: "tab/untouched-selection-restarts-at-the-first-row", fixture: "big", keys: []string{skTab}, check: sessionWantSelected("message number 21")},
-		{name: "tab/touched-selection-is-lost-while-the-other-scope-is-still-loading", fixture: "big", keys: []string{recent, skDown, skDown, skTab}, check: sessionWantSelected("message number 0 ")},
+		// session-selector.ts:1048 (Pi a635f3901): toggleScope passes partial while the scope it switches to has not loaded, so the touched selection is awaited
+		// and selected again when its session arrives; before, the selection restarted at the first row.
+		{name: "tab/touched-selection-follows-its-session-into-a-scope-that-is-still-loading", fixture: "big", keys: []string{recent, skDown, skDown, skTab}, check: sessionWantSelected("message number 2 ")},
+		// session-selector.ts:376 (Pi a635f3901): a complete list without the awaited session ends the wait. The all scope of this fixture holds none of the
+		// current scope's sessions; back in the current scope the selection is the first row, not the session awaited before.
+		{name: "tab/a-complete-list-without-the-awaited-session-ends-the-wait", fixture: "disjoint", keys: []string{recent, skDown, skDown, skTab, skTab}, check: sessionWantSelected("age row 0")},
 		{name: "tab/touched-selection-follows-its-session-into-a-loaded-scope", fixture: "big", keys: []string{skTab, skDown, skDown, skDown, skTab}, check: func(t *testing.T, tr sessionContractTrace) {
 			t.Helper()
 			before, after := sessionMessage.FindString(sessionSelected(tr.Frames[len(tr.Frames)-2])), sessionMessage.FindString(sessionSelected(tr.last()))

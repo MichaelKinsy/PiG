@@ -1,0 +1,30 @@
+from = "1.5.2+787005a4"
+to = "1.5.2+a635f390"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestUpstreamSessionSelectorKeepsTheNextSessionSelectedWhenAProgressiveReloadAfterDeleteStartsWithAnotherSession", "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession", "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheReloadAfterADelete", "test:internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi", "test:internal/codingagent/session_selector_contract_test.go#TestSessionListHandleInputContractsMatchPi"]
+rationale = "a635f3901 (#12111, issue #12106): SessionList.setSessions takes `partial`. A touched selection is kept by session path; when that path is missing from a partial list (more sessions are still loading) it stays the target (pendingSelectedPath) and is selected again once it arrives, instead of the selection becoming whichever session the clamped index points to. A complete list clears the target, and so does any key that reaches the list's selection or search handling. The progress callback passes partial = true, the scope toggle passes it while the new scope is loading or not yet loaded, and the delete, the settled load and the failed load pass a complete list. PiG's picker reloads progressively through the same SessionListProgress (SessionManager listings publish the file that finished first), so the same rule applies: refilterLoadedSessions (internal/codingagent/session_selector_load.go) is setSessions with the flag, and the third test runs it over the real listing the interactive /resume uses. automation/gen/pi-post-release-backports.mjs applies the same change to pi-coding-agent's compiled session-selector.js, so the vendored runtime and the selector oracles (session_selector_oracle_test.go, random key sequences against Pi's component; session_selector_contract_test.go) carry it. The contract case that pinned the old toggle (`tab/touched-selection-is-lost-while-the-other-scope-is-still-loading`, first row selected) is now `tab/touched-selection-follows-its-session-into-a-scope-that-is-still-loading`, as Pi's toggleScope behaves since this commit."
+
+[[files]]
+path = "packages/coding-agent/test/session-selector-path-delete.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestUpstreamSessionSelectorKeepsTheNextSessionSelectedWhenAProgressiveReloadAfterDeleteStartsWithAnotherSession"]
+rationale = "a635f3901: adds the case at :359 (sha256 abf76fa56532f56a1e9b46d8b8075f27cc06fc546e7f4cc8e637e3473152e5a9 after the change). Ported with five real files, the delete of the first one and the loader whose first partial list holds only the oldest remaining session."
+
+[[files]]
+path = "packages/coding-agent/test/session-selector-rename.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession"]
+rationale = "a635f3901: adds the case at :112 (sha256 af451f1ffd1e91ff687d1f286e7582e42a29c1b5e8bfc42da797ee9916807ad4 after the change). Ported with the rename of the third session and the reload whose first partial list holds only the fifth."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "a635f3901: Pi's coding-agent changelog entry for #12106. PiG's user-visible change is its own changelog.d fragment."

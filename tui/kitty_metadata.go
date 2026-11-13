@@ -121,6 +121,9 @@ func getRegisteredKittyImageMetadata(line string) (registeredKittyImageMetadata,
 	return getRegisteredKittyImageMetadataFromControls(controls[1])
 }
 
+// kittyImageColumnsPattern extracts c=<digits> from a Kitty control string.
+var kittyImageColumnsPattern = lazyregexp.New(`(?:^|,)c=(\d+)(?:,|$)`)
+
 // kittyImageRowsPattern extracts r=<digits> from a Kitty control string.
 var kittyImageRowsPattern = lazyregexp.New(`(?:^|,)r=(\d+)(?:,|$)`)
 

@@ -94,6 +94,95 @@ patch("5b4d7d3df", "pi-tui/components/markdown.js", [
 ]);
 // END backport 5b4d7d3df
 
+// BEGIN backport 787005a40
+// 787005a40 (#12109): an overlay hides the Kitty and iTerm2 images it covers, and they are drawn again once it no longer covers them.
+patch("787005a40", "pi-tui/terminal-image.js", [
+    ['import { pathToFileURL } from "node:url";\n', `import { pathToFileURL } from "node:url";\n${note("787005a40")}import { visibleWidth } from "./utils.js";\n`],
+    [`    return line.includes(KITTY_PREFIX) || line.includes(ITERM2_PREFIX);
+}
+`, `    return line.includes(KITTY_PREFIX) || line.includes(ITERM2_PREFIX);
+}
+${note("787005a40")}/**
+ * Return the cells an image line draws over. Kitty places the image at the line and extends it
+ * downward; iTerm2 lines move the cursor up before drawing, so the image ends at the line.
+ */
+export function getImageLineExtent(line) {
+    const kittyStart = line.indexOf(KITTY_PREFIX);
+    if (kittyStart !== -1) {
+        const controls = /\\x1b_G([^;]*);/.exec(line)?.[1] ?? "";
+        const columnValue = /(?:^|,)c=(\\d+)(?:,|$)/.exec(controls)?.[1];
+        const columns = columnValue === undefined
+            ? getRegisteredKittyImageMetadataFromControls(controls)?.columns
+            : Number.parseInt(columnValue, 10);
+        const startCol = visibleWidth(line.slice(0, kittyStart));
+        const rows = getKittyImagePlacementRows(line) ?? 1;
+        return { firstRow: 0, lastRow: rows - 1, startCol, endCol: startCol + (columns ?? Infinity) };
+    }
+    const iterm2Start = line.indexOf(ITERM2_PREFIX);
+    if (iterm2Start === -1)
+        return undefined;
+    const before = line.slice(0, iterm2Start);
+    const moveUp = /\\x1b\\[(\\d+)A$/.exec(before);
+    // Only a plain cell count is a known width; \`auto\`, pixel and percent widths depend on the image.
+    const columnValue = /[;=]width=(\\d+)[;:]/.exec(line.slice(iterm2Start))?.[1];
+    // visibleWidth counts the cursor-up sequence as text, so measure only what precedes it.
+    const startCol = visibleWidth(moveUp ? before.slice(0, moveUp.index) : before);
+    return {
+        firstRow: moveUp ? -Number.parseInt(moveUp[1], 10) : 0,
+        lastRow: 0,
+        startCol,
+        endCol: startCol + (columnValue === undefined ? Infinity : Number.parseInt(columnValue, 10)),
+    };
+}
+/** Remove Kitty and iTerm2 image sequences, including iTerm2's cursor-up prefix, keeping the text. */
+export function stripImageSequences(line) {
+    return line.replace(/\\x1b_G[^\\x1b]*\\x1b\\\\/g, "").replace(/(?:\\x1b\\[\\d+A)?\\x1b\\]1337;File=[^\\x07]*\\x07/g, "");
+}
+`],
+]);
+// END backport 787005a40
+
+// BEGIN backport 787005a40
+patch("787005a40", "pi-tui/tui.js", [
+    ['import { getCapabilities, isImageLine, setCellDimensions } from "./terminal-image.js";\n',
+      `${note("787005a40")}import { getCapabilities, getImageLineExtent, getMaxKittyImageRows, isImageLine, setCellDimensions, stripImageSequences, } from "./terminal-image.js";\n`],
+    ['}\nexport const VIEWPORT_TUI = Symbol.for("@earendil-works/pi-tui/viewport");\n',
+      `}\n${note("787005a40")}/**
+ * Drop image placements that intersect an overlay rectangle (\`row\` is viewport-relative).
+ * Terminals draw images above text, so an overlay cannot paint over them. The renderers delete a
+ * placement once its line changes and draw it again when the overlay no longer covers it.
+ * Images beside the overlay stay; on the row holding such an image's sequence the overlay is not
+ * drawn, because \`compositeTuiLine\` passes image lines through.
+ */
+function hideImagesUnderOverlay(lines, overlay, viewportStart) {
+    if (overlay.height === 0)
+        return;
+    // Kitty images extend downward, so an image line above the viewport can still reach into it.
+    for (let index = Math.max(0, viewportStart - getMaxKittyImageRows()); index < lines.length; index++) {
+        const line = lines[index];
+        const extent = getImageLineExtent(line);
+        if (!extent)
+            continue;
+        const firstRow = index + extent.firstRow - viewportStart;
+        const lastRow = index + extent.lastRow - viewportStart;
+        if (firstRow < overlay.row + overlay.height &&
+            lastRow >= overlay.row &&
+            extent.startCol < overlay.col + overlay.width &&
+            extent.endCol > overlay.col) {
+            lines[index] = stripImageSequences(line);
+        }
+    }
+}
+export const VIEWPORT_TUI = Symbol.for("@earendil-works/pi-tui/viewport");\n`],
+    ["        // Composite each overlay\n        for (const { overlayLines, row, col, w } of rendered) {\n",
+      `        ${note("787005a40").trim()}
+        // Composite each overlay, back to front. Hiding images per overlay also hides images drawn by overlays below it.
+        for (const { overlayLines, row, col, w } of rendered) {
+            hideImagesUnderOverlay(result, { row, col, width: w, height: overlayLines.length }, viewportStart);
+`],
+]);
+// END backport 787005a40
+
 // BEGIN backport bbfc6c7ce
 // bbfc6c7ce (#12044): the find tool ignores a leading ./ in its pattern.
 patch("bbfc6c7ce", "pi-coding-agent/core/tools/find.js", [
@@ -294,6 +383,79 @@ patch("3345c2925", "pi-coding-agent/core/agent-session.js", [
         this._buildRuntime({`],
 ]);
 // END backport 3345c2925
+
+// BEGIN backport a635f3901
+// a635f3901 (#12111): the /resume picker keeps its selection while the session list reloads progressively.
+patch("a635f3901", "pi-coding-agent/modes/interactive/components/session-selector.js", [
+    ["    selectionTouched = false;\n    searchInput;\n",
+      `    selectionTouched = false;
+    ${note("a635f3901").trim()}
+    // Session to select once it appears, while a progressive reload has not yet delivered it
+    pendingSelectedPath;
+    searchInput;
+`],
+    [`    setSessions(sessions, showCwd) {
+        const selectedPath = this.selectionTouched ? this.getSelectedSessionPath() : undefined;
+        this.allSessions = sessions;
+        this.showCwd = showCwd;
+        this.filterSessions(this.searchInput.getValue());
+        if (!this.selectionTouched) {
+            this.selectedIndex = 0;
+        }
+        else if (selectedPath) {
+            const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
+            if (selectedIndex >= 0)
+                this.selectedIndex = selectedIndex;
+        }
+    }
+`, `    ${note("a635f3901").trim()}
+    /**
+     * @param partial true when more sessions are still loading; a selected session missing from a
+     * partial list stays the selection target until it arrives
+     */
+    setSessions(sessions, showCwd, partial = false) {
+        const pendingPath = this.selectionTouched ? this.pendingSelectedPath : undefined;
+        const selectedPath = this.selectionTouched ? (pendingPath ?? this.getSelectedSessionPath()) : undefined;
+        this.allSessions = sessions;
+        this.showCwd = showCwd;
+        this.filterSessions(this.searchInput.getValue());
+        if (!this.selectionTouched) {
+            this.selectedIndex = 0;
+        }
+        else if (selectedPath) {
+            const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
+            if (selectedIndex >= 0) {
+                this.selectedIndex = selectedIndex;
+                this.pendingSelectedPath = undefined;
+            }
+            else if (partial) {
+                // The selected session may not have loaded yet: keep it as the target instead of
+                // adopting whichever session the index now points to.
+                this.pendingSelectedPath = selectedPath;
+            }
+            else {
+                this.pendingSelectedPath = undefined;
+            }
+        }
+    }
+`],
+    ["        this.selectionTouched = true;\n        // Up arrow\n",
+      `        this.selectionTouched = true;
+        ${note("a635f3901").trim()}
+        this.pendingSelectedPath = undefined;
+        // Up arrow
+`],
+    ["                if (scope === this.scope)\n                    this.sessionList.setSessions(sessions, showCwd);\n",
+      `                ${note("a635f3901").trim()}
+                if (scope === this.scope)
+                    this.sessionList.setSessions(sessions, showCwd, true);
+`],
+    ['        this.sessionList.setSessions(sessions ?? [], this.scope === "all");\n',
+      `        ${note("a635f3901").trim()}
+        this.sessionList.setSessions(sessions ?? [], this.scope === "all", loading || sessions === null);
+`],
+]);
+// END backport a635f3901
 
 // BEGIN backport 406e719a6bff
 // 406e719a6bff (#12049): a tool schema with a node that has no type, enum or anyOf is not sent strict (OpenAI strict mode rejects it).
