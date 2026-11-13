@@ -9,6 +9,12 @@ import (
 
 // mistralWireRows are the request shapes buildChatPayload and toChatMessages have: each route, each optional member of the request, each
 // tool choice, each block kind as the last one of the conversation and a poisoned history.
+//
+// The tool choice of a named function has no print-mode scenario: Pi's CLI passes no tool choice to a provider (nothing under
+// packages/coding-agent/src names toolChoice), so no run of the two CLIs sends the object, and number 37 of providers-faux-streaming, held
+// for one, is free. The object's member order is proven by the rows "tool choice object", "tool choice object, function first, extra
+// members", "route ...: images, reasoning, tool choice object" and "poisoned history, reasoning, tool choice object" of this table, and in
+// bytes by TestMistralMessagesPayloadMatchesPi, whose probes draw the object.
 func mistralWireRows() []providerWireRow {
 	const api, id = "mistral-conversations", "mistral-small-latest"
 	called := func(provider string) string {
