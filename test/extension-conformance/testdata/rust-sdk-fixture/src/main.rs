@@ -956,6 +956,7 @@ fn row_panel_mount(
     pig_sdk::ViewMount {
         key: key.into(),
         slot: "panel".into(),
+        title: String::new(),
         target: None,
         view,
         intents,
@@ -1021,6 +1022,7 @@ fn redraw_intent(inv: &pig_sdk::ViewIntentInvocation) -> pig_sdk::ViewIntentResu
             epoch: inv.mount.epoch,
             rev: inv.rev,
         },
+        title: String::new(),
         view: row_text_view(format!("fixture-{name}-{}", n + limit)),
         intents: redraw_intents(),
         assets: vec![],
