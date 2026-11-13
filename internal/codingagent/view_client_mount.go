@@ -10,8 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// viewMount is one plugin mount as the terminal draws it: a component of a widget container. The interactive loop owns
-// it.
+// viewMount is one plugin mount as the terminal draws it: a component of a widget container or, in a float slot, of a
+// frame over the screen. The interactive loop owns it.
 type viewMount struct {
 	c       *viewClient
 	key     viewMountKey
@@ -26,6 +26,8 @@ type viewMount struct {
 	// live and, in a slot with tabs, the tab that is drawn.
 	accepted, drawable, live, hidden, visible bool
 	focused                                   bool
+	// frame is the frame a mount of a float slot is drawn in, and nil while no dialog holds the keyboard.
+	frame viewFloat
 	// title is the snapshot's. node is the node of the last focus request, which takes the keys while the focus records
 	// name it. asksFocus reports a focus request the client has not answered, and attention that the mount asked to be
 	// shown while the user worked in another view.
@@ -75,6 +77,10 @@ func (m *viewMount) focusNode(entries []uiview.Focus, request *uiview.Focus) str
 // takesFocus reports whether the mount can hold the keyboard focus now: its view has a node that takes keys, or the
 // mount binds a key, which makes it focusable as a whole.
 func (m *viewMount) takesFocus() bool {
+	if m.slot.float {
+		// A frame holds the focus as a whole: a view without a node that takes keys still keeps them from what is under it.
+		return m.visible && m.frame != nil
+	}
 	return m.visible && m.slot.focus && (m.keys || m.surface.Focusable())
 }
 
@@ -131,6 +137,11 @@ func (m *viewMount) SetFocused(focused bool) {
 	}
 	m.focused = focused
 	m.c.stamp++
+	if !focused && m.frame != nil {
+		// A dialog lost the keyboard: the client removes the frames unless another dialog has it (settleFloats).
+		m.c.left = true
+		m.c.wake()
+	}
 	m.surface.SetFocused(focused)
 	switch {
 	case focused:
@@ -140,10 +151,11 @@ func (m *viewMount) SetFocused(focused bool) {
 	}
 }
 
-// HandleInput takes a key while the mount holds the focus. The key that interrupts leaves the panel: it first cancels a
-// cancellable intent in flight, then goes to the focused node (a list or an input gives the focus up on it), and when
-// the node does not take it the focus returns to the editor all the same. Every other key goes to the focused node, and
-// one the node does not take to unhandledKey, which is where the mount's bindings are. Satisfies tui.InputHandler.
+// HandleInput takes a key while the mount holds the focus. The key that interrupts leaves the panel or the dialog: it
+// first cancels a cancellable intent in flight, then goes to the focused node (a list or an input gives the focus up on
+// it), and when the node does not take it the focus returns to the editor all the same. Every other key goes to the
+// focused node, and one the node does not take to unhandledKey, which is where the mount's bindings are. Satisfies
+// tui.InputHandler.
 func (m *viewMount) HandleInput(data string) {
 	interrupts := m.c.ui.interrupts(data)
 	if interrupts && m.cancel != nil && m.cancellable {
@@ -181,12 +193,19 @@ func (m *viewMount) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchRe
 	return dispatched
 }
 
-// leave returns the focus to the editor: the focused node gave it up, or the user pressed the key that interrupts.
+// leave returns the focus to the editor: the focused node gave it up, or the user pressed the key that interrupts. A
+// dialog's frame goes with the focus.
 func (m *viewMount) leave() {
-	if m.focused {
-		m.c.ui.focus(nil)
-		m.c.ui.render()
+	if !m.focused {
+		return
 	}
+	if m.frame != nil {
+		m.frame.Leave()
+		m.c.settle()
+	} else {
+		m.c.ui.focus(nil)
+	}
+	m.c.ui.render()
 }
 
 // activate raises the first intent declared for the activated node whose argument the node fills. An intent of the node
