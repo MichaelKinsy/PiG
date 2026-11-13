@@ -219,6 +219,10 @@ Run `make coverage` after a successful parity run. Do not edit
 `test/parity/coverage.md`, the README badge, or the generated `AGENTS.md` block by
 hand.
 
+## Async contract evidence
+
+An `evidence` entry of `test/parity/async-contracts.toml` is `kind:path[#name]`, and `make async-contracts` resolves it in the tree: `test:` names a test file and one case that is declared in it and runs (`_test.go#TestName[/subtest]` with each subtest a string literal of a `t.Run`, a TypeScript `.test.` or `.spec.` file with the title of an `it`, `test` or `describe` call, a Python file with `test_function` or `Class::test_method`, a Rust file with a `#[test]` function, a Lisp file with a `deftest` name; a test that begins with a skip or is marked skipped or ignored is rejected), `scenario:` names a whole TOML file under `test/parity/scenarios/` whose `covers` lists the row's path, and `probe:` names a Markdown document with an optional `#Heading`; a test file cited without a name, a name the file does not declare, and a kind or file type the checker has no resolver for each fail the gate, which prints its violations by class.
+
 ## Approved 0.3.x test-porting gaps
 
 The owner decision of 2026-09-28 permits explicit release-gate deferrals for unfinished upstream test acceptance. It does not mark tests ported or make their assertions pass. The decision and review findings are recorded in [the known-gap ledger](../../docs/findings/0.3.0-known-gaps.md).
