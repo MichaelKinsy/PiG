@@ -1,7 +1,9 @@
 package codingagent
 
 import (
+	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -25,7 +27,7 @@ func recordDecodeHeldEntry(entry MessageEntry, raw json.RawMessage) SessionEntry
 
 // heldEntryOnly is heldMessageEntry's entry; it reports holding entry itself exactly when that entry is the appended one with its record.
 func heldEntryOnly(entry MessageEntry, raw json.RawMessage) SessionEntry {
-	held, appended := heldMessageEntry(entry, raw)
+	held, appended := heldMessageEntry(entry, raw, proveHeldEntry(entry))
 	if appended != reflect.DeepEqual(held, SessionEntry(sessionentry.WithRecord(entry, raw))) {
 		panic("heldMessageEntry reports holding the appended entry when it does not, or the reverse")
 	}
@@ -142,6 +144,49 @@ func TestHeldMessageEntryMatchesTheRecordDecode(t *testing.T) {
 				t.Fatalf("proven beside details %v, held the appended entry %v: want both", proven, shared)
 			}
 		})
+	}
+}
+
+// A message whose decoded form is proven is held as the session held it by decoding its record: the appended object when the decode holds what
+// it holds (an assistant message with its usage, a user message with content), the decode otherwise (an assistant message without usage, a user
+// message without content). One proof, made before the record exists, decides both that and whether a session without a file encodes a record
+// at all: it does not for exactly the entries held as appended, and a session with a file always does.
+func TestHeldMessageEntryOfAProvenFormMatchesTheRecordDecode(t *testing.T) {
+	// The corpus without its ninth message, a custom message, which is not a message entry; then BenchmarkRuntimeInteractiveRebind's message
+	// (content, no usage). decodeHeld are the messages held as their record decodes: the two filelessEncodes names, and the benchmark's.
+	messages := filelessEncodeCorpus()[:8]
+	messages = append(messages, agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "restored answer"}}}})
+	decodeHeld := map[int]bool{2: true, 4: true, 8: true}
+	filed := NewSession("filed", "/project")
+	filed.SetPath(filepath.Join(t.TempDir(), "s.jsonl"))
+	fileless := NewSession("fileless", "/project")
+	parent := "0a1b2c3d"
+	for i, message := range messages {
+		entry := MessageEntry{Type: "message", ID: "4e5f6a7b", ParentID: &parent, Timestamp: "2026-10-13T08:00:00.000Z", Message: message}
+		raw, err := marshalSessionLine(entry)
+		if err != nil {
+			t.Fatalf("message %d: %v", i, err)
+		}
+		proof := proveHeldEntry(entry)
+		got, appended := heldMessageEntry(entry, raw, proof)
+		if want := recordDecodeHeldEntry(entry, raw); !reflect.DeepEqual(got, want) {
+			t.Errorf("message %d: held %#v, the record decode holds %#v", i, got, want)
+		}
+		if appended == decodeHeld[i] {
+			t.Errorf("message %d: held as appended %v, want %v", i, appended, !decodeHeld[i])
+		}
+		if appended != reflect.DeepEqual(got, SessionEntry(sessionentry.WithRecord(entry, raw))) {
+			t.Errorf("message %d: held as appended %v, but the held entry says the reverse", i, appended)
+		}
+		if !appended && !bytes.Equal(got.Raw(), raw) {
+			t.Errorf("message %d: the held decode's record is %s, want the record %s", i, got.Raw(), raw)
+		}
+		if got := fileless.holdsWithoutRecord(entry, proof); got != appended {
+			t.Errorf("message %d: a session without a file holds it without a record: %v, want %v", i, got, appended)
+		}
+		if filed.holdsWithoutRecord(entry, proof) {
+			t.Errorf("message %d: a session with a file holds it without a record", i)
+		}
 	}
 }
 
