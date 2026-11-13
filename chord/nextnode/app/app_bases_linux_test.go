@@ -329,28 +329,11 @@ func TestAppConnectsALinkAtOnceWhileTheBasesAreBuilding(t *testing.T) {
 	headers := ownerHeaders(t, s.app)
 	status := make(chan int, 1)
 	go func() {
-		request, err := http.NewRequest(http.MethodGet, "http://127.0.0.1:"+strconv.Itoa(s.port)+"/chord", nil)
+		got, err := upgradeLink(s.port, headers)
 		if err != nil {
 			t.Error(err)
-			status <- 0
-			return
 		}
-		for name, value := range headers {
-			request.Header.Set(name, value)
-		}
-		request.Header.Set("Connection", "Upgrade")
-		request.Header.Set("Upgrade", "websocket")
-		request.Header.Set("Sec-WebSocket-Version", "13")
-		request.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
-		request.Header.Set("Origin", "http://127.0.0.1:"+strconv.Itoa(s.port))
-		response, err := http.DefaultClient.Do(request)
-		if err != nil {
-			t.Error(err)
-			status <- 0
-			return
-		}
-		_ = response.Body.Close()
-		status <- response.StatusCode
+		status <- got
 	}()
 	select {
 	case got := <-status:
@@ -363,4 +346,135 @@ func TestAppConnectsALinkAtOnceWhileTheBasesAreBuilding(t *testing.T) {
 	stop := feedPipe(t, pipe, "export {};")
 	defer stop()
 	<-s.app.BaseWatched()
+}
+
+// upgradeLink asks the server at port for a link's upgrade, signed in by headers: the response's status.
+func upgradeLink(port int, headers map[string]string) (int, error) {
+	request, err := http.NewRequest(http.MethodGet, "http://127.0.0.1:"+strconv.Itoa(port)+"/chord", nil)
+	if err != nil {
+		return 0, err
+	}
+	for name, value := range headers {
+		request.Header.Set(name, value)
+	}
+	request.Header.Set("Connection", "Upgrade")
+	request.Header.Set("Upgrade", "websocket")
+	request.Header.Set("Sec-WebSocket-Version", "13")
+	request.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+	request.Header.Set("Origin", "http://127.0.0.1:"+strconv.Itoa(port))
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return 0, err
+	}
+	_ = response.Body.Close()
+	return response.StatusCode, nil
+}
+
+// A link that connects while the bases are still being built is shown the scripts object's empty set, as Pi's is (`UNBUILT`,
+// surface-build.ts at Pi 21e4cb80d: the scripts facet is loaded with the server, the build publishes the first set): its base ""
+// is none a page runs, so a page whose reconnect comes then calls `outdated` and reloads (client.ts `#apply`). Links are asked
+// from the listen on, each connects and finds the empty set until the build ends; the built set follows.
+func TestAppShowsALinkTheEmptySetWhileTheBasesAreBuildingThenTheBuiltOne(t *testing.T) {
+	entry, pipe := heldWebEntry(t)
+	s := startUnbuilt(t, nil, withPublicWeb(entry, plainPage))
+	headers := ownerHeaders(t, s.app)
+	current, release := webScripts(t, s.app)
+	defer release()
+	for link := range 3 {
+		got, err := upgradeLink(s.port, headers)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != http.StatusSwitchingProtocols {
+			t.Fatalf("link %d = %d, want 101 while the bases are still being built", link, got)
+		}
+		if set := current(); set.Base != "" || set.Combined != "" || len(set.Plugins) != 0 {
+			t.Fatalf("set at link %d = %+v, want the empty one while the bases are still being built", link, set)
+		}
+	}
+	stop := feedPipe(t, pipe, "export {};")
+	defer stop()
+	<-s.app.BasesBuilt()
+	if set := current(); set.Base == "" || set.Base != s.app.Web.Base() {
+		t.Fatalf("set base = %q, want the built base %q", set.Base, s.app.Web.Base())
+	}
+	<-s.app.BaseWatched()
+}
+
+// heldServerPlugin is a server plugin whose evaluation reads a named pipe: the load of the server's plugins waits until the pipe
+// is written.
+func heldServerPlugin(t *testing.T) (files map[string]string, pipe string) {
+	t.Helper()
+	pipe = filepath.Join(t.TempDir(), "held")
+	if err := syscall.Mkfifo(pipe, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return map[string]string{"server.ts": "import { readFileSync } from \"node:fs\";\nreadFileSync(" + strconv.Quote(pipe) + ");\n" + echoServer}, pipe
+}
+
+// Pi's one server host loads the kit's facets and the plugins in one `load`, and until it ended its HTTP component refuses every
+// request and upgrade with 503 (http.ts `#resolve` at Pi 21e4cb80d: the registries are `not_ready`). The Go server's plugins load
+// in the NodeHost after the server host's own facets (D605): a request or a link asked meanwhile is refused the same way. A link
+// that connected then held the scripts object's empty set, whose base is none a page runs: a page whose reconnect to a restarted
+// server came then reloaded.
+func TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading(t *testing.T) {
+	files, pipe := heldServerPlugin(t)
+	port := freePort(t)
+	stop := feedPipe(t, pipe, "held")
+	first := startTestApp(t, map[string]map[string]string{"held": files}, func(o *AppOptions) { o.Listen.Port = port })
+	stop()
+	headers := ownerHeaders(t, first.app)
+	closeAndWait(t, first.app)
+	// The restarted server's start waits in its plugin's evaluation, which reads the pipe.
+	options, _ := testOptions(t, func(o *AppOptions) { o.Listen.Port, o.DataDir, o.Root = port, first.dataDir, first.root })
+	type outcome struct {
+		app *App
+		err error
+	}
+	starting := make(chan outcome, 1)
+	go func() {
+		app, err := StartServer(options, background)
+		starting <- outcome{app, err}
+	}()
+	// An open for writing succeeds once the evaluation reads: the server host's own facets are loaded by then, its plugins are not.
+	opening := make(chan *os.File, 1)
+	go func() {
+		file, err := os.OpenFile(pipe, os.O_WRONLY, 0)
+		if err != nil {
+			t.Error(err)
+		}
+		opening <- file
+	}()
+	var held *os.File
+	select {
+	case held = <-opening:
+	case early := <-starting:
+		t.Fatalf("the start ended before its plugin was evaluated: %v", early.err)
+	case <-time.After(30 * time.Second):
+		t.Fatal("the restarted server's plugin was not evaluated")
+	}
+	if got := surfaceGet(t, port, "/nothing", nil).status; got != http.StatusServiceUnavailable {
+		t.Errorf("request = %d, want 503 while the server's plugins are still loading", got)
+	}
+	got, err := upgradeLink(port, headers)
+	if err != nil {
+		t.Error(err)
+	}
+	if got != http.StatusServiceUnavailable {
+		t.Errorf("link = %d, want 503 while the server's plugins are still loading", got)
+	}
+	if _, err := held.WriteString("held"); err != nil {
+		t.Error(err)
+	}
+	if err := held.Close(); err != nil {
+		t.Error(err)
+	}
+	second := <-starting
+	if second.err != nil {
+		t.Fatal(second.err)
+	}
+	t.Cleanup(func() { closeAndWait(t, second.app) })
+	if got, err := upgradeLink(port, ownerHeaders(t, second.app)); err != nil || got != http.StatusSwitchingProtocols {
+		t.Fatalf("link = %d, %v, want 101 once the server's plugins are loaded", got, err)
+	}
 }
