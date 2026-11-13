@@ -36,6 +36,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-037b2e3](#bf-037b2e3) | A session message whose members are in another order than Pi writes them, or that holds members PiG does not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-03ad544](#bf-03ad544) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
 | [BF-040088e](#bf-040088e) | `ai.CloudflareStreams` drops the deferred fetch and cancel operations of the API it wraps, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-041a5d6](#bf-041a5d6) | A Chord host's link no longer drops the messages its transport delivered before closing when the close… | PiG's own defect | All platforms | Unreleased |
 | [BF-051a79d](#bf-051a79d) | A Provider object registered by an extension (`pi.registerProvider(provider)`) now receives the session's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-051a79d-2](#bf-051a79d-2) | A Provider object's stream options no longer carry a stray `hasOnPayload` value | PiG's own defect | All platforms | 0.5.0 |
 | [BF-053d96d](#bf-053d96d) | RPC mode: when an extension command calls `pi.sendUserMessage()` or `pi.sendMessage(..., { triggerTurn: true… | PiG's own defect | All platforms | 0.5.0 |
@@ -1545,6 +1546,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f474c30](#bf-f474c30) | fix(evals): drop an unused import from the prompt-template eval | PiG's own defect | All platforms | Unreleased |
 | [BF-f4a8f71](#bf-f4a8f71) | A program that embeds PiG and never reads session events no longer hangs | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f4d85f8](#bf-f4d85f8) | A large file written through a tool call no longer slows down as it streams: each streamed piece of the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f5634a4](#bf-f5634a4) | fix(chord): a link end keeps nothing of the queue it handed over | PiG's own defect | All platforms | Unreleased |
 | [BF-f589900](#bf-f589900) | fix(tui): delete D155; PageUp and PageDown paging follows Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-f5dd13f](#bf-f5dd13f) | fix(photonimage): lint findings of the PNG inflater and the GIF decoder | PiG's own defect | All platforms | Unreleased |
 | [BF-f5ecdc2](#bf-f5ecdc2) | Settings and `models.json` compat objects keep the members PiG does not model, as Pi 1.2.0 does | PiG's own defect | All platforms | 0.5.0 |
@@ -1871,6 +1873,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `040088eba4` (2026-10-10)
 - **Tests:** `ai/classifier_http_error_name_test.go::TestClassifierHTTPErrorNameDistinguishesTimeoutFromHTTPFailure`, `ai/cloudflare_streams_test.go::TestCloudflareStreamsDropsDeferredOperationsAndLeavesTheWrappedValueUntouched`
 - **Release note:** `ai.CloudflareStreams` drops the deferred fetch and cancel operations of the API it wraps, as Pi's `cloudflareStreams` does, so a Cloudflare-wrapped API reports that it does not support deferred responses. Before, it passed them through without materializing the Cloudflare endpoint placeholders.
+
+### BF-041a5d6
+
+**A Chord host's link no longer drops the messages its transport delivered before closing when the close…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first.
+- **Root cause:** While the goroutine that set a link end's listener was still handing the queue over, the transport's goroutine could deliver another message (queued behind the hand-over) and then end: ended() closed the end at once and cleared the queue, so that message, and whatever else of the queue the listener had not reached, was dropped, and the close was told ahead of it. Pi's one thread finishes the hand-over inside onMessage before it hears of a close, so there the listener gets every message the transport delivered before it ended. The form with the messages queued before the listener was set is as old as the link layer (v0.7.0); the form with a message arriving during the hand-over came with.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `041a5d6b71` (2026-11-13)
+- **Tests:** `chord/next/link/link_end_test.go::TestALinkEndHandsOverWhatArrivedBeforeItsTransportEndedThenEnds`, `chord/next/link/link_end_test.go::TestALinkEndWhoseListenerPanicsDuringTheHandOver`, `chord/next/link/link_end_transports_test.go::TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce`, `chord/next/link/link_end_transports_test.go::TestALinkHandsOverWhatArrivedBeforeItsTransportEndedThenCloses`, `chord/next/link/link_end_transports_test.go::TestALinkToldOfItsCloseHasLeftItsTransport`
+- **Release note:** A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first. The listener now gets them in order and the close after them, as in Pi, where the hand-over is finished before a close is heard; a link closed from its own side still drops what it has not delivered.
 
 ### BF-051a79d
 
@@ -22769,6 +22785,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `f4d85f8a39` (2026-10-10)
 - **Tests:** `ai/assistant_published_clone_test.go::TestCellObservationsCopyPublishedArgumentsUnread`, `ai/assistant_published_clone_test.go::TestObserveOfAnUnpublishedMessageStillChecksArgumentStrings`
 - **Release note:** A large file written through a tool call no longer slows down as it streams: each streamed piece of the tool-call arguments is parsed on its own instead of re-parsing all the arguments so far after a provider opened the call with empty arguments, so the cost of the whole call grows with its size instead of with the square of its size.
+
+### BF-f5634a4
+
+**fix(chord): a link end keeps nothing of the queue it handed over**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): a link end keeps nothing of the queue it handed over
+- **Root cause:** LinkEnd.OnMessage hands the queue over one message at a time () and moved on with `end.queued = end.queued[1:]`, so every message it had handed over stayed in the queue's array, and the drained queue, empty, still pointed into that array. An end whose listener is set does not queue again, so nothing replaced the array before the close: a link that queued ahead of its listener (a child's link queues until its start message) kept those messages for as long as it lived.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f5634a4975` (2026-11-13)
+- **Tests:** `chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNoMessageItHandedOverWhileALaterOneIsWithTheListener`, `chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNoQueuedMessageAfterItsEnd`, `chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNothingOfTheQueueItHandedOver`
 
 ### BF-f589900
 
