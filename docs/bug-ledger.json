@@ -5066,6 +5066,30 @@
       ]
     },
     {
+      "id": "BF-1eea8f0",
+      "title": "`ctx.ui.viewAbilities()` of a Node extension reported no client after a session log sync until the next state…",
+      "symptom": "`ctx.ui.viewAbilities()` of a Node extension reported no client after a session log sync until the next state update.",
+      "rootCause": "pi.onViewAbilities((abilities, ctx) =\u003e ...) runs when the replicated client abilities change, in registration order, one change at a time, without the host waiting. The replica is now applied where a whole state arrives (the ready payload and state_update): applyState cleared it on the partial snapshot of a session log sync, so viewAbilities() reported no client until the next state. sdk-ts declares the registration. The rpc fixture gains a panel whose handler redraws it and an abilities handler; three tests run the real binary: the handler's ui_view event precedes the ui_view_intent reply for twenty clicks in a row, a client that attaches to an idle session is sent the mount made in the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`ctx.ui.viewAbilities()` of a Node extension reported no client after a session log sync until the next state update.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1eea8f0691",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewAbilitiesEventMountsForAClientThatAttachesToAnIdleSession",
+        "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewBlockedAbilitiesHandlerDelaysNothing",
+        "coding/cli/rpc_ui_view_answer_test.go::TestRPCUIViewHandlersRedrawIsWrittenBeforeTheIntentReply"
+      ]
+    },
+    {
       "id": "BF-1f2f940",
       "title": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the…",
       "symptom": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does.",
@@ -16351,6 +16375,29 @@
         "test/extension-conformance/session_skill_helpers_test.go::TestConformance_SessionAndSkillHelpersAgreeAcrossSDKs",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-54bf1a5",
+      "title": "Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the…",
+      "symptom": "Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the same digest (D614).",
+      "rootCause": "A client that a mount's content does not fit is sent the fallback, or no view when the fallback does not fit it either. The digest of a resolved content is kept per revision under the candidate's index, and both of these contents were kept under -1. Of two such clients the second was sent the digest of the other's content, and a client whose limits changed from one case to the other was delivered nothing, because the content it was owed had the identity of the one it was sent.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the same digest (D614). Each is now sent the digest of its own content, and a client whose limits change so that it is owed the other content is delivered it; before, that delivery was taken for the one already made and the client kept what it drew.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "54bf1a5cfa",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/uiview/degraded_digest_test.go::TestDegradedClientsAreSentTheDigestOfTheirOwnContent",
+        "internal/viewcarrier/degraded_digest_test.go::TestCarrierDegradedClientsAreSentTheDigestOfTheirOwnContent"
       ]
     },
     {
@@ -37668,6 +37715,26 @@
         "internal/codingagent/exit_record_test.go::TestUnrecoveredGoroutinePanicBecomesACrashRecordAtTheNextStart",
         "internal/codingagent/send_user_message_test.go::TestSubprocessShutdownHostActionRequestsExitViaOwnerLoop"
       ]
+    },
+    {
+      "id": "BF-a47c8e8",
+      "title": "`view_abilities()` of a Rust extension reported no client from its connect until the first state update, even…",
+      "symptom": "`view_abilities()` of a Rust extension reported no client from its connect until the first state update, even with a client attached.",
+      "rootCause": "The handler runs on a worker thread when the replicated client abilities change. The ready payload's state is now applied to the view replica: view_abilities() returned None after a connect until the first state update, even with a client attached.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`view_abilities()` of a Rust extension reported no client from its connect until the first state update, even with a client attached.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a47c8e87c7",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-a47eb1a",

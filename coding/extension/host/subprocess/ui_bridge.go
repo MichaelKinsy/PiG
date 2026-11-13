@@ -18,6 +18,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/uiview"
 )
 
 // UIBridge translates extension→host call messages into real UI/action method
@@ -202,6 +203,10 @@ type UIBridge struct {
 		stopped bool
 		wg      sync.WaitGroup
 	}
+	// views is the D614 plugin UI mount registry.
+	views *uiview.Registry
+	// viewAnswers maps each unanswered ui.view.intent request (viewAnswer) to its intent's ticket.
+	viewAnswers sync.Map
 
 	// notifyFunc renders notifications via the TUI chat area.
 	// Set by InteractiveMode after TUI creation.
@@ -594,6 +599,7 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	// dispatching a tool, command, or event handler, so these are current when
 	// an extension reads them. They come from the UI context rather than the
 	// host actions, so they are filled before the unbound-actions return.
+	state.UIAbilities = b.views.Abilities()
 	if terminalCapabilities != nil {
 		caps := terminalCapabilities()
 		state.TerminalCapabilities = &caps
@@ -790,6 +796,11 @@ func (b *UIBridge) SetFrontend(on bool) {
 	if !changed {
 		return
 	}
+	b.schedulePush()
+}
+
+// schedulePush asks the push worker for one state_update; requests made while a push runs coalesce.
+func (b *UIBridge) schedulePush() {
 	w := &b.frontendPush
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -843,7 +854,7 @@ func (b *UIBridge) StopFrontendPushes() {
 }
 
 func NewUIBridge(invalidateTUI func()) *UIBridge {
-	return &UIBridge{
+	b := &UIBridge{
 		widgets:         make(map[string]*PushProxy),
 		widgetOwners:    make(map[string]string),
 		surfaceOwners:   make(map[string]surfaceOwner),
@@ -855,6 +866,9 @@ func NewUIBridge(invalidateTUI func()) *UIBridge {
 		pendingStatuses: make(map[string]*string),
 		invalidateTUI:   invalidateTUI,
 	}
+	b.views = uiview.New(uiview.Options{KnownKind: knownViewKind})
+	b.views.OnAbilities(b.schedulePush)
+	return b
 }
 
 // SetInvalidate replaces the TUI invalidation callback. Thread-safe.
@@ -1463,6 +1477,10 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		extension.CallInitiated(ctx)
 	}
 
+	if isViewCall(call.Method) {
+		return b.handleViewCall(extName, call)
+	}
+
 	switch call.Method {
 	// ── Category 1: Notifications & Status ───────────────────────────────
 	case "ui.notify":
@@ -1847,6 +1865,12 @@ func (b *UIBridge) ClearExtensionConn(extName string, owner *Conn) {
 }
 
 func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
+	b.mu.RLock()
+	endsOwner := !ownerOnly || b.extConns[extName] == owner
+	b.mu.RUnlock()
+	if endsOwner {
+		b.views.Break(extName, uiview.ReasonOwnerGone)
+	}
 	prefix := extName + ":"
 	var widgets []*PushProxy
 	var overlays []extension.RemoteOverlayHandle
@@ -2596,6 +2620,9 @@ func (b *UIBridge) handleNewSession(ctx context.Context, extName string, owner *
 	if err != nil {
 		return &CallResultPayload{Error: &ErrorInfo{Code: "session_error", Message: err.Error()}}, nil
 	}
+	if !res.Cancelled {
+		b.ViewsSessionReplaced()
+	}
 	result, _ := json.Marshal(res)
 	return &CallResultPayload{Result: result}, nil
 }
@@ -2618,6 +2645,9 @@ func (b *UIBridge) handleFork(ctx context.Context, extName string, owner *Conn, 
 	res, err := actions.Fork(ctx, p.EntryID, opts)
 	if err != nil {
 		return &CallResultPayload{Error: &ErrorInfo{Code: "fork_error", Message: err.Error()}}, nil
+	}
+	if !res.Cancelled {
+		b.ViewsSessionReplaced()
 	}
 	result, _ := json.Marshal(res)
 	return &CallResultPayload{Result: result}, nil
@@ -2670,6 +2700,9 @@ func (b *UIBridge) handleSwitchSession(ctx context.Context, extName string, owne
 	res, err := actions.SwitchSession(ctx, p.SessionPath, &extension.SwitchSessionOptions{WithSession: b.replacementCallback(ctx, extName, owner, args)})
 	if err != nil {
 		return &CallResultPayload{Error: &ErrorInfo{Code: "session_error", Message: err.Error()}}, nil
+	}
+	if !res.Cancelled {
+		b.ViewsSessionReplaced()
 	}
 	result, _ := json.Marshal(res)
 	return &CallResultPayload{Result: result}, nil

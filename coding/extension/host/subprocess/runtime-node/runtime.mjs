@@ -1922,7 +1922,24 @@ function createNoOpUI(ui) {
     onThemeChange: ui.onThemeChange,
     onToolsExpandedChange: ui.onToolsExpandedChange,
     bell: ui.bell,
+    // pig additive (D614): plugin UI mounts go to the host, which answers by what the attached client draws.
+    viewAbilities: ui.viewAbilities,
+    mountView: ui.mountView,
+    updateView: ui.updateView,
+    hideView: ui.hideView,
+    showView: ui.showView,
+    finishView: ui.finishView,
+    removeView: ui.removeView,
+    viewState: ui.viewState,
+    viewDiagnostics: ui.viewDiagnostics,
   };
+}
+
+// viewArgs builds the argument of a ui.view.mount or ui.view.update call, leaving out the members the caller did not give.
+function viewArgs(head, content) {
+  const args = {};
+  for (const [name, value] of Object.entries({ ...head, ...content })) if (value !== undefined) args[name] = value;
+  return args;
 }
 
 class RuntimeUI {
@@ -2050,6 +2067,34 @@ class RuntimeUI {
   async setLogin(definition) { return this.runtime.call("ui.setLogin", definition); }
   // pig divergence (D2): an extension's sprite joins /sprite.
   async registerSprite(definition) { return this.runtime.call("ui.registerSprite", definition); }
+  // pig additive (D614): plugin UI mounts. A view is the D107 wire view ({ root: { kind: "text", text } }); the host checks it
+  // against what the attached client draws. A failed operation rejects with an Error whose code is invalid, unsupported,
+  // limit, stale, terminal or not_found. The reply is { mount: { key, epoch, rev }, state, reason? }.
+  viewAbilities() {
+    const abilities = this.runtime.viewAbilities;
+    return abilities ? structuredClone(abilities) : null;
+  }
+  // The amendment members ride beside the view: alternatives ([{ when, view, drawing? }], the first whose `when` holds for a
+  // client's claims is what that client draws), drawing, a11y and focus. The host checks every bound and answers invalid.
+  mountView({ key, slot, target, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
+    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  }
+  updateView(mount, { view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
+    return this.runtime.call("ui.view.update", viewArgs({ mount }, { view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  }
+  hideView(mount) { return this.runtime.call("ui.view.hide", { mount }); }
+  showView(mount) { return this.runtime.call("ui.view.show", { mount }); }
+  // A result (any JSON value, at most 65536 encoded bytes) is the extension's last word on the mount; the reply and
+  // viewState carry it back as `result`.
+  finishView(mount, result) { return this.runtime.call("ui.view.finish", result === undefined ? { mount } : { mount, result }); }
+  removeView(mount) { return this.runtime.call("ui.view.remove", { mount }); }
+  viewState(key) { return this.runtime.call("ui.view.state", { key }); }
+  // The notices of a mount, oldest first: what the host rejected or ended and what a client could not draw.
+  async viewDiagnostics(key) {
+    const reply = await this.runtime.call("ui.view.diagnostics", { key });
+    if (!reply || !Array.isArray(reply.notices)) throw new Error("ui.view.diagnostics: malformed reply");
+    return reply.notices;
+  }
   setTitle(title) { this.runtime.fireAndForget("ui.setTitle", { title }); }
   async custom(factory, options = {}) {
     // rpc-mode.ts custom(): RPC mode has no custom UI, so it resolves undefined and the factory never runs; the host call keeps the ui_prompt scope.
@@ -2368,6 +2413,13 @@ export class Runtime {
     this.themeSignature = undefined;
     this.toolsExpandedKnown = false;
     this.loadedHandlers = [];
+    this.viewIntentHandler = undefined;
+    this.viewAbilities = null;
+    // viewAbilitiesSignature is the JSON of the replicated abilities ("" for none) and viewAbilitiesKnown says the host sent a state, so a later different value is a change for the pi.onViewAbilities handlers.
+    this.viewAbilitiesSignature = "";
+    this.viewAbilitiesKnown = false;
+    this.viewAbilitiesHandlers = [];
+    this.viewAbilitiesDelivery = Promise.resolve();
     this.loadedPromise = undefined;
     this.commands = new Map();
     this.shortcuts = new Map();
@@ -2510,6 +2562,22 @@ export class Runtime {
       onLoaded: (handler) => {
         if (typeof handler !== "function") throw new TypeError("onLoaded requires a handler function");
         this.loadedHandlers.push(handler);
+      },
+      // pig additive (D614): answers the intents of this extension's mounts. handler({ mount, rev, nodeKey, intent, arg, ticket, signal }, ctx)
+      // returns { outcome: "done" | "refused" | "failed", answer?, error? } (a bare value is the answer of a done outcome). signal aborts
+      // when the host cancels a cancellable intent; an answer after that is dropped.
+      onViewIntent: (handler) => {
+        if (typeof handler !== "function") throw new TypeError("onViewIntent requires a handler function");
+        this.viewIntentHandler = handler;
+      },
+      // pig additive (D614): handler(abilities, ctx) runs when what the attached client draws changed: the first client attached, the
+      // abilities changed, or the last client left (abilities is null; a client that draws no slot is a record with no slots). ctx.ui.viewAbilities()
+      // already reports the new value, so a mount made in the handler is checked against that client. The state the extension starts in is not a
+      // change, and a session no client attaches to never runs the handler. Handlers run in registration order, one change at a time; the host
+      // does not wait for them.
+      onViewAbilities: (handler) => {
+        if (typeof handler !== "function") throw new TypeError("onViewAbilities requires a handler function");
+        this.viewAbilitiesHandlers.push(handler);
       },
       registerMessageRenderer: (customType, handler) => this.registerMessageRenderer(customType, handler),
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
@@ -3348,8 +3416,9 @@ export class Runtime {
           this.contextValues.cwd = this.ready.cwd || this.contextValues.cwd;
           this.contextValues.mode = this.ready.mode || this.contextValues.mode;
           if (env.ready?.state) {
-            // StatePayload is whole here, so an absent frontend is false.
+            // StatePayload is whole here, so an absent frontend is false and an absent uiAbilities is no client.
             this.setFrontend(env.ready.state.frontend === true);
+            this.setViewAbilities(env.ready.state.uiAbilities);
             this.applyState(env.ready.state);
           }
           this.readyStateApplied = true;
@@ -4804,7 +4873,10 @@ export class Runtime {
         try {
           const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
           const state = args?.state ?? args;
-          if (state && typeof state === "object") this.setFrontend(state.frontend === true);
+          if (state && typeof state === "object") {
+            this.setFrontend(state.frontend === true);
+            this.setViewAbilities(state.uiAbilities);
+          }
           this.applyState(state);
         } catch {}
         return;
@@ -5508,6 +5580,19 @@ export class Runtime {
           await this.respond(id, result);
           return;
         }
+        case "ui.view.intent": {
+          const handler = this.viewIntentHandler;
+          if (!handler) {
+            await this.respond(id, { outcome: "refused", error: "no intent handler" });
+            return;
+          }
+          const { mount, rev, nodeKey, intent, arg, ticket } = request.args ?? {};
+          const answer = await handler({ mount, rev, nodeKey: nodeKey ?? "", intent, arg, ticket, signal: ctx[requestSignal] }, ctx);
+          const outcomes = ["done", "refused", "failed"];
+          const reply = answer && typeof answer === "object" && outcomes.includes(answer.outcome) ? answer : { outcome: "done", answer };
+          await this.respond(id, reply.answer === undefined ? { outcome: reply.outcome, ...(reply.error ? { error: String(reply.error) } : {}) } : reply);
+          return;
+        }
         case "shortcut": {
           const shortcut = this.shortcuts.get(request.tool);
           if (!shortcut) throw new Error(`unknown shortcut: ${request.tool}`);
@@ -5876,6 +5961,35 @@ export class Runtime {
     this.ui.theme.setPalette(palette);
     this.themeSignature = signature;
     if (changed) this.fireChangeHandlers(this.themeChangeHandlers, this.ui.theme);
+  }
+
+  // setViewAbilities applies StatePayload.uiAbilities (D614) of a whole state: an absent value is no client and clears the replica. A value that
+  // differs from the one the state before carried is delivered to the pi.onViewAbilities handlers; the first state is where the extension starts.
+  setViewAbilities(value) {
+    const abilities = value && typeof value === "object" ? value : null;
+    const signature = abilities ? JSON.stringify(abilities) : "";
+    const changed = this.viewAbilitiesKnown && this.viewAbilitiesSignature !== signature;
+    this.viewAbilities = abilities;
+    this.viewAbilitiesSignature = signature;
+    this.viewAbilitiesKnown = true;
+    if (changed) this.deliverViewAbilities(abilities);
+  }
+
+  // deliverViewAbilities queues one change for the handlers registered now: in registration order, each awaited, one change at a time in the
+  // order the changes arrived. The message loop does not wait, so a handler's host calls are answered; a handler that throws or rejects is
+  // reported in the extension's log and does not stop the others.
+  deliverViewAbilities(abilities) {
+    const handlers = [...this.viewAbilitiesHandlers];
+    if (handlers.length === 0) return;
+    this.viewAbilitiesDelivery = this.viewAbilitiesDelivery.then(async () => {
+      for (const handler of handlers) {
+        try {
+          await handler(abilities ? structuredClone(abilities) : null, this.ctx);
+        } catch (error) {
+          diagnose(`extension: ${this.name}: onViewAbilities handler failed: ${error?.stack ?? error}\n`);
+        }
+      }
+    });
   }
 
   // fireChangeHandlers calls the handlers subscribed now, in order; a throw or a rejection of one does not stop the others.

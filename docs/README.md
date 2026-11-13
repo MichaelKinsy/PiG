@@ -20,6 +20,7 @@ Start here, choose one row, and read that focused document completely. Do not lo
 | Go toolchain pins, build flags, allocation gates, or TinyGo costs in Durable | [Go practices for performance work](performance/go-practices.md) | [TypeScript-to-Go porting](typescript-to-go-porting.md) |
 | extension source forms and discovery | [Extensions](extensions.md) | [Extension authoring](extension-authoring.md) |
 | public extension host APIs or an SDK | [Extension API parity](extension-api-parity.md) | [Extension authoring](extension-authoring.md) |
+| a client in another process that draws plugin views and raises their intents | [The `ui_view` carrier](ui-view-carrier.md) | [Extension API parity](extension-api-parity.md), then [`examples/ui-view-web`](../examples/ui-view-web/README.md) |
 | packed cells, placement, generated builds, or cache identity | [Runtime-cell overview](extension-runtime-cells.md) | [Build and cache](runtime-cell-build-cache.md) |
 | reload transactions, quarantine/fission, or runtime reports | [Reload and operations](runtime-cell-reload.md) | [Runtime-cell overview](extension-runtime-cells.md) |
 | release inventory, SBOMs, vulnerability evidence, licensing, signing, or provenance | [Supply-chain evidence](supply-chain.md) | [Releasing](project/RELEASING.md), then [Third-party notices](../THIRD_PARTY_NOTICES.md) |

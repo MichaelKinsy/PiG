@@ -30,7 +30,11 @@ import type {
   ProviderConfig as AdapterProviderConfig,
   PiGLoginDefinition,
   PiGSpriteDefinition,
+  PiGViewAbilities,
+  PiGViewClaim,
+  PiGViewNotice,
   PiGViewLines,
+  PiGViewStatus,
   PiGViewTheme,
 } from "@michaelkinsy/pig-extension-types";
 
@@ -60,6 +64,25 @@ export default function extension(pi: ExtensionAPI): void {
     await ctx.ui.setLogin(login);
     await ctx.ui.registerSprite(sprite);
     ctx.ui.notify("ready", "info");
+    const abilities: PiGViewAbilities | null = ctx.ui.viewAbilities();
+    const mounted: PiGViewStatus = await ctx.ui.mountView({ key: "k", slot: "panel", view: { root: { kind: "text", text: String(abilities?.limits.mounts) } } });
+    await ctx.ui.updateView(mounted.mount, { view: { root: { kind: "text", text: "next" } } });
+    await ctx.ui.updateView(mounted.mount, {
+      view: { root: { kind: "text", id: "t", text: "next" } },
+      alternatives: [{ when: { any: [{ all: [{ claim: "display.colors", op: "atLeast", value: 256 }] }] }, view: { root: { kind: "text", text: "rich" } } }],
+      drawing: { profile: "scene", shapes: [{ kind: "rect", width: 1, height: 1 }], regions: [{ key: "r", shape: { kind: "rect", width: 1, height: 1 }, gestures: ["activate"], intent: "x.go", name: "Go" }] },
+      a11y: [{ node: "t", name: "Next", role: "status" }],
+      focus: [{ node: "t", request: "mount" }],
+    });
+    const notices: PiGViewNotice[] = await ctx.ui.viewDiagnostics("k");
+    const colors = abilities?.claims?.find((claim: PiGViewClaim) => claim.name === "display.colors")?.value;
+    const finished: PiGViewStatus = await ctx.ui.finishView(mounted.mount, { colors, notices: notices.length });
+    void finished.result;
+  });
+  pi.onViewIntent((invocation) => ({ outcome: "done", answer: { echo: invocation.intent, aborted: invocation.signal.aborted } }));
+  pi.onViewAbilities(async (abilities, ctx) => {
+    const arrived: PiGViewAbilities | null = abilities;
+    if (arrived?.slots.includes("panel")) await ctx.ui.mountView({ key: "arrived", slot: "panel", view: { root: { kind: "text", text: "hello" } } });
   });
   // PiG emits Pi's UI prompt lifecycle for every SDK; the kinds and the
   // optional title come from the pinned Pi declarations.

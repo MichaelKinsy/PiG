@@ -1,0 +1,10 @@
+# ui_view_detach {attachment} is Attachment.Detach. Closing the connection does the same.
+C: {"id":"1","type":"ui_view_attach","abilities":{"slots":["panel","tool-card"],"nodes":["text","box"],"markdown":true,"imageFormats":["png"],"limits":{"nodes":64,"depth":8,"snapshotBytes":4096,"textBytes":1024,"mounts":8,"intentArgBytes":64},"input":{"keyboard":true,"pointer":true,"text":false},"claims":[{"name":"display.colors","value":256}],"slotClaims":[{"slot":"panel","claims":[{"name":"display.colors","value":16}]}],"drawing":{"profiles":["scene"],"shapes":8,"pixels":0}}}
+H: {"id":"1","type":"response","command":"ui_view_attach","success":true,"data":{"attachment":1,"seq":0,"snapshots":[]}}
+C: {"id":"2","type":"ui_view_detach","attachment":1}
+H: {"id":"2","type":"response","command":"ui_view_detach","success":true,"data":{}}
+# The attachment ended: its number is stale, and the connection may attach again.
+C: {"id":"3","type":"ui_view_detach","attachment":1}
+H: {"id":"3","type":"response","command":"ui_view_detach","success":false,"error":"stale: the connection does not hold attachment 1","code":"stale"}
+C: {"id":"4","type":"ui_view_attach","abilities":{"slots":["panel","tool-card"],"nodes":["text","box"],"markdown":true,"imageFormats":["png"],"limits":{"nodes":64,"depth":8,"snapshotBytes":4096,"textBytes":1024,"mounts":8,"intentArgBytes":64},"input":{"keyboard":true,"pointer":true,"text":false},"claims":[{"name":"display.colors","value":256}],"slotClaims":[{"slot":"panel","claims":[{"name":"display.colors","value":16}]}],"drawing":{"profiles":["scene"],"shapes":8,"pixels":0}}}
+H: {"id":"4","type":"response","command":"ui_view_attach","success":true,"data":{"attachment":2,"seq":0,"snapshots":[]}}

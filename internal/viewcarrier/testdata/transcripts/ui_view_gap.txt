@@ -1,0 +1,11 @@
+# ui_view_gap {attachment, seq}: the client stopped reading, the queue of 256 events filled, and the host refused delivery number seq. The client is written the queued events, then this line, then nothing more for the attachment until it resyncs.
+C: {"id":"1","type":"ui_view_attach","abilities":{"slots":["panel","tool-card"],"nodes":["text","box"],"markdown":true,"imageFormats":["png"],"limits":{"nodes":64,"depth":8,"snapshotBytes":4096,"textBytes":1024,"mounts":8,"intentArgBytes":64},"input":{"keyboard":true,"pointer":true,"text":false},"claims":[{"name":"display.colors","value":256}],"slotClaims":[{"slot":"panel","claims":[{"name":"display.colors","value":16}]}],"drawing":{"profiles":["scene"],"shapes":8,"pixels":0}}}
+H: {"id":"1","type":"response","command":"ui_view_attach","success":true,"data":{"attachment":1,"seq":0,"snapshots":[]}}
+# The ui_view events 1 to 255 come first, then:
+H: {"type":"ui_view","attachment":1,"seq":256,"snapshot":{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":256},"state":"live","view":{"root":{"kind":"text","text":"v256"}},"digest":"1f5ed709637a628e0a52ceea9462038c7c9d60f1b90b9400523fc6e59cc933d6"}}
+H: {"type":"ui_view_gap","attachment":1,"seq":257}
+# The plugin updated the mount 40 more times; none of it was written. The resync's seq is the gap's.
+C: {"id":"2","type":"ui_view_resync","attachment":1}
+H: {"id":"2","type":"response","command":"ui_view_resync","success":true,"data":{"attachment":1,"seq":257,"snapshots":[{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":296},"state":"live","view":{"root":{"kind":"text","text":"v296"}},"digest":"974ee47dfb737894a4726add346ef3832c14d99eb2a43a43bca3e7db8b287401"}]}}
+# The next event has the next number.
+H: {"type":"ui_view","attachment":1,"seq":258,"snapshot":{"plugin":"p","slot":"panel","mount":{"key":"k","epoch":1,"rev":297},"state":"live","view":{"root":{"kind":"text","text":"after"}},"digest":"54d2bcd1e1006febae5a5d9214259e93d4f68935cfe1de654406747ccb0a1379"}}
