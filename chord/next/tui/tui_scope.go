@@ -10,6 +10,8 @@
 //   - A Promise is a blocking call: the `call` of OptimisticAdd is a function the add runs on the caller's goroutine
 //     (upstream's `add(action, promise)` returns the promise it was given; here it returns the call's error), the
 //     action shown until the call returns.
+//   - So a caller that cannot wait for its call (a key handler on the UI's loop) has no add to use: OptimisticBegin is
+//     `add` in two steps, begin (add's synchronous part, in the caller's turn) and the settle its call's end runs.
 //   - A reader of a watchable without a value returns the zero value and false where Pi's returns `undefined`.
 //   - `messages` returns a BoundMessages (a translator in the host's language at each call) since `Translator` is a
 //     TypeScript call signature.
@@ -256,6 +258,27 @@ func Registry[C, V any](s *TuiScope, token registries.Registry[C, V]) func() (V,
 // the changes its answering host committed before answering (decision "A call's answer follows its state"), so the value
 // shown next is the real one. A failed call is its caller's to handle; its action goes as a succeeded one's does.
 func Optimistic[T, A, R any](s *TuiScope, read func() T, reduce func(current T, action A) T) (shown func() T, add OptimisticAdd[A, R], pending func() bool) {
+	shown, begin, pending := OptimisticBegin(s, read, reduce)
+	add = func(action A, call func() (R, error)) (R, error) {
+		defer begin(action)()
+		return call()
+	}
+	return shown, add, pending
+}
+
+// OptimisticBegin is Optimistic with its add in two steps, for a caller that cannot wait for its call (a key handler on
+// the UI's loop). begin(action) shows action from now, in its caller's turn: when it returns the reader shows the action,
+// pending is true and changed was called once. It returns the action's settle, which its caller runs exactly once when
+// the action's call ended, however it ended: until every action begun so settled, the reader shows them all, in the order
+// of their begins; then read's value again, and changed is called once more. A settle called again does nothing. An
+// action whose settle is never called stays shown, and pending, for the scope's life: defer it where the call runs.
+//
+// Forced Go difference. Pi has one `add(action, promise)`: it appends the action in its caller's turn and follows the
+// promise it was handed (scope.ts `add`). Go hands over no promise: Optimistic's add runs the call and returns when it
+// ended, so a handler that returns at once had to start that add on a goroutine, and its action showed some time after the
+// handler's turn (the key handled next could come before the choice showed). begin is what `add` does before it returns,
+// settle what its `call.then(settled, settled)` runs.
+func OptimisticBegin[T, A any](s *TuiScope, read func() T, reduce func(current T, action A) T) (shown func() T, begin func(action A) (settle func()), pending func() bool) {
 	var mu sync.Mutex
 	// Kept until every call settled, as React keeps the updates of transitions still in flight.
 	var actions []A
@@ -275,14 +298,14 @@ func Optimistic[T, A, R any](s *TuiScope, read func() T, reduce func(current T, 
 		mu.Unlock()
 		s.redraw()
 	}
-	add = func(action A, call func() (R, error)) (R, error) {
+	begin = func(action A) func() {
 		mu.Lock()
 		actions = append(append([]A(nil), actions...), action)
 		inFlight++
 		mu.Unlock()
 		s.redraw()
-		defer settled()
-		return call()
+		var once sync.Once
+		return func() { once.Do(settled) }
 	}
 	// The value shown is computed again only when read's value or the actions changed: a redraw reading it often gets the
 	// same value (by identity) until then.
@@ -302,7 +325,7 @@ func Optimistic[T, A, R any](s *TuiScope, read func() T, reduce func(current T, 
 		}
 		return last.value
 	}
-	return shown, add, func() bool {
+	return shown, begin, func() bool {
 		mu.Lock()
 		defer mu.Unlock()
 		return inFlight > 0
