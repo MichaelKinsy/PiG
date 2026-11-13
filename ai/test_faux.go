@@ -550,11 +550,12 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	// Find results are echoed, not replaced with a success token: a failed search must fail the scenario.
 	if strings.Contains(lastText, "Run: find txt files") || strings.Contains(lastText, "Run: find path glob") || strings.Contains(lastText, "Run: find dot slash glob") || strings.Contains(lastText, "Run: find scoped ignores") {
 		pattern := "*.txt"
-		if strings.Contains(lastText, "Run: find path glob") {
+		switch {
+		case strings.Contains(lastText, "Run: find path glob"):
 			pattern = "src/**/*.spec.ts"
-		} else if strings.Contains(lastText, "Run: find dot slash glob") {
+		case strings.Contains(lastText, "Run: find dot slash glob"):
 			pattern = "./src/**/*.spec.ts"
-		} else if strings.Contains(lastText, "Run: find scoped ignores") {
+		case strings.Contains(lastText, "Run: find scoped ignores"):
 			pattern = "**/*.txt"
 		}
 		return "tool", "", []testFauxToolCall{{

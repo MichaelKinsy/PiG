@@ -192,15 +192,17 @@ func treeDigest(dir string) (string, error) {
 		return "", err
 	}
 	slices.Sort(names)
-	sum := sha256.New()
+	var lines []byte
 	for _, name := range names {
 		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(name)))
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(sum, "%x  %s\n", sha256.Sum256(data), name)
+		file := sha256.Sum256(data)
+		lines = append(lines, hex.EncodeToString(file[:])+"  "+name+"\n"...)
 	}
-	return hex.EncodeToString(sum.Sum(nil)), nil
+	tree := sha256.Sum256(lines)
+	return hex.EncodeToString(tree[:]), nil
 }
 
 func repoRoot(t testing.TB) string {
