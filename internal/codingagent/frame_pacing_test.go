@@ -227,6 +227,34 @@ func TestFramePacingGateIsClosedWhileAnExtensionRendersInsideTheTranscript(t *te
 	}
 }
 
+// Each place that empties the transcript besides a rebuild reopens the gate one frame later: the redraw after a compaction and a command's Clear.
+func TestFramePacingGateReopensWhereverTheTranscriptIsEmptied(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		empty func(m *InteractiveMode)
+	}{
+		{"redraw after a compaction", func(m *InteractiveMode) { m.renderCompactionResult(agent.CompactionEndEvent{}, nil) }},
+		{"a command's Clear", func(m *InteractiveMode) { m.buildSlashContext(context.Background()).Clear() }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m, _, _ := newLifecycleMode(t)
+			m.newRunner = inproc.NewRunner([]extension.Extension{pacingTestExtension()}, m.opts.AgentDir)
+			m.framePacingInstalled = true
+			m.turnActive.Store(true)
+			m.addCustomEntryToChat(CustomEntry{CustomType: "mark"})
+			m.runScheduledRender()
+			if m.framePacingAllowed.Load() {
+				t.Fatal("the gate is open one frame after an extension's entry was added")
+			}
+			tc.empty(m)
+			m.runScheduledRender()
+			if !m.framePacingAllowed.Load() {
+				t.Fatal("the gate stayed closed one frame after the transcript was emptied")
+			}
+		})
+	}
+}
+
 // A tool renderer resolver of an extension closes the gate when it answers for the tool, with renderers of its own or by changing the ones it was handed, and not when it hands the resolution on.
 func TestFramePacingGateFollowsToolRendererResolvers(t *testing.T) {
 	render := func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
@@ -427,5 +455,15 @@ func TestTerminalFramePacingSetting(t *testing.T) {
 	}
 	if got := NewSettingsManager(cwd, agentDir).GetTerminalScreenWriter(); got != TerminalScreenWriterPi {
 		t.Fatalf("after the rewrite terminal.screenWriter reads %q, want %q", got, TerminalScreenWriterPi)
+	}
+	// A setter that changes the key writes the new value: the file's own copy of the key is not what keeps it.
+	if err := NewSettingsManager(cwd, agentDir).UpdateGlobal(func(s *Settings) { s.TerminalFramePacing = byDefault }); err != nil {
+		t.Fatal(err)
+	}
+	if data, err = os.ReadFile(settingsPath); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"framePacing": "`+byDefault+`"`) && !strings.Contains(string(data), `"framePacing":"`+byDefault+`"`) {
+		t.Fatalf("a setter that changed terminal.framePacing to %q left the file without it: %s", byDefault, data)
 	}
 }
