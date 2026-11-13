@@ -552,6 +552,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-495f017](#bf-495f017) | A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-495f017-2](#bf-495f017-2) | A branch-summary entry writes `fromHook: false` in Pi's member order, and the summary has its Spacer | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4967f7d](#bf-4967f7d) | tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner… | PiG's own defect | All platforms | Unreleased |
+| [BF-49e7c6d](#bf-49e7c6d) | agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place… | PiG's own defect | All platforms | Unreleased |
 | [BF-4a0bc3d](#bf-4a0bc3d) | The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4a0d619](#bf-4a0d619) | fix(durable/core): drop the reportWrap the RPT and TKS merges both declared | PiG's own defect | All platforms | Unreleased |
 | [BF-4a33ec6](#bf-4a33ec6) | The Chord app kit gives its plugins component the web surface's assets path (`/_chord/web/assets/`), as Pi's… | PiG's own defect | All platforms | Unreleased |
@@ -9518,6 +9519,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4967f7dca3` (2026-11-08)
 - **Tests:** `tui/render_overflow_test.go::TestOverflowDifferentialTerminatesWithCrashLog`, `tui/render_overflow_test.go::TestOverflowFullRenderPathsEmitRowUnchanged`, `tui/tui_alt_screen_test.go::TestAltScreenAutoScrollCancelledMidScrollDoesNotResurrect`, `tui/tui_alt_screen_test.go::TestAltScreenStartStopStartRestoresCleanState`
 - **Release note:** tui: stopping the renderer while a component asked for a frame from its own goroutine (the Loader's spinner, since 0.5.0) was a data race on the renderer's `stopped` flag: the stop wrote it while `RequestRender` read it without the render lock, on all three screens. It could show as a rare crash report under the race detector or as a frame asked for on a renderer that had just stopped. The flag is now atomic and still written under the render lock, so the geometry callbacks' rule that nothing is delivered after a stop holds unchanged.
+
+### BF-49e7c6d
+
+**agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place…**
+
+- **Source:** PiG's own defect
+- **Symptom:** agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place in its context (`call.Context.Messages[i] = m`) never reached the run: with two or more calls each call wrote a copy, so the batch's other calls and the next model request did not see it.
+- **Root cause:** The copy itself raced: since (in no release) the second call's copy was taken after the first call's goroutine had started, so a tool writing the array it kept from its before hook raced with slices.Clone (-race: 1 run in 20 on the parent). With the copy gone the run no longer reads the array while calls run.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `49e7c6d8bc` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place in its context (`call.Context.Messages[i] = m`) never reached the run: with two or more calls each call wrote a copy, so the batch's other calls and the next model request did not see it. Pi hands every call of the batch one live context: the other calls read the new message and the next request carries it. Every call now receives the run's own messages, as the calls of a sequential batch do. The after hooks of a batch still run one at a time; the tools of a parallel batch run at the same time, so a tool that reads or writes a message another call's code may touch at that moment has to lock with it. No extension is affected: the hook context never reaches an extension. Of the releases, v0.7.0 has the lost write (its hooks receive a copy of the messages that the run never reads back; v0.2.0 and v0.3.0 hand hooks no context). The change also removes a data race of the per-call copy (the second call's copy was taken after the first call's goroutine had started), which was never released.
 
 ### BF-4a0bc3d
 

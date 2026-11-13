@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-	"slices"
 	"sync"
 	"time"
 
@@ -114,11 +113,13 @@ func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendin
 // prefix — including a file-mutation-queue registration — in call order,
 // before any call's async work begins, and Go's per-call goroutines below
 // have no equivalent guarantee on their own (see QueueOrderable).
-// executeToolCallsParallel runs the calls at once. The before hooks run one after another here, each handed the run's own messages
-// (hookView), as Pi's do (prepareToolCall receives currentContext): what one hook replaces in place the next hook and the next request
-// see. The tools and the after hooks of two or more prepared calls run at the same time, which Pi's never do (one thread), so each
-// of those calls gets a copy of its own for its tool and its after hooks: they run on the calls' goroutines, and two of them writing a
-// message of one shared array would race.
+// executeToolCallsParallel runs the calls at once. Every call is handed the run's own messages (hookView), as Pi hands every call
+// currentContext (prepareToolCall, and each call's closure under Promise.all): what a before hook, a tool or an after hook replaces in
+// place, the batch's other calls and the next request see. The run does not read or write that array from the start of the first
+// call's tool to the end of the last call's after hooks. The before hooks run one after another here. The after hooks of a call start
+// once the hooks of every call that settled before it returned or invoked their first extension handler (finalizeCalledTool), so the
+// batch's hooks write the array one at a time. The tools run at the same time, which Pi's never do (one thread): a tool that reads or
+// writes the messages while another call's tool or after hook does shares memory with that code and synchronizes with it.
 func (r *loopRun) executeToolCallsParallel(ctx context.Context, assistant *AssistantMessage, calls []pendingToolCall) executedToolCallBatch {
 	outcomes := make([]toolCallOutcome, 0, len(calls))
 	callCtxs := make([]context.Context, 0, len(calls))
@@ -186,15 +187,7 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, assistant *Assis
 				continue
 			}
 			slot := settleGate.NewSlot()
-			callCtx := callCtxs[i]
-			if prepared >= 2 {
-				// The calls' tools and after hooks run at the same time from here on, so each call gets a copy of the run's messages of its
-				// own, taken now that every before hook has run: it holds what they wrote in place, as Pi's live array does when its after
-				// hooks start, and two calls writing one array would race.
-				//perf:ok one copy of the run's messages (64 B each) per call of a parallel batch of two or more prepared calls, measured by BenchmarkParallelToolBatchWithHistory with and without it: 2 calls +2 allocations and 14 kB after 100 messages, 657 kB after 5,000; 8 calls +10 allocations and 56 kB after 100, 2.6 MB after 5,000. It makes what a call's tool and after hook write to the messages private to that call; Pi's calls share one context (agent-loop.ts:614,641,889)
-				callCtx = WithToolCallHookContext(callCtx, r.toolCallHookContext(assistant, slices.Clone(r.context)))
-			}
-			callCtx = withToolSettle(callCtx, slot, outcome.prepared.call.id, batch)
+			callCtx := withToolSettle(callCtxs[i], slot, outcome.prepared.call.id, batch)
 			// Pi awaits Promise.all over every prepared call, so all calls run at
 			// once. A CPU-count cap would serialize I/O-bound tools on small machines.
 			wg.Go(func() {
