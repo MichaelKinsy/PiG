@@ -4989,7 +4989,7 @@ snippet = "return a.load(context.Background())"
 check = "ctxbackground"
 file = "ai/auth.go"
 func = "AuthStorage.credential"
-snippet = "creds, err := a.readLatest(context.Background())"
+snippet = "return a.credentialIn(context.Background(), provider)"
 
 [[hit]]
 check = "ctxbackground"
@@ -5984,6 +5984,12 @@ snippet = "return context.Background()"
 
 [[hit]]
 check = "ctxbackground"
+file = "internal/codingagent/bug_report.go"
+func = "ModelRegistry.BugReportProviderInfo"
+snippet = "UsingOAuth:            r.hasStoredOAuth(context.Background(), providerID),"
+
+[[hit]]
+check = "ctxbackground"
 file = "internal/codingagent/cache_warmer.go"
 func = "NewCacheWarmer"
 snippet = "lifetime, dispose := context.WithCancel(context.Background())"
@@ -6218,6 +6224,12 @@ snippet = "runCtx, abort := context.WithCancelCause(context.Background())"
 
 [[hit]]
 check = "ctxbackground"
+file = "internal/codingagent/model_availability.go"
+func = "availabilityPassContext"
+snippet = "return ai.WithFileReadSnapshot(context.Background())"
+
+[[hit]]
+check = "ctxbackground"
 file = "internal/codingagent/model_refresh_background.go"
 func = "ModelRegistry.uncoverRegistrationRefresh"
 snippet = "r.StartRegistrationRefresh(context.Background())"
@@ -6232,7 +6244,7 @@ snippet = "r.StartRegistrationRefresh(context.Background())"
 check = "ctxbackground"
 file = "internal/codingagent/model_registry.go"
 func = "ModelRegistry.providerEnv"
-snippet = "env, err := ai.CredentialStoreProviderEnv(context.Background(), r.credentialStore, providerID)"
+snippet = "return r.providerEnvIn(context.Background(), providerID)"
 
 [[hit]]
 check = "ctxbackground"
@@ -6255,8 +6267,8 @@ snippet = "r.RefreshCatalogs(context.Background(), CatalogRefreshOptions{})"
 [[hit]]
 check = "ctxbackground"
 file = "internal/codingagent/model_registry.go"
-func = "ModelRegistry.accountModelFilter"
-snippet = "credential, found, err := ai.ReadRawCredential(context.Background(), store, providerID)"
+func = "ModelRegistry.HasConfiguredAuth"
+snippet = "return r.hasConfiguredAuth(context.Background(), providerID)"
 
 [[hit]]
 check = "ctxbackground"
@@ -6267,26 +6279,8 @@ snippet = "fallback = ai.CredentialStoreAuthStatus(context.Background(), r.crede
 [[hit]]
 check = "ctxbackground"
 file = "internal/codingagent/model_registry.go"
-func = "ModelRegistry.hasStoredOAuth"
-snippet = "cred, err := r.credentialStore.Read(context.Background(), providerID)"
-
-[[hit]]
-check = "ctxbackground"
-file = "internal/codingagent/model_registry.go"
 func = "ModelRegistry.hasStoredCredential"
 snippet = "_, ok, _ := ai.ReadRawCredential(context.Background(), r.credentialStore, providerID)"
-
-[[hit]]
-check = "ctxbackground"
-file = "internal/codingagent/model_registry.go"
-func = "ModelRegistry.checkProviderAuth"
-snippet = "check, err := ai.CheckProviderAuth(context.Background(), providerID, auth, store, ai.DefaultProviderAuthContext())"
-
-[[hit]]
-check = "ctxbackground"
-file = "internal/codingagent/model_registry.go"
-func = "ModelRegistry.storedCredentialLocked"
-snippet = "credential, err := r.credentialStore.Read(context.Background(), providerID)"
 
 [[hit]]
 check = "ctxbackground"
@@ -6334,7 +6328,7 @@ snippet = "controller.disposeError = controller.options.RunOnMain(context.Backgr
 check = "ctxbackground"
 file = "internal/codingagent/radius_models.go"
 func = "ModelRegistry.storedCredential"
-snippet = "credential, err := storage.Read(context.Background(), providerID)"
+snippet = "return r.storedCredentialIn(context.Background(), providerID)"
 
 [[hit]]
 check = "ctxbackground"

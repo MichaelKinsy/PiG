@@ -73384,9 +73384,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, authenticated bool) []github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry"
+        "type": "func(hasAuth func(providerID string) bool) []github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry"
       },
-      "shapeHash": "sha256:32e5997ba8fc3babee534703a8141a807bfc084d0410d2f99f9f9698516c28ac"
+      "shapeHash": "sha256:f455f3cb0e6653b856b75b5522915c9612b5028c616febb78b6e7c86ae498c7b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.radiusHasAuth",
@@ -73777,6 +73777,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.storedCredential",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.storedCredential",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string) (github.com/MichaelKinsy/PiG/ai.Credential, bool)"
+      },
+      "shapeHash": "sha256:8d7c3156812fdefb5f0d92cc7b3b29930b2c116708f6bb0dbe4d0685f8219a54"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.storedCredentialIn",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.storedCredentialIn",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -265466,9 +265477,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, authenticated bool) []ModelEntry"
+        "type": "func(hasAuth func(providerID string) bool) []ModelEntry"
       },
-      "shapeHash": "sha256:e0c361492ec73a8d4deb57588502b0aba70b802b08a45e3c1f3bd3e92aa7b687"
+      "shapeHash": "sha256:96963546ba079c9057a48444a6f105ed0d1f3b481da0de9b263815994a776e66"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.radiusHasAuth",
@@ -265859,6 +265870,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.storedCredential",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ModelRegistry.storedCredential",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string) (github.com/MichaelKinsy/PiG/ai.Credential, bool)"
+      },
+      "shapeHash": "sha256:8d7c3156812fdefb5f0d92cc7b3b29930b2c116708f6bb0dbe4d0685f8219a54"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.storedCredentialIn",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.storedCredentialIn",
       "kind": "function",
       "exported": false,
       "shape": {
