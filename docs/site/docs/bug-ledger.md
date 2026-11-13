@@ -1094,6 +1094,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-89d167f](#bf-89d167f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-8a18a6b](#bf-8a18a6b) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | 0.5.2 |
 | [BF-8a25539](#bf-8a25539) | `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8a4185d](#bf-8a4185d) | `enabledModels`/`--models` warnings such as `No models match pattern "github-copilot/nope"` are reported with… | PiG's own defect | All platforms | Unreleased |
 | [BF-8a44836](#bf-8a44836) | Closing a session with an MCP server that signs in with OAuth no longer fails at random | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8a88c34](#bf-8a88c34) | On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version | PiG's own defect | Windows | 0.7.0 |
 | [BF-8a9bb40](#bf-8a9bb40) | fix(ai): Anthropic retry-delay message and Codex error body without an error member | PiG's own defect | All platforms | Unreleased |
@@ -16914,6 +16915,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `8a25539ce3` (2026-10-13)
 - **Tests:** `test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules`, `test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence`
 - **Release note:** `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp` (Go's `math.Exp` differs in the last bit for some arguments on amd64). Its requests are written with their members in Pi's order, and a failed lookup no longer cancels the sibling requests of the same `Promise.all`, so the server receives what it receives from Pi.
+
+### BF-8a4185d
+
+**`enabledModels`/`--models` warnings such as `No models match pattern "github-copilot/nope"` are reported with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `enabledModels`/`--models` warnings such as `No models match pattern "github-copilot/nope"` are reported with the other startup diagnostics: in the chat in interactive mode, where they were a raw stderr line printed before the TUI started, and on stderr in print, JSON and RPC modes, after the settings and extension diagnostics.
+- **Root cause:** Port of Pi. The enabledModels/--models warnings join the initial runtime's diagnostics, after the settings and extension diagnostics and before the session option diagnostics, and are reported once, deduplicated: stderr in print, JSON and RPC modes and for --help and --list-models, chat warnings in interactive mode. They were printed to stderr first, before the TUI started.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8a4185de22` (2026-11-12)
+- **Tests:** `coding/cli/model_resolver_patterns_upstream_test.go::TestModelResolverScopeUpstream`, `coding/cli/model_scope_session_replacement_upstream_test.go::TestModelScopeWarningsOnSessionReplacement`, `coding/cli/startup_diagnostics_order_test.go::TestStartupDiagnosticOrderMatchesPi`, `internal/codingagent/model_scope_runtime_test.go::TestResolveModelScopeWithDiagnosticsPropagatesRuntimeErrors`
+- **Release note:** `enabledModels`/`--models` warnings such as `No models match pattern "github-copilot/nope"` are reported with the other startup diagnostics: in the chat in interactive mode, where they were a raw stderr line printed before the TUI started, and on stderr in print, JSON and RPC modes, after the settings and extension diagnostics. A pattern given twice is reported once (Pi #11973).
 
 ### BF-8a44836
 
