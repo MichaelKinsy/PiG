@@ -1,12 +1,12 @@
 package host
 
 import (
+	"context"
 	"runtime"
 	"strings"
 	"testing"
 	"weak"
 
-	"context"
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
