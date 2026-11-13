@@ -4723,6 +4723,35 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/70-theme-load-failure-unknown-variable.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+",
+          "with": "<agent-dir>",
+          "reason": "D2: the runner allocates independent agent-root names. Keep the block's order, the file's relative path and every message."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A theme selected by settings.json whose file names an unknown variable: the error line repeats the loader's reason.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[Theme conflicts]",
+            "capture_end": "Fell back to the system theme."
+          },
+          "reason": "Owned visible surface: A theme selected by settings.json whose file names an unknown variable: the error line repeats the loader's reason.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml",
       "transforms": [
         {
@@ -4732,6 +4761,82 @@
             "capture_end": "Prototype path redraw end"
           },
           "reason": "Owned visible surface: Reopened write and read cards of paths whose extension is `constructor` or `__proto__` draw Pi's fallbacks from the stored entries.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/71-theme-load-failure-invalid-json.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+",
+          "with": "<agent-dir>",
+          "reason": "D2: the runner allocates independent agent-root names. Keep the block's order, the file's relative path and every message."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A theme selected by settings.json whose file is not JSON: the error line repeats the parse error, labelled with the theme name.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[Theme conflicts]",
+            "capture_end": "Fell back to the system theme."
+          },
+          "reason": "Owned visible surface: A theme selected by settings.json whose file is not JSON: the error line repeats the parse error, labelled with the theme name.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/72-theme-load-failure-missing-colors.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+",
+          "with": "<agent-dir>",
+          "reason": "D2: the runner allocates independent agent-root names. Keep the block's order, the file's relative path and every message."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A theme selected by settings.json whose colors map is empty: the error line repeats the validator's list of missing tokens.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[Theme conflicts]",
+            "capture_end": "Fell back to the system theme."
+          },
+          "reason": "Owned visible surface: A theme selected by settings.json whose colors map is empty: the error line repeats the validator's list of missing tokens.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/73-theme-loads-by-file-name.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Pick a color",
+            "capture_end": "Resume marker end"
+          },
+          "reason": "Owned visible surface: A valid theme file selected by its file name loads although its JSON carries another name.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
