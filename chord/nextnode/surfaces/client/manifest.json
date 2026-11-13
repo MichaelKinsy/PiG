@@ -24,7 +24,8 @@
 		"6268cc5cda2b97f1af95e10c350a72975406ea16",
 		"c8390defa9b69a05629a1a0877cd91aa18585ecd",
 		"926b2f8cd8a8ac966f331882557f1bdc98e200de",
-		"7ae9ff8c7be018d526cd50c6ffe35ad9e8128127"
+		"7ae9ff8c7be018d526cd50c6ffe35ad9e8128127",
+		"21e4cb80dddd4330806247818b1f4ec19af95fa5"
 	],
 	"piSchema": "1.5.2",
 	"piTelemetry": "1.5.2",
@@ -716,11 +717,11 @@
 		},
 		{
 			"path": "pi/chord/src/surfaces/client.ts",
-			"sha256": "17f44a09d45886ecd35ce6f46262ffb18cdcb1188172819315bdab0268c6b8f3"
+			"sha256": "4b2d95584930eaaae5791539cda830a477c16b73bdc86d6b3ed918b4d6759a1b"
 		},
 		{
 			"path": "pi/chord/src/surfaces/connection.ts",
-			"sha256": "6888e2d8e8a057c7e5c13b8e3966660102bc790886d727f388089eb41179cf3b"
+			"sha256": "e5824ef2a601bfa998dcf5ae9225cd496a31502d2ce7f77df57310779ea09096"
 		},
 		{
 			"path": "pi/chord/src/surfaces/format.ts",
@@ -848,7 +849,7 @@
 		},
 		{
 			"path": "pi/chord/src/web/page.ts",
-			"sha256": "08288a51b47b13a5b000ea0b386f29ef57125dda3b7564375c090091b727e68e"
+			"sha256": "558091f2f8169fcffae2d4886bf32436c1b18ec9ebf8226d9b91deaae3af3df3"
 		},
 		{
 			"path": "pi/chord/src/web/scripts.ts",
