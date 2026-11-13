@@ -1821,10 +1821,10 @@ func exportOfflineMode(flagOffline bool) {
 // isInstallTelemetryEnabled, which reads PI_TELEMETRY. A PI_TELEMETRY that is set wins and stays as it is.
 // pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY ("Product name in messages").
 func exportTelemetryOverride() {
-	if _, ok := os.LookupEnv("PI_TELEMETRY"); ok {
+	if _, ok := os.LookupEnv("PI_TELEMETRY"); ok { //perf:ok cold: read once per process start (Main)
 		return
 	}
-	if value, ok := os.LookupEnv("PIG_TELEMETRY"); ok {
+	if value, ok := os.LookupEnv("PIG_TELEMETRY"); ok { //perf:ok cold: read once per process start (Main)
 		_ = os.Setenv("PI_TELEMETRY", value)
 	}
 }
