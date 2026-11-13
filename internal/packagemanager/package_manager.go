@@ -171,6 +171,7 @@ func (m *PackageManager) AddSourceToSettings(source string, local bool) (bool, e
 	} else {
 		current = append(current, codingagent.PackageSource{Source: normalized})
 	}
+	// pig divergence (D633): a failed save of the package list is returned, so `pig install` reports it and exits 1; Pi's addSourceToSettings (package-manager.ts:902) cannot fail and `pi install` prints Installed.
 	if local {
 		return true, sm.SetProjectPackages(current)
 	}
@@ -198,6 +199,7 @@ func (m *PackageManager) RemoveSourceFromSettings(source string, local bool) (bo
 	if len(next) == len(current) {
 		return false, nil
 	}
+	// pig divergence (D633): a failed save of the package list is returned, so `pig remove` reports it and exits 1; Pi's removeSourceFromSettings (package-manager.ts:933) cannot fail.
 	if local {
 		return true, sm.SetProjectPackages(next)
 	}
