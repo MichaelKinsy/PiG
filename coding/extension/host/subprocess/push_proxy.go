@@ -2,7 +2,6 @@ package subprocess
 
 import (
 	"sync"
-	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
@@ -38,26 +37,17 @@ type PushProxy struct {
 	// width.
 	view *viewSurface
 
-	// width is tracked separately with atomic to avoid write-under-RLock.
-	width atomic.Int32
-
 	// invalidate is called when new lines are pushed, signaling the TUI to
 	// schedule a re-render on the next tick.
 	invalidate func()
-
-	// onWidthChange is called when the host notifies the proxy of a terminal
-	// width change. The proxy forwards this to the extension so it can re-render.
-	onWidthChange func(width int)
 }
 
 // NewPushProxy creates a proxy component. The invalidate callback should trigger
-// a TUI render cycle. The onWidthChange callback should notify the extension
-// of the new terminal width.
-func NewPushProxy(invalidate func(), onWidthChange func(width int)) *PushProxy {
+// a TUI render cycle.
+func NewPushProxy(invalidate func()) *PushProxy {
 	return &PushProxy{
-		placement:     string(extension.WidgetPlacementAboveEditor),
-		invalidate:    invalidate,
-		onWidthChange: onWidthChange,
+		placement:  string(extension.WidgetPlacementAboveEditor),
+		invalidate: invalidate,
 	}
 }
 
@@ -73,12 +63,6 @@ func (p *PushProxy) WidgetLayout() (placement string, order uint64) {
 //
 // Returns a defensive copy so callers cannot corrupt the cache.
 func (p *PushProxy) Render(width int) []string {
-	// Track width changes atomically (no lock needed).
-	oldWidth := int(p.width.Swap(int32(width)))
-	if width > 0 && oldWidth != width && p.onWidthChange != nil {
-		go p.onWidthChange(width)
-	}
-
 	// A write lock: the Text components of a string list cache their layout.
 	p.mu.Lock()
 	defer p.mu.Unlock()

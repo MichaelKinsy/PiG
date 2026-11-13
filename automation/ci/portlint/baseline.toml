@@ -1984,12 +1984,6 @@ snippet = "go l.drain(lane, current)"
 
 [[hit]]
 check = "golifetime"
-file = "coding/extension/host/subprocess/push_proxy.go"
-func = "PushProxy.Render"
-snippet = "go p.onWidthChange(width)"
-
-[[hit]]
-check = "golifetime"
 file = "coding/extension/host/subprocess/render_proxy.go"
 func = "renderProxyComponent.Render"
 snippet = "go c.requestLoop()"

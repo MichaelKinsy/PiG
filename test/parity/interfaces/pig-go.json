@@ -138318,9 +138318,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(invalidate func(), onWidthChange func(width int)) *PushProxy"
+        "type": "func(invalidate func()) *PushProxy"
       },
-      "shapeHash": "sha256:f542fe501de2e19da1e3a8b272838589957085cca2bc8d0962d06d66586e75a6"
+      "shapeHash": "sha256:3c0d8db96b4304148796c1652aba38de908fc19eda05955f9a02ab467e02e46f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NewRuntimeRetention",
