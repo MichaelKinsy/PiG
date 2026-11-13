@@ -53,6 +53,11 @@ owner = "pi"
 generator = "codemode/testdata/upstream-oracle.mjs"
 
 [[golden]]
+paths = ["coding/testdata/overflow-owner-pi.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/session-overflow-owner-pi.mjs"
+
+[[golden]]
 paths = ["mcp/testdata/upstream-golden.json"]
 owner = "pi"
 generator = "mcp/testdata/upstream-oracle.mjs"

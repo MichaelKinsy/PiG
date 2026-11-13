@@ -39,7 +39,10 @@ type overflowOwnerRecord struct {
 	Errors          []string               `json:"errors"`
 }
 
-// overflowOwnerGolden reads the records the pinned Pi package wrote, by case name (testdata/overflow-owner-pi.jsonl).
+// overflowOwnerGolden reads the records the pinned Pi package wrote, by case name (testdata/overflow-owner-pi.jsonl). After `make parity-deps`, this
+// command writes the file again from Pi:
+//
+//	node --experimental-import-meta-resolve test/parity/testdata/session-overflow-owner-pi.mjs | sed 's/^OVERFLOW_OWNER_CASE //' > coding/testdata/overflow-owner-pi.jsonl
 func overflowOwnerGolden(t *testing.T) map[string]string {
 	t.Helper()
 	data, err := os.ReadFile("testdata/overflow-owner-pi.jsonl")
