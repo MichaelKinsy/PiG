@@ -1,7 +1,6 @@
 package subprocess
 
 import (
-	"context"
 	"net"
 	"os"
 	"path/filepath"
@@ -61,18 +60,20 @@ func TestFusedSourceDigestIsTheContentTheBuildReads(t *testing.T) {
 		t.Fatalf("touched files changed the digest: %s, was %s", got, baked)
 	}
 
-	for path, content := range map[string]string{
-		"member/extension_test.go":  "package member\n",
-		"member/testdata/case.go":   "package testdata\n",
-		"member/vendor/v/v.go":      "package v\n",
-		"member/.cache/c.go":        "package c\n",
-		"member/_scratch/s.go":      "package s\n",
-		"member/README.md":          "notes\n",
-		"shared/shared_test.go":     "package shared\n",
-		"member/nested/go.mod":      "module example.test/nested\n",
-		"member/nested/nested.go":   "package nested\n",
-		"member/internal/README.md": "notes\n",
+	// In order: a nested module's go.mod stands before its package, which without it would be a package of the member.
+	for _, file := range [][2]string{
+		{"member/extension_test.go", "package member\n"},
+		{"member/testdata/case.go", "package testdata\n"},
+		{"member/vendor/v/v.go", "package v\n"},
+		{"member/.cache/c.go", "package c\n"},
+		{"member/_scratch/s.go", "package s\n"},
+		{"member/README.md", "notes\n"},
+		{"shared/shared_test.go", "package shared\n"},
+		{"member/nested/go.mod", "module example.test/nested\n"},
+		{"member/nested/nested.go", "package nested\n"},
+		{"member/internal/README.md", "notes\n"},
 	} {
+		path, content := file[0], file[1]
 		full := filepath.Join(filepath.Dir(first), path)
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			t.Fatal(err)
@@ -81,7 +82,7 @@ func TestFusedSourceDigestIsTheContentTheBuildReads(t *testing.T) {
 			t.Fatal(err)
 		}
 		if got := fusedDigest(t, first); got != baked {
-			t.Errorf("%s, which go build does not read, changed the digest", path)
+			t.Fatalf("%s, which go build does not read, changed the digest", path)
 		}
 	}
 
@@ -168,7 +169,7 @@ func TestResolveFused(t *testing.T) {
 				t.Setenv("PATH", bin)
 			}
 			SetFusedResolver(tc.resolver)
-			choice := resolveFused(context.Background(), tc.cfg)
+			choice := resolveFused(tc.cfg)
 			if (choice.serve != nil) != tc.fused || choice.rebuiltFrom != tc.rebuiltFrom || choice.reason != tc.reason || !strings.Contains(choice.warning, tc.warning) || (tc.warning == "") != (choice.warning == "") {
 				t.Fatalf("choice fused=%t rebuiltFrom=%q reason=%q warning=%q", choice.serve != nil, choice.rebuiltFrom, choice.reason, choice.warning)
 			}

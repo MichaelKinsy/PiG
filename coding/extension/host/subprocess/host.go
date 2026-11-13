@@ -1498,7 +1498,7 @@ func (h *Host) LoadAll(ctx context.Context, configs []ExtConfig) ([]extension.Ex
 		h.recordLoadOrder(configs, false)
 		cellConfigs = cellConfigs[:0:0]
 		for _, cfg := range configs {
-			choice := resolveFused(ctx, cfg)
+			choice := resolveFused(cfg)
 			if choice.serve == nil {
 				cellConfigs = append(cellConfigs, choice.cellConfig(cfg))
 				continue
@@ -2978,7 +2978,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 			cellConfigs = append(cellConfigs, cfg)
 			continue
 		}
-		choice := resolveFused(ctx, cfg)
+		choice := resolveFused(cfg)
 		if choice.serve == nil {
 			cellConfigs = append(cellConfigs, choice.cellConfig(cfg))
 			continue

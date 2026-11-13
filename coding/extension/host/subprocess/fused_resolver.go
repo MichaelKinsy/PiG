@@ -1,7 +1,6 @@
 package subprocess
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -52,7 +51,7 @@ func RunsFused(cfg ExtConfig) bool {
 	if fusedResolver == nil {
 		return false
 	}
-	return resolveFused(context.Background(), cfg).serve != nil
+	return resolveFused(cfg).serve != nil
 }
 
 // FusedSourceDigest is the digest of a fused member's source that a Piglet Binary build bakes and the host compares on a load. It is
@@ -151,7 +150,7 @@ const (
 // Without a Go toolchain, or with a source that cannot be read, the compiled copy runs and the choice carries one warning.
 // Callers test fusedResolver first: stock pig has none.
 // pig additive (D31): a fused member whose source changed runs from its source.
-func resolveFused(ctx context.Context, cfg ExtConfig) fusedChoice {
+func resolveFused(cfg ExtConfig) fusedChoice {
 	serve, ok := fusedResolver.FusedServe(cfg)
 	if !ok {
 		return fusedChoice{}
@@ -171,8 +170,8 @@ func resolveFused(ctx context.Context, cfg ExtConfig) fusedChoice {
 	if digest == baked {
 		return fusedChoice{serve: serve}
 	}
-	// The builder's readiness check: its message names the missing toolchain and the remedy.
-	if err := ensureBuildToolchain(ctx, "go"); err != nil {
+	// The builder's readiness check (ensureBuildToolchain): its message names the missing toolchain and the remedy.
+	if err := missingCompiler("go"); err != nil {
 		return fusedChoice{serve: serve, reason: fusedToolchainMissingReason, warning: fmt.Sprintf("source at %s differs from the fused copy; no Go toolchain: running the fused copy: %v", cfg.Source, err)}
 	}
 	return fusedChoice{rebuiltFrom: cfg.Source}

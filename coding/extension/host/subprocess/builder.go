@@ -847,6 +847,12 @@ func ensureBuildToolchain(ctx context.Context, buildType string) error {
 		_, err := ensureNodeRuntime(ctx)
 		return err
 	}
+	return missingCompiler(buildType)
+}
+
+// missingCompiler is ensureBuildToolchain's check of a compiled build type: the readiness error, with its remedy, when the compiler
+// is not on PATH.
+func missingCompiler(buildType string) error {
 	tool := map[string]string{"go": "go", "rust": "cargo"}[buildType]
 	if tool == "" {
 		return nil
