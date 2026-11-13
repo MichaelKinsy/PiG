@@ -1501,7 +1501,7 @@ Locked by: `durable/storage/sqlite/working_set_test.go` (range equals `ScanEntri
 
 Remove when: PiG's per-read cost, with Pi 1.5.2's kept context ranges (`readContextFrom`, retained per conversation by the scheduler), matches Pi's without the working set, or Pi's `normalizeContext` starts copying.
 
-Approval: the lead assigned D104 on 2026-10-06 under the owner's durable-perf instruction; owner sign-off pending.
+Approval: the lead assigned D104 on 2026-10-06 under the owner's durable-perf instruction; approved (owner, 2026-11-13T14:52:18Z: "proceed with recommendations."; the line of that decision for this record: "D104 APPROVED (durable perf divergence of 2026-10-06, shipped since 0.5.0).").
 SCRUTINIZED:approved
 
 ---
