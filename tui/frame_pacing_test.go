@@ -4,6 +4,7 @@
 package tui
 
 import (
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -479,9 +480,7 @@ func TestSynchronizedUpdatesTrustedFromTheImplementingRelease(t *testing.T) {
 		{"Windows Terminal, whatever it states", "", "1.24.2372.0", map[string]string{"WT_SESSION": "1"}, false},
 	} {
 		env := map[string]string{"TERM": "xterm-256color", "TERM_PROGRAM": tc.program, "TERM_PROGRAM_VERSION": tc.version}
-		for name, value := range tc.others {
-			env[name] = value
-		}
+		maps.Copy(env, tc.others)
 		if got := synchronizedUpdatesTrustedIn(func(name string) string { return env[name] }); got != tc.want {
 			t.Errorf("%s (TERM_PROGRAM=%q TERM_PROGRAM_VERSION=%q %v): trusted = %v, want %v", tc.name, tc.program, tc.version, tc.others, got, tc.want)
 		}
