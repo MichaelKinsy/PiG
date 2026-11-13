@@ -84,7 +84,8 @@ func (s *Session) SetSessionFile(path string) error {
 		}
 		if empty {
 			if info.Size() > 0 {
-				return fail(fmt.Errorf("Session file is not a valid pi session: %s", resolved))
+				// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
+				return fail(fmt.Errorf("Session file is not a valid pig session: %s", resolved))
 			}
 			if next, err = newSessionWithOptions(cwd, nil, ""); err != nil {
 				return fail(err)

@@ -174,7 +174,7 @@ No packages installed.
 ```
 
 ```text
-Pig status: healthy
+PiG status: healthy
   paths: home=/home/you/.pig agent=/home/you/.pig/agent project=/home/you/project/.pig
   packages: 0 (user=0 project=0)
   resources: 0 (enabled=0 disabled=0)
@@ -246,7 +246,7 @@ User packages:
 `pig status` now reports a problem if two resources collide. Here the package's `commit` skill and a `commit` skill in `~/.pig/agent/skills` have the same name. The status turns `invalid`, names both files and exits 1 (exit 1):
 
 ```text
-Pig status: invalid
+PiG status: invalid
   paths: home=/home/you/.pig agent=/home/you/.pig/agent project=/home/you/project/.pig
   packages: 1 (user=1 project=0)
   resources: 3 (enabled=3 disabled=0)
@@ -443,9 +443,9 @@ pig docs show onboarding
 The first lines of the page:
 
 ```text
-# Get started with Pig
+# Get started with PiG
 
-Stock Pig includes the reference documentation required to configure models,
+Stock PiG includes the reference documentation required to configure models,
 author extensions, use Packages, and compose Piglets. ...
 ```
 

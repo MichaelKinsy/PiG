@@ -312,7 +312,8 @@ func LoginOpenAIChatGPT(ctx context.Context, callbacks OAuthLoginCallbacks) (OAu
 		if nodeerrno.ErrorCode(err) != "EADDRINUSE" {
 			return OAuthCredentials{}, err
 		}
-		return OAuthCredentials{}, fmt.Errorf("Port %d is in use, probably by an unfinished login in another pi session or by the Codex CLI. Cancel that login and try again.", chatgptCallbackPort)
+		// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
+		return OAuthCredentials{}, fmt.Errorf("Port %d is in use, probably by an unfinished login in another pig session or by the Codex CLI. Cancel that login and try again.", chatgptCallbackPort)
 	}
 	defer callback.close()
 

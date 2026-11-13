@@ -191,7 +191,8 @@ func loadSessionFile(path string) (*Session, error) {
 		if info.Size() == 0 {
 			return nil, fmt.Errorf("session: empty file: %s", path)
 		}
-		return nil, fmt.Errorf("Session file is not a valid pi session: %s", path)
+		// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
+		return nil, fmt.Errorf("Session file is not a valid pig session: %s", path)
 	}
 	return session, nil
 }
@@ -258,7 +259,8 @@ func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error
 			return nil, err
 		}
 		if empty {
-			return nil, fmt.Errorf("Session file is not a valid pi session: %s", path)
+			// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
+			return nil, fmt.Errorf("Session file is not a valid pig session: %s", path)
 		}
 	} else {
 		records := []FileEntry{header}

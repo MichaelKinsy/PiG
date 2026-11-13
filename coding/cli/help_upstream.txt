@@ -57,7 +57,7 @@ Options:
   --tui-mode <mode>              TUI mode: fullscreen (default) or regular
   --approve, -a                  Trust project-local files for this run
   --no-approve, -na              Ignore project-local files for this run
-  --offline                      Disable startup network operations (same as PI_OFFLINE=1)
+  --offline                      Disable startup network operations (same as PIG_OFFLINE=1)
   --                             End option parsing; treat remaining arguments as messages/files
   --help, -h                     Show this help
   --version, -v                  Show version number
@@ -179,9 +179,9 @@ Environment Variables:
   PIG_CODING_AGENT_DIR             - Config directory (default: ~/.pig/agent)
   PIG_CODING_AGENT_SESSION_DIR     - Session storage directory (overridden by --session-dir)
   PIG_PACKAGE_DIR                  - Override package directory (for Nix/Guix store paths)
-  PI_OFFLINE                       - Disable startup network operations when set to 1/true/yes
-  PI_SELF_UPDATE_COMMAND           - Command pig update runs to update pig itself ({packageName}, {version}, {installSpec})
-  PI_TELEMETRY                     - Override install telemetry when set to 1/true/yes or 0/false/no
+  PIG_OFFLINE                      - Disable startup network operations when set to 1/true/yes
+  PIG_SELF_UPDATE_COMMAND          - Command pig update runs to update pig itself ({packageName}, {version}, {installSpec})
+  PIG_TELEMETRY                    - Override install telemetry when set to 1/true/yes or 0/false/no
 
 Built-in Tool Names:
   read       - Read file contents

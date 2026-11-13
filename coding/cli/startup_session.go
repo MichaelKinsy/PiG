@@ -363,7 +363,8 @@ func readSessionCWD(path string) (string, error) {
 		}
 		return session.CWD(), nil
 	}
-	return "", fmt.Errorf("Session file is not a valid pi session: %s", path)
+	// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
+	return "", fmt.Errorf("Session file is not a valid pig session: %s", path)
 }
 
 // sessionNotFoundError is the shared unmatched ID/prefix result for --session and --fork. Unlike other startup failures, Pi prints it without an Error: prefix.

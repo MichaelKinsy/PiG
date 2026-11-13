@@ -165,10 +165,10 @@ func validateStandaloneReceipt(exe string) error {
 		return fmt.Errorf("standalone receipt executable %s does not match %s", receipt.ExecutablePath, exe)
 	}
 	if InstalledPigVersion == "" {
-		return fmt.Errorf("running Pig release identity is unavailable")
+		return fmt.Errorf("running PiG release identity is unavailable")
 	}
 	if receipt.PigVersion != InstalledPigVersion {
-		return fmt.Errorf("standalone receipt release %s does not match running Pig %s", receipt.PigVersion, InstalledPigVersion)
+		return fmt.Errorf("standalone receipt release %s does not match running PiG %s", receipt.PigVersion, InstalledPigVersion)
 	}
 	if receipt.UpdateSource != UpdateSourceURL() {
 		return fmt.Errorf("standalone receipt update source %s does not match configured source %s", receipt.UpdateSource, UpdateSourceURL())

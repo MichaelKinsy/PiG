@@ -870,6 +870,7 @@ func Main(args []string, options *MainOptions) {
 	}
 
 	exportOfflineMode(flags.Offline)
+	exportTelemetryOverride()
 
 	// --list-models is handled after extensions load (below), so
 	// extension-contributed providers appear in the catalog, matching upstream
@@ -1811,6 +1812,18 @@ func exportOfflineMode(flagOffline bool) {
 	if flagOffline || truthyEnvFlag(os.Getenv("PI_OFFLINE")) || truthyEnvFlag(strings.TrimSpace(os.Getenv("PIG_OFFLINE"))) {
 		_ = os.Setenv("PI_OFFLINE", "1")
 		_ = os.Setenv("PI_SKIP_VERSION_CHECK", "1")
+	}
+}
+
+// exportTelemetryOverride gives PIG_TELEMETRY to the processes that read Pi's name: the Node extension runtime runs Pi's own
+// isInstallTelemetryEnabled, which reads PI_TELEMETRY. A PI_TELEMETRY that is set wins and stays as it is.
+// pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY ("Product name in messages").
+func exportTelemetryOverride() {
+	if _, ok := os.LookupEnv("PI_TELEMETRY"); ok {
+		return
+	}
+	if value, ok := os.LookupEnv("PIG_TELEMETRY"); ok {
+		_ = os.Setenv("PI_TELEMETRY", value)
 	}
 }
 

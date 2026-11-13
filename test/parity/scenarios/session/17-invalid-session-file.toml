@@ -15,10 +15,19 @@ timeout_seconds = 30
 
 [assert]
 exit_code = 1
-both_contain = ["Error: Session file is not a valid pi session:", "/not-a-session.log"]
+both_contain = ["Error: Session file is not a valid ", "/not-a-session.log"]
+# D2 ("Product name in messages", docs/parity/divergences/D2.md): each binary's diagnostic names its own product.
+pig_contains = ["Error: Session file is not a valid pig session:"]
+pi_contains = ["Error: Session file is not a valid pi session:"]
 both_not_contain = ["SessionManager.open", " at ", "panic:", "goroutine "]
 output_normalized_equal = true
 runs = 3
+
+# normalize-rationale: D2 ("Product name in messages"): PiG's diagnostic says "pig session" where Pi's says "pi session". Only the product's name in that phrase is replaced; pig_contains and pi_contains above assert each binary's own word.
+[[assert.normalize_replace]]
+pattern = "not a valid pig? session:"
+with = "not a valid <app> session:"
+reason = "D2 (Product name in messages): the diagnostic names the product that prints it; the rest of the line stays compared."
 
 # normalize-rationale: Independent writable cwd copies have random numeric suffixes. Only the generated directory suffix is replaced; the full invalid-file diagnostic, filename, exit status, and absence of stack frames remain asserted.
 [[assert.normalize_replace]]
