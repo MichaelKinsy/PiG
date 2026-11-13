@@ -447,6 +447,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-41226f3](#bf-41226f3) | Prompt template arguments keep apostrophes inside words, treat a quote with no closing match as text, and… | PiG's own defect | All platforms | Unreleased |
 | [BF-4125218](#bf-4125218) | fix(chord/next/host): one UndeclaredRegistries, not two: the host's merge of fix/chord-host-tests kept the… | PiG's own defect | All platforms | Unreleased |
 | [BF-4163646](#bf-4163646) | `AuthStorage` file semantics: new live-Pi oracle `TestAuthStorageFileMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-417e1e6](#bf-417e1e6) | A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell… | PiG's own defect | All platforms | Unreleased |
 | [BF-41b25ac](#bf-41b25ac) | fix(chord): surfaces followers stop before their pick watch binds and call out with no lock held… | PiG's own defect | All platforms | Unreleased |
 | [BF-41b305d](#bf-41b305d) | Codemode rejects a `// @options:` line that is not the first line of the script with an error before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-42116f8](#bf-42116f8) | Durable: the system baseline written after a compaction now leads the model context when the kept history… | PiG's own defect | All platforms | 0.5.0 |
@@ -1781,6 +1782,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dca5763](#bf-dca5763) | A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dcf10b2](#bf-dcf10b2) | chord: a server that closed a connection while the host loop was sending on it could freeze the host for good… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd09fd4](#bf-dd09fd4) | Startup now records the changelog version, and each extension package's version, before the UI and the… | PiG's own defect | All platforms | Unreleased |
+| [BF-dd2727b](#bf-dd2727b) | The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd2f4cb](#bf-dd2f4cb) | The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd7613e](#bf-dd7613e) | Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ddd4772](#bf-ddd4772) | fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse | PiG's own defect | All platforms | Unreleased |
@@ -7986,6 +7988,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0ae4683246` (2026-10-08), `e8cc072521` (2026-10-08), `433d232815` (2026-10-09), `41636465fe` (2026-10-10)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi` and 10 more in docs/bug-ledger.json
 - **Release note:** `AuthStorage` file semantics: new live-Pi oracle `TestAuthStorageFileMatchesPi` (`ai/auth_storage_file_oracle_test.go`; 600 auth.json files x 1-5 operations over read, list, modify and delete: absent, empty, corrupt, byte-order-marked and non-object files, `$VAR`/`${VAR}`/`!command`/credential-env key resolution, OAuth and unknown types, integer-index provider order). Real fixes for a file whose JSON is not an object (Pi keeps whatever `JSON.parse` returns): `null` made PiG treat the file as empty where Pi's read, list, modify and delete all throw (`Cannot read properties of null (reading 'x')` / `Cannot convert undefined or null to object`); an array was rejected where Pi reads and lists it as an index-keyed object, turns it into an object on modify and rewrites it as an array (deleted element `null`) on delete; a number or boolean was rejected where Pi reads it as empty and a delete rewrites it as itself; a `null` credential entry made `list` return an entry where Pi's `credential.type` throws. 10 mutations red; one equivalent (the root shape of the post-write read cache is never rewritten). Not compared: V8's JSON parse error text, string-valued files (JavaScript indexes their characters), file modes, cross-process locking.
+
+### BF-417e1e6
+
+**A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell back) with the call's arguments in alphabetical order; Pi and a live PiG turn draw them in the order the model sent them.
+- **Root cause:** When a session is reopened, the transcript builds each tool card from the stored assistant message. It encoded the call's arguments from the argument map, which writes the keys sorted; a live call's card gets the arguments in the member order the model sent (ToolCall.ArgumentsJSON), and Pi keeps that order in both cases (the parsed object of the session file). The card that lists its arguments draws them in that order: the call fallback (render-utils.ts formatToolCallWithArgs walks Object.entries), which a tool without a renderer and a renderer that throws both reach.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `417e1e6158` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell back) with the call's arguments in alphabetical order; Pi and a live PiG turn draw them in the order the model sent them. The transcript encoded the arguments from a Go map, which sorts its keys, instead of the stored member order.
 
 ### BF-41b25ac
 
@@ -26495,6 +26511,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `dd09fd446a` (2026-11-03)
 - **Tests:** `internal/codingagent/startup_changelog_init_pty_test.go::TestInitRecordsTheChangelogVersionsBeforeAnythingStarts`, `internal/codingagent/startup_changelog_init_pty_test.go::TestInitRecordsTheChangelogVersionsBeforeAnythingStartsChild`, `internal/codingagent/startup_changelog_init_test.go::TestChangelogForDisplayFollowsTheSessionMessages`, `test/parity/scenarios/startup/20-startup-changelog-version-recorded-before-session-start.toml`, `test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml`
 - **Release note:** Startup now records the changelog version, and each extension package's version, before the UI and the extensions start, as Pi's `init()` does: a `session_start` handler that reads `settings.json` finds `lastChangelogVersion`. A resumed session that holds no message now records it and shows "What's New" like a new session, because Pi skips the changelog only for a session with messages.
+
+### BF-dd2727b
+
+**The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result.
+- **Root cause:** Pi's getLanguageFromPath (theme.ts:993-1062) looks the lowercased extension up in a plain object, so `constructor` and `__proto__` find a member the object inherits from Object.prototype. The value is truthy: read.ts formatReadResult (:124-125) and write.ts renderCall (:55-64, :123-127) pass it to highlightCode, whose supportsLanguage check (theme.ts:937) throws a TypeError before the try, and tool-execution.ts updateDisplay (:303-341) catches the throw and draws the call or result fallback. PiG looked the extension up in a Go map, found no language and drew the write card with its content rows and the expanded read card with its blank row, which Pi does not draw for such a path.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dd2727b68a` (2026-11-13)
+- **Tests:** `internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsDrawTheFallbackForAPathNamedLikeAnObjectPrototypeMember`, `internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi`, `test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml`, `test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml`, `tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsForAnInheritedMember`, `tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsLikePi`
+- **Release note:** The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws, and Pi falls back to its generic card; PiG looked the extension up in a Go map, found no language and drew the ordinary cards.
 
 ### BF-dd2f4cb
 

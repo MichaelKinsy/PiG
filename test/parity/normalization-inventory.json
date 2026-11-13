@@ -4664,6 +4664,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool write",
+            "capture_end": "ext-tool-done: alpha line"
+          },
+          "reason": "Owned visible surface: A write and a read of a path whose extension is `constructor` draw Pi's call and result fallbacks, expanded, byte for byte.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Prototype path redraw start",
+            "capture_end": "Prototype path redraw end"
+          },
+          "reason": "Owned visible surface: Reopened write and read cards of paths whose extension is `constructor` or `__proto__` draw Pi's fallbacks from the stored entries.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {

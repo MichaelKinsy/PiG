@@ -350095,6 +350095,17 @@
       "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#LanguageFromPathThrows",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "LanguageFromPathThrows",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(path string) bool"
+      },
+      "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#LayoutBox",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "LayoutBox",
@@ -392971,6 +392982,17 @@
         "type": "func(path string) int"
       },
       "shapeHash": "sha256:8b9bc9bb079e840fab89f1fc00389713cf862f7cc33f2b45f0af705ff422b64b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#pathExtension",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "pathExtension",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) string"
+      },
+      "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#pathWrappers",
