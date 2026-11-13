@@ -1,0 +1,51 @@
+# Behavior family: providers-registry
+# Surface: the tools of an anthropic-messages request as each binary sends them: a non-strict tool keeps its root additionalProperties.
+#
+# Upstream evidence (Pi aa47cedce, #12100; packages/ai/src/api/anthropic-messages.ts convertTools): the input_schema of a non-strict tool is
+# the literal { type, properties, required } followed, when the tool's schema has them, by additionalProperties, $defs and definitions, in
+# that order; every other root keyword stays out. Pi v1.5.2 as published drops additionalProperties, so the model is not told that extra
+# arguments are refused.
+# The oracle is the pinned Pi plus the post-release backports (automation/gen/pi-post-release-backports.mjs), aa47cedce among them; `pi` runs the
+# package's bundle, which the oracle build makes again from the patched compiled output.
+#
+# Probe (Pi alone, 2026-11-13): for the two extension tools `pi -p "ECHO_REQUEST /tools"` printed
+#   {"name":"closed_tool","description":"No extra arguments.","eager_input_streaming":true,"input_schema":{"type":"object","properties":{"name":{"$ref":"#/$defs/Name"}},"required":["name"],"additionalProperties":false,"$defs":{"Name":{"type":"string"}}}}
+#   {"name":"extra_values_tool","description":"Extra arguments are strings.","eager_input_streaming":true,"input_schema":{"type":"object","properties":{},"required":[],"additionalProperties":{"type":"string","description":"extra"}}}
+# and then the read tool, which carries the cache_control marker of the last tool. closed_tool is authored as $defs, additionalProperties,
+# title, required, properties, type (testdata/request-echo-tools.mjs): the request has the literal's order and no title. extra_values_tool
+# has no required member: the literal writes [].
+#
+# How the request is seen: both binaries talk to the runner's local provider fixture (provider_fixture, test/parity/README.md). The prompt
+# `ECHO_REQUEST /tools` makes the fixture answer with that part of the request body it received, members in the order received, so each
+# binary prints what it sent and output_equal compares the whole tools array: which tools, their order, each member and its position. No normalization: the two requests must be the same bytes after the
+# fixture's uniform spelling of white space and string escapes.
+# The fixture's model has no compat object, so supportsStrictTools is false and every tool takes the non-strict conversion.
+# `--tools closed_tool,extra_values_tool,read` keeps the array to the two probe tools and one built-in tool.
+# Mutation: with "additionalProperties" taken out of anthLegacyOptionalRootKeys (ai/anthropic.go) pig sends both schemas without the member
+# and output_equal fails.
+name = "20-print-anthropic-root-additional-properties"
+description = "A non-strict Anthropic tool schema keeps its root additionalProperties in the request, as pi sends it"
+covers = ["packages/ai/src/api/anthropic-messages.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+provider_fixture = "anthropic-messages"
+model = "strict-wire/strict"
+
+[print]
+prompt = "ECHO_REQUEST /tools"
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent"]
+pig_extensions = ["testdata/request-echo-tools.mjs"]
+pi_extensions = ["testdata/request-echo-tools.mjs"]
+pig_args = ["--offline", "--no-extensions", "--tools", "closed_tool,extra_values_tool,read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--tools", "closed_tool,extra_values_tool,read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = ['"additionalProperties":false,"$defs"', '"additionalProperties":{"type":"string","description":"extra"}']
+output_equal = true
+stderr_equal = true
+runs = 3
