@@ -27225,7 +27225,7 @@
       "evidence": [
         "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/openai_completions_chat_template_values_test.go#TestOpenAICompletionsChatTemplateEffortFollowsTheThinkingLevelMap"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -27291,7 +27291,7 @@
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/types_unions_test.go#TestGrammarVariantsAndRoutingAliasesAreTheFieldTypes"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -28495,7 +28495,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -28539,7 +28539,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_chatgpt_sign_in_upstream_test.go#TestOpenAIResponsesChatGPTSignInRequestFieldsUpstream",
@@ -28582,7 +28582,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#openAIResponsesProvider.Stream"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -28691,7 +28691,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
@@ -32536,7 +32536,7 @@
       "evidence": [
         "test:ai/openai_request_key_order_oracle_test.go#TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder",
         "test:ai/interface_ledger_test.go#TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream",
-        "test:ai/radius_clone_alias_test.go#TestCloneRadiusModelSharesNoCollectionWithItsSource"
+        "test:ai/openai_compat_objects_test.go#TestResolveSamplingParamsInOrder"
       ]
     },
     {
@@ -72969,7 +72969,7 @@
       "evidence": [
         "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/openai_completions_chat_template_values_test.go#TestOpenAICompletionsChatTemplateEffortFollowsTheThinkingLevelMap"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -73035,7 +73035,7 @@
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/types_unions_test.go#TestGrammarVariantsAndRoutingAliasesAreTheFieldTypes"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -74283,7 +74283,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -74327,7 +74327,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_chatgpt_sign_in_upstream_test.go#TestOpenAIResponsesChatGPTSignInRequestFieldsUpstream",
@@ -74370,7 +74370,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#openAIResponsesProvider.Stream"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -74479,7 +74479,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
@@ -78622,7 +78622,7 @@
       "evidence": [
         "test:ai/openai_request_key_order_oracle_test.go#TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder",
         "test:ai/interface_ledger_test.go#TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream",
-        "test:ai/radius_clone_alias_test.go#TestCloneRadiusModelSharesNoCollectionWithItsSource"
+        "test:ai/openai_compat_objects_test.go#TestResolveSamplingParamsInOrder"
       ]
     },
     {
@@ -90433,7 +90433,7 @@
       "evidence": [
         "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/openai_completions_chat_template_values_test.go#TestOpenAICompletionsChatTemplateEffortFollowsTheThinkingLevelMap"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -90499,7 +90499,7 @@
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/types_unions_test.go#TestGrammarVariantsAndRoutingAliasesAreTheFieldTypes"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -91148,7 +91148,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -91192,7 +91192,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_chatgpt_sign_in_upstream_test.go#TestOpenAIResponsesChatGPTSignInRequestFieldsUpstream",
@@ -91235,7 +91235,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#openAIResponsesProvider.Stream"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -91344,7 +91344,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
