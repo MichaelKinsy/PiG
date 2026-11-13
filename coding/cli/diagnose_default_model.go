@@ -46,9 +46,9 @@ func writeDiagnoseDefaultModel(w io.Writer, cwd, agentDir string, trust projectT
 	case settings.DefaultModel == "" && settings.DefaultProvider == "":
 		_, _ = fmt.Fprintf(w, "  configured:     none (no defaultProvider or defaultModel in %s)\n", globalFile)
 	case settings.DefaultProvider == "":
-		_, _ = fmt.Fprintf(w, "  configured:     defaultModel %q from %s, which startup ignores: Pi reads it only together with defaultProvider\n", settings.DefaultModel, sourceOf(project.DefaultModel))
+		_, _ = fmt.Fprintf(w, "  configured:     defaultModel %q from %s, which startup ignores: PiG reads it only together with defaultProvider\n", settings.DefaultModel, sourceOf(project.DefaultModel))
 	case settings.DefaultModel == "":
-		_, _ = fmt.Fprintf(w, "  configured:     defaultProvider %q from %s, which startup ignores: Pi reads it only together with defaultModel\n", settings.DefaultProvider, sourceOf(project.DefaultProvider))
+		_, _ = fmt.Fprintf(w, "  configured:     defaultProvider %q from %s, which startup ignores: PiG reads it only together with defaultModel\n", settings.DefaultProvider, sourceOf(project.DefaultProvider))
 	default:
 		_, _ = fmt.Fprintf(w, "  configured:     %s/%s (defaultProvider from %s, defaultModel from %s)\n", settings.DefaultProvider, settings.DefaultModel, sourceOf(project.DefaultProvider), sourceOf(project.DefaultModel))
 	}
@@ -66,7 +66,7 @@ func writeDiagnoseDefaultModel(w io.Writer, cwd, agentDir string, trust projectT
 		if settings.DefaultProvider != "" && settings.DefaultModel != "" {
 			_, _ = fmt.Fprintf(w, "                  %s/%s is not an available model.", settings.DefaultProvider, settings.DefaultModel)
 			if after, ok := strings.CutPrefix(settings.DefaultModel, settings.DefaultProvider+"/"); ok {
-				_, _ = fmt.Fprintf(w, " Pi reads defaultModel as a model id and does not split a provider prefix: set defaultProvider %q and defaultModel %q.", settings.DefaultProvider, after)
+				_, _ = fmt.Fprintf(w, " PiG reads defaultModel as a model id and does not split a provider prefix: set defaultProvider %q and defaultModel %q.", settings.DefaultProvider, after)
 			}
 			_, _ = fmt.Fprintln(w)
 		}

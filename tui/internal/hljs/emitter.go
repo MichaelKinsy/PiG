@@ -18,10 +18,12 @@ type treeChild struct {
 	node *treeNode
 }
 
-// tokenTreeEmitter is highlight.js TokenTreeEmitter.
+// tokenTreeEmitter is highlight.js TokenTreeEmitter. appends counts the children added to any node, and continued the nodes a run that continues inside open modes opened before its first child (reopenNodes): the HTML before the run holds their opening tags.
 type tokenTreeEmitter struct {
-	root  *treeNode
-	stack []*treeNode
+	root      *treeNode
+	stack     []*treeNode
+	appends   int
+	continued int
 }
 
 func newTokenTreeEmitter() *tokenTreeEmitter {
@@ -34,6 +36,7 @@ func (e *tokenTreeEmitter) top() *treeNode { return e.stack[len(e.stack)-1] }
 func (e *tokenTreeEmitter) add(child treeChild) {
 	top := e.top()
 	top.children = append(top.children, child)
+	e.appends++
 }
 
 func (e *tokenTreeEmitter) openNode(kind string) {
@@ -86,40 +89,76 @@ func (e *tokenTreeEmitter) toHTML() string {
 	return jsstring.Canonical(buffer.String())
 }
 
-// rootOffsets is the HTML of the root's first n children's length, for each n in counts, which ascend.
-func (e *tokenTreeEmitter) rootOffsets(counts []int) (html string, offsets []int) {
-	var buffer strings.Builder
-	offsets = make([]int, 0, len(counts))
-	next := 0
-	for i := 0; i <= len(e.root.children); i++ {
-		for next < len(counts) && counts[next] == i {
-			offsets = append(offsets, buffer.Len())
-			next++
-		}
-		if i == len(e.root.children) {
-			break
-		}
-		child := e.root.children[i]
-		if child.node != nil {
-			walkHTML(&buffer, child.node)
-		} else {
-			buffer.WriteString(escapeHTML(child.text))
-		}
+// checkpointHTML is the HTML of the tree without the opening tags of the continued nodes, and for each checkpoint, in their order, the length of that HTML at the checkpoint: after the children added before it, inside the nodes it leaves open. Children are added in document order, so one walk passes every checkpoint in turn; ok is false when it passes fewer than there are.
+func (e *tokenTreeEmitter) checkpointHTML(checkpoints []checkpoint) (html string, offsets []int, ok bool) {
+	walk := checkpointWalk{checkpoints: checkpoints, offsets: make([]int, 0, len(checkpoints))}
+	node := e.root
+	for range e.continued {
+		node = node.children[0].node
+		walk.continued = append(walk.continued, node)
 	}
-	return buffer.String(), offsets
+	walk.mark(0)
+	walk.node(e.root, 0)
+	return walk.buffer.String(), walk.offsets, len(walk.offsets) == len(checkpoints)
+}
+
+// checkpointWalk writes the HTML of a tree and notes its length at each checkpoint. continued is the nodes whose opening tags it leaves out, outermost first, and added the children it has passed.
+type checkpointWalk struct {
+	buffer      strings.Builder
+	checkpoints []checkpoint
+	offsets     []int
+	continued   []*treeNode
+	added       int
+}
+
+// mark notes the length of the HTML for the checkpoints that stand after the children passed, with depth nodes open.
+func (w *checkpointWalk) mark(depth int) {
+	for next := len(w.offsets); next < len(w.checkpoints) && int(w.checkpoints[next].appends) == w.added && int(w.checkpoints[next].depth) == depth; next++ {
+		w.offsets = append(w.offsets, w.buffer.Len())
+	}
+}
+
+// node writes the children of a node that is depth nodes below the root.
+func (w *checkpointWalk) node(node *treeNode, depth int) {
+	for _, child := range node.children {
+		w.added++
+		switch {
+		case child.node == nil:
+			w.buffer.WriteString(escapeHTML(child.text))
+		case child.node.sublanguage:
+			walkHTML(&w.buffer, child.node)
+		default:
+			if depth >= len(w.continued) || w.continued[depth] != child.node {
+				writeOpenTag(&w.buffer, child.node)
+			}
+			w.mark(depth + 1)
+			w.node(child.node, depth+1)
+			writeCloseTag(&w.buffer, child.node)
+		}
+		w.mark(depth)
+	}
+}
+
+func writeOpenTag(buffer *strings.Builder, node *treeNode) {
+	if node.kind == "" {
+		return
+	}
+	buffer.WriteString(`<span class="`)
+	if !node.sublanguage {
+		buffer.WriteString("hljs-")
+	}
+	buffer.WriteString(node.kind)
+	buffer.WriteString(`">`)
+}
+
+func writeCloseTag(buffer *strings.Builder, node *treeNode) {
+	if node.kind != "" {
+		buffer.WriteString("</span>")
+	}
 }
 
 func walkHTML(buffer *strings.Builder, node *treeNode) {
-	wraps := node.kind != ""
-	if wraps {
-		className := node.kind
-		if !node.sublanguage {
-			className = "hljs-" + className
-		}
-		buffer.WriteString(`<span class="`)
-		buffer.WriteString(className)
-		buffer.WriteString(`">`)
-	}
+	writeOpenTag(buffer, node)
 	for _, child := range node.children {
 		if child.node != nil {
 			walkHTML(buffer, child.node)
@@ -127,9 +166,7 @@ func walkHTML(buffer *strings.Builder, node *treeNode) {
 		}
 		buffer.WriteString(escapeHTML(child.text))
 	}
-	if wraps {
-		buffer.WriteString("</span>")
-	}
+	writeCloseTag(buffer, node)
 }
 
 var htmlEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&#x27;")

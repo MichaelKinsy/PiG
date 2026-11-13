@@ -3,7 +3,7 @@
 #
 # Pi 1.1.0 main.ts:638-648 runs exportFromFile (core/export-html/index.ts:288-318): resolvePath(input), existsSync, SessionManager.open (session-manager.ts:1766,
 # _setSessionFile 1029-1055), generateHtml, writeFileSync; a failure prints "Error: <message>" in red to stderr and exits 1, success prints
-# "Exported to: <path>" to stdout and exits 0. Pi: "Error: Session file is not a valid pi session: <path>" (Pig: a JSON parse message).
+# "Exported to: <path>" to stdout and exits 0. Pi: "Error: Session file is not a valid pi session: <path>"; PiG says "pig session" (D2).
 name = "28-export-cli-not-a-session"
 description = "--export on a file that is not a session answers like Pi"
 covers = ["packages/coding-agent/src/main.ts", "packages/coding-agent/src/core/export-html/index.ts"]
@@ -19,10 +19,16 @@ pi_args = ["--export", "testdata/export-inputs/garbage.jsonl", "{{TEMP}}/out.htm
 timeout_seconds = 15
 cwd = "."
 
+# The diagnostic names the product that prints it (D2, "Product name in messages", docs/parity/divergences/D2.md), so the two stderr
+# streams differ in that one word. stderr_equal compares raw bytes and takes no normalization: the scenario compares stdout and stderr
+# as one stream, where the name normalization below applies, and asserts each binary's own word. Measured 2026-11-13 against Pi 1.5.2:
+# both binaries print the one line on stderr and nothing on stdout. TestExportOfAFileThatIsNotASessionAnswersOnStderr (coding/cli)
+# holds PiG's stream.
 [assert]
 exit_code = 1
 output_equal = true
-stderr_equal = true
+pig_contains = ["Error: Session file is not a valid pig session:"]
+pi_contains = ["Error: Session file is not a valid pi session:"]
 runs = 3
 
 # normalize-rationale: Pig and Pi receive independent temporary roots; only that root differs.
@@ -30,3 +36,9 @@ runs = 3
 pattern = 'parity-cli-[0-9a-z-]+-(pig|pi)-[0-9]+'
 with = 'parity-cli-run'
 reason = "D2: replace only this scenario's allocated temporary root."
+
+# normalize-rationale: D2 ("Product name in messages"): PiG's diagnostic says "pig session" where Pi's says "pi session". Only the product's name in that phrase is replaced; pig_contains and pi_contains above assert each binary's own word.
+[[assert.normalize_replace]]
+pattern = "not a valid pig? session:"
+with = "not a valid <app> session:"
+reason = "D2 (Product name in messages): the diagnostic names the product that prints it; the rest of the line stays compared."

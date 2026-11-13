@@ -212,7 +212,7 @@ func matchBinaryManifest(status signature.Status, verified VerifiedIndex, target
 		{"Piglet", manifest.Piglet, index.Piglet},
 		{"release version", manifest.ReleaseVersion, index.Version},
 		{"target", manifest.Target, target},
-		{"Pig version", manifest.PigVersion, index.PigVersion},
+		{"PiG version", manifest.PigVersion, index.PigVersion},
 	} {
 		if check.signed != check.indexed {
 			return fmt.Errorf("downloaded Piglet Binary manifest names %s %q, release index names %q", check.name, check.signed, check.indexed)

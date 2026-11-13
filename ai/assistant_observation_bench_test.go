@@ -57,6 +57,10 @@ func BenchmarkAssistantMessageObservation(b *testing.B) {
 				}
 			})
 			b.Run("marshal-shallow", func(b *testing.B) {
+				// encoding/json builds its encoder for a type the first time it marshals a value of it. One marshal before the loop keeps that out of the count, which over the gate's five iterations is a fifth of it for each op.
+				if _, err := json.Marshal(shallow); err != nil {
+					b.Fatal(err)
+				}
 				b.ReportAllocs()
 				for b.Loop() {
 					if _, err := json.Marshal(shallow); err != nil {

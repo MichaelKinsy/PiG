@@ -2763,8 +2763,11 @@ func (sm *SettingsManager) GetEnableInstallTelemetry() bool {
 // headers (provider-attribution.ts) in addition to package-install telemetry.
 // pig divergence (D26): gates the OpenRouter/NVIDIA/Cloudflare attribution headers in coding/model.go.
 func (sm *SettingsManager) IsInstallTelemetryEnabled() bool {
-	if env, ok := os.LookupEnv("PI_TELEMETRY"); ok {
-		return isTruthyTelemetryEnvFlag(env)
+	// pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY; Pi's name wins when both are set.
+	for _, name := range []string{"PI_TELEMETRY", "PIG_TELEMETRY"} {
+		if env, ok := os.LookupEnv(name); ok {
+			return isTruthyTelemetryEnvFlag(env)
+		}
 	}
 	return sm.GetEnableInstallTelemetry()
 }

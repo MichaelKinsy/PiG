@@ -120,7 +120,7 @@ func mergeFusedModules(pig *modfile.File, fused []fusedEntry) (fusedModuleGraph,
 				continue
 			case path == extsource.GoSDKModulePath:
 				if sdkPin != "" && semver.Compare(version, sdkPin) > 0 {
-					return fusedModuleGraph{}, fmt.Errorf("fuse %q: %s requires %s %s, newer than the %s this Pig source pins; a fused member links the SDK of the Pig it is fused into, so build with a Pig source at %s or later", member, filepath.Join(root, "go.mod"), path, version, sdkPin, version)
+					return fusedModuleGraph{}, fmt.Errorf("fuse %q: %s requires %s %s, newer than the %s this PiG source pins; a fused member links the SDK of the PiG it is fused into, so build with a PiG source at %s or later", member, filepath.Join(root, "go.mod"), path, version, sdkPin, version)
 				}
 				continue
 			case extsource.IsGoSDKModulePath(path):
@@ -186,7 +186,7 @@ func mergeFusedModules(pig *modfile.File, fused []fusedEntry) (fusedModuleGraph,
 			if err := pig.AddRequire(path, version); err != nil {
 				return fusedModuleGraph{}, err
 			}
-			graph.raised = append(graph.raised, fmt.Sprintf("fused member %q raises Pig's %s %s to %s (minimum version selection)", wantFrom[path], path, current, version))
+			graph.raised = append(graph.raised, fmt.Sprintf("fused member %q raises PiG's %s %s to %s (minimum version selection)", wantFrom[path], path, current, version))
 		}
 	}
 	olds := make([]module.Version, 0, len(replaces))
@@ -203,7 +203,7 @@ func mergeFusedModules(pig *modfile.File, fused []fusedEntry) (fusedModuleGraph,
 		promoted := replaces[old]
 		if existing := pigReplacement(pig, old); existing != nil {
 			if existing.New != promoted.target {
-				return fusedModuleGraph{}, fmt.Errorf("fuse %q: %s replaces %s with %s, but Pig replaces it with %s", owner[promoted.root], filepath.Join(promoted.root, "go.mod"), formatModule(old), formatModule(promoted.target), formatModule(existing.New))
+				return fusedModuleGraph{}, fmt.Errorf("fuse %q: %s replaces %s with %s, but PiG replaces it with %s", owner[promoted.root], filepath.Join(promoted.root, "go.mod"), formatModule(old), formatModule(promoted.target), formatModule(existing.New))
 			}
 			continue
 		}

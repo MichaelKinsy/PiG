@@ -329,7 +329,7 @@ func fakeStandard(pigLine, pigletRelease, activePiglet string) string {
 		"case \"$1\" in\n--help) echo usage;;\n--version) echo 1.5.0;;\n" +
 		"version) printf '%s\\nupstream pi: 1.5.0+c23b9ec1\\nbuild: dev\\n' '" + pigLine + "';;\n" +
 		"verify) printf '" + verify + "\\n';;\n" +
-		"status) printf 'Pig status: healthy\\n  active Piglet: " + activePiglet + "\\n';;\nesac\n"
+		"status) printf 'PiG status: healthy\\n  active Piglet: " + activePiglet + "\\n';;\nesac\n"
 }
 
 // The PiG Standard packaged smoke starts the archive's Binary offline and

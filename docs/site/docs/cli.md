@@ -178,10 +178,10 @@ pig --exclude-tools bash
 
 ## Custom update command
 
-When a wrapper or another package manager provides PiG, set `PI_SELF_UPDATE_COMMAND` (or `PIG_SELF_UPDATE_COMMAND`) so `pig update` runs its update command:
+When a wrapper or another package manager provides PiG, set `PIG_SELF_UPDATE_COMMAND` (or Pi's name, `PI_SELF_UPDATE_COMMAND`) so `pig update` runs its update command:
 
 ```sh
-export PI_SELF_UPDATE_COMMAND="mise use -g npm:{packageName}@{version}"
+export PIG_SELF_UPDATE_COMMAND="mise use -g npm:{packageName}@{version}"
 ```
 
 `pig update` checks the signed release manifest first and runs the command only when the release is newer (or with `--force`), after printing the release note. `{packageName}`, `{version}` and `{installSpec}` (`{packageName}@{version}`) come from that release. The value is split on whitespace. For arguments with spaces, use the `selfUpdateCommand` setting in `~/.pig/agent/settings.json`, an argv array such as `["nix", "profile", "upgrade", "pig"]`. A project's settings file is never read for it.

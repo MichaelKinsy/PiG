@@ -7,6 +7,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsparity"
 )
@@ -25,9 +26,20 @@ const maxPooledLengthBuffer = 64 << 10
 var lengthBuffers = sync.Pool{New: func() any { return new([]byte) }}
 
 // StringifyLength returns the number of UTF-16 units in JSON.stringify(value) and encodes without keeping the text. Ill-formed UTF-8 is U+FFFD in a JavaScript string, one unit per maximal subpart, which the encoder writes raw as JSON.stringify does.
+// An ASCII string, and an object whose members are all ASCII strings, are counted from their bytes without being encoded at all.
 // A slice the encoder writes element by element is counted the same way, "[", the elements joined by ",", "]", each encoded on its own: the
 // pooled buffer then holds one element rather than the whole array, so counting a long list of tools does not allocate its whole text.
 func StringifyLength(value any) (int, error) {
+	switch value := value.(type) {
+	case string:
+		if length, ok := quotedASCIILength(value); ok {
+			return length, nil
+		}
+	case map[string]any:
+		if length, ok := stringObjectLength(value); ok {
+			return length, nil
+		}
+	}
 	if v := reflect.ValueOf(value); v.Kind() == reflect.Slice && v.Len() > 1 && encodesElementwise(v.Type()) {
 		length := v.Len() + 1
 		for i := range v.Len() {
@@ -41,6 +53,62 @@ func StringifyLength(value any) (int, error) {
 		return length, nil
 	}
 	return stringifyLength(value)
+}
+
+// quotedASCIIExtra is, for an ASCII byte, the UTF-16 units JSON.stringify writes for it beyond one: 1 for the quote, the backslash and the
+// controls with a two-character escape, 5 for the other C0 controls (\u00xx) and 0 for every other byte. A byte from 0x80 is -1.
+var quotedASCIIExtra = func() (extra [256]int8) {
+	for c := range extra {
+		switch {
+		case c >= 0x80:
+			extra[c] = -1
+		case c == '"' || c == '\\' || c == '\b' || c == '\f' || c == '\n' || c == '\r' || c == '\t':
+			extra[c] = 1
+		case c < 0x20:
+			extra[c] = 5
+		}
+	}
+	return extra
+}()
+
+// quotedASCIILength is the number of UTF-16 units in JSON.stringify(s) for an ASCII s, counted from s itself, and false for any other s:
+// the text of a large write is counted without being encoded.
+func quotedASCIILength(s string) (int, bool) {
+	length := len(s) + 2
+	for i := jv.PlainEnd(s, 0); i < len(s); i = jv.PlainEnd(s, i+1) {
+		extra := quotedASCIIExtra[s[i]]
+		if extra < 0 {
+			return 0, false
+		}
+		length += int(extra)
+	}
+	return length, true
+}
+
+// stringObjectLength is the number of UTF-16 units in JSON.stringify(object) for an object with members whose keys and values are all
+// ASCII strings (the arguments of a write or an edit), counted without encoding them, and false for any other object. The length does not
+// depend on the member order: the braces, a colon per member and a comma between members.
+func stringObjectLength(object map[string]any) (int, bool) {
+	if len(object) == 0 {
+		return 0, false
+	}
+	length := 2*len(object) + 1
+	for key, value := range object {
+		text, isString := value.(string)
+		if !isString {
+			return 0, false
+		}
+		keyLength, ok := quotedASCIILength(key)
+		if !ok {
+			return 0, false
+		}
+		textLength, ok := quotedASCIILength(text)
+		if !ok {
+			return 0, false
+		}
+		length += keyLength + textLength
+	}
+	return length, true
 }
 
 var (

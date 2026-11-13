@@ -1,7 +1,7 @@
 # Events and hooks
 
 PiG-native extensions react to **events**. A separately selected extension can
-translate another harness's hook format into those events. Stock Pig does not
+translate another harness's hook format into those events. Stock PiG does not
 load a hook bridge.
 
 ## Register PiG-native events in an extension
@@ -63,7 +63,7 @@ a helper.
 
 Some harnesses use declarative command triggers called hooks. A Package can
 distribute hook metadata, and a Piglet can select an extension that translates
-that metadata into PiG events. Stock Pig does not interpret cross-harness hook
+that metadata into PiG events. Stock PiG does not interpret cross-harness hook
 files by itself.
 
 Use SDK events when you write a PiG extension and need direct access to the SDK
