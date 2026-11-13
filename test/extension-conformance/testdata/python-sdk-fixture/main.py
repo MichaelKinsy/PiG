@@ -2478,6 +2478,8 @@ def new_extension() -> pig_sdk.Extension:
             # The user opened the hidden view: its handler shows it.
             inv.context.show_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev))
             return pig_sdk.ViewIntentResult("done")
+        if inv.intent == "fx.pick":
+            return pig_sdk.ViewIntentResult("done", {"node": inv.node_key, "picked": inv.arg["value"]})
         if inv.intent == "fx.add":
             ab = inv.context.view_abilities()
             total = inv.arg["n"] * 2 + (ab.limits.intent_arg_bytes if ab else 0)
@@ -2613,6 +2615,48 @@ def new_extension() -> pig_sdk.Extension:
         ))
 
     ext.command("ui_view_tool", "Register the tool that shows a titled view", view_tool_probe)
+
+    # D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is
+    # the row's token: the cell values, the selection and one chip text are built from it.
+    def view_grid_probe(ctx, args):
+        tok = args.strip()
+        cells = [kit.GridCell(label="30", dim=True), kit.GridCell(label="31", dim=True)]
+        for d in range(1, 29):
+            cell = kit.GridCell(value=f"{tok}-{d}", label=str(d))
+            if d == 1:
+                cell.chips = [kit.GridChip(f"{tok} standup", "#3366cc"), kit.GridChip("lunch", "accent")]
+                cell.more = 2
+            elif d == 2:
+                cell.mark, cell.color = "current", "#ff000080"
+            elif d == 3:
+                cell.chips = [kit.GridChip("plain")]
+            elif d == 28:
+                cell.label = None
+            cells.append(cell)
+
+        def content(grid):
+            return {
+                "view": kit.View(kit.Container([kit.Text(f"Month {tok}", 0, 0), grid])),
+                "intents": [pig_sdk.ViewIntent("fx.pick", pig_sdk.ViewShape("object", properties={"value": pig_sdk.ViewShape("string")}, required=("value",)), node_key="month")],
+                "fallback": kit.Text(f"grid-fallback {tok}", 0, 0),
+            }
+
+        month = kit.Grid("month", 7, cells, head=["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], chip_rows=2, selected=f"{tok}-2")
+        st = ctx.mount_view("grid", "panel", **content(month))
+        ctx.notify(f"view-g-mounted:{st.state}", "info")
+
+        def attempt(label, columns, cells):
+            ctx.notify(f"view-g-{label}:{x_code(lambda: ctx.update_view(st.mount, **content(kit.Grid('month', columns, cells))))}", "info")
+
+        attempt("cells", 7, [kit.GridCell(label="x") for _ in range(129)])
+        attempt("chips", 7, [kit.GridCell(value="a", chips=[kit.GridChip("c") for _ in range(9)])])
+        attempt("columns", 17, [kit.GridCell(value="a")])
+        attempt("mark", 7, [kit.GridCell(value="a", mark=tok)])
+        cur = ctx.view_state("grid")
+        ctx.notify(f"view-g-state:{cur.state},rev={cur.mount.rev}", "info")
+
+    ext.command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", view_grid_probe)
+
     # D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
     def view_bindings_probe(ctx, args):
         key, number = args.split(" ")

@@ -32,6 +32,7 @@ import type {
   PiGSpriteDefinition,
   PiGViewAbilities,
   PiGViewClaim,
+  PiGViewGrid,
   PiGViewNotice,
   PiGViewLines,
   PiGViewStatus,
@@ -75,6 +76,21 @@ export default function extension(pi: ExtensionAPI): void {
       focus: [{ node: "t", request: "mount" }],
       bindings: [{ key: "shift+left", intent: "x.go", arg: {}, name: "Back" }, { gesture: "swipe-left", intent: "x.go" }],
     });
+    const grid: PiGViewGrid = {
+      kind: "grid",
+      id: "month",
+      columns: 7,
+      head: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+      chipRows: 2,
+      selected: "d2",
+      cells: [{ label: "30", dim: true }, { value: "d2", label: "2", mark: "current", color: "accent", chips: [{ text: "standup", color: "#3366cc" }], more: 2 }],
+    };
+    await ctx.ui.updateView(mounted.mount, {
+      view: { root: { kind: "container", children: [{ kind: "text", text: "November" }, grid] } },
+      intents: [{ name: "x.day", nodeKey: grid.id, arg: { type: "object", properties: { value: { type: "string" } }, required: ["value"] } }],
+      fallback: { kind: "text", text: "November" },
+    });
+    await ctx.ui.updateView(mounted.mount, { view: { root: grid } });
     const notices: PiGViewNotice[] = await ctx.ui.viewDiagnostics("k");
     const colors = abilities?.claims?.find((claim: PiGViewClaim) => claim.name === "display.colors")?.value;
     const finished: PiGViewStatus = await ctx.ui.finishView(mounted.mount, { colors, notices: notices.length });

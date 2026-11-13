@@ -148,6 +148,45 @@ def test_scroll_view_encodes_its_child_and_options() -> None:
     }
 
 
+def test_grid_holds_exactly_the_members_set() -> None:
+    """The grid node (D614): ``columns`` is always sent, and an optional member left unset is absent, not null, zero or empty."""
+    grid = kit.Grid(
+        "month",
+        7,
+        [
+            kit.GridCell(label="30", dim=True),
+            kit.GridCell(value="d1", label="1", chips=[kit.GridChip("standup", "#3366cc"), kit.GridChip("lunch")], more=2),
+            kit.GridCell(value="d2", label="2", mark="current", color="accent"),
+            kit.GridCell(value="d3"),
+            kit.GridCell(),
+        ],
+        head=["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+        chip_rows=2,
+        selected="d2",
+    )
+    assert kit._Encoder(False).node(kit.Container([grid, kit.Grid("bare", 1, [])]), 0) == {
+        "kind": "container",
+        "children": [
+            {
+                "kind": "grid",
+                "id": "month",
+                "columns": 7,
+                "chipRows": 2,
+                "head": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+                "cells": [
+                    {"label": "30", "dim": True},
+                    {"value": "d1", "label": "1", "chips": [{"text": "standup", "color": "#3366cc"}, {"text": "lunch"}], "more": 2},
+                    {"value": "d2", "label": "2", "mark": "current", "color": "accent"},
+                    {"value": "d3"},
+                    {},
+                ],
+                "selected": "d2",
+            },
+            {"kind": "grid", "id": "bare", "columns": 1},
+        ],
+    }
+
+
 def test_mouse_region_encodes_its_handler_as_a_description() -> None:
     region = kit.MouseRegion("m", kit.Spacer(1), types=["click"], handled=False, capture=True, focus=True, render=False)
     assert kit._Encoder(False).node(region, 0) == {

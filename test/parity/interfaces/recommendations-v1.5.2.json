@@ -154906,7 +154906,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -154917,6 +154917,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#tslibAsyncGenerator.step",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.step",
         "go:github.com/MichaelKinsy/PiG/tui#NativeAction.step"
       ],
       "missingClosure": [
@@ -393461,7 +393462,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "5 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -393472,6 +393473,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/extension#ValidatedLoginDefinition.Color",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewGrid.color",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Color",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#Color",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#Color",
