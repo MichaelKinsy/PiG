@@ -1532,7 +1532,121 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-g-state:%s,rev=%d", cur.State, cur.Mount.Rev), "info")
 		return nil
 	})
+	// D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The
+	// argument is the row's token: the ids of the container, the text and the box are built from it.
+	ext.Command("ui_view_node_ids", "Mount a view whose container, text and box carry an id", func(ctx sdk.Context, args string) error {
+		tok := strings.TrimSpace(args)
+		label := kit.NewText("Label "+tok, 0, 0)
+		label.ID, label.Bg = tok+"-label", "selectedBg"
+		frame := kit.NewBox(1, 0, kit.NewText("inside", 0, 0))
+		frame.ID, frame.Bg = tok+"-frame", "toolPendingBg"
+		root := kit.NewContainer(label, frame)
+		root.ID = tok + "-root"
+		st, err := ctx.MountView(sdk.ViewMount{
+			Key:  "ids",
+			Slot: sdk.ViewSlotPanel,
+			View: kit.View{Root: root},
+			A11y: []sdk.ViewA11y{{Node: tok + "-label", Name: "Label " + tok}},
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-i-mounted:"+string(st.State), "info")
+		return nil
+	})
+	// D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+	// The key and the number come from the test, so a binding the SDK dropped, or one it made up, is not what the host holds.
+	ext.Command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", func(ctx sdk.Context, args string) error {
+		key, number, _ := strings.Cut(args, " ")
+		n, err := strconv.Atoi(number)
+		if err != nil {
+			return err
+		}
+		content := func(bindings ...sdk.ViewBinding) sdk.ViewContent {
+			return sdk.ViewContent{View: viewText(ctx, "-bind"), Bindings: bindings, Intents: []sdk.ViewIntent{
+				{Name: "fx.go", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"n": {Type: "integer"}}, Required: []string{"n"}}},
+				{Name: "fx.tap", Arg: sdk.ViewShape{Type: "object"}},
+			}}
+		}
+		goTo := func(key string, n any) sdk.ViewBinding {
+			return sdk.ViewBinding{Key: key, Intent: "fx.go", Arg: map[string]any{"n": n}}
+		}
+		tap := func(key string) sdk.ViewBinding { return sdk.ViewBinding{Key: key, Intent: "fx.tap"} }
+		first := goTo(key, n)
+		first.Name = fmt.Sprintf("Go %d", n)
+		st, err := ctx.MountView(sdk.ViewMount{Key: "bind", Slot: sdk.ViewSlotPanel,
+			ViewContent: content(first, goTo("w", n+1), sdk.ViewBinding{Gesture: "swipe-left", Intent: "fx.tap"})})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-b-mounted:"+string(st.State), "info")
+		attempt := func(label string, bindings ...sdk.ViewBinding) {
+			code := "none"
+			if _, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(bindings...)}); err != nil {
+				code = "error"
+				if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+					code = string(ve.Code)
+				}
+			}
+			ctx.Notify("view-b-"+label+":"+code, "info")
+		}
+		var many []sdk.ViewBinding
+		for _, c := range "abcdefghijklmnopqrstuvwxyz0123456" {
+			many = append(many, tap(string(c)))
+		}
+		attempt("many", many...)
+		attempt("reserved", tap("shift+tab"))
+		attempt("order", tap("ctrl+shift+p"), tap("shift+ctrl+p"))
+		attempt("gesture", sdk.ViewBinding{Gesture: "pinch", Intent: "fx.tap"})
+		attempt("arg", goTo("a", "x"))
+		attempt("ok", goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n+1))
+		return nil
+	})
+	// D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+	// The name of the dismiss intent comes from the test, so a flag the SDK dropped, or one it made up, is not what the host holds.
+	ext.Command("ui_view_dismiss", "Mount a dialog with a dismiss intent and probe what the host refuses", func(ctx sdk.Context, args string) error {
+		object := sdk.ViewShape{Type: "object"}
+		tap := sdk.ViewIntent{Name: "fx.tap", Arg: object}
+		closing := func(name string) sdk.ViewIntent { return sdk.ViewIntent{Name: name, Arg: object, Dismiss: true} }
+		content := func(intents ...sdk.ViewIntent) sdk.ViewContent {
+			return sdk.ViewContent{View: viewText(ctx, "-dismiss"), Intents: intents}
+		}
+		st, err := ctx.MountView(sdk.ViewMount{Key: "dismiss", Slot: sdk.ViewSlotDialog, ViewContent: content(tap, closing(args))})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-d-mounted:"+string(st.State), "info")
+		attempt := func(label string, intents ...sdk.ViewIntent) {
+			code := "none"
+			if _, err := ctx.UpdateView(sdk.ViewUpdate{Mount: st.Mount, ViewContent: content(intents...)}); err != nil {
+				code = "error"
+				if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
+					code = string(ve.Code)
+				}
+			}
+			ctx.Notify("view-d-"+label+":"+code, "info")
+		}
+		attempt("two", tap, closing(args), closing(args+"2"))
+		onNode := closing(args)
+		onNode.NodeKey = "n"
+		attempt("node", tap, onNode)
+		needsValue := closing(args)
+		needsValue.Arg = sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"value": {Type: "string"}}, Required: []string{"value"}}
+		attempt("arg", tap, needsValue)
+		attempt("ok", closing(args), tap)
+		return nil
+	})
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
+		if strings.HasPrefix(in.Intent, "fx.close-") {
+			// The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+			if strings.TrimSpace(string(in.Arg)) != "{}" {
+				return sdk.ViewIntentResult{Outcome: "refused", Error: "dismiss takes {}"}
+			}
+			if _, err := in.Context.RemoveView(sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev}); err != nil {
+				return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+			}
+			return sdk.ViewIntentResult{Outcome: "done"}
+		}
 		switch in.Intent {
 		case "fx.redraw", "fx.foreign":
 			return redrawIntent(in)
@@ -3066,6 +3180,26 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	ext.Command("overlay-invalidate-probe", "Count the host's invalidations of a mounted overlay and draw the theme", func(ctx sdk.Context, args string) error {
+		options := sdk.RemoteOverlayOptions{Overlay: true}
+		var err error
+		if strings.TrimSpace(args) == "plain" {
+			_, err = ctx.Custom(&plainThemeProbeComponent{ctx: ctx}, options)
+		} else {
+			_, err = ctx.Custom(&invalidateProbeComponent{ctx: ctx, kept: themeProbeRow(ctx)}, options)
+		}
+		if err != nil {
+			return err
+		}
+		ctx.Notify("overlay-invalidate=ok", "info")
+		return nil
+	})
+
+	ext.Command("theme-read-probe", "Report the theme the extension holds, with no component mounted", func(ctx sdk.Context, _ string) error {
+		ctx.Notify("theme-read="+themeProbeRow(ctx), "info")
+		return nil
+	})
+
 	ext.Command("overlay-focus-probe", "Render the focus the host publishes to a mounted overlay", func(ctx sdk.Context, _ string) error {
 		component := &focusProbeComponent{}
 		onHandle := func(handle *sdk.OverlayHandle) { component.handle.Store(handle) }
@@ -4515,6 +4649,44 @@ func (c *focusProbeComponent) Render(int) []string {
 }
 
 func (*focusProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
+}
+
+// themeProbeRow is the active theme's name and its accent foreground, as the extension holds them now.
+func themeProbeRow(ctx sdk.Context) string {
+	theme := ctx.UITheme()
+	return theme.Name + "|" + theme.Fg("accent", "x")
+}
+
+// invalidateProbeComponent keeps a themed row until the host invalidates it, as a Pi component that caches its rows does: the row
+// names the theme the component saw at its Invalidate, and each frame the theme it sees at its render.
+type invalidateProbeComponent struct {
+	ctx           sdk.Context
+	invalidations int
+	kept          string
+}
+
+func (c *invalidateProbeComponent) Render(int) []string {
+	return []string{fmt.Sprintf("inv=%d kept=%s live=%s", c.invalidations, c.kept, c.ctx.UITheme().Name)}
+}
+
+func (c *invalidateProbeComponent) Invalidate() {
+	c.invalidations++
+	c.kept = themeProbeRow(c.ctx)
+}
+
+func (*invalidateProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
+}
+
+// plainThemeProbeComponent has no Invalidate: the host's invalidation renders it again all the same.
+type plainThemeProbeComponent struct{ ctx sdk.Context }
+
+func (c *plainThemeProbeComponent) Render(int) []string {
+	return []string{"plain live=" + themeProbeRow(c.ctx)}
+}
+
+func (*plainThemeProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
 	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
 }
 

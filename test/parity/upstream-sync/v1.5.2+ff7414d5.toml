@@ -1,0 +1,305 @@
+from = "1.5.2+90ed3e3b"
+to = "1.5.2+ff7414d5"
+# Pi ff7414d5130e (2026-11-13): feat(chord): the app kit's sign-ins (was Sessions). One row per path the commit removes,
+# adds or changes (git counts 39 files with its three renames as one each: 42 paths).
+# For the lane that moves the pin past this commit: PORT_MAP's rows of packages/chord/src/node/app/sessions.ts and
+# ephemeral-sessions.ts, and the test-mapping rows of sessions.test.ts and ephemeral-sessions.test.ts, keep the pin's
+# paths until then: their upstream paths change at that pin move (sign-ins.ts, ephemeral-sign-ins.ts, sign-ins.test.ts,
+# ephemeral-sign-ins.test.ts): rename the rows; no file was lost. With that rename leave: the three entries of
+# test/parity/interface-closure/autobind/renames.json for pkg:chord/app#Sessions, #SessionInfo and #SessionKind, and the
+# reviewed decision of pkg:chord/app#SESSION_COOKIE in autobind/reviewed-decisions.json (the pin's ids are then SignIns,
+# SignInInfo, SignInKind and SIGN_IN_COOKIE, which the name rules find).
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: the decision \"Sign-ins, not sessions\" (the rename, and no migration: a kit app's existing sign-ins and cookies are not read under the new names). The Go port follows it: sign_ins.go, and the upgrade test shows what it means for a running app. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: the design's authentication paragraph says sign-in and names SignIns. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/guide-plugins-hosts/book.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: the guide says SignIns and sign-in. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/p3-features/book.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: one table cell of the p3 feature list (the app kit's sign-ins and pairing). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/slice-13.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: slice 13's text says sign-ins, app/sign-ins.ts and 54-app-sign-ins. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/slices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: three lines of the slice list say sign-ins. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/tutorial/book.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:examples/chord-todo/tutorial_test.go#TestTheTutorialsStepsPrintWhatTheBookShows"]
+rationale = "ff7414d51: step 1's printed line is `the owner signs in: 200 chord-sign-in=…` and the owner link's paragraph says a sign-in cookie. The twin docs/chord/tutorial.md changes the same two lines; examples/chord-todo prints the cookie's name from the kit's Set-Cookie and the test compares what it prints with the twin (red on the code before the rename with the twin changed: job j3)."
+
+[[files]]
+path = "packages/chord/src/node/app/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: the app kit's README says sign-ins throughout (the section `Sign-ins`, `chord.app.sign-ins`, the cookie `chord-sign-in`, `limits.ephemeralSignIns`). Pi's package READMEs are not ported; the Go package's comments (sign_ins.go, app.go) say the same."
+
+[[files]]
+path = "packages/chord/src/node/app/app.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/sign_ins_limits_test.go#TestStartServerGivesLimitsEphemeralSignInsToTheKitsSignIns", "test:chord/nextnode/app/sign_ins_names_test.go#TestTheKitsCookieIsChordSignInAndTheNameItHadBeforeSignsNobodyIn"]
+rationale = "ff7414d51: startServer makes the kit's sign-ins with createSignIns from limits.ephemeralSignIns (was ephemeralSessions), loads them as the core facet `chord.app.sign-ins` (was `chord.app.sessions`) and gives the links endpoint signIns.opened. app.go: AppLimits.EphemeralSignIns, CreateSignIns, the core facet and the bridged facet named chord.app.sign-ins. No alias for the old option or facet name, as Pi has none."
+
+[[files]]
+path = "packages/chord/src/node/app/ephemeral-sessions.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWithTheirLastLinkAfterTheGracePeriodALinkOpeningMeanwhileKeepsThem", "test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWhenNoLinkOpensWithinTheGracePeriodOfTheLogin", "test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsKeepAtMostMaxPastItTheOldestEnds"]
+rationale = "ff7414d51: the file is renamed ephemeral-sign-ins.ts (the next row). chord/nextnode/app/ephemeral_sessions.go is renamed ephemeral_sign_ins.go with it (git mv)."
+
+[[files]]
+path = "packages/chord/src/node/app/ephemeral-sign-ins.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWithTheirLastLinkAfterTheGracePeriodALinkOpeningMeanwhileKeepsThem", "test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWhenNoLinkOpensWithinTheGracePeriodOfTheLogin", "test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsKeepAtMostMaxPastItTheOldestEnds"]
+rationale = "ff7414d51: EphemeralSessions is EphemeralSignIns (the type SignIn, the map #signIns), behaviour unchanged; EPHEMERAL_GRACE_MS keeps its name. ephemeral_sign_ins.go: EphemeralSignIns, NewEphemeralSignIns, ephemeralSignIn; EphemeralGrace unchanged."
+
+[[files]]
+path = "packages/chord/src/node/app/ephemeral.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer"]
+rationale = "ff7414d51: the login route gets SignIns and issues an ephemeral sign-in. ephemeral.go issues through issueSignIn with SignInEphemeral."
+
+[[files]]
+path = "packages/chord/src/node/app/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: the barrel exports SIGN_IN_COOKIE, SignInInfo, SignInKind and SignIns, and no longer SESSION_COOKIE, SessionInfo, SessionKind or Sessions (no alias). Re-export barrel: the Go package exports the names directly (PORT_MAP n/a row): SignInCookie, SignInInfo, SignInKind, SignIns; the old Go names are gone too."
+
+[[files]]
+path = "packages/chord/src/node/app/invite.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"]
+rationale = "ff7414d51: the invite route gets SignIns and issues a browser sign-in. invite.go issues through issueSignIn with SignInBrowser."
+
+[[files]]
+path = "packages/chord/src/node/app/layout.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/layout_test.go#TestTheDataDirectoryMakesTheLayoutsDirectoriesTheDataDirectoryWithMode0700"]
+rationale = "ff7414d51: one word of the file's comment (other local users must not read the sign-ins in a store). layout.go's comment says the same; no code changes."
+
+[[files]]
+path = "packages/chord/src/node/app/owner.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/owner_upstream_test.go#TestOwnerTokenFileIsReplacedAtTheNextStartWhenItsSecretNoLongerMatchesItsSignIn", "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerTokenFileIsReplacedAtTheNextStartOnceItsSignInWasRevoked", "test:chord/nextnode/app/owner_upstream_test.go#TestTheOwnerTokenFileIsReplacedWhenTheOwnerChangesItsSignInRevokedTheOldOwnersOthersStay", "test:chord/nextnode/app/sign_ins_upgrade_test.go#TestAnUpgradeAcrossTheRenameSignsEveryBrowserAndPairedDeviceOutAndReplacesTheOwnerTokenFile"]
+rationale = "ff7414d51: the owner link's post and ownerTokenFile get SignIns (issue, verify, revoke). owner.go: issueSignIn and OwnerTokenFile call the kit's SignIns. A token file written before the rename verifies as nobody on the new names, so it is replaced at the next start (the upgrade test)."
+
+[[files]]
+path = "packages/chord/src/node/app/pairing.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/pairing_upstream_test.go#TestAnOwnerTheAppChoosesAloneApprovesGetsTheDeviceSignInAndIsNotCounted", "test:chord/nextnode/app/sign_ins_upgrade_test.go#TestAnUpgradeAcrossTheRenameSignsEveryBrowserAndPairedDeviceOutAndReplacesTheOwnerTokenFile"]
+rationale = "ff7414d51: the approval issues the owner's device sign-in through SignIns. pairing.go issues through issueSignIn with SignInDevice."
+
+[[files]]
+path = "packages/chord/src/node/app/sessions.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsIssueATokenAsBearerAndCookieListItWithoutItsHashRevokeIt", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsRefuseATokenWithAWrongSecretAnUnknownIDAndAForgedCookie", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsKeepOnlyTheTokensHashInTheStore", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsAuthenticateInMemoryAreNotListedAndEndWithTheServerPersistedOnesStay", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSignedExpiry", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesDoNotRenewAnEphemeralSignInsCookieNorARevokedSignIns", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsEndAPersistedSignInUnusedFor400DaysAtItsNextUse", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsAnswerAMalformedTokenOrAPrototypeKeyAsAnIDWithAPlain401ReportingNothing"]
+rationale = "ff7414d51: the file is renamed sign-ins.ts (the next row). chord/nextnode/app/sessions.go is renamed sign_ins.go with it (git mv)."
+
+[[files]]
+path = "packages/chord/src/node/app/sign-ins.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsIssueATokenAsBearerAndCookieListItWithoutItsHashRevokeIt", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsRefuseATokenWithAWrongSecretAnUnknownIDAndAForgedCookie", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsKeepOnlyTheTokensHashInTheStore", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsAuthenticateInMemoryAreNotListedAndEndWithTheServerPersistedOnesStay", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSignedExpiry", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesDoNotRenewAnEphemeralSignInsCookieNorARevokedSignIns", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsEndAPersistedSignInUnusedFor400DaysAtItsNextUse", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsAnswerAMalformedTokenOrAPrototypeKeyAsAnIDWithAPlain401ReportingNothing", "test:chord/nextnode/app/sign_ins_names_test.go#TestTheKitsCookieIsChordSignInAndTheNameItHadBeforeSignsNobodyIn", "test:chord/nextnode/app/sign_ins_names_test.go#TestTheKitsStoredDocumentIsChordAppSignInsWithTheFieldSignIns", "test:chord/nextnode/app/sign_ins_upgrade_test.go#TestAnUpgradeAcrossTheRenameSignsEveryBrowserAndPairedDeviceOutAndReplacesTheOwnerTokenFile"]
+rationale = "ff7414d51: Sessions is SignIns: the contract `chord.app.sign-ins` (was `chord.app.sessions`), its stored document `chord.app.sign-ins` with the field `signIns` (was `chord.app.sessions`, `sessions`), SIGN_IN_COOKIE = `chord-sign-in` (was SESSION_COOKIE = `chord-session`), SignInKind, SignInInfo, SignInLimits, KitSignIns, createSignIns; members, kinds, lifetimes and cookie attributes unchanged. No migration and no alias: nothing reads the old document, field or cookie. sign_ins.go mirrors each name (SignIns, SignInCookie, SignInKind with SignInBrowser/SignInDevice/SignInEphemeral, SignInInfo, SignInLimits, KitSignIns, CreateSignIns) and reads nothing under the old names: after an upgrade the old document stays in the store unread, every browser and paired device signs in again and the owner token file is replaced at the next start (sign_ins_upgrade_test.go; a directory written by the code before the rename behaves the same: job j3)."
+
+[[files]]
+path = "packages/chord/src/node/http/http.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/sign_ins_touch_test.go#TestASignInsTouchOfAFinishedRequestStillLands"]
+rationale = "ff7414d51: one word of LinksOptions.opened's comment (the kit ends an ephemeral sign-in with its last link). http.go's comment on work left running on the context says a sign-in's `lastUsed` write; no code changes."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/web.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn"]
+rationale = "ff7414d51: one word of a comment (an outdated page whose sign-in ended still learns it should reload). surfaces_web.go's comment says the same; no code changes."
+
+[[files]]
+path = "packages/chord/test/examples/53-app/app/v1/server.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "ff7414d51: the example's server API exports SignIns (was Sessions). Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
+
+[[files]]
+path = "packages/chord/test/examples/53-app/main.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "ff7414d51: two comments say sign-in. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
+
+[[files]]
+path = "packages/chord/test/examples/53-app/plugins/notes/server.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "ff7414d51: one comment says sign-in. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
+
+[[files]]
+path = "packages/chord/test/examples/53-app/start.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "ff7414d51: one comment says sign-ins. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
+
+[[files]]
+path = "packages/chord/test/examples/54-app-sessions/main.ts"
+change = "removed"
+disposition = "deferred"
+evidence = []
+rationale = "ff7414d51: the example is renamed 54-app-sign-ins/main.ts (the next row). Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
+
+[[files]]
+path = "packages/chord/test/examples/54-app-sign-ins/main.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "ff7414d51: the example gets SignIns from the app's host, prints `4. sign-ins:` and revokes the paired device's. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's. Its pairing flow and the list are run by pairing_upstream_test.go; its printed text by nothing."
+
+[[files]]
+path = "packages/chord/test/examples/56-web/headless.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "ff7414d51: one comment says the sign-in token. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
+
+[[files]]
+path = "packages/chord/test/examples/59-chat/main.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "ff7414d51: one comment says her sign-in cookie. Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this rename's."
+
+[[files]]
+path = "packages/chord/test/examples/61-tutorial/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:examples/chord-todo/tutorial_test.go#TestTheTutorialsStepsPrintWhatTheBookShows"]
+rationale = "ff7414d51: one comment (the owner's page gets a sign-in cookie). examples/chord-todo/main.go's comment says the same; what the step prints is the book's row (docs/tutorial/book.md)."
+
+[[files]]
+path = "packages/chord/test/node/app/ephemeral-sessions.test.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWithTheirLastLinkAfterTheGracePeriodALinkOpeningMeanwhileKeepsThem", "test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWhenNoLinkOpensWithinTheGracePeriodOfTheLogin", "test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsKeepAtMostMaxPastItTheOldestEnds"]
+rationale = "ff7414d51: the file is renamed ephemeral-sign-ins.test.ts (the next row); ephemeral_sessions_test.go is renamed ephemeral_sign_ins_test.go (git mv)."
+
+[[files]]
+path = "packages/chord/test/node/app/ephemeral-sign-ins.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWithTheirLastLinkAfterTheGracePeriodALinkOpeningMeanwhileKeepsThem", "test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsEndWhenNoLinkOpensWithinTheGracePeriodOfTheLogin", "test:chord/nextnode/app/ephemeral_sign_ins_test.go#TestEphemeralSignInsKeepAtMostMaxPastItTheOldestEnds"]
+rationale = "ff7414d51: describe `ephemeral sign-ins`, the three cases with the same inputs and results on EphemeralSignIns. The three Go tests are TestEphemeralSignIns... with the same inputs and results."
+
+[[files]]
+path = "packages/chord/test/node/app/ephemeral.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer"]
+rationale = "ff7414d51: the case `ends its sign-ins with the server` (title only). The Go test is renamed alike."
+
+[[files]]
+path = "packages/chord/test/node/app/owner.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/owner_upstream_test.go#TestOwnerTokenFileIsReplacedAtTheNextStartWhenItsSecretNoLongerMatchesItsSignIn", "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerTokenFileIsReplacedAtTheNextStartOnceItsSignInWasRevoked", "test:chord/nextnode/app/owner_upstream_test.go#TestTheOwnerTokenFileIsReplacedWhenTheOwnerChangesItsSignInRevokedTheOldOwnersOthersStay"]
+rationale = "ff7414d51: three titles say sign-in and the list and the revoke go through SignIns; inputs and results unchanged. The three Go tests are renamed alike and read SignIns."
+
+[[files]]
+path = "packages/chord/test/node/app/pairing.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/pairing_upstream_test.go#TestAnOwnerTheAppChoosesAloneApprovesGetsTheDeviceSignInAndIsNotCounted"]
+rationale = "ff7414d51: one title says the device sign-in and the list goes through SignIns; inputs and results unchanged. The Go test is renamed alike."
+
+[[files]]
+path = "packages/chord/test/node/app/sessions.test.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsIssueATokenAsBearerAndCookieListItWithoutItsHashRevokeIt", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsRefuseATokenWithAWrongSecretAnUnknownIDAndAForgedCookie", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsKeepOnlyTheTokensHashInTheStore", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsAuthenticateInMemoryAreNotListedAndEndWithTheServerPersistedOnesStay", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSignedExpiry", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesDoNotRenewAnEphemeralSignInsCookieNorARevokedSignIns", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsEndAPersistedSignInUnusedFor400DaysAtItsNextUse", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsAnswerAMalformedTokenOrAPrototypeKeyAsAnIDWithAPlain401ReportingNothing"]
+rationale = "ff7414d51: the file is renamed sign-ins.test.ts (the next row); sessions_upstream_test.go is renamed sign_ins_upstream_test.go (git mv)."
+
+[[files]]
+path = "packages/chord/test/node/app/sign-ins.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsIssueATokenAsBearerAndCookieListItWithoutItsHashRevokeIt", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsRefuseATokenWithAWrongSecretAnUnknownIDAndAForgedCookie", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsKeepOnlyTheTokensHashInTheStore", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsAuthenticateInMemoryAreNotListedAndEndWithTheServerPersistedOnesStay", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSignedExpiry", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestRollingCookiesDoNotRenewAnEphemeralSignInsCookieNorARevokedSignIns", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsEndAPersistedSignInUnusedFor400DaysAtItsNextUse", "test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsAnswerAMalformedTokenOrAPrototypeKeyAsAnIDWithAPlain401ReportingNothing", "test:chord/nextnode/app/sign_ins_limits_test.go#TestStartServerGivesLimitsEphemeralSignInsToTheKitsSignIns"]
+rationale = "ff7414d51: the nine cases through SignIns; four expectations change: the two Set-Cookie patterns and the two forged cookies are named chord-sign-in, and the cap is given as limits.ephemeralSignIns. The nine Go tests have the same inputs and the same expected results (the patterns `^chord-sign-in=...`, the forged `chord-sign-in=` cookies); the start option is run through the whole app in sign_ins_limits_test.go."
+
+[[files]]
+path = "packages/chord/test/node/app/support.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/sign_ins_upstream_test.go#TestSignInsIssueATokenAsBearerAndCookieListItWithoutItsHashRevokeIt"]
+rationale = "ff7414d51: the tests' API v1 lists SignIns and bearerFor issues through it. The Go helpers (kit_http_support_test.go: kitServer.issue, CreateSignIns, the facet chord.app.sign-ins) use the new names."
+
+[[files]]
+path = "packages/chord/test/node/fixtures/app/worker.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ff7414d51: the fixture worker's API object lists SignIns instead of Sessions. The Go tests' worker gets its API from the test binary (app_support_test.go workerOptions): it holds no list of the kit's TypeScript export names, and no Go file named the old one there."
+
+[[files]]
+path = "packages/chord/test/node/fixtures/reload/app.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/reload_web_test.go#TestAChangeOfBaseCodeReloadsThePageEndsCallsInFlightWithTheLinkLosesPageStateAndKeepsServerState"]
+rationale = "ff7414d51: signInAgain issues the second page's owner browser sign-in through SignIns. reload_web_support_test.go signInAgain gets SignIns."
+
+[[files]]
+path = "packages/chord/test/node/surfaces/web.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn"]
+rationale = "ff7414d51: the owner helper issues through SignIns and one title says without a sign-in. The Go helper and test are renamed alike."
+
+[[files]]
+path = "packages/chord/test/node/tui/launcher.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns"]
+rationale = "ff7414d51: the pairing case issues and lists through SignIns. tui_kit_upstream_test.go gets app.SignIns."

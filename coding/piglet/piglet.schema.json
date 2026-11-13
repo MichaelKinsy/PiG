@@ -88,6 +88,14 @@
       ],
       "description": "The client an interactive session attaches to its plugin view registry (D614). none is Stock PiG: no client, so an extension's ui.view mount fails unsupported. terminal attaches the TUI, which draws mounts in its widget and panel regions."
     },
+    "viewEndpoint": {
+      "type": "string",
+      "enum": [
+        "none",
+        "socket"
+      ],
+      "description": "Whether an interactive session serves its plugin view registry to clients outside the process (D614). none is Stock PiG: nothing listens. socket serves the ui_view carrier on a Unix socket in the agent directory that only this user can connect to; a client of it draws mounts and raises their intents and can do nothing else. Print, JSON and RPC mode ignore the key."
+    },
     "agentEnv": {
       "$ref": "#/$defs/agentEnvironment"
     },

@@ -469,6 +469,8 @@ func (m *InteractiveMode) shutdownFromSignal(unwind bool) {
 		return
 	}
 	m.emitQuitShutdown()
+	// A caller that ends the process itself never returns from Run, so the view endpoint's socket is removed here.
+	m.closeViewEndpoint()
 	if unwind {
 		m.requestShutdown()
 	}

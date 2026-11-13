@@ -8,9 +8,9 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// One run whose answer is a batch of parallel tool calls, after a history of messages. Each call of a batch of two or more gets a copy
-// of the run's messages for its tool and its after hook (executeToolCallsParallel), so the bytes of a run grow by the size of the
-// history for every call: the rows are the numbers the //perf:ok at that copy states.
+// One run whose answer is a batch of parallel tool calls, after a history of messages. Every call of the batch receives the messages
+// of the run itself for its tool and its after hook (executeToolCallsParallel), as the calls of a batch in Pi share one context, so
+// the bytes of a run do not grow by the size of the history for every call: the rows show a batch after 100 and after 5,000 messages.
 func BenchmarkParallelToolBatchWithHistory(b *testing.B) {
 	for _, calls := range []int{2, 8} {
 		for _, history := range []int{100, 5000} {

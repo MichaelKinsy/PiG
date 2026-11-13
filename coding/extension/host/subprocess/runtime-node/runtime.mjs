@@ -2075,13 +2075,14 @@ class RuntimeUI {
     return abilities ? structuredClone(abilities) : null;
   }
   // The amendment members ride beside the view: alternatives ([{ when, view, drawing? }], the first whose `when` holds for a
-  // client's claims is what that client draws), drawing, a11y and focus. The host checks every bound and answers invalid.
+  // client's claims is what that client draws), drawing, a11y, focus and bindings ([{ key | gesture, intent, arg?, name? }],
+  // keys and gestures a client turns into intents while the mount holds the focus). The host checks every bound and answers invalid.
   // title is the short text a client labels the mount with; an update replaces it like the rest of the content.
-  mountView({ key, slot, target, title, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
-    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  mountView({ key, slot, target, title, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings } = {}) {
+    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings }));
   }
-  updateView(mount, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
-    return this.runtime.call("ui.view.update", viewArgs({ mount }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  updateView(mount, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings } = {}) {
+    return this.runtime.call("ui.view.update", viewArgs({ mount }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings }));
   }
   hideView(mount) { return this.runtime.call("ui.view.hide", { mount }); }
   showView(mount) { return this.runtime.call("ui.view.show", { mount }); }
@@ -4948,6 +4949,22 @@ export class Runtime {
       case "ui.custom.opened": {
         const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
         this.customOverlays.get(args?.key)?.onMounted?.(args);
+        return;
+      }
+      case "ui.custom.invalidate": {
+        // The host's TUI was invalidated: Pi's TUI.invalidate calls invalidate() on every mounted root and every overlay's component
+        // (tui.ts:951-954), and the next frame draws what the component builds then. A theme_change with the new palette precedes
+        // this on the connection when the palette changed. count is how many invalidations the host counted since the last notify.
+        const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
+        const overlay = this.customOverlays.get(args?.key);
+        const count = Number.isInteger(args?.count) ? args.count : 0;
+        if (!overlay?.active || !overlay.component || count < 1) return;
+        try {
+          for (let i = 0; i < count; i++) overlay.component.invalidate?.();
+          overlay.renderFrame();
+        } catch (err) {
+          overlay.reject?.(err instanceof Error ? err : new Error(String(err)));
+        }
         return;
       }
       case "ui.custom.focus": {

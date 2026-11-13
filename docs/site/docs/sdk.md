@@ -357,6 +357,8 @@ Pass extension definitions through `coding.RuntimeOptions` when your application
 
 Use a Piglet when the composition should also be usable from the `pig` executable or built as a Piglet Binary.
 
+An extension shows a GUI in the terminal and in a web page with views: [Extension views](ui-views.md) (D614).
+
 ## Headless embedding and binary size
 
 A program that embeds PiG without a terminal still links everything the session API can reach. `examples/headless` is a complete small program: the session API, MCP servers from `mcp.json` and one provider (Anthropic). It has no terminal and no extension files. Build it the way PiG builds its releases:

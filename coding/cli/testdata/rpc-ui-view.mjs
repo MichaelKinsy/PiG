@@ -57,6 +57,14 @@ export default function rpcUIViewExtension(pi) {
     },
   });
 
+  // view-reload reloads the session's extensions, as /reload does in the terminal.
+  pi.registerCommand("view-reload", {
+    description: "Reload the extensions",
+    handler: async (_args, ctx) => {
+      await ctx.reload();
+    },
+  });
+
   // The abilities handler. PIG_TEST_VIEW_ARRIVE=mount mounts a view for the client that arrived; =block never returns.
   // With PIG_TEST_VIEW_MOUNT=1 alone it is registered and, in a session no client attaches to, never runs.
   const arrive = process.env.PIG_TEST_VIEW_ARRIVE;

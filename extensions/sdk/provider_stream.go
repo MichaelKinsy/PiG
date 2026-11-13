@@ -34,16 +34,19 @@ func (e *Extension) dispatchProviderStream(ctx Context, id string, request *requ
 		_ = e.conn.respond(id, nil, fmt.Errorf("provider returned nil stream"))
 		return
 	}
-	for event := range stream.Events(ctx.ctx) {
-		if err := e.conn.notify("provider_stream_event", map[string]any{"request_id": id, "result": event}); err != nil {
-			_ = e.conn.respond(id, nil, err)
-			return
-		}
+	if err := stream.forward(ctx.ctx, func(event any) error {
+		return e.conn.notifyResult("provider_stream_event", id, event)
+	}); err != nil {
+		_ = e.conn.respond(id, nil, err)
+		return
 	}
-	select {
-	case <-ctx.Done():
-		_ = e.conn.respond(id, nil, ctx.ctx.Err())
-	case <-stream.done:
-		_ = e.conn.respond(id, stream.Result(), nil)
+	// forward returned without an error: the request's context is done, or the stream has ended and every event of it was sent. The context is read first, and once. A select
+	// on the context and the stream's end picks at random when both are ready, and both are whenever an author ends its stream because it saw the cancel: the cancelled request
+	// was then answered with a result now and then. A cancel that arrives after this read finds the stream ended and forwarded, and the request keeps its result.
+	if err := ctx.ctx.Err(); err != nil {
+		_ = e.conn.respond(id, nil, err)
+		return
 	}
+	result, err := stream.resultPayload()
+	_ = e.conn.respond(id, result, err)
 }

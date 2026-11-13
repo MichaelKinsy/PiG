@@ -203,9 +203,15 @@ func (r *Registry) Rejected(plugin string, op string, raw []byte, err *Error) {
 	if json.Unmarshal(raw, &head) != nil || head.Mount.Key == "" {
 		return
 	}
+	r.refused(plugin, op, head.Mount, err)
+}
+
+// refused records that the operation op on the mount ref names was refused because its record is outside the closed
+// shape. A ref that names no current incarnation of a mount leaves no notice.
+func (r *Registry) refused(plugin string, op string, ref Ref, err *Error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if m := r.mounts[ownerKey{plugin, head.Mount.Key}]; m != nil && m.snap.Mount.Epoch == head.Mount.Epoch {
+	if m := r.mounts[ownerKey{plugin, ref.Key}]; m != nil && m.snap.Mount.Epoch == ref.Epoch {
 		m.note(Notice{Code: string(err.Code), Severity: SeverityError, Path: op, Message: err.Message})
 	}
 }

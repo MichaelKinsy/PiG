@@ -19,7 +19,7 @@ import (
 // the owner is the principal the app names (`principal.owner`); no owner by loopback alone. At each start the kit makes a
 // one-time owner link (a random token, single use, valid 10 minutes, the previous one dropped); the start script prints it. Its
 // page reads the token from the URL's fragment (never sent to a server, so never in a log) and posts it; the post consumes it and
-// sets a browser session cookie for the owner. The owner token file (mode 0600) carries a device session of the owner for
+// sets a browser sign-in cookie for the owner. The owner token file (mode 0600) carries a device sign-in of the owner for
 // command-line clients on the same machine.
 //
 // Ports packages/chord/src/node/app/owner.ts (Pi main c23b9ec1).
@@ -60,7 +60,7 @@ func (l *OwnerLink) Consume(token string) bool {
 const OwnerPath = "/_chord/owner"
 
 // OwnerFacet is the kit's facet for the owner link: `GET /_chord/owner`, a page posting the fragment's token, and `POST
-// /_chord/owner`, which consumes it and answers with a session cookie of owner.
+// /_chord/owner`, which consumes it and answers with a sign-in cookie of owner.
 func OwnerFacet(link *OwnerLink, owner data.Principal) host.Facet {
 	return host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
 		return self.Contribute(registries.Registry[any, any](chordhttp.Http), chordhttp.HttpContribution{Routes: []chordhttp.HttpRouteEntry{
@@ -77,7 +77,7 @@ func OwnerFacet(link *OwnerLink, owner data.Principal) host.Facet {
 				if !ok || !link.Consume(token) {
 					return chordhttp.HttpResponse{Kind: chordhttp.KindError, Status: 403}, nil
 				}
-				issued, err := issueSession(ctx, owner, "owner browser", SessionBrowser, request.Provenance().Kind != chordhttp.ProvenanceLocal)
+				issued, err := issueSignIn(ctx, owner, "owner browser", SignInBrowser, request.Provenance().Kind != chordhttp.ProvenanceLocal)
 				if err != nil {
 					return chordhttp.HttpResponse{}, err
 				}
@@ -100,26 +100,26 @@ func postedToken(body any) (string, bool) {
 	return token, ok
 }
 
-// issuedSession is what Sessions' `issue` answered.
-type issuedSession struct{ id, token, cookie string }
+// issuedSignIn is what SignIns' `issue` answered.
+type issuedSignIn struct{ id, token, cookie string }
 
-// issueSession issues a session of principal on the kit's Sessions in ctx.
-func issueSession(ctx context.Context, principal data.Principal, label string, kind SessionKind, secure bool) (issuedSession, error) {
-	sessions, err := ctx.(host.Ctx).Get(Sessions, delta.NewJsonObject(0), host.GetOptions{})
+// issueSignIn issues a sign-in of principal on the kit's SignIns in ctx.
+func issueSignIn(ctx context.Context, principal data.Principal, label string, kind SignInKind, secure bool) (issuedSignIn, error) {
+	signIns, err := ctx.(host.Ctx).Get(SignIns, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
-		return issuedSession{}, err
+		return issuedSignIn{}, err
 	}
-	defer sessions.Release()
+	defer signIns.Release()
 	args := delta.JsonObjectOf("principal", principal, "label", label, "kind", string(kind))
 	if secure {
 		args.Set("secure", true)
 	}
-	result, err := sessions.Call("issue", args, ctx)
+	result, err := signIns.Call("issue", args, ctx)
 	if err != nil {
-		return issuedSession{}, err
+		return issuedSignIn{}, err
 	}
 	object := result.(*delta.JsonObject)
-	return issuedSession{id: object.Value("id").(string), token: object.Value("token").(string), cookie: object.Value("cookie").(string)}, nil
+	return issuedSignIn{id: object.Value("id").(string), token: object.Value("token").(string), cookie: object.Value("cookie").(string)}, nil
 }
 
 // FragmentPage is a sign-in page for a link with a token in its fragment (the owner link, an invite): its script (the response's
@@ -136,9 +136,9 @@ func FragmentPage(path, nonce string) string {
 	}, "\n")
 }
 
-// OwnerTokenFile is the owner token file at path: kept when its token still authenticates as owner (its session exists, its
-// secret matches, it has not expired, it names owner; its mode set to 0600 again), else a new device session of owner written
-// there (mode 0600, in one step), the old file's session revoked when it names another principal (the owner changed). It answers
+// OwnerTokenFile is the owner token file at path: kept when its token still authenticates as owner (its sign-in exists, its
+// secret matches, it has not expired, it names owner; its mode set to 0600 again), else a new device sign-in of owner written
+// there (mode 0600, in one step), the old file's sign-in revoked when it names another principal (the owner changed). It answers
 // its token, for the start script.
 func OwnerTokenFile(path string, owner data.Principal, h host.Host, ctx context.Context) (string, error) {
 	existing, found, err := ReadSecret(path)
@@ -146,14 +146,14 @@ func OwnerTokenFile(path string, owner data.Principal, h host.Host, ctx context.
 		return "", err
 	}
 	result, err := h.Root(func(ctx host.Ctx) (any, error) {
-		sessions, err := ctx.Get(Sessions, delta.NewJsonObject(0), host.GetOptions{})
+		signIns, err := ctx.Get(SignIns, delta.NewJsonObject(0), host.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		defer sessions.Release()
+		defer signIns.Release()
 		if found {
 			// `verify` gives what `issue` stored: a principal of the app's type, or null.
-			verified, err := sessions.Call("verify", existing, ctx)
+			verified, err := signIns.Call("verify", existing, ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -164,14 +164,14 @@ func OwnerTokenFile(path string, owner data.Principal, h host.Host, ctx context.
 				}
 				return existing, nil
 			}
-			// The kit made that session for the file; replacing the file ends it.
+			// The kit made that sign-in for the file; replacing the file ends it.
 			if principal != nil {
-				if _, err := sessions.Call("revoke", existing[:strings.IndexByte(existing, '.')], ctx); err != nil {
+				if _, err := signIns.Call("revoke", existing[:strings.IndexByte(existing, '.')], ctx); err != nil {
 					return nil, err
 				}
 			}
 		}
-		issued, err := issueSession(ctx, owner, "owner token file", SessionDevice, false)
+		issued, err := issueSignIn(ctx, owner, "owner token file", SignInDevice, false)
 		if err != nil {
 			return nil, err
 		}

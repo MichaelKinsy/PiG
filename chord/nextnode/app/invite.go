@@ -14,7 +14,7 @@ import (
 // The invite plugin (slice 13 §3, decision "The app kit, point 2"): the owner (`AppInfo.owner`, the principal the app names)
 // makes an invite link for a principal of the app it chooses (`POST /_chord/invites`, owner only: `{ principal, label }` →
 // `{ path }`); the invitee opens it, its page posts the token (the URL's fragment, never logged) to `POST /_chord/invite`, which
-// consumes it (single use, 7 days) and answers with a browser session for that principal (§2's sessions). Invites wait in memory:
+// consumes it (single use, 7 days) and answers with a browser sign-in for that principal (§2's sign-ins). Invites wait in memory:
 // a restart drops the ones not used.
 //
 // Ports packages/chord/src/node/app/invite.ts (Pi main c23b9ec1).
@@ -94,7 +94,7 @@ func InviteFacet() host.Facet {
 				if !ok || found.expires <= jsclock.DateNow() {
 					return chordhttp.HttpResponse{Kind: chordhttp.KindError, Status: 403}, nil
 				}
-				issued, err := issueSession(ctx, found.principal, found.label, SessionBrowser, request.Provenance().Kind != chordhttp.ProvenanceLocal)
+				issued, err := issueSignIn(ctx, found.principal, found.label, SignInBrowser, request.Provenance().Kind != chordhttp.ProvenanceLocal)
 				if err != nil {
 					return chordhttp.HttpResponse{}, err
 				}

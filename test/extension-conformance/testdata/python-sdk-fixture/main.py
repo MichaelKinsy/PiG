@@ -2261,6 +2261,49 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("overlay-handle-probe", "Exercise the overlay handle ui.custom hands to on_handle", overlay_handle_probe)
 
+    def theme_probe_row(ctx: pig_sdk.Context) -> str:
+        theme = ctx.theme
+        return f"{theme.name}|{theme.fg('accent', 'x')}"
+
+    class InvalidateProbeComponent:
+        def __init__(self, ctx: pig_sdk.Context) -> None:
+            self.ctx = ctx
+            self.invalidations = 0
+            self.kept = theme_probe_row(ctx)
+
+        def render(self, width: int) -> list[str]:
+            return [f"inv={self.invalidations} kept={self.kept} live={self.ctx.theme.name}"]
+
+        def invalidate(self) -> None:
+            self.invalidations += 1
+            self.kept = theme_probe_row(self.ctx)
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            return pig_sdk.RemoteComponentResult(done=data == "q", value="closed" if data == "q" else None)
+
+    class PlainThemeProbeComponent:
+        # No invalidate: the host's invalidation renders it again all the same.
+        def __init__(self, ctx: pig_sdk.Context) -> None:
+            self.ctx = ctx
+
+        def render(self, width: int) -> list[str]:
+            return [f"plain live={theme_probe_row(self.ctx)}"]
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            return pig_sdk.RemoteComponentResult(done=data == "q", value="closed" if data == "q" else None)
+
+    def overlay_invalidate_probe(ctx: pig_sdk.Context, args: str) -> None:
+        component = PlainThemeProbeComponent(ctx) if str(args or "").strip() == "plain" else InvalidateProbeComponent(ctx)
+        ctx.custom(component, {"overlay": True})
+        ctx.notify("overlay-invalidate=ok", "info")
+
+    ext.command("overlay-invalidate-probe", "Count the host's invalidations of a mounted overlay and draw the theme", overlay_invalidate_probe)
+
+    def theme_read_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.notify("theme-read=" + theme_probe_row(ctx), "info")
+
+    ext.command("theme-read-probe", "Report the theme the extension holds, with no component mounted", theme_read_probe)
+
     class FocusProbeComponent:
         def __init__(self) -> None:
             self.handle: pig_sdk.OverlayHandle | None = None
@@ -2472,6 +2515,12 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"view-events:{view_watch['events']}", "info")
 
     def view_intent(inv):
+        if inv.intent.startswith("fx.close-"):
+            # The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+            if inv.arg != {}:
+                return pig_sdk.ViewIntentResult("refused", error="dismiss takes {}")
+            inv.context.remove_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev))
+            return pig_sdk.ViewIntentResult("done")
         if inv.intent in ("fx.redraw", "fx.foreign"):
             return view_redraw_intent(inv)
         if inv.intent == "fx.reopen":
@@ -2656,6 +2705,77 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"view-g-state:{cur.state},rev={cur.mount.rev}", "info")
 
     ext.command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", view_grid_probe)
+
+    # D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The argument is
+    # the row's token: the ids of the container, the text and the box are built from it.
+    def view_node_ids_probe(ctx, args):
+        tok = args.strip()
+        root = kit.Container(
+            [
+                kit.Text(f"Label {tok}", 0, 0, bg="selectedBg", id=f"{tok}-label"),
+                kit.Box(1, 0, bg="toolPendingBg", children=[kit.Text("inside", 0, 0)], id=f"{tok}-frame"),
+            ],
+            id=f"{tok}-root",
+        )
+        st = ctx.mount_view("ids", "panel", view=kit.View(root), a11y=[{"node": f"{tok}-label", "name": f"Label {tok}"}])
+        ctx.notify(f"view-i-mounted:{st.state}", "info")
+
+    ext.command("ui_view_node_ids", "Mount a view whose container, text and box carry an id", view_node_ids_probe)
+
+    # D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+    def view_bindings_probe(ctx, args):
+        key, number = args.split(" ")
+        n = int(number)
+
+        def content(bindings):
+            intents = [
+                pig_sdk.ViewIntent("fx.go", pig_sdk.ViewShape("object", properties={"n": pig_sdk.ViewShape("integer")}, required=("n",))),
+                pig_sdk.ViewIntent("fx.tap", pig_sdk.ViewShape("object")),
+            ]
+            return {"intents": intents, "bindings": bindings}
+
+        def go_to(key, n):
+            return {"key": key, "intent": "fx.go", "arg": {"n": n}}
+
+        def tap(key):
+            return {"key": key, "intent": "fx.tap"}
+
+        first = {**go_to(key, n), "name": f"Go {n}"}
+        st = ctx.mount_view("bind", "panel", view_text(ctx, "-bind"), **content([first, go_to("w", n + 1), {"gesture": "swipe-left", "intent": "fx.tap"}]))
+        ctx.notify(f"view-b-mounted:{st.state}", "info")
+
+        def attempt(label, bindings):
+            ctx.notify(f"view-b-{label}:{x_code(lambda: ctx.update_view(st.mount, view_text(ctx, '-bind'), **content(bindings)))}", "info")
+
+        attempt("many", [tap(c) for c in "abcdefghijklmnopqrstuvwxyz0123456"])
+        attempt("reserved", [tap("shift+tab")])
+        attempt("order", [tap("ctrl+shift+p"), tap("shift+ctrl+p")])
+        attempt("gesture", [{"gesture": "pinch", "intent": "fx.tap"}])
+        attempt("arg", [go_to("a", "x")])
+        attempt("ok", [go_to("ctrl+shift+p", n), go_to("shift+ctrl+q", n + 1)])
+
+    ext.command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", view_bindings_probe)
+
+    # D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+    def view_dismiss_probe(ctx, args):
+        obj = pig_sdk.ViewShape("object")
+        tap = pig_sdk.ViewIntent("fx.tap", obj)
+
+        def closing(name, **members):
+            return pig_sdk.ViewIntent(name, members.pop("arg", obj), dismiss=True, **members)
+
+        st = ctx.mount_view("dismiss", "dialog", view_text(ctx, "-dismiss"), intents=[tap, closing(args)])
+        ctx.notify(f"view-d-mounted:{st.state}", "info")
+
+        def attempt(label, intents):
+            ctx.notify(f"view-d-{label}:{x_code(lambda: ctx.update_view(st.mount, view_text(ctx, '-dismiss'), intents=intents))}", "info")
+
+        attempt("two", [tap, closing(args), closing(args + "2")])
+        attempt("node", [tap, closing(args, node_key="n")])
+        attempt("arg", [tap, closing(args, arg=pig_sdk.ViewShape("object", properties={"value": pig_sdk.ViewShape("string")}, required=("value",)))])
+        attempt("ok", [closing(args), tap])
+
+    ext.command("ui_view_dismiss", "Mount a dialog with a dismiss intent and probe what the host refuses", view_dismiss_probe)
     ext.command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", view_extras_probe)
     ext.command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", view_extras_end_probe)
     ext.command("ui_view_abilities", "Report the replicated client abilities", view_abilities_probe)
@@ -4332,7 +4452,7 @@ def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
         hide_two = screen.show_overlay(over, {"width": 8})
         doc.invalidated = over.invalidated = 0
         screen.invalidate()
-        facts.append(f"invalidate={b(doc.invalidated > 0)}/{b(over.invalidated > 0)}")
+        facts.append(f"invalidate={doc.invalidated}/{over.invalidated}")
         hide_two.hide()
         mut_log: list[str] = []
         armed = False
@@ -4374,7 +4494,7 @@ def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
             r.append(f"scroll={screen.viewport_top}/{b(screen.is_following_output)}")
             mut.invalidated = 0
             screen.invalidate()
-            r.append(f"invalidate={b(mut.invalidated > 0)}")
+            r.append(f"invalidate={mut.invalidated}")
             r.append(f"lines={len(screen.get_screen_lines())}")
             mut_log.append(",".join(r))
             return ["MUT"]
