@@ -66,7 +66,8 @@ func TestGoogleNativePayloadAndReplacementUpstream(t *testing.T) {
 				if response.StopReason != StopReasonStop {
 					t.Fatalf("response=%#v", response)
 				}
-				assertShapeJSON(t, captured, `{"model":"gemini-2.5-flash","contents":[{"role":"user","parts":[{"text":"Hello"}]}],"config":{"maxOutputTokens":32,"systemInstruction":"Be concise."}}`)
+				// automaticContinuation: Pi f72f799a4 (buildParams of both adapters).
+				assertShapeJSON(t, captured, `{"model":"gemini-2.5-flash","contents":[{"role":"user","parts":[{"text":"Hello"}]}],"config":{"maxOutputTokens":32,"systemInstruction":"Be concise.","automaticContinuation":false}}`)
 				if !strings.HasSuffix(requestPath, "/models/gemini-2.5-pro:streamGenerateContent") {
 					t.Errorf("replacement model not applied: %s", requestPath)
 				}

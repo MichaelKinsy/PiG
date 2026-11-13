@@ -611,19 +611,29 @@ def cmd_check_oracle(_: argparse.Namespace) -> None:
     frozen = oracle.frozen_digest(pin)
     if frozen is not None and data.get("provider_data_sha256") != frozen:
         raise PinError(f"the installed Pi was built with model data {data.get('provider_data_sha256')}, the frozen snapshot is {frozen}; rebuild with `pin.py install-oracle --force`")
-    closure = oracle.read_frozen_lock(pin)
+    dependencies = oracle.carried_dependencies(pin)
+    closure = oracle.oracle_closure(pin)  # the frozen closure with the carried dependencies in place
+    with_carried = " with its carried dependencies" if dependencies else ""
     if closure is not None:
         if data.get("closure_sha256") != oracle.closure_digest(closure):
-            raise PinError("the installed Pi was built with another dependency closure than the frozen one; rebuild with `pin.py install-oracle --force`")
-        problems = oracle.tree_differences(oracle.SDK_TS / "node_modules", closure)
+            raise PinError(f"the installed Pi was built with another dependency closure than the frozen one{with_carried}; rebuild with `pin.py install-oracle --force`")
+        problems = oracle.tree_differences(oracle.SDK_TS / "node_modules", closure) + oracle.carried_problems(oracle.SDK_TS / "node_modules", dependencies)
         if problems:
-            raise PinError("the installed dependency tree differs from the frozen closure:\n  " + "\n  ".join(problems[:20]))
+            raise PinError(f"the installed dependency tree differs from the frozen closure{with_carried}:\n  " + "\n  ".join(problems[:20]))
     if data.get("backports", "") != oracle.backports_digest(pin):
         raise PinError("the installed Pi carries other post-release backports than automation/gen/pi-post-release-backports.mjs lists; rebuild with `pin.py install-oracle --force`")
     problem = oracle.bundle_problem(oracle.SDK_TS / "node_modules", data)
     if problem:
         raise PinError(f"{problem}; rebuild with `pin.py install-oracle --force`")
     carried = f"; backports {data['backports'][:12]} in the compiled output and in the pi bundle {data.get('bundle_sha256', '')[:12] or '(none: the bin is compiled output)'}" if data.get("backports") else ""
+    if pin == pinlib.committed():
+        from carried import oracle_ledger_problems
+
+        unaccounted = oracle_ledger_problems(pin)
+        if unaccounted:
+            raise PinError("the sync ledgers follow Pi commits whose changes the oracle does not account for (it would answer as the pin):\n  " + "\n  ".join(unaccounted))
+    if dependencies and closure is not None:
+        carried += f"; closure {data['closure_sha256'][:12]}: the frozen {oracle.frozen_closure_digest(pin)[:12]} with {len(dependencies)} carried " + ("dependency" if len(dependencies) == 1 else "dependencies") + " (" + ", ".join(f"{d['name']} {d['to']} of Pi {d['id']}" for d in dependencies) + ")"
     print(f"check-oracle: Pi {pin.version} (source build of {pin.commit[:8]}{carried})")
 
 

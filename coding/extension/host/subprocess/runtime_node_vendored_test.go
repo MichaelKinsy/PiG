@@ -288,6 +288,13 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		if rel == "pi-tui/components/markdown.js" {
 			rewrites = append(rewrites, [2]string{`import markedCjkFriendly from "marked-cjk-friendly";`, `import markedCjkFriendly from "../../../marked-cjk-friendly/dist/index.js";`})
 		}
+		if rel == "pi-tui/terminal-image.js" {
+			// automation/gen/vendor-pi-startup-seams.mjs: the module loads with every start, so the width module its image-line extent reads waits for the first measurement (shims/pi-tui-utils-lazy.mjs). The seam replaces the whole import statement.
+			rewrites = append(rewrites, [2]string{`import { visibleWidth } from "./utils.js";`, `import { visibleWidth } from "../../pi-tui-utils-lazy.mjs";`})
+			if n := bytes.Count(want, []byte(`"./utils.js"`)); n != 1 {
+				t.Errorf("pinned %s names utils.js %d times, want the visibleWidth import alone: update automation/gen/vendor-pi-startup-seams.mjs", rel, n)
+			}
+		}
 		if rel == "pi-ai/utils/validation.js" {
 			rewrites = append(rewrites, vendoredValidationRewrites...)
 		}

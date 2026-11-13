@@ -58,6 +58,7 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 	if runner == nil || !runner.HasHandlers(icodingagent.EventToolCall) {
 		return agent.ToolCallHookResult{}
 	}
+	s.endEventTask()
 	var input map[string]any
 	if len(args) > 0 {
 		// A lone UTF-16 surrogate in the model's arguments stays that unit, as JSON.parse reads it: the handler, the before/after comparison and InputJSON all see it.
@@ -330,6 +331,16 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	if runner == nil {
 		return
 	}
+	// One look at the handlers serves the dispatch and the task: an event no handler takes is dispatched to nobody (every emit helper of DispatchAgentLoopEvent returns at once), and only an event a handler takes ends the task.
+	if eventType := icodingagent.AgentLoopEventType(ev); eventType == "" || !runner.HasHandlers(eventType) {
+		if start, ok := ev.(agent.MessageStartEvent); ok {
+			// The dispatch records the message of a message_start whether or not a handler takes it.
+			s.extCurrentMessage = start.Message
+		}
+		return
+	}
+	// Pi's loop turns while a handler awaits, so what precedes the handler is drawn while it runs: the task ends before the dispatch.
+	s.eventRegions.task.End()
 	end, ok := ev.(agent.MessageEndEvent)
 	if !ok {
 		icodingagent.DispatchAgentLoopEvent(runner, ev, &s.extCurrentMessage, &s.messageSeqs)
