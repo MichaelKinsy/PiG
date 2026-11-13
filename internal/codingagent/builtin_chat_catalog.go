@@ -16,6 +16,14 @@ type builtinChatCatalogs struct {
 	byProvider map[string][]ai.GeneratedModel
 	// openRouterListed is the OpenRouter list builtinChatCatalogListed derives, built on first use.
 	openRouterListed []ai.GeneratedModel
+	// openRouterIdentified is the OpenRouter catalog and its listing by identity (builtinChatCatalogListing), identified on first use.
+	openRouterIdentified *builtinChatCatalogIdentity
+}
+
+// builtinChatCatalogIdentity is a bundled catalog and the listing by identity that names its entries.
+type builtinChatCatalogIdentity struct {
+	catalog []ai.GeneratedModel
+	listing []ai.ListedOpenRouterModel
 }
 
 var currentBuiltinChatCatalogs atomic.Pointer[builtinChatCatalogs]
@@ -103,4 +111,31 @@ func builtinChatCatalogListed(id string) []ai.GeneratedModel {
 	}
 	catalogs.openRouterListed = listed
 	return listed
+}
+
+// builtinChatCatalogListing identifies the models builtinChatCatalogListed(id) lists, in its order, without building that list: catalog is
+// builtinChatCatalog(id), and listing names each listed model and the entry of catalog it is, or is a routing variant of (ai.OpenRouterListing).
+// A nil listing lists catalog itself. A caller that reads only what identifies a model (its provider, id and name, and what a variant repeats
+// from its model) reads these, so no routing variant is built for it. The listing is identified once and shared, read-only like the catalog.
+//
+// pig divergence (D199): Pi lists no OpenRouter routing variant; PiG derives them from the bundled models instead of storing them.
+func builtinChatCatalogListing(id string) (catalog []ai.GeneratedModel, listing []ai.ListedOpenRouterModel) {
+	catalog = builtinChatCatalog(id)
+	if id != "openrouter" || len(catalog) == 0 { //portlint:allow providerliteral the variants are OpenRouter's own routing suffixes
+		return catalog, nil
+	}
+	catalogs := currentBuiltinChatCatalogs.Load()
+	catalogs.mu.RLock()
+	identified := catalogs.openRouterIdentified
+	catalogs.mu.RUnlock()
+	if identified == nil {
+		identified = &builtinChatCatalogIdentity{catalog: catalog, listing: ai.OpenRouterListing(catalog)}
+		catalogs.mu.Lock()
+		if catalogs.openRouterIdentified == nil {
+			catalogs.openRouterIdentified = identified
+		}
+		identified = catalogs.openRouterIdentified
+		catalogs.mu.Unlock()
+	}
+	return identified.catalog, identified.listing
 }

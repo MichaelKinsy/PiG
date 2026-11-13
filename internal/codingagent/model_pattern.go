@@ -332,7 +332,7 @@ func withNamedRoutingVariants(pool []RuntimeModel, text string) []RuntimeModel {
 			if !ai.IsOpenRouterBase(model.Provider, model.ID) {
 				continue
 			}
-			id := model.ID + ":" + variant
+			id, name := ai.OpenRouterVariantIdentity(model.ID, model.Name, variant)
 			// The text may lead with the provider ("openrouter/gpt-4o:nitro"), which the model text after it need not repeat.
 			modelStem := strings.TrimPrefix(stem, jsstring.ToLower(model.Provider)+"/")
 			if !strings.Contains(jsstring.ToLower(model.ID), modelStem) && !strings.Contains(jsstring.ToLower(model.Name), modelStem) && !strings.Contains(jsstring.ToLower(model.Provider+"/"+model.ID), stem) {
@@ -342,8 +342,7 @@ func withNamedRoutingVariants(pool []RuntimeModel, text string) []RuntimeModel {
 				continue
 			}
 			derived := model
-			derived.ID = id
-			derived.Name = model.Name + " (" + variant + ")"
+			derived.ID, derived.Name = id, name
 			extended = append(extended, derived)
 		}
 	}

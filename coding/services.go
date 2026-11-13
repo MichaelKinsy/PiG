@@ -429,14 +429,18 @@ func (runtime *ModelRuntime) runtimeModels() []icodingagent.RuntimeModel {
 			models = append(models, runtimeModelOf(runtime.bindCatalogModel(source.Model)))
 			continue
 		}
+		listed := source.Listed
 		// A catalog entry's model reasons when the entry does (ToCapabilities reports a MaxThinking only for a reasoning entry).
 		models = append(models, icodingagent.RuntimeModel{
-			Provider:         generated.Provider,
-			ID:               generated.ID,
-			Name:             generated.DisplayName,
-			Reasoning:        generated.Reasoning,
-			Headers:          ai.ProviderHeadersFromStrings(generated.Headers),
-			BuildNativeModel: func() *ai.Model { return runtime.bindCatalogModel(generated.ToModel()) },
+			Provider:  generated.Provider,
+			ID:        source.ID(),
+			Name:      source.Name(),
+			Reasoning: generated.Reasoning,
+			Headers:   ai.ProviderHeadersFromStrings(generated.Headers),
+			// The entry is read when the model is built, so a routing variant (D199) is derived only for a model that is kept.
+			BuildNativeModel: func() *ai.Model {
+				return runtime.bindCatalogModel(icodingagent.ModelDataSource{Generated: generated, Listed: listed}.Entry().ToModel())
+			},
 		})
 	}
 	return overlayVirtualModels(&runtime.virtuals, models, func(model icodingagent.RuntimeModel) (string, string) { return model.Provider, model.ID }, runtimeModelOf)

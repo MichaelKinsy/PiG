@@ -15140,6 +15140,30 @@
       ]
     },
     {
+      "id": "BF-4f75f77",
+      "title": "Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as…",
+      "symptom": "Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as one section of the host's loop.",
+      "rootCause": "A runtime that tells of its changes from several goroutines read its state on the teller's goroutine and advanced in a section of its own: an older read could be advanced after a newer one, and the source kept the older value until the next change. Pi's runtime reads and advances in one synchronous turn.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as one section of the host's loop. A runtime that told of its changes from several goroutines could publish an older read last, and the followed value stayed stale until its next change.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4f75f77581",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_follow_section_test.go::TestFollowSectionAfterItsSourceDetachedStillRunsWorkOnceAndTheAdvanceInItIsDropped",
+        "chord/next/host/host_follow_section_test.go::TestFollowSectionKeepsTheReadsAndTheAdvancesOfTwoGoroutinesInOneOrder",
+        "chord/next/host/host_follow_section_test.go::TestFollowSectionRunsWorkOnceAsOneSectionOfTheLoopBeforeItReturnsAndInlineInsideOne"
+      ]
+    },
+    {
       "id": "BF-4fab2ef",
       "title": "Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected…",
       "symptom": "Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected, ConversationBusy) report Pi's `name` and a V8-style `stack` when built by their constructors; the JSONL corruption constructor is now exported as NewJsonlCorruptionError.",
@@ -25913,6 +25937,31 @@
       ],
       "tests": [
         "chord/next/host/host_native_test.go::TestNativeAnOpenThatStartsAfterItsCloseOpensNothing"
+      ]
+    },
+    {
+      "id": "BF-7369b8f",
+      "title": "Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from…",
+      "symptom": "Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from outside the host's loop is told of a change committed while it registered.",
+      "rootCause": "The read and the registration were two steps, so such a change reached nobody and the follower kept the older value until the next change (seen as a p2 session worker that failed to start with `p2.harness-host: did not become live within 60000 ms`).",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord (Go): a watch, an observer or a subscriber of a registry value or a writable that was registered from outside the host's loop is told of a change committed while it registered. The read and the registration were two steps, so such a change reached nobody and the follower kept the older value until the next change (seen as a p2 session worker that failed to start with `p2.harness-host: did not become live within 60000 ms`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7369b8f863",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_watch_outside_loop_test.go::TestASubscriberAddedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItWasAdded",
+        "chord/next/host/host_watch_outside_loop_test.go::TestAWatchOpenedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItOpened",
+        "chord/next/host/host_watch_outside_loop_test.go::TestAWatchOpenedInsideASectionOpensInlineAndOneOpenedAfterTheSourceEndedIsEnded",
+        "chord/next/host/host_watch_outside_loop_test.go::TestAnObserverAttachedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItAttached"
       ]
     },
     {

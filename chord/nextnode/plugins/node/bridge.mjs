@@ -5,10 +5,12 @@
 // a local type that the plugins serve. Each is answered with one reply, as every control request is, and runs with the
 // request's context (the Go side's abort aborts it). `unwatch` and `release` are notifications (no reply). Node to Go,
 // unrequested and in the order they happen on the one channel: `frame` (one call of a watch's listener), `watchEnd` (the
-// watch ended, and why) and `state` (a reference's state changed).
+// watch ended, and why) and `state` (a reference's state changed). The events of the two hosts cross as `event` and `ack`
+// messages in both directions (events.mjs).
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
 import { ChordError } from "@earendil-works/chord";
 import { contractOf, operations as contractOperations } from "./contracts.mjs";
+import { createEvents } from "./events.mjs";
 import { createProxies } from "./proxy.mjs";
 import { decodeValue, encodeValue } from "./wire.mjs";
 
@@ -42,6 +44,8 @@ export function createBridge({ port, wireError, host }) {
 	const watches = new Map();
 	/** The keys the Go side pinned, by the id the Go side chose. */
 	const pins = new Map();
+	/** The events that cross between the two hosts (events.mjs): the Go side's `event` and `ack` messages come to it. */
+	const events = createEvents({ port, host });
 
 	function entry(handle) {
 		const found = handles.get(handle);
@@ -290,6 +294,12 @@ export function createBridge({ port, wireError, host }) {
 					return true;
 				case "mirrorReset":
 					copies.get(message.mirror)?.reset(message.docs.map(({ key, value }) => ({ key, value: decodeValue(value) })));
+					return true;
+				case "event":
+					events.receive(message);
+					return true;
+				case "ack":
+					events.acked(message.events);
 					return true;
 			}
 			const notification = notifications[message.op];
