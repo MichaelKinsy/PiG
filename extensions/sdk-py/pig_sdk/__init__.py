@@ -6321,7 +6321,12 @@ class Extension:
                         if cancel.is_set():
                             raise RuntimeError("provider stream aborted")
                         self._notify("provider_stream_event", {"request_id": req_id, "result": event})
-                    if cancel.is_set():
+                    # The read loop ends the stream of a cancelled request before it sets the request's signal, and writes the request's state with that end under the state lock:
+                    # the state shows a cancel the signal does not show yet, so a stream the cancel ended is never answered as one its author ended.
+                    with self._state_lock:
+                        parent = self._request_parents.get(req_id)
+                        aborted = cancel.is_set() or (parent is not None and parent.state == "cancelled")
+                    if aborted:
                         raise RuntimeError("provider stream aborted")
                     self._respond(req_id, _wire_result_of(stream), None)
                 finally:
