@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -27,6 +28,9 @@ import (
 type outgoingCall struct {
 	side *consumerSide
 	hold int
+	// owner is the reference that made it (its binding; never on the wire): releasing one of several references sharing
+	// the hold cancels its own calls only (decision "References share one wire hold").
+	owner *binding
 	// method is the method's index in the bound variant, args its arguments' part (nil for none).
 	method   int
 	args     link.Part
@@ -117,8 +121,8 @@ func (c *consumerSide) attach(holder *remoteObject, chain []string, trace teleme
 // call calls method (an index into the bound variant) on hold with args: left out for a method without arguments, with
 // byte segments when its argument schema has a `bytes()` leaf, deflated above the threshold except on the parent link.
 // The result is parsed here. The caller's cancellation rejects it at once and sends `abort` when it is in flight. The
-// returned result settles in a section.
-func (c *consumerSide) call(hold int, method int, methodData *contracts.MethodData, args any, ctx context.Context) *parkedCallResult {
+// returned result settles in a section. owner is the reference making it.
+func (c *consumerSide) call(hold int, method int, methodData *contracts.MethodData, args any, owner *binding, ctx context.Context) *parkedCallResult {
 	result := newParkedCallResult()
 	if err := ctx.Err(); err != nil {
 		result.settle(nil, context.Cause(ctx))
@@ -140,7 +144,7 @@ func (c *consumerSide) call(hold int, method int, methodData *contracts.MethodDa
 			part = c.link.part(payload.Json, ctx)
 		}
 	}
-	call := &outgoingCall{side: c, hold: hold, method: method, args: part, segments: payload.Segments, result: result, old: c.link.host.oldWork.of(ctx), trace: chordtelemetry.CarrierOf(chordctx.Telemetry(ctx))}
+	call := &outgoingCall{side: c, hold: hold, owner: owner, method: method, args: part, segments: payload.Segments, result: result, old: c.link.host.oldWork.of(ctx), trace: chordtelemetry.CarrierOf(chordctx.Telemetry(ctx))}
 	if ctx.Done() != nil {
 		loop := c.link.host.loop()
 		call.done = context.AfterFunc(ctx, func() {
@@ -158,6 +162,40 @@ func (c *consumerSide) call(hold int, method int, methodData *contracts.MethodDa
 func (c *consumerSide) release(hold int, err *data.ChordError) {
 	c.link.send(&link.ReleaseMessage{Hold: hold})
 	c.forget(hold, err)
+}
+
+// cancelCalls: one of several references sharing hold released (owner, of the object label): its calls reject `released`
+// and leave the tables, so its own end finds none (decision "References share one wire hold"). Its waiting calls leave
+// the window unsent first, then each of its sent calls is aborted, the last sent first (a relay drops a later call still
+// waiting in its upstream window before an earlier abort frees a slot for it); then their slots free. An owner without
+// calls costs no error.
+func (c *consumerSide) cancelCalls(hold int, owner *binding, label string) {
+	waiting := c.window.removeWhere(func(call *outgoingCall) bool { return call.hold == hold && call.owner == owner })
+	var sent []*outgoingCall
+	for _, call := range c.calls.values() {
+		if call.hold == hold && call.owner == owner {
+			sent = append(sent, call)
+		}
+	}
+	if len(waiting) == 0 && len(sent) == 0 {
+		return
+	}
+	// Ids grow in the order calls were sent.
+	slices.Reverse(sent)
+	for _, call := range sent {
+		c.calls.delete(call.id)
+		c.link.send(&link.AbortMessage{Call: call.id})
+	}
+	for range sent {
+		c.window.freed()
+	}
+	err := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Message: label + ": released"}, nil)
+	for _, call := range waiting {
+		call.reject(err)
+	}
+	for _, call := range sent {
+		call.reject(err)
+	}
 }
 
 // retry is `ref.retry()` on a failed hold, with hops left of its budget: the provider is asked for an attempt now.

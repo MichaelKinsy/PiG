@@ -115070,7 +115070,7 @@
       "evidence": [
         "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce",
         "test:chord/next/host/host_example_17_test.go#TestExample17LimitsAndCompression",
-        "test:chord/next/host/host_ref_state_test.go#TestRefStateOfARemoteReference"
+        "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldRevocationEndsEveryReferenceSharingAHoldAndTheNextOneHoldsAnew"
       ]
     },
     {
@@ -116405,8 +116405,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_15_test.go#TestExample15Revocation",
-        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON",
-        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysKeepNoPrincipalAlive"
+        "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldRevocationEndsEveryReferenceSharingAHoldAndTheNextOneHoldsAnew",
+        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON"
       ]
     },
     {
@@ -116427,8 +116427,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_15_test.go#TestExample15Revocation",
-        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON",
-        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysKeepNoPrincipalAlive"
+        "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldRevocationEndsEveryReferenceSharingAHoldAndTheNextOneHoldsAnew",
+        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON"
       ]
     },
     {

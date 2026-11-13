@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -1136,4 +1137,57 @@ func TestABindingReleasedWhileItBindsFixRound5EndsCleanlyWhenItsObjectsHoldRelea
 	}()
 	expectCollectedEventually(t, released)
 	must(t, host.Close(background))
+}
+
+// reference.test.ts › a binding moved by a retry alone (decision "References share one wire hold") › keeps its reference,
+// member handles, state watch and member watch; the sibling it leaves stays failed
+func TestABindingMovedByARetryAloneKeepsItsReferenceMemberHandlesStateWatchAndMemberWatchTheSiblingItLeavesStaysFailed(t *testing.T) {
+	rig := rawProvider(t, rawLinkedOptions{Limits: link.PartLimits{Part: new(64.0)}})
+	a := mustHold(t, rig.Client, Notes, jsonObject("session", "S1"))
+	b := mustHold(t, rig.Client, Notes, jsonObject("session", "S1"))
+	hold := bindNext(t, rig.Peer)
+	waitLive(t, a)
+	member := a.Member("count")
+	stateWatch, err := a.State().Watch(background)
+	must(t, err)
+	states := statesOf(t, stateWatch)
+	countWatch, err := a.Member("count").Watch(background)
+	must(t, err)
+	counts := nexttest.ChangesOf(countWatch)
+	ops, err := link.JsonPart([]any{[]any{"r", []any{jsonObject("text", strings.Repeat("x", 100))}}})
+	must(t, err)
+	rig.Peer.Send(&link.StateMessage{Holds: []link.StateEntry{{
+		Hold: hold, Members: []link.StateMember{{Member: editorWire(t).State["notes"], Ops: ops}},
+		Failed: []link.FailedMember{}, Retired: link.NoRetired,
+	}}})
+	rhSync(t, rig.Peer)
+	a.Retry()
+	own := rig.Peer.Next("hold").(*link.HoldMessage).Hold
+	bindHold(t, rig.Peer, own, jsonObject("text", "a"))
+	waitLive(t, a)
+	rhWaitFor(t, func() bool { return len(states.All()) >= 3 && counts.Len() >= 2 })
+	if a.Member("count") != member {
+		t.Fatalf("the member handle changed across the retry")
+	}
+	if value := memberValue(t, a, "count"); value != float64(1) {
+		t.Fatalf("count = %v, want 1", value)
+	}
+	if kind := refStateKind(b); kind != RefStateFailed {
+		t.Fatalf("the sibling's state = %v, want failed", kind)
+	}
+	kinds := []string{}
+	for _, state := range states.All() {
+		kind, _, _ := strings.Cut(state, ":")
+		kinds = append(kinds, kind)
+	}
+	if !slices.Equal(kinds, []string{"failed", "loading", "live"}) {
+		t.Fatalf("states = %v, want [failed loading live]", kinds)
+	}
+	values := nexttest.ValuesOf(counts.Items())
+	failed, is := values[0].(nexttest.FailedValue)
+	if len(values) != 2 || !is || !strings.Contains(failed.Failed, "over the wire limit") || values[1] != float64(1) {
+		t.Fatalf("count's calls = %v, want [{failed: ...over the wire limit...} 1]", values)
+	}
+	a.Release()
+	b.Release()
 }

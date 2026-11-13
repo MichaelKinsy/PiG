@@ -148,9 +148,10 @@ type target interface {
 	hold(holder holder)
 	// unhold: holder was released.
 	unhold(holder holder)
-	// call calls a method of the live object for from, bound at version (an older one is mapped, Q10): the admission is
-	// the synchronous part of Pi's async call (in a section), the result settles later, in one.
-	call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult
+	// call calls a method of the live object for b (its caller, at its contract's version: an older one is mapped, Q10);
+	// over a link the call is the binding's own, cancelled with its release. The admission is the synchronous part of Pi's
+	// async call (in a section), the result settles later, in one.
+	call(method string, args any, b *binding, ctx context.Context, parent telemetry.TelemetrySpan) *parkedCallResult
 	// followed is what a reference of version follows for state member now (decision "References are the only
 	// indirection"): the live instance's member (a replica over a link), or nothing (`loading`, or `failed` with the
 	// cause's error), with the member a reference takes its last value from.
@@ -167,9 +168,13 @@ type target interface {
 	// pinKey pins key of the keyed member on the live instance, loaded, as a consumer of version reads it (mapped when
 	// older); only a live local object has keyed members. It blocks, outside a section.
 	pinKey(member, key string, version int, ctx context.Context) (pinnedKey, error)
-	// retry is `ref.retry()`, as one step of walk: an attempt now if failed; an object parked on failed dependencies
-	// passes it on; ignored otherwise.
-	retry(walk *retryWalk)
+	// retry is `ref.retry()` from b, as one step of walk: an attempt now if failed; an object parked on failed
+	// dependencies passes it on; ignored otherwise. b is nil for a step no reference makes (a `retry` message, an
+	// object's own retry): Pi's local object takes the walk alone, and a Go interface method has one signature.
+	retry(walk *retryWalk, b *binding)
+	// generationOf is how many values the shared replica of state member took (a remote object's); false without one
+	// (and on this host, where members are no replicas).
+	generationOf(member string) (int, bool)
 	// pathTo is the chain of activation waits from this object to goal, both included (Q5); nil when there is none.
 	// visited keeps a search over shared dependencies linear in the waits.
 	pathTo(goal *chordObject, visited map[target]struct{}) []*chordObject
@@ -328,6 +333,9 @@ type binding struct {
 	attached attachable
 	// eventsOf are its events, for a contract with event members only; dropped at its end (it keeps no host).
 	eventsOf *bindingEvents
+	// unseen are the state members it has not seen since it joined a shared remote object, each with its replica's count
+	// of values then (decision "References share one wire hold"); one is seen once that count passes. Made at the join.
+	unseen map[string]int
 	// events are its event members, by name.
 	events map[string]*ReferenceEvents
 	// unlisted is whether presence lists leave it out: a restart's readiness bindings (`unlist`).
@@ -483,9 +491,14 @@ func (b *binding) contract() contractRef {
 // bind binds to goal, which counts this binding as a reference; its members and keys follow what goal shows now (one
 // frame from their last values), and the reference takes its state.
 func (b *binding) bind(goal target) {
-	if b.state.kind != bindingUnbound {
-		return
+	if b.state.kind == bindingUnbound {
+		b.boundTo(goal)
 	}
+}
+
+// boundTo: counted by goal as a reference (with its state's batch and dependent): its members and keys follow what goal
+// shows now, and it is told.
+func (b *binding) boundTo(goal target) {
 	batch := b.state.batch
 	b.state = bindingState{kind: bindingBound, batch: batch, dependent: b.state.dependent, target: goal}
 	goal.hold(b)
@@ -496,6 +509,36 @@ func (b *binding) bind(goal target) {
 		b.retarget()
 	}
 	b.moved()
+}
+
+// joined: it joined a shared remote object that was bound already: unseen are the members it has not seen, with their
+// replicas' counts of values now. Until a value arrives for one, it shows no last value of it from before the join (as on
+// a fresh failed snapshot), whether it is read meanwhile or not. A member it holds a value of its own for (a binding that
+// followed another object before) keeps its history.
+func (b *binding) joined(unseen []unseenMember) {
+	for _, each := range unseen {
+		member := each.member
+		source, found := b.sources.get(member)
+		if found && !source.unbound() {
+			continue
+		}
+		if b.unseen == nil {
+			b.unseen = map[string]int{}
+		}
+		b.unseen[member] = each.count
+		if found {
+			source.unseen(func() bool { return b.seen(member) })
+		}
+	}
+}
+
+// transfer moves it to goal keeping everything of its own (its reference, watches, subscriptions, waiters, calls, last
+// values, unseen members): a reference retrying alone after `too_large/part` (decision "References share one wire hold").
+// Its previous target let it go already; its members and keys follow goal, and it is told.
+func (b *binding) transfer(goal target) {
+	if b.state.kind == bindingBound {
+		b.boundTo(goal)
+	}
 }
 
 // following is whether its members or keys were used: `retarget` moves them (in a batch).
@@ -802,11 +845,33 @@ func (b *binding) memberSource(member string) (*referenceSource, error) {
 	}
 	source := newReferenceSource(b.state.batch, b.scheduler, b)
 	b.sources.set(member, source)
+	if _, is := b.unseen[member]; is {
+		source.unseen(func() bool { return b.seen(member) })
+	}
 	// New, nothing follows it yet: placing it needs no batch.
 	if b.state.kind == bindingBound {
 		place(source, b.state.target.followed(member, b.consumer.Version), b.attached)
 	}
 	return source, nil
+}
+
+// seen is whether member, unseen at its join, took a value since (its replica's count of values passed the one recorded
+// then, also across rebinds and a private retry's copies): from then on it is seen for good.
+func (b *binding) seen(member string) bool {
+	count, is := b.unseen[member]
+	if !is {
+		return true
+	}
+	goal := b.target()
+	if goal == nil {
+		return false
+	}
+	generation, has := goal.generationOf(member)
+	if !has || generation <= count {
+		return false
+	}
+	delete(b.unseen, member)
+	return true
 }
 
 // none is what a read of a member that never had a value fails with: `released`, the failure's error, or `not_ready`.
@@ -1089,7 +1154,7 @@ func (b *binding) pinKeys(ctx context.Context) *keyedPromise[struct{}] {
 func (b *binding) retry(walk *retryWalk) {
 	switch b.state.kind {
 	case bindingBound:
-		b.state.target.retry(walk)
+		b.state.target.retry(walk, b)
 	case bindingRefused:
 		bind := b.state.bind
 		b.state = bindingState{kind: bindingUnbound, batch: b.state.batch, dependent: b.state.dependent}
@@ -1132,6 +1197,7 @@ func (b *binding) end(err *data.ChordError) {
 	b.sources = keyedMap[*referenceSource]{}
 	b.heldKeys = nil
 	b.attached = nil
+	b.unseen = nil
 	// Its subscriptions end and its event members untap (taken out first: a stopping subscription finds none).
 	var eventTaps *referenceEventTaps
 	if b.eventsOf != nil {
@@ -1217,7 +1283,7 @@ func (b *binding) send(method string, args any, ctx context.Context) *parkedCall
 	}
 	linked := withLinkedAbortSignal(b.calls, ctx)
 	out := newParkedCallResult()
-	goal.call(method, args, linked.context, chordctx.Telemetry(ctx), b.from, b.consumer.Version).then(b.loop, func(value any, err error) {
+	goal.call(method, args, b, linked.context, chordctx.Telemetry(ctx)).then(b.loop, func(value any, err error) {
 		linked.release()
 		out.settle(value, err)
 	})
