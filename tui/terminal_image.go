@@ -351,14 +351,14 @@ type imageLineExtent struct {
 // getImageLineExtent. An image line carries the image's payload and the overlay compositor reads every image line of the
 // viewport each frame, so upstream's regular expressions over the line are byte searches here.
 func getImageLineExtent(line string) (imageLineExtent, bool) {
-	if kittyStart := strings.Index(line, kittyPrefix); kittyStart != -1 {
+	if leading, command, isKitty := strings.Cut(line, kittyPrefix); isKitty {
 		// /\x1b_G([^;]*);/: the controls of the first command, none when no ";" follows it.
-		controls, _, found := strings.Cut(line[kittyStart+len(kittyPrefix):], ";")
+		controls, _, found := strings.Cut(command, ";")
 		if !found {
 			controls = ""
 		}
 		metadata, registered := getRegisteredKittyImageMetadataFromControls(controls)
-		startCol := widthx.VisibleWidth(line[:kittyStart])
+		startCol := widthx.VisibleWidth(leading)
 		endCol := imageExtentUnbounded
 		if value := kittyImageColumnsPattern.FindStringSubmatch(controls); value != nil {
 			endCol = min(startCol+parseImageExtentCount(value[1]), imageExtentUnbounded)
