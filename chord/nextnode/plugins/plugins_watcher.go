@@ -151,8 +151,11 @@ type pluginWatcher struct {
 	// renamed is the entries on the way to base code replaced since the last renewal: one renewal per burst of events.
 	renamed map[string]struct{}
 	closed  bool
-	// trees are the trees it watches: the roots, the base code, and plugin directories linked from outside the roots.
+	// trees are the trees it watches: the roots, the base code, plugin directories linked from outside the roots, and the
+	// trees in asked.
 	trees map[string]struct{}
+	// asked are the trees alsoWatch was asked for: a discovery keeps them.
+	asked map[string]struct{}
 	// watched is its watches, one per directory of its trees.
 	watched map[string]struct{}
 	// fs is the one fsnotify watcher the watches are on, made with the first (nil before it and after close); running joins
@@ -185,6 +188,7 @@ func newPluginWatcher(options watcherOptions, batch *state.Batch) *pluginWatcher
 		options:     options,
 		closeFS:     func(watcher notifier) { _ = watcher.Close() },
 		trees:       map[string]struct{}{},
+		asked:       map[string]struct{}{},
 		watched:     map[string]struct{}{},
 		recorded:    map[string]struct{}{},
 		differing:   map[string]struct{}{},
@@ -310,8 +314,9 @@ func (w *pluginWatcher) know(discovery model.Discovery, seen DiscoverySnapshot) 
 	for _, dir := range linked {
 		w.watchTree(dir)
 	}
+	// A tree watched on request stays (alsoWatch): its asker may be waiting for an event of it while this discovery runs.
 	for tree := range w.trees {
-		if !slices.Contains(w.roots, tree) && !slices.Contains(w.baseDirs, tree) && !slices.Contains(linked, tree) {
+		if _, asked := w.asked[tree]; !asked && !slices.Contains(w.roots, tree) && !slices.Contains(w.baseDirs, tree) && !slices.Contains(linked, tree) {
 			w.unwatchTree(tree)
 		}
 	}
@@ -408,6 +413,7 @@ func (w *pluginWatcher) close() {
 	clear(w.identities)
 	clear(w.renamed)
 	clear(w.trees)
+	clear(w.asked)
 }
 
 // join waits for the goroutine that read the file events to end after close: it ends when the events do. It must not be
@@ -477,12 +483,13 @@ func (w *pluginWatcher) watchTree(dir string) {
 	w.watchDirs(dir)
 }
 
-// alsoWatch watches the tree at dir (watchTree) and returns the directories watched then; false when nothing is watched (no
-// system watcher: it failed to start, or the watcher was closed).
+// alsoWatch watches the tree at dir (watchTree) across discoveries, until the watcher closes, and returns the directories
+// watched then; false when nothing is watched (no system watcher: it failed to start, or the watcher was closed).
 func (w *pluginWatcher) alsoWatch(dir string) ([]string, bool) {
 	if w.fs == nil {
 		return nil, false
 	}
+	w.asked[dir] = struct{}{}
 	w.watchTree(dir)
 	return slices.Collect(maps.Keys(w.watched)), true
 }
