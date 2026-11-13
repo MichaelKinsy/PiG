@@ -460,7 +460,10 @@ func TestAcrossHostsStartsANewRootForAWellFormedCarrierTheServersAdapterDoesNotK
 	}
 }
 
-func TestReHoldsCarryTheCarrierOnlyOnAnObjectsFirstHoldARootLinkedToItsGetterSharedWorkAReHoldAfterAReconnectIsAFreshRootLinkedToIt(t *testing.T) {
+// telemetry.test.ts › re-holds (slice 9 review L1) › carries the carrier only on an object's first hold (a root linked to
+// its getter: shared work); a re-hold after a reconnect is a fresh root linked to it. Pi 47e9d74f9 retitled the case (it
+// said "a reference's first hold"); the Go test keeps the name the derived interface mapping knows it by.
+func TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt(t *testing.T) {
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	rel := relay(t, allRecord(recorder))
 	var notes *Reference

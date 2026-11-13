@@ -2837,14 +2837,12 @@ func TestBindRemoteReferencesSharingOneWireHoldOneHoldPerCallerEqualPrincipalJSO
 	ctx, cancel := context.WithCancel(background)
 	var holding sync.WaitGroup
 	as := func(options RootOptions) {
-		holding.Add(1)
-		go func() {
-			defer holding.Done()
+		holding.Go(func() {
 			_, _ = rig.Client.Root(func(ctx Ctx) (any, error) {
 				_, _ = ctx.Get(Notes, jsonObject("session", "S1"), GetOptions{})
 				return nil, nil
 			}, ctx, options)
-		}()
+		})
 	}
 	bound := func(n int) {
 		t.Helper()

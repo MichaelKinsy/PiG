@@ -194,8 +194,8 @@ rationale = "47e9d74f9 retitles one case (two references from one host with one 
 path = "packages/chord/test/telemetry.test.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:chord/next/host/host_telemetry_test.go#TestReHoldsCarryTheCarrierOnlyOnAnObjectsFirstHoldARootLinkedToItsGetterSharedWorkAReHoldAfterAReconnectIsAFreshRootLinkedToIt"]
-rationale = "47e9d74f9 changes one case: its title (an object's first hold, a root linked to its getter: shared work) and its expectation: the four holds' parent ids are all null (was: the first under the page load) and the first hold has one link, to the page load. The Go test is renamed and expects the same."
+evidence = ["test:chord/next/host/host_telemetry_test.go#TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt"]
+rationale = "47e9d74f9 changes one case: its title (an object's first hold, a root linked to its getter: shared work) and its expectation: the four holds' parent ids are all null (was: the first under the page load) and the first hold has one link, to the page load. The Go test keeps its name (the derived interface mapping names it as evidence), carries Pi's new title in its comment, and expects the same."
 
 [[files]]
 path = "packages/chord/test/telemetry-ingest/sender.test.ts"
