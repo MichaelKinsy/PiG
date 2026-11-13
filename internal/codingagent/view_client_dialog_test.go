@@ -299,7 +299,10 @@ func TestViewClientDialogTitleAndBindings(t *testing.T) {
 // intent, so the plugin reads no notice for it. Pressed again in the dialog its plugin did not close, the key raises
 // nothing and leaves the dialog for its row; entered again, the dialog is dismissed by it again. While an intent of the
 // dialog is in flight the key cancels a cancellable one and leaves, as in a dialog without a dismiss intent. A panel
-// that declares a dismiss intent is left, not dismissed, and its plugin reads that the terminal does not offer it.
+// that declares a dismiss intent is left, not dismissed, and its plugin reads that the terminal does not offer it. A
+// panel whose dismiss intent a key of the mount is bound to is left by the key that interrupts as well: the binding
+// offers the intent, so its plugin reads no notice, and only the bound key raises it. No node offers a dismiss intent:
+// the registry refuses one that names a node.
 func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
 	f := newViewFixture(t)
 	// The registry runs a handler on a goroutine it does not join when the caller cancels the intent. So the record is
@@ -402,6 +405,38 @@ func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
 	f.loop.run()
 	if got := sent(); len(got) != 3 || f.loop.focused != nil || panel.focused {
 		t.Fatalf("Escape in a panel that declares a dismiss intent: the plugin was sent %q, the panel focused %v", got, panel.focused)
+	}
+
+	onNode := shut
+	onNode.NodeKey = "pick"
+	if _, err := f.host.reg.Mount("ext", uiview.MountArgs{Key: "n", Slot: uiview.SlotPanel, Content: uiview.Content{View: viewList("choose"), Intents: []uiview.IntentDecl{onNode}}}); err == nil || !strings.Contains(err.Error(), "is dismiss and names a node") {
+		t.Fatalf("a panel whose dismiss intent names a node: the mount returned %v, want the registry to refuse it", err)
+	}
+	f.mount("b", uiview.SlotPanel, uiview.Content{
+		View: viewList("choose"), Intents: []uiview.IntentDecl{viewPickIntent, shut},
+		Bindings: []uiview.Binding{{Key: "ctrl+g", Intent: shut.Name}}, Focus: []uiview.Focus{{Node: "pick", Request: "mount"}},
+	})
+	at := slices.IndexFunc(f.client.order, func(m *viewMount) bool { return m.ref.Key == "b" })
+	if at < 0 {
+		t.Fatal("the client holds no mount b")
+	}
+	bound := f.client.order[at]
+	if notices := f.notices("b"); len(notices) != 0 {
+		t.Fatalf("a panel whose dismiss intent a key is bound to left the notices %v", notices)
+	}
+	if f.loop.focused != bound {
+		t.Fatal("the panel that binds its dismiss intent and asked for the focus does not hold it")
+	}
+	bound.HandleInput("\x07")
+	f.awaitResult()
+	f.loop.run()
+	if got := sent(); len(got) != 4 || got[3] != "b ext.shut [] {}" || f.loop.focused != bound || !bound.focused {
+		t.Fatalf("the key bound to a panel's dismiss intent: the plugin was sent %q, the panel focused %v", got, bound.focused)
+	}
+	bound.HandleInput("\x1b")
+	f.loop.run()
+	if got, notices := sent(), f.notices("b"); len(got) != 4 || len(notices) != 0 || f.loop.focused != nil || bound.focused {
+		t.Fatalf("Escape in a panel whose dismiss intent a key is bound to: the plugin was sent %q, the notices %v, the panel focused %v", got, notices, bound.focused)
 	}
 }
 
