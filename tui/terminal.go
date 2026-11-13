@@ -833,6 +833,10 @@ func writeString(out io.Writer, data string) (int, error) {
 	if sw, ok := out.(io.StringWriter); ok {
 		return sw.WriteString(data)
 	}
+	if len(data) > maxPooledTerminalWrite {
+		// The pool keeps no buffer of this size, so a pooled copy would cost the bytes and a new holder for the pool on every such write. The copy alone is the one allocation io.WriteString makes.
+		return out.Write([]byte(data))
+	}
 	buf := terminalWriteBuffers.Get().(*[]byte)
 	*buf = append((*buf)[:0], data...)
 	n, err := out.Write(*buf)
