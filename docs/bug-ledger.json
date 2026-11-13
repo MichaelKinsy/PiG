@@ -36581,6 +36581,33 @@
       ]
     },
     {
+      "id": "BF-D636",
+      "title": "A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored…",
+      "symptom": "yes. Both followers should apply `watch.value` before `watch.start` (`pick = watch.value; update();`).",
+      "rootCause": "the choice is stored for each principal so that every page and terminal of that user shows it; a choice that lasts until the next reload reads as a setting that does not save. The same window made Pi's own page test of the language (`packages/chord/test/node/web/language.test.ts`, ported as `TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick`) fail 3 runs in 100 here: it chooses as soon as the page rendered and loses when the server stores the choice before it fixes the first values of the page's hold. Waiting in the test until the server lists the page's reference does not close the window (6 runs in 200 still failed): only applying the acquired value does.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D636",
+      "removeWhen": "Pi's followers apply the value their watch was acquired with. The patch then no longer applies at the re-vendor: drop it with this record and the markers, and keep the Go ports as the port of Pi's lines. Or the owner withdraws the change.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "b7eb5ae11d",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_active_language_test.go::TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
+        "chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick",
+        "chord/nextnode/app/app_web_stored_pick_test.go::TestAPageAppliesAThemeStoredBeforeItOpens",
+        "chord/nextnode/app/app_web_stored_pick_test.go::TestThePagesLanguageFollowsAPickStoredBeforeThePageOpens"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -58962,6 +58989,11 @@
       "id": "D619",
       "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
       "entry": "BF-D619"
+    },
+    {
+      "id": "D636",
+      "title": "A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored…",
+      "entry": "BF-D636"
     }
   ],
   "exemptCommits": {

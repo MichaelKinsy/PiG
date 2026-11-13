@@ -1338,6 +1338,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D636](#bf-d636) | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -20343,6 +20344,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1488c993df` (2026-11-11), `5042dd06e8` (2026-11-11), `deaeb3a5dc` (2026-11-11), `e3373144bb` (2026-11-11)
 - **Tests:** `internal/codingagent/status_tick_within_test.go::TestRemovingTheIndicatorCancelsItsWaitingStepFrame`, `internal/codingagent/status_tick_within_test.go::TestStatusTickAsksForItsFrameWithinTheStepDelay`, `internal/codingagent/status_tick_within_test.go::TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `tui/render_within_test.go::TestCancelRenderWithinDropsTheWaitingStepFrame`, `tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange`, `tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin`, `tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame`, `tui/render_within_test.go::TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn` and 2 more in docs/bug-ledger.json
 
+### BF-D636
+
+**A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D636)
+- **Symptom:** yes. Both followers should apply `watch.value` before `watch.start` (`pick = watch.value; update();`).
+- **Root cause:** the choice is stored for each principal so that every page and terminal of that user shows it; a choice that lasts until the next reload reads as a setting that does not save. The same window made Pi's own page test of the language (`packages/chord/test/node/web/language.test.ts`, ported as `TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick`) fail 3 runs in 100 here: it chooses as soon as the page rendered and loses when the server stores the choice before it fixes the first values of the page's hold. Waiting in the test until the server lists the page's reference does not close the window (6 runs in 200 still failed): only applying the acquired value does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi's followers apply the value their watch was acquired with. The patch then no longer applies at the re-vendor: drop it with this record and the markers, and keep the Go ports as the port of Pi's lines. Or the owner withdraws the change.
+- **Fix commits:** `b7eb5ae11d` (2026-11-13)
+- **Tests:** `chord/next/surfaces/surfaces_active_language_test.go::TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted`, `chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted`, `chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick`, `chord/nextnode/app/app_web_stored_pick_test.go::TestAPageAppliesAThemeStoredBeforeItOpens`, `chord/nextnode/app/app_web_stored_pick_test.go::TestThePagesLanguageFollowsAPickStoredBeforeThePageOpens`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -30435,6 +30451,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-e299ba1](#bf-e299ba1) |
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
 | D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | [BF-D619](#bf-d619) |
+| D636 | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | [BF-D636](#bf-d636) |
 
 ## Fix-titled commits that are not bugs in a release
 
