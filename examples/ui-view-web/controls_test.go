@@ -290,12 +290,12 @@ func TestPageDrawsNodesAsControls(t *testing.T) {
 			mine = append(mine, line)
 		}
 	}
-	// The three status lines are the page's own, the loader and the mount's.
+	// The two status lines are the loader and the mount's; the page's own is empty and not drawn.
 	wantTree := []string{
 		`button "Offline" disabled=true`, `button "Plain"`, `button "Route"`, `button "Zoom in"`, `checkbox "Visited" checked=true`,
 		`heading "Nearby" level=3`, `heading "Places" level=2`, `list "Stops"`, `listbox "Preferences"`, `listbox "Results"`, `listitem "" level=1`, `listitem "" level=1`,
 		`option "Harbour 1.2 km" selected=false`, `option "Museum 2.0 km" selected=true`, `option "Station" selected=false`, `option "Units km" selected=true`,
-		`progressbar "Downloaded"`, `radio "Fastest" checked=true`, `region "Log"`, `status ""`, `status ""`, `status ""`, `switch "Live traffic" checked=false`,
+		`progressbar "Downloaded"`, `radio "Fastest" checked=true`, `region "Log"`, `status ""`, `status ""`, `switch "Live traffic" checked=false`,
 		`tab "Bike" selected=false`, `tab "Walk" selected=true`, `tablist "Travel mode"`, `textbox "Notes"`, `textbox "Search places" required=true`,
 	}
 	if strings.Join(mine, "\n") != strings.Join(wantTree, "\n") {
@@ -431,8 +431,8 @@ func TestPageKeepsControlsAcrossAnUpdate(t *testing.T) {
 }
 
 // TestPageDefaultTokensHaveContrast computes the contrast (WCAG 2) of every pair of text and surface tokens the
-// default stylesheet puts together, in the light and in the dark scheme: text at least 4.5 to 1, the focus ring and a
-// control's edge at least 3 to 1. It also checks that the page draws with those tokens.
+// default stylesheet puts together, in the light and in the dark scheme: text, and the ring of the focus and of a
+// hovered region, at least 4.5 to 1. It also checks that the page draws with those tokens.
 func TestPageDefaultTokensHaveContrast(t *testing.T) {
 	browser, send := openFixtures(t)
 	send(`/fx-a mount ` + controls("Places", 1, true, false, 3))
@@ -441,7 +441,7 @@ func TestPageDefaultTokensHaveContrast(t *testing.T) {
 		["fg-muted","bg",4.5],["fg-muted","surface",4.5],["fg-muted","surface-2",4.5],["fg-muted","selected",4.5],
 		["accent","surface",4.5],["accent","bg",4.5],["accent","selected",4.5],["on-accent","accent",4.5],
 		["success","surface",4.5],["warning","surface",4.5],["error","surface",4.5],["error","bg",4.5],
-		["focus","surface",3],["focus","bg",3],["fg-muted","surface",3]]`
+		["focus","surface",4.5],["focus","surface-2",4.5],["focus","bg",4.5]]`
 	check := `(() => { const probe = document.body.appendChild(document.createElement("span"));
 		const rgb = (value) => { probe.style.color = value; return getComputedStyle(probe).color; };
 		const lum = (c) => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
@@ -481,7 +481,7 @@ func TestPageDefaultTokensHaveContrast(t *testing.T) {
 
 // TestPageDrawsASceneAndItsRegions: a drawing is vector graphics. Each shape kind is its SVG element with the colour
 // the view names (a hex colour as it is, a token as the page's colour for it); a region is a focusable element with
-// its role and name that raises its intent for a click, a key and a drag, with the properties the intent's argument
+// its role and name (and the pointer's cursor for what it takes) that raises its intent for a click, a key and a drag, with the properties the intent's argument
 // shape declares and no other; and a scene that is sent again changes in place: the same elements, moved. The scene
 // has 5,000 points, and the test logs what an update of it costs.
 func TestPageDrawsASceneAndItsRegions(t *testing.T) {
@@ -497,7 +497,7 @@ func TestPageDrawsASceneAndItsRegions(t *testing.T) {
 	}
 	got := browser.String(`(() => { const svg = document.querySelector('[data-key="scene"] svg'), k = (key) => svg.querySelector('[data-k="' + key + '"]');
 		window.svg = svg; window.kept = ["land", "roads", "road-0", "route", "pin", "label", "region surface"].map(k);
-		const fill = (key) => getComputedStyle(k(key)).fill, accent = (() => { const p = document.body.appendChild(document.createElement("span")); p.style.color = "var(--view-accent)"; const c = getComputedStyle(p).color; p.remove(); return c; })();
+		const fill = (key) => getComputedStyle(k(key)).fill, token = (name) => { const p = document.body.appendChild(document.createElement("span")); p.style.color = "var(--view-" + name + ")"; const c = getComputedStyle(p).color; p.remove(); return c; };
 		return JSON.stringify({
 			inside: svg.parentElement.dataset.node + "/" + svg.parentElement.children.length,
 			box: svg.getAttribute("viewBox") + " " + svg.getAttribute("preserveAspectRatio") + " " + (Math.abs(svg.clientWidth / svg.clientHeight - 1.5) < 0.02),
@@ -505,16 +505,16 @@ func TestPageDrawsASceneAndItsRegions(t *testing.T) {
 			points: [...svg.querySelectorAll("polyline")].reduce((n, p) => n + p.points.length, 0),
 			route: k("route").getAttribute("d") + " " + k("route").getAttribute("opacity"),
 			roads: k("roads").getAttribute("transform"),
-			colours: [fill("land"), fill("pin") === accent, getComputedStyle(k("pin")).stroke, getComputedStyle(k("route")).fill, fill("park")].join(" "),
+			colours: [fill("land") === token("surface-2"), fill("pin") === token("accent"), getComputedStyle(k("pin")).stroke, getComputedStyle(k("route")).fill, fill("park") === token("success-bg"), getComputedStyle(k("road-0")).stroke === token("fg-muted")].join(" "),
 			label: k("label").textContent + " " + k("label").getAttribute("text-anchor") + " " + k("label").getAttribute("font-size"),
-			regions: [...svg.querySelectorAll(".region")].map((r) => [r.tagName, r.getAttribute("role"), r.getAttribute("aria-label"), r.tabIndex, r.querySelector("title").textContent].join("/")).join(),
+			regions: [...svg.querySelectorAll(".region")].map((r) => [r.tagName, r.getAttribute("role"), r.getAttribute("aria-label"), r.tabIndex, r.querySelector("title").textContent, getComputedStyle(r).cursor].join("/")).join(),
 			text: k("credit").textContent,
 			actions: document.querySelectorAll('[data-key="scene"] header button').length,
 		}); })()`)
 	want := `{"inside":"map/1","box":"0 0 960 640 xMidYMid meet true","kinds":"rect,g,polyline,path,line,polygon,ellipse,text,g","points":5000,` +
 		`"route":"M100 500L300 420Q400 380 480 320C520 300 560 280 600 300Z 0.8","roads":"matrix(1 0 0 1 0 0)",` +
-		`"colours":"rgb(232, 228, 216) true rgb(255, 255, 255) none rgb(183, 217, 168)","label":"Harbour middle 14",` +
-		`"regions":"rect/group/Map/0/Map,rect/button/Zoom in/0/Zoom in,ellipse/button/Harbour/0/Harbour","text":"© OpenStreetMap contributors","actions":0}`
+		`"colours":"true true rgb(255, 255, 255) none true true","label":"Harbour middle 14",` +
+		`"regions":"rect/group/Map/0/Map/grab,rect/button/Zoom in/0/Zoom in/pointer,ellipse/button/Harbour/0/Harbour/pointer","text":"© OpenStreetMap contributors","actions":0}`
 	if got != want {
 		t.Errorf("the scene is drawn as\n  %s\nwant\n  %s", got, want)
 	}
@@ -765,5 +765,38 @@ func TestPageDrawsAGrid(t *testing.T) {
 	browser.Wait(at("cal") + `.textContent.includes("1 Jun") && !` + at("cal") + `.textContent.includes("1 June")`)
 	if got := browser.String(at("cal") + `.querySelector('[aria-selected="true"]').dataset.value`); got != "d4" {
 		t.Errorf("after an update that moves selected the cursor is %s, want d4", got)
+	}
+}
+
+// TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript: the default page shows no line of the carrier's numbers
+// (the address asks for it with ?debug), and while its chat holds no line the panels and the prompt are one centred
+// column of at most 880 px; with a line in the chat the panels stand beside it.
+func TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript(t *testing.T) {
+	b := startBridge(t, "-e", "testdata/scene.mjs")
+	browser := browsertest.Start(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if _, err := browser.Call(ctx, "Emulation.setDeviceMetricsOverride", map[string]any{"width": 1280, "height": 800, "deviceScaleFactor": 1, "mobile": false}); err != nil {
+		t.Fatal(err)
+	}
+	browser.Open(b.base + "/?token=" + b.token)
+	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
+	// The command is sent without a line in the chat, as an extension's own trigger would mount the panel.
+	browser.Run(`fetch("/send?token=` + b.token + `&session=" + window.uiView.session, { method: "POST", body: JSON.stringify({ id: "t1", type: "prompt", message: "/scene mount 10" }) })`)
+	browser.Wait(`document.querySelector('[data-key="scene"] svg') !== null`)
+	layout := `(() => { const state = document.getElementById("state"), panels = document.getElementById("panels").getBoundingClientRect(), prompt = document.getElementById("prompt").getBoundingClientRect();
+		return JSON.stringify({ state: state.textContent + "/" + getComputedStyle(state).display, width: panels.width, centred: Math.abs(panels.left + panels.right - document.documentElement.clientWidth) < 2, promptUnder: prompt.top >= panels.bottom, beside: prompt.right <= panels.left }); })()`
+	if got, want := browser.String(layout), `{"state":"/none","width":880,"centred":true,"promptUnder":true,"beside":false}`; got != want {
+		t.Errorf("without a transcript the page is\n  %s\nwant\n  %s", got, want)
+	}
+	browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.value = "hello"; form.requestSubmit(); })()`)
+	browser.Wait(`document.querySelector(".line.user") !== null`)
+	if got, want := browser.String(`JSON.stringify(JSON.parse(`+layout+`).beside)`), "true"; got != want {
+		t.Errorf("with a line in the chat the prompt stands beside the panels: %s, want %s", got, want)
+	}
+	browser.Open(b.base + "/?debug&token=" + b.token)
+	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
+	if got := browser.String(`document.getElementById("state").textContent`); got != "attachment 1, event 0, 0 mounts" {
+		t.Errorf("with ?debug the status line reads %q, want the carrier's numbers", got)
 	}
 }

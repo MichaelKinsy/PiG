@@ -104,7 +104,15 @@ function adopt(data) {
   const kept = new Set(data.snapshots.map((s) => `${s.plugin}\n${s.mount.key}`));
   for (const [key, mount] of mounts) if (!kept.has(key)) drop(key, mount);
   for (const snapshot of data.snapshots) apply(snapshot);
-  state.textContent = `attachment ${attachment}, event ${lastSeq}, ${mounts.size} mounts`;
+  counters();
+}
+
+// counters writes the carrier's numbers in the page's status line when the address asks for them (`?debug`). Without
+// it the line is empty once the page is attached, and says only what the user must know: that it is connecting, that
+// no session runs, that the stream broke.
+const debug = new URLSearchParams(location.search).has("debug");
+function counters() {
+  state.textContent = debug ? `attachment ${attachment}, event ${lastSeq}, ${mounts.size} mounts` : "";
 }
 
 async function attach() {
@@ -197,7 +205,7 @@ function apply(snapshot) {
   } else {
     draw(key, snapshot, held);
   }
-  state.textContent = `attachment ${attachment}, event ${lastSeq}, ${mounts.size} mounts`;
+  counters();
 }
 
 // shell makes the element of a new mount: a card with a caption and the mount's own intents as buttons, the view, and
@@ -1079,6 +1087,7 @@ function scene(snapshot) {
     hit.setAttribute("data-k", `region ${region.key}`);
     hit.setAttribute("data-act", "region");
     hit.setAttribute("data-region", region.key);
+    hit.setAttribute("data-gestures", region.gestures.join(" "));
     hit.setAttribute("tabindex", "0");
     hit.setAttribute("role", region.role ?? "button");
     hit.setAttribute("aria-label", region.name);

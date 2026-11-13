@@ -83,10 +83,12 @@
   #panels > section { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
   #panels .mount { flex: 1 1 12rem; min-width: 0; }
   #panels .mount.behind { display: none; }
-  /* A page beside a running session (bridge.mjs --connect) has no chat: the panels take the page and the rest follows them. */
-  body.attached { flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; min-height: 100vh; }
-  body.attached #panels { flex: 1 1 auto; }
-  body.attached main { order: 1; flex: none; max-width: none; min-height: 0; }
+  /* One column while there is no transcript: the panels, then the prompt, centred. Two columns once the chat holds a
+     line. A page beside a running session (bridge.mjs --connect) has no chat at all: its panels take the page. */
+  body:not(:has(#chat .line)), body.attached { flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; align-items: center; min-height: 100vh; }
+  body:not(:has(#chat .line)) #panels, body.attached #panels { flex: none; width: 100%; max-width: 880px; }
+  body:not(:has(#chat .line)) main, body.attached main { order: 1; flex: 1 1 auto; width: 100%; max-width: 880px; min-height: 0; }
+  body.attached #panels, body.attached main { max-width: none; }
 
   /* Controls: one height, one radius, one set of states. */
   button, input, textarea, select { font: inherit; color: inherit; }
@@ -106,6 +108,8 @@
   }
   input::placeholder, textarea::placeholder { color: var(--view-fg-muted); opacity: 1; }
   input:hover, textarea:hover { border-color: var(--view-fg-muted); }
+  /* A label stands 4 px above the field under it. */
+  .vstack > * + input[type=text], .vstack > * + textarea { margin-top: calc(var(--view-space) / 2); }
   textarea { width: 100%; min-height: calc(10 * var(--view-space)); padding-block: var(--view-space); resize: vertical; }
   :focus-visible { outline: 2px solid var(--view-focus); outline-offset: 2px; }
   input[type=checkbox], input[type=radio] { width: 16px; height: 16px; margin: 0; accent-color: var(--view-accent); cursor: pointer; flex: none; }
@@ -200,15 +204,22 @@
   .drawing { display: block; width: 100%; height: 100%; font-family: var(--view-font); border-radius: var(--view-radius-sm); touch-action: none; user-select: none; }
   .drawing [data-k] { transition: transform var(--view-motion), opacity var(--view-motion), x var(--view-motion), y var(--view-motion), cx var(--view-motion), cy var(--view-motion), fill var(--view-motion), stroke var(--view-motion); }
   .dragging .drawing [data-k] { transition: none; }
-  .drawing .region { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; transition: none; }
-  .drawing .region[role=button]:hover { fill: var(--view-focus); fill-opacity: .16; }
+  .drawing .region { fill: transparent; stroke: none; pointer-events: all; cursor: default; transition: none; }
+  .drawing .region[data-gestures~=activate] { cursor: pointer; }
+  .drawing .region[data-gestures~=drag] { cursor: grab; }
+  .dragging .drawing .region { cursor: grabbing; }
+  /* A region that is a button shows the pointer on it and the keyboard's focus by the same ring. */
+  .drawing .region[role=button]:hover { fill: var(--view-focus); fill-opacity: .16; stroke: var(--view-focus); stroke-width: 2px; vector-effect: non-scaling-stroke; }
   .drawing .region:focus-visible { outline: none; stroke: var(--view-focus); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+  /* A line of text directly above a drawing is its caption. */
+  .text:has(+ .drawn) { color: var(--view-fg-muted); font-size: var(--view-text-sm); }
   form.arg { display: flex; flex-wrap: wrap; gap: var(--view-space); align-items: center; margin-top: var(--view-space); }
   form.arg label { display: inline-flex; gap: var(--view-space); align-items: center; }
   #prompt { display: flex; gap: var(--view-space); }
   #prompt[hidden] { display: none; }
   #prompt input { flex: 1; }
   #state, #attached { font-size: var(--view-text-sm); color: var(--view-fg-muted); margin: 0; }
+  #state:empty { display: none; }
 </style>
 </head>
 <body>
