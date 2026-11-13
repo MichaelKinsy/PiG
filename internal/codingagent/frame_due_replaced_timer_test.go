@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -57,13 +58,25 @@ func TestAStoppedRendererKeepsNoFrameDeadlineWhenItsTimerIsReplaced(t *testing.T
 }
 
 // A frame asked for before its timer is replaced is not lost with the replaced timer's tick: the turn end still knows of it and paints it
-// (paintTurnEnd).
+// (paintTurnEnd). Nothing else gives the turn end a reason to paint here: no status indicator is shown and its rows do not change.
 func TestAFrameAskedForBeforeItsTimerIsReplacedIsStillRequested(t *testing.T) {
 	m := ownedFramesAfterTheFirst(t)
+	content := &renderRecorder{text: "asked for before the timer was replaced"}
+	m.tuiInst.Add(content)
 	m.tuiInst.RequestRender()
 	m.useFrameTimer(newRuntimeFrameTimer())
 	if !m.frameRequested() {
 		t.Fatal("the replacement of the frame timer forgot the requested frame")
 	}
-	m.paintTurnEnd(m.beginTurnEnd())
+	if len(content.renders) != 0 {
+		t.Fatalf("%d frames were painted before the turn end", len(content.renders))
+	}
+	before := m.beginTurnEnd()
+	if before.indicator {
+		t.Fatal("a status indicator is shown: the turn end would paint without the requested frame")
+	}
+	m.paintTurnEnd(before)
+	if !slices.Equal(content.renders, []string{content.text}) {
+		t.Fatalf("the turn end painted %q, want the one frame that was asked for", content.renders)
+	}
 }
