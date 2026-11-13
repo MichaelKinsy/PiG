@@ -490,6 +490,10 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	tui.RestoreTerminalOnExit()
 	tui.RestoreTerminalFromSignal()
 	BeforeExit()
+	// pig additive (D19): Pi's extensions end with its process. Here they are processes of their own, and this exit runs no dispose that would end them: a quit by keys that waits for an author (finishInteractiveShutdown) holds its dispose when the ctrl+c arrives, so the runtime of that author would stay behind.
+	if m.opts.TerminateExtensionProcesses != nil {
+		m.opts.TerminateExtensionProcesses()
+	}
 	EndSessionMarker()
 	os.Exit(130)
 }
