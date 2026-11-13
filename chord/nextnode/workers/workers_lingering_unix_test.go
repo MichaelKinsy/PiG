@@ -47,7 +47,7 @@ func (f *fleet) startWorker(t *testing.T, id string) (*child, *collector[string]
 	t.Helper()
 	resolved, err := f.workers.resolve(session(id), background)
 	if err != nil {
-		t.Fatalf("%v; what the workers reported: %s", err, f.reportedErrors())
+		t.Fatalf("%v; what the workers reported: %v", err, f.kinds())
 	}
 	frames := &collector[string]{}
 	resolved.Link.OnMessage(func(message []byte) { frames.add(string(message)) })
@@ -62,12 +62,15 @@ func (f *fleet) startWorker(t *testing.T, id string) (*child, *collector[string]
 // stopWorker stops the worker of session id and waits until its address is forgotten: its record is dropped.
 func (f *fleet) stopWorker(t *testing.T, id string, stopped *child) {
 	t.Helper()
-	before := len(f.forgotten.all())
 	if err := f.workers.Stop(session(id), background); err != nil {
 		t.Fatal(err)
 	}
 	<-stopped.process.Exited()
-	until(t, func() bool { return len(f.forgotten.all()) > before })
+	until(t, func() bool {
+		var kept bool
+		f.workers.loop.Run(func() { _, kept = f.workers.addresses[session(id).Key] })
+		return !kept
+	})
 }
 
 // What an exited worker's streams tell later is told of it, not of the worker that followed it. A process outside the
@@ -114,7 +117,7 @@ func TestWhatAnExitedWorkersStreamsTellLaterIsToldOfItNotOfTheWorkerThatFollowed
 		t.Error("the second worker's link got the frame written on the first worker's channel")
 	}
 	if reported := f.errors.all(); len(reported) != 0 {
-		t.Errorf("reported = %s, want nothing", f.reportedErrors())
+		t.Errorf("reported = %v, want nothing", f.kinds())
 	}
 	if state := f.stateOf("S1"); state == nil || state.Pid != second.process.Pid || state.Status == WorkerFailed {
 		t.Errorf("state = %+v, want the second worker's (pid %d), not failed", state, second.process.Pid)
