@@ -255,6 +255,40 @@ func TestFramePacingGateReopensWhereverTheTranscriptIsEmptied(t *testing.T) {
 	}
 }
 
+// The redraw around a compaction entry an extension appended at a boundary empties the transcript as well: the gate an extension's renderer closed reopens one frame later.
+func TestFramePacingGateReopensAfterABoundaryCompactionRedraw(t *testing.T) {
+	p, ids := boundaryCompactionMode(t, func(sess *Session, ids map[string]string) {
+		appendMessage(t, sess, ids, "old", userMsg("OLD QUESTION"))
+		appendMessage(t, sess, ids, "kept", userMsg("KEPT QUESTION"))
+		id, err := sess.AppendCompaction("BOUNDARY SUMMARY", ids["kept"], 1234, nil, true, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids["compaction"] = id
+	})
+	m := p.InteractiveMode
+	m.toolsExpanded = true
+	m.framePacingInstalled = true
+	m.turnActive.Store(true)
+	m.runScheduledRender()
+	if !m.framePacingAllowed.Load() {
+		t.Fatal("the gate is closed while the run is active and no extension draws")
+	}
+	m.extensionRenderersMounted()
+	m.runScheduledRender()
+	if m.framePacingAllowed.Load() {
+		t.Fatal("the gate is open one frame after an extension's renderer was noted")
+	}
+	p.handleAgentEvent(appendedEvent(t, p, ids["compaction"]))
+	if got := p.chat(); !strings.Contains(got, "BOUNDARY SUMMARY") || strings.Contains(got, "OLD QUESTION") {
+		t.Fatalf("chat = %q, want the transcript redrawn around the compaction's summary", got)
+	}
+	m.runScheduledRender()
+	if !m.framePacingAllowed.Load() {
+		t.Fatal("the gate stayed closed one frame after the boundary compaction redrew the transcript")
+	}
+}
+
 // A tool renderer resolver of an extension closes the gate when it answers for the tool, with renderers of its own or by changing the ones it was handed, and not when it hands the resolution on.
 func TestFramePacingGateFollowsToolRendererResolvers(t *testing.T) {
 	render := func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
