@@ -39691,6 +39691,26 @@
       "tests": []
     },
     {
+      "id": "BF-adddfb8",
+      "title": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always…",
+      "symptom": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error.",
+      "rootCause": "The read loop of the Python SDK handles an ordinary cancel of a provider_stream_simple request in two steps: under the state lock it ends the request's provider stream (end(None)) and marks the request cancelled, and after the lock it sets the request's signal. The request's thread decided between a result and the abort by the signal alone. A thread that ran between the two steps saw the stream ended and the signal not set, and answered the request with a null result and no error, where the Go SDK answers the cancellation's error and the Lisp SDK, whose stream is ended by a subscriber of the signal, the abort.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error. The SDK's read loop ended the request's provider stream before it set the request's signal, and the request's thread, when it ran between the two, answered the request with a null result and no error, where the Go, Rust and Lisp SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window is older than the push snapshot of provider stream events (the release line had the same order before this change) and a few bytecodes wide: none of 150 unforced runs of a cancel in the middle of a push burst hit it, and holding the signal back by 0.3 s hit it every time.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "adddfb8a1a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-ae1ee6d",
       "title": "The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded…",
       "symptom": "A URL from a login server could end a terminal hyperlink early or send its own escape sequences.",

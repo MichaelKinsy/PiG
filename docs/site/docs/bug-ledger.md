@@ -1443,6 +1443,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ad9ed64](#bf-ad9ed64) | Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad9ed64-2](#bf-ad9ed64-2) | A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ada7018](#bf-ada7018) | `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack | PiG's own defect | All platforms | Unreleased |
+| [BF-adddfb8](#bf-adddfb8) | A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always… | PiG's own defect | All platforms | Unreleased |
 | [BF-ae1ee6d](#bf-ae1ee6d) | The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae1ee6d-2](#bf-ae1ee6d-2) | A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae498eb](#bf-ae498eb) | A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -21821,6 +21822,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ada701819c` (2026-11-01)
 - **Tests:** None recorded.
 - **Release note:** `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.
+
+### BF-adddfb8
+
+**A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error.
+- **Root cause:** The read loop of the Python SDK handles an ordinary cancel of a provider_stream_simple request in two steps: under the state lock it ends the request's provider stream (end(None)) and marks the request cancelled, and after the lock it sets the request's signal. The request's thread decided between a result and the abort by the signal alone. A thread that ran between the two steps saw the stream ended and the signal not set, and answered the request with a null result and no error, where the Go SDK answers the cancellation's error and the Lisp SDK, whose stream is ended by a subscriber of the signal, the abort.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `adddfb8a1a` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** A provider written with the Python extension SDK whose `streamSimple` request the host cancels is now always answered with the abort error. The SDK's read loop ended the request's provider stream before it set the request's signal, and the request's thread, when it ran between the two, answered the request with a null result and no error, where the Go, Rust and Lisp SDKs answer the abort. PiG's host stops listening to such a request at its cancel and shows the stream as aborted either way, so the wrong answer was on the wire only. The window is older than the push snapshot of provider stream events (the release line had the same order before this change) and a few bytecodes wide: none of 150 unforced runs of a cancel in the middle of a push burst hit it, and holding the signal back by 0.3 s hit it every time.
 
 ### BF-ae1ee6d
 
