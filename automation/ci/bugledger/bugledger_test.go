@@ -2022,3 +2022,39 @@ func TestADivergenceEntryOmitsAnExemptMarkerCommit(t *testing.T) {
 		t.Errorf("D2 commits = %v, want %v (not the exempt %s and %s)", hashes, want, trailer[:10], listed[:10])
 	}
 }
+
+// A test a fix commit edits in place is one of the fix's tests unless uncredited-tests.txt says that it does not guard the bug.
+func TestAnUncreditedTestIsNotOneOfTheFixCommitsTests(t *testing.T) {
+	r := newFixture(t)
+	r.write("loop.go", "package x\n")
+	r.write("edit_test.go", "package x\n\nfunc TestEdited(t *testing.T) {\n\tone()\n}\n\nfunc TestGuard(t *testing.T) {\n\tone()\n}\n")
+	r.commit("add tests", "loop.go", "edit_test.go")
+	r.write("loop.go", "package x\n\nvar fixed = 1\n")
+	r.write("edit_test.go", "package x\n\nfunc TestEdited(t *testing.T) {\n\tone()\n\ttwo()\n}\n\nfunc TestGuard(t *testing.T) {\n\tone()\n\ttwo()\n}\n")
+	fix := r.commit("Fix a loop crash", "loop.go", "edit_test.go")
+	tests := func() []string {
+		t.Helper()
+		l, err := build(r.root, "0.4.1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range l.Entries {
+			if slices.ContainsFunc(e.Commits, func(c Commit) bool { return c.Hash == fix[:10] }) {
+				return e.Tests
+			}
+		}
+		t.Fatalf("no entry lists the fix commit %s", fix[:10])
+		return nil
+	}
+	if got, want := tests(), []string{"edit_test.go::TestEdited", "edit_test.go::TestGuard"}; !slices.Equal(got, want) {
+		t.Fatalf("tests = %v, want %v", got, want)
+	}
+	r.write("automation/ci/bugledger/uncredited-tests.txt", "# not guards\n"+fix[:10]+" edit_test.go::TestEdited: edited for a new argument\n")
+	if got, want := tests(), []string{"edit_test.go::TestGuard"}; !slices.Equal(got, want) {
+		t.Errorf("tests = %v, want %v (the listed test does not guard the fix)", got, want)
+	}
+	r.write("automation/ci/bugledger/uncredited-tests.txt", fix[:10]+" edit_test.go::TestEdited\n")
+	if _, err := build(r.root, "0.4.1"); err == nil || !strings.Contains(err.Error(), "uncredited-tests.txt") {
+		t.Errorf("a line without a reason: err = %v, want the line refused", err)
+	}
+}
