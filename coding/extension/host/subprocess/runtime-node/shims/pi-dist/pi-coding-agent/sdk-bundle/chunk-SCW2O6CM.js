@@ -10,7 +10,7 @@ import {
   createAllToolDefinitions,
   createLocalBashOperations,
   processImage
-} from "./chunk-QZRBRK3S.js";
+} from "./chunk-LH44ZUZH.js";
 import {
   getPiUserAgent
 } from "./chunk-PNTN457B.js";
@@ -1669,8 +1669,10 @@ ${chalk.bold("Environment Variables:")}
   CLOUDFLARE_API_KEY               - Cloudflare API token (Workers AI and AI Gateway)
   CLOUDFLARE_ACCOUNT_ID            - Cloudflare account id (required for both)
   CLOUDFLARE_GATEWAY_ID            - Cloudflare AI Gateway slug (required for AI Gateway)
-  QWEN_TOKEN_PLAN_API_KEY          - Qwen Token Plan API key (international region)
-  QWEN_TOKEN_PLAN_CN_API_KEY       - Qwen Token Plan API key (China region)
+  QWEN_TOKEN_PLAN_TEAM_API_KEY     - Qwen Token Plan Team API key (international region)
+  QWEN_TOKEN_PLAN_TEAM_CN_API_KEY  - Qwen Token Plan Team API key (China region)
+  QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY - Qwen Token Plan Individual API key (international region)
+  QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY - Qwen Token Plan Individual API key (China region)
   XIAOMI_API_KEY                   - Xiaomi MiMo API key (api.xiaomimimo.com billing)
   XIAOMI_TOKEN_PLAN_CN_API_KEY     - Xiaomi MiMo Token Plan API key (China region)
   XIAOMI_TOKEN_PLAN_AMS_API_KEY    - Xiaomi MiMo Token Plan API key (Amsterdam region)
@@ -11790,16 +11792,16 @@ ${command}` : command;
   // Utilities
   // =========================================================================
   /**
-   * Get text content of last assistant message.
+   * Get text content of the last assistant reply.
    * Useful for /copy command.
-   * @returns Text content, or undefined if no assistant message exists
+   * @returns Text content, or undefined if no assistant message exists or the last reply has no text
    */
   getLastAssistantText() {
     const lastAssistant = this.messages.slice().reverse().find((m) => {
       if (m.role !== "assistant")
         return false;
       const msg = m;
-      if (msg.stopReason === "aborted" && msg.content.length === 0)
+      if (msg.stopReason !== "stop" && !msg.content.some((c) => c.type === "text" && c.text.trim()))
         return false;
       return true;
     });
@@ -12104,14 +12106,6 @@ async function resolveModelScopeWithDiagnostics(patterns, modelRuntime, options)
   return resolveModelScopeFromModels(patterns, await modelRuntime.getAvailable(void 0, options));
 }
 __name(resolveModelScopeWithDiagnostics, "resolveModelScopeWithDiagnostics");
-async function resolveModelScope(patterns, modelRuntime, options) {
-  const { scopedModels, diagnostics } = await resolveModelScopeWithDiagnostics(patterns, modelRuntime, options);
-  for (const diagnostic of diagnostics) {
-    console.warn(chalk2.yellow(`Warning: ${diagnostic.message}`));
-  }
-  return scopedModels;
-}
-__name(resolveModelScope, "resolveModelScope");
 function resolveCliModel(options) {
   const { cliProvider, cliModel, cliThinking, inlineApiKey, modelRuntime } = options;
   if (!cliModel) {
@@ -16837,7 +16831,6 @@ export {
   findExactModelReferenceMatch,
   resolveModelScopeFromModels,
   resolveModelScopeWithDiagnostics,
-  resolveModelScope,
   resolveCliModel,
   findInitialModel,
   parseGitUrl,

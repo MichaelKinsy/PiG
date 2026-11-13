@@ -97,7 +97,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "d4d1c71b53c9fde97e97a18cafc438af891b12ca6fe0c4917941760fd0c46252",
+      "sha256": "2b84f77e627afedac81393f3daaf50872eb4d5fa9c72cb7c25659c335865e4c3",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -4798,6 +4798,24 @@
             "capture_end": "Fell back to the system theme."
           },
           "reason": "Owned visible surface: A theme selected by settings.json whose file is not JSON: the error line repeats the parse error, labelled with the theme name.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/72-resume-very-large-edit-diff.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "+189990 a",
+            "capture_end": "LARGE-EDIT-END"
+          },
+          "reason": "Owned visible surface: A resumed session whose edit result draws 190 000 rows shows its last rows and the message after them, as Pi does from 5b5be2c316 on.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -10581,6 +10599,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/slash-commands/27-copy-after-aborted-turn.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "first question",
+            "capture_end": "to clipboard"
+          },
+          "reason": "Owned visible surface: /copy after Esc during a tool call copies the previous answer and prints the copy status line on both sides.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/28-copy-after-errored-turn.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "first question",
+            "capture_end": "to clipboard"
+          },
+          "reason": "Owned visible surface: /copy after a provider error copies the previous answer and prints the copy status line on both sides.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/startup/00-startup-banner.toml",
       "transforms": [
         {
@@ -11109,6 +11163,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/startup/24-startup-model-scope-warning-in-chat.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Warning: No models match pattern",
+            "capture_end_regex": "─{10}"
+          },
+          "reason": "Owned visible surface: An unmatched model scope pattern is shown once as a chat warning at startup, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/tools/17-tool-rpc-error-and-bash-wire.toml",
       "transforms": [
         {
@@ -11177,6 +11249,72 @@
           "pattern": "\\(line is (0B|213\\.9KB)\\)",
           "with": "(line is D153)",
           "reason": "D153: Pi counts the bytes after the final newline (0B), PiG names the last line's size (213.9KB); [diverge] pins each text to its side."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tools/32-rpc-read-image-text-only-model.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "id",
+          "paths": [
+            "/**/id",
+            "/**/parentId",
+            "/**/leafId"
+          ],
+          "group": "entry",
+          "pattern": "^[a-f0-9]{8,16}$",
+          "reason": "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tools/33-interactive-read-image-text-only-model.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: read parity-read-target.txt",
+            "capture_end_regex": "it saw a placeholder instead\\][\\s\\S]*?done"
+          },
+          "reason": "Owned visible surface: The read card of an image read under a text-only model names the model in a warning, collapsed and expanded",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
         }
       ]
     },

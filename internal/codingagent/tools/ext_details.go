@@ -18,10 +18,10 @@ func (d *BashDetails) ToolResultDetails() any {
 
 // ToolResultDetails maps read result details to extension.ReadToolDetails.
 func (d *ReadDetails) ToolResultDetails() any {
-	if d == nil || d.Truncation == nil {
+	if d == nil || (d.Truncation == nil && d.ImageUnsupportedByModel == nil) {
 		return nil
 	}
-	return &extension.ReadToolDetails{Truncation: toWireTruncation(d.Truncation)}
+	return &extension.ReadToolDetails{Truncation: toWireTruncation(d.Truncation), ImageUnsupportedByModel: d.ImageUnsupportedByModel}
 }
 
 // ToolResultDetails maps grep result details to extension.GrepToolDetails.

@@ -2006,7 +2006,7 @@ function relativizeFindResultPath(resultPath, searchPath, pathModule = path) {
 __name(relativizeFindResultPath, "relativizeFindResultPath");
 var findSchema = Type3.Object({
   pattern: Type3.String({
-    description: "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'"
+    description: "Glob pattern relative to the search directory, e.g. 'src/**/*.ts'. Without '/', e.g. '*.ts', it matches file names at any depth"
   }),
   path: Type3.Optional(Type3.String({ description: "Directory to search in (default: current directory)" })),
   limit: Type3.Optional(Type3.Number({ description: "Maximum number of results (default: 1000)" }))
@@ -2131,13 +2131,12 @@ function createFindToolDefinition(cwd, options) {
             let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\", "/") : pattern;
             effectivePattern = effectivePattern.replace(/^(?:\.\/)+/, "");
             const isPathPattern = effectivePattern.includes("/");
-            if (isPathPattern && !effectivePattern.startsWith("/") && !effectivePattern.startsWith("**/") && effectivePattern !== "**") {
-              effectivePattern = `**/${effectivePattern}`;
-            }
+            const ignoreCase = effectivePattern === effectivePattern.toLowerCase();
+            const isRelativePathPattern = isPathPattern && !path.isAbsolute(effectivePattern);
             const windowsPathMatcher = process.platform === "win32" && isPathPattern ? new Minimatch(effectivePattern.replace(/\/\*\*$/, "/**/*"), {
               dot: true,
               noext: true,
-              nocase: effectivePattern === effectivePattern.toLowerCase()
+              nocase: ignoreCase
             }) : void 0;
             if (windowsPathMatcher) {
               args.push("--", "", searchPath);
@@ -2145,6 +2144,12 @@ function createFindToolDefinition(cwd, options) {
               args.push("--glob", "--max-results", String(effectiveLimit + 1));
               if (isPathPattern)
                 args.push("--full-path");
+              if (isRelativePathPattern) {
+                const escapedRoot = searchPath.replace(/\/+$/, "").replace(/[\\*?[\]{}]/g, "\\$&");
+                effectivePattern = `${escapedRoot}/${effectivePattern}`;
+                if (ignoreCase)
+                  args.push("--ignore-case");
+              }
               args.push("--", effectivePattern, searchPath);
             }
             if (signal?.aborted)
@@ -2171,7 +2176,8 @@ function createFindToolDefinition(cwd, options) {
               const line = rawLine.replace(/\r$/, "").trim();
               if (!line)
                 return;
-              if (windowsPathMatcher && !windowsPathMatcher.match(line))
+              const result = relativizeFindResultPath(line, searchPath);
+              if (windowsPathMatcher && !windowsPathMatcher.match(isRelativePathPattern ? result : line))
                 return;
               if (resultCount === effectiveLimit) {
                 resultLimitReached = true;
@@ -2179,7 +2185,6 @@ function createFindToolDefinition(cwd, options) {
                   stopChild?.();
                 return;
               }
-              const result = relativizeFindResultPath(line, searchPath);
               resultCount++;
               if (outputBytes - 1 <= DEFAULT_MAX_BYTES)
                 storedResults.push(result);
@@ -2327,7 +2332,7 @@ var grepSchema = Type4.Object({
   pattern: Type4.String({ description: "Search pattern (regex or literal string)" }),
   path: Type4.Optional(Type4.String({ description: "Directory or file to search (default: current directory)" })),
   glob: Type4.Optional(Type4.String({
-    description: "Filter files by glob pattern, relative to path, e.g. '*.ts', 'src/**/*.ts' or '**/*.spec.ts'. A pattern without '/' matches file names at any depth"
+    description: "Filter files by glob pattern relative to path, e.g. 'src/**/*.ts'. Without '/', e.g. '*.ts', it matches file names at any depth"
   })),
   ignoreCase: Type4.Optional(Type4.Boolean({ description: "Case-insensitive search (default: false)" })),
   literal: Type4.Optional(Type4.Boolean({ description: "Treat pattern as literal string instead of regex (default: false)" })),
@@ -3560,8 +3565,11 @@ function formatCompactReadCall(classification, args, theme2) {
 }
 __name(formatCompactReadCall, "formatCompactReadCall");
 function formatReadResult(args, result, options, theme2, showImages, _cwd, isError) {
+  const unsupportedBy = result.details?.imageUnsupportedByModel;
+  const imageWarning = unsupportedBy ? `
+${theme2.fg("warning", `[${unsupportedBy} does not support images; it saw a placeholder instead]`)}` : "";
   if (!options.expanded && !isError) {
-    return "";
+    return imageWarning;
   }
   const rawPath = str(args?.file_path ?? args?.path);
   const output = getTextOutput(result, showImages);
@@ -3590,7 +3598,7 @@ ${theme2.fg("warning", `[Truncated: showing ${truncation.outputLines} of ${trunc
 ${theme2.fg("warning", `[Truncated: ${truncation.outputLines} lines shown (${formatSize(truncation.maxBytes ?? DEFAULT_MAX_BYTES)} limit)]`)}`;
     }
   }
-  return text;
+  return text + imageWarning;
 }
 __name(formatReadResult, "formatReadResult");
 var readRenderers = {
@@ -3645,13 +3653,6 @@ function toReadOutput(content) {
   return image ? { type: "image", data: image.data, mimeType: image.mimeType, note: text } : text;
 }
 __name(toReadOutput, "toReadOutput");
-function getNonVisionImageNote(model) {
-  if (!model || model.input.includes("image")) {
-    return void 0;
-  }
-  return "[Current model does not support images. The image will be omitted from this request.]";
-}
-__name(getNonVisionImageNote, "getNonVisionImageNote");
 function isStreamableRange(offset, limit) {
   return (offset === void 0 || Number.isInteger(offset)) && (limit === void 0 || Number.isInteger(limit) && limit >= 0);
 }
@@ -3782,7 +3783,6 @@ function createReadToolDefinition(cwd, options) {
             const mimeType = ops.detectImageMimeType ? await ops.detectImageMimeType(absolutePath) : void 0;
             let content;
             let details;
-            const nonVisionImageNote = getNonVisionImageNote(ctx?.model);
             if (mimeType) {
               const buffer = await ops.readFile(absolutePath);
               const processed = await processImage(buffer, mimeType, {
@@ -3790,24 +3790,21 @@ function createReadToolDefinition(cwd, options) {
                 resizeOptions: ctx?.model?.inputLimits?.images?.resize ?? fallbackResizeOptions
               });
               if (!processed.ok) {
-                let textNote = `Read image file [${mimeType}]
+                const textNote = `Read image file [${mimeType}]
 ${processed.message}`;
-                if (nonVisionImageNote)
-                  textNote += `
-${nonVisionImageNote}`;
                 content = [{ type: "text", text: textNote }];
               } else {
                 let textNote = `Read image file [${processed.mimeType}]`;
                 if (processed.hints.length > 0)
                   textNote += `
 ${processed.hints.join("\n")}`;
-                if (nonVisionImageNote)
-                  textNote += `
-${nonVisionImageNote}`;
                 content = [
                   { type: "text", text: textNote },
                   { type: "image", data: processed.data, mimeType: processed.mimeType }
                 ];
+                if (ctx?.model && !ctx.model.input.includes("image")) {
+                  details = { imageUnsupportedByModel: ctx.model.id };
+                }
               }
             } else {
               const startLine = offset ? Math.max(0, offset - 1) : 0;

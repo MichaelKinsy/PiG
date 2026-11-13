@@ -10749,6 +10749,28 @@
       ]
     },
     {
+      "id": "BF-37c6264",
+      "title": "A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell…",
+      "symptom": "A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell: \"self\"`) no longer fails with `RangeError: Maximum call stack size exceeded` when the tool's result draws about 125,000 rows or more: the bundled Node runtime carries Pi's fix (Pi #12145).",
+      "rootCause": "The sync ledger records tool-execution.ts as unchanged-observable in Go.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell: \"self\"`) no longer fails with `RangeError: Maximum call stack size exceeded` when the tool's result draws about 125,000 rows or more: the bundled Node runtime carries Pi's fix (Pi #12145). PiG's own interactive screen draws tool cards in Go and never had this limit.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "37c6264b53",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "test/parity/scenarios/interactive-rendering/72-resume-very-large-edit-diff.toml"
+      ]
+    },
+    {
       "id": "BF-37d2daa",
       "title": "An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an…",
       "symptom": "An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an empty array (a provider object's or a models store's model), as Pi keeps the authored cost, instead of dropping the member.",
@@ -10912,6 +10934,46 @@
         "mcp/deepjson_test.go::TestParseWireMessageKeepsACallResultNested12000LevelsDeep",
         "mcp/deepjson_test.go::TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
         "mcp/deepjson_test.go::TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep"
+      ]
+    },
+    {
+      "id": "BF-386b88c",
+      "title": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`…",
+      "symptom": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response.",
+      "rootCause": "Pi (fixes #12128) adds two entries to the transport section of RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts), after \"getaddrinfo\":",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response. The same applies in the extension SDKs' `isRetryableAssistantError` (Go, Python, Rust, Lisp and the Node runtime).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "386b88c3b6",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestCodelessTransportErrorsKeepTheirNodeForm",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorNodeSocketErrorCodes",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorOtherSocketCodesStayNonRetryable",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm",
+        "ai/assistant_retry_test.go::TestConnectionResetTextIsRetryable",
+        "ai/providers/bedrock/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockBadRequestThatNamesASocketCodeInsideAnIdentifierIsNotRetried",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockBareSocketCodeIsRetriedByTheAssistantRetryLoop",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockConnectionResetBeforeTheResponseIsRetried",
+        "coding/session_socket_code_retry_test.go::TestSessionDoesNotRetryABadRequestThatNamesASocketCodeInsideAnIdentifier",
+        "coding/session_socket_code_retry_test.go::TestSessionDoesNotRetryASocketCodeInsideAnIdentifier",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesABareSocketCodeOnce",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesAConnectionResetAfterTheRequestHeaders",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesARequestThatReachesItsDeadline",
+        "coding/session_socket_code_retry_test.go::TestSessionSurfacesABareSocketCodeAfterTheConfiguredRetries",
+        "coding/session_socket_code_retry_test.go::TestSessionSurfacesAConnectionResetAfterTheConfiguredRetries",
+        "durable/core/turn/classify_carried_test.go::TestNodeSocketErrorCodesAreRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestNodeSocketErrorCodesAreRetryable"
       ]
     },
     {
@@ -15735,6 +15797,36 @@
       "tests": []
     },
     {
+      "id": "BF-4f62143",
+      "title": "`/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a…",
+      "symptom": "`/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a turn that ended without an answer.",
+      "rootCause": "An assistant message without text is skipped when its turn did not end normally (aborted, failed, only tool calls, or cut at the length limit); a reply that ended normally without text is still the last reply.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a turn that ended without an answer. After Esc during a tool call or after a provider error they copy or return the previous answer; before, `/copy` said `No agent messages to copy yet.` and RPC returned `null` while the answer was on screen. An assistant message without text is skipped when its turn did not end normally (aborted, failed, only tool calls, or cut at the length limit); a reply that ended normally without text is still the last reply. Follows Pi #12121 (ede360e4d).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4f62143568",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/child_session_last_assistant_text_test.go::TestChildSessionLastAssistantTextSkipsATurnWithoutAnAnswer",
+        "coding/cli/rpc_upstream_test.go::TestRPCModeUpstream",
+        "coding/session_last_assistant_text_cases_test.go::TestSessionLastAssistantTextCases",
+        "coding/session_last_assistant_text_cases_test.go::TestSessionLastAssistantTextMatchesPi",
+        "coding/session_last_assistant_text_test.go::TestSessionLastAssistantText",
+        "internal/codingagent/copy_after_abort_or_error_upstream_test.go::TestCopyAfterAProviderErrorCopiesThePreviousAnswer",
+        "internal/codingagent/copy_after_abort_or_error_upstream_test.go::TestCopyWithNothingToCopySaysSo",
+        "test/parity/scenarios/slash-commands/27-copy-after-aborted-turn.toml",
+        "test/parity/scenarios/slash-commands/28-copy-after-errored-turn.toml"
+      ]
+    },
+    {
       "id": "BF-4f6992d",
       "title": "Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)…",
       "symptom": "Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type) reaches validation and execution as that object; it reached them as no arguments.",
@@ -16996,7 +17088,6 @@
         "durable/tools/read_images_test.go::TestReadDescribesImageSupport",
         "durable/tools/read_images_test.go::TestReadGivesTheProcessorsImageAndNotesWhatItDid",
         "durable/tools/read_images_test.go::TestReadListsBmpInItsDescriptionOnlyWithAProcessor",
-        "durable/tools/read_images_test.go::TestReadNotesWhenTheModelTakesNoImages",
         "durable/tools/read_images_test.go::TestReadRefusesAnImageThatNeedsAProcessor",
         "durable/tools/read_images_test.go::TestReadReportsAnImageTheProcessorCannotPrepare",
         "durable/tools/read_images_test.go::TestReadReturnsAnImageWithinTheLimitsAsOneImageBlock",
@@ -30884,6 +30975,31 @@
       ]
     },
     {
+      "id": "BF-8a4185d",
+      "title": "`enabledModels`/`--models` warnings such as `No models match pattern \"github-copilot/nope\"` are reported with…",
+      "symptom": "`enabledModels`/`--models` warnings such as `No models match pattern \"github-copilot/nope\"` are reported with the other startup diagnostics: in the chat in interactive mode, where they were a raw stderr line printed before the TUI started, and on stderr in print, JSON and RPC modes, after the settings and extension diagnostics.",
+      "rootCause": "Port of Pi. The enabledModels/--models warnings join the initial runtime's diagnostics, after the settings and extension diagnostics and before the session option diagnostics, and are reported once, deduplicated: stderr in print, JSON and RPC modes and for --help and --list-models, chat warnings in interactive mode. They were printed to stderr first, before the TUI started.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`enabledModels`/`--models` warnings such as `No models match pattern \"github-copilot/nope\"` are reported with the other startup diagnostics: in the chat in interactive mode, where they were a raw stderr line printed before the TUI started, and on stderr in print, JSON and RPC modes, after the settings and extension diagnostics. A pattern given twice is reported once (Pi #11973).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8a4185de22",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_resolver_patterns_upstream_test.go::TestModelResolverScopeUpstream",
+        "coding/cli/model_scope_session_replacement_upstream_test.go::TestModelScopeWarningsOnSessionReplacement",
+        "coding/cli/startup_diagnostics_order_test.go::TestStartupDiagnosticOrderMatchesPi",
+        "internal/codingagent/model_scope_runtime_test.go::TestResolveModelScopeWithDiagnosticsPropagatesRuntimeErrors"
+      ]
+    },
+    {
       "id": "BF-8a44836",
       "title": "Closing a session with an MCP server that signs in with OAuth no longer fails at random",
       "symptom": "Closing a session with an MCP server that signs in with OAuth no longer fails at random.",
@@ -32123,6 +32239,30 @@
         "test/docs-drift/divergences_test.go::TestDivergenceLedgerEqualsItsRecordFiles",
         "test/docs-drift/divergences_test.go::TestEveryActiveDivergenceIsInTheBundle",
         "test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence"
+      ]
+    },
+    {
+      "id": "BF-8f81668",
+      "title": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the…",
+      "symptom": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).",
+      "rootCause": ".upstream/current holds the pinned release's bytes: the readers of the mirror apply the recorded post-release fixes themselves (pi-post-release-backports.mjs --read-mirror), each exactly once. Once a backport changes a provider data file (Pi 1397070024, the four qwen-token-plan lists, which came with 14-on-line), a mirror made after it held the patched lists, and on a fresh clone",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8f816685ff",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
+        "ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData",
+        "internal/upstreammirror/upstreammirror_test.go::TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply"
       ]
     },
     {
@@ -48979,7 +49119,6 @@
         "durable/tools/read_differential_test.go::TestReadToolReturnsExactlyWhatReadingTheWholeFileReturned",
         "durable/tools/read_images_test.go::TestReadChecksTheBase64SizeAgainstTheModelsImageLimit",
         "durable/tools/read_images_test.go::TestReadDescribesImageSupport",
-        "durable/tools/read_images_test.go::TestReadNotesWhenTheModelTakesNoImages",
         "durable/tools/read_images_test.go::TestReadRefusesAnImageThatNeedsAProcessor",
         "durable/tools/read_images_test.go::TestReadReturnsAnImageWithinTheLimitsAsOneImageBlock",
         "durable/tools/tools_test.go::TestBashAndPowerShellDeclareTheShellStructuredOutputSchema",
@@ -52521,6 +52660,33 @@
       ]
     },
     {
+      "id": "BF-dec362c",
+      "title": "`read` no longer stores a note that the current model does not support images, which was replayed to the…",
+      "symptom": "`read` no longer stores a note that the current model does not support images, which was replayed to the model as stale text after a switch to a vision model.",
+      "rootCause": "read appended \"[Current model does not support images. The image will be omitted from this request.]\" to the result text of an image read under a model without image input. The text is stored in the session, so after a switch to a vision model the next request sent the image together with a note that was no longer true.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`read` no longer stores a note that the current model does not support images, which was replayed to the model as stale text after a switch to a vision model. The image is still replaced with a placeholder per request for a model without image input; the read result names that model in `details.imageUnsupportedByModel`, and the read card shows `[\u003cmodel\u003e does not support images; it saw a placeholder instead]` from it, collapsed and expanded. A session that already holds the old note keeps it as written. The durable `read` no longer adds the matching `info` diagnostic and names the model in its details the same way (Pi 4be4cb4f5e9c, #12139).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dec362c82f",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "durable/tools/coding_tools_pi_oracle_test.go::TestReadOfImagesMatchesPi",
+        "durable/tools/read_images_test.go::TestReadNamesAModelThatTakesNoImagesInDetails",
+        "internal/codingagent/read_image_unsupported_upstream_test.go::TestReadCardDrawsTheImageWarningFromDetails",
+        "internal/codingagent/read_image_unsupported_upstream_test.go::TestReadResultStoredWithTheOldImageNoteStaysAsWritten",
+        "internal/codingagent/tools/read_images_test.go::TestReadImageModelProfileOverridesFallback",
+        "internal/codingagent/tools/tools_read_port_test.go::TestToolsReadPort"
+      ]
+    },
+    {
       "id": "BF-dec54eb",
       "title": "fix(tui): Container.Render is safe beside a frame that borrows the window",
       "symptom": "fix(tui): Container.Render is safe beside a frame that borrows the window",
@@ -56033,6 +56199,33 @@
         "internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreenChild",
         "internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownIsIgnoredWhileSuspended",
         "internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownLeavesTheOwnerLoopRunning"
+      ]
+    },
+    {
+      "id": "BF-f0c8b96",
+      "title": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`…",
+      "symptom": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).",
+      "rootCause": "Port of Pi. A relative path pattern of the find tool is relative to the search directory, like grep's glob: src/*.ts finds src/a.ts but not pkg/src/a.ts, and **/src/*.ts finds both.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0c8b9662f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_ancestor_glob_upstream_test.go::TestFindPathGlobsDoNotMatchAboveTheSearchPath",
+        "internal/codingagent/tools/find_ancestor_glob_windows_branch_test.go::TestFindWindowsPathPatternDoesNotMatchAboveTheSearchPath",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit"
       ]
     },
     {

@@ -1268,9 +1268,9 @@ func Main(args []string, options *MainOptions) {
 	timings.Time("createAgentSessionRuntime")
 	flags = build.Flags
 	selected, modelErr := build.Selected, build.ModelErr
-	// resolveModelScope reports immediately; buildSessionOptions diagnostics follow extension errors in the runtime's report.
+	// Pi bacd45b9c (#11973, #11264): the model scope warnings are diagnostics of the runtime, after the extension diagnostics and before buildSessionOptions' diagnostics. The factory does not print them: it runs again on /new, /resume and /fork while the interactive TUI draws on the terminal, and only this initial runtime's diagnostics are reported.
 	for _, warning := range selected.ScopeWarnings {
-		printModelDiagnostic(warning)
+		startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: warning})
 	}
 	timings.Time("resolveModelScope")
 	for _, warning := range selected.Warnings {

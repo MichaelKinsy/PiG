@@ -485,6 +485,25 @@ fn connection_closed_is_retryable() {
     }
 }
 
+/// Pi 4699b5b26 packages/ai/test/retry.test.ts:65,77 (#12128): a provider error that reports only a Node socket error code is retried; a code inside a longer identifier is not.
+#[test]
+fn node_socket_error_codes_are_retryable() {
+    for (text, want) in [
+        ("read ECONNRESET", true),
+        ("connect ETIMEDOUT 140.82.113.3:443", true),
+        ("write EPIPE", true),
+        ("connect ECONNREFUSED 127.0.0.1:443", true),
+        ("ECONNABORTED", true),
+        ("Connection reset by peer", true),
+        ("Invalid value EXECONNRESET", false),
+        ("Unknown field ETIMEDOUTX", false),
+        ("Invalid key ERR_EPIPE_ID", false),
+    ] {
+        let message = json!({"role": "assistant", "stopReason": "error", "errorMessage": text});
+        assert_eq!(is_retryable_assistant_error(&message), want, "{text}");
+    }
+}
+
 #[test]
 fn the_default_retry_delay_cap_is_pis() {
     assert_eq!(DEFAULT_MAX_AGENT_RETRY_DELAY_MS, 60_000.0);

@@ -25001,6 +25001,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#TestFauxInput",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "TestFauxInput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []string"
+      },
+      "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#TestFauxMaxTokens",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "TestFauxMaxTokens",
@@ -40693,9 +40704,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "func() map[string]string"
+        "type": "func() map[string][]string"
       },
-      "shapeHash": "sha256:22f41c934ea78ede7d40353ffae8120c47cfb3814041833b80a2d310cbdb0241"
+      "shapeHash": "sha256:ddda23e09de25758e2cc50236119a433fcbc3df473735752b594b9f277f5f504"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#envAuthenticated",
@@ -42739,9 +42750,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[884]generatedMapRef"
+        "type": "[886]generatedMapRef"
       },
-      "shapeHash": "sha256:1b906a2d369f51fae05c1e692abead69171b7511d78fc47938ac5cd4733cbda7"
+      "shapeHash": "sha256:d50bb43df8d2c138d7a81ac0a0758b6dbfae7dc45f526e1f538a23d77362c1f9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",
@@ -76052,17 +76063,6 @@
       "shapeHash": "sha256:5ea5d78181b5af1d1c2fc124278fcaa48703826f8f965d06296f6a0023ce8226"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#ResolveModelScope",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "ResolveModelScope",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context, patterns []string, runtime *ModelRuntime) ([]ScopedModel, error)"
-      },
-      "shapeHash": "sha256:c7ee3b9a1c0b750cf118af3ea7f86fd5e735f333097253327d6c0dee3d19001e"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ResolveModelScopeResult",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ResolveModelScopeResult",
@@ -98699,17 +98699,6 @@
         "type": "func() github.com/MichaelKinsy/PiG/coding.SessionStartOptions"
       },
       "shapeHash": "sha256:654ae9a3443dc626ac2b6407633d5f69920683a5c2350c5dee11f91a53149ad1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#printModelDiagnostic",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "printModelDiagnostic",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(msg string)"
-      },
-      "shapeHash": "sha256:345614520fe35d250af5faad5945fc56785826dd8e93b4fc2ad6d1ed43f11431"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#printModelTable",
@@ -275262,17 +275251,6 @@
       "shapeHash": "sha256:23bcbdf8df18e4c48ea8a80d26e5c652bdcf1455e7c8c31937a97f157562629c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ResolveModelScope",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ResolveModelScope",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context, patterns []string, runtime ModelScopeRuntime) ([]ScopedModel, error)"
-      },
-      "shapeHash": "sha256:b2a3f1c5400e189c6f7615789e597dd5538c7111ff34a9ea11bbfaf2dd3ab66a"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ResolveModelScopeFromModels",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ResolveModelScopeFromModels",
@@ -311529,6 +311507,17 @@
       "shapeHash": "sha256:039a8e96647ec8cd435ee7ba295c64e3373982705477a07335b5f4c91dafddbc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#readImageUnsupportedByModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "readImageUnsupportedByModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(details any) string"
+      },
+      "shapeHash": "sha256:985dc999321b7ed1c9e704e2a0b71e118b9c25d9c8178f4ce7062ea3786a8dcc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#readMerged",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "readMerged",
@@ -313221,17 +313210,6 @@
         "type": "func(input string, items []github.com/MichaelKinsy/PiG/tui.ModelSelectorItem) (string, bool)"
       },
       "shapeHash": "sha256:51095a044180756c562727e08b6ff5a3f43f94ccfd4e6d4f6a1a7956427b92b4"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#resolveModelScopeWarningTo",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "resolveModelScopeWarningTo",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, w io.Writer, color bool, patterns []string, runtime ModelScopeRuntime) ([]ScopedModel, error)"
-      },
-      "shapeHash": "sha256:89eafc9b6d8a096f60fc3d945c1a5d7ebfbe92150fddd1580e0c6c3fd4508c07"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#resolveOutcome",
@@ -334616,6 +334594,17 @@
         "type": "findFdInvocation"
       },
       "shapeHash": "sha256:cf600243af33247cfa552d0a1ac9c92825ac0a43dada249a00390d0ccc492e4f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findGlobEscaper",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "findGlobEscaper",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*strings.Replacer"
+      },
+      "shapeHash": "sha256:2210a4b0b5447db85408863294091e2116a8350bf2f356d7976b8a153e247e14"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findParams",

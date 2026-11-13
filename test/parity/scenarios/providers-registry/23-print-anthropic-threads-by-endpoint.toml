@@ -1,0 +1,48 @@
+# Behavior family: providers-registry
+# Surface: whether an anthropic-messages request starts a message thread, decided from the model's base URL alone.
+#
+# Upstream evidence (Pi 49fe0a237, #11987; packages/ai/src/api/anthropic-messages.ts getAnthropicCompat): supportsMessageThreads defaults to
+# `model.baseUrl.includes("api.anthropic.com")`. Pi v1.5.2 as published also asks for the provider id "anthropic", so a provider with
+# another name on Anthropic's endpoint sends no thread. A request that uses threads carries the body member "thread", {"type":"create"} for
+# the first request of a session.
+# The oracle is the pinned Pi plus the post-release backports (automation/gen/pi-post-release-backports.mjs), 49fe0a237 among them; `pi` runs the
+# package's bundle, which the oracle build makes again from the patched compiled output.
+#
+# Probe (Pi alone, 2026-11-13): `pi -p "ECHO_REQUEST /thread"` printed
+#   {"type":"create"}
+# Before the oracle carried the commit's line in pi-ai's anthropic-messages.js (it carried only the commit's three description strings)
+# Pi printed `absent` here and pig the thread: that was the oracle's hole, not a difference of pig.
+#
+# How the request is seen: both binaries talk to the runner's local provider fixture (provider_fixture, test/parity/README.md). The prompt
+# `ECHO_REQUEST /thread` makes the fixture answer with that part of the request body it received, members in the order received, so each
+# binary prints what it sent and output_equal compares the thread member, or the word absent on a side that sent none. No normalization: the two requests must be the same bytes after the
+# fixture's uniform spelling of white space and string escapes.
+# provider_fixture_base_path = "/api.anthropic.com": Pi's test is a substring test of the base URL, so the fixture's local address reaches
+# it through its path. The provider is the fixture's `strict-wire`, not `anthropic`, which is the case the commit changes.
+# 24-print-anthropic-no-threads-off-endpoint is the same request with the plain address.
+# Mutation: with the provider id test back in supportsMessageThreads (ai/anthropic.go) pig prints absent and output_equal fails.
+name = "23-print-anthropic-threads-by-endpoint"
+description = "A provider not named anthropic whose base URL is on api.anthropic.com starts a message thread, as pi does"
+covers = ["packages/ai/src/api/anthropic-messages.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+provider_fixture = "anthropic-messages"
+model = "strict-wire/strict"
+provider_fixture_base_path = "/api.anthropic.com"
+
+[print]
+prompt = "ECHO_REQUEST /thread"
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent"]
+pig_args = ["--offline", "--no-extensions", "--tools", "read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--tools", "read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = ['{"type":"create"}']
+output_equal = true
+stderr_equal = true
+runs = 3

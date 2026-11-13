@@ -5,7 +5,6 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,10 +15,7 @@ import (
 // order flattenModelCatalog in packages/ai/src/model-catalog.ts visits them: groups in key order, then models in key order.
 func pinnedCatalogIDs(t *testing.T, provider string) map[string][]string {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("../.upstream/current/packages/ai/src/providers/data", provider+".json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	raw := readPinnedMirror(t, "../.upstream/current/packages/ai/src/providers/data/"+provider+".json")
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	expect := func(want json.Delim) {
 		t.Helper()
