@@ -178,6 +178,7 @@ func resolveVarRefs(value ThemeColorValue, vars map[string]ThemeColorValue, visi
 	if visited[value.Text] {
 		return ThemeColorValue{}, fmt.Errorf("Circular variable reference detected: %s", value.Text)
 	}
+	// pig divergence (D645): vars is a Go map with no inherited members, so a color that names an Object.prototype member (constructor, toString, __proto__) is a missing variable; Pi's `value in vars` finds the inherited member and the next step throws "TypeError: value.startsWith is not a function".
 	next, ok := vars[value.Text]
 	if !ok {
 		return ThemeColorValue{}, fmt.Errorf("Variable reference not found: %s", value.Text)
