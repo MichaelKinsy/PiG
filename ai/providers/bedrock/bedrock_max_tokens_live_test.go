@@ -1,4 +1,4 @@
-//go:build live
+//go:build live && !pig_strip_bedrock_converse_stream
 
 package bedrock
 

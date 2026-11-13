@@ -81,6 +81,16 @@ func ProviderStripped(providerID string) bool {
 	return len(models) > 0 && !slices.ContainsFunc(models, func(model *GeneratedModel) bool { return !pigstrip.Has(pigstrip.ListAPIs, string(model.API)) })
 }
 
+// strippedDirectAPIError is the strip error of api for model, the one the API's provider constructor reports, or nil when api is not stripped. The stream entry points ask it before they look at any credential, so a request for a stripped API ends with the strip whether or not it carries a key.
+// pig additive (D92): strips are PiG's own, so Pi has no order of the strip and the missing-key errors to match; Stock PiG strips no API and keeps Pi's order of errors.
+func strippedDirectAPIError(api API, model *Model, env ProviderEnv) error {
+	if !pigstrip.Has(pigstrip.ListAPIs, string(api)) {
+		return nil
+	}
+	_, err := directAPIProviderFor(api, model, "", env)
+	return err
+}
+
 // strippedAPIError is the error building providerID's provider reports when its API is stripped.
 func strippedAPIError(providerID string, api API) error {
 	return pigstrip.Error(fmt.Sprintf("Provider %s: API %s", providerID, api), pigstrip.ListAPIs, string(api))

@@ -1590,6 +1590,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c1162b4](#bf-c1162b4) | `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +… | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
 | [BF-c122088](#bf-c122088) | A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c129008](#bf-c129008) | Registering a native provider did not refresh the Session's active model from the registry, as Pi does after… | PiG's own defect | All platforms | Unreleased |
+| [BF-c1292ec](#bf-c1292ec) | A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions | PiG's own defect | All platforms | Unreleased |
 | [BF-c1524ce](#bf-c1524ce) | fix(durable/core): a registry change tells the task graph its blocked reasons may have changed | PiG's own defect | All platforms | Unreleased |
 | [BF-c15309d](#bf-c15309d) | fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1ed918](#bf-c1ed918) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
@@ -1958,6 +1959,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-eda66dd](#bf-eda66dd) | A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed… | PiG's own defect | All platforms | Unreleased |
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ede5183](#bf-ede5183) | A PiG that runs without a model API now says so when a request for that API carries no API key | PiG's own defect | All platforms | Unreleased |
 | [BF-ededef9](#bf-ededef9) | `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-edf1862](#bf-edf1862) | Tool rows and streamed answers no longer highlight the same code again on every redraw | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ee0017a](#bf-ee0017a) | On macOS and the BSDs, a chord worker that found a lock file left by a crashed holder waited for it forever… | PiG's own defect | macOS, Linux | Unreleased |
@@ -23904,6 +23906,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/native_provider_observers_test.go::TestRegisterNativeProviderReportsToTheRegistryObservers`
 - **Release note:** Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.
 
+### BF-c1292ec
+
+**A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions**
+
+- **Source:** PiG's own defect
+- **Symptom:** A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions.
+- **Root cause:** A build with pig_strip_bedrock_converse_stream, pig_strip_google_vertex or pig_strip_mistral_conversations (a Piglet Binary whose strip.apis names the API), and Stock PiG running a Piglet that strips one, panicked in ai.BuiltinProviders:
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c1292ecbab` (2026-11-12)
+- **Tests:** `ai/builtin_providers_strip_test.go::TestStrippedProvidersAreNotBuilt`, `ai/providers/bedrock/bedrock_models_upstream_stripped_test.go::TestBedrockUpstreamModelCatalog`, `ai/strip_built_test.go::TestBuiltStrippedProvidersMatchTheStripState`
+- **Release note:** A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions. This affected a Piglet Binary whose `strip.apis` names `bedrock-converse-stream`, `google-vertex` or `mistral-conversations` (build tags `pig_strip_bedrock_converse_stream`, `pig_strip_google_vertex`, `pig_strip_mistral_conversations`), and Stock PiG running a Piglet file with such a strip. In such a Binary the provider bridge subprocess (the `provider-bridge` command of the PiG executable, the transport of an extension's detached helpers such as background runs of pi-subagents) exited with status 2 and `panic: Provider <id>: at least one of "api", "images", or "classifiers" is required.` on its first stream request, whatever provider the request named. In both, an extension's pi-ai `stream` or `complete` call failed with `internal_panic: panic in HandleCall for <extension>.modelStream: Provider <id>: at least one of "api", "images", or "classifiers" is required.`. The built-in provider collection behind those calls now leaves a stripped provider out: requests to the other providers run, and a request for a model on a stripped API ends with `Provider <id>: API <api> is stripped from this Piglet (strip.apis: <api>)`. `--version`, `--help`, `--list-models`, print mode, RPC `get_available_models` and a `--model` that names a stripped provider were not affected, and neither was a build that strips only extensions or features. The defect is in every release since 0.5.0.
+
 ### BF-c1524ce
 
 **fix(durable/core): a registry change tells the task graph its blocked reasons may have changed**
@@ -28993,6 +29009,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `edd287c5d8` (2026-10-12)
 - **Tests:** `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseEndsThePhase`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestMigrateSessionEntriesPassesOverRecordsThatAreNotObjectsWhenFindingTheHeader`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestMigrateV1ToV2ChainsThroughAnArrayRecordAndRefusesAPrimitiveAsPiDoes`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestSessionOpenKeepsRecordsThatAreNotEntriesAsPiDoes`, `test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml` and 2 more in docs/bug-ledger.json
 - **Release note:** Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer fails while finding the header. Like Pi, an array record stays as written and still takes a place in the migration's id chain, and a number, string or boolean record stops the migration with the same `Cannot create property 'id'` error Pi throws.
+
+### BF-ede5183
+
+**A PiG that runs without a model API now says so when a request for that API carries no API key**
+
+- **Source:** PiG's own defect
+- **Symptom:** A PiG that runs without a model API now says so when a request for that API carries no API key.
+- **Root cause:** A request for mistral-conversations in a build or a Piglet that strips it, sent without an API key, ended with "No API key for provider: mistral": the plain stream (apiStreamProvider) and the simple stream (streamSimpleAs) of an API resolved the request's key before they built the provider, and only the provider constructor reports a strip. google-vertex and bedrock-converse-stream take no key there, so they already reported the strip; Mistral told the user to supply a key for an API the binary does not have.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ede518330c` (2026-11-12)
+- **Tests:** `ai/compat_api_streams_oracle_test.go::TestCompatAPIStreamsMatchPi`, `ai/strip_before_credentials_test.go::TestStrippedAPIReportsTheStripBeforeTheCredentialCheck`
+- **Release note:** A PiG that runs without a model API now says so when a request for that API carries no API key. A Piglet Binary whose `strip.apis` (D92) names `mistral-conversations` (build tag `pig_strip_mistral_conversations`), and Stock PiG running a Piglet file with that strip, answered such a request with `No API key for provider: mistral`; the request now ends with `Provider mistral: API mistral-conversations is stripped from this Piglet (strip.apis: mistral-conversations)`, with a key and without one, as it already did for `google-vertex` and `bedrock-converse-stream`.
 
 ### BF-ededef9
 

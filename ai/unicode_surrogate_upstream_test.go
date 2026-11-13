@@ -17,6 +17,10 @@ type unicodeUpstreamCase struct {
 
 func TestUnicodeSurrogateUpstream(t *testing.T) {
 	for _, tc := range unicodeUpstreamCases() {
+		if !BuiltCatalogModel(tc.provider + "/" + tc.model) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.provider+"/"+tc.model+"/"+tc.name, func(t *testing.T) {
 			model, ok := LookupModelExact(tc.provider + "/" + tc.model)
 			if !ok {

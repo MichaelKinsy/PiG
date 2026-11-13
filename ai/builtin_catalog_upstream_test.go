@@ -104,6 +104,10 @@ func TestBuiltinCatalogsMatchPinnedProviderDataModules(t *testing.T) {
 					}
 				}
 			}
+			if slices.Contains(BuiltStrippedProviders(), provider[1]) {
+				// A build with the pig_strip tag of this provider's API offers none of its chat models.
+				wantChat = map[string]map[string]any{}
+			}
 			checkChatCatalog(t, provider[1], wantChat)
 			checkImageCatalog(t, provider[1], wantImage)
 			checkClassifierCatalog(t, provider[1], wantClassifier)

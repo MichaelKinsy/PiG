@@ -63490,6 +63490,17 @@
       "shapeHash": "sha256:ae331f0ea9bae37de3b791713db0c7dbc1c3ca4eccafeb5486fa36136e0bd4e1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#strippedDirectAPIError",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "strippedDirectAPIError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(api API, model *Model, env ProviderEnv) error"
+      },
+      "shapeHash": "sha256:8891cb2cf000118c7f4ef1a70d6c4d268ef8035be9b7c5ea198e5f8d067a9bba"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#strippedGoogleVertexError",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "strippedGoogleVertexError",

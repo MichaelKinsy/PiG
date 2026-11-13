@@ -216,6 +216,10 @@ func TestProviderStreamEventsUpstream(t *testing.T) {
 
 	// .upstream/v0.99.1/packages/ai/test/google-raw-stop-reason.test.ts:195
 	for _, adapter := range []string{"Google Generative AI", "Google Vertex"} {
+		if adapter == "Google Vertex" && !BuiltAPI(APIGoogleVertex) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run("google forwards each SDK chunk in order before normalizing it for "+adapter, func(t *testing.T) {
 			first := `{"responseId":"resp_google","candidates":[{"content":{"parts":[{"text":"hello"}]}}]}`
 			second := `{"candidates":[{"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":2,"candidatesTokenCount":1,"totalTokenCount":3}}`

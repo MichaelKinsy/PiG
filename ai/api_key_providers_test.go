@@ -55,6 +55,10 @@ func TestAPIKeyProvidersMatchPinnedProviderDefinitions(t *testing.T) {
 			want[string(match[1])] = string(match[2])
 		}
 	}
+	// A build with a pig_strip_<api> tag has no login for the provider it strips.
+	for _, id := range BuiltStrippedProviders() {
+		delete(want, id)
+	}
 	got := APIKeyProviders()
 	for id, name := range want {
 		if !slices.Contains(got, APIKeyProviderInfo{ID: id, Name: name}) {

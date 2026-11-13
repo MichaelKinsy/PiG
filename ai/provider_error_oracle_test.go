@@ -1,5 +1,3 @@
-//go:build !pig_strip_mistral_conversations
-
 package ai
 
 import (
@@ -46,13 +44,27 @@ func providerErrorResponses() ([][][]byte, []int) {
 	return bodies, codes
 }
 
+// providerErrorCase is one provider of TestProviderErrorResponsesMatchPi: Pi's module names and PiG's provider at a base URL.
+type providerErrorCase struct {
+	name string
+	pi   [4]string
+	make func(baseURL string) Provider
+}
+
+// providerDroppedCase is one provider of TestProviderDroppedConnectionMatchesPi: its stream bodies and whether D120 applies.
+type providerDroppedCase struct {
+	name   string
+	pi     [4]string
+	d120   bool
+	bodies func() [][][]byte
+	make   func(baseURL string) Provider
+}
+
 func TestProviderErrorResponsesMatchPi(t *testing.T) {
 	bodies, statuses := providerErrorResponses()
-	for _, test := range []struct {
-		name string
-		pi   [4]string
-		make func(baseURL string) Provider
-	}{
+	// The Mistral and Google Vertex cases come from provider_error_oracle_mistral_test.go and provider_error_oracle_google_vertex_test.go:
+	// a Piglet built with pig_strip_mistral_conversations or pig_strip_google_vertex has no such provider, and this file is built for every Piglet.
+	cases := []providerErrorCase{
 		{"anthropic", [4]string{"anthropic-messages", "anthropicMessagesApi", "anthropic-messages", "anthropic"}, func(baseURL string) Provider {
 			return NewAnthropicProvider(AnthropicConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
 		}},
@@ -65,19 +77,16 @@ func TestProviderErrorResponsesMatchPi(t *testing.T) {
 		{"google", [4]string{"google-generative-ai", "googleGenerativeAIApi", "google-generative-ai", "google"}, func(baseURL string) Provider {
 			return NewGoogleProvider(GoogleConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
 		}},
-		{"mistral", [4]string{"mistral-conversations", "mistralConversationsApi", "mistral-conversations", "mistral"}, func(baseURL string) Provider {
-			return NewMistralProvider(MistralConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
-		}},
-		{"azure-openai-responses", [4]string{"azure-openai-responses", "azureOpenAIResponsesApi", "azure-openai-responses", "azure-openai-responses"}, func(baseURL string) Provider {
-			return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
-		}},
-		{"google-vertex", [4]string{"google-vertex", "googleVertexApi", "google-vertex", "google-vertex"}, func(baseURL string) Provider {
-			return NewGoogleVertexProvider(GoogleVertexConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
-		}},
-		{"pi-messages", [4]string{"pi-messages", "piMessagesApi", "pi-messages", "pi"}, func(baseURL string) Provider {
-			return NewPiMessagesProvider(PiMessagesConfig{APIKey: "k", Model: "m", ProviderID: "pi", BaseURL: baseURL})
-		}},
-	} {
+	}
+	cases = append(cases, providerErrorMistralCases()...)
+	cases = append(cases, providerErrorCase{"azure-openai-responses", [4]string{"azure-openai-responses", "azureOpenAIResponsesApi", "azure-openai-responses", "azure-openai-responses"}, func(baseURL string) Provider {
+		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
+	}})
+	cases = append(cases, providerErrorGoogleVertexCases()...)
+	cases = append(cases, providerErrorCase{"pi-messages", [4]string{"pi-messages", "piMessagesApi", "pi-messages", "pi"}, func(baseURL string) Provider {
+		return NewPiMessagesProvider(PiMessagesConfig{APIKey: "k", Model: "m", ProviderID: "pi", BaseURL: baseURL})
+	}})
+	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			providerResponseOracle(t, test.pi, true, bodies, statuses, false, test.make)
 		})
@@ -100,13 +109,7 @@ func TestOpenAICodexErrorResponsesMatchPi(t *testing.T) {
 
 // A response whose connection breaks after some of the body: the stream ends with the failure and keeps what was received. the events, the partial content and every other error text must match.
 func TestProviderDroppedConnectionMatchesPi(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		pi     [4]string
-		d120   bool
-		bodies func() [][][]byte
-		make   func(baseURL string) Provider
-	}{
+	cases := []providerDroppedCase{
 		{"anthropic", [4]string{"anthropic-messages", "anthropicMessagesApi", "anthropic-messages", "anthropic"}, true, anthropicStreamBodies, func(baseURL string) Provider {
 			return NewAnthropicProvider(AnthropicConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
 		}},
@@ -119,10 +122,8 @@ func TestProviderDroppedConnectionMatchesPi(t *testing.T) {
 		{"google", [4]string{"google-generative-ai", "googleGenerativeAIApi", "google-generative-ai", "google"}, false, googleStreamBodies, func(baseURL string) Provider {
 			return NewGoogleProvider(GoogleConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
 		}},
-		{"mistral", [4]string{"mistral-conversations", "mistralConversationsApi", "mistral-conversations", "mistral"}, true, mistralStreamBodies, func(baseURL string) Provider {
-			return NewMistralProvider(MistralConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
-		}},
-	} {
+	}
+	for _, test := range append(cases, providerDroppedMistralCases()...) {
 		t.Run(test.name, func(t *testing.T) {
 			providerResponseOracle(t, test.pi, test.d120, test.bodies(), nil, true, test.make)
 		})

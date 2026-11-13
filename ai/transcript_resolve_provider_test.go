@@ -26,6 +26,10 @@ func TestProviderRequestsLeaveAFrozenTranscriptUnchanged(t *testing.T) {
 		{APIBedrockConverseStream, "http://127.0.0.1:9"},
 	}
 	for _, target := range apis {
+		if !BuiltAPI(target.api) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		for _, mid := range []bool{false, true} {
 			// The leading system message comes from SystemPrompt and Tools, so the caller's slice holds only the conversation.
 			messages := cloneMessages(fixture.messages[1:])
