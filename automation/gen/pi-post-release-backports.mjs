@@ -346,7 +346,12 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
-const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
+// Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
+const tableOf = (name) => {
+  const table = {};
+  for (const b of blocks) if (b.table === name) table[b.key] = [...(table[b.key] ?? []), ...b.patches];
+  return table;
+};
 export const backportPatches = tableOf("dist");
 export const packageFileBackports = tableOf("package");
 
