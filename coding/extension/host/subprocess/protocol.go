@@ -1039,6 +1039,9 @@ type RemoteOverlayMousePayload struct {
 // RemoteOverlayInvalidatePayload is a NotifyUICustomInvalidate argument.
 type RemoteOverlayInvalidatePayload struct {
 	Key string `json:"key"`
+	// Count is how many times the TUI was invalidated since the last notify for this component, at least 1: the extension calls
+	// the component's invalidate that many times and renders once. A burst the connection has no room for is one frame.
+	Count int `json:"count"`
 }
 
 // RemoteOverlayFocusPayload is a NotifyUICustomFocus argument.

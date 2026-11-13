@@ -900,10 +900,8 @@ func (u *ExtUIContext) serveRemoteInput(ctx context.Context, runOnOwner func(con
 	for !overlay.Done() {
 		inputCh, changed := overlay.inputRoute()
 		// Pi's TUI.invalidate reaches the component (tui.ts:951-954): each invalidation the owner loop counted is published here.
-		if n := overlay.takeInvalidations(); invalidateHost != nil {
-			for range n {
-				invalidateHost.OnInvalidate()
-			}
+		if n := overlay.takeInvalidations(); n > 0 && invalidateHost != nil {
+			invalidateHost.OnInvalidate(n)
 		}
 		if focused := inputCh != nil; focusHost != nil && focused != published {
 			published = focused

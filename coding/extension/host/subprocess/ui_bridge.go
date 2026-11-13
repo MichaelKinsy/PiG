@@ -3028,20 +3028,28 @@ func (h *customOverlayHost) OnFocus(focused bool) {
 // OnInvalidate publishes one invalidation of the host's TUI ([NotifyUICustomInvalidate]); see
 // [extension.RemoteOverlayInvalidateHost]. A theme_change with the active palette goes first when it differs from the one this
 // component was last sent, so the component builds its rows from the new colors. Both are notifies on the owner's own connection.
-func (h *customOverlayHost) OnInvalidate() {
-	if h.owner == nil {
+func (h *customOverlayHost) OnInvalidate(count int) {
+	if h.owner == nil || count < 1 {
 		return
+	}
+	ctx := h.ctx
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	if h.ui != nil {
 		if theme := h.ui.Theme(); theme != nil {
 			if palette, err := json.Marshal(theme); err == nil && string(palette) != h.sentPalette {
 				h.sentPalette = string(palette)
-				_ = h.owner.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "theme_change", Args: palette}})
+				if h.owner.SendContext(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "theme_change", Args: palette}}) != nil {
+					// Not queued (the component's context ended or the connection closed): the palette counts as not sent.
+					h.sentPalette = ""
+					return
+				}
 			}
 		}
 	}
-	args, _ := json.Marshal(RemoteOverlayInvalidatePayload{Key: h.key})
-	_ = h.owner.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyUICustomInvalidate, Args: args}})
+	args, _ := json.Marshal(RemoteOverlayInvalidatePayload{Key: h.key, Count: count})
+	_ = h.owner.SendContext(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyUICustomInvalidate, Args: args}})
 }
 
 // overlayProxy is the buffering RemoteOverlayHandle registered
