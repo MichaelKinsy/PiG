@@ -684,3 +684,73 @@ func TestDefaultRetryDeciderDrivesSessionRetriesAndDelays(t *testing.T) {
 		t.Fatalf("decider called %d times, want 3 (once per attempt)", len(seen))
 	}
 }
+
+func TestDefaultRetryDeciderRetainsFailureResponseHeadersAfterJSONMessageEndReplacement(t *testing.T) {
+	t.Cleanup(func() { icodingagent.SetDefaultRetryDecider(nil, false) })
+	var seenHeaders []map[string]string
+	icodingagent.SetDefaultRetryDecider(func(attempt, maxAttempts int, response ai.AssistantMessage) ai.RetryDecision {
+		if response.FailureResponse != nil {
+			seenHeaders = append(seenHeaders, response.FailureResponse.Headers)
+		} else {
+			seenHeaders = append(seenHeaders, nil)
+		}
+		if attempt <= maxAttempts && response.FailureResponse != nil && response.FailureResponse.Headers["retry-after"] == "2" {
+			return ai.RetryDecision{Retry: true, DelayMs: 7}
+		}
+		return ai.RetryDecision{Retry: false}
+	}, true)
+	rateLimited := func([]ai.Message) *ai.AssistantMessage {
+		return &ai.AssistantMessage{
+			Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonError,
+			ErrorMessage:    `429 {"message":"rate limited"}`,
+			FailureResponse: &ai.FailureResponse{Status: 429, Headers: map[string]string{"retry-after": "2"}},
+			Timestamp:       time.Now().UnixMilli(),
+		}
+	}
+	ext := extension.Extension{
+		Path: "/ext/rewrite",
+		Handlers: map[string][]extension.HandlerFn{
+			"message_end": {func(args ...any) (any, error) {
+				ev := args[0].(extension.MessageEndEvent)
+				if ev.Message.Assistant == nil || ev.Message.Assistant.StopReason != ai.StopReasonError {
+					return nil, nil
+				}
+				raw, err := json.Marshal(ev.Message)
+				if err != nil {
+					return nil, err
+				}
+				var wire map[string]any
+				if err := json.Unmarshal(raw, &wire); err != nil {
+					return nil, err
+				}
+				wire["errorMessage"] = ev.Message.Assistant.ErrorMessage + " (service temporarily unavailable)"
+				res, err := json.Marshal(map[string]any{"message": wire})
+				if err != nil {
+					return nil, err
+				}
+				return json.RawMessage(res), nil
+			}},
+		},
+	}
+	h := newRecoveryHarness(t, harnessOptions{
+		settings:  `{"retry":{"enabled":true,"maxRetries":2,"baseDelayMs":500}}`,
+		extension: ext,
+	}, rateLimited, fauxReply("recovered", ai.StopReasonStop, 0))
+	_, _ = h.session.Send(context.Background(), "hello")
+	events := h.settle(t)
+	if got := h.provider.callCount(); got != 2 {
+		t.Fatalf("model calls = %d, want 2", got)
+	}
+	if len(seenHeaders) != 1 || seenHeaders[0]["retry-after"] != "2" {
+		t.Fatalf("seenHeaders = %#v, want retry-after=2", seenHeaders)
+	}
+	var delays []int
+	for _, ev := range events {
+		if start, ok := ev.(agent.AutoRetryStartEvent); ok {
+			delays = append(delays, start.DelayMs)
+		}
+	}
+	if len(delays) != 1 || delays[0] != 7 {
+		t.Fatalf("delays = %v, want [7]", delays)
+	}
+}

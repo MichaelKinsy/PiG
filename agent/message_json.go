@@ -1052,7 +1052,11 @@ func ReplaceMessageInPlace(target, replacement AgentMessage) {
 	case target.User != nil && replacement.User != nil:
 		*target.User = *replacement.User
 	case target.Assistant != nil && replacement.Assistant != nil:
+		failure := target.Assistant.FailureResponse
 		*target.Assistant = *replacement.Assistant
+		if target.Assistant.FailureResponse == nil {
+			target.Assistant.FailureResponse = failure
+		}
 	case target.ToolResult != nil && replacement.ToolResult != nil:
 		*target.ToolResult = *replacement.ToolResult
 	case target.Custom != nil && replacement.Custom != nil:
