@@ -16,8 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"golang.org/x/term"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestMain runs the tests, or, started by tmux as the program of a pane (TestLinesAreWhatTmuxShows), that program.
