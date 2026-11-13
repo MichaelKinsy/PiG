@@ -799,6 +799,7 @@ port-lens: ## Render the static port report (overview, port map, divergences, bu
 
 upstream-mirror: parity-deps ## Mirror the pinned Pi source into .upstream/current
 	@./automation/gen/mirror-upstream.sh
+	@python3 -B automation/ci/check-port-map-drift.py --apps
 
 # Oracle tests of Pi work the Go port carries ahead of the committed pin: Pi 473515f9c, suspendable work (signals, tool parks, hook tasks, the
 # generation at task version 3), and Pi 5e24c6b1f, code mode namespaces declared by extensions (Extension.namespace). The pin's own Pi has none
