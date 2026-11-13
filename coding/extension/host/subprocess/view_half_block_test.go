@@ -95,9 +95,9 @@ func halfBlockGradient(width, height int) *image.NRGBA {
 
 func TestHalfBlockSizeKeepsTheAspectRatioInsideTheCellBox(t *testing.T) {
 	for _, tc := range []struct {
-		name                               string
+		name                                string
 		pxWidth, pxHeight, maxCols, maxRows int
-		cols, rows                         int
+		cols, rows                          int
 	}{
 		{"a 2 x 2 image fills two cells of one row", 2, 2, 2, 1, 2, 1},
 		{"a 4 x 2 image in a 2 x 1 box is one row of two cells", 4, 2, 2, 1, 2, 1},
@@ -275,6 +275,18 @@ func halfBlockXtermPalette() [256][3]int {
 }
 
 func TestHalfBlock256IndexIsTheNearestPaletteEntry(t *testing.T) {
+	palette := halfBlockXtermPalette()
+	distance := func(entry [3]int, r, g, b int) int {
+		return (entry[0]-r)*(entry[0]-r) + (entry[1]-g)*(entry[1]-g) + (entry[2]-b)*(entry[2]-b)
+	}
+	// nearestOfAll is the least squared distance over the cube and the grey ramp together, all 240 entries.
+	nearestOfAll := func(r, g, b int) int {
+		nearest := distance(palette[16], r, g, b)
+		for _, entry := range palette[17:] {
+			nearest = min(nearest, distance(entry, r, g, b))
+		}
+		return nearest
+	}
 	for _, tc := range []struct {
 		name    string
 		r, g, b uint8
@@ -290,19 +302,25 @@ func TestHalfBlock256IndexIsTheNearestPaletteEntry(t *testing.T) {
 		{"the lightest ramp entry", 238, 238, 238, 255},
 		// The cube has no grey between 95 and 135; the ramp has 118.
 		{"a grey between cube steps takes the ramp", 117, 117, 117, 243},
+		// A warm brown, the trees of a photograph: the cube's (135, 95, 95) is at 36 + 361 + 49 = 446, its (135, 135, 95) at 526 and the nearest grey, 108, at 877. The nearest entry looks pink.
+		{"a warm brown is the cube's 135, 95, 95", 129, 114, 88, 95},
+		// The cube's (95, 135, 95) and (95, 95, 95) are both at 850; the grey 98 is at 144 + 289 + 324 = 757.
+		{"a mid olive is nearer a grey than any cube entry", 110, 115, 80, 241},
+		// The cube's (95, 135, 135) is at 25 + 225 + 225 = 475; the nearest grey, 128, is at 1332.
+		{"a mid grey-blue is the cube's 95, 135, 135", 100, 120, 150, 66},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := halfBlock256Index(tc.r, tc.g, tc.b); got != tc.want {
+			got := halfBlock256Index(tc.r, tc.g, tc.b)
+			if got != tc.want {
 				t.Fatalf("halfBlock256Index(%d, %d, %d) = %d, want %d", tc.r, tc.g, tc.b, got, tc.want)
+			}
+			if d, nearest := distance(palette[got], int(tc.r), int(tc.g), int(tc.b)), nearestOfAll(int(tc.r), int(tc.g), int(tc.b)); d != nearest {
+				t.Fatalf("(%d, %d, %d) maps to %d at squared distance %d; the nearest of the 240 entries is at %d", tc.r, tc.g, tc.b, got, d, nearest)
 			}
 		})
 	}
 
 	t.Run("no palette entry is nearer over the whole colour lattice", func(t *testing.T) {
-		palette := halfBlockXtermPalette()
-		distance := func(entry [3]int, r, g, b int) int {
-			return (entry[0]-r)*(entry[0]-r) + (entry[1]-g)*(entry[1]-g) + (entry[2]-b)*(entry[2]-b)
-		}
 		for r := 0; r <= 255; r += 5 {
 			for g := 0; g <= 255; g += 5 {
 				for b := 0; b <= 255; b += 5 {
@@ -310,11 +328,7 @@ func TestHalfBlock256IndexIsTheNearestPaletteEntry(t *testing.T) {
 					if got < 16 {
 						t.Fatalf("(%d, %d, %d) maps to %d, a colour the terminal theme owns", r, g, b, got)
 					}
-					nearest := distance(palette[16], r, g, b)
-					for _, entry := range palette[17:] {
-						nearest = min(nearest, distance(entry, r, g, b))
-					}
-					if d := distance(palette[got], r, g, b); d != nearest {
+					if d, nearest := distance(palette[got], r, g, b), nearestOfAll(r, g, b); d != nearest {
 						t.Fatalf("(%d, %d, %d) maps to %d %v at squared distance %d; the nearest entry is at %d", r, g, b, got, palette[got], d, nearest)
 					}
 				}

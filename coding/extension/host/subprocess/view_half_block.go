@@ -20,8 +20,8 @@ const (
 
 const (
 	// halfBlockMaxCols and halfBlockMaxRows cap one image at 80 000 cells of at most 39 bytes each.
-	halfBlockMaxCols = 400
-	halfBlockMaxRows = 200
+	halfBlockMaxCols = 400 // pig additive (D614): hard bound of the half-block fallback
+	halfBlockMaxRows = 200 // pig additive (D614): hard bound of the half-block fallback
 	// halfBlockOversample caps the image pixels read for one output pixel along each axis at twice this number. A larger image is read at a whole-pixel stride, so the work is bounded by the cells and not by the image.
 	halfBlockOversample = 16
 
