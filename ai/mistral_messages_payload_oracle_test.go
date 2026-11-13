@@ -66,6 +66,7 @@ func TestMistralMessagesPayloadMatchesPi(t *testing.T) {
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, "testdata/mistral_messages_payload.mjs", probesWithRawOptions(probes))
+	g.requireReplayCoverage(t, want, mistralReplay)
 	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {

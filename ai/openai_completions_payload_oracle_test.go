@@ -88,10 +88,14 @@ func checkOpenAICompletionsPayload(t *testing.T, detected bool) {
 		if !p.Simple && rng.Intn(2) == 0 {
 			p.Options["reasoningEffort"] = pick("minimal", "low", "medium", "high")
 		}
+		// A provider replays a turn's reasoning only for the model that produced it (transformMessages, isSameModel): the transcript's own
+		// turns are of the probe's provider.
+		g.provider = p.Provider
 		p.Context = g.context()
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, "testdata/openai_completions_payload.mjs", probes)
+	g.requireReplayCoverage(t, want, completionsReplay)
 	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {

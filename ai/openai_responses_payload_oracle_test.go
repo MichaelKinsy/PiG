@@ -37,7 +37,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 	case azure:
 		script, stream, streamSimple, apiName = "testdata/azure_openai_responses_payload.mjs", ai.StreamAzureOpenAIResponses, ai.StreamSimpleAzureOpenAIResponses, ai.APIAzureOpenAIResponses
 	}
-	g := &payloadGen{rng: rng, api: api, provider: "openai", model: "gpt-test", thinkingSignatures: []string{"", `,"thinkingSignature":"{\"type\":\"reasoning\",\"id\":\"rs_1\",\"summary\":[]}"`}}
+	g := &payloadGen{rng: rng, api: api, provider: "openai", model: "gpt-test", thinkingSignatures: []string{"", `,"thinkingSignature":"{\"type\":\"reasoning\",\"id\":\"rs_1\",\"summary\":[]}"`, `,"thinkingSignature":"{\"id\":\"rs_2\",\"type\":\"reasoning\",\"encrypted_content\":\"enc\",\"summary\":[],\"provider_member\":1}"`}}
 	pick, boolean := g.pick, g.boolean
 	type probe struct {
 		Provider  string          `json:"provider"`
@@ -126,10 +126,14 @@ func checkResponsesPayload(t *testing.T, api string) {
 				p.Options["reasoningSummary"] = pick("auto", "concise", "detailed")
 			}
 		}
+		// A provider replays a turn's reasoning only for the model that produced it (transformMessages, isSameModel): the transcript's own
+		// turns are of the probe's provider.
+		g.provider = p.Provider
 		p.Context = withSystemMessages(g, g.context())
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, script, probes)
+	g.requireReplayCoverage(t, want, responsesReplay)
 	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {
