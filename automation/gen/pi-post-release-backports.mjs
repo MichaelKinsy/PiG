@@ -357,8 +357,8 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 // f72f799a4 (#12103; 22f456d73 #12108 after it changes Pi's changelog and a test only): the Google adapters hand the caller's fetch to @google/genai, which takes one
 // (httpOptions.fetch) from 2.32.0 on, so the commit moves pi-ai's exact pin of the SDK. The lock entry below is the one Pi's package-lock.json and
 // packages/coding-agent/install-lock/package-lock.json hold at f72f799a4; both locks change nothing else but pi-ai's range, and the entry's own dependencies are those of 2.21.0.
-// Oracle only: the vendored runtime's Google adapters are bridge stubs that run PiG's Go adapters (D74), which carry the behaviour, and it installs no SDK. The sync
-// ledger (test/parity/upstream-sync/v1.5.2+22f456d7.toml) classes the SDK update designed-out: that is about PiG's product, which has no @google/genai. The oracle is Pi and needs it.
+// Oracle only: the vendored runtime's Google adapters are bridge stubs that run PiG's Go adapters (D74), which carry the behaviour, and it installs no SDK. PiG has no
+// @google/genai at all: its Go body encoder mirrors the SDK's converters (ai/google_wire.go, which names the mirrored version). The oracle is Pi and installs the SDK.
 // The oracle carries the commit's BEHAVIOUR (the SDK, the three adapters, the bundle of both). What authors and inventories derive from the installed package stays the pin's:
 // not carried: pi-ai/package.json (`"@google/genai": "2.32.0"`): published ranges follow the pin until the re-pin (extensions/sdk-ts/package.json derives its peer range from the installed manifest); the lock the oracle installs names 2.32.0, the manifest on disk 2.21.0. Re-pin worklist: arrives with the pin.
 // not carried: pi-ai/api/google-shared.d.ts (drops `mapStopReasonString`, which google-shared.js below no longer exports): declarations follow the pin until the re-pin (extensions/sdk-ts/pi-pin.d.ts and test/parity/interfaces derive from the installed declarations). Re-pin worklist: arrives with the pin.

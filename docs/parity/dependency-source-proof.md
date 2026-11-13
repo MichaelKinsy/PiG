@@ -94,7 +94,7 @@ The capture follows the steps below with the three files and `LICENSE` extracted
 
 ## The oracle's carried dependency
 
-The parity oracle is the pinned Pi plus the Pi commits the release line ports ahead of the pin (`docs/parity/upstream-pin.md`, Carried work). One of them, f72f799a4 (#12103), needs a newer dependency than the pin installs, so the oracle installs that one package at the carried version. This is test-oracle tooling: PiG's product has no `@google/genai`.
+The parity oracle is the pinned Pi plus the Pi commits the release line ports ahead of the pin (`docs/parity/upstream-pin.md`, Carried work). One of them, f72f799a4 (#12103), needs a newer dependency than the pin installs, so the oracle installs that one package at the carried version. This is test-oracle tooling: PiG's product has no `@google/genai`. Its Go body encoder is a port of the SDK's converters, though: `ai/google_wire.go` writes a request body in their member order and names the version it mirrors (`geminiMirroredSDKVersion`, 2.32.0), and `make pin-check` and `TestGoogleWireMirrorsTheInstalledSDK` fail when that is not the version the oracle installs, so an SDK update in Pi is seen as a port obligation.
 
 | Property | Proof |
 |---|---|

@@ -1572,5 +1572,15 @@ class CarriedDependencyTests(unittest.TestCase):
         self.assertEqual(oracle.oracle_closure_digest(pin), oracle.closure_digest(got))
 
 
+class MirroredSdkTests(unittest.TestCase):
+    def test_the_sdk_version_the_go_google_encoder_mirrors_is_the_one_the_oracle_installs(self):
+        """ai/google_wire.go writes Google request bodies in the member order of @google/genai's converters and names the version it
+        mirrors. PiG has no SDK dependency, so nothing else says that a re-pin or a carried Pi commit moved the SDK under the port."""
+        (named,) = re.findall(r'^const geminiMirroredSDKVersion = "([^"]+)"$', (pinlib.ROOT / "ai" / "google_wire.go").read_text(encoding="utf-8"), re.M)
+        closure = oracle.oracle_closure(pinlib.committed())
+        installed = {item["version"] for key, item in closure["packages"].items() if key.endswith("node_modules/@google/genai")}
+        self.assertEqual(installed, {named}, "the oracle installs another @google/genai than ai/google_wire.go mirrors: port the converter changes between the two versions (see the comment at the head of ai/google_wire.go) and update geminiMirroredSDKVersion")
+
+
 if __name__ == "__main__":
     unittest.main()
