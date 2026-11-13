@@ -70,6 +70,18 @@ A snapshot's `bindings [{key | gesture, intent, arg?, name?}]` tie keys and gest
 - You may state the claim `input.bindings` (a list of `key` and `gesture`) in your abilities, so that an extension's `alternatives` can test it. The host does not read it. It says which kinds of trigger you honour, not which keys.
 - A binding's `name`, a `title` and a mount's `key` are labels: the host has refused a control character, a line separator and the controls that reorder text (U+202A to U+202E, U+2066 to U+2069), so you can write them on one line as they are.
 
+## Gestures on a region of a drawing
+
+PROPOSED (2026-11-13; not yet part of D614): D614 says a client raises a region's intent "with the argument its declared shape asks for" and names no property. Every client must fill that argument the same way, so this is the reading proposed for all of them; the reference web client implements it.
+
+- A property of the argument is filled only when the intent's declared argument shape names it. An intent whose shape names none of the properties below is sent `{}`.
+- `x` and `y`: the pointer's position in the drawing's coordinates (the viewport's units). For `activate` made with the keyboard, the centre of the region.
+- `dx` and `dy`: for `drag`, the pointer's movement since the last event of this drag, in the drawing's units; 0 for every other gesture.
+- `gesture`: `activate`, `press`, `release` or `drag`. `region`: the region's `key`.
+- A property of type `integer` takes the nearest whole number.
+- `nodeKey` is the declared intent's own, when it has one.
+- A drag is a sequence: `press` (if the region lists it), any number of `drag`, then `release` (if listed). A client raises one of them at a time, each on the mount ref it holds after the reply to the one before, sums the movement made meanwhile into the next `drag`, sends at most 30 `drag` a second, and always sends the `release`.
+
 ## Errors
 
 A failed carrier command is RPC mode's error response with one more member, `code`:
@@ -151,6 +163,6 @@ Carry `code` wherever the other protocol puts an error's data, and members as th
 
 ## Reference client
 
-[`examples/ui-view-web`](../examples/ui-view-web) is a static page and a bridge program (Node, standard library only) that relays pig's lines as Server-Sent Events and the page's lines by POST on 127.0.0.1. The bridge starts `pig --mode rpc` for each page or, with `--connect`, makes every page a client of the socket of a running interactive session, beside its terminal. The page keeps the client's rule above, draws the view nodes that carry an id as focusable elements, applies `a11y` and `focus`, and raises intents. Pig itself has no web server.
+[`examples/ui-view-web`](../examples/ui-view-web) is a static page and a bridge program (Node, standard library only) that relays pig's lines as Server-Sent Events and the page's lines by POST on 127.0.0.1. The bridge starts `pig --mode rpc` for each page or, with `--connect`, makes every page a client of the socket of a running interactive session, beside its terminal. The page keeps the client's rule above and draws a view as controls: a node is the control its kind and the role and states of its `a11y` record make it (a `mouse-region` with the role `checkbox` is a native checkbox), a `grid` is a grid, a mount of the `dialog` slot is a modal dialog, and a `drawing` is one SVG element whose regions take the pointer and the keyboard. It labels a mount with its `title`, fires key bindings and shows the named ones as buttons with their key, applies `a11y` and `focus`, raises intents, and updates in place, keeping every element whose node or keyed shape is still in the view. Its look is a default stylesheet of custom properties that a theme directory overrides. The page's README lists what it draws for every node kind, its tokens, and what it leaves out. Pig itself has no web server.
 
-Its tests are in `examples/ui-view-web`: `bridge_test.go` for the bridge that starts pig and `connect_test.go` for `--connect`, against a view endpoint the test serves. The tests that drive the bridge with an HTTP client always run (they need Node). `TestPageDrawsFocusesAndRaisesIntents` and `TestPageFollowsARunningSession` open the page in headless Chromium: they need `CHROMIUM_BIN` to name a Chromium binary and are skipped without it. `TestUIViewWebPageAndTerminalShareOneSession` in `test/integration` opens the page on a real interactive session.
+Its tests are in `examples/ui-view-web`: `bridge_test.go` for the bridge that starts pig, `connect_test.go` for `--connect`, against a view endpoint the test serves, and `controls_test.go` for the controls, the drawing and the look. The tests that drive the bridge with an HTTP client always run (they need Node). The `TestPage*` tests open the page in headless Chromium: they need `CHROMIUM_BIN` to name a Chromium binary and are skipped without it. `TestUIViewWebPageAndTerminalShareOneSession` in `test/integration` opens the page on a real interactive session.

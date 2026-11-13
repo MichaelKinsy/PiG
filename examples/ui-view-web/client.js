@@ -7,13 +7,14 @@ const SLOTS = ["notify", "status", "widget-above", "widget-below", "header", "fo
 // The node kinds this page draws. A kind outside the list is refused by the host for this client; a node the page
 // cannot draw after all is reported with ui_view_report.
 const NODES = ["container", "box", "vstack", "hstack", "text", "truncated-text", "markdown", "lines", "spacer", "dynamic-border", "image",
-  "loader", "select-list", "settings-list", "input", "editor", "mouse-region", "scroll-view"];
+  "loader", "grid", "select-list", "settings-list", "input", "editor", "mouse-region", "scroll-view"];
 const ABILITIES = {
   slots: SLOTS, nodes: NODES, markdown: true, imageFormats: ["png", "jpeg", "gif", "webp"],
   // snapshotBytes is the carrier's bound of one line: a scene of a few thousand points is some hundred kilobytes.
   limits: { nodes: 2048, depth: 32, snapshotBytes: 1 << 22, textBytes: 1 << 16, mounts: 32, intentArgBytes: 1 << 16 },
   input: { keyboard: true, pointer: true, text: true },
-  claims: [{ name: "client.kind", value: "web" }],
+  // input.bindings: the page fires key bindings (docs/ui-view-carrier.md, Bindings); it reports no swipes.
+  claims: [{ name: "client.kind", value: "web" }, { name: "input.bindings", value: ["key"] }],
   // Both drawing profiles, up to the host's own bounds (coding/uiview/drawing.go).
   drawing: { profiles: ["scene", "pixels"], shapes: 4096, pixels: 1 << 20 },
 };
@@ -113,8 +114,8 @@ async function attach() {
   adopt(reply.data);
 }
 
-// The panel mounts stand beside the chat, each with a tab. A view has no title in the contract, so a tab is labelled
-// with the mount's key (and its plugin when two panels share a key). `chosen` is the panel the user chose; a panel
+// The panel mounts stand beside the chat, each with a tab. A tab is labelled with the mount's title, or with its key
+// when it has none (and with its plugin too when two panels share a label). `chosen` is the panel the user chose; a panel
 // newly mounted or shown again by its extension is chosen. Side by side, every panel is drawn; as tabs, the chosen
 // one. A panel behind another is still drawn into, so it is current when the user chooses it.
 const panels = { root: document.getElementById("panels"), tabs: document.querySelector("#panels [role=tablist]"), side: document.getElementById("side"), chosen: "" };
@@ -127,14 +128,17 @@ function showPanels() {
   panels.tabs.parentElement.hidden = open.length < 2;
   for (const [key, mount] of mounts) {
     if (!mount.tab) continue;
-    const { plugin, mount: { key: name } } = mount.snapshot;
-    mount.tab.textContent = open.some(([other, m]) => other !== key && m.snapshot.mount.key === name) ? `${plugin} / ${name}` : name;
+    const label = labelOf(mount.snapshot);
+    mount.tab.textContent = open.some(([other, m]) => other !== key && labelOf(m.snapshot) === label) ? `${mount.snapshot.plugin} / ${label}` : label;
     mount.tab.hidden = mount.snapshot.state === "hidden";
     mount.tab.setAttribute("aria-selected", String(key === panels.chosen));
     mount.tab.tabIndex = key === panels.chosen ? 0 : -1;
     mount.element.classList.toggle("behind", !side && key !== panels.chosen);
   }
 }
+
+// labelOf is what a mount is called in a tab: its title, or its key.
+const labelOf = (snapshot) => snapshot.title || snapshot.mount.key;
 
 // tab makes the tab of a panel mount: a click chooses the panel, the arrow keys move along the tabs.
 function tab(key, mount) {
@@ -209,9 +213,13 @@ function shell(snapshot) {
   mount.head = document.createElement("header");
   mount.head.append(document.createElement("span"));
   mount.body = text("view", "");
+  mount.hints = text("hints", "");
+  mount.hints.setAttribute("role", "toolbar");
+  mount.hints.setAttribute("aria-label", "Shortcuts");
+  mount.hints.hidden = true;
   mount.footer = document.createElement("footer");
   mount.footer.setAttribute("role", "status");
-  el.append(mount.head, mount.body, mount.footer);
+  el.append(mount.head, mount.body, mount.hints, mount.footer);
   el.addEventListener("click", (event) => onClick(mount, event));
   el.addEventListener("keydown", (event) => onKey(mount, event));
   el.addEventListener("pointerdown", (event) => onPointerDown(mount, event));
@@ -222,12 +230,32 @@ function shell(snapshot) {
     el.setAttribute("closedby", "none");
     el.addEventListener("cancel", (event) => event.preventDefault());
     el.addEventListener("close", () => present(mount));
+    // A dialog that opened without the focus (present) becomes modal when the user enters it.
+    el.addEventListener("focusin", () => {
+      // After the focus has moved, not while it moves.
+      queueMicrotask(() => {
+        const entered = document.activeElement;
+        if (mount.snapshot.slot !== "dialog" || !el.open || el.matches(":modal") || !el.contains(entered)) return;
+        el.close();
+        el.showModal();
+        entered.focus();
+      });
+    });
   }
   return mount;
 }
 
+// busy: the user is typing somewhere else: the focus is in a text field outside `within` that holds text. A mount
+// takes no focus from it (the rule of the terminal client: a view never takes the keyboard from an editor that holds
+// text); the page reports `unfocused` and the user moves into the mount.
+function busy(within) {
+  const at = document.activeElement;
+  return Boolean(at) && !within.contains(at) && typed(at) && at.value !== "";
+}
+
 // present shows or hides a mount as its state says. A dialog mount is opened as a modal dialog and an overlay as a
-// dialog beside the page; hidden, it is closed, so the page under it takes input again.
+// dialog beside the page, and either takes the focus as it opens, unless the user is typing elsewhere: then it opens
+// without the focus. Hidden, it is closed, so the page under it takes input again.
 function present(mount) {
   const hidden = mount.snapshot.state === "hidden";
   const el = mount.element;
@@ -236,7 +264,10 @@ function present(mount) {
   if (hidden) {
     if (el.open) el.close();
   } else if (!el.open) {
-    if (mount.snapshot.slot === "dialog") el.showModal();
+    if (busy(el)) {
+      el.open = true;
+      report(mount, "focus", "a text field holds text", "unfocused", "info");
+    } else if (mount.snapshot.slot === "dialog") el.showModal();
     else el.show();
   }
 }
@@ -255,13 +286,13 @@ function draw(key, snapshot, held) {
     panels.chosen = key;
   }
   mount.element.dataset.digest = snapshot.digest ?? "";
-  const title = `${snapshot.plugin} / ${snapshot.mount.key}${snapshot.degraded ? " (degraded)" : ""}`;
+  const title = `${snapshot.title || `${snapshot.plugin} / ${snapshot.mount.key}`}${snapshot.degraded ? " (degraded)" : ""}`;
   mount.head.firstChild.textContent = title;
   if (mount.floating) mount.element.setAttribute("aria-label", title);
   mount.body.removeAttribute("style");
   theme(mount.body, snapshot.view);
 
-  const ctx = { mount, view: snapshot.view, a11y: new Map((snapshot.a11y ?? []).map((entry) => [entry.node, entry])), ids: new Map(), owned: new Set(), undrawn: [], boxes: 0, inline: false };
+  const ctx = { mount, view: snapshot.view, a11y: new Map((snapshot.a11y ?? []).map((entry) => [entry.node, entry])), ids: new Map(), owned: new Set(), undrawn: [], boxes: 0, inline: false, was };
   let fresh = snapshot.view?.root ? node(snapshot.view.root, ctx, "root") : text("undrawn", snapshot.degraded ? "This view does not fit this client." : "");
   if (snapshot.drawing) {
     // The drawing fills the node it names; without one, or when that node is a control, it follows the view.
@@ -290,7 +321,10 @@ function draw(key, snapshot, held) {
     const old = was.get(id);
     if (old && old !== el && typed(el) && old.tagName === el.tagName && (el.view.value ?? "") === (old.view.value ?? "")) el.value = old.value;
   }
-  const actions = JSON.stringify((snapshot.intents ?? []).filter((decl) => !decl.nodeKey));
+  // The mount's own intents are buttons in its header, but for the ones a binding or a region of the drawing raises:
+  // those have their own trigger, which gives them their argument.
+  const triggered = new Set([...(snapshot.bindings ?? []), ...(snapshot.drawing?.regions ?? [])].map((trigger) => trigger.intent));
+  const actions = JSON.stringify((snapshot.intents ?? []).filter((decl) => !decl.nodeKey && !triggered.has(decl.name)));
   if (actions !== mount.actions) {
     mount.actions = actions;
     mount.head.replaceChildren(mount.head.firstChild);
@@ -304,6 +338,7 @@ function draw(key, snapshot, held) {
       mount.head.append(button);
     }
   }
+  hints(mount, snapshot.bindings ?? []);
   if (!held) document.querySelector(`section[data-slot="${snapshot.slot}"]`).append(mount.element);
   mounts.set(key, mount);
   present(mount);
@@ -325,6 +360,60 @@ function draw(key, snapshot, held) {
 function words(name) {
   const verb = name.slice(name.lastIndexOf(".") + 1).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[-_]+/g, " ").trim().toLowerCase();
   return verb ? verb[0].toUpperCase() + verb.slice(1) : name;
+}
+
+// A key id of a binding (coding/uiview/bindings.go): `shift`, `ctrl` and `alt` in any order, each followed by `+`,
+// then the base key: a letter, a digit, a named key or a symbol named by the character it produces.
+function parseKey(id) {
+  const key = { shift: false, ctrl: false, alt: false };
+  let base = id;
+  for (let m; (m = /^(shift|ctrl|alt)\+(?=.)/.exec(base)); base = base.slice(m[0].length)) key[m[1]] = true;
+  return { ...key, base };
+}
+
+const KEY_NAMES = { Enter: "enter", " ": "space", Backspace: "backspace", Delete: "delete", Insert: "insert", Home: "home", End: "end", PageUp: "pageUp", PageDown: "pageDown", ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
+
+// bound finds the mount's key binding for a key event, comparing keys parsed. Shift is part of the id of a letter, a
+// digit and a named key; a symbol is named by the character, whatever keys produced it.
+function bound(mount, event) {
+  const base = KEY_NAMES[event.key] ?? (/^F\d{1,2}$/.test(event.key) ? event.key.toLowerCase() : event.key.length === 1 ? event.key.toLowerCase() : "");
+  if (!base || event.metaKey) return undefined;
+  const shifted = base.length > 1 || /^[a-z0-9]$/.test(base);
+  return (mount.keys ?? []).find((key) => key.base === base && key.ctrl === event.ctrlKey && key.alt === event.altKey && (!shifted || key.shift === event.shiftKey));
+}
+
+// hints draws the mount's bindings: a key binding with a name is a button that shows its key and fires it, in a row
+// under the view; one without a name only has its key. A mount with a key binding can hold the focus as a whole. The
+// page reports no swipes, so it tells the extension of each gesture binding that it does not honour it.
+function hints(mount, bindings) {
+  const shown = JSON.stringify(bindings);
+  if (shown === mount.bound) return;
+  mount.bound = shown;
+  mount.keys = bindings.flatMap((binding, i) => (binding.key ? [{ ...parseKey(binding.key), i }] : []));
+  mount.hints.replaceChildren();
+  bindings.forEach((binding, i) => {
+    if (!binding.key) return report(mount, `bindings[${i}]`, "this client reports no swipes", "unsupported", "info");
+    if (!binding.name) return;
+    const key = parseKey(binding.key);
+    const parts = [key.ctrl && "Ctrl", key.alt && "Alt", key.shift && "Shift", key.base.length === 1 ? key.base.toUpperCase() : key.base[0].toUpperCase() + key.base.slice(1)].filter(Boolean);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.act = "binding";
+    button.dataset.binding = String(i);
+    button.setAttribute("aria-keyshortcuts", parts.map((part) => (part === "Ctrl" ? "Control" : part)).join("+"));
+    button.append(text("", binding.name, "span"), text("", parts.join("+"), "kbd"));
+    mount.hints.append(button);
+  });
+  mount.hints.hidden = mount.hints.children.length === 0;
+  if (mount.keys.length) mount.body.tabIndex = 0;
+  else mount.body.removeAttribute("tabindex");
+}
+
+// fireBinding raises a binding's intent with its constant argument, or {} when it has none.
+function fireBinding(mount, i) {
+  const binding = (mount.snapshot.bindings ?? [])[i];
+  const decl = binding && (mount.snapshot.intents ?? []).find((d) => !d.nodeKey && d.name === binding.intent);
+  if (decl) raise(mount, decl, "", undefined, undefined, { arg: binding.arg ?? {} });
 }
 
 // typed: the element takes text the user types (an input or an editor node).
@@ -561,10 +650,17 @@ function node(n, ctx, path) {
       ctx.owned.add(n.id);
       el = listbox(n, ctx.mount, role === "tablist");
       break;
+    case "grid":
+      ctx.owned.add(n.id);
+      el = grid(n, ctx);
+      break;
     case "input":
       ctx.owned.add(n.id);
       el = document.createElement("input");
       el.type = "text";
+      // What is typed here is the extension's data (a name, a place), not prose: the browser neither corrects nor offers it.
+      el.spellcheck = false;
+      el.autocomplete = "off";
       el.value = n.value ?? "";
       el.placeholder = n.placeholder ?? "";
       el.dataset.act = "submit";
@@ -663,7 +759,7 @@ function lines(n, ctx) {
 // tablist: the arrow keys move the selection, Enter or a click activates it. A settings-list item steps through its
 // values. What is selected, and a setting's current value, are kept on the options themselves.
 function listbox(n, mount, tabs) {
-  const el = text(tabs ? "list tabs" : "list", "");
+  const el = text(tabs ? "list tabs" : n.kind === "settings-list" ? "list settings" : "list", "");
   el.setAttribute("role", tabs ? "tablist" : "listbox");
   el.tabIndex = 0;
   el.dataset.act = "list";
@@ -680,6 +776,58 @@ function listbox(n, mount, tabs) {
   });
   if (items.length) el.setAttribute("aria-activedescendant", `${mount.prefix}${n.id}-${selected}`);
   return el;
+}
+
+// grid draws a grid node: equal columns, an optional row of column heads, and cells of data. A cell shows its label,
+// at most `chipRows` chips and a line that counts the rest; a cell with a value can be chosen, with the arrow keys and
+// Enter or with a click, which raises the grid's intent with that value, as a select-list does for an item. The
+// cursor is the user's while the view keeps naming the same cell: an update that does not move `selected` leaves it.
+function grid(n, ctx) {
+  const el = text("grid", "");
+  el.setAttribute("role", "grid");
+  el.tabIndex = 0;
+  el.dataset.act = "grid";
+  el.style.gridTemplateColumns = `repeat(${n.columns}, minmax(0, 1fr))`;
+  const row = () => {
+    const line = el.appendChild(text("", "", "div"));
+    line.setAttribute("role", "row");
+    return line;
+  };
+  if (n.head?.length) {
+    const head = row();
+    for (const label of n.head) head.appendChild(text("", label, "div")).setAttribute("role", "columnheader");
+  }
+  const cells = n.cells ?? [];
+  const before = ctx.was.get(n.id);
+  const kept = before?.view?.kind === "grid" && before.view.selected === n.selected ? before.querySelector('[aria-selected="true"]')?.dataset.value : undefined;
+  const cursor = cells.some((cell) => cell.value && cell.value === kept) ? kept : (n.selected ?? cells.find((cell) => cell.value)?.value);
+  for (let at = 0; at < cells.length; at += n.columns) {
+    const line = row();
+    cells.slice(at, at + n.columns).forEach((cell, i) => {
+      const box = line.appendChild(text(cell.dim ? "dim" : "", "", "div"));
+      box.setAttribute("role", "gridcell");
+      box.id = `${ctx.mount.prefix}${n.id}-${at + i}`;
+      if (cell.value) {
+        box.dataset.act = "cell";
+        box.dataset.value = cell.value;
+        box.setAttribute("aria-selected", String(cell.value === cursor));
+        if (cell.value === cursor) el.setAttribute("aria-activedescendant", box.id);
+      }
+      if (cell.mark === "current") box.setAttribute("aria-current", "date");
+      box.appendChild(text("label", cell.label ?? "", "span")).style.color = colour(cell.color);
+      const chips = cell.chips ?? [];
+      for (const chip of chips.slice(0, n.chipRows ?? 3)) box.appendChild(text("chip", chip.text ?? "", "span")).style.borderColor = colour(chip.color);
+      const left = Math.max(chips.length - (n.chipRows ?? 3), 0) + (cell.more ?? 0);
+      if (left > 0) box.append(text("more", `+${left} more`, "span"));
+    });
+  }
+  return el;
+}
+
+// point moves a grid's cursor to a cell.
+function point(gridEl, cell) {
+  for (const other of gridEl.querySelectorAll("[aria-selected]")) other.setAttribute("aria-selected", String(other === cell));
+  gridEl.setAttribute("aria-activedescendant", cell.id);
 }
 
 const cursor = (list) => [...list.children].findIndex((option) => option.getAttribute("aria-selected") === "true");
@@ -721,6 +869,15 @@ function onClick(mount, event) {
       choose(at.parentElement, [...at.parentElement.children].indexOf(at));
       fire(mount, at.parentElement);
       break;
+    case "cell": {
+      const owner = at.closest("[data-act=grid]");
+      point(owner, at);
+      activate(mount, owner.dataset.node, at.dataset.value);
+      break;
+    }
+    case "binding":
+      fireBinding(mount, Number(at.dataset.binding));
+      break;
     case "intent": {
       const decl = (mount.snapshot.intents ?? []).find((d) => !d.nodeKey && d.name === at.dataset.intent);
       if (decl) raise(mount, decl, "", undefined);
@@ -735,19 +892,30 @@ function onClick(mount, event) {
 
 const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
-// onKey is the one key listener of a mount, for the keys a native control does not handle by itself: the arrows and
-// Enter of a list, Enter of an input, Ctrl+Enter of an editor, Enter and Space of a region that is not a button, the
-// keys of a drawing's region, and Escape, which cancels the mount's cancellable intent in flight.
+// onKey is the one key listener of a mount. The focused control gets the key first (control); a key it does not take
+// fires the mount's binding of that key. Escape is neither: it never closes a dialog mount, and it cancels the
+// mount's cancellable intent in flight.
 function onKey(mount, event) {
-  const { key } = event;
-  if (key === "Escape") {
-    // Escape never closes a dialog mount: the mount is the extension's.
+  if (event.key === "Escape") {
     if (mount.floating) event.preventDefault();
     return void mount.cancel?.();
   }
-  const at = event.target.closest?.("[data-act]");
-  if (!at || !mount.element.contains(at) || at.getAttribute("aria-disabled") === "true") return;
+  if (control(mount, event)) return;
+  const hit = bound(mount, event);
+  if (!hit) return;
+  event.preventDefault();
+  fireBinding(mount, hit.i);
+}
+
+// control gives a key to the control that holds the focus and reports whether the control took it. A native control
+// handles its own keys (a button and a checkbox Enter and Space, a text field what is typed); the page handles the
+// arrows and Enter of a list and a grid, Enter of an input, Ctrl+Enter of an editor, Enter and Space of a region that
+// is not a button, and the keys of a drawing's region.
+function control(mount, event) {
+  const { key } = event;
   const press = key === "Enter" || key === " ";
+  const at = event.target.closest?.("[data-act]");
+  if (!at || !mount.element.contains(at) || at.getAttribute("aria-disabled") === "true") return false;
   switch (at.dataset.act) {
     case "list": {
       const count = at.children.length;
@@ -760,26 +928,45 @@ function onKey(mount, event) {
         event.preventDefault();
         fire(mount, at);
       }
-      break;
+      return Boolean(move) || key === "Enter";
+    }
+    case "grid": {
+      const cells = [...at.querySelectorAll("[role=gridcell]")];
+      const from = cells.findIndex((cell) => cell.getAttribute("aria-selected") === "true");
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -at.view.columns, ArrowDown: at.view.columns }[key];
+      if (step) {
+        event.preventDefault();
+        let to = from < 0 ? cells.findIndex((cell) => cell.dataset.value) : from + step;
+        // Along a row the cursor passes over a cell that cannot be chosen.
+        while (Math.abs(step) === 1 && cells[to] && !cells[to].dataset.value) to += step;
+        if (cells[to]?.dataset.value) point(at, cells[to]);
+      } else if (press && cells[from]) {
+        event.preventDefault();
+        activate(mount, at.dataset.node, cells[from].dataset.value);
+      }
+      return Boolean(step) || press;
     }
     case "submit":
       if (key === "Enter" && (at.tagName === "INPUT" || event.ctrlKey || event.metaKey)) activate(mount, at.dataset.node, at.value);
-      break;
+      // A text field takes what is typed into it; a key held with Ctrl or Alt and a function key are not typing.
+      return !(event.ctrlKey || event.altKey || /^F\d/.test(key)) || key === "Enter";
     case "node":
       // A button and a checkbox click themselves on Enter and Space.
       if (press && at.tagName !== "BUTTON" && at.tagName !== "INPUT") {
         event.preventDefault();
         activate(mount, at.dataset.node, undefined);
       }
-      break;
+      return press;
+    case "intent": case "binding":
+      return press;
     case "region": {
       const box = at.getBBox();
       const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-      const arrow = ARROWS[key];
+      const arrow = wants(mount, at.dataset.region, "drag") ? ARROWS[key] : undefined;
       if (press) {
         event.preventDefault();
         gesture(mount, at.dataset.region, "activate", centre, undefined, event.timeStamp);
-      } else if (arrow && wants(mount, at.dataset.region, "drag")) {
+      } else if (arrow) {
         // The keyboard's drag: an eighth of the drawing's viewport in the arrow's direction, then the release.
         event.preventDefault();
         const view = at.ownerSVGElement.viewBox.baseVal;
@@ -787,9 +974,10 @@ function onKey(mount, event) {
         gesture(mount, at.dataset.region, "drag", centre, by, event.timeStamp);
         gesture(mount, at.dataset.region, "release", centre);
       }
-      break;
+      return press || Boolean(arrow);
     }
   }
+  return false;
 }
 
 // A drawing (D614): a scene of vector shapes, or a pixel grid over an image asset, drawn as one SVG element, and the
@@ -1082,10 +1270,10 @@ function ask(mount, decl) {
   });
 }
 
-// raise sends one intent and shows how it settled in the mount's status line. A gesture of a drawing other than
+// raise sends one intent and shows how it settled in the mount's status line. A binding gives the argument itself. A gesture of a drawing other than
 // activate is quiet: it writes the line only when it did not settle done (or stale, which the next gesture repairs).
-async function raise(mount, decl, nodeKey, value, item, { extra, quiet = false, since } = {}) {
-  let arg = argument(decl.arg, value, item, extra);
+async function raise(mount, decl, nodeKey, value, item, { extra, quiet = false, since, arg: constant } = {}) {
+  let arg = constant ?? argument(decl.arg, value, item, extra);
   if (arg === undefined) arg = await ask(mount, decl);
   const { key, epoch, rev } = mount.snapshot.mount;
   const id = `w${++nextId}`;
@@ -1150,23 +1338,26 @@ function applyA11y(snapshot, ctx, prefix) {
   }
 }
 
-// applyFocus moves the focus where the snapshot asks: on a new mount to the node that requests it, and on an update
+// applyFocus moves the focus where the snapshot asks: to the node whose focus record requests it, and on an update
 // to the node the view's `focus` member names when that member changed and the focus is inside the mount. The order
 // of the focus records is the tab order (draw).
 function applyFocus(mount, isNew, before) {
   const order = mount.snapshot.focus ?? [];
-  const asked = order.find((entry) => entry.request === "mount");
-  if (isNew && asked) mount.ids.get(asked.node)?.focus();
+  // A record asks for the focus when the mount is new (`mount`) or with an update (`update`). The page gives it unless
+  // the user is typing elsewhere, and then says so; a dialog mount has said so as it opened (present).
+  const asked = order.find((entry) => entry.request === (isNew ? "mount" : "update"));
+  if (asked && !busy(mount.element)) mount.ids.get(asked.node)?.focus();
+  else if (asked && !mount.floating) report(mount, "focus", "a text field holds text", "unfocused", "info");
   const lead = mount.snapshot.view?.focus;
   if (!isNew && lead && lead !== before?.view?.focus && mount.element.contains(document.activeElement)) mount.ids.get(lead)?.focus();
   const restore = order.find((entry) => entry.restore);
   if (restore?.restore === "self") mount.restore = undefined;
 }
 
-function report(mount, path, message) {
+function report(mount, path, message, code = "undrawn", severity = "warning") {
   window.uiView.reports++;
   const { key, epoch } = mount.snapshot.mount;
-  request({ type: "ui_view_report", attachment, plugin: mount.snapshot.plugin, mount: { key, epoch }, notice: { code: "undrawn", severity: "warning", path, message } });
+  request({ type: "ui_view_report", attachment, plugin: mount.snapshot.plugin, mount: { key, epoch }, notice: { code, severity, path, message } });
 }
 
 document.getElementById("prompt").addEventListener("submit", (event) => {
@@ -1205,6 +1396,8 @@ source.addEventListener("endpoint", (event) => {
     form.hidden = true;
     for (const control of form.elements) control.disabled = true;
     document.getElementById("attached").hidden = false;
+    // The page has no chat of its own: the session's panels take it (index.html, body.attached).
+    document.body.classList.add("attached");
   }
   state.textContent = JSON.parse(event.data).reason;
 });

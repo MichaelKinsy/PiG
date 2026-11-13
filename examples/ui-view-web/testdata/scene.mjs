@@ -40,11 +40,12 @@ export default function scene(pi) {
         { kind: "rect", key: "land", x: 0, y: 0, width: 960, height: 640, radius: 8, fill: "#e8e4d8" },
         { kind: "group", key: "roads", transform: [model.zoom, 0, 0, model.zoom, model.x, model.y], children: roads() },
         { kind: "path", key: "route", commands: [{ op: "move", x: 100, y: 500 }, { op: "line", x: 300, y: 420 }, { op: "quad", x1: 400, y1: 380, x: 480, y: 320 }, { op: "cubic", x1: 520, y1: 300, x2: 560, y2: 280, x: 600, y: 300 }, { op: "close" }], stroke: { color: "success", width: 3 }, opacity: 0.8 },
-        { kind: "line", key: "scale", x1: 40, y1: 600, x2: 140, y2: 600, stroke: { color: "text", width: 2 } },
+        { kind: "line", key: "scale", x1: 40, y1: 600, x2: 140, y2: 600, stroke: { color: "#3a3f47", width: 2 } },
         { kind: "polyline", key: "park", closed: true, points: [{ x: 700, y: 100 }, { x: 800, y: 100 }, { x: 760, y: 180 }], fill: "#b7d9a8" },
         { kind: "ellipse", key: "pin", cx: 480 + model.x, cy: 320 + model.y, rx: 8, ry: 8, fill: "accent", stroke: { color: "#ffffff", width: 2 } },
-        { kind: "text", key: "label", x: 480 + model.x, y: 300 + model.y, text: "Harbour", size: 14, align: "center", fill: "text" },
-        { kind: "text", key: "credit", x: 950, y: 630, text: "© OpenStreetMap contributors", size: 11, align: "end" },
+        { kind: "text", key: "label", x: 480 + model.x, y: 300 + model.y, text: "Harbour", size: 14, align: "center", fill: "#1a1d21" },
+        { kind: "group", key: "zoom-face", children: [{ kind: "rect", x: 900, y: 20, width: 40, height: 40, radius: 6, fill: "#ffffff", stroke: { color: "#c9ced6", width: 1 } }, { kind: "text", x: 920, y: 48, text: "+", size: 24, align: "center", fill: "#1a1d21" }] },
+        { kind: "text", key: "credit", x: 950, y: 630, text: "© OpenStreetMap contributors", size: 11, align: "end", fill: "#5a6270" },
       ],
       regions: [
         { key: "surface", shape: { kind: "rect", x: 0, y: 0, width: 960, height: 640 }, gestures: ["activate", "drag", "release"], intent: "scene.touch", name: "Map", role: "group" },
@@ -65,7 +66,7 @@ export default function scene(pi) {
     handler: async (args, ctx) => {
       try {
         model.points = Number(args.trim().split(/\s+/)[1] ?? 0);
-        mount = (await ctx.ui.mountView({ key: "scene", slot: "panel", ...content() })).mount;
+        mount = (await ctx.ui.mountView({ key: "scene", slot: "panel", title: "Harbour", ...content() })).mount;
       } catch (err) {
         ctx.ui.notify(`scene: ${err.code ?? err.message}`, "error");
       }

@@ -72,6 +72,8 @@
   dialog.mount::backdrop { background: rgb(0 0 0 / 45%); }
   dialog.mount:not([open]) { display: none; }
   section[data-slot=overlay] dialog.mount { position: fixed; inset: 15% 0 auto 0; margin: 0 auto; z-index: 2; }
+  /* A dialog mount that opened without the focus stands where the modal one does, without its backdrop. */
+  section[data-slot=dialog] dialog.mount:not(:modal) { position: fixed; inset: 0; margin: auto; height: fit-content; z-index: 2; }
   section[data-slot=notify] { position: fixed; top: calc(2 * var(--view-space)); right: calc(2 * var(--view-space)); width: 20rem; z-index: 3; }
 
   /* The panels stand beside the chat: side by side, or one at a time under their tabs (client.js: showPanels). */
@@ -81,6 +83,10 @@
   #panels > section { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
   #panels .mount { flex: 1 1 12rem; min-width: 0; }
   #panels .mount.behind { display: none; }
+  /* A page beside a running session (bridge.mjs --connect) has no chat: the panels take the page and the rest follows them. */
+  body.attached { flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; min-height: 100vh; }
+  body.attached #panels { flex: 1 1 auto; }
+  body.attached main { order: 1; flex: none; max-width: none; min-height: 0; }
 
   /* Controls: one height, one radius, one set of states. */
   button, input, textarea, select { font: inherit; color: inherit; }
@@ -142,9 +148,32 @@
   [role=option]:hover { background: var(--view-surface-2); }
   [role=option] small, [role=tab] small { margin-inline-start: auto; font-size: var(--view-text-sm); color: var(--view-fg-muted); }
   [role=option][aria-selected=true] { background: var(--pig-selectedBg); box-shadow: inset 2px 0 0 var(--view-accent); }
+  /* An item of a select-list: its description is a second line under its label. A setting's value stands at the row's end. */
+  .list:not(.settings, .tabs) [role=option] { flex-direction: column; align-items: stretch; justify-content: center; gap: 0; padding-block: var(--view-space); }
+  .list:not(.settings, .tabs) [role=option] small { margin: 0; }
+  .list small:empty { display: none; }
+  .list [role=option] span, .list [role=option] small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .list.tabs { flex-direction: row; flex-wrap: wrap; gap: calc(var(--view-space) / 2); border: 0; background: none; overflow: visible; }
   .list.tabs [role=tab] { display: flex; align-items: center; gap: var(--view-space); }
   .list.tabs small:empty { display: none; }
+  /* A grid: equal columns of cells, hairlines between them. */
+  .grid { display: grid; gap: 1px; background: var(--view-border); border: 1px solid var(--view-border); border-radius: var(--view-radius); overflow: hidden; }
+  .grid [role=row] { display: contents; }
+  .grid [role=columnheader] { background: var(--view-surface-2); color: var(--view-fg-muted); font-size: var(--view-text-sm); text-align: center; padding: calc(var(--view-space) / 2) var(--view-space); }
+  .grid [role=gridcell] { background: var(--view-surface); min-width: 0; min-height: calc(9 * var(--view-space)); padding: calc(var(--view-space) / 2) var(--view-space); display: flex; flex-direction: column; gap: 2px; transition: background-color var(--view-motion), box-shadow var(--view-motion); }
+  .grid [role=gridcell][data-act] { cursor: pointer; }
+  .grid [role=gridcell][data-act]:hover { background: var(--view-surface-2); }
+  .grid [role=gridcell][aria-selected=true] { background: var(--pig-selectedBg); box-shadow: inset 0 0 0 2px var(--view-accent); }
+  .grid .label { align-self: flex-start; font-size: var(--view-text-sm); font-variant-numeric: tabular-nums; border-radius: 10px; padding: 0 6px; }
+  .grid [aria-current] .label { background: var(--view-accent); color: var(--view-on-accent) !important; }
+  .grid .dim .label, .grid .more { color: var(--view-fg-muted); }
+  .grid .chip { font-size: var(--view-text-sm); line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--view-surface-2); border-inline-start: 3px solid var(--view-accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grid .more { font-size: var(--view-text-sm); }
+  /* The mount's named key bindings: buttons that show their key. */
+  .hints { display: flex; flex-wrap: wrap; gap: var(--view-space); margin-top: var(--view-space); }
+  .hints button { display: inline-flex; align-items: center; gap: var(--view-space); }
+  kbd { font: 12px/16px var(--view-font-mono); min-width: 20px; text-align: center; padding: 0 4px; border: 1px solid var(--view-border); border-bottom-width: 2px; border-radius: 4px; background: var(--view-surface-2); color: var(--view-fg-muted); }
+  .view:focus-visible { border-radius: var(--view-radius-sm); }
   button.mouse-region { display: inline-flex; align-items: center; justify-content: center; gap: var(--view-space); }
   div.mouse-region { cursor: pointer; border-radius: var(--view-radius-sm); }
   .check { display: inline-flex; align-items: center; gap: var(--view-space); min-height: var(--view-control); cursor: pointer; }
@@ -172,6 +201,7 @@
   .drawing [data-k] { transition: transform var(--view-motion), opacity var(--view-motion), x var(--view-motion), y var(--view-motion), cx var(--view-motion), cy var(--view-motion), fill var(--view-motion), stroke var(--view-motion); }
   .dragging .drawing [data-k] { transition: none; }
   .drawing .region { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; transition: none; }
+  .drawing .region[role=button]:hover { fill: var(--view-focus); fill-opacity: .16; }
   .drawing .region:focus-visible { outline: none; stroke: var(--view-focus); stroke-width: 2px; vector-effect: non-scaling-stroke; }
   form.arg { display: flex; flex-wrap: wrap; gap: var(--view-space); align-items: center; margin-top: var(--view-space); }
   form.arg label { display: inline-flex; gap: var(--view-space); align-items: center; }

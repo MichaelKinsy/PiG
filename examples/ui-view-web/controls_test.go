@@ -37,7 +37,10 @@ const (
 func press(t *testing.T, browser *browsertest.Browser, key string, modifiers int) {
 	t.Helper()
 	k, ok := keys[key]
-	if !ok {
+	if !ok && len(key) == 1 {
+		// A character key: it types itself.
+		k.code, k.vk, k.text = "Key"+strings.ToUpper(key), int(strings.ToUpper(key)[0]), key
+	} else if !ok {
 		t.Fatalf("press: no key %q", key)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -498,19 +501,20 @@ func TestPageDrawsASceneAndItsRegions(t *testing.T) {
 		return JSON.stringify({
 			inside: svg.parentElement.dataset.node + "/" + svg.parentElement.children.length,
 			box: svg.getAttribute("viewBox") + " " + svg.getAttribute("preserveAspectRatio") + " " + (Math.abs(svg.clientWidth / svg.clientHeight - 1.5) < 0.02),
-			kinds: ["land", "roads", "road-0", "route", "scale", "park", "pin", "label"].map((key) => k(key).tagName).join(),
+			kinds: ["land", "roads", "road-0", "route", "scale", "park", "pin", "label", "zoom-face"].map((key) => k(key).tagName).join(),
 			points: [...svg.querySelectorAll("polyline")].reduce((n, p) => n + p.points.length, 0),
 			route: k("route").getAttribute("d") + " " + k("route").getAttribute("opacity"),
 			roads: k("roads").getAttribute("transform"),
 			colours: [fill("land"), fill("pin") === accent, getComputedStyle(k("pin")).stroke, getComputedStyle(k("route")).fill, fill("park")].join(" "),
 			label: k("label").textContent + " " + k("label").getAttribute("text-anchor") + " " + k("label").getAttribute("font-size"),
 			regions: [...svg.querySelectorAll(".region")].map((r) => [r.tagName, r.getAttribute("role"), r.getAttribute("aria-label"), r.tabIndex, r.querySelector("title").textContent].join("/")).join(),
-			text: svg.querySelector("text:last-of-type").textContent,
+			text: k("credit").textContent,
+			actions: document.querySelectorAll('[data-key="scene"] header button').length,
 		}); })()`)
-	want := `{"inside":"map/1","box":"0 0 960 640 xMidYMid meet true","kinds":"rect,g,polyline,path,line,polygon,ellipse,text","points":5000,` +
+	want := `{"inside":"map/1","box":"0 0 960 640 xMidYMid meet true","kinds":"rect,g,polyline,path,line,polygon,ellipse,text,g","points":5000,` +
 		`"route":"M100 500L300 420Q400 380 480 320C520 300 560 280 600 300Z 0.8","roads":"matrix(1 0 0 1 0 0)",` +
 		`"colours":"rgb(232, 228, 216) true rgb(255, 255, 255) none rgb(183, 217, 168)","label":"Harbour middle 14",` +
-		`"regions":"rect/group/Map/0/Map,rect/button/Zoom in/0/Zoom in,ellipse/button/Harbour/0/Harbour","text":"© OpenStreetMap contributors"}`
+		`"regions":"rect/group/Map/0/Map,rect/button/Zoom in/0/Zoom in,ellipse/button/Harbour/0/Harbour","text":"© OpenStreetMap contributors","actions":0}`
 	if got != want {
 		t.Errorf("the scene is drawn as\n  %s\nwant\n  %s", got, want)
 	}
@@ -629,5 +633,137 @@ func TestPageDrawsADialogMountAsADialog(t *testing.T) {
 	browser.Wait(`!document.querySelector('[data-key="fx-a"]').hidden`)
 	if got, want := browser.String(state), "DIALOG,true,true,fixture-a / fx-a,"; !strings.HasPrefix(got, want) {
 		t.Errorf("shown again, the dialog mount is %s, want %s and the focus inside it", got, want)
+	}
+}
+
+// TestPageDialogTakesNoFocusFromTypedText: a dialog mount that arrives while the user is typing in a text field takes
+// no focus from it. It opens without being modal, the page reports `unfocused`, and it becomes modal when the user
+// enters it.
+func TestPageDialogTakesNoFocusFromTypedText(t *testing.T) {
+	browser, _ := openFixtures(t)
+	// A page that is not the focused window is sent no focus event; the test's page is told it is.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if _, err := browser.Call(ctx, "Emulation.setFocusEmulationEnabled", map[string]any{"enabled": true}); err != nil {
+		t.Fatal(err)
+	}
+	browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.value = '/fx-b mount {"slot":"dialog","view":{"root":{"kind":"input","id":"name","value":""}},"focus":[{"node":"name","request":"mount"}]}';
+		form.requestSubmit(); form.elements.message.value = "half a thought"; form.elements.message.focus(); })()`)
+	browser.Wait(`document.querySelector('[data-key="fx-b"]') !== null`)
+	state := `(() => { const el = document.querySelector('[data-key="fx-b"]'); return [el.open, el.matches(":modal"), document.activeElement.name ?? document.activeElement.dataset.node, document.getElementById("prompt").elements.message.value, window.uiView.reports].join(); })()`
+	if got, want := browser.String(state), "true,false,message,half a thought,1"; got != want {
+		t.Errorf("the dialog that arrived while the user typed is %s, want %s", got, want)
+	}
+	browser.Run(`document.querySelector('[data-key="fx-b"] input').focus()`)
+	if got, want := browser.String(state), "true,true,,half a thought,1"; got != want {
+		t.Errorf("entered, the dialog is %s, want %s", got, want)
+	}
+	if got := browser.String(`document.activeElement.dataset.node`); got != "name" {
+		t.Errorf("the focus is on %q, want the dialog's input", got)
+	}
+}
+
+// TestPageLabelsAMountAndFiresItsBindings: a mount is labelled with its title. A key binding with a name is a button
+// that shows its key; a key binding fires while the focus is inside its mount and the focused control did not take
+// the key, with the binding's argument or {}; outside the mount it fires nothing. A bound intent is not also a header
+// button, and the page reports the gesture binding it cannot honour.
+func TestPageLabelsAMountAndFiresItsBindings(t *testing.T) {
+	browser, send := openFixtures(t)
+	intent := func(name, arg string) string {
+		return `{"name":"fx.` + name + `","arg":` + arg + `,"timeoutMs":100}`
+	}
+	send(`/fx-a mount {"title":"Day plan","view":{"root":{"kind":"vstack","children":[{"kind":"text","text":"Today"},{"kind":"input","id":"q","value":""}]}},` +
+		`"intents":[` + intent("close", `{"type":"object"}`) + `,` + intent("save", `{"type":"object","properties":{"how":{"type":"string"}}}`) + `,` + intent("help", `{"type":"object"}`) + `,` + intent("more", `{"type":"object"}`) + `],` +
+		`"bindings":[{"key":"q","intent":"fx.close","name":"Close"},{"key":"ctrl+s","intent":"fx.save","arg":{"how":"draft"},"name":"Save draft"},{"key":"?","intent":"fx.help"},{"gesture":"swipe-left","intent":"fx.close"}]}`)
+	browser.Wait(at("q") + ` !== null`)
+	browser.Run(recordFrames)
+	got := browser.String(`(() => { const m = document.querySelector('[data-key="fx-a"]'); return JSON.stringify({
+		tab: document.querySelector("[role=tab]").textContent, caption: m.querySelector("header span").textContent,
+		hints: [...m.querySelectorAll(".hints button")].map((b) => [b.firstChild.textContent, b.querySelector("kbd").textContent, b.getAttribute("aria-keyshortcuts")].join("|")).join(),
+		toolbar: m.querySelector(".hints").getAttribute("role"), header: [...m.querySelectorAll("header button")].map((b) => b.textContent).join(),
+		whole: m.querySelector(".view").tabIndex, reports: window.uiView.reports }); })()`)
+	if want := `{"tab":"Day plan","caption":"Day plan","hints":"Close|Q|Q,Save draft|Ctrl+S|Control+S","toolbar":"toolbar","header":"More","whole":0,"reports":1}`; got != want {
+		t.Errorf("the mount with a title and bindings is\n  %s\nwant\n  %s", got, want)
+	}
+	sent := 0
+	raised := func() {
+		t.Helper()
+		sent++
+		browser.Wait(`window.frames.length === ` + strconv.Itoa(sent))
+	}
+	browser.Run(`document.querySelector('[data-key="fx-a"] .view').focus()`)
+	press(t, browser, "q", 0)
+	raised() // fx.close {}
+	press(t, browser, "?", modShift)
+	raised() // fx.help {}
+	browser.Run(at("q") + `.focus()`)
+	press(t, browser, "q", 0) // typed into the input
+	press(t, browser, "s", modCtrl)
+	raised() // fx.save {"how":"draft"}
+	browser.Run(`document.querySelector('[data-key="fx-a"] .hints button').click()`)
+	raised() // fx.close {}
+	browser.Run(`document.getElementById("prompt").elements.message.focus()`)
+	press(t, browser, "q", 0) // outside the mount
+	got = browser.String(`JSON.stringify([window.frames.map((f) => { f = JSON.parse(f); return [f.intent, f.nodeKey ?? "", JSON.stringify(f.arg)].join(" "); }), ` + at("q") + `.value, document.getElementById("prompt").elements.message.value])`)
+	if want := `[["fx.close  {}","fx.help  {}","fx.save  {\"how\":\"draft\"}","fx.close  {}"],"q","q"]`; got != want {
+		t.Errorf("the bindings raised, and the fields hold,\n  %s\nwant\n  %s", got, want)
+	}
+}
+
+// TestPageDrawsAGrid: a grid node is a grid of equal columns with its head, its cells, at most chipRows chips in a
+// cell and a line that counts the rest. A cell with a value is chosen with the arrow keys and Enter or with a click,
+// which raises the grid's intent with the cell's value; an update that keeps `selected` keeps the user's cursor and
+// every element.
+func TestPageDrawsAGrid(t *testing.T) {
+	browser, send := openFixtures(t)
+	content := func(first, selected string) string {
+		return `{"view":{"root":{"kind":"grid","id":"cal","columns":3,"head":["Mon","Tue","Wed"],"chipRows":2,"selected":"` + selected + `","cells":[` +
+			`{"value":"d1","label":"` + first + `","chips":[{"text":"Standup","color":"#2e9e4f"}]},` +
+			`{"value":"d2","label":"2","mark":"current","chips":[{"text":"Review"},{"text":"Lunch"},{"text":"Call"}],"more":1},` +
+			`{"label":"3","dim":true},{"value":"d4","label":"4","color":"accent"},{"value":"d5","label":"5"}]}},` +
+			`"intents":[{"name":"fx.day","nodeKey":"cal","arg":{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]},"timeoutMs":100}],"a11y":[{"node":"cal","name":"June"}]}`
+	}
+	send(`/fx-a mount ` + content("1", "d2"))
+	browser.Wait(at("cal") + ` !== null`)
+	browser.Run(recordFrames)
+	state := `(() => { const g = ` + at("cal") + `, cells = [...g.querySelectorAll("[role=gridcell]")], rect = (el) => el.getBoundingClientRect();
+		return JSON.stringify({ role: g.getAttribute("role") + "/" + g.getAttribute("aria-label"), rows: g.querySelectorAll("[role=row]").length, head: [...g.querySelectorAll("[role=columnheader]")].map((h) => h.textContent).join(),
+			columns: getComputedStyle(g).gridTemplateColumns.split(" ").length + "/" + (Math.abs(rect(cells[0]).width - rect(cells[2]).width) < 1 && rect(cells[3]).top > rect(cells[0]).top),
+			cells: cells.map((c) => [...c.children].map((s) => s.textContent).join("|") + (c.getAttribute("aria-selected") === "true" ? "*" : "") + (c.getAttribute("aria-current") ? "@" : "") + (c.dataset.value ? "" : "-")).join(","),
+			chip: getComputedStyle(cells[0].querySelector(".chip")).borderLeftColor, cursor: document.getElementById(g.getAttribute("aria-activedescendant")).dataset.value }); })()`
+	if got, want := browser.String(state), `{"role":"grid/June","rows":3,"head":"Mon,Tue,Wed","columns":"3/true","cells":"1|Standup,2|Review|Lunch|+2 more*@,3-,4,5","chip":"rgb(46, 158, 79)","cursor":"d2"}`; got != want {
+		t.Errorf("the grid is\n  %s\nwant\n  %s", got, want)
+	}
+	if lines := strings.Join(accessible(t, browser, "grid", "columnheader", "gridcell"), "\n"); !strings.Contains(lines, `grid "June"`) || strings.Count(lines, "columnheader ") != 3 || strings.Count(lines, "gridcell ") != 5 {
+		t.Errorf("assistive technology is told\n%s\nwant the grid June with 3 column headers and 5 cells", lines)
+	}
+	browser.Run(`(window.gridWas = ` + at("cal") + `).focus()`)
+	// Right passes over the cell without a value; left comes back; down is the cell under.
+	var walked []string
+	for _, key := range []string{"ArrowRight", "ArrowLeft", "ArrowDown"} {
+		press(t, browser, key, 0)
+		walked = append(walked, browser.String(at("cal")+`.querySelector('[aria-selected="true"]').dataset.value`))
+	}
+	if got := strings.Join(walked, ","); got != "d4,d2,d5" {
+		t.Errorf("the arrows walk %s, want d4,d2,d5", got)
+	}
+	press(t, browser, "Enter", 0)
+	browser.Wait(`window.frames.length === 1`)
+	browser.Run(at("cal") + `.querySelectorAll("[role=gridcell]")[2].click()`) // no value: nothing
+	browser.Run(at("cal") + `.querySelector("[role=gridcell]").click()`)
+	browser.Wait(`window.frames.length === 2`)
+	if got, want := browser.String(`window.frames.map((f) => { f = JSON.parse(f); return f.intent + " " + f.nodeKey + " " + f.arg.value; }).join()`), "fx.day cal d5,fx.day cal d1"; got != want {
+		t.Errorf("choosing cells raised %s, want %s", got, want)
+	}
+	// An update that keeps `selected` keeps the user's cursor (d1) and the grid's element; one that moves it moves it.
+	send(`/fx-a update ` + content("1 June", "d2"))
+	browser.Wait(at("cal") + `.textContent.includes("1 June")`)
+	if got := browser.String(`[` + at("cal") + ` === window.gridWas, ` + at("cal") + `.querySelector('[aria-selected="true"]').dataset.value].join()`); got != "true,d1" {
+		t.Errorf("after an update that keeps selected: same element, cursor = %s, want true,d1", got)
+	}
+	send(`/fx-a update ` + content("1 Jun", "d4"))
+	browser.Wait(at("cal") + `.textContent.includes("1 Jun") && !` + at("cal") + `.textContent.includes("1 June")`)
+	if got := browser.String(at("cal") + `.querySelector('[aria-selected="true"]').dataset.value`); got != "d4" {
+		t.Errorf("after an update that moves selected the cursor is %s, want d4", got)
 	}
 }
