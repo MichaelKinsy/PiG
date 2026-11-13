@@ -94,10 +94,13 @@ func TestModelRuntimeCopilotAnthropicAdaptiveThinking(t *testing.T) {
 // openai-completions leaf keeps the selected model's compat. Upstream
 // getCompat overlays model.compat on detectCompat
 // (.upstream/v0.87.1/packages/ai/src/api/openai-completions.ts:1688), and
-// github-copilot.json gives gemini-3.8-flash supportsStore, supportsDeveloperRole
-// and supportsReasoningEffort false with supportsStrictMode true: the request
-// uses the system role, omits store and reasoning_effort, and marks tools
-// strict:false (openai-completions.ts:832, 962, 1225, 1505).
+// github-copilot.json gives gemini-3.8-flash supportsStore and supportsDeveloperRole
+// false with supportsStrictMode true: the request uses the system role, omits
+// store, and marks tools strict:false (openai-completions.ts:832, 1225, 1505).
+// Since Pi 86918f9eeb (#12110) the record's supportsReasoningEffort comes from
+// models.dev's effort options (catalog/providers/github-copilot.ts:104) and is
+// true, so the selected level is sent as reasoning_effort
+// (openai-completions.ts:960-962); before, it was false and the member omitted.
 func TestModelRuntimeCopilotCompletionsCompat(t *testing.T) {
 	services := newRuntimeTestServices(t)
 	access := "tid=test;exp=9999999999;proxy-ep=proxy.enterprise.githubcopilot.com;"
@@ -126,8 +129,9 @@ func TestModelRuntimeCopilotCompletionsCompat(t *testing.T) {
 	if _, ok := body["store"]; ok {
 		t.Errorf("store=%v, want omitted (supportsStore false)", body["store"])
 	}
-	if _, ok := body["reasoning_effort"]; ok {
-		t.Errorf("reasoning_effort=%v, want omitted (supportsReasoningEffort false)", body["reasoning_effort"])
+	// github-copilot.ts:104 (Pi 86918f9eeb): supportsReasoningEffort is true for a Copilot chat-completions model with effort options.
+	if body["reasoning_effort"] != "high" {
+		t.Errorf("reasoning_effort=%v, want high (supportsReasoningEffort true, github-copilot.ts:104)", body["reasoning_effort"])
 	}
 	messages, _ := body["messages"].([]any)
 	if len(messages) == 0 {
