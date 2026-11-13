@@ -227,7 +227,7 @@ func selectStartupModel(ctx context.Context, options startupModelOptions, settin
 			result.ModelFallbackMessage += ". Using " + selected.Provider + "/" + selected.ID
 		}
 	}
-	result.Model, err = buildModelFromRef(ctx, selected.Provider, selected.ID, services)
+	result.Model, err = buildSelectedModel(ctx, selected, services)
 	// A virtual model is the runtime's shared catalog entry and carries its reasoning from its definition (virtual-models.ts:159-176 createVirtualModel), so startup does not rewrite it.
 	if err == nil && selected.Reasoning && result.Model != nil && !coding.IsVirtualModel(result.Model) {
 		result.Model.ProviderMeta.Reasoning = true
@@ -283,6 +283,16 @@ func selectSessionOptionModel(rt *startupModelRuntime, modelRuntime *coding.Mode
 	}
 	result.Thinking = chosen.ThinkingLevel
 	return &chosen.Model, cliErr
+}
+
+// buildSelectedModel builds the session model of a startup selection. Pi gives the session the model its selection returned (main.ts:536-537
+// `options.model = resolved.model`). For an id no catalog carries that is resolveCliModel's copy of one of the provider's models
+// (model-resolver.ts:302-313 buildFallbackModel), which only the selection holds: the provider and id name no model to build.
+func buildSelectedModel(ctx context.Context, selected *codingagent.RuntimeModel, services *coding.AgentSessionServices) (*ai.Model, error) {
+	if fallback := selected.NativeModel; fallback != nil && services.ModelRuntime().GetModel(selected.Provider, selected.ID) == nil {
+		return coding.BuildFallbackModel(fallback, services)
+	}
+	return buildModelFromRef(ctx, selected.Provider, selected.ID, services)
 }
 
 // testFauxCLIModel selects the test-only test-faux provider for a --model naming it, without the registry resolution a real --model takes

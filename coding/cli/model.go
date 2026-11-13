@@ -48,27 +48,20 @@ func buildModelFromRef(ctx context.Context, providerID, modelID string, services
 	return coding.BuildModelFromEntry(providerID, modelID, entry, services)
 }
 
-// resolveStartupModelEntry resolves a model as upstream resolveCliModel does:
-// the exact catalog entry, else a models.json definition, else the provider's
-// default model under the requested id (buildFallbackModel), else the
-// registry entry.
+// resolveStartupModelEntry resolves a model by provider and id: the remote
+// catalog's record, else the bundled catalog's, else the registry entry (a
+// models.json or registered definition, or the provider's settings alone for
+// an id nothing defines). An id no catalog carries that `--model` named is
+// not resolved here: startup builds the resolver's copy of one of the
+// provider's models (coding.BuildFallbackModel).
 func resolveStartupModelEntry(providerID, modelID string, registry *codingagent.ModelRegistry) codingagent.ModelEntry {
 	if remote, ok := registry.ResolveRemoteCatalogModel(providerID, modelID); ok {
 		return remote
 	}
-	spec := providerID + "/" + modelID
-	if generated, ok := ai.LookupModelExact(spec); ok {
+	if generated, ok := ai.LookupModelExact(providerID + "/" + modelID); ok {
 		return registry.ResolveGeneratedModel(providerID, modelID, generated)
 	}
-	entry, entryOK := registry.Resolve(providerID, modelID)
-	if entryOK && registry.HasModelDefinition(providerID, modelID) {
-		return entry
-	}
-	if base, ok := providerFallbackModel(providerID); ok {
-		fallback := registry.ResolveGeneratedModel(providerID, modelID, base)
-		fallback.DisplayName = modelID
-		return fallback
-	}
+	entry, _ := registry.Resolve(providerID, modelID)
 	return entry
 }
 
@@ -81,25 +74,6 @@ func printModelDiagnostic(msg string) {
 		text = codingagent.ChalkApply("\x1b[33m", "\x1b[39m", text)
 	}
 	fmt.Fprintln(os.Stderr, text)
-}
-
-// providerFallbackModel returns the catalog model whose capabilities are
-// borrowed when a requested model is unknown under providerID: the
-// provider's default model when catalogued, else its first catalogued model.
-// Mirrors upstream buildFallbackModel's base selection. Returns false when
-// the provider has no catalogued models (then the model stays a bare custom
-// id with tool-use-only caps and no warning).
-func providerFallbackModel(providerID string) (*ai.GeneratedModel, bool) {
-	if defID, ok := codingagent.DefaultModelPerProvider()[providerID]; ok {
-		if m, ok := ai.LookupModelExact(providerID + "/" + defID); ok {
-			return m, true
-		}
-	}
-	models := ai.ListModels(providerID)
-	if len(models) > 0 {
-		return &models[0], true
-	}
-	return nil, false
 }
 
 // agentDirForModel returns the path passed to NewAuthStorage. We don't have

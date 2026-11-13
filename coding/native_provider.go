@@ -58,6 +58,11 @@ func BuildNativeModel(registry *icodingagent.ModelRegistry, providerID, modelID 
 	if !ok {
 		return nil
 	}
+	return bindNativeEntry(registry, native, entry)
+}
+
+// bindNativeEntry builds entry's model bound to the native registration's authenticated callbacks.
+func bindNativeEntry(registry *icodingagent.ModelRegistry, native *extension.NativeProvider, entry icodingagent.ModelEntry) *ai.Model {
 	model := modelFromEntry(entry, nil)
 	model.ProviderMeta.Headers = maps.Clone(entry.Headers)
 	model.Provider = &nativeModelProvider{native: native, model: model, registry: registry, simple: true}
