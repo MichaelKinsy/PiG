@@ -1,0 +1,72 @@
+from = "1.5.2+aa47cedc"
+to = "1.5.2+53af0237"
+
+[[files]]
+path = "packages/chord/src/node/surfaces/bundle.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesThroughAGivenTsconfigsPathsAPackageExportingOnlyAnUnbuiltDistElseIgnoresTsconfigsPi53af02378"]
+rationale = "53af02378: buildBase takes a BaseResolution ({ conditions, tsconfig }); with tsconfig esbuild resolves through that tsconfig's paths for every file (a package whose exports name only an unbuilt dist/), without it tsconfigRaw \"{}\" ignores every tsconfig.json. surfaces_bundle.go has BaseResolution{Conditions, Tsconfig} and BuildBase takes it. Pi's case (aiish exporting only ./dist/utils/*, paths to its source) is ported with the same project and expectations: the inputs are main.ts and the source, the script contains the paths value, and a build with conditions only fails with Could not resolve. The existing conditions cases pass their conditions as BaseResolution{Conditions}, as Pi's test does."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/web.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestAppSurfacesBuildTheirBasesThroughAGivenTsconfigsPathsPi53af02378"]
+rationale = "53af02378: WebSurfaceOptions.tsconfig is passed with the conditions as the surface's resolution. surfaces_web.go has WebSurfaceOptions.Tsconfig; AppWeb carries it as Pi's app.ts spreads options.web into webSurface."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/tui.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestAppSurfacesBuildTheirBasesThroughAGivenTsconfigsPathsPi53af02378"]
+rationale = "53af02378: TuiSurfaceOptions.tsconfig likewise. surfaces_tui.go has TuiSurfaceOptions.Tsconfig; AppTui carries it."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/surface-build.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestAppSurfacesBuildTheirBasesThroughAGivenTsconfigsPathsPi53af02378"]
+rationale = "53af02378: SurfaceBuildOptions holds resolution instead of conditions. surfaceBuildOptions.resolution (surfaces_build.go) is the BaseResolution BuildBase receives."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "53af02378: the barrel exports the BaseResolution type; Go has no barrel (BaseResolution is exported by surfaces_bundle.go)."
+
+[[files]]
+path = "packages/chord/test/node/surfaces/bundle.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesThroughAGivenTsconfigsPathsAPackageExportingOnlyAnUnbuiltDistElseIgnoresTsconfigsPi53af02378", "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash"]
+rationale = "53af02378: the new tsconfig case (1 of 1) and the calls of the existing cases with a resolution object (the conditions, assets and default-conditions cases) are ported with the same inputs."
+
+[[files]]
+path = "packages/chord/test/node/surfaces/surface-build.test.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "53af02378: the test builds a SurfaceBuild with resolution: { conditions: [] } instead of conditions: []. The Go surface-build tests go through surfaces whose resolution is built from the options; no Go test constructs surfaceBuildOptions with a conditions field."
+
+[[files]]
+path = "packages/chord/src/node/surfaces/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "53af02378: Pi's README paragraph on resolution; PiG documents it in the Go doc comments of BaseResolution and the Tsconfig options and in the changelog fragment."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "53af02378: a decision note on resolving bases through a tsconfig's paths; the mirrored decision text is not part of the Go port (the behaviour is BaseResolution)."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "53af02378: a sentence of the design document on resolution; the behaviour is BaseResolution."

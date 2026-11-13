@@ -19,6 +19,9 @@ host  ./coding/extension/host/inproc
 host  ./coding/extension/host/runtimecell
 host  ./coding/extension/host/cellpack
 host  ./coding/extension/host/tsruntime
+host  ./coding/uiview
+host  ./internal/viewcarrier
+host  ./internal/chordview
 host  ./coding/mcpext
 host  ./coding/rpcclient
 host  ./internal/packagemanager

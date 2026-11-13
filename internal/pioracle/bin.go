@@ -68,6 +68,12 @@ func CheckDurable(modules string) error {
 }
 
 func checkDurable(modules, root string) error {
+	return checkDurableOf(modules, root, pigversion.UpstreamCommit, pigversion.UpstreamPackageVersion)
+}
+
+// checkDurableOf requires modules to hold the Pi Durable of the packs under root, which must be the build of commit; version, when
+// given, is the package version the installed Pi Durable must report.
+func checkDurableOf(modules, root, commit, version string) error {
 	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(vendoredPacks), "manifest.json"))
 	if err != nil {
 		return fmt.Errorf("pioracle: %w (make vendor-pi-packs writes it)", err)
@@ -81,8 +87,8 @@ func checkDurable(modules, root string) error {
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return fmt.Errorf("pioracle: %s manifest: %w", vendoredPacks, err)
 	}
-	if manifest.Commit != pigversion.UpstreamCommit {
-		return fmt.Errorf("pioracle: %s holds the build of Pi commit %s, want %s (make vendor-pi-packs)", vendoredPacks, manifest.Commit, pigversion.UpstreamCommit)
+	if manifest.Commit != commit {
+		return fmt.Errorf("pioracle: %s holds the build of Pi commit %s, want %s (make vendor-pi-packs)", filepath.Join(root, filepath.FromSlash(vendoredPacks)), manifest.Commit, commit)
 	}
 	installed, err := os.ReadFile(filepath.Join(modules, ".package-lock.json"))
 	if err != nil {
@@ -102,8 +108,8 @@ func checkDurable(modules, root string) error {
 		if pack.Name != "@earendil-works/pi-durable" {
 			continue
 		}
-		if got.Version != pigversion.UpstreamPackageVersion {
-			return fmt.Errorf("pioracle: %s holds Pi Durable %s, want %s", modules, got.Version, pigversion.UpstreamPackageVersion)
+		if version != "" && got.Version != version {
+			return fmt.Errorf("pioracle: %s holds Pi Durable %s, want %s", modules, got.Version, version)
 		}
 		if !strings.HasSuffix(got.Resolved, "/"+vendoredPacks+"/"+file) || got.Integrity != pack.Integrity {
 			return fmt.Errorf("pioracle: %s holds Pi Durable from %q (%s), not the vendored %s/%s (%s): make durable-interop-deps installs it", modules, got.Resolved, got.Integrity, vendoredPacks, file, pack.Integrity)

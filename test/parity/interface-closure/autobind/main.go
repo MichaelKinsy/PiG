@@ -234,11 +234,11 @@ func run(o options) error {
 }
 
 // overAnotherMirror adds to the failure of a check that the rules did not read the pinned Pi. A check writes nothing, so it runs over any
-// mirror; over another Pi's (a PI_UPSTREAM_REF run such as make test-carried-oracles leaves .upstream/current at its commit) rows reopen, and
+// mirror; over another Pi's (a PI_UPSTREAM_REF run of make upstream-mirror leaves .upstream/current at its commit) rows reopen, and
 // the gaps and the ledger the check reports are that Pi's, not the tree's. Over the pin's mirror the failure reads as before.
 func overAnotherMirror(root, version string, failure error) error {
 	if err := upstreammirror.Check(root, version); err != nil {
-		return fmt.Errorf("%w\nthis verdict is not the pin's: %v", failure, err)
+		return fmt.Errorf("%w\nthis verdict is not the pin's: %w", failure, err)
 	}
 	return failure
 }

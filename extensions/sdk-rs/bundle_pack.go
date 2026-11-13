@@ -97,10 +97,11 @@ var bundledFiles = []string{
 	"src/tui_alt_screen.rs",
 	"src/type_engine.rs",
 	"src/type_schema.rs",
+	"src/ui_view.rs",
 	"src/user_bash.rs",
 	"src/value.rs",
 	"src/visual_truncate.rs",
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "f837285034560996"
+const stagedHash = "7b287d0622b132a4"

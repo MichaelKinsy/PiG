@@ -70,7 +70,7 @@ func sortedKeys(inputs model.BaseInputs) []string {
 func TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash(t *testing.T) {
 	dir := project(t, chordish(), "chordish")
 	for _, platform := range []BasePlatform{PlatformBrowser, PlatformSandbox} {
-		bundle, err := BuildBase(filepath.Join(dir, "main.ts"), platform, "/p/", []string{"source"})
+		bundle, err := BuildBase(filepath.Join(dir, "main.ts"), platform, "/p/", BaseResolution{Conditions: []string{"source"}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,12 +91,46 @@ func TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWith
 			t.Fatalf("%s: the script does not contain the source: %s", platform, scriptOf(bundle))
 		}
 	}
-	plain, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", []string{})
+	plain, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", BaseResolution{Conditions: []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := plain.Inputs[filepath.Join(dir, "workspace", "chordish", "dist", "index.js")]; !ok {
 		t.Fatalf("without conditions the build did not read dist: %v", sortedKeys(plain.Inputs))
+	}
+}
+
+// Pi 53af02378 (test "resolves through a given tsconfig's paths, a package exporting only an unbuilt dist/; else ignores tsconfigs"):
+// the same project and expectations. aiish exports only ./dist/utils/*, so conditions alone cannot resolve it in a checkout that never
+// built dist/; the given tsconfig's `paths` map it to the source, which is the one input besides main.ts, and without Tsconfig no
+// tsconfig.json is read, so the import does not resolve.
+func aiishProject(t *testing.T) string {
+	return project(t, map[string]string{
+		"workspace/aiish/package.json":          `{"name":"aiish","type":"module","exports":{"./utils/*":{"import":"./dist/utils/*.js"}}}`,
+		"workspace/aiish/src/utils/estimate.ts": "export const from: string = \"paths\";\n",
+		"tsconfig.json":                         `{"compilerOptions":{"paths":{"aiish/*":["./workspace/aiish/src/*.ts"]}}}`,
+		"main.ts":                               "import { from } from \"aiish/utils/estimate\";\nconsole.log(from);\n",
+	}, "aiish")
+}
+
+func TestConditionsResolvesThroughAGivenTsconfigsPathsAPackageExportingOnlyAnUnbuiltDistElseIgnoresTsconfigsPi53af02378(t *testing.T) {
+	dir := aiishProject(t)
+	source := filepath.Join(dir, "workspace", "aiish", "src", "utils", "estimate.ts")
+	bundle, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", BaseResolution{Tsconfig: filepath.Join(dir, "tsconfig.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{filepath.Join(dir, "main.ts"), source}
+	slices.Sort(want)
+	if got := sortedKeys(bundle.Inputs); !slices.Equal(got, want) {
+		t.Fatalf("inputs = %v, want %v", got, want)
+	}
+	if !strings.Contains(scriptOf(bundle), `"paths"`) {
+		t.Fatalf("the script does not contain the paths source: %s", scriptOf(bundle))
+	}
+	_, err = BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", BaseResolution{Conditions: []string{}})
+	if err == nil || !strings.Contains(err.Error(), `Could not resolve "aiish/utils/estimate"`) {
+		t.Fatalf("without a tsconfig err = %v, want Could not resolve \"aiish/utils/estimate\"", err)
 	}
 }
 
@@ -113,7 +147,7 @@ func TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedN
 	}
 	dir := project(t, chordish(), "chordish")
 	t.Setenv("NODE_OPTIONS", `--conditions "source"`)
-	bundle, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", nil)
+	bundle, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", BaseResolution{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +166,7 @@ func TestConditionsResolvePackageExportsWithEachSpellingOfTheFlagTheDefaultWithN
 	entry := filepath.Join(dir, "main.ts")
 	built := func(execArgv []string, nodeOptions string) string {
 		t.Helper()
-		bundle, err := BuildBase(entry, PlatformSandbox, "/p/", ProcessConditions(execArgv, nodeOptions))
+		bundle, err := BuildBase(entry, PlatformSandbox, "/p/", BaseResolution{Conditions: ProcessConditions(execArgv, nodeOptions)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -163,7 +197,7 @@ func TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomCo
 		"workspace/fielded/browser.js":   "exports.fielded = \"browser\";\n",
 		"main.ts":                        "import { dual } from \"dual\";\nimport { fielded } from \"fielded\";\nconsole.log(dual, fielded);\n",
 	}, "dual", "fielded")
-	bundle, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", []string{"source"})
+	bundle, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", BaseResolution{Conditions: []string{"source"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +214,7 @@ func TestAssetsCollectsTheFontsAndImagesTheBasesStylesheetNamesAsFilesUnderAsset
 		"body.woff2": "font bytes",
 		"logo.png":   "png bytes",
 	})
-	base, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/_chord/web/", []string{})
+	base, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/_chord/web/", BaseResolution{Conditions: []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}

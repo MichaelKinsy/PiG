@@ -423,6 +423,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Pi's declarations in the TypeScript extension types (`extensions/sdk-ts/pi-pin.d.ts`)
+
+`extensions/sdk-ts/pi-pin.d.ts` is generated from the declaration files (`dist/**/*.d.ts`) and the model catalog JSON of the pinned Pi source build's `@earendil-works/pi-coding-agent`, `@earendil-works/pi-ai`, `@earendil-works/pi-tui` and `@earendil-works/pi-agent-core` (`extensions/sdk-ts/scripts/pin-bundle.mjs`, `make vendor-sdk-ts-pin-declarations`): each file's declarations with their comments inside one ambient module block, module specifiers rewritten, and each catalog as the type of its data. It ships in the `@michaelkinsy/pig-extension-types` package. Each of the four packages declares `"license": "MIT"` (author Mario Zechner, repository `earendil-works/pi`); the file's header carries Pi's copyright and permission notice, the text of `third_party/pi-packs/LICENSE`.
+
 ## @earendil-works/pi-telemetry (the pinned build)
 
 The plugins component's Node subprocess runs Pi's chord host, which imports Pi's telemetry contracts. `chord/nextnode/plugins/node/pi/node_modules/@earendil-works/pi-telemetry` is the pinned build's `@earendil-works/pi-telemetry` (the version Pi's `packages/chord/package.json` depends on, checked by `automation/gen/vendor-chord-plugins-node.sh`): its `package.json` and its compiled `dist/*.js` modules except `dist/testing/`, unmodified and byte for byte the files of the pack in `third_party/pi-packs` (`pin.py check-vendored` compares them).

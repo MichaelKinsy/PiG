@@ -233,7 +233,7 @@ func (r *ModelRegistry) availableProviderAllModels(ctx context.Context, id strin
 	if err != nil || check == nil {
 		return nil, err
 	}
-	filter := r.accountModelFilter(id)
+	filter := r.accountModelFilter(context.WithoutCancel(ctx), id)
 	return slices.DeleteFunc(r.GetProviderAllModelData(id), func(model ai.AnyModel) bool {
 		return ai.IsModelType(model, ai.ModelTypeChat) && !filter(model.ModelID())
 	}), nil

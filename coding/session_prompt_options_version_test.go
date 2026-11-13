@@ -182,15 +182,12 @@ func TestStatePushEncodesAnInProcessEditOfTheBaseOptions(t *testing.T) {
 	}
 }
 
-// The run's prompt follows an in-process edit of the base options. A caller-owned structured prompt that is exactly the rendering of the base options (as the print, JSON and RPC modes build it) is rebuilt whole from the run's own options; once an extension edits the base options it is not that rendering any more, and the run keeps the caller's sections (baseSectionsRenderBaseOptions).
+// The run's prompt is built from the run's own options, a copy the handlers shared (runner.ts:1438), so an in-process edit of the base options during the run leaves it as it is (agent-session.ts:1555 renders _runSystemPromptOptions) and reaches the next run, which starts from the base options (agent-session.ts:2005). The caller supplied its structured prompt with the resources behind it, as interactive mode does.
 func TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions(t *testing.T) {
-	h := newRecoveryHarness(t, harnessOptions{defaultTools: true})
+	h := newRecoveryHarness(t, harnessOptions{defaultTools: true, resources: &SystemPromptResources{AppendSystemPrompt: "BASE-APPENDED"}})
 	s := h.session
+	s.SetSystemPromptSections(icodingagent.BeforeAgentStartRun{Options: *s.GetSystemPromptOptions()}.BaseSections(s.ActiveToolNames(), s.hiddenDeclarations()))
 	base := s.GetSystemPromptOptions()
-	s.toolRegistryMu.Lock()
-	s.defaultSystemPrompt = false
-	s.baseSystemSections = icodingagent.BeforeAgentStartRun{Options: *base}.BaseSections(s.ActiveToolNames(), s.hiddenDeclarations())
-	s.toolRegistryMu.Unlock()
 	runOptions := *base
 	runOptions.AppendSystemPrompt = "RUN-APPENDED"
 	run, err := icodingagent.ResolveBeforeAgentStartRun(*base, &extension.BeforeAgentStartCombinedResult{SystemPromptOptions: &runOptions})
@@ -203,7 +200,15 @@ func TestRunSystemPromptFollowsAnInProcessEditOfTheBaseOptions(t *testing.T) {
 		t.Fatalf("the run's prompt does not carry its own append text: %q", rebuilt)
 	}
 	base.AppendSystemPrompt += "EDITED-BY-AN-EXTENSION"
-	if got := s.SystemPrompt(); got == rebuilt || strings.Contains(got, "RUN-APPENDED") {
-		t.Fatalf("the prompt after an in-place edit of the base options is still the one built before it: %q", got)
+	if got := s.SystemPrompt(); got != rebuilt {
+		t.Fatalf("an in-place edit of the base options changed the running run's prompt: %q", got)
+	}
+	next, err := icodingagent.ResolveBeforeAgentStartRun(*s.GetSystemPromptOptions(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.SetRunPrompt(&next)
+	if got := s.SystemPrompt(); !strings.Contains(got, "BASE-APPENDEDEDITED-BY-AN-EXTENSION") || strings.Contains(got, "RUN-APPENDED") {
+		t.Fatalf("the next run's prompt does not carry the edited base options: %q", got)
 	}
 }

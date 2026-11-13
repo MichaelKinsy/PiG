@@ -961,6 +961,223 @@ export default function (pi) {
   let eventProbeOff;
   pi.registerCommand("event_probe_subscribe", { description: "Subscribe to turn_end after connecting", handler: async () => { eventProbeOff = pi.on("turn_end", async (event, ctx) => { ctx.ui.notify(`event_probe:${event.messageEntryId}`, "info"); }); } });
   pi.registerCommand("event_probe_unsubscribe", { description: "Remove the turn_end handler registered after connecting", handler: async () => { eventProbeOff?.(); eventProbeOff = undefined; } });
+  // D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
+  const viewText = (ctx, suffix) => ({ root: { kind: "text", text: `fixture-view-${ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0}${suffix}` } });
+  const viewCode = async (call) => {
+    try {
+      await call();
+      return "none";
+    } catch (err) {
+      return err.code;
+    }
+  };
+  let viewCancelledTag = "";
+  pi.registerCommand("ui_view_abilities", { description: "Report the replicated client abilities", handler: async (_args, ctx) => {
+    const ab = ctx.ui.viewAbilities();
+    ctx.ui.notify(ab ? `view-abilities:mounts=${ab.limits.mounts},argbytes=${ab.limits.intentArgBytes},slots=${ab.slots.join("+")},nodes=${ab.nodes.join("+")},markdown=${ab.markdown}` : "view-abilities:none", "info");
+  } });
+  pi.registerCommand("ui_view_probe", { description: "Mount, update, hide, show, finish and remove a view", handler: async (_args, ctx) => {
+    let st = await ctx.ui.mountView({ key: "probe", slot: "panel", view: viewText(ctx, "") });
+    ctx.ui.notify(`view-mounted:epoch=${st.mount.epoch},rev=${st.mount.rev},state=${st.state}`, "info");
+    const first = st.mount;
+    st = await ctx.ui.updateView(first, { view: viewText(ctx, "-2") });
+    ctx.ui.notify(`view-updated:rev=${st.mount.rev}`, "info");
+    ctx.ui.notify(`view-stale:${await viewCode(() => ctx.ui.updateView(first, { view: viewText(ctx, "-stale") }))}`, "info");
+    const cur = st.mount;
+    ctx.ui.notify(`view-hidden:${(await ctx.ui.hideView(cur)).state}`, "info");
+    ctx.ui.notify(`view-shown:${(await ctx.ui.showView(cur)).state}`, "info");
+    ctx.ui.notify(`view-finished:${(await ctx.ui.finishView(cur)).state}`, "info");
+    ctx.ui.notify(`view-terminal:${await viewCode(() => ctx.ui.removeView(cur))}`, "info");
+    ctx.ui.notify(`view-final:${(await ctx.ui.viewState("probe")).state}`, "info");
+    const intents = [
+      { name: "fx.add", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] }, answer: { type: "object", properties: { sum: { type: "integer" } }, required: ["sum"] } },
+      { name: "fx.wait", arg: { type: "object", properties: { tag: { type: "string" } }, required: ["tag"] }, cancellable: true, timeoutMs: 5000 },
+    ];
+    st = await ctx.ui.mountView({ key: "probe2", slot: "panel", view: viewText(ctx, "-live"), intents });
+    ctx.ui.notify(`view-second:epoch=${st.mount.epoch},rev=${st.mount.rev}`, "info");
+  } });
+  pi.registerCommand("ui_view_cancelled", { description: "Report the intent whose handler was cancelled", handler: async (_args, ctx) => ctx.ui.notify(`intent-cancelled:${viewCancelledTag}`, "info") });
+  pi.registerCommand("ui_view_state", { description: "Report the state of the second mount", handler: async (_args, ctx) => {
+    const st = await ctx.ui.viewState("probe2");
+    ctx.ui.notify(`view-state:${st.state}:${st.reason ?? ""}`, "info");
+  } });
+  // D614 amendment: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewExtras).
+  const xClaim = (claims, name) => (claims ?? []).find((c) => c.name === name)?.value;
+  const xPicked = (ab) => xClaim((ab.slotClaims ?? []).find((s) => s.slot === "panel")?.claims, "display.colors");
+  const xList = (id, label) => ({ root: { kind: "select-list", id, items: [{ value: id, label }], maxVisible: 5 } });
+  const xRects = (n) => Array.from({ length: n }, () => ({ kind: "rect", width: 1, height: 1 }));
+  pi.registerCommand("ui_view_extras", { description: "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", handler: async (_args, ctx) => {
+    const ab = ctx.ui.viewAbilities();
+    const picked = xPicked(ab);
+    ctx.ui.notify(`view-x-claims:colors=${xClaim(ab.claims, "display.colors")},kind=${xClaim(ab.claims, "display.kind")},gestures=${xClaim(ab.claims, "input.gestures").join("+")},hover=${xClaim(ab.claims, "display.hover")},panel.colors=${picked},profiles=${ab.drawing.profiles.join("+")},shapes=${ab.drawing.shapes},pixels=${ab.drawing.pixels}`, "info");
+    const base = xList("base", "fixture-x-base");
+    const st = await ctx.ui.mountView({
+      key: "extras", slot: "panel", view: base, intents: [{ name: "fx.tap", arg: { type: "object" } }],
+      alternatives: [{
+        when: { any: [{ all: [{ claim: "display.colors", op: "equals", value: picked }] }] },
+        view: xList("alt", `fixture-x-alt-${picked}`),
+        drawing: { profile: "scene", shapes: xRects(ab.drawing.shapes - 1), regions: [{ key: "r", shape: { kind: "rect", width: 4, height: 4 }, gestures: ["activate"], intent: "fx.tap", name: "Tap" }] },
+      }],
+      a11y: [{ node: "alt", name: `Extras ${picked}`, role: "button", checked: true, relations: [{ kind: "describedBy", target: "base" }] }, { node: "base", name: "Base" }],
+      focus: [{ node: "alt", request: "mount", restore: "previous" }],
+    });
+    ctx.ui.notify(`view-x-mounted:${st.state}`, "info");
+    const attempt = async (label, content) => ctx.ui.notify(`view-x-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, { view: base, ...content }))}`, "info");
+    const scene = (shapes) => ({ drawing: { profile: "scene", shapes } });
+    let nested = { kind: "rect", width: 1, height: 1 };
+    for (let i = 0; i < 8; i++) nested = { kind: "group", children: [nested] };
+    await attempt("alts", { alternatives: Array.from({ length: 9 }, () => ({ when: { any: [{ all: [{ claim: "display.hover", op: "present" }] }] }, view: base })) });
+    await attempt("nest", scene([nested]));
+    await attempt("points", scene([{ kind: "polyline", points: Array.from({ length: 1025 }, (_, i) => ({ x: i, y: i })) }]));
+    await attempt("shapes", scene(xRects(4097)));
+    await attempt("a11y", { a11y: Array.from({ length: 257 }, (_, i) => ({ node: `n${i}` })) });
+    await attempt("over", scene(xRects(ab.drawing.shapes + 1)));
+    await attempt("pixels", { drawing: { profile: "pixels", pixels: { width: 2, height: 2, asset: "img", scaling: "nearest" } }, assets: [{ id: "img", mime: "image/png", size: 4, sha256: "a".repeat(64), delivery: "inline" }] });
+    let stale = "none";
+    for (let i = 0; i < 3; i++) stale = await viewCode(() => ctx.ui.updateView({ ...st.mount, rev: st.mount.rev + 50 }, { view: base }));
+    ctx.ui.notify(`view-x-stale:${stale}`, "info");
+    const notices = await ctx.ui.viewDiagnostics("extras");
+    const count = (code) => notices.filter((n) => n.code === code && n.path === "update").reduce((sum, n) => sum + n.count, 0);
+    ctx.ui.notify(`view-x-diag:invalid=${count("invalid")},limit=${count("limit")},unsupported=${count("unsupported")},stale=${count("stale")}`, "info");
+    ctx.ui.notify(`view-x-bigresult:${await viewCode(() => ctx.ui.finishView(st.mount, "r".repeat(65536)))}`, "info");
+  } });
+  pi.registerCommand("ui_view_extras_end", { description: "Read the notices of the extras mount and finish it with a result", handler: async (_args, ctx) => {
+    const picked = xPicked(ctx.ui.viewAbilities());
+    const st = await ctx.ui.viewState("extras");
+    const notices = await ctx.ui.viewDiagnostics("extras");
+    ctx.ui.notify(`view-x-diag2:n=${notices.length},last=${notices[notices.length - 1]?.path ?? ""}`, "info");
+    const done = await ctx.ui.finishView(st.mount, { picked });
+    ctx.ui.notify(`view-x-finished:${done.state},picked=${done.result?.picked}`, "info");
+    const cur = await ctx.ui.viewState("extras");
+    ctx.ui.notify(`view-x-state:${cur.state},picked=${cur.result?.picked}`, "info");
+  } });
+  // D614: the redraw panel and the abilities watcher, the same way in every SDK fixture (conformance TestConformance_UIViewAnswerRedraw and
+  // TestConformance_UIViewAbilitiesEvent).
+  const redrawShape = (member) => ({ type: "object", properties: { [member]: { type: "integer" } }, required: [member] });
+  const redrawIntents = ["fx.redraw", "fx.foreign"].map((name) => ({ name, arg: redrawShape("n"), answer: redrawShape("rev") }));
+  const textView = (text) => ({ root: { kind: "text", text } });
+  // foreignUpdate hands an update to the loop the ui_view_redraw command started: the call is made in that command's continuation, so it is the
+  // extension's, not an intent handler's.
+  let foreignUpdate = async () => { throw new Error("ui_view_redraw has not run"); };
+  pi.registerCommand("ui_view_redraw", { description: "Mount the panel whose intents redraw it", handler: async (_args, ctx) => {
+    const st = await ctx.ui.mountView({ key: "redraw", slot: "panel", view: textView("fixture-redraw-0"), intents: redrawIntents });
+    const jobs = [];
+    let wake = () => {};
+    foreignUpdate = (mount, content) => new Promise((resolve, reject) => { jobs.push({ mount, content, resolve, reject }); wake(); });
+    (async () => {
+      for (;;) {
+        while (jobs.length === 0) await new Promise((resolve) => { wake = resolve; });
+        const job = jobs.shift();
+        ctx.ui.updateView(job.mount, job.content).then(job.resolve, job.reject);
+      }
+    })();
+    ctx.ui.notify(`view-redraw:rev=${st.mount.rev}`, "info");
+  } });
+  const viewWatch = { armed: false, block: false, events: 0, release: undefined };
+  const describeAbilities = (ab) => (ab ? `slots=${ab.slots.join("+")},mounts=${ab.limits.mounts}` : "none");
+  pi.onViewAbilities(async (ab, ctx) => {
+    viewWatch.events++;
+    if (!viewWatch.armed) return;
+    if (viewWatch.block) {
+      viewWatch.block = false;
+      ctx.ui.notify("view-event-blocked", "info");
+      await new Promise((resolve) => { viewWatch.release = resolve; });
+      ctx.ui.notify("view-event-released", "info");
+    }
+    if (!ab) {
+      ctx.ui.notify("view-event:none", "info");
+      return;
+    }
+    ctx.ui.notify(`view-event:${describeAbilities(ab)},same=${describeAbilities(ab) === describeAbilities(ctx.ui.viewAbilities())}`, "info");
+    try {
+      const st = await ctx.ui.mountView({ key: "arrived", slot: "panel", view: textView(`fixture-arrived-${ab.limits.mounts}`) });
+      ctx.ui.notify(`view-arrived:${st.state}`, "info");
+    } catch (err) {
+      ctx.ui.notify(`view-arrived:${err.code}`, "info");
+    }
+  });
+  pi.registerCommand("ui_view_watch", { description: "Arm the abilities watcher", handler: async (_args, ctx) => { viewWatch.armed = true; ctx.ui.notify("view-watch:armed", "info"); } });
+  pi.registerCommand("ui_view_block", { description: "Block the abilities watcher on its next event", handler: async (_args, ctx) => { viewWatch.block = true; ctx.ui.notify("view-block:set", "info"); } });
+  pi.registerCommand("ui_view_release", { description: "Release the blocked abilities watcher", handler: async (_args, ctx) => { viewWatch.release?.(); viewWatch.release = undefined; ctx.ui.notify("view-release:done", "info"); } });
+  pi.registerCommand("ui_view_events", { description: "Report how often the abilities watcher ran", handler: async (_args, ctx) => ctx.ui.notify(`view-events:${viewWatch.events}`, "info") });
+  // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+  // updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+  pi.registerCommand("ui_view_tool", { description: "Register the tool that shows a titled view", handler: async () => {
+    pi.registerTool({
+      name: "view_show",
+      label: "view_show",
+      description: "Mount, show and focus a titled view",
+      parameters: { type: "object", properties: {} },
+      async execute(_id, params, _signal, _onUpdate, ctx) {
+        const text = (value) => ({ content: [{ type: "text", text: value }] });
+        if (params.op === "hide") return text(`view-tool:${(await ctx.ui.hideView((await ctx.ui.viewState("shown")).mount)).state}`);
+        const content = (title, request) => ({
+          title, view: xList(params.node, "fixture-shown"),
+          intents: [{ name: "fx.reopen", arg: { type: "object" }, whenHidden: true }, { name: "fx.tap", arg: { type: "object" } }],
+          focus: [request ? { node: params.node, request } : { node: params.node }],
+        });
+        let st = await ctx.ui.mountView({ key: "shown", slot: "panel", ...content(params.title) });
+        st = await ctx.ui.hideView(st.mount);
+        st = await ctx.ui.showView(st.mount);
+        st = await ctx.ui.updateView(st.mount, content(`${params.title}/2`, "update"));
+        return text(`view-tool:${st.state},rev=${st.mount.rev}`);
+      },
+    });
+  } });
+  // D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is the
+  // row's token: the cell values, the selection and one chip text are built from it. A view is a plain object here, so this fixture can
+  // also write a member the record lacks (the `member` line); the builders of the Go, Rust and Python kits cannot.
+  pi.registerCommand("ui_view_grid", { description: "Mount a month as a grid and probe the bounds of the grid", handler: async (args, ctx) => {
+    const tok = args.trim();
+    const cells = [{ label: "30", dim: true }, { label: "31", dim: true }];
+    for (let d = 1; d <= 28; d++) {
+      const cell = { value: `${tok}-${d}`, label: String(d) };
+      if (d === 1) Object.assign(cell, { chips: [{ text: `${tok} standup`, color: "#3366cc" }, { text: "lunch", color: "accent" }], more: 2 });
+      if (d === 2) Object.assign(cell, { mark: "current", color: "#ff000080" });
+      if (d === 3) cell.chips = [{ text: "plain" }];
+      if (d === 28) delete cell.label;
+      cells.push(cell);
+    }
+    const content = (grid) => ({
+      view: { root: { kind: "container", children: [{ kind: "text", text: `Month ${tok}`, paddingX: 0, paddingY: 0 }, { kind: "grid", id: "month", ...grid }] } },
+      intents: [{ name: "fx.pick", nodeKey: "month", arg: { type: "object", properties: { value: { type: "string" } }, required: ["value"] } }],
+      fallback: { kind: "text", text: `grid-fallback ${tok}`, paddingX: 0, paddingY: 0 },
+    });
+    const st = await ctx.ui.mountView({ key: "grid", slot: "panel", ...content({ columns: 7, head: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], chipRows: 2, selected: `${tok}-2`, cells }) });
+    ctx.ui.notify(`view-g-mounted:${st.state}`, "info");
+    const attempt = async (label, columns, cells) => ctx.ui.notify(`view-g-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content({ columns, cells })))}`, "info");
+    await attempt("cells", 7, Array.from({ length: 129 }, () => ({ label: "x" })));
+    await attempt("chips", 7, [{ value: "a", chips: Array.from({ length: 9 }, () => ({ text: "c" })) }]);
+    await attempt("columns", 17, [{ value: "a" }]);
+    await attempt("mark", 7, [{ value: "a", mark: tok }]);
+    await attempt("member", 7, [{ value: "a", extra: 1 }]);
+    const cur = await ctx.ui.viewState("grid");
+    ctx.ui.notify(`view-g-state:${cur.state},rev=${cur.mount.rev}`, "info");
+  } });
+  pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent === "fx.redraw" || inv.intent === "fx.foreign") {
+      const own = inv.intent === "fx.redraw";
+      const content = { view: textView(`fixture-${own ? "redraw" : "foreign"}-${inv.arg.n + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0)}`), intents: redrawIntents };
+      const mount = { key: inv.mount.key, epoch: inv.mount.epoch, rev: inv.rev };
+      const st = own ? await ctx.ui.updateView(mount, content) : await foreignUpdate(mount, content);
+      return { outcome: "done", answer: { rev: st.mount.rev } };
+    }
+    if (inv.intent === "fx.reopen") {
+      // The user opened the hidden view: its handler shows it.
+      await ctx.ui.showView({ ...inv.mount, rev: inv.rev });
+      return { outcome: "done" };
+    }
+    if (inv.intent === "fx.pick") return { outcome: "done", answer: { node: inv.nodeKey, picked: inv.arg.value } };
+    if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n * 2 + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
+    if (inv.intent === "fx.wait") {
+      ctx.ui.notify(`intent-started:${inv.arg.tag}`, "info");
+      if (!inv.signal.aborted) await new Promise((resolve) => inv.signal.addEventListener("abort", resolve, { once: true }));
+      // A call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled.
+      viewCancelledTag = inv.arg.tag;
+      return { outcome: "done", answer: {} };
+    }
+    return { outcome: "refused", error: "unknown intent" };
+  });
   pi.registerCommand("report_geometry", { description: "Report observed terminal geometry", handler: async (_args, ctx) => ctx.ui.notify(`geometry:${ctx.width}x${ctx.height}`, "info") });
 
   pi.registerCommand("surface_footer", { description: "Install a footer renderer", handler: async (_args, ctx) => ctx.ui.setFooter(() => ({ render: (width) => [`footer@${width}`], invalidate() {} })) });

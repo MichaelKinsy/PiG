@@ -220,6 +220,9 @@ func (h *NodeHost) reference(ctx context.Context, contract *contracts.Contract, 
 	if declared.Kind != contracts.KindLocal {
 		return nil, fmt.Errorf("%s: NodeHost.Get holds a local type; a remote type is held through a Go host that routes its kind to the node", declared.Name)
 	}
+	if err := eventsDoNotCross(declared); err != nil {
+		return nil, err
+	}
 	wire, err := ContractDataOf(contract)
 	if err != nil {
 		return nil, err

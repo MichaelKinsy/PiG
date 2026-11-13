@@ -76,11 +76,6 @@ type TuiAltScreen struct {
 	layoutRoot         Component
 	currentLayout      *LayoutFrame
 
-	// One worker coalesces pending geometry so slow callbacks cannot reorder resizes.
-	pendingWidth      int
-	pendingHeight     int
-	notifyingGeometry bool
-
 	implicitDocument   Component
 	implicitScrollView *ScrollView
 	flashes            *AltScreenFlashContainer
@@ -422,7 +417,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 	// Upstream start() sets stopped=false first, then beforeTerminalStart resets
 	// the selection/scrollbar input state so a start->stop->start cycle resumes
 	// with a clean slate and rendering (doRender gates on stopped).
-	t.stopped = false
+	t.stopped.Store(false)
 	t.stopScrollbarHover()
 	t.stopScrollbarDrag()
 	t.clearTextSelectionLocked()
@@ -522,7 +517,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	t.closeSearch()
 	t.clearComponentMouseGesture()
 	t.mu.Lock()
-	t.stopped = true
+	t.stopped.Store(true)
 	t.pendingWidth = 0
 	t.pendingHeight = 0
 	if t.renderTimer != nil {
@@ -698,7 +693,7 @@ func (t *TuiAltScreen) Flash(message string, durationMs int) {
 // Mirrors TUI.ForceFullRender (the main-screen sets forceRedraw, consumed by its
 // differential renderer).
 func (t *TuiAltScreen) ForceFullRender() {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	t.mu.Lock()
@@ -871,7 +866,7 @@ func (t *TuiAltScreen) requestRenderFromLayout() { t.RequestRender() }
 func (t *TuiAltScreen) doRender() {
 	t.lockFrame()
 	defer t.unlockFrame()
-	if t.stopped || !t.altScreenActive {
+	if t.stopped.Load() || !t.altScreenActive {
 		return
 	}
 	t.frameBeganLocked()
@@ -1034,43 +1029,19 @@ func (t *TuiAltScreen) doRender() {
 	t.previousFrameBytes = buf.Len()
 	WriteToTerminal(t.out, buf.String())
 
-	if t.previousScreenWidth > 0 && t.previousScreenWidth != width && t.onWidthChange != nil {
-		t.pendingWidth = width
+	changedWidth, changedHeight := 0, 0
+	if t.previousScreenWidth > 0 && t.previousScreenWidth != width {
+		changedWidth = width
 	}
-	if t.previousScreenHeight > 0 && t.previousScreenHeight != height && t.onHeightChange != nil {
-		t.pendingHeight = height
+	if t.previousScreenHeight > 0 && t.previousScreenHeight != height {
+		changedHeight = height
 	}
-	if !t.notifyingGeometry && (t.pendingWidth != 0 || t.pendingHeight != 0) {
-		t.notifyingGeometry = true
-		go t.notifyGeometryChanges()
-	}
+	t.queueGeometryLocked(changedWidth, changedHeight)
 	t.previousScreen = screen
 	t.previousRows = rows
 	t.previousScreenWidth = width
 	t.previousScreenHeight = height
 	t.currentLayout = &nextLayout
-}
-
-func (t *TuiAltScreen) notifyGeometryChanges() {
-	for {
-		t.mu.Lock()
-		if t.stopped || (t.pendingWidth == 0 && t.pendingHeight == 0) {
-			t.notifyingGeometry = false
-			t.mu.Unlock()
-			return
-		}
-		callback, size := t.onWidthChange, t.pendingWidth
-		if size != 0 {
-			t.pendingWidth = 0
-		} else {
-			callback, size = t.onHeightChange, t.pendingHeight
-			t.pendingHeight = 0
-		}
-		t.mu.Unlock()
-		if callback != nil {
-			callback(size)
-		}
-	}
 }
 
 // altScreenRow returns screen[row], or "" past the end (upstream's

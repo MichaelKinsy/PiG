@@ -219,6 +219,21 @@ func (transcript *ConversationTranscript) Merge(view ConversationView) *Transcri
 
 var errNothingMerged = errors.New("ConversationTranscript: merge a view first")
 
+// errLoaderPanicked is what the callers sharing a load get when its loader panicked.
+var errLoaderPanicked = errors.New("ConversationTranscript: the entry loader panicked")
+
+// abandon settles a registered load whose loader did not return: the callers sharing it fail, and unregister forgets it so
+// that the next call loads again. The panic goes on to the caller whose call ran the loader. Upstream's loader runs inside
+// the promise the callers share, so its throw rejects them all and the settle clears the load (transcript.ts:115-129,
+// 155-168).
+func (transcript *ConversationTranscript) abandon(load *transcriptLoad, unregister func()) {
+	transcript.mu.Lock()
+	load.err = errLoaderPanicked
+	unregister()
+	transcript.mu.Unlock()
+	close(load.done)
+}
+
 // LoadEarlier loads the page before the oldest entry held. Without anything earlier, it returns the current view.
 func (transcript *ConversationTranscript) LoadEarlier(ctx context.Context) (*TranscriptView, error) {
 	transcript.mu.Lock()
@@ -241,7 +256,18 @@ func (transcript *ConversationTranscript) LoadEarlier(ctx context.Context) (*Tra
 	transcript.mu.Unlock()
 
 	query := durable.EntryQuery{MaxEntryId: new(durable.EntryId(low)), Order: new(durable.ScanDescending)}
+	returned := false
+	defer func() {
+		if !returned {
+			transcript.abandon(loading, func() {
+				if transcript.earlier == loading {
+					transcript.earlier = nil
+				}
+			})
+		}
+	}()
 	page, err := transcript.load(ctx, query, transcript.pageSize)
+	returned = true
 	transcript.mu.Lock()
 	if err == nil {
 		items := slices.Clone(page.Items)
@@ -292,7 +318,18 @@ func (transcript *ConversationTranscript) FillGap(ctx context.Context, gap Trans
 		MaxEntryId: new(current.UpTo - 1),
 		Order:      new(durable.ScanAscending),
 	}
+	returned := false
+	defer func() {
+		if !returned {
+			transcript.abandon(filling, func() {
+				if transcript.filling[key] == filling {
+					delete(transcript.filling, key)
+				}
+			})
+		}
+	}()
 	page, err := transcript.load(ctx, query, transcript.pageSize)
+	returned = true
 	transcript.mu.Lock()
 	if err == nil {
 		// No next page, or an empty one: nothing else is missing.

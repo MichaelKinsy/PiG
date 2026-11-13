@@ -14,17 +14,24 @@
   pin.py install-oracle       install the Pi oracle for the effective pin into extensions/sdk-ts/node_modules
   pin.py freeze-closure       freeze the pin's dependency closure (release: --from-published-lock <lock>; commit: derived from its packs)
   pin.py vendor               pack the pinned build's durable closure into third_party/pi-packs and point its consumers at it
-  pin.py check-vendored [--rebuild]  fail when the vendored packs or a consumer are not the pin's (automation/pin/vendor.py)
+  pin.py check-vendored [--rebuild] [--installed CONSUMER]  fail when the vendored packs, a consumer or a consumer's install are not the pin's (automation/pin/vendor.py)
+  pin.py override-tree        under PI_UPSTREAM_REF, build the tree the oracle tests of that Pi commit read and print its path; the repository is not written
   pin.py check-oracle         verify the installed oracle is the effective pin's Pi
   pin.py link-mirror          point the effective pin's mirror (.upstream/<mirror>/node_modules) at its source build's
                               dependencies, so oracle scripts that import the mirrored source resolve its imports
   pin.py ledgers [--from REF] generate the effective pin's ledgers that one file holds (async-contracts, behavior-contracts,
                               known-gaps, under test/parity/pin-ledgers/) from the earlier pin REF (default: the committed pin),
                               plus the interface delta manifest and the custom-factory draft; skips what exists
+  pin.py oracle-node          the bin directory of the oracle Node (ai/testdata/node-microtasks/oracle-node-version), fetched from nodejs.org
+                              and verified against its SHASUMS256.txt when the cache has none (automation/pin/nodefetch.py)
+  pin.py retire <ref>         delete the post-release backports and the carried oracle that Pi <ref> already holds (automation/pin/carried.py);
+                              the first step of `make pin-bump`, decided against the target before the pin moves
+  pin.py gaps [--updates N]   the effective pin's gap list: `make ledger-update` N times (default 1), then `make ledger-check` (the pin-follow gaps step)
 """
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -131,7 +138,7 @@ def readme(pin: Pin, text: str) -> str:
     text = sub(r"^\[!\[Pi pin [^\]]*\]\(https://img\.shields\.io/badge/Pi%20pin-[^)]*\)\]\([^)]*\)",
                f"[![Pi pin {pin.version}](https://img.shields.io/badge/Pi%20pin-{badge}-8A2BE2)]({link})", text, "README.md", 1)
     text = sub(r"(checked against Pi )\S+( with paired parity scenarios)", rf"\g<1>{pin.version}\g<2>", text, "README.md", 1)
-    text = sub(r"(prints? PiG's version as `<PiG release>\+<Pi release>`, for example `\d+\.\d+\.\d+\+)[^`]+(`)", rf"\g<1>{pin.version}\g<2>", text, "README.md", 1)
+    text = sub(r"(prints? PiG's version as `<PiG release>\+<Pi release>`, for example `\d+\.\d+\.\d+\+)[^`]+(`)", rf"\g<1>{pin.build_metadata}\g<2>", text, "README.md", 1)
     sentence = (f"The pinned Pi release is {pin.version} at commit `{pin.commit}`." if pin.kind == "tag"
                 else f"The pinned Pi build is {pin.version}, commit `{pin.commit}` of the main branch.")
     return sub(r"The pinned Pi (?:release|build) is [^`]*at commit `[0-9a-f]{40}`\.|The pinned Pi build is [^`]*, commit `[0-9a-f]{40}` of the main branch\.", sentence, text, "README.md", 1)
@@ -354,6 +361,30 @@ def cmd_ledgers(args: argparse.Namespace) -> None:
 INTERFACES = "test/parity/interfaces"
 
 
+@contextlib.contextmanager
+def committed_exceptions_kept(pin: Pin):
+    """The prune of an earlier pin's reviewed exceptions (autobind/reviewed-types.json) that `make ledger-update` writes belongs to the pin
+    that is committed: under a PI_UPSTREAM_REF override the file is restored when the block ends."""
+    reviewed = ROOT / "test/parity/interface-closure/autobind/reviewed-types.json"
+    snapshot = reviewed.read_bytes() if reviewed.exists() else None
+    try:
+        yield
+    finally:
+        if pin != pinlib.committed() and snapshot is not None:
+            reviewed.write_bytes(snapshot)
+
+
+def cmd_gaps(args: argparse.Namespace) -> None:
+    """The gap list of the effective pin: bind its ledgers (`make ledger-update`), then check them (`make ledger-check`). The check alone
+    stops on every reviewed exception the earlier pin's mapping made stale, which only the update prunes (the pin-follow pipeline once
+    stopped there and went green only after a hand-run `make ledger-update`)."""
+    pin, _override = pinlib.effective()
+    with committed_exceptions_kept(pin):
+        for target in ["ledger-update"] * args.updates + ["ledger-check"]:
+            subprocess.run(["make", "--no-print-directory", target], cwd=ROOT, check=True, timeout=7200)
+    print(f"gaps: the gap list of Pi {pin.version} is derived and ledger-check passes")
+
+
 def carry_interface_ledgers(pin: Pin, previous: Pin, force: bool) -> None:
     """Generate the pin's reviewed interface ledgers from the earlier pin's, each only when it is absent (--force: again).
 
@@ -386,12 +417,9 @@ def carry_interface_ledgers(pin: Pin, previous: Pin, force: bool) -> None:
     mapping = target("mapping-v{v}.json")
     if absent(mapping):
         run_go(f"go run ./test/parity/cmd/interfaceinventory -inventory {rel(target('upstream-v{v}.json'))} -observable {rel(target('cli-v{v}.json'))} -generate-pending -previous-mapping {rel(source('mapping-v{v}.json'))} -previous-upstream-root {shlex.quote(str(mirror_before))}", mapping)
-        reviewed = ROOT / "test/parity/interface-closure/autobind/reviewed-types.json"
-        snapshot = reviewed.read_bytes() if reviewed.exists() else None
-        for _ in range(2):
-            subprocess.run(["make", "--no-print-directory", "ledger-update"], cwd=ROOT, check=True, timeout=7200)
-        if pin != pinlib.committed() and snapshot is not None:
-            reviewed.write_bytes(snapshot)  # the prune of an earlier pin's exceptions belongs to the pin that is committed
+        with committed_exceptions_kept(pin):
+            for _ in range(2):
+                subprocess.run(["make", "--no-print-directory", "ledger-update"], cwd=ROOT, check=True, timeout=7200)
         print(f"pin-ledgers: {mapping.relative_to(ROOT)} and the gap baseline derived from {source('mapping-v{v}.json').name}")
     tests = target("test-mapping-v{v}.json")
     if absent(tests):
@@ -495,10 +523,21 @@ def cmd_freeze_closure(args: argparse.Namespace) -> None:
     print(f"freeze-closure: wrote {oracle.freeze_closure(pin, lock)}")
 
 
-def cmd_point_current(_: argparse.Namespace) -> None:
-    """After a run at another pin (PI_UPSTREAM_REF): .upstream/current is the effective pin's mirror again, when the tree has that mirror."""
-    pin, _override = pinlib.effective()
-    point_current(pin)
+def cmd_retire(args: argparse.Namespace) -> None:
+    """Delete the carried work (post-release backports, the carried oracle) that Pi <ref> already holds (automation/pin/carried.py)."""
+    import carried
+
+    target = pinlib.resolve(args.ref, pinlib.committed())
+    decisions = carried.retire(target)
+    for line in carried.summary(decisions):
+        print(f"retire: {line}")
+    print(f"retire: {len(decisions['changed'])} file(s) changed" + (": " + ", ".join(decisions["changed"]) if decisions["changed"] else ""))
+
+
+def cmd_oracle_node(_: argparse.Namespace) -> None:
+    import nodefetch
+
+    print(nodefetch.ensure())
 
 
 def cmd_link_mirror(_: argparse.Namespace) -> None:
@@ -524,9 +563,31 @@ def cmd_check_vendored(args: argparse.Namespace) -> None:
 
     pin, override = pinlib.effective()
     problems = vendor.check(pin) + (vendor.check_rebuild(pin) if args.rebuild else [])
+    for consumer in args.installed:
+        problems += vendor.check_installed(consumer)
     if problems:
         raise PinError("the vendored Pi packages are not the pin's:\n  " + "\n  ".join(problems))
     print(f"check-vendored: third_party/pi-packs holds the " + ("rebuilt " if args.rebuild else "") + f"durable closure of Pi {pin.version} and every consumer installs it")
+
+
+def cmd_override_tree(_: argparse.Namespace) -> None:
+    """Under PI_UPSTREAM_REF: build (once) the tree the oracle tests of that Pi commit read (vendor.override_tree) and print its
+    path. The build reports on stderr, and the repository's own Pi (mirror, oracle link, installs) is not touched. The commit
+    may be the pin's own: the tree is then the pin's Pi, read the way another commit's is."""
+    import vendor
+
+    if not os.environ.get(pinlib.OVERRIDE_ENV, "").strip():
+        raise PinError("override-tree builds the tree of the Pi commit a run names: set PI_UPSTREAM_REF=<commit>")
+    pin, _override = pinlib.effective()
+    out = os.dup(1)
+    os.dup2(2, 1)
+    try:
+        tree = vendor.override_tree(pin)
+    finally:
+        sys.stdout.flush()
+        os.dup2(out, 1)
+        os.close(out)
+    print(tree)
 
 
 def cmd_check_oracle(_: argparse.Namespace) -> None:
@@ -589,13 +650,21 @@ def main() -> None:
     sub_.add_parser("vendor").set_defaults(fn=cmd_vendor)
     vendored = sub_.add_parser("check-vendored")
     vendored.add_argument("--rebuild", action="store_true", help="also pack the pinned source build again and compare the bytes")
+    vendored.add_argument("--installed", action="append", default=[], metavar="CONSUMER", help="also require the node_modules of this consumer (durable/interop) to be an install of the vendored packs")
     vendored.set_defaults(fn=cmd_check_vendored)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
-    sub_.add_parser("point-current").set_defaults(fn=cmd_point_current)
+    sub_.add_parser("oracle-node").set_defaults(fn=cmd_oracle_node)
+    retire = sub_.add_parser("retire")
+    retire.add_argument("ref")
+    retire.set_defaults(fn=cmd_retire)
+    sub_.add_parser("override-tree").set_defaults(fn=cmd_override_tree)
     ledgers = sub_.add_parser("ledgers")
     ledgers.add_argument("--from", dest="previous")
     ledgers.add_argument("--force", action="store_true")
     ledgers.set_defaults(fn=cmd_ledgers)
+    gaps = sub_.add_parser("gaps")
+    gaps.add_argument("--updates", type=int, default=1, help="how many times to bind the ledgers before the check (a bump needs two: the first binds, the second settles the pending rows that are not gaps)")
+    gaps.set_defaults(fn=cmd_gaps)
     closure = sub_.add_parser("freeze-closure")
     closure.add_argument("--from-published-lock", dest="published_lock")
     closure.set_defaults(fn=cmd_freeze_closure)

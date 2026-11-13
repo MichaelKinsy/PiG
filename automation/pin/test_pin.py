@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Tests of the pin model and its derivations. They use no network: refs that
 need resolution are exercised through the cached and committed paths."""
+import argparse
 import contextlib
 import hashlib
 import io
@@ -21,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pinlib  # noqa: E402
 import pin as pin_tool  # noqa: E402
 import oracle  # noqa: E402
+import backport_fixture  # noqa: E402
 
 TAG = pinlib.Pin("v1.1.0", "a" * 40, "1.1.0", "1.1.0")
 COMMIT = pinlib.Pin("b" * 40, "b" * 40, "1.1.0", "1.1.0+bbbbbbbb")
@@ -120,8 +122,11 @@ class RepositoryTests(unittest.TestCase):
         self.assertTrue("commit/" + "b" * 40 in moved["README.md"])
         self.assertTrue("1.1.0%2B" + "b" * 8 in moved["README.md"])
         self.assertTrue("The pinned Pi build is 1.1.0+bbbbbbbb, commit `" + "b" * 40 in moved["README.md"])
-        # The README's example shows the composite version of the banner, whose Pi part is the pin's display version.
-        self.assertRegex(moved["README.md"], r"for example `\d+\.\d+\.\d+\+1\.1\.0\+bbbbbbbb`")
+        # The README's example is the string the binary prints (pigversion.Version: PigVersion + "+" + the build metadata, one plus).
+        binary = re.search(r'^const Version = PigVersion \+ "(\+[^"]+)"', moved["internal/coding/pigversion/pigversion.go"], re.M).group(1)
+        self.assertEqual(binary, "+1.1.0.bbbbbbbb")
+        example = re.search(r"for example `(\d+\.\d+\.\d+)(\+[^`]+)`", moved["README.md"])
+        self.assertEqual(example.group(2), binary)
         self.assertTrue("ARG PI_COMMIT=" + "b" * 40 in moved["automation/images/ci-parity/Dockerfile"])
 
     def test_provenance_names_the_committed_pin(self):
@@ -961,7 +966,7 @@ class BackportTests(unittest.TestCase):
                 oracle.apply_backports(modules)
 
     def test_a_backport_that_does_not_apply_fails_the_build_with_the_scripts_reason(self):
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(oracle, "BACKPORTS", backport_fixture.script()):
             modules = self.tree(Path(root))
             with self.assertRaisesRegex(pinlib.PinError, "do not apply to the installed oracle"):
                 oracle.apply_backports(modules)  # the packages hold no dist/ files
@@ -994,7 +999,7 @@ for (const [file, entries] of Object.entries(entriesByFile)) {
 assert.throws(() => applyPackageBackports(packages), /no longer applies/, "a second application must fail, not pass silently");
 '''
         with tempfile.TemporaryDirectory() as root:
-            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": oracle.BACKPORTS.as_uri(), "ROOT": root}, capture_output=True, text=True, timeout=60)
+            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": backport_fixture.script().as_uri(), "ROOT": root}, capture_output=True, text=True, timeout=60)
             self.assertEqual(done.returncode, 0, done.stderr)
 
 
@@ -1128,6 +1133,35 @@ class CarryTests(unittest.TestCase):
     def test_an_override_run_restores_the_reviewed_types_the_update_pruned(self):
         self.assertEqual(self.carry(TAG).read_text(), "original")
 
+    def gaps(self, committed):
+        calls = self.calls
+        reviewed = self.root / "test/parity/interface-closure/autobind/reviewed-types.json"
+        reviewed.parent.mkdir(parents=True, exist_ok=True)
+        reviewed.write_text("stale")
+
+        def fake_run(command, **kwargs):
+            calls.append(command[-1])
+            if command[-1] == "ledger-update":
+                reviewed.write_text("pruned")
+            elif reviewed.read_text() != "pruned":
+                raise subprocess.CalledProcessError(2, command)  # ledger-check stops on a stale exception
+
+        saved = (pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run)
+        pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = self.root, (lambda: (COMMIT, committed != COMMIT)), (lambda: committed), fake_run
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                pin_tool.cmd_gaps(argparse.Namespace(updates=1))
+        finally:
+            pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = saved
+        return reviewed
+
+    def test_the_gaps_step_binds_the_ledgers_before_it_checks_them(self):
+        self.gaps(COMMIT)
+        self.assertEqual(self.calls, ["ledger-update", "ledger-check"])
+
+    def test_the_gaps_step_of_an_override_run_leaves_the_committed_pins_reviewed_types(self):
+        self.assertEqual(self.gaps(TAG).read_text(), "stale")
+
     def test_the_committed_pin_keeps_the_prune(self):
         self.assertEqual(self.carry(COMMIT).read_text(), "pruned")
 
@@ -1140,30 +1174,46 @@ class CarryTests(unittest.TestCase):
         self.assertGreater(len(self.calls), first)
 
 
-class PointCurrentTests(unittest.TestCase):
-    """make test-carried-oracles runs at another Pi commit, and install-oracle points .upstream/current at that commit's mirror. The next
-    make interface-gaps read the carried Pi and reported seven gaps the tree does not have. `pin.py point-current`, which the target runs
-    when it ends, points the link back at the effective pin's mirror."""
+class OverrideTreeCommandTests(unittest.TestCase):
+    """`pin.py override-tree` is read by make as $(...): its standard output is the tree's path and nothing else, whatever the build prints."""
 
-    def setUp(self):
-        self.root = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
-        (self.root / ".upstream" / COMMIT.mirror_dir).mkdir(parents=True)
-        self.current = self.root / ".upstream" / "current"
-        self.current.symlink_to(COMMIT.mirror_dir)
+    def run_command(self, ref: str) -> str:
+        def build(pin):
+            print("npm said something")
+            os.write(1, b"a child process said something\n")
+            return Path("/store") / pin.commit / "durable-x"
 
-    def point(self):
-        with mock.patch.object(pin_tool, "ROOT", self.root), mock.patch.object(pinlib, "effective", lambda: (TAG, False)):
-            pin_tool.cmd_point_current(None)
+        import vendor
 
-    def test_current_returns_to_the_mirror_of_the_effective_pin(self):
-        (self.root / ".upstream" / TAG.mirror_dir).mkdir()
-        self.point()
-        self.assertEqual(os.readlink(self.current), TAG.mirror_dir)
+        with tempfile.TemporaryFile() as captured:
+            saved = os.dup(1)
+            os.dup2(captured.fileno(), 1)
+            try:
+                with mock.patch.dict(os.environ, {pinlib.OVERRIDE_ENV: ref}), mock.patch.object(pinlib, "effective", lambda: (COMMIT, False)), mock.patch.object(vendor, "override_tree", build), contextlib.redirect_stderr(io.StringIO()):
+                    pin_tool.cmd_override_tree(None)
+            finally:
+                sys.stdout.flush()
+                os.dup2(saved, 1)
+                os.close(saved)
+            captured.seek(0)
+            return captured.read().decode()
 
-    def test_current_stays_when_the_tree_has_no_mirror_of_the_pin(self):
-        self.point()
-        self.assertEqual(os.readlink(self.current), COMMIT.mirror_dir)
+    def test_standard_output_is_the_path_alone(self):
+        with tempfile.TemporaryFile() as errors:
+            saved = os.dup(2)
+            os.dup2(errors.fileno(), 2)
+            try:
+                printed = self.run_command(COMMIT.commit)
+            finally:
+                os.dup2(saved, 2)
+                os.close(saved)
+            errors.seek(0)
+            self.assertIn(b"a child process said something", errors.read())
+        self.assertEqual(printed, str(Path("/store") / COMMIT.commit / "durable-x") + "\n")
+
+    def test_a_run_that_names_no_commit_has_no_override_tree(self):
+        with self.assertRaisesRegex(pinlib.PinError, "PI_UPSTREAM_REF"):
+            self.run_command("")
 
 
 class MirrorLinkTests(unittest.TestCase):

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -19,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	cm "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // Pi's private helpers of codemode.ts (cut, outcomeOf, textOf, errorResult, asToolCall, countImages, describe, sameJson)
@@ -133,9 +132,8 @@ func TestCodemodeHelpersMatchPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_helpers_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_helpers_oracle.mjs", pioracle.Packages(t))
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

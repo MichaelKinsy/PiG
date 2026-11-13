@@ -15,11 +15,14 @@ import (
 	"syscall"
 
 	"github.com/MichaelKinsy/PiG/coding/cli"
+	"github.com/MichaelKinsy/PiG/internal/memprofrate"
 )
 
 func main() {
 	dir := os.Getenv("SESSIONSCALE_HEAP_DIR")
 	if dir != "" {
+		// cli turns heap-profile sampling off at init; the heap profiles below need it.
+		runtime.MemProfileRate = memprofrate.DefaultRate
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGUSR1)
 		go func() {

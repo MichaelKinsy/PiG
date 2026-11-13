@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -15,7 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // codemode.ts builds the namespaces of the start data from the extensions' declared namespaces: every tool of an extension
@@ -93,9 +92,8 @@ func TestACutInsideASurrogatePairIsAJSONEscapeInPiAndThreeReplacementCharactersI
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_helpers_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_helpers_oracle.mjs", pioracle.Packages(t))
+	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+pioracle.Project(t))
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

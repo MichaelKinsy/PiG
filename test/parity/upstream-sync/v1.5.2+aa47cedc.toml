@@ -1,0 +1,23 @@
+from = "1.5.2+3c771bd1"
+to = "1.5.2+aa47cedc"
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_root_additional_properties_port_test.go#TestAnthropicNonStrictInputSchemaKeepsRootAdditionalPropertiesPiAa47cedce", "test:ai/anthropic_root_additional_properties_port_test.go#TestAnthropicStrictInputSchemaStillSendsAdditionalPropertiesPiAa47cedce", "test:test/pipeline-diff/tool_schema_test.go#TestToolSchemaBytesMatchPi"]
+rationale = "aa47cedce (#12100): convertTools rebuilt a non-strict tool's input_schema from type, properties, required, $defs and definitions, which dropped a root additionalProperties; it now copies the root additionalProperties whatever its value (false, true or a schema) after required and before $defs and definitions, and root anyOf/oneOf/allOf and other root keywords stay out (Anthropic answers a root anyOf with a 400). anthInputSchema (ai/anthropic.go) does the same through anthLegacyOptionalRootKeys, so the serialized member order is the literal's. convertTools is reached only by the anthropic-messages API (every provider kind that speaks it: the Anthropic, Copilot and other anthropic-messages providers share anthConvertTools); the openai-completions, openai-responses, azure, codex, mistral, google, vertex and bedrock paths send the whole parameters object and are unchanged. A converter test and a request test read the six upstream-shaped cases (false, true, a schema, absent, member order, definitions with root anyOf out); the strict path, which already sent the keyword, is asserted unchanged. The pi-ai anthropic-messages implementation in the vendored pi-dist is a bridge stub that runs in PiG's host, so no post-release backport entry is needed. The parity oracle carries the fix as a post-release backport (packageFileBackports of automation/gen/pi-post-release-backports.mjs, the installed Pi only: the vendored runtime runs this implementation in PiG's host), so TestToolSchemaBytesMatchPi compares the request body byte for byte."
+
+[[files]]
+path = "packages/ai/test/anthropic-strict-tool-schema.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas"]
+rationale = "aa47cedce (#12100): the case \"only sends the full input schema for strict JSON-schema tools\" expects additionalProperties: false in the non-strict schema (the same input, title still filtered out); TestAnthropicStrictToolSchemas asserts it."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "aa47cedce: Pi's own changelog line; PiG records the change in changelog.d."

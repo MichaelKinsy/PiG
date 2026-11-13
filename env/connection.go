@@ -477,6 +477,9 @@ type Connection struct {
 	lifetime context.Context
 	cancel   context.CancelFunc
 	starts   sync.WaitGroup
+	// afterDaemonStart, when set by a test, runs once a daemon process has started and before the connection keeps its
+	// session: it lets a test close the connection in between.
+	afterDaemonStart func(cmd *exec.Cmd)
 }
 
 // NewConnection returns a connection that starts the daemon at its first request.
@@ -736,6 +739,9 @@ func (c *Connection) start() (RemoteInfo, *session, error) {
 	if err := cmd.Start(); err != nil {
 		return RemoteInfo{}, nil, NewRemoteError(Json{"code": "spawn_error", "message": err.Error(), "lost": true})
 	}
+	if c.afterDaemonStart != nil {
+		c.afterDaemonStart(cmd)
+	}
 	c.mu.Lock()
 	c.sessions++
 	s := &session{
@@ -747,6 +753,11 @@ func (c *Connection) start() (RemoteInfo, *session, error) {
 	if c.closed {
 		c.mu.Unlock()
 		c.teardown(s, closedError())
+		// Close found no session to tear down, so none of the goroutines below is started for this daemon. The teardown
+		// signalled it; this waits for its exit, which also closes its pipes. Upstream has no such window: #start spawns and
+		// keeps the session in one synchronous step (connection.ts:341-347), and Node reaps a child by itself.
+		//portlint:allow golifetime ends when the daemon exits, which the teardown above causes with SIGTERM; Pi close() (connection.ts:267-270) does not wait for the exit either
+		go func() { _ = cmd.Wait() }()
 		return RemoteInfo{}, nil, closedError()
 	}
 	c.session = s

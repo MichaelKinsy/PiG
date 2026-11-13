@@ -250,7 +250,12 @@ func cloneAuthCredentials(creds map[string]Credential) map[string]Credential {
 
 // credential returns one provider's stored credential from the latest snapshot.
 func (a *AuthStorage) credential(provider string) (Credential, bool, error) {
-	creds, err := a.readLatest(context.Background())
+	return a.credentialIn(context.Background(), provider)
+}
+
+// credentialIn is credential with its read made in ctx's operation. It does not end with ctx.
+func (a *AuthStorage) credentialIn(ctx context.Context, provider string) (Credential, bool, error) {
+	creds, err := a.readLatest(context.WithoutCancel(ctx))
 	if err != nil {
 		return Credential{}, false, err
 	}
