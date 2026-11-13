@@ -331,7 +331,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 29 | 28 | 1 | 0 | 0 | 21 | not run |
 | `startup` | 26 | 25 | 1 | 0 | 0 | 10 | not run |
-| `tools` | 35 | 35 | 0 | 0 | 0 | 35 | not run |
+| `tools` | 36 | 36 | 0 | 0 | 0 | 40 | not run |
 | `tree` | 12 | 11 | 1 | 0 | 0 | 10 | not run |
 | `tui-components` | 40 | 40 | 0 | 0 | 0 | 36 | not run |
 

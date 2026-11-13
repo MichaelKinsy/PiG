@@ -4478,6 +4478,45 @@
       ]
     },
     {
+      "id": "BF-1a6b1ab",
+      "title": "A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider…",
+      "symptom": "A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider, the session file, RPC output and an HTML export as Pi writes it.",
+      "rootCause": "An earlier change made the tool definitions of three API kinds write a lone surrogate as its escape in MarshalJSON, one type at a time, and left the tip red. Each of those types also has a MarshalJSONTo, which the request encoder calls first and which still wrote U+FFFD, so the two methods of one type disagreed and the request was right only through the second encode. Mistral's tool definition was not changed, and since a declaration is now read with the unit kept, its one U+FFFD became three.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider, the session file, RPC output and an HTML export as Pi writes it. A JavaScript, Python or Lisp extension can register such a tool, and so can a Go extension that builds the string. PiG wrote U+FFFD in the unit's place (three for a name or a description, one inside the schema), so two tools whose names differed only in that unit reached the provider under one name, a property name no longer matched its `required` entry, and a call the model made by that name ended in `Tool ... not found`. Now the request of the Anthropic Messages, OpenAI Completions, OpenAI Responses, Azure OpenAI Responses, Google Generative AI, Mistral and Bedrock kinds holds the unit as the `\\uXXXX` escape `JSON.stringify` writes, in the tools it declares and in a history that names a called tool or holds the unit in a call's arguments, also when the body is written from a payload a Go `OnPayload` hook handed back; the system message's session line and its RPC lines hold the same escape. The name of a called tool is read with the unit kept from the Anthropic Messages, OpenAI Completions, OpenAI Responses, Azure OpenAI Responses, Google Generative AI and Mistral streams, so the call finds its tool. A session Pi wrote with the escape is read and sent with it; a session an earlier PiG wrote with U+FFFD is sent as it is. ECMAScript specifies that `JSON.stringify` writes a lone surrogate as its escape, and Anthropic's prompt caching documentation says a cache hit needs an identical prompt prefix. No provider documents whether it accepts a tool name or description that holds such an escape, and this was not tried against a live provider. The Google Vertex and OpenAI Codex requests go through the same encoders as the Google Generative AI and OpenAI Responses ones and were not compared with Pi's. Not changed: an extension in a subprocess still receives U+FFFD in the unit's place in what the host sends it (so a payload its `before_provider_request` handler returns holds U+FFFD), tools of an MCP server are still read with U+FFFD, and so is the name of a called tool in the Bedrock stream.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1a6b1ab3ed",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e95b1a4f11",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "agent/system_message_surrogate_test.go::TestStoredSystemMessageKeepsAToolsLoneSurrogate",
+        "ai/marshaler_census_test.go::TestEveryMarshalerWritesALoneSurrogateAsItsEscape",
+        "ai/providers/bedrock/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi",
+        "ai/providers/bedrock/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
+        "ai/tool_schema_surrogate_test.go::TestToolParametersWithoutRecordedOrderKeepALoneSurrogate",
+        "ai/tool_schema_surrogate_test.go::TestToolSchemaJSONKeepsALoneSurrogate",
+        "ai/tool_surrogate_wire_test.go::TestCalledToolNameKeepsALoneSurrogateOfTheStream",
+        "ai/tool_surrogate_wire_test.go::TestToolLoneSurrogatesReachTheWireAsPi",
+        "internal/codingagent/export/export_test.go::TestToHTML_WritesALoneSurrogateAsItsEscape",
+        "internal/jsstring/surrogate_json_test.go::TestHoldsSurrogate",
+        "internal/jsstring/surrogate_json_test.go::TestUnmarshalKeepingSurrogatesReportsEncodingJSONErrors",
+        "test/extension-conformance/tool_declaration_surrogates_test.go::TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs",
+        "test/parity/scenarios/tools/34-extension-tool-lone-surrogate.toml",
+        "tui/tool_execution_surrogate_test.go::TestToolCardDrawsANameWithALoneSurrogate"
+      ]
+    },
+    {
       "id": "BF-1a855cd",
       "title": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each…",
       "symptom": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each redraw, as in Pi.",

@@ -40500,6 +40500,17 @@
       "shapeHash": "sha256:aa8b800e83d092033a6395a04369a061305b8d7481c2dd8e694ef5f557dcc3bc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#encodeMarshaled",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "encodeMarshaled",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(encoder *encoding/json/jsontext.Encoder, value encoding/json.Marshaler) error"
+      },
+      "shapeHash": "sha256:1c2f6093ecc82001723522af8d3b42665c48c7143c0fd85d2b4dc846479a603e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#encodeRequestBody",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "encodeRequestBody",
@@ -48662,17 +48673,6 @@
       "shapeHash": "sha256:7b47921c49c2fbd9197c848e0acd90609fcdd2e8d83951c2e88874505832bac1"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#marshalStringify",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "marshalStringify",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(value any) ([]byte, error)"
-      },
-      "shapeHash": "sha256:7b47921c49c2fbd9197c848e0acd90609fcdd2e8d83951c2e88874505832bac1"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#marshalToolParameters",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "marshalToolParameters",
@@ -50717,6 +50717,39 @@
         "type": "func() ([]byte, error)"
       },
       "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#mistralToolFn.MarshalJSONTo",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "mistralToolFn.MarshalJSONTo",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(encoder *encoding/json/jsontext.Encoder) error"
+      },
+      "shapeHash": "sha256:a55cf16e890362b327ed22d58f0896b913bba140bcae9571dada2dcc6ec48494"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#mistralToolFn.wire",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "mistralToolFn.wire",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (mistralToolFnWire, error)"
+      },
+      "shapeHash": "sha256:b0a7dd1f7b016bb8f3052c81a0a15d1e1938ccd12940aec8cf59ff4600172b1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#mistralToolFnWire",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "mistralToolFnWire",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mistralToolFnWire"
+      },
+      "shapeHash": "sha256:2e77181543d59e462db841d19c5d635e0fc4bcf8546fa7d8e74bb1ba78d0aeec"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#mistralToolKey",
