@@ -100,20 +100,9 @@ func TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI(t *testing.
 			return stream.Result()
 		}},
 	}
-	// The Google Vertex case comes from provider_stream_event_rejection_google_vertex_test.go: a Piglet built with pig_strip_google_vertex has no such provider, and this file is built for every Piglet.
-	cases = slices.Concat(cases, providerStreamEventRejectionGoogleVertexCases(googleFirst, googleSecond), []providerStreamEventRejectionCase{
-		{"mistral-conversations", "API key", func(t *testing.T, options StreamOptions) *AssistantMessage {
-			model := mustGeneratedModel(t, "mistral", "mistral-large-latest").ToModel()
-			options.APIKey = "test"
-			options.Fetch = &http.Client{Transport: FetchFunction(func(*http.Request) (*http.Response, error) {
-				return mistralUpstreamSSE(mistralCreateSSEBody(mistralFirst, mistralSecond)), nil
-			})}
-			stream, err := StreamSimple(t.Context(), model, mistralUpstreamContext(), options)
-			if err != nil {
-				t.Fatal(err)
-			}
-			return stream.Result()
-		}},
+	// The Google Vertex and Mistral cases come from provider_stream_event_rejection_google_vertex_test.go and provider_stream_event_rejection_mistral_test.go: a Piglet built with
+	// pig_strip_google_vertex or pig_strip_mistral_conversations has no such provider or none of its test helpers, and this file is built for every Piglet.
+	cases = slices.Concat(cases, providerStreamEventRejectionGoogleVertexCases(googleFirst, googleSecond), providerStreamEventRejectionMistralCases(mistralFirst, mistralSecond), []providerStreamEventRejectionCase{
 		{"pi-messages", "API key, custom base URL", func(t *testing.T, options StreamOptions) *AssistantMessage {
 			baseURL, _ := startPiMessagesServer(t, piMessagesResponder{events: []any{
 				map[string]any{"type": "start"},
