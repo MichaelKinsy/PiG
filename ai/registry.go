@@ -263,7 +263,17 @@ func ListModels(provider string) []GeneratedModel {
 	}
 	registryProviderOnce.Do(initRegistryProvider)
 	models := registryByProvider[provider]
-	out := make([]GeneratedModel, 0, len(models))
+	// The result holds exactly the models it returns: with a stripped API the provider's models are counted first, so a provider that loses models to the strip does not keep the capacity of its whole catalog.
+	size := len(models)
+	if len(stripped) > 0 {
+		size = 0
+		for _, model := range models {
+			if !slices.Contains(stripped, model.API) {
+				size++
+			}
+		}
+	}
+	out := make([]GeneratedModel, 0, size)
 	for _, model := range models {
 		if !slices.Contains(stripped, model.API) {
 			out = append(out, *model)
