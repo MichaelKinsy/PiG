@@ -1355,6 +1355,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D624](#bf-d624) | An opt-in screen writer sends the terminal only what changes the screen in fullscreen mode, where Pi sends… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D628](#bf-d628) | auth.json is read once per availability pass, where Pi stats it on every credential read | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
@@ -20611,6 +20612,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1488c993df` (2026-11-11), `5042dd06e8` (2026-11-11), `deaeb3a5dc` (2026-11-11), `e3373144bb` (2026-11-11), `440cb8b15a` (2026-11-12), `c3fdda8351` (2026-11-12)
 - **Tests:** `internal/codingagent/status_tick_within_test.go::TestRemovingTheIndicatorCancelsItsWaitingStepFrame`, `internal/codingagent/status_tick_within_test.go::TestStatusTickAsksForItsFrameWithinTheStepDelay`, `internal/codingagent/status_tick_within_test.go::TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `tui/render_within_test.go::TestCancelRenderWithinDropsTheWaitingStepFrame`, `tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange`, `tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin`, `tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame`, `tui/render_within_test.go::TestRequestRenderWithinAsksAtOnceWhenNoFrameWasDrawnWithinTheDelay` and 3 more in docs/bug-ledger.json
 
+### BF-D624
+
+**An opt-in screen writer sends the terminal only what changes the screen in fullscreen mode, where Pi sends…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D624)
+- **Symptom:** none. Pi has no layer under the terminal's write; its bytes are correct, only more.
+- **Root cause:** through tmux or ssh the bytes of a frame are what the terminal and the multiplexer read and parse, a row's unchanged cells included; the writer sends between a fifth and nine tenths of them on the streams above.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi sends only what changes the screen, or the owner declines the writer. It is opt-in in 0.8.0: `TerminalScreenWriterDefault` is `"pi"`. When the owner's real-terminal condition is shown the constant becomes `"writer"` and this record says so; if he declines the writer, `internal/screenwriter`, `tui/terminal_screen_writer.go`, the five hunks in `tui/terminal.go`, the setting, the markers and this record go.
+- **Fix commits:** `0502bf8532` (2026-11-12), `2b55d338f1` (2026-11-12), `2cc9c4a3e0` (2026-11-12), `30eff09b91` (2026-11-12), `6db3b075a5` (2026-11-12), `8c698d0e45` (2026-11-12), `a191c2884c` (2026-11-12), `b64ee76fc6` (2026-11-12), `ce81455f7f` (2026-11-12)
+- **Tests:** `coding/cli/screen_writer_binary_test.go::TestNoScreenWriterOutsideInteractiveMode`, `internal/codingagent/interactive_screen_writer_test.go::TestScreenWriterChoiceIsMadeBeforeTheFirstFrame`, `internal/codingagent/interactive_screen_writer_test.go::TestScreenWriterSettingChangeWaitsForTheNextStart`, `internal/codingagent/interactive_screen_writer_test.go::TestTerminalScreenWriterSetting`, `internal/codingagent/interactive_screen_writer_test.go::TestTerminalScreenWriterUnderEitherDefault`, `internal/screenwriter/autowrap_test.go::TestAutowrapIsReadAmongUnrecognisedSequences`, `internal/screenwriter/autowrap_test.go::TestFramesAreTranslatedOnlyWhileAutowrapIsKnownToBeOff`, `internal/screenwriter/autowrap_test.go::TestOutsideReportsAutowrap` and 44 more in docs/bug-ledger.json
+
 ### BF-D628
 
 **auth.json is read once per availability pass, where Pi stats it on every credential read**
@@ -30859,6 +30875,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-e299ba1](#bf-e299ba1) |
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
 | D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are… | [BF-D619](#bf-d619) |
+| D624 | An opt-in screen writer sends the terminal only what changes the screen in fullscreen mode, where Pi sends… | [BF-D624](#bf-d624) |
 | D628 | auth.json is read once per availability pass, where Pi stats it on every credential read | [BF-D628](#bf-d628) |
 | D629 | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | [BF-D629](#bf-d629) |
 | D631 | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | [BF-6da170c](#bf-6da170c) |
