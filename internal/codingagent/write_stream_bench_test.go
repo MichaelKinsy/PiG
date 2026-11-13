@@ -25,7 +25,8 @@ func streamedWriteTypeScript(kb int) string {
 // characters at a time, as the harness's write:N scenario does: one op is the whole stream, the content as the arguments
 // carry it at each update included. The highlight warm-up, which the card's worker runs beside the frames, is replaced by nothing,
 // as in BenchmarkWriteCardFrames warm=off: how many of its steps fold into one depends on when the worker is scheduled, so with it
-// the 50KB stream read 778,482 to 857,657 allocations in five runs, and the frames are what this benchmark draws.
+// the 50KB stream read 778,482 to 857,657 allocations in five runs, and the frames are what this benchmark draws. The worker's cost
+// is measured by BenchmarkWriteCardFrames warm=on, where it ends each warm-up before the next update.
 func BenchmarkStreamedWriteCard(b *testing.B) {
 	for _, kb := range []int{5, 50} {
 		content := streamedWriteTypeScript(kb)
