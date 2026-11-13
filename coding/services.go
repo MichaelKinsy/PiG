@@ -654,8 +654,9 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 		registry := runtime.services.Registry()
 		// A model object an extension set is sent as it is: Pi's request uses the model it is given (model-runtime.ts:667-689 prepareRequest), and the Session replaces the object when the registry's model changes (refreshCurrentModelFromRegistry). A model the host built from a name takes the registry's current model of that name.
 		object := runtime.modelObjectOrigin(model) != nil
-		if refreshed := runtime.GetModel(providerID, model.ID); refreshed != nil && !object {
-			requestModel = refreshed
+		listed := runtime.GetModel(providerID, model.ID)
+		if listed != nil && !object {
+			requestModel = listed
 		}
 		auth, err := registry.ResolveRegistryModelAuth(ctx, requestModel, overrides)
 		if err != nil {
@@ -668,7 +669,8 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 			build := func() (*ai.Model, error) {
 				return buildModel(providerID+"/"+model.ID, runtime.services, options.APIKey)
 			}
-			if object {
+			// A model the registry does not list has no definition but its own members, as an extension's model object has: the start-up copy of a custom model id (BuildFallbackModel) is one. Built by provider and id it is the provider's connection alone, with no output limit and no compat.
+			if object || listed == nil {
 				build = func() (*ai.Model, error) { return buildRequestModel(model, runtime.services, options.APIKey) }
 			}
 			resolved, err := build()
