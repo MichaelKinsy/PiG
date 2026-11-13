@@ -120736,7 +120736,7 @@
       "evidence": [
         "test:chord/next/link/channel_test.go#TestInOrderHandling",
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce"
       ]
     },
     {
@@ -120758,7 +120758,7 @@
       "evidence": [
         "test:chord/next/link/channel_test.go#TestInOrderHandling",
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce"
       ]
     },
     {
@@ -120780,7 +120780,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce"
       ]
     },
     {
@@ -120802,7 +120802,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce"
       ]
     },
     {
@@ -120868,7 +120868,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -120890,7 +120890,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -129228,10 +129228,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/link/websocket.go#webSocketLink.Close"
+        "call:chord/next/link/websocket.go#WebSocketLink"
       ],
       "evidence": [
-        "reach:chord/next/link/websocket.go#webSocketLink.Close"
+        "reach:chord/next/link/websocket.go#WebSocketLink"
       ]
     },
     {
@@ -129248,10 +129248,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/link/websocket.go#webSocketLink.Close"
+        "call:chord/next/link/websocket.go#WebSocketLink"
       ],
       "evidence": [
-        "reach:chord/next/link/websocket.go#webSocketLink.Close"
+        "reach:chord/next/link/websocket.go#WebSocketLink"
       ]
     },
     {
@@ -129359,8 +129359,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
       ]
     },
     {
@@ -129381,8 +129381,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
       ]
     },
     {
