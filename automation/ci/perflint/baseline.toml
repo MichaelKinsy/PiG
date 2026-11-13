@@ -76,22 +76,6 @@ count = 1
 class = "hot-owned:claude-history-hot (0cf5bab981)"
 
 [[hit]]
-file = "agent/agent_loop.go"
-func = "loopRun.prepareRequest"
-pattern = "history-clone"
-detail = "slices.Clone"
-count = 1
-class = "hot-owned:claude-history-hot (0cf5bab981)"
-
-[[hit]]
-file = "agent/agent_loop.go"
-func = "loopRun.turnContext"
-pattern = "history-clone"
-detail = "slices.Clone"
-count = 2
-class = "hot-owned:claude-history-hot (0cf5bab981)"
-
-[[hit]]
 file = "agent/message_json.go"
 func = "AgentMessage.MarshalJSON"
 pattern = "nested-marshal"
@@ -174,14 +158,6 @@ class = "cold: once per standalone run, not per turn"
 [[hit]]
 file = "agent/system_state.go"
 func = "declareToolChanges"
-pattern = "history-clone"
-detail = "slices.Clone"
-count = 1
-class = "hot-owned:claude-history-hot (0cf5bab981)"
-
-[[hit]]
-file = "agent/tool_call_hook_context.go"
-func = "loopRun.toolCallHookContext"
 pattern = "history-clone"
 detail = "slices.Clone"
 count = 1
