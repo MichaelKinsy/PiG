@@ -77,7 +77,9 @@ def entry(pin: Pin) -> Path:
 
 
 def identity(data_sha: str, closure_sha: str, backports: str = "") -> str:
-    return hashlib.sha256((f"{data_sha}\n{closure_sha}" + (f"\n{backports}" if backports else "")).encode()).hexdigest()[:12]
+    # "bundle": the backports are in the bundle `pi` runs too (rebuild_bundle). A build made before the bundle was rebuilt has the key
+    # without the word, and stays the oracle of the trees that still ask for that key.
+    return hashlib.sha256((f"{data_sha}\n{closure_sha}" + (f"\n{backports}\nbundle" if backports else "")).encode()).hexdigest()[:12]
 
 
 # The release line's Pi is the pinned release plus the post-release Pi fixes its Go and vendored-Node ports carry
@@ -124,12 +126,101 @@ def backports_node(*arguments: str) -> subprocess.CompletedProcess:
     return subprocess.run([node, str(BACKPORTS), *arguments], capture_output=True, text=True, check=False, timeout=120)
 
 
+def patch_packages(places: dict[str, Path], what: str) -> None:
+    done = backports_node("--packages", *(f"{name}={place}" for name, place in places.items()))
+    if done.returncode != 0:
+        raise PinError(f"the post-release backports do not apply to {what}:\n{done.stderr.strip()}")
+
+
 def apply_backports(modules: Path) -> None:
     """Apply the post-release backports to the installed Pi packages under `modules` in place. The packs and the source tree stay
     as built: the frozen closure pins each pack's integrity, and the Durable oracle packs the source tree again."""
-    done = backports_node("--packages", *(f"{name}={place}" for name, place in backport_places(modules).items()))
+    patch_packages(backport_places(modules), "the installed oracle")
+
+
+# The backports patch compiled output, and `pi` does not run that: the package's bin is dist/bundle/cli.js, the bundle Pi's build makes of
+# the packages' compiled output (scripts/build-coding-agent-bundle.mjs: esbuild, minified, chunks named by content). It is what a user of the
+# published package runs and what every CLI parity scenario runs. An oracle patched in its compiled output only was the release plus its fixes
+# for a Node import and the bare release for `pi`, and both at once where the bundle reads a patched file from disk (the HTML export's
+# template.js beside the bundled ansi-to-html). So the build makes the bundle again from the patched compiled output, with Pi's bundler and the
+# esbuild of Pi's lock. Two checks keep the result Pi's program plus the backports and nothing else: the bundler must first reproduce the
+# installed bundle, byte for byte, from the compiled output as built, and the source build must be as it was afterwards.
+BUNDLER = Path("scripts") / "build-coding-agent-bundle.mjs"
+
+
+def tree_digest(directory: Path) -> str:
+    """The digest of the files under `directory`: the sha256 of their `<sha256 of the file>  <path>` lines in path order
+    (internal/pioracle computes the same digest of the bundle)."""
+    files = sorted((path.relative_to(directory).as_posix(), path) for path in directory.rglob("*") if path.is_file())
+    return hashlib.sha256("".join(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {name}\n" for name, path in files).encode()).hexdigest()
+
+
+def bundle_of(modules: Path) -> Path | None:
+    """The directory of the bundle the installed package's `pi` bin runs (dist/bundle), None for a Pi whose bin is compiled output."""
+    agent = modules / "@earendil-works" / "pi-coding-agent"
+    manifest = json.loads((agent / "package.json").read_text(encoding="utf-8"))
+    binary = manifest["bin"]["pi"] if isinstance(manifest["bin"], dict) else manifest["bin"]
+    directory = (agent / binary).parent
+    return directory if directory.name == "bundle" else None
+
+
+def run_bundler(source: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        raise PinError("node is required to rebuild the bundle of the oracle")
+    done = subprocess.run([node, str(source / BUNDLER)], cwd=source, capture_output=True, text=True, check=False, timeout=900)
     if done.returncode != 0:
-        raise PinError(f"the post-release backports do not apply to the installed oracle:\n{done.stderr.strip()}")
+        raise PinError(f"Pi's bundler ({BUNDLER.as_posix()}) failed:\n{(done.stderr or done.stdout).strip()}")
+
+
+def rebuild_bundle(source: Path, modules: Path) -> str:
+    """Replace the installed bundle with the one Pi's bundler makes of the compiled output plus the backports, and return its digest
+    ("" for a Pi without a bundle). The bundler reads the source build's packages, so the backports are applied there for the run and
+    taken out again: the packs, the mirror and the Durable oracle need the source build as built."""
+    installed = bundle_of(modules)
+    if installed is None:
+        return ""
+    workspaces = workspace_dirs(source)
+    places = {name: workspaces[f"@earendil-works/{name}"] for name in BACKPORT_PACKAGES}
+    built = places["pi-coding-agent"] / installed.relative_to(modules / "@earendil-works" / "pi-coding-agent")
+    parts = [place / part for place in places.values() for part in ("dist", "docs", "schemas") if (place / part).is_dir()]
+    as_built = [tree_digest(part) for part in parts]
+    listed = backports_node("--package-files", *(f"{name}={place}" for name, place in places.items()))
+    if listed.returncode != 0:
+        raise PinError(f"the post-release backports script does not name the files it patches:\n{listed.stderr.strip()}")
+    saved = {Path(path): Path(path).read_bytes() for path in json.loads(listed.stdout)}
+    kept = source.parent / "bundle-as-built"
+    shutil.move(str(built), str(kept))
+    try:
+        run_bundler(source)
+        if tree_digest(built) != tree_digest(installed):
+            raise PinError(f"Pi's bundler does not reproduce the installed bundle from the compiled output as built ({built} differs from {installed}): a bundle rebuilt with the backports would differ from Pi's by more than the backports")
+        patch_packages(places, "the source build")
+        run_bundler(source)
+        shutil.rmtree(installed)
+        shutil.copytree(built, installed)
+    finally:
+        for path, data in saved.items():
+            path.write_bytes(data)
+        shutil.rmtree(built, ignore_errors=True)
+        shutil.move(str(kept), str(built))
+    if [tree_digest(part) for part in parts] != as_built:
+        raise PinError(f"the source build under {source} is not as built after the bundle was rebuilt")
+    return tree_digest(installed)
+
+
+def bundle_problem(modules: Path, stamp: dict) -> str:
+    """Why the bundle the installed `pi` bin runs is not the one the build of `stamp` made from the patched compiled output, "" when it
+    is (or when the oracle carries no backports, or its bin is compiled output)."""
+    if not stamp.get("backports"):
+        return ""
+    bundle = bundle_of(modules)
+    if bundle is None:
+        return ""
+    if not stamp.get("bundle_sha256"):
+        return "the installed Pi carries the post-release backports in its compiled output only: the bundle its `pi` bin runs is the pinned release's"
+    got = tree_digest(bundle)
+    return "" if got == stamp["bundle_sha256"] else f"the bundle the installed `pi` bin runs has the digest {got}, its build stamped {stamp['bundle_sha256']}"
 
 
 def published(pin: Pin, name: str) -> Path | None:
@@ -617,7 +708,7 @@ def reusable(pin: Pin, build: Path | None) -> bool:
     if build is None or not (build / STAMP).is_file() or not installed(build / "node_modules", pin):
         return False
     data = json.loads((build / STAMP).read_text())
-    return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (frozen_closure_digest(pin) or data.get("closure_sha256", "")) and data.get("backports", "") == backports_digest(pin)
+    return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (frozen_closure_digest(pin) or data.get("closure_sha256", "")) and data.get("backports", "") == backports_digest(pin) and not bundle_problem(build / "node_modules", data)
 
 
 def ensure(pin: Pin, *, force: bool = False) -> Path:
@@ -665,14 +756,18 @@ def build_into(pin: Pin, build: Path) -> str:
     if problems:
         raise PinError("the installed tree differs from the frozen closure:\n  " + "\n  ".join(problems[:20]))
     backports = backports_digest(pin)
+    bundle = ""
     if backports:
         apply_backports(modules)
+        bundle = rebuild_bundle(source, modules)
     for scratch in ("flat", "packs", "closure"):
         shutil.rmtree(build / scratch, ignore_errors=True)
     closure_sha = closure_digest(closure)
     stamp = {"commit": pin.commit, "package_version": pin.package_version, "version": pin.version, "source": "build", "provider_data_sha256": data_sha, "closure_sha256": closure_sha}
     if backports:
         stamp["backports"] = backports
+    if bundle:
+        stamp["bundle_sha256"] = bundle
     write_replacing(build / STAMP, (json.dumps(stamp) + "\n").encode())
     protect(modules)
     return f"oracle-{identity(data_sha, closure_sha, backports)}"

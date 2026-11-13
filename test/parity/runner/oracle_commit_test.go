@@ -41,6 +41,24 @@ func TestOracleCommitMismatch(t *testing.T) {
 			t.Fatalf("accepted or mis-reported another commit's build: %q", got)
 		}
 	})
+	t.Run("a backported build whose pi runs the pin's bundle is rejected", func(t *testing.T) {
+		dir := t.TempDir()
+		stamp := `{"commit":"` + coding.UpstreamCommit + `","backports":"b"}`
+		if err := os.WriteFile(filepath.Join(dir, ".pig-pi-oracle.json"), []byte(stamp), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		bundle := filepath.Join(dir, "node_modules", "@earendil-works", "pi-coding-agent", "dist", "bundle")
+		if err := os.MkdirAll(bundle, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		bin := filepath.Join(bundle, "cli.js")
+		if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if got := oracleCommitMismatch(bin); !strings.Contains(got, "compiled output only") {
+			t.Fatalf("accepted an oracle whose compiled output carries the backports and whose bundle does not: %q", got)
+		}
+	})
 	t.Run("an unstamped (published) oracle passes only on an explicit opt-in for a release tag pin", func(t *testing.T) {
 		bin := filepath.Join(t.TempDir(), "pi")
 		if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755); err != nil {
