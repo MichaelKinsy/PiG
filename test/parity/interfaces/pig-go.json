@@ -138356,6 +138356,105 @@
       "shapeHash": "sha256:1c5aab49fc983f687625f3978dcbe87f6df38896e103f69c1efe9ea723b5e796"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "MountImages"
+      },
+      "shapeHash": "sha256:9945072b33ec2f62bfc52a689cc9749a335f6d6c56321c83ae5f7ee34b4755e2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.dropLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.dropLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(held mountPlacement)"
+      },
+      "shapeHash": "sha256:479ca81167c7a4e95ec88af640fba184f0c9aa0eb2d2f14a1eb416f029b0f84d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.id",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.id",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ref string) int"
+      },
+      "shapeHash": "sha256:f8230277297b25ff22256a9ccb3610b33dd11a69dd9f96d3cc4984385d707899"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.nextIDLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.nextIDLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.place",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.place",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(prev *mountPlacement, next mountPlacement, png string) int"
+      },
+      "shapeHash": "sha256:6ab1b06348046c749c9f5483f99fc5b2a602060e80c8748145b7941e38a358a4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.prepare",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.prepare",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(img *viewImage, png bool, ready func()) (*mountImageData, bool)"
+      },
+      "shapeHash": "sha256:0833b05b85692733d76e0c33f4d6c6e0c386a5a0f10f3aa6bd13b5de34ac5809"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.release",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.release",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(held mountPlacement)"
+      },
+      "shapeHash": "sha256:479ca81167c7a4e95ec88af640fba184f0c9aa0eb2d2f14a1eb416f029b0f84d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.sweep",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.sweep",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.sweepLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MountImages.sweepLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out *strings.Builder)"
+      },
+      "shapeHash": "sha256:b33bdc5cea0d0c998353f3baebc8de08cfb26d8a6fa3425a25987c57c4fdee4f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountNodeKinds",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "MountNodeKinds",
@@ -151589,6 +151688,50 @@
       "shapeHash": "sha256:0ef5a40ec643b4c3a22d129effb3f9839e7eba0038f4b5d1af1e3fe6fa2d5493"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#kittyChunk",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "kittyChunk",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#kittyDiacritics",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "kittyDiacritics",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[297]rune"
+      },
+      "shapeHash": "sha256:51325cd4766ec670d6ef524f14c4ff3de28515a0b0462b03f07f6ba5858a5e67"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#kittyPlaceholder",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "kittyPlaceholder",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#kittyPlaceholderRows",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "kittyPlaceholderRows",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id int, cols int, rows int) []string"
+      },
+      "shapeHash": "sha256:ce50380cb98e8ce2992a0f3324608229dfdd2759fcdb70cdffd85ddf21c23476"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#knownViewKind",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "knownViewKind",
@@ -152819,6 +152962,149 @@
         "type": "[]string"
       },
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImage",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImage",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mountImage"
+      },
+      "shapeHash": "sha256:776274c09e7f294c01a31651bc42b0345253a7c6677f35a7f6dcb7752cc34591"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImage.Invalidate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImage.Invalidate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImage.Render",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImage.Render",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(width int) []string"
+      },
+      "shapeHash": "sha256:81761e7090d7bb4159cdc88ad1df72001d86a8280dab046ca793a8e9191bed39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImage.dispose",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImage.dispose",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImage.unplace",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImage.unplace",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImage.wake",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImage.wake",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() func()"
+      },
+      "shapeHash": "sha256:207ce74f02e77526c8289eecfae4b3d4c23dfd6f19c6f0d62a67b13cc07ecb07"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImageData",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImageData",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mountImageData"
+      },
+      "shapeHash": "sha256:48b6905cc337f923de35447a263232de374a5d6421e65c7dbf553e46fd88ff8e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImageFirstID",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImageFirstID",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImageKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImageKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mountImageKey"
+      },
+      "shapeHash": "sha256:a0357b1808517cea33be46f9b69eecb3fec00a36941e7861969a9782fcec6dee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImagePending",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImagePending",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]string"
+      },
+      "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountImageRefs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountImageRefs",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountPlaced",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountPlaced",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mountPlaced"
+      },
+      "shapeHash": "sha256:66684241ddff478640eeffee206c18ff2188a2abed3bd9855f629d35daec00ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mountPlacement",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "mountPlacement",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mountPlacement"
+      },
+      "shapeHash": "sha256:b30df1208853aa63308905a0d497cfd2533814e6ef6041117041b8ebb00cb1f9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#mustJSONObject",
@@ -161236,6 +161522,17 @@
       "shapeHash": "sha256:2a3656596bf481e972b43a085bb8202555b69622ceda5cd1cc2a958720dbaf07"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewBuilder.mountImage",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewBuilder.mountImage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(n *ViewNode, img *viewImage, fallback func(string) string) github.com/MichaelKinsy/PiG/tui.Component"
+      },
+      "shapeHash": "sha256:3641d49819e770b9429ac32d31367b11d8b7b18449622f3fca55d2535e60bc4a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewBuilder.queue",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "viewBuilder.queue",
@@ -166118,6 +166415,17 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#writeKittyVirtualImage",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "writeKittyVirtualImage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out *strings.Builder, id int, cols int, rows int, png string)"
+      },
+      "shapeHash": "sha256:a1dea802bf454758ed9503960de18213c2d7401aac706dc42721c07406ff7f09"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#writeYAMLValue",
@@ -318107,6 +318415,17 @@
       "shapeHash": "sha256:5e809b8c8c5f01ba6e8ffff5b34e0eff646f4a9ead4325aa0b45130543683e18"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalViewImageFormats",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalViewImageFormats",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]string"
+      },
+      "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalViewLimits",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "terminalViewLimits",
@@ -320602,6 +320921,17 @@
         "type": "viewItem"
       },
       "shapeHash": "sha256:35613d27334614300db1f9a6979bb253f79237cee4b797f83902ee46629d7f1d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#viewKittyPlaceholders",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "viewKittyPlaceholders",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(getenv func(string) string) bool"
+      },
+      "shapeHash": "sha256:77d7486f9f7adabaffb7539d48921e3c1efb79550ea01ac0d422c98c8a28b907"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#viewMount",
