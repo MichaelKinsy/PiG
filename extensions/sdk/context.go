@@ -250,6 +250,10 @@ func hostOptionalString(c Context, method, field string) (*string, error) {
 // Context provides the extension handler with access to host UI methods,
 // session state, and message injection. It is passed to every tool, command,
 // and event handler.
+//
+// Context has no method that continues a turn or appends a compaction at a turn's end. A turn_end or agent_before_settle handler does both with its result:
+// "entries" (custom, custom_message, context_edit and compaction drafts) and "continue" (one more provider request, no new user message). An extension that owns
+// compaction continues a turn after a provider overflow this way; see "Own compaction and continue after an overflow" in the extensions guide.
 type Context struct {
 	ext        *Extension
 	toolCallID string // set for tool handlers
