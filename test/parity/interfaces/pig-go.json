@@ -28917,6 +28917,17 @@
       "shapeHash": "sha256:677643e3871e4fd44ab4f88e22c056e213bab1c6cf0cf6c1def9f3cecec3e9ed"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthImageSource",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthImageSource",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "anthImageSource"
+      },
+      "shapeHash": "sha256:3e437fc1b4ed4d7f93f49da6ed73f2bae04f3b97df2e7eec630c52c0f6ab1486"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#anthInputSchema",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "anthInputSchema",
@@ -151147,6 +151158,17 @@
         "type": "func(a github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, b github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) bool"
       },
       "shapeHash": "sha256:159f8179614deebffb67e4f356d12800f062e4014943399141c426bc95f7e62e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#keepToolChoiceText",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "keepToolChoiceText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(request map[string]any, raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage)"
+      },
+      "shapeHash": "sha256:55c32f969ed3d346a9febd76aba5762063082e16a1c935e81ed78b6e85aecd76"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#keptMessageEncoding",
