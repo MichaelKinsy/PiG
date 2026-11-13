@@ -1,4 +1,4 @@
-from = "1.5.2+ff7414d5"
+from = "1.5.2+4438c58b"
 to = "1.5.2+86918f9e"
 # Pi 86918f9eebf6 (2026-11-13): fix(ai): send reasoning_effort and read reasoning tokens for GitHub Copilot (#12110, closes #12019).
 # For the lane that moves the pin past this commit: the generated catalog then replaces the provider-data block of
