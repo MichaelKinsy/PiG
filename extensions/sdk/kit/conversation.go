@@ -13,6 +13,10 @@ package kit
 // UserMessage is upstream UserMessageComponent(text, getMarkdownTheme(),
 // outputPad): the user's Markdown on the user message background.
 type UserMessage struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Text string
 	// OutputPad is 0 or 1, the values of Pi's outputPad setting.
 	OutputPad int
@@ -246,6 +250,10 @@ func (b *BashExecution) SetOutputPad(padding int) { b.OutputPad = padding }
 // Text(…, paddingX, paddingY), as Pi's edit renderer draws it: context,
 // removed and added lines in the diff colors, with a changed word inverted.
 type Diff struct {
+	// ID names the node, so that an a11y, focus or drawing record of a
+	// mounted view can refer to it; "" sends none.
+	ID string
+
 	Diff               string
 	FilePath           string
 	PaddingX, PaddingY int

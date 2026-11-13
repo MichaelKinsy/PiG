@@ -1532,6 +1532,28 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-g-state:%s,rev=%d", cur.State, cur.Mount.Rev), "info")
 		return nil
 	})
+	// D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The
+	// argument is the row's token: the ids of the container, the text and the box are built from it.
+	ext.Command("ui_view_node_ids", "Mount a view whose container, text and box carry an id", func(ctx sdk.Context, args string) error {
+		tok := strings.TrimSpace(args)
+		label := kit.NewText("Label "+tok, 0, 0)
+		label.ID, label.Bg = tok+"-label", "selectedBg"
+		frame := kit.NewBox(1, 0, kit.NewText("inside", 0, 0))
+		frame.ID, frame.Bg = tok+"-frame", "toolPendingBg"
+		root := kit.NewContainer(label, frame)
+		root.ID = tok + "-root"
+		st, err := ctx.MountView(sdk.ViewMount{
+			Key:  "ids",
+			Slot: sdk.ViewSlotPanel,
+			View: kit.View{Root: root},
+			A11y: []sdk.ViewA11y{{Node: tok + "-label", Name: "Label " + tok}},
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-i-mounted:"+string(st.State), "info")
+		return nil
+	})
 	// D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
 	// The key and the number come from the test, so a binding the SDK dropped, or one it made up, is not what the host holds.
 	ext.Command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", func(ctx sdk.Context, args string) error {

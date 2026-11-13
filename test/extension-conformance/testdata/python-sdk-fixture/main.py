@@ -2706,6 +2706,22 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", view_grid_probe)
 
+    # D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The argument is
+    # the row's token: the ids of the container, the text and the box are built from it.
+    def view_node_ids_probe(ctx, args):
+        tok = args.strip()
+        root = kit.Container(
+            [
+                kit.Text(f"Label {tok}", 0, 0, bg="selectedBg", id=f"{tok}-label"),
+                kit.Box(1, 0, bg="toolPendingBg", children=[kit.Text("inside", 0, 0)], id=f"{tok}-frame"),
+            ],
+            id=f"{tok}-root",
+        )
+        st = ctx.mount_view("ids", "panel", view=kit.View(root), a11y=[{"node": f"{tok}-label", "name": f"Label {tok}"}])
+        ctx.notify(f"view-i-mounted:{st.state}", "info")
+
+    ext.command("ui_view_node_ids", "Mount a view whose container, text and box carry an id", view_node_ids_probe)
+
     # D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
     def view_bindings_probe(ctx, args):
         key, number = args.split(" ")

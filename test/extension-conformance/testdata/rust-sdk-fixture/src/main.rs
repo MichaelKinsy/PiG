@@ -4701,6 +4701,39 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The
+    // argument is the row's token: the ids of the container, the text and the box are built from it.
+    ext.command(
+        "ui_view_node_ids",
+        "Mount a view whose container, text and box carry an id",
+        |ctx, args| {
+            let tok = args.trim();
+            let root = Container::new()
+                .id(format!("{tok}-root"))
+                .child(
+                    kit::Text::new(format!("Label {tok}"), 0, 0)
+                        .id(format!("{tok}-label"))
+                        .bg("selectedBg"),
+                )
+                .child(
+                    kit::Box::new(1, 0)
+                        .id(format!("{tok}-frame"))
+                        .bg("toolPendingBg")
+                        .child(kit::Text::new("inside", 0, 0)),
+                );
+            let mut mount = view_mount("ids", kit::View::new(root), vec![]);
+            mount.a11y = vec![pig_sdk::ViewA11y {
+                node: format!("{tok}-label"),
+                name: format!("Label {tok}"),
+                ..Default::default()
+            }];
+            match ctx.mount_view(mount) {
+                Ok(st) => ctx.notify(&format!("view-i-mounted:{}", st.state), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
     ext.on_view_intent(|inv| match inv.intent.as_str() {
         // The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
         name if name.starts_with("fx.close-") => {

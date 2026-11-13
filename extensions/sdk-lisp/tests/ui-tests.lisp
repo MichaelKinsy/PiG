@@ -102,6 +102,30 @@
       {\"kind\":\"dynamic-border\",\"color\":\"border\"},{\"kind\":\"loader\",\"message\":\"Loading...\"},{\"kind\":\"text\",\"text\":\"\",\"paddingX\":1,\"paddingY\":1}]}"
               (kt-node-json (pig:kit-container (list (pig:kit-box) (pig:kit-spacer) (pig:kit-dynamic-border) (pig:kit-loader) (pig:kit-text))))))
 
+;; Every node kind can carry an id: an a11y, focus or drawing record of a mounted view names a node by it.
+(deftest kit-structural-kinds-carry-an-id
+  (let ((pairs '()))
+    (labels ((walk (node)
+               (push (cons (pig:jget node "kind") (pig:jget node "id")) pairs)
+               (map nil #'walk (or (pig:jget node "children") #()))))
+      (walk (kt-node-json
+             (pig:kit-container
+              (list (pig:kit-box 1 1 :id "id-box" :children (list (pig:kit-text "t" 0 0 :id "id-text")))
+                    (pig:kit-truncated-text "t" 0 0 :id "id-truncated-text")
+                    (pig:kit-markdown "m" 0 0 :id "id-markdown")
+                    (pig:kit-spacer 1 :id "id-spacer")
+                    (pig:kit-dynamic-border "border" :id "id-dynamic-border")
+                    (pig:kit-image (kt-octets "png") "image/png" :id "id-image")
+                    (pig:kit-loader "l" :id "id-loader")
+                    (pig:kit-hstack nil :id "id-hstack")
+                    (pig:kit-vstack nil :id "id-vstack")
+                    (pig:kit-lines '("row") :id "id-lines")
+                    (pig:kit-user-message "u" 1 :id "id-user-message")
+                    (pig:kit-diff "d" :id "id-diff"))
+              :id "id-container"))))
+    (check-equal 14 (length pairs))
+    (dolist (pair pairs) (check-equal (format nil "id-~A" (car pair)) (cdr pair)))))
+
 ;; The grid node (D614): columns is always sent, and an optional member left unset is absent, not null, zero or empty.
 (deftest kit-grid-holds-exactly-the-members-set
   (kt-check-json "{\"kind\":\"container\",\"children\":[
