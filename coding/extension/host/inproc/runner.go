@@ -1179,7 +1179,17 @@ func (r *Runner) MessageRenderer(customType string) extension.MessageRenderer {
 //
 // upstream: runner.ts getMarkdownTransformers
 func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
-	var transformers []extension.MarkdownTransformer
+	count := 0
+	for i := range r.extensions {
+		if r.extensions[i].MarkdownTransformer != nil {
+			count++
+		}
+	}
+	if count == 0 {
+		return nil
+	}
+	// The list is one allocation whatever the number of transformers; each wrapper is its own, as in Pi (runner.ts getMarkdownTransformers makes one arrow function per transformer on every call).
+	transformers := make([]extension.MarkdownTransformer, 0, count)
 	for _, ext := range r.extensions {
 		if ext.MarkdownTransformer == nil {
 			continue
