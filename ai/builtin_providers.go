@@ -131,6 +131,10 @@ func builtinProvider(id string) *ModelsProvider {
 	}
 	if len(GetBuiltinModels(id)) > 0 {
 		options.API = withBuiltinStreamWrapper(id, &ProviderStreams{Stream: builtinModuleStream, StreamSimple: builtinModuleStream})
+	} else if streams := strippedProviderStreams(id); streams != nil {
+		// pig additive (D92): a strip took every chat model of this provider. Pi's createProvider throws for a provider without an
+		// implementation (models.ts:1120); this entry has one that reports the strip, so its constructor fails no caller.
+		options.API = streams
 	}
 	if len(GetImageModels(BuiltinImageProvider(id))) > 0 {
 		options.Images = ProviderImageAPIMap{APIImagesOpenRouter: OpenRouterImagesAPI()}
@@ -193,15 +197,19 @@ var builtinProviderConstructors = map[string]func() *ModelsProvider{
 }
 
 // BuiltinProviders returns every built-in provider, freshly constructed.
+// pig additive (D92): a provider that a strip leaves without any model has no entry, as it is no login provider (ProviderStripped).
 func BuiltinProviders() []*ModelsProvider {
 	ids := ListProviders()
-	providers := make([]*ModelsProvider, len(ids))
-	for i, id := range ids {
-		if construct, ok := builtinProviderConstructors[id]; ok {
-			providers[i] = construct()
+	providers := make([]*ModelsProvider, 0, len(ids))
+	for _, id := range ids {
+		if ProviderStripped(id) && len(GetAllBuiltinModels(id)) == 0 {
 			continue
 		}
-		providers[i] = builtinProvider(id)
+		if construct, ok := builtinProviderConstructors[id]; ok {
+			providers = append(providers, construct())
+			continue
+		}
+		providers = append(providers, builtinProvider(id))
 	}
 	return providers
 }

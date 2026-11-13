@@ -2,6 +2,7 @@ package ai
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -84,6 +85,19 @@ func ProviderStripped(providerID string) bool {
 // strippedAPIError is the error building providerID's provider reports when its API is stripped.
 func strippedAPIError(providerID string, api API) error {
 	return pigstrip.Error(fmt.Sprintf("Provider %s: API %s", providerID, api), pigstrip.ListAPIs, string(api))
+}
+
+// strippedProviderStreams returns the chat streams of a built-in provider whose every catalog model is on a stripped API, and nil
+// for every other provider. Each stream reports the strip, as building a provider for one of those models does.
+func strippedProviderStreams(providerID string) *ProviderStreams {
+	if !ProviderStripped(providerID) {
+		return nil
+	}
+	first := registryByProvider[strings.ToLower(providerID)][0]
+	stream := func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error) {
+		return nil, strippedAPIError(first.Provider, first.API)
+	}
+	return &ProviderStreams{Stream: stream, StreamSimple: stream}
 }
 
 func strippedGoogleVertexError(cfg *GoogleVertexConfig) error {
