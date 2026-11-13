@@ -162,7 +162,7 @@ Source extensions send bounded serializable state through the extension host. Pi
 
 ## Extension views
 
-When the active Piglet sets `viewClient: terminal` (PiG Standard does), an extension can mount views that PiG draws for it. Stock PiG draws none.
+When the active Piglet sets `viewClient: terminal` (PiG Standard does), an extension can mount views that PiG draws for it. Stock PiG draws none. [Extension views](ui-views.md) describes how an extension mounts views for the terminal and a web page.
 
 | Where | What appears |
 |---|---|

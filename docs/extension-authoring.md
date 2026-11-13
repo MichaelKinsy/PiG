@@ -625,6 +625,8 @@ An extension that draws the model's thinking itself, for example in an activity 
 
 ## Plugin UI mounts (D614)
 
+The page for authors is `docs/site/docs/ui-views.md` (the built-in docs page `ui-views`). Its examples run in `coding/cli/docs_ui_views_test.go`.
+
 An extension can mount a view in a slot that the attached client draws, update it, and answer the user's intents. The view is a
 D107 view, so every SDK builds it with its kit. No client is attached by default: read the abilities first and mount only if
 there are any, and mount when a client arrives (step 12).

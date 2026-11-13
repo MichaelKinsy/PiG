@@ -73,6 +73,10 @@
     {
       "site": "piglet-lifecycle.md",
       "bundle": "piglet-lifecycle.md"
+    },
+    {
+      "site": "ui-views.md",
+      "bundle": "ui-views.md"
     }
   ],
   "slug_map": {
