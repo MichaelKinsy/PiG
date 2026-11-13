@@ -726,10 +726,14 @@ check the abilities and keep a fallback such as a widget or a notice.
   A dialog is drawn in its frame only while a dialog holds the keys, so no frame covers what the user types: shown while the
   user types in the editor it waits as one row above the editor, `<title>: F6 to enter`, and `ViewDiagnostics` returns
   `unfocused`. Several live dialogs are stacked, the last shown on top with the keys.
-- Only your extension closes a dialog: hide, finish or remove it from the handler of a key it binds or of a node's intent.
-  Escape returns the keys to the editor and the frame gives way to that row, while the mount stays live; F6 enters the
-  dialogs again and leaves them. Bind a key to close a dialog (`escape`, `tab` and `f6` cannot be bound) and give the
-  binding a `name`, which the hint row in the frame shows.
+- Only your extension closes a dialog: hide, finish or remove it from the handler of a key it binds, of a node's intent, or
+  of its `dismiss` intent. Declare one intent of the dialog with `dismiss: true` (no `nodeKey`, an `arg` that admits `{}`)
+  and Escape in the dialog raises it with `{}`: your handler decides what closing means, and the dialog stays until it
+  hides or ends the mount. Escape asks once: pressed again in a dialog that still has the keys, or while an intent of the
+  dialog is in flight, it does what it does in a dialog without a `dismiss` intent, so a handler that keeps the dialog
+  open cannot hold the key. Without a `dismiss` intent Escape returns the keys to the editor and the frame gives way to
+  that row, while the mount stays live; F6 enters the dialogs again and leaves them. A bound key closes a dialog too
+  (`escape`, `tab` and `f6` cannot be bound): give the binding a `name`, which the hint row in the frame shows.
   The TUI lists no hidden dialog, so open one from a key or a node of another view, not from a `whenHidden` intent.
 - A focus request (`request: "mount"` or `"update"`) is granted when your view already has the focus, when the user stands on
   its tab, or when the editor has the focus and is empty. Otherwise `ViewDiagnostics` returns an `unfocused` notice with the

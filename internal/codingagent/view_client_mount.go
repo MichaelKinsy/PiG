@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"encoding/json"
 	"slices"
 	"strconv"
 
@@ -57,6 +58,10 @@ type viewMount struct {
 	lineRev   uint64
 	lineTheme *tui.Theme
 	lineHint  bool
+
+	// dismissed is set when the key that interrupts raised the mount's dismiss intent and cleared when the mount loses
+	// the focus. While it is set the key leaves the dialog, so a plugin that does not close its dialog cannot hold the key.
+	dismissed bool
 }
 
 // focusNode returns the node that takes the keys when the view names none: the node of the last focus request while the
@@ -136,6 +141,7 @@ func (m *viewMount) SetFocused(focused bool) {
 		return
 	}
 	m.focused = focused
+	m.dismissed = m.dismissed && focused
 	m.c.stamp++
 	if !focused && m.frame != nil {
 		// A dialog lost the keyboard: the client removes the frames unless another dialog has it (settleFloats).
@@ -151,13 +157,25 @@ func (m *viewMount) SetFocused(focused bool) {
 	}
 }
 
-// HandleInput takes a key while the mount holds the focus. The key that interrupts leaves the panel or the dialog: it
-// first cancels a cancellable intent in flight, then goes to the focused node (a list or an input gives the focus up on
-// it), and when the node does not take it the focus returns to the editor all the same. Every other key goes to the
-// focused node, and one the node does not take to unhandledKey, which is where the mount's bindings are. Satisfies
+// HandleInput takes a key while the mount holds the focus. In a dialog whose plugin declared a dismiss intent the key
+// that interrupts dismisses: with no intent in flight it raises that intent with {} and goes no further, so the dialog
+// keeps the focus and what closing means is the plugin's. It does so once: pressed again in a dialog that still holds
+// the focus, whether the plugin did not close it or has not answered, the key leaves it, so the third press is the
+// editor's whatever the plugin does. Otherwise the key leaves the panel or the dialog: it first
+// cancels a cancellable intent in flight, then goes to the focused node (a list or an input gives the focus up on it),
+// and when the node does not take it the focus returns to the editor all the same. Every other key goes to the focused
+// node, and one the node does not take to unhandledKey, which is where the mount's bindings are. Satisfies
 // tui.InputHandler.
 func (m *viewMount) HandleInput(data string) {
 	interrupts := m.c.ui.interrupts(data)
+	if interrupts && m.focused && m.cancel == nil && !m.dismissed {
+		if d := m.dismissal(); d != nil {
+			m.dismissed = true
+			m.c.withheld(m, data, string(AppInterrupt))
+			m.c.raise(m, d, json.RawMessage(`{}`))
+			return
+		}
+	}
 	if interrupts && m.cancel != nil && m.cancellable {
 		m.cancel()
 	}
@@ -171,6 +189,20 @@ func (m *viewMount) HandleInput(data string) {
 	case !took:
 		m.c.unhandledKey(m, data)
 	}
+}
+
+// dismissal returns the intent the plugin declared for the user dismissing the mount, when the mount is one the user
+// dismisses: a dialog. A mount of another slot is left, not dismissed.
+func (m *viewMount) dismissal() *uiview.IntentDecl {
+	if !m.slot.float {
+		return nil
+	}
+	for i := range m.intents {
+		if m.intents[i].Dismiss {
+			return &m.intents[i]
+		}
+	}
+	return nil
 }
 
 // HandleMouse gives a fullscreen mouse event to the view's components. The mount stays the target of the gesture, and

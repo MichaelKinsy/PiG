@@ -177,7 +177,7 @@ When the active Piglet sets `viewClient: terminal` (PiG Standard does), an exten
 | Escape in a panel | Return the focus to the editor. A second Escape interrupts the agent as usual. |
 | Up, Down, Enter and typing in a panel | Go to the panel's list or input. |
 | Keys in a dialog | Go to the dialog's list or input, then to the keys the dialog names on its last row. |
-| Escape in a dialog | Return the focus to the editor. The dialog folds into one row above the editor, `<title>: F6 to enter`, until its extension closes it. |
+| Escape in a dialog | Ask the dialog's extension to close it, when the extension takes that request: the dialog closes if the extension closes it. In every other dialog, and at a second Escape in a dialog that is still open, return the focus to the editor: the dialog folds into one row above the editor, `<title>: F6 to enter`, until its extension closes it. The next Escape interrupts the agent as usual. |
 | F6 while a dialog is open | Open the dialog again with the focus, or leave it for the editor. |
 
 In fullscreen mode a click on a panel focuses it. A view taller than its place ends with `... (view truncated)`. F6 is a fixed key and is active only while a panel that takes keys or a dialog is on screen.

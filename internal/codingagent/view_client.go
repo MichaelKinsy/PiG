@@ -441,9 +441,9 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 	if redraw {
 		m.bind(s.Bindings)
 		for i := range s.Intents {
-			// The intent a hidden mount takes is offered on the tab row while the mount is hidden, and one a key of the
-			// mount is bound to is offered by that key.
-			if d := &s.Intents[i]; d.NodeKey == "" && (!d.WhenHidden || !slot.tabs) && !m.binds(d.Name) {
+			// The intent a hidden mount takes is offered on the tab row while the mount is hidden, one a key of the
+			// mount is bound to is offered by that key, and a dialog's dismiss intent by the key that interrupts.
+			if d := &s.Intents[i]; d.NodeKey == "" && (!d.WhenHidden || !slot.tabs) && !m.binds(d.Name) && (!d.Dismiss || !slot.float) {
 				m.reportNotOffered(d.Name, "the terminal offers no control for intent "+d.Name+", which names no node")
 			}
 		}
