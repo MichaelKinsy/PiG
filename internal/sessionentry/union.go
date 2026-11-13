@@ -228,7 +228,7 @@ func (e CustomMessageEntry) MarshalJSON() ([]byte, error) {
 		ID         string  `json:"id"`
 		ParentID   *string `json:"parentId"`
 		Timestamp  string  `json:"timestamp"`
-	}{e.Type, e.CustomType, e.Content, presentMember(e.Display, e.DisplayAbsent), e.Details, e.ID, e.ParentID, e.Timestamp})
+	}{e.Type, e.CustomType, e.Content, displayMember(e.Display, e.DisplayAbsent, e.DisplayNull), e.Details, e.ID, e.ParentID, e.Timestamp})
 }
 
 func (e ContextEditEntry) Base() SessionEntryBase { return e.withoutRecord() }
@@ -311,6 +311,15 @@ func usageMember[T any](usage *T, raw json.RawMessage, null bool) any {
 		return raw
 	}
 	return optionalMember(usage, null)
+}
+
+// displayMember is what a custom message's display member encodes: the boolean, null when null marks a member its writer set to null, and no member
+// when absent is set.
+func displayMember(display, absent, null bool) any {
+	if null {
+		return orderedjson.Null()
+	}
+	return presentMember(display, absent)
 }
 
 // presentMember is what the field of a member encodes that its writer may have left undefined: the value, or no member when absent is set.

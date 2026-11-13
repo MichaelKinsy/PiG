@@ -424,7 +424,10 @@ type CustomMessageRef struct {
 	Display    bool   `json:"display"`
 	// DisplayAbsent marks a message whose writer left display out: Pi's message then has no display member, and neither has its session entry.
 	DisplayAbsent bool `json:"-"`
-	Details       any  `json:"details,omitempty"`
+	// DisplayNull marks a message whose writer set display to null, which the declaration does not allow and Pi does not check: its message and its
+	// session entry hold `"display":null`, which readers take for false.
+	DisplayNull bool `json:"-"`
+	Details     any  `json:"details,omitempty"`
 }
 
 // UnmarshalJSON keeps the member order of the `content` blocks and `details` object the extension wrote: Pi appends the objects themselves. It also keeps a
@@ -435,6 +438,7 @@ func (r *CustomMessageRef) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	r.DisplayAbsent = !r.Display && !orderedjson.HasMember(data, "display")
+	r.DisplayNull = !r.Display && orderedjson.IsNullMember(data, "display")
 	return nil
 }
 
@@ -559,6 +563,9 @@ type SessionBoundaryDraft struct {
 	// DisplayAbsent marks a custom_message draft whose writer left display out: Pi's appendCustomMessageEntry stores undefined and the entry has no display
 	// member (session-manager.ts:1350-1366).
 	DisplayAbsent bool `json:"-"`
+	// DisplayNull marks a custom_message draft whose writer set display to null: Pi's appendCustomMessageEntry stores the null and the entry holds
+	// `"display":null`.
+	DisplayNull bool `json:"-"`
 	// UsageNull marks a compaction draft's nil Usage as an explicit null: Pi's appendCompaction stores the null and the entry holds `"usage":null`
 	// (session-manager.ts:1283-1295). `data` and `details` hold a null in the value itself: json.RawMessage("null").
 	UsageNull bool `json:"-"`
@@ -584,7 +591,7 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 			Content    any                      `json:"content,omitempty"`
 			Display    any                      `json:"display,omitempty"`
 			Details    any                      `json:"details,omitempty"`
-		}{d.Type, d.CustomType, d.Content, draftDisplay(d.Display, d.DisplayAbsent), d.Details})
+		}{d.Type, d.CustomType, d.Content, draftDisplay(d.Display, d.DisplayAbsent, d.DisplayNull), d.Details})
 	case SessionBoundaryDraftContextEdit:
 		if d.ReplacementUndefined {
 			// The next handler is handed the draft as the extension wrote it, without the member.
@@ -616,12 +623,28 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 	}
 }
 
-// draftDisplay is what a custom_message draft's display member encodes: the boolean, and no member for a draft written without one.
-func draftDisplay(display, absent bool) any {
-	if absent {
+// draftDisplay is what a custom_message draft's display member encodes: the boolean, null for a draft written with a null one, and no member for a
+// draft written without one.
+func draftDisplay(display, absent, null bool) any {
+	switch {
+	case absent:
 		return nil
+	case null:
+		return orderedjson.Null()
 	}
 	return display
+}
+
+// DisplayMember is the display member of the custom message the draft becomes: the boolean, orderedjson.Null for a draft written with a null one, and
+// nil for a draft written without one.
+func (d SessionBoundaryDraft) DisplayMember() any {
+	return draftDisplay(d.Display, d.DisplayAbsent, d.DisplayNull)
+}
+
+// DisplayMember is the display member of the custom message: the boolean, orderedjson.Null for a message written with a null one, and nil for a
+// message written without one.
+func (r CustomMessageRef) DisplayMember() any {
+	return draftDisplay(r.Display, r.DisplayAbsent, r.DisplayNull)
 }
 
 // draftUsage is what a compaction draft's usage member encodes: the usage, as its author wrote it when the draft holds that object, null for one
@@ -653,6 +676,7 @@ func (d *SessionBoundaryDraft) UnmarshalJSON(data []byte) error {
 		d.UsageRaw = orderedjson.ContainerMember(data, "usage")
 	}
 	d.DisplayAbsent = d.Type == SessionBoundaryDraftCustomMessage && !d.Display && !orderedjson.HasMember(data, "display")
+	d.DisplayNull = d.Type == SessionBoundaryDraftCustomMessage && !d.Display && orderedjson.IsNullMember(data, "display")
 	if d.Type != SessionBoundaryDraftContextEdit || len(d.Replacement) > 0 {
 		return nil
 	}

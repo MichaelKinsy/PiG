@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
@@ -922,7 +923,7 @@ func (s *Session) AppendCustomMessage(custom map[string]any) (string, error) {
 	customType, _ := custom["customType"].(string)
 	display, _ := custom["display"].(bool)
 	_, hasDisplay := custom["display"]
-	entry, err := s.customMessageEntry(CustomMessageEntry{CustomType: customType, Content: custom["content"], Display: display, DisplayAbsent: !hasDisplay, Details: custom["details"]}, true)
+	entry, err := s.customMessageEntry(CustomMessageEntry{CustomType: customType, Content: custom["content"], Display: display, DisplayAbsent: !hasDisplay, DisplayNull: orderedjson.IsNull(custom["display"]), Details: custom["details"]}, true)
 	return entry.ID, err
 }
 

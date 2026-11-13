@@ -33,7 +33,9 @@ type SendMessagePayload struct {
 	Display bool `json:"display"`
 	// DisplayAbsent marks a message whose writer left display out, as on CustomMessageRef.
 	DisplayAbsent bool `json:"-"`
-	Details       any  `json:"details,omitempty"`
+	// DisplayNull marks a message whose writer set display to null, as on CustomMessageRef.
+	DisplayNull bool `json:"-"`
+	Details     any  `json:"details,omitempty"`
 }
 
 // UnmarshalJSON keeps the member order of the `details` object the extension wrote.
@@ -43,6 +45,7 @@ func (p *SendMessagePayload) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	p.DisplayAbsent = !p.Display && !orderedjson.HasMember(data, "display")
+	p.DisplayNull = !p.Display && orderedjson.IsNullMember(data, "display")
 	return nil
 }
 

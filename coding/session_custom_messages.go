@@ -34,9 +34,9 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 		content = []any{}
 	}
 	fields := map[string]any{"role": agent.RoleCustom, "customType": message.CustomType, "content": content, "timestamp": time.Now().UnixMilli()}
-	if !message.DisplayAbsent {
-		// upstream: agent-session.ts sendCustomMessage builds the message with `display: message.display`: undefined for a caller that left it out.
-		fields["display"] = message.Display
+	if display := message.DisplayMember(); display != nil {
+		// upstream: agent-session.ts sendCustomMessage builds the message with `display: message.display`: undefined for a caller that left it out, and null for one that wrote null.
+		fields["display"] = display
 	}
 	if message.Details != nil {
 		fields["details"] = message.Details

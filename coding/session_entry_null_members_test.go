@@ -344,6 +344,10 @@ func TestSessionEntryNullMembersMatchPi(t *testing.T) {
 		return err
 	})
 
+	// A display written as null, which the declaration does not allow and nothing checks: Pi stores the null.
+	draft("draft custom_message display null", `[{"type":"custom_message","customType":"draft-message","content":"x","display":null}]`)
+	row("extension sendMessage display null", send(`{"customType":"extension-message","content":"x","display":null}`, false))
+
 	entries, err := icodingagent.LoadEntriesFromFile(path)
 	if err != nil {
 		t.Fatal(err)

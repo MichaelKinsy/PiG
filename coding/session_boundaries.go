@@ -258,8 +258,8 @@ func (s *Session) boundaryProjection(drafts []extension.SessionBoundaryDraft) (i
 // (agent-session.ts _applyBoundaryDrafts passes draft.content and draft.display on as they are).
 func draftCustomMessage(draft extension.SessionBoundaryDraft) map[string]any {
 	custom := map[string]any{"customType": draft.CustomType, "content": draft.Content, "details": draft.Details}
-	if !draft.DisplayAbsent {
-		custom["display"] = draft.Display
+	if display := draft.DisplayMember(); display != nil {
+		custom["display"] = display
 	}
 	return custom
 }

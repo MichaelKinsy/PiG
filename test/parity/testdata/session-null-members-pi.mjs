@@ -138,6 +138,9 @@ await draft("draft compaction usage in another member order", [{type: "compactio
 await draft("draft compaction usage with extra members", [{type: "compaction", summary: "draft-compaction", usage: {...usage, extra: 1, cost: {...usage.cost, extra: 2}}}]);
 await row("session_before_compact result usage as its author wrote it", file, async () => { await prompt(); compaction = {usage: usageAuthored}; try { await h.session.compact(); } finally { compaction = undefined; } });
 await row("session_before_tree summary usage as its author wrote it", file, async () => { await prompt(); summary = {usage: usageAuthored}; try { await h.session.navigateTree(lastUser(), {summarize: true}); } finally { summary = undefined; } });
+// A display written as null, which the declaration does not allow and nothing checks: Pi stores the null.
+await draft("draft custom_message display null", [{type: "custom_message", customType: "draft-message", content: "x", display: null}]);
+await row("extension sendMessage display null", file, async () => { pi.sendMessage({customType: "extension-message", content: "x", display: null}); await idle(); });
 // JavaScript rows: values the declarations do not allow, and JSON.stringify's rules.
 await row("js api compaction fromHook null", file, () => sm.appendCompaction("api-compaction", userId, 10, undefined, null), true);
 await row("js api branch_summary fromHook null", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch", undefined, null), true);
@@ -145,10 +148,8 @@ await row("js api context_edit replacement null", file, () => sm.appendContextEd
 await row("js api context_edit replacement value", file, () => sm.appendContextEdit(userId, {content: "c"}), true);
 await row("js api toolResult details omitted", file, () => sm.appendMessage({role: "toolResult", toolCallId: "c1", toolName: "t", content: [{type: "text", text: "r"}], isError: false, timestamp: 3}), true);
 await row("js api toolResult details null", file, () => sm.appendMessage({role: "toolResult", toolCallId: "c1", toolName: "t", content: [{type: "text", text: "r"}], details: null, isError: false, timestamp: 3}), true);
-await draft("js draft custom_message display null", [{type: "custom_message", customType: "draft-message", content: "x", display: null}], true);
 await draft("js draft custom_message content null", [{type: "custom_message", customType: "draft-message", content: null, display: true}], true);
 await draft("js draft custom data NaN", [{type: "custom", customType: "draft-custom", data: NaN}], true);
-await row("js extension sendMessage display null", file, async () => { pi.sendMessage({customType: "extension-message", content: "x", display: null}); await idle(); }, true);
 await row("js extension setSessionName null", file, () => pi.setSessionName(null), true);
 await row("js extension setSessionName undefined", file, () => pi.setSessionName(undefined), true);
 await row("js extension appendEntry data NaN", file, () => pi.appendEntry("extension-custom", NaN), true);

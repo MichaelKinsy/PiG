@@ -157,6 +157,9 @@ type CustomMessageEntry struct {
 	// DisplayAbsent leaves the display member out when the entry is written: an extension's message or draft without display, which Pi's
 	// appendCustomMessageEntry stores as undefined (session-manager.ts:1350-1366). A decoded entry has it set when its record has no display member.
 	DisplayAbsent bool `json:"-"`
+	// DisplayNull writes the display member as null: a message or draft whose writer set display to null, which Pi stores as given. A decoded entry
+	// has it set when its record holds `"display":null`. Readers take it for false.
+	DisplayNull bool `json:"-"`
 	// Details is the value an extension supplied. Nil is no details member; orderedjson.Null is a member written as null.
 	Details any `json:"details,omitempty"`
 }
@@ -174,6 +177,7 @@ func (e *CustomMessageEntry) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	e.DisplayAbsent = !e.Display && !orderedjson.HasMember(data, "display")
+	e.DisplayNull = !e.Display && orderedjson.IsNullMember(data, "display")
 	return nil
 }
 
