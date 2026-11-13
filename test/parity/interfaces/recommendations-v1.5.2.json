@@ -152706,7 +152706,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "39 normalized-name Pig candidates are ambiguous."
+        "40 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -152725,6 +152725,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#mistralEventLoop.run",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesEventLoop.run",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.run",
+        "go:github.com/MichaelKinsy/PiG/ai#providerRefresh.run",
         "go:github.com/MichaelKinsy/PiG/ai#tslibAsyncGenerator.run",
         "go:github.com/MichaelKinsy/PiG/coding#GraphExtensionRunner.run",
         "go:github.com/MichaelKinsy/PiG/coding#PreparedPromptRun.Run",

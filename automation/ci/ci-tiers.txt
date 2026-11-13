@@ -59,6 +59,7 @@ macos | cli-4 cli-7 extension-host-1 | queue
 macos | cli-3 cli-5 cli-6 | queue
 # Jobs that are not a matrix: the shard column is "-".
 single | node-runtime | queue
+single | chord | queue
 single | durable-cf-host | queue
 single | durable-contract | queue
 single | android | pr
