@@ -18,8 +18,8 @@ import (
 )
 
 func TestPackageUpdateChecksBoundWorkers(t *testing.T) {
-	// Pi package-manager.ts:50,1657-1680 admits five workers, not one task per package parked behind a semaphore.
-	const workerLimit = 5
+	// Pi package-manager.ts:60 (UPDATE_CHECK_CONCURRENCY = 4) and :1864-1885 (runWithConcurrency) admit four workers, not one task per package parked behind a semaphore.
+	const workerLimit = 4
 	const taskCount = 2*workerLimit + 2
 	cwd, agent := t.TempDir(), t.TempDir()
 	t.Setenv("PIG_CODING_AGENT_DIR", agent)
