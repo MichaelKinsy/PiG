@@ -34,7 +34,11 @@ func TestClientVendoredFilesAreExactlyTheManifests(t *testing.T) {
 		Pin     string   `json:"pin"`
 		Catchup string   `json:"catchup"`
 		Carried []string `json:"carried"`
-		Files   []struct {
+		Patches *[]struct {
+			Name   string `json:"name"`
+			Sha256 string `json:"sha256"`
+		} `json:"patches"`
+		Files []struct {
 			Path   string `json:"path"`
 			Sha256 string `json:"sha256"`
 		} `json:"files"`
@@ -44,6 +48,16 @@ func TestClientVendoredFilesAreExactlyTheManifests(t *testing.T) {
 	}
 	if len(manifest.Commit) != 40 {
 		t.Fatalf("commit = %q", manifest.Commit)
+	}
+	if manifest.Patches == nil {
+		t.Fatal("the manifest has no patches list (an empty one when there is none)")
+	}
+	var patches []vendoredPatch
+	for _, patch := range *manifest.Patches {
+		patches = append(patches, vendoredPatch{Name: patch.Name, Sha256: patch.Sha256})
+	}
+	for _, problem := range patchProblems(chordPatches, patches) {
+		t.Error(problem)
 	}
 	pinFile, err := os.ReadFile(filepath.Join("..", "..", "..", ".upstream", "pin"))
 	if err != nil {
