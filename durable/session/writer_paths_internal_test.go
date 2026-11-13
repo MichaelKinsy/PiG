@@ -247,6 +247,19 @@ func outcome(part *Part) error {
 	}
 }
 
+// sameError is Pi's `toBe`: the one error value, not one that wraps or equals it.
+func sameError(got, want error) bool {
+	return got == want //nolint:errorlint // identity is what Pi pins: `rejects.toBe(failure)`
+}
+
+func isFailed(err error) (error, bool) {
+	failed, ok := errors.AsType[*durable.SessionFailed](err)
+	if !ok {
+		return nil, false
+	}
+	return failed.Cause, true
+}
+
 func requireSessionFailed(t *testing.T, name string, err, cause error) {
 	t.Helper()
 	got, ok := isFailed(err)

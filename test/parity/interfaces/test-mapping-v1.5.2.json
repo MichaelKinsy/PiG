@@ -9857,9 +9857,10 @@
         "durable/core/group_commit_test.go",
         "durable/core/session/writer_fanout_test.go",
         "durable/session/group_commit_support_test.go",
+        "durable/session/session_group_commit_test.go",
         "durable/session/writer_paths_internal_test.go"
       ],
-      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged. durable/session/session_group_commit_test.go ports the 34 cases with Pi's inputs and expected results. Adapted, as Go forces (recorded in that file's header): the four `${value}` cases reject with `undefined` and `null`, which a Go error cannot be, so each runs with an error whose message is empty and with a zero-valued error struct and asserts the `failed` end carrying exactly that error (the value itself, not one that wraps it); the three cases that replace Transaction.prototype.adopt / adoptHeld by a throwing function abort the commit's prepared change right before that adoption, so the real adoption fails and `toBe(failure)` is the identity of its error; the case that replaces CachedStorage.prototype.published wraps the write-through of the Session's own writer host (WriterHost.Stored) and panics with the test's error at its second call."
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
