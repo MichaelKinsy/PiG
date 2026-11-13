@@ -126,9 +126,10 @@ func (r *uiViewRun) recorded() []byte {
 	return data
 }
 
-var uiViewVolatile = regexp.MustCompile(`"(id|parentId|timestamp|responseId|cwd)":("[^"]*"|[0-9]+)`)
+var uiViewVolatile = regexp.MustCompile(`"(id|parentId|timestamp|responseId|cwd|durationMs)":("[^"]*"|[0-9]+)`)
 
-// sessionFile is the session's entries without what differs between any two runs: ids, timestamps and the directory.
+// sessionFile is the session's entries without what differs between any two runs: ids, timestamps, the measured duration
+// of a response and the directory.
 func (r *uiViewRun) sessionFile() string {
 	r.t.Helper()
 	var files []string
