@@ -203,3 +203,73 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant"]
 rationale = "47e9d74f9 changes two expectations: the sender's own hold is shared work, a chord.hold root on the sender's adapter, sent with the rest: the page batch's spans are [page.click, chord.hold] (was [page.click]), the worker batch's [chord.hold, worker.job] (was [worker.job])."
+
+[[files]]
+path = "packages/chord/test/bench/shared-holds.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/bench_shared_holds_test.go#BenchmarkSharedHolds", "test:chord/next/host/bench_shared_holds_test.go#TestBenchSharedHoldsServerBytesAndEncodesPerStep"]
+rationale = "47e9d74f9 adds the shared-holds benchmark (a first reference got and released, a joining reference got and released, a commit to ten references of one object, the heap per reference of 1,000 held), 'Run by hand from packages/chord (not in CI)'; 90ed3e3b1 changes what its heap column is (observed heap growth per step, heapUsed after a burst minus before it, not allocated bytes) and its header. BenchmarkSharedHolds has one sub-benchmark per row of the script's table, as the sibling benches (bench_events_test.go); time and heap are Go's own (b.ReportAllocs reports allocated bytes, which is not Pi's heap growth: the columns are not comparable and no number of Pi's is asserted for them). The values the script prints that do not depend on the machine are checked on every run by TestBenchSharedHoldsServerBytesAndEncodesPerStep with Pi's recorded results (docs/benchmarks.md at 90ed3e3b1, 'Shared holds (2026-11-13)', column After) over the script's own 14,200 steps per row: the server's bytes per step 10 B (first reference), 0 B (a join: not one byte over all the steps, as Pi's text 'sends nothing' says), 23 B and 1 encode per commit to ten references, each commit one `state` message with one hold entry."
+
+[[files]]
+path = "packages/chord/test/examples/68-shared-holds.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_example_68_test.go#TestExample68SharedHolds"]
+rationale = "47e9d74f9: the shared-holds example (a page with three references to one remote counter, the binary codec, the page's link counting the kinds it sends, the server's adapter counting chord.link.encodes). The script prints four lines and asserts nothing; the twin runs the same inputs and turns each printed value into a check with the value Pi's host prints: holds sent 1 and the server's references 1; counts [1, 1, 1] and 1 encode for the commit; releases after two 0; releases after three 1 and holds sent 2. One wait differs: Pi sleeps 10 ms for the commit to reach the page; the twin watches the three counts and waits for the three values (bounded by exReceive's 10 s), then lets the server's turn end before it reads the encodes."
+
+[[files]]
+path = "packages/chord/docs/benchmarks.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: the 'Shared holds (2026-11-13)' results of Pi's test/bench/shared-holds.ts (the bench is ported: chord/next/host/bench_shared_holds_test.go; the document's machine-independent values, the server's bytes per step and the one encode and one hold entry of a commit to ten references, are checked there). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9: the decision 'References share one wire hold'; 90ed3e3b1: its review fixes. The Go host carries the decision (chord/next/host/host_host.go, remote_remote_object.go, remote_consumer.go and their file comments). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: the design text of references sharing one wire hold (the sharing key, the table, releases, cancellation of one reference's calls). chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/events/spec.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: the events specification restated for references that share a hold. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/shared-holds/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: the design document of shared holds brought to what was built and reviewed. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/slices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9: one line, the slice of shared holds. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/src/remote/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "47e9d74f9, 90ed3e3b1: documentation of the shared hold (one hold per key, the bindings of a remote object, the cancellation of one reference's calls); the Go file comments carry it (chord/next/host/remote_remote_object.go, remote_consumer.go)."
+
+[[files]]
+path = "packages/chord/docs/tutorial/book.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:examples/chord-todo/tutorial_test.go#TestTheTutorialsStepsPrintWhatTheBookShows"]
+rationale = "47e9d74f9: the trap 'a trace starts where a span starts' says the panel's hold is shared work, a chord.hold root of its own linked to the getter's span, and step 11's trace of the request loses its chord.hold line. The twin docs/chord/tutorial.md changes the same way, with what examples/chord-todo prints on the Go host that shares holds: the chord.hold line and the worker's chord.relay of that hold leave the trace of the request and of the refused request (PiG's server relays to a Node worker, so the hold had a relay span under it), and the three chord.http traces of the list count 6 spans (were 8). The test that holds 'the shown output is what the steps print' was red on the Go host of part B2 until the page changed."
