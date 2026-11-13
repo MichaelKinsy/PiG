@@ -1008,8 +1008,6 @@ patch("aaaa1111", "pi-ai/utils/shared-key.js", [["one\\n", "one, by the first bl
 patch("bbbb2222", "pi-ai/utils/shared-key.js", [["two\\n", "two, by the second block\\n"]]);
 patch("cccc3333", "pi-ai/utils/ordered-key.js", [["alpha\\n", "beta\\n"]]);
 patch("dddd4444", "pi-ai/utils/ordered-key.js", [["beta\\n", "gamma\\n"]]);
-patch("eeee5555", "pi-ai/utils/stale-key.js", [["alpha\\n", "beta\\n"]]);
-patch("ffff6666", "pi-ai/utils/stale-key.js", [["alpha\\n", "delta\\n"]]);
 '''
         text = backport_fixture.text()
         anchor = re.search(r"^const packageFile = .*\n", text, re.M)
@@ -1020,14 +1018,28 @@ assert.equal(backportPatches["pi-ai/utils/shared-key.js"].length, 2, "both block
 assert.equal(patchBackports("pi-ai/utils/shared-key.js", "one\\ntwo\\n"), "one, by the first block\\ntwo, by the second block\\n");
 // File order: the second block's before-text is the first block's after-text.
 assert.equal(patchBackports("pi-ai/utils/ordered-key.js", "alpha\\n"), "gamma\\n");
-// A later block whose before-text the earlier block removed no longer applies, and says so.
-assert.throws(() => patchBackports("pi-ai/utils/stale-key.js", "alpha\\n"), /no longer applies: alpha/);
 '''
         with tempfile.TemporaryDirectory() as root:
             shared = Path(root) / "pi-post-release-backports.mjs"
             shared.write_text(text[:anchor.end()] + blocks + text[anchor.end():], encoding="utf-8")
             done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": shared.as_uri()}, capture_output=True, text=True, timeout=60)
             self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_backport_blocks_that_replace_the_same_text_of_a_file_key_fail_when_the_script_loads(self):
+        # A block whose before-text an earlier block of the same key replaces too can never apply. The table builder refuses the pair when the
+        # script loads and names both blocks and the file (the pair used to load, and the second block failed when it was applied).
+        blocks = '''
+patch("eeee5555", "pi-ai/utils/stale-key.js", [["alpha\\n", "beta\\n"]]);
+patch("ffff6666", "pi-ai/utils/stale-key.js", [["alpha\\n", "delta\\n"]]);
+'''
+        text = backport_fixture.text()
+        anchor = re.search(r"^const packageFile = .*\n", text, re.M)
+        with tempfile.TemporaryDirectory() as root:
+            stale = Path(root) / "pi-post-release-backports.mjs"
+            stale.write_text(text[:anchor.end()] + blocks + text[anchor.end():], encoding="utf-8")
+            done = subprocess.run(["node", "--input-type=module", "-e", "await import(process.env.BACKPORTS);"], env={**os.environ, "BACKPORTS": stale.as_uri()}, capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(done.returncode, 0, done.stdout)
+            self.assertIn("backport blocks eeee5555 and ffff6666 both replace the same text of pi-ai/utils/stale-key.js", done.stderr)
 
     def test_a_backport_that_does_not_apply_fails_the_build_with_the_scripts_reason(self):
         with tempfile.TemporaryDirectory() as root, mock.patch.object(oracle, "BACKPORTS", backport_fixture.script()):
