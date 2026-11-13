@@ -29729,6 +29729,31 @@
       ]
     },
     {
+      "id": "BF-86376a7-2",
+      "title": "fix: Drain admits no work once it begins, and a stream's auth callback is not owned work",
+      "symptom": "fix: Drain admits no work once it begins, and a stream's auth callback is not owned work",
+      "rootCause": "Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "86376a7777",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback",
+        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream",
+        "ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing",
+        "ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan",
+        "ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan"
+      ]
+    },
+    {
       "id": "BF-866c7f9",
       "title": "fix(rpc): two prompts of one batch answer in request order",
       "symptom": "fix(rpc): two prompts of one batch answer in request order",
