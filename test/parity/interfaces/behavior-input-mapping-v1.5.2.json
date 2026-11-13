@@ -3161,10 +3161,27 @@
     {
       "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui.go#resolveFakeCursors",
+        "tui/tui_alt_screen.go#compositeFlashes",
+        "tui/tui_alt_screen.go#compositeOverlays",
+        "tui/tui_alt_screen.go#doRender",
+        "tui/tui_alt_screen.go#prepareKittyScreen"
+      ],
+      "evidence": [
+        "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+        "test/parity/scenarios/fullscreen/13-alt-screen-search-input.toml",
+        "test/parity/scenarios/fullscreen/15-keyboard-scroll-actions-fullscreen.toml",
+        "test/parity/scenarios/fullscreen/18-alt-screen-search-highlights.toml",
+        "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "tui/alt_screen_render_contract_test.go#TestAltScreenDoesNotDrawWhileInactive",
+        "tui/alt_screen_render_contract_test.go#TestRenderLayoutFrameClampsTheViewportToOneCell",
+        "tui/fake_cursor_test.go#TestAltScreenKeepsTheSelectionHighlightAfterAFakeCursorCell"
+      ],
+      "contracts": [
+        "tui/tui-alt-screen/doRender"
+      ],
       "divergence": "",
       "rationale": ""
     },
