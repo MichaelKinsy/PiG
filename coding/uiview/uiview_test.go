@@ -230,12 +230,12 @@ func TestCheckRefusesWhatDecodeRefuses(t *testing.T) {
 		name, raw, text string
 		args            MountArgs
 	}{
-		{"no key", `{"slot":"panel","view":{"root":{"kind":"text","text":"x"}}}`, "key must be 1..128 bytes", MountArgs{Slot: SlotPanel, Content: Content{View: view}}},
-		{"long key", `{"key":"` + strings.Repeat("k", 129) + `","slot":"panel","view":{"root":{"kind":"text","text":"x"}}}`, "key must be 1..128 bytes", MountArgs{Key: strings.Repeat("k", 129), Slot: SlotPanel, Content: Content{View: view}}},
-		{"unknown slot", `{"key":"k","slot":"nowhere","view":{"root":{"kind":"text","text":"x"}}}`, `unknown slot "nowhere"`, MountArgs{Key: "k", Slot: "nowhere", Content: Content{View: view}}},
-		{"no target", `{"key":"k","slot":"message","view":{"root":{"kind":"text","text":"x"}}}`, `slot "message" needs a target`, MountArgs{Key: "k", Slot: SlotMessage, Content: Content{View: view}}},
-		{"target on a panel", `{"key":"k","slot":"panel","target":{"toolCallId":"t"},"view":{"root":{"kind":"text","text":"x"}}}`, `target does not fit slot "panel"`, MountArgs{Key: "k", Slot: SlotPanel, Target: &Target{ToolCallID: "t"}, Content: Content{View: view}}},
-		{"no root", `{"key":"k","slot":"panel","view":{}}`, "view must be an object with a root", MountArgs{Key: "k", Slot: SlotPanel, Content: Content{View: json.RawMessage(`{}`)}}},
+		{"no key", `{"slot":"panel","view":{"root":{"kind":"text","text":"x"}}}`, "key must be 1..128 bytes", MountArgs{Slot: SlotPanel, View: view}},
+		{"long key", `{"key":"` + strings.Repeat("k", 129) + `","slot":"panel","view":{"root":{"kind":"text","text":"x"}}}`, "key must be 1..128 bytes", MountArgs{Key: strings.Repeat("k", 129), Slot: SlotPanel, View: view}},
+		{"unknown slot", `{"key":"k","slot":"nowhere","view":{"root":{"kind":"text","text":"x"}}}`, `unknown slot "nowhere"`, MountArgs{Key: "k", Slot: "nowhere", View: view}},
+		{"no target", `{"key":"k","slot":"message","view":{"root":{"kind":"text","text":"x"}}}`, `slot "message" needs a target`, MountArgs{Key: "k", Slot: SlotMessage, View: view}},
+		{"target on a panel", `{"key":"k","slot":"panel","target":{"toolCallId":"t"},"view":{"root":{"kind":"text","text":"x"}}}`, `target does not fit slot "panel"`, MountArgs{Key: "k", Slot: SlotPanel, Target: &Target{ToolCallID: "t"}, View: view}},
+		{"no root", `{"key":"k","slot":"panel","view":{}}`, "view must be an object with a root", MountArgs{Key: "k", Slot: SlotPanel, View: json.RawMessage(`{}`)}},
 	} {
 		_, want := DecodeMount([]byte(c.raw))
 		if want == nil || want.Code != CodeInvalid || want.Message != c.text {
@@ -247,8 +247,8 @@ func TestCheckRefusesWhatDecodeRefuses(t *testing.T) {
 		name, raw, text string
 		args            UpdateArgs
 	}{
-		{"no mount key", `{"mount":{"key":"","epoch":1,"rev":1},"view":{"root":{"kind":"text","text":"x"}}}`, "mount.key is required", UpdateArgs{Mount: Ref{Epoch: 1, Rev: 1}, Content: Content{View: view}}},
-		{"no root", `{"mount":{"key":"k","epoch":1,"rev":1},"view":{}}`, "view must be an object with a root", UpdateArgs{Mount: Ref{Key: "k", Epoch: 1, Rev: 1}, Content: Content{View: json.RawMessage(`{}`)}}},
+		{"no mount key", `{"mount":{"key":"","epoch":1,"rev":1},"view":{"root":{"kind":"text","text":"x"}}}`, "mount.key is required", UpdateArgs{Mount: Ref{Epoch: 1, Rev: 1}, View: view}},
+		{"no root", `{"mount":{"key":"k","epoch":1,"rev":1},"view":{}}`, "view must be an object with a root", UpdateArgs{Mount: Ref{Key: "k", Epoch: 1, Rev: 1}, View: json.RawMessage(`{}`)}},
 	} {
 		_, want := DecodeUpdate([]byte(c.raw))
 		if want == nil || want.Code != CodeInvalid || want.Message != c.text {
@@ -256,12 +256,12 @@ func TestCheckRefusesWhatDecodeRefuses(t *testing.T) {
 		}
 		same(c.name, c.args.Check(), want)
 	}
-	mount := MountArgs{Key: "k", Slot: SlotPanel, Content: Content{View: view, Intents: []IntentDecl{{Name: "p.go", Arg: Shape{Type: "integer"}}}}}
+	mount := MountArgs{Key: "k", Slot: SlotPanel, View: view, Intents: []IntentDecl{{Name: "p.go", Arg: Shape{Type: "integer"}}}}
 	decoded, derr := DecodeMount([]byte(`{"key":"k","slot":"panel","view":{"root":{"kind":"text","text":"x"}},"intents":[{"name":"p.go","arg":{"type":"integer"}}]}`))
 	if err := mount.Check(); err != nil || derr != nil || !reflect.DeepEqual(mount, decoded) {
 		t.Errorf("a good mount: Check = %v, Decode = %v\nbuilt   %+v\ndecoded %+v", err, derr, mount, decoded)
 	}
-	update := UpdateArgs{Mount: Ref{Key: "k", Epoch: 1, Rev: 1}, Content: Content{View: view}}
+	update := UpdateArgs{Mount: Ref{Key: "k", Epoch: 1, Rev: 1}, View: view}
 	if err := update.Check(); err != nil {
 		t.Errorf("a good update: Check = %v", err)
 	}
