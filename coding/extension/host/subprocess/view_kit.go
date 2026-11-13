@@ -68,6 +68,8 @@ type viewSurface struct {
 	mouseTarget   *tui.TuiMouseDispatchTarget
 	mouseReleased bool
 	loaderGen     uint64
+	// loaderTimers counts the surface's armed loader timers.
+	loaderTimers int
 	// cardChanged reports that a tool card drew again on its own since the
 	// surface last counted a revision.
 	cardChanged atomic.Bool
@@ -1144,6 +1146,7 @@ func (s *viewSurface) startLoadersLocked() {
 		if len(l.loader.Frames) <= 1 {
 			continue
 		}
+		s.loaderTimers++
 		s.scheduleLoader(gen, l)
 	}
 }
@@ -1152,6 +1155,7 @@ func (s *viewSurface) scheduleLoader(gen uint64, l *viewLoader) {
 	time.AfterFunc(l.interval, func() {
 		s.mu.Lock()
 		if s.closed || s.loaderGen != gen {
+			s.loaderTimers--
 			s.mu.Unlock()
 			return
 		}
