@@ -9483,6 +9483,12 @@
       "transforms": [
         {
           "kind": "normalize_replace",
+          "pattern": "not a valid pig? session:",
+          "with": "not a valid <app> session:",
+          "reason": "D2 (Product name in messages): the diagnostic names the product that prints it; the rest of the line stays compared."
+        },
+        {
+          "kind": "normalize_replace",
           "pattern": "parity-snap-cwd-[0-9]+",
           "with": "parity-snap-cwd-<RUN>",
           "reason": "Independent writable fixture copies receive random directory suffixes; only those digits differ, while the full diagnostic and filename remain asserted."

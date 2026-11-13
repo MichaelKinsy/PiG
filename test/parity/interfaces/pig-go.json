@@ -93553,6 +93553,17 @@
       "shapeHash": "sha256:bd13ed87fb2c9f0db85de25be2cf779b4eec586a4cf971e8bfb4b585dd26f60f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#exportTelemetryOverride",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "exportTelemetryOverride",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#extensionCacheGC",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "extensionCacheGC",
@@ -322230,6 +322241,28 @@
         "type": "func(description string) *Schema"
       },
       "shapeHash": "sha256:86960fe2477dea99b2a7125e8a5223514cdddf8ee0f920f70fc8ec6ed023f8c5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#productNameText",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "productNameText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(description string) string"
+      },
+      "shapeHash": "sha256:eacd66310c130275743c507d3d8fcfb1e4fac611e85cf1f8ff30171f629c26cb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#productNameTexts",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "productNameTexts",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[][2]string"
+      },
+      "shapeHash": "sha256:aff7a410a66b628c59627b058e74d4c22473a378ee4512555557cbaeb740aad5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#propsOf",
