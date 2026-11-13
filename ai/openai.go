@@ -336,18 +336,22 @@ func (p *openAIProvider) Close() error { return nil }
 // ─── Request / response wire types ───────────────────────────────────────────
 
 type oaiMessage struct {
-	Role             string               `json:"role"`
-	Content          any                  `json:"content"` // string | []oaiContentPart
-	ToolCallID       string               `json:"tool_call_id,omitempty"`
-	ToolName         string               `json:"name,omitempty"` // for tool results when requiresToolResultName=true
+	Role       string `json:"role"`
+	Content    any    `json:"content"` // string | []oaiContentPart
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	ToolName   string `json:"name,omitempty"` // for tool results when requiresToolResultName=true
+	// The field a thinking block replays under is assigned before tool_calls (openai-completions.ts:1342, :1356).
+	Reasoning        string               `json:"reasoning,omitempty"`
+	ReasoningContent *string              `json:"reasoning_content,omitempty"`
+	ReasoningText    string               `json:"reasoning_text,omitempty"`
 	ToolCalls        []oaiRequestToolCall `json:"tool_calls,omitempty"`
 	ReasoningDetails []json.RawMessage    `json:"reasoning_details,omitempty"`
-	ReasoningContent *string              `json:"reasoning_content,omitempty"`
-	Reasoning        string               `json:"reasoning,omitempty"`
-	ReasoningText    string               `json:"reasoning_text,omitempty"`
 	// Tools makes a tool-bearing system message that loads tools in place
 	// (Kimi mid-conversation tool additions).
 	Tools []oaiTool `json:"tools,omitempty"`
+	// reasoningContentLast marks the empty reasoning_content of compat.requiresReasoningContentOnAssistantMessages, which Pi assigns
+	// after tool_calls and reasoning_details (openai-completions.ts:1383-1387).
+	reasoningContentLast bool
 }
 
 // MarshalJSON sends a tool-bearing system message as {role, tools} without
@@ -363,13 +367,24 @@ func (message oaiMessage) MarshalJSON() ([]byte, error) {
 
 func (message oaiMessage) wire() any {
 	type wire oaiMessage
-	if message.Tools == nil {
-		return wire(message)
+	switch {
+	case message.Tools != nil:
+		return struct {
+			Role  string    `json:"role"`
+			Tools []oaiTool `json:"tools"`
+		}{message.Role, message.Tools}
+	case message.reasoningContentLast:
+		return struct {
+			Role             string               `json:"role"`
+			Content          any                  `json:"content"`
+			Reasoning        string               `json:"reasoning,omitempty"`
+			ReasoningText    string               `json:"reasoning_text,omitempty"`
+			ToolCalls        []oaiRequestToolCall `json:"tool_calls,omitempty"`        //portlint:allow emptydrop Pi sets tool_calls only when the message has calls (openai-completions.ts:1355)
+			ReasoningDetails []json.RawMessage    `json:"reasoning_details,omitempty"` //portlint:allow emptydrop Pi sets reasoning_details only when it kept some (openai-completions.ts:1378)
+			ReasoningContent *string              `json:"reasoning_content,omitempty"`
+		}{message.Role, message.Content, message.Reasoning, message.ReasoningText, message.ToolCalls, message.ReasoningDetails, message.ReasoningContent}
 	}
-	return struct {
-		Role  string    `json:"role"`
-		Tools []oaiTool `json:"tools"`
-	}{message.Role, message.Tools}
+	return wire(message)
 }
 
 // oaiCacheControl mirrors Anthropic's cache_control annotation.
@@ -545,6 +560,13 @@ type oaiRequest struct {
 	// preferences. Mirrors openai-completions.ts:988-1000.
 	Provider        any `json:"provider,omitempty"`
 	ProviderOptions any `json:"providerOptions,omitempty"`
+}
+
+// oaiThinkingToggle is the `thinking` member of the zai and deepseek formats, with the members in the order of Pi's literals
+// (openai-completions.ts:876, :917-919).
+type oaiThinkingToggle struct {
+	Type          string `json:"type"`
+	ClearThinking *bool  `json:"clear_thinking,omitempty"`
 }
 
 // SSE chunk types
@@ -850,6 +872,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 			}
 			if options.reasoningContentOnAssistant && converted.ReasoningContent == nil {
 				converted.ReasoningContent = new("")
+				converted.reasoningContentLast = true
 			}
 			// An assistant message needs content or tool calls; reasoning fields alone do not keep it.
 			hasContent := false
@@ -1444,6 +1467,10 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		return nil, err
 	}
 	msgs, tools, grammarProps := conversion.chat, conversion.tools.RequestTools, conversion.grammarProps
+	if msgs == nil {
+		// convertMessages returns an array: a transcript that converts to no message is "messages":[] (openai-completions.ts:804-806, :816-818).
+		msgs = []oaiMessage{}
+	}
 
 	req := oaiRequest{
 		Model:    cmp.Or(p.cfg.requestModel, p.cfg.Model),
@@ -1566,9 +1593,9 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		case "zai":
 			if reasoningOn {
 				// Z.ai clears prior-turn reasoning_content by default; Pi opts out.
-				req.Thinking = map[string]any{"type": "enabled", "clear_thinking": false}
+				req.Thinking = oaiThinkingToggle{Type: "enabled", ClearThinking: new(false)}
 			} else {
-				req.Thinking = map[string]any{"type": "disabled"}
+				req.Thinking = oaiThinkingToggle{Type: "disabled"}
 			}
 			if reasoningOn && supportsRE {
 				if mapped, exists := model.ThinkingLevelMap[ModelThinkingLevel(clamped)]; !exists || mapped != nil {
@@ -1594,11 +1621,11 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			}
 		case "deepseek":
 			if reasoningOn {
-				req.Thinking = map[string]any{"type": "enabled"}
+				req.Thinking = oaiThinkingToggle{Type: "enabled"}
 			} else if _, emit := offEffort(); emit {
 				// 0.79.5: suppress thinking:{disabled} when thinkingLevelMap.off is
 				// explicitly null; still send it when off is absent or a value.
-				req.Thinking = map[string]any{"type": "disabled"}
+				req.Thinking = oaiThinkingToggle{Type: "disabled"}
 			}
 			if reasoningOn && supportsRE {
 				req.ReasoningEffort = new(mappedEffort())

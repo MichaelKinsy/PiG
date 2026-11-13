@@ -27,6 +27,8 @@ func TestRequestTypesEncodeAsTheirMarshalJSON(t *testing.T) {
 		ResponsesTool{Type: "custom", Name: "g", Format: &ResponsesToolFormat{Type: "grammar", Syntax: "lark", Definition: text}},
 		respRequest{Model: "m", Input: json.RawMessage(`[{"role":"user","content":"<x> & y"}]`), Stream: true, Store: &strict, Tools: []ResponsesTool{{Type: "function", Name: "n"}}, ToolChoice: "auto", Reasoning: &respReasoning{Effort: "high"}},
 		respRequest{Model: "m", Input: json.RawMessage(`[]`), Stream: true, Instructions: text, Text: map[string]string{"verbosity": "low"}, Include: []string{"reasoning.encrypted_content"}, codex: true},
+		oaiMessage{Role: "assistant", Content: text, ReasoningContent: new("plan"), ToolCalls: []oaiRequestToolCall{{ID: "c", Type: "function"}}},
+		oaiMessage{Role: "assistant", Content: nil, Reasoning: text, ToolCalls: []oaiRequestToolCall{{ID: "c", Type: "function"}}, ReasoningContent: new(""), reasoningContentLast: true},
 	}
 	for i, value := range values {
 		want, err := value.MarshalJSON()
