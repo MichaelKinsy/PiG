@@ -30,6 +30,39 @@
     (pig::run-hooks 'pig::*ready-hooks* ext (pig:from-json "{\"state\":{\"uiAbilities\":{\"slots\":[\"x\"]}}}"))
     (check (hash-table-p (pig::extension-view-abilities ext)))))
 
+(deftest ui-view-abilities-changes-reach-on-view-abilities-in-order
+  ;; The handler runs after the replica took the change. The first state is where the extension starts, an equal state is not a change, and
+  ;; no client (NIL) differs from a client that draws no slot.
+  (let ((ext (pig:make-extension "uv")) (seen '()) (lock (sb-thread:make-mutex)))
+    (flet ((show (ab) (if ab
+                          (format nil "slots=~{~A~^+~},mounts=~A" (coerce (pig:jget ab "slots") 'list) (pig:jget (pig:jget ab "limits") "mounts"))
+                          "none"))
+           (state (json) (pig::run-hooks 'pig::*state-hooks* ext (pig:from-json json)))
+           (wait-for (n) (loop repeat 500 until (sb-thread:with-mutex (lock) (>= (length seen) n)) do (sleep 0.02))))
+      (pig::on-view-abilities ext (lambda (ctx ab) (sb-thread:with-mutex (lock) (push (format nil "~A|~A" (show ab) (show (pig::ctx-view-abilities ctx))) seen))))
+      (pig::on-view-abilities ext (lambda (ctx ab) (declare (ignore ctx)) (sb-thread:with-mutex (lock) (push (format nil "second:~A" (show ab)) seen))))
+      (state "{\"uiAbilities\":{\"slots\":[\"panel\",\"status\"],\"limits\":{\"mounts\":7}}}")
+      (state "{\"uiAbilities\":{\"slots\":[\"panel\",\"status\"],\"limits\":{\"mounts\":7}}}")
+      (state "{\"uiAbilities\":{\"slots\":[],\"limits\":{\"mounts\":7}}}")
+      (wait-for 2)
+      (state "{\"hasUI\":true}")
+      (wait-for 4)
+      (state "{\"uiAbilities\":{\"slots\":[\"panel\",\"status\"],\"limits\":{\"mounts\":7}}}")
+      (wait-for 6)
+      (check-equal '("slots=,mounts=7|slots=,mounts=7" "second:slots=,mounts=7" "none|none" "second:none"
+                     "slots=panel+status,mounts=7|slots=panel+status,mounts=7" "second:slots=panel+status,mounts=7")
+                   (sb-thread:with-mutex (lock) (reverse seen))))))
+
+(deftest ui-view-abilities-handler-never-runs-without-a-client
+  (let* ((ext (pig:make-extension "uv")) (fired 0)
+         (feed (pig::kit-state-abilities-feed (pig::kit-state ext))))
+    (pig::on-view-abilities ext (lambda (ctx ab) (declare (ignore ctx ab)) (incf fired)))
+    (dolist (json '("{\"hasUI\":true}" "{\"toolsExpanded\":true}" "{\"hasUI\":false}" "{\"uiAbilities\":null}"))
+      (pig::run-hooks 'pig::*state-hooks* ext (pig:from-json json)))
+    (check (null (pig::kit-feed-queue feed)))
+    (check (null (pig::kit-feed-running feed)))
+    (check-equal 0 fired)))
+
 (deftest ui-view-intent-without-handler-is-refused
   (let* ((ext (pig:make-extension "uv"))
          (handler (gethash "ui.view.intent" pig::*request-handlers*))

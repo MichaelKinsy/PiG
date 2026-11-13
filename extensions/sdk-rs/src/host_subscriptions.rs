@@ -1,4 +1,4 @@
-//! Subscriptions to host state the SDK replicates (theme, tool expansion), the tool-call accessors a handler reads
+//! Subscriptions to host state the SDK replicates (theme, tool expansion, the client's view abilities), the tool-call accessors a handler reads
 //! (`tool_call_index`, `tool_input`, `tool_params`), `bell`, `extension_source_info` and `on_loaded`.
 
 use crate::context::{Context, SourceInfo};
@@ -43,12 +43,18 @@ impl<T: Clone + Send + 'static> Feed<T> {
         }
     }
 
+    /// Subscribes `handler` until the feed stops.
+    pub(crate) fn subscribe_for_good(&self, handler: Handler<T>) -> u64 {
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        self.state.lock().unwrap().subs.push((id, handler));
+        id
+    }
+
     fn subscribe(self: &Arc<Self>, handler: Handler<T>) -> HostSubscription
     where
         T: 'static,
     {
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        self.state.lock().unwrap().subs.push((id, handler));
+        let id = self.subscribe_for_good(handler);
         let feed = self.clone();
         HostSubscription {
             release: Some(Box::new(move || {
@@ -120,6 +126,7 @@ impl<T: Clone + Send + 'static> Feed<T> {
         let mut state = self.state.lock().unwrap();
         state.stopped = true;
         state.queue.clear();
+        state.subs.clear();
     }
 }
 
@@ -179,6 +186,8 @@ impl LoadedGate {
 pub(crate) struct HostSubscriptions {
     pub(crate) theme: Arc<Feed<Theme>>,
     pub(crate) tools_expanded: Arc<Feed<bool>>,
+    /// Changes of the replicated client abilities (D614), for the `Extension::on_view_abilities` handlers.
+    pub(crate) view_abilities: Arc<Feed<Option<crate::ui_view::ViewAbilities>>>,
     pub(crate) threads: Arc<RequestThreads>,
     /// The provenance the host stamped on this extension, from the ready payload.
     pub(crate) source_info: Mutex<Option<SourceInfo>>,
@@ -189,6 +198,7 @@ impl HostSubscriptions {
         Self {
             theme: Arc::new(Feed::new("theme")),
             tools_expanded: Arc::new(Feed::new("tools expanded")),
+            view_abilities: Arc::new(Feed::new("view abilities")),
             threads,
             source_info: Mutex::new(None),
         }
@@ -197,6 +207,12 @@ impl HostSubscriptions {
     pub(crate) fn stop(&self) {
         self.theme.stop();
         self.tools_expanded.stop();
+        self.view_abilities.stop();
+    }
+
+    /// Deliver a change of the replicated client abilities; `None` is no client.
+    pub(crate) fn publish_view_abilities(&self, abilities: Option<crate::ui_view::ViewAbilities>) {
+        self.view_abilities.publish(abilities, &self.threads);
     }
 
     /// Deliver what a state snapshot or a `theme_change` changed.

@@ -295,7 +295,7 @@
    #:ctx-register-mcp-server #:ctx-unregister-mcp-server #:ctx-get-mcp-servers #:tool-renderer #:message-renderer
    #:view-ref #:view-ref-p #:view-ref-key #:view-ref-epoch #:view-ref-rev #:view-status #:view-status-p #:view-status-mount #:view-status-state #:view-status-reason #:view-status-result #:view-clause #:view-when #:view-alternative #:ctx-view-diagnostics
    #:view-shape #:view-intent #:view-asset #:view-target #:ctx-view-abilities #:ctx-mount-view #:ctx-update-view #:ctx-hide-view #:ctx-show-view
-   #:ctx-finish-view #:ctx-remove-view #:ctx-view-state #:on-view-intent #:view-intent-result
+   #:ctx-finish-view #:ctx-remove-view #:ctx-view-state #:on-view-intent #:on-view-abilities #:view-intent-result
    #:message-view-renderer #:entry-renderer #:entry-view-renderer #:message-view-event #:entry-view-event
    #:message-render-options-state #:entry-render-options-state #:markdown-transformer #:own-thinking-runs #:ctx-own-thinking-runs #:ctx-set-login #:ctx-register-sprite
    #:auth-context #:make-auth-context #:auth-context-p #:auth-context-env #:auth-context-file-exists #:api-key-auth-input

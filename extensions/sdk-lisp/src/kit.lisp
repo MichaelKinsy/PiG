@@ -628,6 +628,7 @@ background: selectedBg customMessageBg."
   (jobs (kit-make-feed "view job"))
   (theme-feed (kit-make-feed "theme"))
   (tools-feed (kit-make-feed "tools expanded"))
+  (abilities-feed (kit-make-feed "view abilities"))
   (theme nil) (palette-json nil)
   (tools-expanded nil) (tools-known nil)
   (footer-json nil)

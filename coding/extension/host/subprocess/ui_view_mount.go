@@ -48,7 +48,7 @@ func (b *UIBridge) InvokeViewIntent(ctx context.Context, extension string, ref u
 	if conn == nil {
 		return uiview.Result{Outcome: uiview.OutcomeRefused, Error: "extension is not connected"}
 	}
-	return b.views.Invoke(ctx, extension, ref, nodeKey, intent, arg, viewInvoker{conn})
+	return b.views.Invoke(ctx, extension, ref, nodeKey, intent, arg, viewInvoker{b, extension, conn})
 }
 
 // InvokeViewIntentFrom raises an intent for the client that holds attachment t. Once t ended the result is stale.
@@ -59,11 +59,19 @@ func (b *UIBridge) InvokeViewIntentFrom(ctx context.Context, t *uiview.Attachmen
 	if conn == nil {
 		return uiview.Result{Outcome: uiview.OutcomeRefused, Error: "extension is not connected"}
 	}
-	return t.Invoke(ctx, extension, ref, nodeKey, intent, arg, viewInvoker{conn})
+	return t.Invoke(ctx, extension, ref, nodeKey, intent, arg, viewInvoker{b, extension, conn})
 }
 
-// viewInvoker carries intents over the owning extension's connection.
-type viewInvoker struct{ conn *Conn }
+// viewAnswer names the ui.view.intent request an extension is answering: the id is unique on the extension's connection.
+type viewAnswer struct{ extension, request string }
+
+// viewInvoker carries intents over the owning extension's connection. While the request is unanswered the bridge knows
+// its id, so a ui.view call the handler makes inside it (CallPayload.ParentRequestID) is attributed to the intent.
+type viewInvoker struct {
+	b         *UIBridge
+	extension string
+	conn      *Conn
+}
 
 func (v viewInvoker) Invoke(ctx context.Context, inv uiview.Invocation) (uiview.Result, error) {
 	var reply struct {
@@ -71,7 +79,10 @@ func (v viewInvoker) Invoke(ctx context.Context, inv uiview.Invocation) (uiview.
 		Answer  json.RawMessage `json:"answer"`
 		Error   string          `json:"error"`
 	}
-	if err := requestWithID(ctx, v.conn, "", RequestUIViewIntent, inv, &reply); err != nil {
+	answer := viewAnswer{v.extension, v.conn.newRequestID()}
+	v.b.viewAnswers.Store(answer, inv.Ticket)
+	defer v.b.viewAnswers.Delete(answer)
+	if err := requestWithID(ctx, v.conn, answer.request, RequestUIViewIntent, inv, &reply); err != nil {
 		return uiview.Result{}, err
 	}
 	return uiview.Result{Ticket: inv.Ticket, Outcome: reply.Outcome, Answer: reply.Answer, Error: reply.Error}, nil
@@ -101,6 +112,17 @@ func isViewCall(method string) bool {
 // reservedViewPlugin is the plugin name of the host's own mounts of chord surfaces (internal/chordview).
 const reservedViewPlugin = "chord"
 
+// answeringTicket returns the ticket of the intent whose handler made call: the one whose ui.view.intent request, still
+// unanswered, is the request the call names as its parent. Any other call returns "".
+func (b *UIBridge) answeringTicket(extName string, call *CallPayload) string {
+	if call.ParentRequestID == "" {
+		return ""
+	}
+	ticket, _ := b.viewAnswers.Load(viewAnswer{extName, call.ParentRequestID})
+	s, _ := ticket.(string)
+	return s
+}
+
 func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResultPayload, error) {
 	// pig additive (D614): the plugin name chord is the host's; an extension of that name mounts nothing.
 	if extName == reservedViewPlugin {
@@ -115,6 +137,7 @@ func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResul
 		if err != nil {
 			return viewError(err)
 		}
+		a.Answering = b.answeringTicket(extName, call)
 		st, err := b.views.Mount(extName, a)
 		if err != nil {
 			return viewError(err)
@@ -126,6 +149,7 @@ func (b *UIBridge) handleViewCall(extName string, call *CallPayload) (*CallResul
 			b.views.Rejected(extName, "update", call.Args, err)
 			return viewError(err)
 		}
+		a.Answering = b.answeringTicket(extName, call)
 		st, err := b.views.Update(extName, a)
 		if err != nil {
 			return viewError(err)

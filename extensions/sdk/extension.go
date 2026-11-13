@@ -305,6 +305,8 @@ type Extension struct {
 	themeFeed    stateFeed[UITheme]
 	expandedFeed stateFeed[bool]
 	branchFeed   stateFeed[struct{}]
+	// viewAbilitiesFeed delivers a change of the replicated client abilities (D614) to the OnViewAbilities handlers.
+	viewAbilitiesFeed stateFeed[*ViewAbilities]
 
 	requestsMu sync.Mutex
 	requests   map[string]requestCancel
@@ -737,6 +739,7 @@ func New(name string) *Extension {
 		themeFeed:                stateFeed[UITheme]{what: "theme"},
 		expandedFeed:             stateFeed[bool]{what: "tools expanded"},
 		branchFeed:               stateFeed[struct{}]{what: "footer branch"},
+		viewAbilitiesFeed:        stateFeed[*ViewAbilities]{what: "view abilities"},
 		toolFuncs:                make(map[string]ToolFunc),
 		toolPrepareFuncs:         make(map[string]ToolPrepareArgumentsFunc),
 		commandFuncs:             make(map[string]CommandFunc),
@@ -1384,6 +1387,7 @@ func (e *Extension) stopRequests() error {
 	e.themeFeed.stop()
 	e.expandedFeed.stop()
 	e.branchFeed.stop()
+	e.viewAbilitiesFeed.stop()
 	// The sessions end with the connection, as the host disposes them: no listener runs after it.
 	e.children.closeAll()
 	if e.runCancel != nil {
@@ -2016,7 +2020,9 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.hasUI = *payload.State.HasUI
 		}
 		e.frontend = payload.State.Frontend
-		e.views.applyAbilities(payload.State.UIAbilities)
+		if changed, abilities := e.views.applyAbilities(payload.State.UIAbilities); changed {
+			e.viewAbilitiesFeed.publish(e, abilities)
+		}
 		if sessionState.SessionFile != "" {
 			e.sessionFile = sessionState.SessionFile
 		}

@@ -594,7 +594,7 @@ An extension that draws the model's thinking itself, for example in an activity 
 
 An extension can mount a view in a slot that the attached client draws, update it, and answer the user's intents. The view is a
 D107 view, so every SDK builds it with its kit. No client is attached by default: read the abilities first and mount only if
-there are any.
+there are any, and mount when a client arrives (step 11).
 
 1. `ctx.ViewAbilities()` (Go), `ctx.view_abilities()` (Python), `ctx.view_abilities()` (Rust), `ctx-view-abilities` (Lisp) or
    `ctx.ui.viewAbilities()` (Node) returns what the client draws: slots, node kinds, markdown, image formats, limits and input.
@@ -623,6 +623,41 @@ there are any.
 9. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
    `ctx.ui.viewDiagnostics`: the notices of a mount say which update the host rejected, which intent it ended and what a client
    could not draw. The host keeps 32 notices for a mount and counts repeats.
+10. On a click: change, redraw, answer. An update your handler makes to the mount its intent came from belongs to the answer:
+    the intent settles `done`, and the client is sent the new view before it is told the intent is done. Make the update through
+    the context the handler was given (`in.Context`, `inv.context`, the handler's `ctx`) and wait for it before you answer. Use no
+    timer and no delay. Hide, show, finish and remove never make an answer stale, so a handler may close its own panel and answer
+    `done`. A change that is not the handler's still settles the intent `stale`: your own background work that updates the mount
+    while the handler answers, another intent's handler, or a context kept from another request.
+
+    ```js
+    pi.onViewIntent(async (inv, ctx) => {
+      if (inv.intent !== "counter.add") return { outcome: "refused", error: "unknown intent" };
+      count += inv.arg.by;
+      mount = (await ctx.ui.updateView(mount, { view: view(), intents })).mount;
+      return { outcome: "done", answer: { count } };
+    });
+    ```
+
+11. Mount when a client arrives. Register one handler while the extension loads: `pi.onViewAbilities((abilities, ctx) => ...)`
+    (Node), `ext.OnViewAbilities(func(ctx sdk.Context, abilities *sdk.ViewAbilities))` (Go), `ext.on_view_abilities(handler)` with
+    `handler(abilities, ctx)` (Python), `ext.on_view_abilities(|ctx, abilities| ...)` (Rust), `(on-view-abilities ext (lambda (ctx
+    abilities) ...))` (Lisp). It runs when the first client attaches, when the abilities change and when the last client leaves.
+    The value is what `viewAbilities()` returns at that moment: nil, None, `null` or NIL for no client, and a record with an empty
+    `slots` for a client that draws no slot. With several clients attached it is the merge of their abilities, and the handler
+    runs when the merge changes: a client that attaches or leaves without changing it causes no event. A client inside the
+    process and a client on RPC mode's lines are the same to you. A mount made in the handler succeeds, so a client that attaches to an idle session is
+    shown your view without a prompt; when the value is absent, stop the work no client can see. The handler does not run for the
+    state the extension starts in (read `viewAbilities()` at `session_start` for a client that was attached before you loaded)
+    and never runs in a session no client attaches to. Handlers run one change at a time, in order; the host does not wait for
+    them, and an error in one is written to the extension's log.
+
+    ```js
+    pi.onViewAbilities(async (abilities, ctx) => {
+      if (!abilities) return stopTicking();
+      if (!mount && abilities.slots.includes("panel")) mount = (await ctx.ui.mountView({ key: "counter", slot: "panel", view: view(), intents })).mount;
+    });
+    ```
 
 Every bound is the host's: one past it fails with code `invalid` in every SDK. `docs/additive-features.md` D614 lists the bounds.
 
@@ -649,7 +684,8 @@ check the abilities and keep a fallback such as a widget or a notice.
 - One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
   answer arrived is dropped.
 
-Conformance: `TestConformance_UIViewMounts` and `TestConformance_UIViewExtras` run the same probes in every SDK against the host, and
+Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `TestConformance_UIViewAnswerRedraw` and
+`TestConformance_UIViewAbilitiesEvent` run the same probes in every SDK against the host, and
 `docs/additive-features.md` D614 lists the records.
 
 ## Adding a new extension API surface

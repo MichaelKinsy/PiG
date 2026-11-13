@@ -80,6 +80,10 @@ export default function extension(pi: ExtensionAPI): void {
     void finished.result;
   });
   pi.onViewIntent((invocation) => ({ outcome: "done", answer: { echo: invocation.intent, aborted: invocation.signal.aborted } }));
+  pi.onViewAbilities(async (abilities, ctx) => {
+    const arrived: PiGViewAbilities | null = abilities;
+    if (arrived?.slots.includes("panel")) await ctx.ui.mountView({ key: "arrived", slot: "panel", view: { root: { kind: "text", text: "hello" } } });
+  });
   // PiG emits Pi's UI prompt lifecycle for every SDK; the kinds and the
   // optional title come from the pinned Pi declarations.
   pi.on("ui_prompt_start", (event) => {
