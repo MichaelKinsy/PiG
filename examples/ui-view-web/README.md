@@ -37,6 +37,14 @@ viewEndpoint: socket    # other programs of this user may attach: <agent directo
 - A page that stops reading is owed at most 8 MiB and is then cut, which ends its attachment; the browser connects again by itself and the page attaches afresh. The bridge never stops reading the session for a page, and it refuses a page's line while the session is owed 8 MiB it has not read.
 - Security is the same in both modes: 127.0.0.1 only, and the token and the origin are checked before the bridge opens any connection to the session.
 
+## A presentation of your own: `--theme`
+
+```sh
+node bridge.mjs --theme ./my-theme --connect ~/.pig/agent/view-endpoint
+```
+
+The page is plain on purpose and names no product. `--theme <directory>` works with both modes and changes how it looks without changing the page: the bridge links the directory's `theme.css` at the end of the page's head and serves the directory's `.css`, `.svg`, `.png`, `.woff2` and `.json` files by name under `/theme/` (no subdirectory, no name with a leading dot, nothing outside the directory). A theme sets the colours of the theme tokens a view names (the `--pig-<token>` custom properties) and whatever else a stylesheet can: type, the frame of a mount, a mark and a name in the header. Without `--theme` the bridge serves `index.html` byte for byte.
+
 ## Driving a session in a test
 
 A script that drives the terminal of the session (the integration tests do it with tmux) must leave the panel before it types a slash command. While a panel's list holds the focus, typed keys go to the list and the command never runs: send Escape, wait until the screen has settled, then type `/reload`, `/new` or `/quit`.
@@ -51,6 +59,7 @@ A script that drives the terminal of the session (the integration tests do it wi
 | `demo-extension.mjs` | `/ui-demo`: one panel with every view node kind that carries an id |
 | `bridge_test.go` | a pig for every page: `TestBridgeRelaysTheCarrier` drives the bridge with an HTTP client and always runs; the `TestPage*` tests drive the page in headless Chromium (focus and intents, layout geometry, colours and markdown, typed text across updates, panels as tabs); they need `CHROMIUM_BIN` and are skipped without it, and fail without it where `CHORD_REQUIRE_CHROMIUM` is set, as in `make ci-chord-web` |
 | `connect_test.go` | `--connect` against a view endpoint the test serves: the `TestConnect*` tests drive the bridge with an HTTP client, `TestPageFollowsARunningSession` drives the page in headless Chromium. `TestUIViewWebPageAndTerminalShareOneSession` in `test/integration` does it with a real interactive session |
+| `theme_test.go` | `--theme`: without it the page is `index.html` byte for byte and `/theme/` holds nothing; with it the link is added and only the directory's own files of the served types are found |
 
 What the page draws of a view:
 
