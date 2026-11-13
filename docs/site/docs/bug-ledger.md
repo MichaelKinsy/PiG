@@ -1589,6 +1589,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-caae28a](#bf-caae28a) | In RPC mode, `exit.log` no longer says "received SIGTERM" for a single signal that arrived during a shutdown… | PiG's own defect | All platforms | Unreleased |
 | [BF-cafa121](#bf-cafa121) | fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-cb00273](#bf-cb00273) | OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-cb16094](#bf-cb16094) | ai: `Models.GenerateImages` given a model of another api than its images provider's ends with the error… | PiG's own defect | All platforms | Unreleased |
 | [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
@@ -23792,6 +23793,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cb002735d6` (2026-10-09)
 - **Tests:** `ai/openai_reasoning_signature_only_test.go::TestOpenAICompletionsKeepsSignatureOnlyReasoningText`
 - **Release note:** OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block (D122, pi-mono #9534).
+
+### BF-cb16094
+
+**ai: `Models.GenerateImages` given a model of another api than its images provider's ends with the error…**
+
+- **Source:** PiG's own defect
+- **Symptom:** ai: `Models.GenerateImages` given a model of another api than its images provider's ends with the error `Mismatched api: <model api> expected <api>`, as Pi's `generateImages` returns the images registry's refusal as an error result; PiG 0.4.0 to 0.7.0 ran the provider with that model.
+- **Root cause:** Pi models.ts generateImages wraps the provider call in one try/catch, so the registry Mismatched api throw comes back as an error AssistantImages; PiG let the panic through. Caller-level tests: Models.GenerateImages with a model of another api, the registered GitHub Copilot and OpenAI Codex providers on abort, pig login github-copilot without a PiG prefix, and the models.ts login, logout, generateImages and getAllAvailable abort and error contracts.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cb160949e7` (2026-11-12)
+- **Tests:** `ai/images_models_mismatch_test.go::TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult`, `ai/login_callers_cancelled_test.go::TestCodexOAuthProviderLoginRequestFailingAfterAbortIsLoginCancelled`, `ai/login_callers_cancelled_test.go::TestCopilotOAuthProviderLoginSettledPromptAfterAbortIsLoginCancelled`, `ai/models_async_contract_test.go::TestModelsGenerateImagesAbortedSignalReachesTheProviderAndEndsAborted`, `ai/models_async_contract_test.go::TestModelsGenerateImagesTransformHeadersIsAwaitedWithTheSignalAndItsRejectionIsTheResult`, `ai/models_async_contract_test.go::TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending`, `ai/models_async_contract_test.go::TestModelsLoginAbortBeforeTheModifyStartedDoesNotWaitForTheStore`, `ai/models_async_contract_test.go::TestModelsLoginAbortWhileTheFlowRunsSettlesWithTheReasonAndStoresNothing` and 6 more in docs/bug-ledger.json
+- **Release note:** ai: `Models.GenerateImages` given a model of another api than its images provider's ends with the error `Mismatched api: <model api> expected <api>`, as Pi's `generateImages` returns the images registry's refusal as an error result; PiG 0.4.0 to 0.7.0 ran the provider with that model.
 
 ### BF-cb20ec0
 
