@@ -223,6 +223,9 @@ class SessionList {
     filteredSessions = [];
     selectedIndex = 0;
     selectionTouched = false;
+    // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // Session to select once it appears, while a progressive reload has not yet delivered it
+    pendingSelectedPath;
     searchInput;
     showCwd = false;
     sortMode = "threaded";
@@ -280,8 +283,14 @@ class SessionList {
         this.nameFilter = nameFilter;
         this.filterSessions(this.searchInput.getValue());
     }
-    setSessions(sessions, showCwd) {
-        const selectedPath = this.selectionTouched ? this.getSelectedSessionPath() : undefined;
+    // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    /**
+     * @param partial true when more sessions are still loading; a selected session missing from a
+     * partial list stays the selection target until it arrives
+     */
+    setSessions(sessions, showCwd, partial = false) {
+        const pendingPath = this.selectionTouched ? this.pendingSelectedPath : undefined;
+        const selectedPath = this.selectionTouched ? (pendingPath ?? this.getSelectedSessionPath()) : undefined;
         this.allSessions = sessions;
         this.showCwd = showCwd;
         this.filterSessions(this.searchInput.getValue());
@@ -290,8 +299,18 @@ class SessionList {
         }
         else if (selectedPath) {
             const selectedIndex = this.filteredSessions.findIndex((node) => node.session.path === selectedPath);
-            if (selectedIndex >= 0)
+            if (selectedIndex >= 0) {
                 this.selectedIndex = selectedIndex;
+                this.pendingSelectedPath = undefined;
+            }
+            else if (partial) {
+                // The selected session may not have loaded yet: keep it as the target instead of
+                // adopting whichever session the index now points to.
+                this.pendingSelectedPath = selectedPath;
+            }
+            else {
+                this.pendingSelectedPath = undefined;
+            }
         }
     }
     filterSessions(query) {
@@ -499,6 +518,8 @@ class SessionList {
             return;
         }
         this.selectionTouched = true;
+        // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        this.pendingSelectedPath = undefined;
         // Up arrow
         if (kb.matches(keyData, "tui.select.up")) {
             this.selectedIndex = Math.max(0, this.selectedIndex - 1);
@@ -800,8 +821,9 @@ export class SessionSelectorComponent extends Container {
                 else {
                     this.allSessions = sessions;
                 }
+                // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
                 if (scope === this.scope)
-                    this.sessionList.setSessions(sessions, showCwd);
+                    this.sessionList.setSessions(sessions, showCwd, true);
             }
             if (scope !== this.scope)
                 return;
@@ -873,7 +895,8 @@ export class SessionSelectorComponent extends Container {
         const loading = (this.scope === "current" ? this.currentLoad : this.allLoad) !== null;
         this.header.setScope(this.scope);
         this.header.setLoading(loading);
-        this.sessionList.setSessions(sessions ?? [], this.scope === "all");
+        // Pi a635f3901 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        this.sessionList.setSessions(sessions ?? [], this.scope === "all", loading || sessions === null);
         this.requestRender();
         if (sessions === null && !loading)
             void this.loadScope(this.scope);

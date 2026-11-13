@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"testing"
 )
 
@@ -17,7 +18,7 @@ func TestModelsRefreshCannotStartAReplacedProviderSnapshot(t *testing.T) {
 	snapshot := models.GetProviders()[0]
 	replacement := create()
 	models.SetProvider(replacement)
-	if _, operation := models.beginProviderRefresh(t.Context(), snapshot); operation != nil {
+	if _, operation := models.beginProviderRefresh(t.Context(), context.WithoutCancel(t.Context()), nil, snapshot); operation != nil {
 		t.Fatal("replaced snapshot started new refresh work")
 	}
 	if models.GetProvider("dynamic") != replacement {

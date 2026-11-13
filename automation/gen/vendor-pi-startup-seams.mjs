@@ -55,3 +55,10 @@ for (const file of readdirSync(tuiRoot, { recursive: true }).filter(file => file
   });
   if (rewritten !== original) writeFileSync(path, rewritten);
 }
+
+// terminal-image.js loads with every start: Theme reads its capability cache for the colour mode. Its image-line extent is the only reader of the width module, so that import waits for the first measurement (shims/pi-tui-utils-lazy.mjs). The whole import statement is replaced, so a second binding from utils.js stops the vendoring here.
+const terminalImage = join(tuiRoot, "terminal-image.js");
+const terminalImageSource = readFileSync(terminalImage, "utf8");
+const widthImport = 'import { visibleWidth } from "./utils.js";';
+if (terminalImageSource.split(widthImport).length !== 2 || terminalImageSource.split('"./utils.js"').length !== 2) throw new Error(`Pi startup import changed: ${widthImport}`);
+writeFileSync(terminalImage, terminalImageSource.replace(widthImport, 'import { visibleWidth } from "../../pi-tui-utils-lazy.mjs";'));

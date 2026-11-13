@@ -106,7 +106,7 @@ func (s *Session) effectiveSystemSectionsFor(run *codingagent.BeforeAgentStartRu
 	}
 	built := run.BaseSections(s.ActiveToolNames(), s.hiddenDeclarations())
 	// The caller's sections are not compared with a rendering of the base options: the skills section follows the loadout too (system-prompt.ts:177), so they stop being that rendering when the read tool leaves it.
-	if s.defaultSystemPrompt || s.systemPromptResources.Load() != nil {
+	if s.buildsRunPromptWhole() {
 		return prompts.ApplyCustomSystemPromptSections(built, run.Sections)
 	}
 	desired = cloneSystemSections(desired)
@@ -122,6 +122,11 @@ func (s *Session) effectiveSystemSectionsFor(run *codingagent.BeforeAgentStartRu
 		}
 	}
 	return prompts.ApplyCustomSystemPromptSections(desired, run.Sections)
+}
+
+// buildsRunPromptWhole reports that a structured prompt is the Session's to build: it is the default prompt, or the caller supplied the resources behind its sections. The caller holds toolRegistryMu.
+func (s *Session) buildsRunPromptWhole() bool {
+	return s.defaultSystemPrompt || s.systemPromptResources.Load() != nil
 }
 
 // hiddenDeclarations returns the tools whose declarations the active loadout hides (agent-session.ts:1674-1677).
@@ -207,6 +212,12 @@ func (s *Session) initSystemPrompt(opts SessionOptions) {
 	}
 	s.baseSystemPrompt.Store(new(ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: s.baseSystemSections}})))
 	s.rebuildSystemPrompt(s.ActiveToolNames())
+	// The CLI renders the same prompt for its own use before it starts the Session; sharing its string, when the text is equal, keeps one copy of a prompt that holds the project's context files (about 65 KB with this repository's AGENTS.md) in the first frame's live heap, not two.
+	if known := opts.SystemPrompt; known != "" {
+		if current := s.baseSystemPrompt.Load(); current != nil && *current == known {
+			s.baseSystemPrompt.Store(&known)
+		}
+	}
 }
 
 // contextFromProjection is the canonical Session projection as the agent's loop context, keeping the current instruction baseline.

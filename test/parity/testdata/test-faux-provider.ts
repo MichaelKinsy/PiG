@@ -390,8 +390,8 @@ function classify(messages: any[]) {
     return { kind: "tool", toolCalls: [{ toolName: "grep", toolArgs: { pattern: "hello", path: "parity-read-target.txt" } }] };
   }
   // Echo the actual result so a failed search cannot satisfy the scenario.
-  if (["Run: find txt files", "Run: find path glob", "Run: find scoped ignores"].some(prompt => lastText.includes(prompt))) {
-    const pattern = lastText.includes("Run: find path glob") ? "src/**/*.spec.ts" : lastText.includes("Run: find scoped ignores") ? "**/*.txt" : "*.txt";
+  if (["Run: find txt files", "Run: find path glob", "Run: find dot slash glob", "Run: find scoped ignores"].some(prompt => lastText.includes(prompt))) {
+    const pattern = lastText.includes("Run: find path glob") ? "src/**/*.spec.ts" : lastText.includes("Run: find dot slash glob") ? "./src/**/*.spec.ts" : lastText.includes("Run: find scoped ignores") ? "**/*.txt" : "*.txt";
     return { kind: "tool", toolCalls: [{ toolName: "find", toolArgs: { pattern, path: "." } }] };
   }
   // Ls tool parity.
@@ -489,7 +489,7 @@ function classify(messages: any[]) {
     }
     if (currentUserText.includes("Run: grep hello")) return { kind: "text", text: "found" };
     // fd traversal order is unspecified; the upstream regressions sort the paths too.
-    if (["Run: find txt files", "Run: find path glob", "Run: find scoped ignores"].some(prompt => currentUserText.includes(prompt))) return { kind: "text", text: lastText.split("\n").sort().join("\n") };
+    if (["Run: find txt files", "Run: find path glob", "Run: find dot slash glob", "Run: find scoped ignores"].some(prompt => currentUserText.includes(prompt))) return { kind: "text", text: lastText.split("\n").sort().join("\n") };
     if (currentUserText.includes("Run: ls here")) return { kind: "text", text: "listed-ls" };
     if (currentUserText.includes("Run: edit parity-edit-target.txt")) return { kind: "text", text: "edited" };
     if (currentUserText.includes("Run: tui live parallel tools")) return { kind: "text", text: "LIVE-PARALLEL-DONE" };

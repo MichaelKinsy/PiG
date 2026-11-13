@@ -1741,7 +1741,7 @@ func (b *UIBridge) updateWidgetView(extName string, conn *Conn, widgetKey string
 		displaced, exists = proxy, false
 	}
 	if !exists {
-		proxy = NewPushProxy(b.Invalidate, nil)
+		proxy = NewPushProxy(b.Invalidate)
 		b.widgets[key] = proxy
 	}
 	b.widgetOwners[key] = extName
@@ -1789,7 +1789,7 @@ func (b *UIBridge) updateWidget(extName, widgetKey string, lines []string, width
 	}
 	replaced := !exists || width == 0
 	if replaced {
-		proxy = NewPushProxy(b.Invalidate, nil)
+		proxy = NewPushProxy(b.Invalidate)
 		b.widgets[key] = proxy
 	}
 	b.widgetOwners[key] = extName

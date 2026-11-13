@@ -74,14 +74,24 @@ func FuzzParseRPCCommand(f *testing.F) {
 	f.Fuzz(func(t *testing.T, line []byte) { sameEnvelope(t, line) })
 }
 
-// BenchmarkParseRPCCommand reads command lines: a small one and a prompt that carries an image.
+// BenchmarkParseRPCCommand reads command lines: a small one and a prompt that carries an image. The lines run in a fixed order and each
+// reader reads its line once before the timed loop: the first read through a reader builds that reader's decoding tables, once for the
+// process, and the order of a map gave that cost to abort/v2 in some runs and to prompt/v2 in others (14 or 18 allocations per read at
+// five iterations).
 func BenchmarkParseRPCCommand(b *testing.B) {
-	lines := map[string][]byte{
-		"abort":  []byte(`{"id":"req-1","type":"abort"}`),
-		"prompt": []byte(`{"id":"req-2","type":"prompt","message":"please look at this","images":[{"type":"image","mimeType":"image/png","data":"` + strings.Repeat("QUJD", 16<<10) + `"}]}`),
+	lines := []struct {
+		name string
+		line []byte
+	}{
+		{"abort", []byte(`{"id":"req-1","type":"abort"}`)},
+		{"prompt", []byte(`{"id":"req-2","type":"prompt","message":"please look at this","images":[{"type":"image","mimeType":"image/png","data":"` + strings.Repeat("QUJD", 16<<10) + `"}]}`)},
 	}
-	for name, line := range lines {
+	for _, c := range lines {
+		name, line := c.name, c.line
 		b.Run(name+"/sdk", func(b *testing.B) {
+			if _, err := referenceParseRPCCommand(line); err != nil {
+				b.Fatal(err)
+			}
 			b.ReportAllocs()
 			b.SetBytes(int64(len(line)))
 			for b.Loop() {
@@ -91,6 +101,9 @@ func BenchmarkParseRPCCommand(b *testing.B) {
 			}
 		})
 		b.Run(name+"/v2", func(b *testing.B) {
+			if _, err := parseRPCCommand(line); err != nil {
+				b.Fatal(err)
+			}
 			b.ReportAllocs()
 			b.SetBytes(int64(len(line)))
 			for b.Loop() {

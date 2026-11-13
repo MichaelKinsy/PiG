@@ -1,6 +1,8 @@
 package pioracle
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -46,6 +48,76 @@ func TestCheckBinAcceptsOnlyThePinnedBuild(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := CheckBin(fakeOracle(t, tc.version, tc.stamp))
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("CheckBin = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("CheckBin = %v, want an error containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// bundledOracle lays out an oracle as automation/pin/oracle.py builds one of a Pi whose bin is a bundle: .bin/pi links to
+// node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js, which imports chunks/chunk.js. It returns the bin and the bundle's digest.
+func bundledOracle(t *testing.T) (bin, digest string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake oracle is a shell script behind a symlink")
+	}
+	dir := t.TempDir()
+	bundle := filepath.Join(dir, "node_modules", "@earendil-works", "pi-coding-agent", "dist", "bundle")
+	cli, chunk := "#!/bin/sh\necho "+pigversion.UpstreamPackageVersion+"\n", "export const main = 1;\n"
+	for name, content := range map[string]string{"cli.js": cli, "chunks/chunk.js": chunk} {
+		path := filepath.Join(bundle, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bin = filepath.Join(dir, "node_modules", ".bin", "pi")
+	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(bundle, "cli.js"), bin); err != nil {
+		t.Fatal(err)
+	}
+	// oracle.py's tree_digest, written out: one `<sha256 of the file>  <path>` line per file, in path order.
+	lines := fmt.Sprintf("%x  chunks/chunk.js\n%x  cli.js\n", sha256.Sum256([]byte(chunk)), sha256.Sum256([]byte(cli)))
+	return bin, fmt.Sprintf("%x", sha256.Sum256([]byte(lines)))
+}
+
+// The post-release backports patch Pi's compiled output and pi runs a bundle of it, so an oracle that carries backports must run the bundle
+// its build made from the patched output. A build that patched the compiled output only compared Pig's CLI with the unpatched release.
+func TestCheckBinRefusesABackportedOracleWhosePiRunsAnotherBundleThanItsBuildStamped(t *testing.T) {
+	commit := `"commit":"` + pigversion.UpstreamCommit + `","source":"build"`
+	cases := []struct {
+		name  string
+		stamp func(digest string) string
+		want  string
+	}{
+		{"no backports: the bundle is the pin's", func(string) string { return "{" + commit + "}" }, ""},
+		{"backports and the bundle the build stamped", func(digest string) string {
+			return "{" + commit + `,"backports":"b","bundle_sha256":"` + digest + `"}`
+		}, ""},
+		{"backports in the compiled output only", func(string) string { return "{" + commit + `,"backports":"b"}` }, "compiled output only"},
+		{"backports and another bundle than the build stamped", func(string) string {
+			return "{" + commit + `,"backports":"b","bundle_sha256":"` + strings.Repeat("0", 64) + `"}`
+		}, "its build stamped " + strings.Repeat("0", 64)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bin, digest := bundledOracle(t)
+			stamp := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(bin))), StampFile)
+			if err := os.WriteFile(stamp, []byte(tc.stamp(digest)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			err := CheckBin(bin)
 			if tc.want == "" {
 				if err != nil {
 					t.Fatalf("CheckBin = %v, want nil", err)

@@ -153,8 +153,8 @@
 "extension.dispatch.host_wakes" = 2.5
 
 # process: whole-process counts from PIG_PROFILE=metrics under GOMAXPROCS=1 (test/perfgate). Allocation counts vary a few percent with goroutine interleaving; the ceilings carry that margin.
-"process.print.allocs" = 17000
-"process.print.bytes" = 2280000
+"process.print.allocs" = 15300
+"process.print.bytes" = 2200000
 "process.print.gc_cycles" = 2
 "process.print.heap_live_bytes" = 1100000
 "process.print.max_rss_bytes" = 50000000
@@ -162,8 +162,8 @@
 "process.print.fds_left_open" = 2
 "process.print.children_at_exit" = 0
 "process.print.temp_entries_at_exit" = 0
-"process.rpc_startup.allocs" = 14700
-"process.rpc_startup.bytes" = 1960000
+"process.rpc_startup.allocs" = 13000
+"process.rpc_startup.bytes" = 1850000
 "process.rpc_startup.children_at_exit" = 0
 "process.rpc_startup.temp_entries_at_exit" = 0
 "process.rpc_turn.allocs" = 3150
@@ -232,10 +232,10 @@
 "binary.headless.stripped.darwin_arm64.bytes" = 27648000
 "binary.headless.stripped.windows_amd64.bytes" = 30339072
 
-# process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
+# process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider. heap_live_bytes: the test starts pig in test/integration, so the repository's AGENTS.md (59,822 B) is in the system prompt and the figure moves with that file. Measured on the Linux lab host (xd6702, tern-ci image, linux/amd64, GOMAXPROCS=1) with the prompt held once by the CLI, the Session and the interactive mode: 8 runs 2,024,080-2,025,328 B (it was 2,153,264-2,157,104 B in 24 runs of three commits with three copies); the ceiling is the largest plus 2.7%, the margin the former 2,150,000 had over its measurement of 2,093,008 B, rounded to the nearest 10 KB.
 "process.interactive_first_frame.allocs" = 22700
 "process.interactive_first_frame.bytes" = 5650000
-"process.interactive_first_frame.heap_live_bytes" = 2150000
+"process.interactive_first_frame.heap_live_bytes" = 2080000
 "process.interactive_first_frame.children_at_exit" = 0
 
 # compaction: preparing a compaction, per branch entry (TestCompactionPreparePerEntryAllocationGate).
