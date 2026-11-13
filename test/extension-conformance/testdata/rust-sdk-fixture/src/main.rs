@@ -4312,6 +4312,55 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // D614 slot dialog: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDialog).
+    ext.command(
+        "ui_view_dialog",
+        "Mount a titled view with a bound key in the dialog slot, hide it and show it",
+        |ctx, args| {
+            let Some((key, number)) = args.split_once(' ') else {
+                return CommandResult::Error("want a key and a number".into());
+            };
+            let Ok(n) = number.parse::<i64>() else {
+                return CommandResult::Error("want a number".into());
+            };
+            let int = pig_sdk::ViewShape::new("integer");
+            let mut mount = view_mount(
+                "dlg",
+                view_text(ctx, "-dlg"),
+                vec![pig_sdk::ViewIntent {
+                    name: "fx.add".into(),
+                    arg: pig_sdk::ViewShape::object(&[("n", int.clone())], &["n"]),
+                    answer: Some(pig_sdk::ViewShape::object(&[("sum", int)], &["sum"])),
+                    ..Default::default()
+                }],
+            );
+            mount.slot = "dialog".into();
+            mount.title = format!("Chart {n}");
+            mount.bindings = vec![pig_sdk::ViewBinding {
+                key: key.into(),
+                intent: "fx.add".into(),
+                arg: Some(json!({ "n": n })),
+                ..Default::default()
+            }];
+            let st = match ctx.mount_view(mount) {
+                Ok(st) => st,
+                Err(e) => {
+                    ctx.notify(&format!("view-d-mounted:{}", e.code), "info");
+                    return CommandResult::Ok;
+                }
+            };
+            ctx.notify(&format!("view-d-mounted:{}", st.state), "info");
+            match ctx.hide_view(&st.mount) {
+                Ok(hidden) => ctx.notify(&format!("view-d-hidden:{}", hidden.state), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            match ctx.show_view(&st.mount) {
+                Ok(shown) => ctx.notify(&format!("view-d-shown:{}", shown.state), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "ui_view_extras_end",
         "Read the notices of the extras mount and finish it with a result",
