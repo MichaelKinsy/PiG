@@ -1,0 +1,30 @@
+# Pi 1.5.2 interactive-mode.ts:4475-4496 (shutdown from a signal: runtimeHost.dispose() before any terminal write),
+# :4516-4523 (emergencyTerminalExit), :4572-4588 (registerSignalHandlers); agent-session-runtime.ts:415-424 (dispose
+# emits session_shutdown with the reason "quit" and awaits its handlers).
+# An idle session in a git repository loses its terminal, as in 36-terminal-disconnect-idle-repo, with an extension
+# whose session_shutdown handler appends the reason, awaits a timer and appends again. The kernel's SIGHUP runs Pi's
+# graceful shutdown: the handler runs to its end, then the restore writes meet EIO and Pi exits 129. PiG reads the end
+# of input on the hung-up terminal first and gives its extensions the same shutdown before its exit 129. Before the
+# fix PiG reported "shutdown": [] here. The probe prints what the extension recorded and the exit status.
+name = "38-terminal-disconnect-shutdown-event"
+description = "A dead terminal gives extensions session_shutdown with the reason quit, awaited, before the exit 129"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# The probe defaults to PIG_PARITY_PIG_BIN so it uses the verified harness build.
+pig_args = ["python3", "test/parity/testdata/session-wire.py", "--case", "disconnect-repo-shutdown"]
+pi_args = ["python3", "test/parity/testdata/session-wire.py", "--bin", "extensions/sdk-ts/node_modules/.bin/pi", "--case", "disconnect-repo-shutdown"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

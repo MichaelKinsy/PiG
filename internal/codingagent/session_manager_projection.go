@@ -49,6 +49,10 @@ const sessionLineEscapeShare = 8
 // 64 KiB, extensions/sdk/json maxPooledEncodeBuffer). Beyond it a sized buffer reserves at most an eighth of the record beyond it.
 const sessionLinePooledMax = 64 << 10
 
+// ErrContextEditReplacement is Pi's error for a context edit whose replacement is neither null nor content (session-manager.ts appendContextEdit). A
+// replacement that is undefined, as a draft without the member has it, is one of them.
+var ErrContextEditReplacement = errors.New("Context edit replacement must be null or contain string/array content")
+
 // AppendContextEdit appends a branch-local edit to an earlier model-visible
 // entry and returns the new entry ID (session-manager.ts appendContextEdit).
 // A nil replacement omits the target. The target must be on the active branch
@@ -57,7 +61,7 @@ const sessionLinePooledMax = 64 << 10
 // as one text block because those roles require content arrays.
 func (s *Session) AppendContextEdit(targetID string, replacement *ContextEditReplacement) (string, error) {
 	if replacement != nil && !isContextEditableContent(replacement.Content) {
-		return "", errors.New("Context edit replacement must be null or contain string/array content")
+		return "", ErrContextEditReplacement
 	}
 	s.mu.RLock()
 	targetIdx, found := s.slotOf(targetID)
@@ -360,8 +364,9 @@ func sessionEntryToContextMessagesInto(entry SessionEntry, decode messageDecoder
 		if json.Unmarshal(entry.Raw(), &custom) != nil {
 			return nil
 		}
+		// upstream: session-manager.ts:455 (`entry.content ?? []`): a content member that is null or absent is an empty list.
 		content := custom.Content
-		if content == nil {
+		if content == nil || orderedjson.IsNull(content) {
 			content = []any{}
 		}
 		message := map[string]any{

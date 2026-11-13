@@ -2680,7 +2680,8 @@ export class Runtime {
       }),
       setModel: async (model) => {
         if (!this.conn || !this.hostReady) throw new Error("Extension runtime not initialized");
-        const result = await this.call("setModel", { model: `${model.provider}/${model.id}` });
+        // The Session takes the object as given (agent-session.ts setModel: `this.agent.state.model = model`), so the whole object crosses, with the members the extension left on it.
+        const result = await this.call("setModel", { model });
         if (result?.error) throw new Error(result.error);
         return result?.success === true;
       },

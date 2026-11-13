@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -282,11 +284,13 @@ type HostCallbacks struct {
 	// upstream: types.ts:1451
 	SetSessionName func(name string) error
 
-	// SetLabel sets a label on a session entry; an empty label clears it.
+	// SetLabel records what pi.setLabel was given for a session entry: label is the string, an empty one included; a nil label with null set is a
+	// label written as null; a nil label without it is the call without a label. Pi writes a different entry for each
+	// (session-manager.ts appendLabelChange), and all but a string that is not empty clear the label.
 	// Its error fails the extension's call, as upstream appendLabelChange
 	// throws.
 	// upstream: types.ts:1453
-	SetLabel func(entryID, label string) error
+	SetLabel func(entryID string, label *string, null bool) error
 
 	// GetActiveTools returns the currently active tool names.
 	// upstream: types.ts:1454
@@ -327,9 +331,12 @@ type HostCallbacks struct {
 	// GetCommandsVersion numbers the states of the catalog GetCommands returns. A push re-encodes the catalog only when the number changes, so it must change whenever GetCommands can return something different, and never repeat. Nil means every push encodes it.
 	GetCommandsVersion func() uint64
 
-	// SetModel changes the active model.
+	// SetModel makes the model object an extension passed the active model. The model has no backend: the Session binds one for its provider.
 	// upstream: types.ts:1459
-	SetModel func(context.Context, string) (bool, error)
+	SetModel func(context.Context, *ai.Model) (bool, error)
+
+	// ResolveModel builds the model a `provider/id` name stands for (CallResolveModel).
+	ResolveModel func(context.Context, string) (*ai.Model, error)
 
 	// GetThinkingLevel returns the current thinking level.
 	// upstream: types.ts:1460
@@ -1204,10 +1211,11 @@ func (b *UIBridge) HostStateSettled() {
 //   - "sendMessage":     func(extension.CustomMessageRef, SendMessageOptions) error
 //   - "sendUserMessage": func(any, SendUserMessageOptions) error
 //   - "appendEntry":     func(string, any, *DirectEntryAppend) error
-//   - "setLabel":        func(string, string) error
+//   - "setLabel":        func(string, *string, bool) error
 //   - "setActiveTools":  func([]string)
 //   - "refreshTools":    func() error
-//   - "setModel":        func(context.Context, string) (bool, error)
+//   - "setModel":        func(context.Context, *ai.Model) (bool, error)
+//   - "resolveModel":    func(context.Context, string) (*ai.Model, error)
 //   - "isIdle":          func() bool
 //   - "getSignal":       func() context.Context
 //   - "abort":           func()
@@ -1276,13 +1284,15 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 	case "appendEntry":
 		b.actions.AppendEntry = fn.(func(string, any, *DirectEntryAppend) error)
 	case "setLabel":
-		b.actions.SetLabel = fn.(func(string, string) error)
+		b.actions.SetLabel = fn.(func(string, *string, bool) error)
 	case "setActiveTools":
 		b.actions.SetActiveTools = fn.(func([]string))
 	case "refreshTools":
 		b.actions.RefreshTools = fn.(func() error)
 	case "setModel":
-		b.actions.SetModel = fn.(func(context.Context, string) (bool, error))
+		b.actions.SetModel = fn.(func(context.Context, *ai.Model) (bool, error))
+	case CallResolveModel:
+		b.actions.ResolveModel = fn.(func(context.Context, string) (*ai.Model, error))
 	case "isIdle":
 		b.actions.IsIdle = fn.(func() bool)
 	case "getSignal":
@@ -1616,8 +1626,10 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleRefreshTools(actions)
 	case "getCommands":
 		return b.handleGetCommands(actions)
-	case "setModel":
+	case CallSetModel:
 		return b.handleSetModel(ctx, actions, call.Args)
+	case CallResolveModel:
+		return b.handleResolveModel(ctx, actions, call.Args)
 	case "getThinkingLevel":
 		return b.handleGetThinkingLevel(actions)
 	case "setThinkingLevel":
@@ -3943,15 +3955,16 @@ func (b *UIBridge) handleSetSessionName(actions *HostCallbacks, args json.RawMes
 }
 
 func (b *UIBridge) handleSetLabel(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	// The label as the extension gave it: a string, null, or no member for a call without a label (JSON.stringify leaves an undefined argument out).
 	var p struct {
-		EntryID string `json:"entryId"`
-		Label   string `json:"label"`
+		EntryID string  `json:"entryId"`
+		Label   *string `json:"label"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse setLabel args: %w", err)
 	}
 	if actions != nil && actions.SetLabel != nil {
-		if err := actions.SetLabel(p.EntryID, p.Label); err != nil {
+		if err := actions.SetLabel(p.EntryID, p.Label, p.Label == nil && orderedjson.IsNullMember(args, "label")); err != nil {
 			return nil, err
 		}
 	}
@@ -4092,24 +4105,79 @@ func (b *UIBridge) handleGetCommands(actions *HostCallbacks) (*CallResultPayload
 }
 
 func (b *UIBridge) handleSetModel(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
-	var p struct {
-		Model string `json:"model"`
-	}
+	var p SetModelArgs
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse setModel args: %w", err)
 	}
+	model, err := decodeSetModelObject(p.Model)
+	if err != nil {
+		return nil, err
+	}
 	if actions == nil || actions.SetModel == nil {
 		extension.CallInitiated(ctx)
-		result, _ := json.Marshal(map[string]any{"success": false, "error": "not ready"})
+		result, _ := json.Marshal(SetModelResult{Error: "not ready"})
 		return &CallResultPayload{Result: result}, nil
 	}
-	ok, err := actions.SetModel(ctx, p.Model)
+	ok, err := actions.SetModel(ctx, model)
 	if err != nil {
-		result, _ := json.Marshal(map[string]any{"success": false, "error": err.Error()})
+		result, _ := json.Marshal(SetModelResult{Error: err.Error()})
 		return &CallResultPayload{Result: result}, nil
 	}
-	result, _ := json.Marshal(map[string]any{"success": ok})
+	result, _ := json.Marshal(SetModelResult{Success: ok})
 	return &CallResultPayload{Result: result}, nil
+}
+
+// decodeSetModelObject reads the model object of a setModel call. The wire has one shape for a model, the object: a `provider/id` string, which an
+// extension built with an SDK older than the object form sends, is rejected rather than looked up.
+func decodeSetModelObject(raw json.RawMessage) (*ai.Model, error) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || raw[0] != '{' {
+		return nil, errors.New("setModel: model must be a model object")
+	}
+	decoded, known, err := ai.DecodeStoredModel(raw)
+	if err != nil {
+		return nil, fmt.Errorf("setModel: %w", err)
+	}
+	model, chat := decoded.(*ai.Model)
+	if !known || !chat || model == nil {
+		return nil, errors.New("setModel: model must be a chat model object")
+	}
+	if model.ID == "" {
+		return nil, errors.New("setModel: model has no id")
+	}
+	return model, nil
+}
+
+// handleResolveModel answers CallResolveModel. An error of the build is the result's error, which the SDK's string form reports as the error of its
+// set-model without sending one.
+func (b *UIBridge) handleResolveModel(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	var p ResolveModelArgs
+	if err := json.Unmarshal(args, &p); err != nil {
+		return nil, fmt.Errorf("parse resolveModel args: %w", err)
+	}
+	reply := func(result ResolveModelResult) (*CallResultPayload, error) {
+		encoded, err := json.Marshal(result)
+		if err != nil {
+			return nil, err
+		}
+		return &CallResultPayload{Result: encoded}, nil
+	}
+	if actions == nil || actions.ResolveModel == nil {
+		extension.CallInitiated(ctx)
+		return reply(ResolveModelResult{Error: "not ready"})
+	}
+	model, err := actions.ResolveModel(ctx, p.Spec)
+	if err != nil {
+		return reply(ResolveModelResult{Error: err.Error()})
+	}
+	object, err := extension.ModelObject(model)
+	if err != nil {
+		return reply(ResolveModelResult{Error: err.Error()})
+	}
+	if object == nil {
+		return reply(ResolveModelResult{Error: "model not found: " + p.Spec})
+	}
+	return reply(ResolveModelResult{Model: object})
 }
 
 func (b *UIBridge) handleGetThinkingLevel(actions *HostCallbacks) (*CallResultPayload, error) {
@@ -4521,21 +4589,31 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		delete(b.modelStreams, key)
 		b.modelStreamMu.Unlock()
 	}()
-	stream, err := streamModel(providerCtx, request.Model, decodedRequest)
-	if err != nil {
+	// The extension's `streamSimple(...)` and `for await` run in one synchronous prefix in Pi, before any response I/O can complete, so the start event carries the pending, empty partial the provider built. A goroutine that attached after the stream was created could run after the provider had published the whole response and forward a start event holding the finished message. The creation and the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
+	streamCtx := ai.WithStreamContinuations(providerCtx)
+	var stream *ai.AssistantMessageEventStream
+	if err := ai.RunStreamContinuation(streamCtx, func(observation *ai.StreamObservation) error {
+		var err error
+		if stream, err = streamModel(streamCtx, request.Model, decodedRequest); err != nil {
+			return err
+		}
+		// Stream creation is the synchronous prefix. Event delivery and final
+		// result collection complete independently of later calls in the lane.
+		extension.CallInitiated(ctx)
+		eventsCtx := observation.Context(ctx)
+		streamattachhook.Attach(eventsCtx, stream)
+		for event := range stream.Events(eventsCtx) {
+			notifyArgs, err := json.Marshal(map[string]any{"streamId": request.StreamID, "event": event})
+			if err != nil {
+				return fmt.Errorf("marshal model stream event: %w", err)
+			}
+			if err := owner.sendAndWait(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "model_stream_event", Args: notifyArgs}}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return nil, err
-	}
-	// Stream creation is the synchronous prefix. Event delivery and final
-	// result collection complete independently of later calls in the lane.
-	extension.CallInitiated(ctx)
-	for event := range stream.Events(ctx) {
-		notifyArgs, err := json.Marshal(map[string]any{"streamId": request.StreamID, "event": event})
-		if err != nil {
-			return nil, fmt.Errorf("marshal model stream event: %w", err)
-		}
-		if err := owner.sendAndWait(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "model_stream_event", Args: notifyArgs}}); err != nil {
-			return nil, err
-		}
 	}
 	result, err := json.Marshal(stream.Result())
 	if err != nil {

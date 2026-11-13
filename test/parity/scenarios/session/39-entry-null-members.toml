@@ -1,0 +1,28 @@
+# Pi stores every member of a session entry as its caller gave it, and JSON.stringify decides what the file holds: a member whose value is null is written as
+# null and read back as null, a member that is undefined is left out. Each adapter appends through the paths an extension reaches (pi.appendEntry,
+# pi.sendMessage, pi.setSessionName, agent_before_settle drafts, the results of session_before_compact and session_before_tree) and through the session's own
+# append methods, each with the optional member left out, null and a value, and writes one record per row: the lines the row added to the session FILE, with
+# identities and times replaced, and what a reader of the reloaded file gets for each optional member.
+# The Pi adapter runs the pinned Pi package (its dist through the upstream suite harness), not the command line. The Go adapter runs the same rows in ./coding.
+name = "39-entry-null-members"
+description = "A session entry member an extension sets to null is written and read back as null, and an omitted one is left out"
+covers = ["packages/coding-agent/src/core/session-manager.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-null-members-pig.sh"]
+pig_go_tests = ["./coding"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-null-members-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

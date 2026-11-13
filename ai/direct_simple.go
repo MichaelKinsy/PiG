@@ -28,6 +28,9 @@ func StreamSimple(ctx context.Context, model *Model, transcript TranscriptContex
 func streamSimpleAs(ctx context.Context, api API, model *Model, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
 	meta := model.ProviderMeta
 	meta.API = api
+	if err := strippedDirectAPIError(api, model, options.Env); err != nil {
+		return nil, err
+	}
 	key, err := directSimpleAPIKey(meta, options)
 	if err != nil {
 		// The module's streamSimple asserts the key before its stream exists (for example openai-completions.ts streamSimple), so lazyApi's setup rejects.

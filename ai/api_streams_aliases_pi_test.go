@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -54,6 +55,10 @@ func TestLegacyAPIAliasesSendTheRequestOfTheirOwnAPIStreamUpstream(t *testing.T)
 		return seen()
 	}
 	for i, tc := range cases {
+		if slices.Contains(BuiltStrippedAPIs(), tc.name) {
+			// A build with this API's pig_strip tag sends no request through the API's stream or its alias.
+			continue
+		}
 		t.Run(tc.name+"/request", func(t *testing.T) {
 			wantStream := observe(t, i, tc.api().Stream)
 			wantSimple := observe(t, i, tc.api().StreamSimple)
@@ -160,7 +165,7 @@ func TestAPIStreamsPassTheModelAndOptionsToTheirProviderUpstream(t *testing.T) {
 			}
 		}
 	})
-	t.Run("bedrock stream sends the output cap and thinking budget as given", func(t *testing.T) {
+	bedrockStream := func(t *testing.T) {
 		t.Setenv("AWS_ACCESS_KEY_ID", "test-access-key")
 		t.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret-key")
 		t.Setenv("AWS_REGION", "us-east-1")
@@ -187,7 +192,11 @@ func TestAPIStreamsPassTheModelAndOptionsToTheirProviderUpstream(t *testing.T) {
 				}
 			}
 		}
-	})
+	}
+	// A build with pig_strip_bedrock_converse_stream has no Bedrock stream to send a request.
+	if !slices.Contains(BuiltStrippedAPIs(), string(APIBedrockConverseStream)) {
+		t.Run("bedrock stream sends the output cap and thinking budget as given", bedrockStream)
+	}
 	t.Run("usage is priced with the model's own rates", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.ReadAll(r.Body)

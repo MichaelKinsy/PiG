@@ -128,23 +128,46 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })
-		// The caller may cancel the ctx it passed instead of calling Stop: the watch has ended then, and there is nothing to follow
-		// (Pi: `watch(ctx).then(start, () => {})` ignores it).
-		chord.StartUnlessEnded(func() {
-			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-				if call.Kind == chord.WatchCallValue {
-					mu.Lock()
-					if text, ok := call.Value.(string); ok {
-						pick = &text
-					} else {
-						pick = nil
+		// pig divergence (D636): the pick the watch was acquired with is applied before Start. Pi sets `pick` only in a listener
+		// call (`choice.pick.watch(ctx).then((watch) => watch.start(...))`), so a language stored before this client's hold had
+		// its first values was never applied. The follower's callback must not run inside this microtask of the host's loop: the
+		// value is applied and the listener started on a goroutine, in that order; what the watch gets meanwhile waits in it for
+		// Start.
+		acquired := watch.Value()
+		//portlint:allow golifetime ends with the update and the start below: neither waits for the host
+		go func() { //portlint:allow asyncorder the acquired pick is applied, then the listener started, in that order on this one goroutine
+			mu.Lock()
+			if text, ok := acquired.(string); ok {
+				pick = &text
+			} else {
+				pick = nil
+			}
+			mu.Unlock()
+			update()
+			// Stop marks the follower stopped under gate before it ends the watches: a follower stopped by now starts nothing.
+			gate.Lock()
+			defer gate.Unlock()
+			if stopped.Load() {
+				return
+			}
+			// The caller may cancel the ctx it passed instead of calling Stop: the watch has ended then, and there is nothing to follow
+			// (Pi: `watch(ctx).then(start, () => {})` ignores it).
+			chord.StartUnlessEnded(func() {
+				watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+					if call.Kind == chord.WatchCallValue {
+						mu.Lock()
+						if text, ok := call.Value.(string); ok {
+							pick = &text
+						} else {
+							pick = nil
+						}
+						mu.Unlock()
 					}
-					mu.Unlock()
-				}
-				update()
-				return nil
+					update()
+					return nil
+				})
 			})
-		})
+		}()
 	})
 	return &LanguageFollower{
 		SetDevice: func(next []string) {

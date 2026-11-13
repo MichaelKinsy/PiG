@@ -88,10 +88,18 @@ class SetupSessionManager(ReadonlySessionManager):
         return self._write("appendMessage", message=message)
 
     def append_custom_entry(self, custom_type: str, data: Any = None) -> str:
-        return self._write("appendCustomEntry", customType=custom_type, data=data)
+        """``None`` leaves the entry without a ``data`` member, as Pi's ``appendCustomEntry(customType)`` does; ``pig_sdk.NULL`` writes the member as null."""
+        args: dict[str, Any] = {"customType": custom_type}
+        if data is not None:
+            args["data"] = data
+        return self._write("appendCustomEntry", **args)
 
     def append_custom_message_entry(self, custom_type: str, content: Any, display: bool, details: Any = None) -> str:
-        return self._write("appendCustomMessageEntry", customType=custom_type, content=content, display=display, details=details)
+        """``None`` leaves the entry without a ``details`` member, as Pi's ``appendCustomMessageEntry(customType, content, display)`` does; ``pig_sdk.NULL`` writes the member as null."""
+        args: dict[str, Any] = {"customType": custom_type, "content": content, "display": display}
+        if details is not None:
+            args["details"] = details
+        return self._write("appendCustomMessageEntry", **args)
 
     def append_session_info(self, name: str) -> str:
         return self._write("appendSessionInfo", name=name)

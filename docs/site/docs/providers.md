@@ -444,7 +444,7 @@ These differences apply to several providers:
 
 ## Provider resolution
 
-`--model`, `/model`, `Ctrl+P` and the extension `setModel()` call resolve a model spec as Pi does. A model ID may contain a slash, for example `openrouter/openai/gpt-5.5`, and cycling keeps the full ID. The Go function `coding.BuildModel` reads a spec without a `/` as `openai/<id>`, so pass provider-qualified specs from Go code.
+`--model`, `/model`, `Ctrl+P` and the spec forms of the extension `setModel()` call resolve a model spec as Pi does. A model ID may contain a slash, for example `openrouter/openai/gpt-5.5`, and cycling keeps the full ID. The Go function `coding.BuildModel` reads a spec without a `/` as `openai/<id>`, so pass provider-qualified specs from Go code.
 
 ## Provider extensions
 

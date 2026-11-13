@@ -42,11 +42,16 @@ export async function followActiveTheme<P extends Principal>(
 	});
 	const choice = host.hold(ThemeChoice, {}, ctx);
 	choice.pick.watch(ctx).then(
-		(watch) =>
+		(watch) => {
+			// pig divergence (D636): the pick the watch was acquired with is applied before `start`. Pi sets `pick` only in a
+			// listener call, so a theme stored before this client's hold had its first values was never applied.
+			pick = watch.value as ThemePick;
+			update();
 			watch.start(async (call) => {
 				if (call.kind === "value") pick = call.value as ThemePick;
 				update();
-			}),
+			});
+		},
 		// The hold ended (the follower stopped) before its first value.
 		() => {},
 	);

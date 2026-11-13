@@ -144,6 +144,12 @@ Detached Go work must have an owner that:
 
 A naked `go func()` with ignored error is not a valid translation of a Promise.
 
+### `session_shutdown` when the terminal goes away
+
+A closed terminal window, `tmux kill-session` or a dropped connection ends an interactive session with exit status 129. The extension still gets `session_shutdown` with the reason `quit` first, as on SIGTERM, SIGHUP and a normal quit, in every SDK and every realization. Write the last record there: the host waits for the handler before it stops the extension's process.
+
+The wait is one second, because nobody can see or stop a process whose terminal is gone. Do the flush first and keep it short; a handler that is still running after a second is cut. Do not use the terminal: `notify`, `setStatus` and widgets show nothing, and a dialog is never answered, so a handler that waits for one runs into the second. Files, sockets and child processes behave as usual. Pi runs the same handler when its SIGHUP handler runs, awaits it without a limit, and ends at once if anything writes to the dead terminal meanwhile (D186).
+
 ### UI and cancellation
 
 Upstream Promise-based dialogs (`select`, `confirm`, `input`, `editor`) map to blocking Go SDK calls because the handler is already off the host UI loop. In interactive mode that includes the `input` event: a handler registered for it runs on its own goroutine, one dispatch at a time, and the rest of the prompt path is applied on the owner loop when the handlers return. An input handler may therefore open a dialog and wait for the answer. With no `input` handler loaded there is nothing that can suspend the dispatch, and the prompt path stays synchronous, because several of the loop's guarantees are stated in terms of a submission being fully dispatched before the loop reads the next keystroke.
@@ -390,7 +396,32 @@ The Go SDK changes that the upgrade reports since 0.4.1:
 - `Context.ConfigHome` returns `(string, error)`.
 - `HostHelpers.HighlightCode` has no `markdown` parameter: `getMarkdownTheme().highlightCode` is `highlightCode`.
 
+- `Context.SetModel` takes a model object (`map[string]any`) instead of the `provider/id` string, and `Context.SetModelNamed` takes the string. The upgrade rewrites a call whose argument is a string; it lists a call whose argument has another type.
+
 `make sdk-apidiff` fails an incompatible change to an extension SDK package that has no upgrade rule or release note.
+
+## Switching the model (`setModel`)
+
+`setModel` takes a model object, as Pi's `pi.setModel(model)` does. The Session uses the object you pass: its context window, input limits, base URL, API, compat and headers, with the credentials of its provider. Take a model from the model registry and pass it as it is or edited, or build one by hand for a provider PiG knows. The call answers false, and changes nothing, when the provider has no configured auth. The session file records the provider and the id only, so a resumed session restores the model by those.
+
+| SDK | Model object | `provider/id` string |
+|---|---|---|
+| Node | `await pi.setModel(model)` | none, as Pi |
+| Go | `ctx.SetModel(model)` with a `map[string]any` | `ctx.SetModelNamed("provider/id")` |
+| Python | `ctx.set_model(model)` with a `dict` | `ctx.set_model("provider/id")` |
+| Rust | `ctx.set_model(&model)` with a `serde_json::Value` | `ctx.set_model("provider/id")` |
+| Lisp | `(pig:ctx-set-model ctx model)` with an object | `(pig:ctx-set-model ctx "provider/id")` |
+
+The string form asks the host for the model object of the name and then sets it. It is two host calls: the object the first call returned is the one set, and an error of the first call is returned without setting. For an id the registry does not list, the host builds a model from the provider, with no context window.
+
+When the registry's entry for the object's provider and id changes later (the provider is registered again, `models.json` changes, a catalog refresh brings a new record), the Session takes the registry's model and an edit is gone; set the object again from a `model_select` or `before_agent_start` handler to keep it (D626).
+
+Migration from an SDK before 0.8.0:
+
+- Node: the call is unchanged. An edited or hand-built object used to be reduced to its provider and id and looked up in the registry; now it is used as passed. An object that carries only `provider` and `id` is therefore a model with no API or limits: pass `ctx.modelRegistry.find(provider, id)` instead.
+- Python, Rust, Lisp: a `provider/id` string still works and answers what it answered. The call also takes a model object.
+- Go: `ctx.SetModel("provider/id")` becomes `ctx.SetModelNamed("provider/id")`; `pig extension upgrade` rewrites it. `ctx.SetModel(model)` takes the object.
+- The wire has one shape and no negotiation: an extension built with an older SDK is refused at `setModel` with `setModel: model must be a model object`. Rebuild it with the 0.8.0 SDK.
 
 ## Go SDK nullable values
 

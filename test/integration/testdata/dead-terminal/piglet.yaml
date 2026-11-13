@@ -1,0 +1,9 @@
+name: dead-terminal
+description: "A Go SDK extension that records its session_shutdown."
+extensions:
+  - name: deadterm
+    origins:
+      - local:deadterm
+discovery:
+  extensions: []
+  skills: []

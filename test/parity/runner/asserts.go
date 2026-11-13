@@ -363,7 +363,7 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 				case !f.Observed:
 					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: no_frames_after_reply needs a tmux step with final_frame", system.System, run+1))
 				case !f.Found:
-					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: the reply text %q is not in the raw transcript", system.System, run+1, f.Text))
+					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: the reply text %q is not in %s", system.System, run+1, f.Text, f.source()))
 				case f.Trailing > 0:
 					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: %d frame(s) began after the reply text %q; bytes after it: %s", system.System, run+1, f.Trailing, f.Text, f.Tail))
 				}
@@ -553,7 +553,7 @@ func evaluateFinalFrameCursorOnly(o *ScenarioOutcome, a AssertSpec) {
 			case !f.Observed:
 				o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: %s needs a tmux step with final_frame", system.System, run+1, key))
 			case !f.Found:
-				o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: the text %q is not in the raw transcript", system.System, run+1, f.Text))
+				o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: the text %q is not in %s", system.System, run+1, f.Text, f.source()))
 			default:
 				if got := f.CursorOnly(); got != *want {
 					o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: %d cursor-only frame(s) began after the text %q, want %d; bytes after it: %q", system.System, run+1, got, f.Text, *want, f.Frames))

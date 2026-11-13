@@ -123,6 +123,10 @@ func TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort(t *testing.T) {
 		{"untyped anyOf variant", `{"type":"object","properties":{"v":{"anyOf":[{"type":"string"},{}]}},"required":["v"]}`, `{"v":{"anyOf":[{"type":"string"},{}]}}`},
 	}
 	for _, api := range strictWireAPIs() {
+		if !BuiltAPI(API(api.name)) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(api.name, func(t *testing.T) {
 			// The control: a typed schema is sent strict, so the fixture model really reaches strict mode.
 			body, result := requestOfTool(t, api, strictTestTool(t, `{"type":"object","properties":{"a":{"type":"string"}},"required":["a"]}`, "prefer"))

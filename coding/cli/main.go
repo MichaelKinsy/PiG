@@ -1603,6 +1603,7 @@ func Main(args []string, options *MainOptions) {
 			return coding.BuildModel(spec, services)
 		},
 		DefaultModelPerProvider: codingagent.DefaultModelPerProvider(),
+		ModelBinder:             codingSess.ModelRuntime().BindModelObject,
 		ModelLookup:             codingSess.ModelRuntime().GetModel,
 		ModelCatalog:            codingSess.ModelRuntime().GetModels,
 		ModelClassify:           codingSess.ModelRuntime().Classify,

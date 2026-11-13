@@ -221,7 +221,7 @@ func (s *replicaHostState) bind(h *harness) {
 		}
 		return nil, fmt.Errorf("replica row: unexpected sessionRead %s", method)
 	})
-	h.bridge.SetHostAction("setModel", func(_ context.Context, model string) (bool, error) {
+	setModelBySpec(h.bridge, func(_ context.Context, model string) (bool, error) {
 		for _, candidate := range replicaModels {
 			var m struct{ Provider, ID string }
 			if json.Unmarshal([]byte(candidate), &m) == nil && m.Provider+"/"+m.ID == model {

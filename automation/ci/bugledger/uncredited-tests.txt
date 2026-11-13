@@ -1,0 +1,4 @@
+# Tests that a fix commit adds, edits in place or names and that do not guard the commit's bug, one per line:
+#   <commit> <test-file>::<TestName>: <reason>
+# `make bug-ledger` and `make bug-ledger-refresh` leave the test out of the tests they credit to that commit, so the entry lists only its guards.
+1ea5c18bc2 test/extension-conformance/entry_null_members_test.go::TestEntryMemberNullAndOmittedAcrossSDKs: the commit passes the authored usage through the row's draft writer; the row holds a null usage, not a usage's member order or its extra members

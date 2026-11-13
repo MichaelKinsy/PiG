@@ -1,0 +1,81 @@
+# Behavior family: fullscreen
+# Surface: TuiAltScreen.doRender (packages/tui/src/tui-alt-screen.ts) writing the editor's row (packages/tui/src/components/editor.ts) again and again
+# while its text grows, and what the terminal keeps of that row's line.
+#
+# What is compared is not the screen but the line tmux stored for the row: `capture_join_wrapped` captures with `tmux capture-pane -J`, which prints a
+# row as far as cells were stored in its line, trailing blanks included, and `escaped_output_equal` compares that capture byte for byte. With autowrap off
+# (fullscreen turns it off) tmux stores a row's cells one by one, does not store a default blank past the cells the line has, and a cell stored past them
+# makes the line a quarter, a half or the whole of the pane's width; the line is freed only when it is erased whole. So how far a line is stored depends on
+# the order in which the cells arrived since its last erase, not only on what the row shows.
+#
+# Upstream evidence (the Pi this tree pins, the runner's pi binary; container tern-ci:v10, tmux 3.4, pane 120 by 24; probed 2026-11-12 before the
+# assertion was written): while the bash tool of "Run: tui live tool pause" sleeps after LIVE-TOOL-08 the working indicator keeps drawing frames, and the
+# text typed into the editor is drawn in the editor's row: the text, one cell of the cursor (CSI 7 m, a blank, CSI 0 m) and blanks to the pane's width.
+# Pi erases the row (CSI 2K) and writes that line for every frame that changes it. After 20 and then 20 more typed characters the row holds 41 cells that
+# are not default blanks, past a quarter of the pane (30) and short of a half (60), and `capture-pane -J` printed the row 60 cells long for Pi: the text,
+# the cursor's cell and 19 blanks.
+#
+# PiG's screen writer (D624) does not erase that row: its record log of the same run (PIG_TUI_SCREEN_WRITER_LOG) shows the row written in place twice,
+# from its first cell through the line's last cell, without CSI 2K, and no settle write before the capture (the working indicator's frames keep arriving
+# during the pause, and the settle write comes only once 250 ms pass without a frame). The row tmux stored is the same 60 cells. This is the line the
+# writer's own tests assert through tmux's rule (internal/screenwriter/gridterm `stored`; TestLinesAreWhatTmuxShows, TestRandomFramesLeaveTheRenderersLines).
+# Mutation run: with the writer writing a grown row only through its last changed cell (writeDiff: `o.width == t.width && t.ink() == ink` to
+# `o.width == t.width`), tmux stored 41 cells of the row and this scenario fails in writer mode with "escaped output mismatch".
+#
+# The capture is the editor's row alone, from the typed text to the row's end: the rows above it hold the working indicator's glyph and the tool's
+# elapsed time, which follow the capture's timing. The last step fails if LIVE-TOOL-09 is visible, so a capture taken after the pause, when a settle
+# write may have rewritten the row whole, is an error and not a pass. No normalization: the row holds no varying text.
+
+name = "19-alt-screen-row-grows-in-place"
+description = "The line tmux stored for the editor's row after its text grew past a quarter of the pane while frames kept arriving (capture-pane -J) is the same in pig and pi."
+covers = [
+  "packages/tui/src/tui-alt-screen.ts",
+  "packages/tui/src/components/editor.ts",
+]
+tags = ["fast", "hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 120
+height = 24
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "grow-0123456789"
+capture_end = "\n"
+capture_join_wrapped = true
+
+# The tool prints LIVE-TOOL-01 to 08 and then sleeps 5 s: the turn is still running, so the working indicator keeps asking for frames.
+[[tmux.steps]]
+keys = ["Run: tui live tool pause", "Enter"]
+wait_contains = ["LIVE-TOOL-08"]
+wait_timeout_seconds = 15
+
+# 20 characters: the editor's row holds 21 cells that are not default blanks, inside the first quarter of the 120 columns.
+[[tmux.steps]]
+keys = ["grow-0123456789abcde"]
+wait_contains = ["grow-0123456789abcde"]
+wait_timeout_seconds = 5
+
+# 20 more: 41 cells, past the quarter. The row grew in place; the capture follows at once, during the tool's pause.
+[[tmux.steps]]
+keys = ["fghijklmnopqrstuvwxy"]
+wait_contains = ["grow-0123456789abcdefghijklmnopqrstuvwxy"]
+wait_not_contains = ["LIVE-TOOL-09"]
+wait_timeout_seconds = 5
+
+[assert]
+both_reach_ready = true
+both_contain = ["grow-0123456789abcdefghijklmnopqrstuvwxy"]
+both_not_contain = ["panic:", "goroutine "]
+# The row as tmux stored it, escapes and trailing blanks included: no comparator that trims a row's end would see how far the line was stored.
+escaped_output_equal = true
+runs = 3
