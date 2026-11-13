@@ -57,6 +57,60 @@ type viewTestLoop struct {
 	listeners []*tui.TuiInputListener
 	// keybindings are the user's: Pi's defaults until a test gives an action other keys.
 	keybindings *KeybindingsManager
+	// frames is every frame the client drew over the screen, closed ones too, in the order it drew them.
+	frames []*viewTestFrame
+}
+
+// viewTestFrame is a frame the test loop drew over the screen. It behaves as the renderer's overlay does: drawn with the
+// focus it takes it, and closed while it holds the focus it gives it back to what held it before.
+type viewTestFrame struct {
+	l      *viewTestLoop
+	mount  *viewMount
+	title  string
+	before *viewMount
+	closed bool
+}
+
+func (fr *viewTestFrame) Close() {
+	fr.closed = true
+	if fr.l.focused != fr.mount {
+		return
+	}
+	if fr.before != nil && fr.before.visible {
+		fr.l.focus(fr.before)
+		return
+	}
+	fr.l.focus(nil)
+}
+
+func (fr *viewTestFrame) Focus() { fr.l.focus(fr.mount) }
+
+func (fr *viewTestFrame) Leave() { fr.l.focus(nil) }
+
+// open is the frames on the screen, the top one last.
+func (l *viewTestLoop) open() []*viewTestFrame {
+	var open []*viewTestFrame
+	for _, fr := range l.frames {
+		if !fr.closed {
+			open = append(open, fr)
+		}
+	}
+	return open
+}
+
+// focus moves the keyboard focus to mount, or to the editor with nil, as the renderer does.
+func (l *viewTestLoop) focus(mount *viewMount) {
+	previous, wasOnRow := l.focused, l.onRow
+	l.focused, l.elsewhere, l.onRow = mount, false, false
+	if wasOnRow {
+		l.row.SetFocused(false)
+	}
+	if previous != nil && previous != mount {
+		previous.SetFocused(false)
+	}
+	if mount != nil {
+		mount.SetFocused(true)
+	}
 }
 
 func newViewTestLoop(t *testing.T) *viewTestLoop {
@@ -85,18 +139,14 @@ func (l *viewTestLoop) ui() viewClientUI {
 		},
 		layout: func(mounts []*viewMount) { l.laid = append(l.laid, slices.Clone(mounts)) },
 		render: func() { l.renders++ },
-		focus: func(mount *viewMount) {
-			previous, wasOnRow := l.focused, l.onRow
-			l.focused, l.elsewhere, l.onRow = mount, false, false
-			if wasOnRow {
-				l.row.SetFocused(false)
+		focus:  l.focus,
+		float: func(mount *viewMount, title string, focus bool) viewFloat {
+			fr := &viewTestFrame{l: l, mount: mount, title: title, before: l.focused}
+			l.frames = append(l.frames, fr)
+			if focus {
+				l.focus(mount)
 			}
-			if previous != nil && previous != mount {
-				previous.SetFocused(false)
-			}
-			if mount != nil {
-				mount.SetFocused(true)
-			}
+			return fr
 		},
 		editorFocused: func() bool { return l.focused == nil && !l.elsewhere && !l.onRow },
 		editorEmpty:   func() bool { return !l.typed },
@@ -332,14 +382,20 @@ func TestViewClientStatesItsSize(t *testing.T) {
 		}
 		return out
 	}
-	want := map[string]string{"client.kind": `"terminal"`, "size.columns": "40", "widget-above/size.rows": "10", "widget-below/size.rows": "10", "panel/size.rows": "12"}
+	want := map[string]string{
+		"client.kind": `"terminal"`, "size.columns": "40", "widget-above/size.rows": "10", "widget-below/size.rows": "10", "panel/size.rows": "12",
+		"dialog/size.rows": strconv.Itoa(viewDialogCells(24)), "dialog/size.columns": strconv.Itoa(viewDialogCells(40)),
+	}
 	if got := claims(); !mapsEqual(got, want) {
 		t.Fatalf("claims = %v, want %v", got, want)
 	}
 	f.loop.size = viewSize{columns: 100, rows: 50, pointer: true}
 	f.client.wake()
 	f.loop.run()
-	want = map[string]string{"client.kind": `"terminal"`, "size.columns": "100", "widget-above/size.rows": "10", "widget-below/size.rows": "10", "panel/size.rows": "25", "pointer": "true"}
+	want = map[string]string{
+		"client.kind": `"terminal"`, "size.columns": "100", "widget-above/size.rows": "10", "widget-below/size.rows": "10", "panel/size.rows": "25", "pointer": "true",
+		"dialog/size.rows": strconv.Itoa(viewDialogCells(50)), "dialog/size.columns": strconv.Itoa(viewDialogCells(100)),
+	}
 	if got := claims(); !mapsEqual(got, want) {
 		t.Fatalf("claims after a resize = %v, want %v", got, want)
 	}

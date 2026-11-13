@@ -30,6 +30,17 @@ func (m *InteractiveMode) attachTerminalViewClient(bridge SubprocessUIBridge) {
 			}
 			m.tuiInst.SetFocus(mount)
 		},
+		float: func(mount *viewMount, title string, focus bool) viewFloat {
+			handle := m.tuiInst.ShowOverlay(mount, viewDialogOverlay(title))
+			if handle == nil {
+				return nil
+			}
+			if !focus {
+				// The overlay took the focus as it was drawn: it goes back to what held it.
+				handle.Unfocus()
+			}
+			return &viewFrame{m: m, handle: handle}
+		},
 		editorFocused: func() bool {
 			return m.tuiInst.ActiveOverlay() == nil && m.tuiInst.GetFocusedComponent() == tui.Component(m.editor)
 		},
@@ -46,6 +57,24 @@ func (m *InteractiveMode) attachTerminalViewClient(bridge SubprocessUIBridge) {
 		},
 	}))
 }
+
+// viewDialogOverlay is the overlay a dialog is drawn in: the renderer's titled frame, the one the model selector has,
+// centred, viewDialogFraction of the terminal's columns and of its rows.
+func viewDialogOverlay(title string) tui.OverlayOptions {
+	return tui.OverlayOptions{Title: title, WidthFraction: viewDialogFraction, HeightFraction: viewDialogFraction}
+}
+
+// viewFrame is a dialog's frame on the screen: the overlay Pi's ctx.ui.custom draws an extension's component in.
+type viewFrame struct {
+	m      *InteractiveMode
+	handle *tui.OverlayHandle
+}
+
+func (f *viewFrame) Close() { f.handle.Close() }
+
+func (f *viewFrame) Focus() { f.handle.Focus() }
+
+func (f *viewFrame) Leave() { f.handle.UnfocusWith(tui.OverlayUnfocusOptions{Target: f.m.editor}) }
 
 // detachTerminalViewClient ends the terminal's attachment to the outgoing build's registry and removes its mounts.
 func (m *InteractiveMode) detachTerminalViewClient() {

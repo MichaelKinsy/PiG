@@ -39,6 +39,8 @@ const (
 	viewBelowEditor
 	// viewPanel is the rows directly above the editor, under the widgets and the mounts of viewAboveEditor.
 	viewPanel
+	// viewDialog is a titled frame centred over the screen: an overlay of the renderer, outside the widget containers.
+	viewDialog
 )
 
 // viewSlot is one slot the terminal draws.
@@ -48,8 +50,13 @@ type viewSlot struct {
 	// rows is the most rows a mount of the slot is drawn with in a terminal of terminalRows rows. A taller view is cut
 	// to it, its last row replaced by viewCutRow.
 	rows func(terminalRows int) int
+	// columns is the columns a mount of the slot is drawn with in a terminal of terminalColumns columns, and nil for a
+	// slot as wide as the terminal.
+	columns func(terminalColumns int) int
 	// focus reports that a mount of the slot can hold the keyboard focus.
 	focus bool
+	// float reports that a mount of the slot is drawn over the screen in a frame of its own (see viewClient.float).
+	float bool
 	// tabs reports that the mounts of the slot are tabs: one is drawn at a time, under a row of their titles (see
 	// viewTabs). Without it every live mount of the slot is drawn, one under the other.
 	tabs bool
@@ -67,12 +74,29 @@ func viewWidgetSlotRows(int) int { return viewWidgetRows }
 
 func viewPanelSlotRows(terminalRows int) int { return max(viewPanelMinRows, terminalRows/2) }
 
+// pig additive (D614): a dialog's frame is viewDialogFraction of the terminal's columns and of its rows, rounded down as
+// the renderer rounds an overlay's fractions (tui.OverlayOptions), and its border takes one cell on every side.
+const (
+	viewDialogFraction = 0.8
+	viewDialogBorder   = 2
+)
+
+func viewDialogSlotRows(terminalRows int) int { return viewDialogCells(terminalRows) }
+
+func viewDialogSlotColumns(terminalColumns int) int { return viewDialogCells(terminalColumns) }
+
+// viewDialogCells is the cells inside the frame of a dialog along one side of a terminal of terminalCells cells.
+func viewDialogCells(terminalCells int) int {
+	return max(1, int(float64(terminalCells)*viewDialogFraction)-viewDialogBorder)
+}
+
 // viewSlots is the table of the slots the terminal draws. A slot that is not here is not declared, so the registry
 // sends the terminal no mount of it.
 var viewSlots = []viewSlot{
 	{slot: uiview.SlotWidgetAbove, region: viewAboveEditor, rows: viewWidgetSlotRows},
 	{slot: uiview.SlotWidgetBelow, region: viewBelowEditor, rows: viewWidgetSlotRows},
 	{slot: uiview.SlotPanel, region: viewPanel, rows: viewPanelSlotRows, focus: true, tabs: true},
+	{slot: uiview.SlotDialog, region: viewDialog, rows: viewDialogSlotRows, columns: viewDialogSlotColumns, focus: true, float: true},
 }
 
 func viewSlotOf(slot uiview.Slot) *viewSlot {
@@ -102,7 +126,7 @@ type viewSize struct {
 
 // terminalViewAbilities is what the terminal declares: the slots of viewSlots, the node kinds the D107 view kit draws
 // for a mount, keyboard and text input, the pointer where the terminal reports it, and as claims the kind of client,
-// the columns of a mount and, per slot, the rows it is drawn with.
+// the columns of a mount and, per slot, the rows it is drawn with and the columns of a slot narrower than the terminal.
 func terminalViewAbilities(size viewSize) uiview.ClientAbilities {
 	integer := func(n int) json.RawMessage { return json.RawMessage(strconv.Itoa(max(n, 0))) }
 	a := uiview.ClientAbilities{
@@ -117,7 +141,11 @@ func terminalViewAbilities(size viewSize) uiview.ClientAbilities {
 	for i := range viewSlots {
 		s := &viewSlots[i]
 		a.Slots = append(a.Slots, s.slot)
-		a.SlotClaims = append(a.SlotClaims, uiview.SlotClaims{Slot: s.slot, Claims: []uiview.Claim{{Name: "size.rows", Value: integer(s.rows(size.rows))}}})
+		claims := []uiview.Claim{{Name: "size.rows", Value: integer(s.rows(size.rows))}}
+		if s.columns != nil {
+			claims = append(claims, uiview.Claim{Name: "size.columns", Value: integer(s.columns(size.columns))})
+		}
+		a.SlotClaims = append(a.SlotClaims, uiview.SlotClaims{Slot: s.slot, Claims: claims})
 	}
 	return a
 }
@@ -134,6 +162,9 @@ type viewClientUI struct {
 	render func()
 	// focus gives the keyboard focus to mount, or to the editor with nil.
 	focus func(mount *viewMount)
+	// float draws mount over the screen in a frame titled title, on top of every frame drawn before, and gives it the
+	// keyboard focus when focus is set. It returns the frame, or nil when the renderer drew none.
+	float func(mount *viewMount, title string, focus bool) viewFloat
 	// editorFocused reports whether the editor holds the keyboard focus.
 	editorFocused func() bool
 	// editorEmpty reports whether the editor holds no text.
@@ -154,6 +185,16 @@ type viewClientUI struct {
 	notify func(message, level string)
 	// size returns the terminal's columns and rows and whether it reports the pointer.
 	size func() viewSize
+}
+
+// viewFloat is the frame of a mount that is drawn over the screen. The renderer's overlay is one.
+type viewFloat interface {
+	// Close removes the frame. The keyboard focus it held returns to what held it before.
+	Close()
+	// Focus gives the frame the keyboard focus.
+	Focus()
+	// Leave returns the keyboard focus to the editor; the frame stays drawn.
+	Leave()
 }
 
 type viewMountKey struct{ plugin, key string }
@@ -195,6 +236,8 @@ type viewClient struct {
 	order []*viewMount
 	// drawn is the mounts last given to layout.
 	drawn []*viewMount
+	// floats is the mounts drawn over the screen, each in its frame, in the order they were shown: the last is on top.
+	floats []*viewMount
 	// focused is the mount that holds the keyboard focus.
 	focused *viewMount
 	// asks holds, in the order they arrived, the mounts that asked to be shown (they turned live) or for the focus (their
@@ -384,6 +427,10 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 			request = f
 		}
 	}
+	if m.frame != nil && m.title != s.Title {
+		// The frame carries the title, so a mount with another title is drawn in a new frame.
+		c.unfloat(m)
+	}
 	m.ref, m.intents, m.digest, m.title = s.Mount, s.Intents, s.Digest, s.Title
 	if redraw {
 		m.bind(s.Bindings)
@@ -423,6 +470,7 @@ func (c *viewClient) drop(m *viewMount) {
 		m.cancel()
 		m.cancel = nil
 	}
+	c.unfloat(m)
 	m.surface.Close()
 	c.dirty = c.dirty || m.visible || m.hidden
 	m.visible, m.live, m.hidden = false, false, false
@@ -456,7 +504,7 @@ func (c *viewClient) settle() {
 	}
 	clear(c.asks[len(waiting):])
 	c.asks = waiting
-	switch stops := len(c.stops()); {
+	switch stops := len(c.stops()) + len(c.floats); {
 	case stops > 0 && c.unlisten == nil:
 		c.unlisten = c.ui.listen(&c.listener)
 	case stops == 0 && c.unlisten != nil:
@@ -506,12 +554,53 @@ func (c *viewClient) grant(m *viewMount) {
 	case c.at == m:
 		// settle moves the focus from the tab row into the view.
 		return
+	case m.frame != nil:
+		m.frame.Focus()
+		c.dirty = true
+		return
 	default:
 		c.ui.focus(m)
 		c.dirty = true
 		return
 	}
 	c.report(m, uiview.Notice{Code: uiview.NoticeUnfocused, Severity: uiview.SeverityInfo, Path: "focus", Message: why})
+}
+
+// float draws m, a visible mount of a float slot, over the screen in a frame of its own, on top of the frames drawn
+// before. The frame takes the keyboard focus by the rule of a focus request (grant): from a view of the client, from the
+// tab row and from an editor that holds no text. Otherwise it is drawn without the focus, the plugin reads an unfocused
+// notice, and the focus key reaches it. A mount that has its frame keeps it.
+func (c *viewClient) float(m *viewMount) {
+	if m.frame != nil {
+		return
+	}
+	var why string
+	switch {
+	case c.focused != nil || c.at != nil:
+	case !c.ui.editorFocused():
+		why = "another component holds the keyboard focus"
+	case !c.ui.editorEmpty():
+		why = "the editor holds text"
+	}
+	if m.frame = c.ui.float(m, m.label(), why == ""); m.frame == nil {
+		return
+	}
+	c.floats = append(c.floats, m)
+	if why != "" {
+		c.report(m, uiview.Notice{Code: uiview.NoticeUnfocused, Severity: uiview.SeverityInfo, Path: "focus", Message: why})
+	}
+}
+
+// unfloat removes the frame of m, when it has one: the mount was hidden or ended. The frame under it, or what held the
+// focus before, has the keyboard again.
+func (c *viewClient) unfloat(m *viewMount) {
+	if m.frame == nil {
+		return
+	}
+	m.frame.Close()
+	m.frame = nil
+	c.floats = slices.DeleteFunc(c.floats, func(o *viewMount) bool { return o == m })
+	m.SetFocused(false)
 }
 
 // rewired tells the client that the renderer was replaced: the focus key's listener went with the old one, and the
@@ -523,10 +612,23 @@ func (c *viewClient) rewired() {
 
 // focusKey is the input listener of viewFocusKey: from the editor it moves to the first stop, from a stop to the next,
 // and from the last back to the editor. The stops are the focusable panels, or the entries of the tab row while it is
-// drawn (see stops). While something else holds the focus it passes the key on.
+// drawn (see stops). While a frame is drawn over the screen the key moves between the editor and the top frame and
+// passes every other stop by. While something else holds the focus it passes the key on.
 func (c *viewClient) focusKey(data string) *tui.TuiInputResult {
 	if !tui.MatchesKeyID(data, viewFocusKey) {
 		return nil
+	}
+	if len(c.floats) > 0 {
+		switch top := c.floats[len(c.floats)-1]; {
+		case top.focused:
+			top.frame.Leave()
+		case c.standing() != nil || c.ui.editorFocused():
+			top.frame.Focus()
+		default:
+			return nil
+		}
+		c.ui.render()
+		return &tui.TuiInputResult{Consume: true}
 	}
 	panels, standing := c.stops(), c.standing()
 	switch at := slices.Index(panels, standing); {
