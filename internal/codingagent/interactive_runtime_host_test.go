@@ -23,6 +23,8 @@ func (h *recordingRuntimeHost) ImportFromJsonl(_ context.Context, path, cwdOverr
 
 func (h *recordingRuntimeHost) EmitQuitShutdown() { h.quits++ }
 
+func (h *recordingRuntimeHost) EmitQuitShutdownAfterStop() { h.quits++ }
+
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:608. The constructor keeps runtimeHost, and
 // the mode routes Session work through it: /import calls runtimeHost.importFromJsonl (:6582, as in
 // interactive-mode-import-command.test.ts:54) and quit emits its shutdown through the host.

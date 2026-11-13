@@ -47,6 +47,25 @@ func (r interactiveRuntime) ExtensionCommandActions(session codingagent.Interact
 
 func (r interactiveRuntime) EmitQuitShutdown() { r.rt.EmitQuitShutdown() }
 
+// EmitQuitShutdownAfterStop is the dispose of the quit by keys, which runs after the TUI stopped (Pi: this.stop(), then `await this.runtimeHost.dispose()`, interactive-mode.ts shutdown).
+func (r interactiveRuntime) EmitQuitShutdownAfterStop() {
+	r.rt.EmitQuitShutdownAfterInputEnd(func() { exitAtDrainedQuit(r.rt.Session()) })
+}
+
+// exitAtDrainedQuit ends the process as Pi's ends when its event loop empties under the pending dispose of a quit: status 0, with no session_shutdown and no resume hint (the dispose never returns).
+// pig additive (D19): Pi's extensions end with its process. Here the Session stops persisting first, because ending the extension processes fails the pending request with an error of the host's own, which Pi's process never produces; then the extension hosts end by their normal shutdown (stopStartupExtensions, the close main defers), and TerminateProcesses ends what a replaced Session's host still runs, as the RPC exit does.
+func exitAtDrainedQuit(session *coding.Session) {
+	// The report arrives on a goroutine of the extension host, which the host's shutdown joins, so the exit runs apart from it.
+	go func() { //portlint:allow golifetime the goroutine ends in the process exit (exitProcess), as Pi's loop-drain exit ends the process
+		session.Dispose()
+		stopStartupExtensions()
+		if host := session.ExtensionHost(); host != nil {
+			host.TerminateProcesses()
+		}
+		exitProcess(0)
+	}()
+}
+
 func (r interactiveRuntime) SetBeforeSessionReplacement(drain func(context.Context) error) {
 	r.rt.SetBeforeSessionReplacement(drain)
 }
