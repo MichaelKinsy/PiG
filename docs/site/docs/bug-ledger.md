@@ -1913,6 +1913,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f08ffe9](#bf-f08ffe9) | A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f0a9d01](#bf-f0a9d01) | An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line | PiG's own defect | All platforms | 0.7.0 |
+| [BF-f0c8b96](#bf-f0c8b96) | The find tool matched path patterns through folders above the search path: with the project in `~/src/app`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f0eace4](#bf-f0eace4) | LaTeX math renders two surrogate halves that end up side by side in one argument (`\vec{\ud83d{}\ude00}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f0eace4-2](#bf-f0eace4-2) | LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in… | PiG's own defect | All platforms | Unreleased |
 | [BF-f105c62](#bf-f105c62) | A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow… | PiG's own defect | All platforms | Unreleased |
@@ -28288,6 +28289,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f0a9d013e1` (2026-11-03)
 - **Tests:** `coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine`, `internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreen`, `internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreenChild`, `internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownIsIgnoredWhileSuspended`, `internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownLeavesTheOwnerLoopRunning`
 - **Release note:** An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line. The handler was installed only after the first screen was drawn, so a SIGINT in that window killed the session by the default action with no line, and once installed it also asked the session to unwind, which let the process exit 0 before the handler's own exit 130. The handler now goes in first, as Pi registers its signal handlers first in `init()`, and it ends the process without unwinding the session.
+
+### BF-f0c8b96
+
+**The find tool matched path patterns through folders above the search path: with the project in `~/src/app`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).
+- **Root cause:** Port of Pi. A relative path pattern of the find tool is relative to the search directory, like grep's glob: src/*.ts finds src/a.ts but not pkg/src/a.ts, and **/src/*.ts finds both.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f0c8b9662f` (2026-11-12)
+- **Tests:** `internal/codingagent/tools/find_ancestor_glob_upstream_test.go::TestFindPathGlobsDoNotMatchAboveTheSearchPath`, `internal/codingagent/tools/find_ancestor_glob_windows_branch_test.go::TestFindWindowsPathPatternDoesNotMatchAboveTheSearchPath`, `internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments`, `internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit`
+- **Release note:** The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).
 
 ### BF-f0eace4
 

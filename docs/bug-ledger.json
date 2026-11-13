@@ -53915,6 +53915,33 @@
       ]
     },
     {
+      "id": "BF-f0c8b96",
+      "title": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`…",
+      "symptom": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).",
+      "rootCause": "Port of Pi. A relative path pattern of the find tool is relative to the search directory, like grep's glob: src/*.ts finds src/a.ts but not pkg/src/a.ts, and **/src/*.ts finds both.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0c8b9662f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_ancestor_glob_upstream_test.go::TestFindPathGlobsDoNotMatchAboveTheSearchPath",
+        "internal/codingagent/tools/find_ancestor_glob_windows_branch_test.go::TestFindWindowsPathPatternDoesNotMatchAboveTheSearchPath",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit"
+      ]
+    },
+    {
       "id": "BF-f0eace4",
       "title": "LaTeX math renders two surrogate halves that end up side by side in one argument (`\\vec{\\ud83d{}\\ude00}`…",
       "symptom": "LaTeX math renders two surrogate halves that end up side by side in one argument (`\\vec{\\ud83d{}\\ude00}`, `x^{\\ud83d{}\\ude00}`, `\\not{...}`, `\\frac{x}{...}`) as the one character they spell, so the script, fraction, accent and `\\not` layout matches Pi instead of treating them as two.",
