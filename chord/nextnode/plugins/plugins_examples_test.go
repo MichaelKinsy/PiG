@@ -27,6 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/pluginstest"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
@@ -246,7 +247,7 @@ func exUntil(t *testing.T, plugins *Plugins, what string, ready func(PluginsStat
 	t.Helper()
 	eventually(t, 15*time.Second, what, func() bool { return ready(plugins.Marks()) })
 	// What the edit also raised has arrived too: the next build starts from the marks the edit left.
-	settle(t, plugins)
+	pluginstest.Settle(t, plugins)
 }
 
 // exDirty is `dirty(...names)`.

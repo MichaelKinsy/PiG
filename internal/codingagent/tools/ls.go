@@ -92,14 +92,19 @@ func (t *LsTool) operations() LsOperations {
 func (t *LsTool) Name() string  { return "ls" }
 func (t *LsTool) Label() string { return "" }
 
-func (t *LsTool) Schema() ai.ToolSchema {
+func (t *LsTool) Schema() ai.ToolSchema { return t.schema(false) }
+
+// BorrowedSchema is Schema with the parameters shared, not copied: the caller reads them and never modifies them.
+func (t *LsTool) BorrowedSchema() ai.ToolSchema { return t.schema(true) }
+
+func (t *LsTool) schema(borrow bool) ai.ToolSchema {
 	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:        "ls",
 		Description: "List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to 500 entries or 50KB (whichever is hit first).",
 	}, `{"type":"object","properties":{
 		"path":{"type":"string","description":"Directory to list (default: current directory)"},
 		"limit":{"type":"number","description":"Maximum number of entries to return (default: 500)"}
-	}}`)
+	}}`, borrow)
 }
 
 func (t *LsTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }

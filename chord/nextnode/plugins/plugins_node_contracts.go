@@ -41,9 +41,10 @@ func ContractDataOf(contract *contracts.Contract) (*ContractData, error) {
 	}, nil
 }
 
-// eventsDoNotCross is why a local type with event members is refused at the boundary between a Go host and a Node host, nil
-// for a type without any: the control channel carries state, keyed members and calls, and no event. Inside either host the
-// type is whole: a Node host's plugins declare event members, emit and subscribe among themselves (node/contracts.mjs
+// eventsDoNotCross is why a local type with event members that a Node host's plugins serve is not held by the Go side
+// (NodeHost.Get, NodeHost.Hold), nil for a type without any: the events of a Go core facet's object reach the plugins
+// through its proxy (plugins_node_bridged.go), and the other direction is not carried yet. Inside either host the type
+// is whole: a Node host's plugins declare event members, emit and subscribe among themselves (node/contracts.mjs
 // rebuilds an event member as one).
 func eventsDoNotCross(declared *contracts.ContractData) error {
 	variant := declared.Versions[len(declared.Versions)-1].Variants.Value(contracts.LocalVariant)

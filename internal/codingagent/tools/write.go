@@ -74,7 +74,12 @@ type writeReservation struct {
 func (t *WriteTool) Name() string  { return "write" }
 func (t *WriteTool) Label() string { return "" }
 
-func (t *WriteTool) Schema() ai.ToolSchema {
+func (t *WriteTool) Schema() ai.ToolSchema { return t.schema(false) }
+
+// BorrowedSchema is Schema with the parameters shared, not copied: the caller reads them and never modifies them.
+func (t *WriteTool) BorrowedSchema() ai.ToolSchema { return t.schema(true) }
+
+func (t *WriteTool) schema(borrow bool) ai.ToolSchema {
 	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:                "write",
 		Description:         "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
@@ -85,7 +90,7 @@ func (t *WriteTool) Schema() ai.ToolSchema {
 	}, `{"type":"object","required":["path","content"],"properties":{
 		"path":{"type":"string","description":"Path to the file to write (relative or absolute)"},
 		"content":{"type":"string","description":"Content to write to the file"}
-	}}`)
+	}}`, borrow)
 }
 
 // ExecutionMode is parallel: upstream's write definition sets no
