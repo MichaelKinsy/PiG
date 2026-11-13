@@ -214,7 +214,10 @@ func (f *viewFixture) transition(op string, ref uiview.Ref) {
 	f.loop.run()
 }
 
-// awaitResult waits until the client's queue holds an intent's result and returns the queue as it is then.
+// awaitResult waits until the client's queue holds an intent's result and the loop holds the drain that applies it, and
+// returns the queue as it is then. The client queues a result and then wakes the loop, so the result alone does not say
+// that the loop can apply it: a test that ran the loop between the two left the intent in flight, and the client drops
+// an activation made while an intent is in flight.
 func (f *viewFixture) awaitResult() []viewItem {
 	f.t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -222,7 +225,10 @@ func (f *viewFixture) awaitResult() []viewItem {
 		f.client.mu.Lock()
 		queue := slices.Clone(f.client.queue)
 		f.client.mu.Unlock()
-		if slices.ContainsFunc(queue, func(it viewItem) bool { return it.result != nil }) {
+		f.loop.mu.Lock()
+		held := len(f.loop.tasks)
+		f.loop.mu.Unlock()
+		if held > 0 && slices.ContainsFunc(queue, func(it viewItem) bool { return it.result != nil }) {
 			return queue
 		}
 		if time.Now().After(deadline) {
