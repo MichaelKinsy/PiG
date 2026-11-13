@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 func TestMistralModelRuntimePreservesSelectedReplayMetadata(t *testing.T) {
@@ -34,6 +35,18 @@ func TestMistralModelRuntimePreservesSelectedReplayMetadata(t *testing.T) {
 				t.Fatal(err)
 			}
 			model := services.ModelRuntime().GetModel("custom-mistral", "selected-model")
+			if api := string(ai.APIMistralConversations); pigstrip.Has(pigstrip.ListAPIs, api) {
+				// A Piglet that strips mistral-conversations has no request to replay into: the runtime does not offer the configured model, and
+				// building it names the strip.
+				if model != nil {
+					t.Fatalf("the runtime offers %s/%s, a model of the stripped API %s", model.ProviderID(), model.ID, api)
+				}
+				want := "Provider custom-mistral: API " + api + " is stripped from this Piglet (strip.apis: " + api + ")"
+				if built, err := BuildModel("custom-mistral/selected-model", services); err == nil || err.Error() != want {
+					t.Fatalf("BuildModel with %s stripped: model %v, error %v, want the error %q", api, built, err, want)
+				}
+				return
+			}
 			if model == nil {
 				t.Fatal("configured model missing")
 			}
