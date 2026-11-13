@@ -51,7 +51,7 @@ func screenWriterWanted(getenv func(string) string, choice int32) bool {
 	if choice == screenWriterUnset {
 		return false
 	}
-	// pig divergence (D624): fullscreen frames go through the screen writer, which sends only what changes the screen; Pi writes every row a frame holds. PIG_TUI_SCREEN_WRITER=pi and terminal.screenWriter "pi" select Pi's bytes.
+	// pig divergence (D624): when terminal.screenWriter or PIG_TUI_SCREEN_WRITER selects it, fullscreen frames go through the screen writer, which sends only what changes the screen; Pi writes every row a frame holds.
 	switch getenv(screenWriterEnv) {
 	case "pi", "0":
 		return false

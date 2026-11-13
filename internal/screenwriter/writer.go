@@ -36,7 +36,7 @@
 //
 // Before the alternate screen is entered and after it is left every byte is sent as it came.
 //
-// pig divergence (D624): tui.ProcessTerminal puts a Writer under its write unless PIG_TUI_SCREEN_WRITER or the terminal.screenWriter setting selects Pi's bytes (tui/terminal_screen_writer.go).
+// pig divergence (D624): tui.ProcessTerminal puts a Writer under its write when the terminal.screenWriter setting or PIG_TUI_SCREEN_WRITER selects it (tui/terminal_screen_writer.go).
 package screenwriter
 
 import (
