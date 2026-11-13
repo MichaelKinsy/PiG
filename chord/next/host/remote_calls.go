@@ -66,10 +66,16 @@ func (w *callWindow[C]) remove(call C) {
 
 // removeHold takes every waiting call of hold out and returns them (its hold rebinds or was released).
 func (w *callWindow[C]) removeHold(hold int) []C {
+	return w.removeWhere(func(call C) bool { return call.holdID() == hold })
+}
+
+// removeWhere takes every waiting call matches accepts out and returns them, in order: one owner's calls when a
+// reference sharing a hold releases.
+func (w *callWindow[C]) removeWhere(matches func(C) bool) []C {
 	var removed []C
 	kept := w.waiting[:0:0]
 	for _, call := range w.waiting {
-		if call.holdID() == hold {
+		if matches(call) {
 			removed = append(removed, call)
 		} else {
 			kept = append(kept, call)

@@ -567,8 +567,8 @@ func createHost(options HostOptions) (*chordHost, error) {
 		h.heartbeat.close = durationOr(options.Heartbeat.Close, defaultHeartbeat)
 	}
 	h.routing, h.routingCancel = chordctx.WithCancel(chordctx.Background())
-	h.parent = newPath(func(pathEvent) {})
-	h.unplaced = newPath(func(pathEvent) {})
+	h.parent = newPath(func(pathEvent) {}, nil)
+	h.unplaced = newPath(func(pathEvent) {}, nil)
 	h.destination = newDestination(h.address, h.routes, h.parent, func(name string) bool { return h.served(name) != nil })
 	h.roots = newRootScopes(h)
 	h.hostData = newHostDataGate(events)

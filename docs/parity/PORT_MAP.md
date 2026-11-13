@@ -775,7 +775,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/data/index.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/data/internal.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/data/params.ts` | `chord/next/data/params.go` | ✅ |
-| `packages/chord/src/data/principal.ts` | `chord/next/data/principal.go` | ✅ |
+| `packages/chord/src/data/principal.ts` | `chord/next/data/principal.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/data/principal_test.go | ✅ |
 | `packages/chord/src/data/validator.ts` | `chord/next/data/validator.go` | ✅ |
 | `packages/chord/src/index.ts` | `(aggregate barrel of every layer; Go imports the layer packages)` | n/a |
 | `packages/chord/src/registries/contribution.ts` | `chord/next/registries/contribution.go` | ✅ |
@@ -891,12 +891,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/remote/hold.ts` | `chord/next/host/remote_hold.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_provider_events_test.go, chord/next/host/remote_relay_events_test.go | ✅ |
 | `packages/chord/src/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_consumer_events_test.go | ✅ |
 | `packages/chord/src/remote/host-link.ts` | `chord/next/host/remote_host_link.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_host_link_trust_test.go | ✅ |
-| `packages/chord/src/remote/path.ts` | `chord/next/host/remote_path.go` | ✅ |
-| `packages/chord/src/remote/calls.ts` | `chord/next/host/remote_calls.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_calls_test.go | ✅ |
+| `packages/chord/src/remote/path.ts` | `chord/next/host/remote_path.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/remote_path_test.go | ✅ |
+| `packages/chord/src/remote/calls.ts` | `chord/next/host/remote_calls.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_calls_test.go Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/remote_calls_test.go | ✅ |
 | `packages/chord/src/remote/provider.ts` | `chord/next/host/remote_provider.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_provider_events_test.go, chord/next/host/remote_provider_test.go | ✅ |
 | `packages/chord/src/remote/consumer.ts` | `chord/next/host/remote_consumer.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_consumer_events_test.go, chord/next/host/remote_consumer_test.go | ✅ |
 | `packages/chord/src/remote/relay.ts` | `chord/next/host/remote_relay.go` Events at 8d30e6306 (Pi tests of that commit): chord/next/host/remote_relay_events_test.go | ✅ |
-| `packages/chord/src/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
+| `packages/chord/src/remote/replica.ts` | `chord/next/host/remote_replica.go` Shared holds at 47e9d74f9 (Pi tests of that commit): chord/next/host/remote_replica_test.go | ✅ |
 | `packages/chord/src/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
 | `packages/chord/src/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
 | `packages/chord/test/examples/01-objects.ts` | `chord/next/host/host_example_01_test.go`, `chord/next/host/host_host.go`, `chord/next/host/host_object.go`, `chord/next/data/args.go` | ✅ |

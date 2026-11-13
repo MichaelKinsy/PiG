@@ -2373,7 +2373,7 @@
       "evidence": [
         "chord/next/data/principal_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files."
+      "rationale": "All 10 upstream cases run in the evidence files. Pi 47e9d74f9 adds describe \"principalJson\" (3 cases): the subtests of TestPrincipalJson (principal_test.go); the hash is the pin's."
     },
     {
       "path": "packages/chord/test/data/validator.test.ts",
@@ -3877,7 +3877,7 @@
       "evidence": [
         "chord/next/host/remote_calls_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files."
+      "rationale": "All 5 upstream cases run in the evidence files. Pi 47e9d74f9 adds 1 case (removeWhere): TestCallWindowTakesOutTheWaitingCallsAPredicateMatchesInOrderAndLeavesTheRestQueued; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/remote/consumer.test.ts",
@@ -3915,7 +3915,7 @@
       "evidence": [
         "chord/next/host/remote_path_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files."
+      "rationale": "All 4 upstream cases run in the evidence files. Pi 47e9d74f9 adds 2 cases (requested, suspended): TestPathCountsAJoinToAHeldHolderAsARequestWithoutALinkNoneWithOne, TestPathTellsWhetherItsRouteSuspendedItAPathWithoutARouteNeverIs; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/remote/provider.test.ts",
@@ -3951,7 +3951,7 @@
       "evidence": [
         "chord/next/host/remote_replica_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files."
+      "rationale": "All 5 upstream cases run in the evidence files. Pi 47e9d74f9 adds 2 cases (generation, fork): TestReplicasCountTheValuesTheyTakeASnapshotsValueEachAdoptionAndRecoveryFailuresAndVanishingsCountNone, TestReplicasForkWithTheirStateLastGoodValueAndCountOnAnotherBatchWithAFreshDecoder; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/schema/schema-switch.test.ts",

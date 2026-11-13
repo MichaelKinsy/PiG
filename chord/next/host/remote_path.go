@@ -48,17 +48,26 @@ type pathEvent struct {
 
 // path is the parent link or one route address: its current link and its holders, held on that link and again on every
 // next one. changed runs when it gets a holder without a link, loses its link or its last holder (a route decides whether
-// to resolve), saying which.
+// to resolve), saying which; suspended_ tells whether its route resolves nothing for it now (nil for a path no route
+// suspends: the parent's, the host's unplaced one).
 type path struct {
 	// holders are Pi's `Set<Upstream>`: insertion order.
-	holders_ []upstream
-	changed  func(pathEvent)
-	current  *hostLink
+	holders_   []upstream
+	changed    func(pathEvent)
+	suspended_ func() bool
+	current    *hostLink
 	// everLinked is whether it ever had a link: a host never connected to a parent has no parent path to wait on.
 	everLinked bool
 }
 
-func newPath(changed func(pathEvent)) *path { return &path{changed: changed} }
+// newPath makes a path; suspended nil is Pi's absent argument (never suspended).
+func newPath(changed func(pathEvent), suspended func() bool) *path {
+	return &path{changed: changed, suspended_: suspended}
+}
+
+// suspended is whether its route suspended it: a new remote reference then holds on its own instead of sharing a held
+// object's state.
+func (p *path) suspended() bool { return p.suspended_ != nil && p.suspended_() }
 
 // link is the current link while one is open, nil otherwise.
 func (p *path) link() *hostLink { return p.current }
@@ -78,6 +87,14 @@ func (p *path) attach(holder upstream) {
 		p.changed(pathEvent{kind: pathAttached, holder: holder})
 	} else {
 		holder.attach(p.current)
+	}
+}
+
+// requested: a reference joined holder, which the path holds already: without a link it counts as a new request, as an
+// attach does (a route whose resolve failed resolves again).
+func (p *path) requested(holder upstream) {
+	if p.current == nil {
+		p.changed(pathEvent{kind: pathAttached, holder: holder})
 	}
 }
 
