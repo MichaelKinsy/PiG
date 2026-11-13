@@ -27,7 +27,7 @@ type Scenario struct {
 	Driver string `toml:"driver"`
 	// OpenAIFixture selects the hermetic HTTP/SSE endpoint and isolated model configuration.
 	OpenAIFixture bool `toml:"openai_fixture"`
-	// ProviderFixture selects the same hermetic endpoint for another provider API (anthropic-messages, google-generative-ai, mistral-conversations, or openai-completions). It excludes openai_fixture.
+	// ProviderFixture selects the same hermetic endpoint for another provider API (anthropic-messages, google-generative-ai, mistral-conversations, openai-completions, or openai-responses). It excludes openai_fixture.
 	ProviderFixture string `toml:"provider_fixture"`
 	Model           string `toml:"model"`
 	// ChangelogFixture replaces only the bundled changelog input in isolated PiG/Pi builds.

@@ -69,6 +69,7 @@ type sseEvent struct {
 
 var providerFixtures = map[string]providerFixture{
 	"openai-completions":    {baseURLPath: "/v1", lastTurn: chatLastTurn, toolCall: openAIToolCall("strict-read"), reply: openAIReply, errorBody: chatErrorBody},
+	"openai-responses":      {baseURLPath: "/v1", lastTurn: responsesLastTurn, toolCall: responsesToolCall, reply: responsesReply, errorBody: chatErrorBody},
 	"mistral-conversations": {baseURLPath: "", lastTurn: chatLastTurn, toolCall: openAIToolCall("readcall1"), reply: openAIReply, errorBody: chatErrorBody},
 	"anthropic-messages":    {baseURLPath: "", lastTurn: anthropicLastTurn, toolCall: anthropicToolCall, reply: anthropicReply, errorBody: `{"type":"error","error":{"type":"invalid_request_error","message":"strict wire bad request"}}`},
 	"google-generative-ai":  {baseURLPath: "/v1beta", lastTurn: googleLastTurn, toolCall: googleToolCall, reply: googleReply, errorBody: `{"error":{"code":400,"message":"strict wire bad request","status":"INVALID_ARGUMENT"}}`},

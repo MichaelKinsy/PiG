@@ -112,7 +112,7 @@ type scenario struct {
 }
 
 // providerFixtureAPIs lists the APIs the runner's provider fixture serves (test/parity/runner/provider_fixture.go).
-var providerFixtureAPIs = []string{"openai-completions", "mistral-conversations", "anthropic-messages", "google-generative-ai"}
+var providerFixtureAPIs = []string{"openai-completions", "openai-responses", "mistral-conversations", "anthropic-messages", "google-generative-ai"}
 
 type assertBlock struct {
 	JSONOutputEqual         bool                    `toml:"json_output_equal"`
