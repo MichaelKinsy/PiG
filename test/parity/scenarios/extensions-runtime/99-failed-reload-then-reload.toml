@@ -12,7 +12,7 @@
 # after the failed reload and stays stale, it gets session_shutdown once more, and
 # the instance the second reload loads is live.
 
-name = "98-failed-reload-then-reload"
+name = "99-failed-reload-then-reload"
 description = "A /reload that fails leaves the old extension instance stale; a later /reload loads a live one."
 covers = [
   "packages/coding-agent/src/core/agent-session.ts",

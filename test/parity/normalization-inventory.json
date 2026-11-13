@@ -2663,6 +2663,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/99-failed-reload-then-reload.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "reload-cells-begin",
+            "capture_end": "reload-cells-end"
+          },
+          "reason": "Owned visible surface: A /reload that fails leaves the old extension instance stale; a later /reload loads a live one.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
