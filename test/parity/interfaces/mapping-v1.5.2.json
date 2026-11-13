@@ -305630,9 +305630,9 @@
         "call:tui/terminal.go#ProcessTerminal.Write"
       ],
       "evidence": [
+        "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes"
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -305652,9 +305652,9 @@
         "call:tui/terminal.go#ProcessTerminal.Write"
       ],
       "evidence": [
+        "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes"
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {

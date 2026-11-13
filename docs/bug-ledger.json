@@ -17793,6 +17793,36 @@
       ]
     },
     {
+      "id": "BF-5b36a5f",
+      "title": "Closing the terminal of an interactive session (a closed window, `tmux kill-session`, a dropped connection)…",
+      "symptom": "Closing the terminal of an interactive session (a closed window, `tmux kill-session`, a dropped connection) now gives extensions `session_shutdown` with the reason `quit` before the exit, as Pi does when the hangup reaches it as SIGHUP.",
+      "rootCause": "PiG's input reader sees the end of input on a hung-up terminal before any signal arrives, and emergencyTerminalExit ended the process from there without running the signal shutdown, so session_shutdown was not emitted on that path. The same exit killed the extension processes while an emission that the signal goroutine had already started was still inside its handlers.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing the terminal of an interactive session (a closed window, `tmux kill-session`, a dropped connection) now gives extensions `session_shutdown` with the reason `quit` before the exit, as Pi does when the hangup reaches it as SIGHUP. PiG's input reader saw the dead terminal before any signal and exited 129 without the event, and it killed the extension processes under an event the signal path had already started, so an extension lost its last write (reported for a fused Piglet extension whose session log ended without its shutdown record). The exit waits for the handlers for at most one second, writes nothing new to the dead terminal, stays 129 and leaves one `exit.log` line; a session without a `session_shutdown` handler exits as fast as before. D186 records the differences from Pi, which waits for a slow handler without a limit, cuts a working session's handler at its next terminal write, and emits nothing when its event loop is empty.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5b36a5f599",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "aef7184ef3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/dead_terminal_shutdown_unix_test.go::TestDeadTerminalExitGivesExtensionsTheirShutdownFirst",
+        "internal/codingagent/dead_terminal_shutdown_unix_test.go::TestDeadTerminalShutdownChild",
+        "test/integration/dead_terminal_shutdown_test.go::TestDeadTerminalEmitsSessionShutdownToExtensions",
+        "test/integration/dead_terminal_shutdown_test.go::TestDeadTerminalWithATurnInFlightWaitsOneSecondForTheShutdownHandler",
+        "test/parity/scenarios/session/38-terminal-disconnect-shutdown-event.toml"
+      ]
+    },
+    {
       "id": "BF-5b4a3d3",
       "title": "A lazy line no longer continues a quote whose last quoted line is empty (`\u003e\\nnext` is an empty quote then a…",
       "symptom": "A lazy line no longer continues a quote whose last quoted line is empty (`\u003e\\nnext` is an empty quote then a paragraph), and a quote that renders no rows still adds its spacing row.",
@@ -59260,7 +59290,7 @@
     },
     {
       "id": "D186",
-      "title": "A hung-up terminal under a session whose event loop holds nothing: Pi exits 0 or 129, PiG exits 129"
+      "title": "A hung-up terminal: PiG gives extensions `session_shutdown` for at most a second and exits 129; Pi's exit…"
     },
     {
       "id": "D187",
