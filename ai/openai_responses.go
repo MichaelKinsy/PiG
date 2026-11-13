@@ -56,6 +56,9 @@ type OpenAIResponsesConfig struct {
 	SamplingParams map[string]any
 	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level.
 	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
+	// SamplingParamsOrder and SamplingParamsByThinkingLevelOrder are Model.SamplingParamsOrder and Model.SamplingParamsByThinkingLevelOrder.
+	SamplingParamsOrder                []string
+	SamplingParamsByThinkingLevelOrder map[ModelThinkingLevel][]string
 	// ThinkingLevelMap supplies an explicit map when selected ModelMetadata is absent.
 	ThinkingLevelMap ThinkingLevelMap
 	// APIKeyHeader is the header name used for the API key.
@@ -583,10 +586,12 @@ func (p *openAIResponsesProvider) resolveResponsesModel() (*GeneratedModel, bool
 func (p *openAIResponsesProvider) samplingModel(opts StreamOptions) *Model {
 	resolved := p.resolvedModel()
 	return &Model{
-		ProviderMeta:                  ProviderMetadata{Reasoning: p.cfg.IsReasoning || opts.IsReasoning},
-		ThinkingLevelMap:              resolved.ThinkingLevelMap,
-		SamplingParams:                p.cfg.SamplingParams,
-		SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel,
+		ProviderMeta:                       ProviderMetadata{Reasoning: p.cfg.IsReasoning || opts.IsReasoning},
+		ThinkingLevelMap:                   resolved.ThinkingLevelMap,
+		SamplingParams:                     p.cfg.SamplingParams,
+		SamplingParamsByThinkingLevel:      p.cfg.SamplingParamsByThinkingLevel,
+		SamplingParamsOrder:                p.cfg.SamplingParamsOrder,
+		SamplingParamsByThinkingLevelOrder: p.cfg.SamplingParamsByThinkingLevelOrder,
 	}
 }
 
@@ -1638,7 +1643,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	// Last so model and request sampling parameters override named request fields (openai-responses.ts:383-385 buildParams).
 	// openai-codex-responses.ts buildRequestBody applies no sampling parameters.
 	if !p.cfg.Codex {
-		if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts), responsesSamplingLevel(opts), opts.SamplingParams); samplingParams != nil {
+		if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts), responsesSamplingLevel(opts), opts.SamplingParams, opts.SamplingParamsOrder); samplingParams != nil {
 			assigned, err := assignSamplingParams(req, respRequestLiteralKeys, keys, samplingParams)
 			if err != nil {
 				return nil, fmt.Errorf("openai-responses: %w", err)

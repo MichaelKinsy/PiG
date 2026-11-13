@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // providerWireRow is one request of a wire-body table: the model, the stream options and the Context, as the JSON both sides read.
@@ -110,6 +111,24 @@ func (c *firstBody) RoundTrip(request *http.Request) (*http.Response, error) {
 	return &http.Response{StatusCode: http.StatusBadRequest, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(reply)), Request: request}, nil
 }
 
+// wireMemberOrder is the member order of the object under name in raw: what a caller that decodes sampling parameters from JSON records
+// beside the map (ai.Model.SamplingParamsOrder, ai.StreamOptions.SamplingParamsOrder).
+func wireMemberOrder(t *testing.T, raw json.RawMessage, name string) []string {
+	t.Helper()
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &members); err != nil {
+		t.Fatal(err)
+	}
+	if !orderedjson.IsObject(members[name]) {
+		return nil
+	}
+	object, err := orderedjson.Parse(members[name])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return object.Keys()
+}
+
 // providerWireBody is the body PiG posts for a row, and the error message the stream ends with.
 func providerWireBody(t *testing.T, row providerWireRow) (body, failure string) {
 	t.Helper()
@@ -129,6 +148,7 @@ func providerWireBody(t *testing.T, row providerWireRow) (body, failure string) 
 			t.Fatal(err)
 		}
 		model.SamplingParams = members.SamplingParams
+		model.SamplingParamsOrder = wireMemberOrder(t, row.Model, "samplingParams")
 	}
 	var given struct {
 		MaxTokens        int               `json:"maxTokens"`
@@ -155,7 +175,7 @@ func providerWireBody(t *testing.T, row providerWireRow) (body, failure string) 
 	capture := &firstBody{}
 	options := ai.StreamOptions{APIKey: row.APIKey, MaxRetries: new(int), Fetch: &http.Client{Transport: capture}, MaxTokens: given.MaxTokens, CacheRetention: given.CacheRetention,
 		SessionID: given.SessionID, Thinking: given.Reasoning, ReasoningEffort: given.ReasoningEffort, ReasoningSummary: given.ReasoningSummary, TextVerbosity: given.TextVerbosity,
-		ServiceTier: given.ServiceTier, PromptMode: given.PromptMode, SamplingParams: given.SamplingParams}
+		ServiceTier: given.ServiceTier, PromptMode: given.PromptMode, SamplingParams: given.SamplingParams, SamplingParamsOrder: wireMemberOrder(t, row.Options, "samplingParams")}
 	if given.Temperature != nil {
 		options.Temperature, options.TemperatureSet = *given.Temperature, true
 	}
