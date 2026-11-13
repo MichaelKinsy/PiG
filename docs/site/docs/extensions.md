@@ -230,9 +230,11 @@ A command handler receives the same context plus the calls that replace or reloa
 
 The Node API object is `pi`, with Pi's methods such as `pi.on`, `pi.registerTool`, `pi.sendMessage`, `pi.appendEntry`, `pi.getAllTools` and `pi.registerMcpServer`. The Go, Rust and Python SDKs expose the same behavior under their own naming. A capability counts as supported only when every runtime offers it and the conformance suite can detect a broken implementation (see [SDKs](#sdks)). The symbol-by-symbol surface is generated into `docs/extension-sdk-surface.md` in the source tree, and `docs/extension-api-parity.md` lists every upstream interface and its PiG mapping. See also [Custom messages](#custom-messages), [Registration inputs](#registration-inputs) and [User bash operations](#user-bash-operations).
 
+To call another extension, in any language, use the event bus `pi.events`: [Event bus](event-bus.md).
+
 ## State Management
 
-An extension keeps its state in its own process and must rebuild it when PiG starts a fresh process after a reload or Session replacement; module-level state does not carry over (D70). Rebuild from Session history (see [Session context](#session-context)) and from entries it appended with `pi.appendEntry`. Store state that is not part of a Session below `~/.pig/state/<extension-id>/`. See [Extension-owned state](#extension-owned-state) and [Reload behavior](#reload-behavior).
+An extension keeps its state in its own process and must rebuild it when PiG starts a fresh process after a reload or Session replacement; module-level state does not carry over (D70). A reload of an extension whose source did not change keeps its process and calls its factory again: what the factory creates starts again, and a Go package variable or a Python module variable keeps its value. Rebuild from Session history (see [Session context](#session-context)) and from entries it appended with `pi.appendEntry`. Store state that is not part of a Session below `~/.pig/state/<extension-id>/`. See [Extension-owned state](#extension-owned-state) and [Reload behavior](#reload-behavior).
 
 ## Custom Tools
 
@@ -455,7 +457,7 @@ PiG:
 1. resolves the requested extension set;
 2. computes content identity and reuses valid build artifacts;
 3. plans runtime cells;
-4. constructs a fresh factory and runtime for every configured, embedded, fused, and built-in extension;
+4. calls the factory of every configured, embedded, fused, and built-in extension again, so what a factory creates is new; an extension whose source did not change keeps its process, and an edited Go extension runs its new build in a new process (D70; [Go hot reload](go-hot-reload.md));
 5. starts and validates replacements;
 6. verifies registration;
 7. publishes the successful set;

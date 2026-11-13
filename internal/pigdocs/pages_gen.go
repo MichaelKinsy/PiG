@@ -17,11 +17,13 @@ var pageNames = [...]string{
 	"custom-provider.md",
 	"divergences.md",
 	"environment-variables.md",
+	"event-bus.md",
 	"events.md",
 	"extend-pig.md",
 	"extension-api.md",
 	"extensions.md",
 	"glossary.md",
+	"go-hot-reload.md",
 	"how-pig-works.md",
 	"install.md",
 	"json.md",
@@ -60,7 +62,7 @@ var pageNames = [...]string{
 
 // pageSizes holds the byte size of each page of pageNames.
 var pageSizes = [...]int{
-	12410,
+	12722,
 	5949,
 	3844,
 	2849,
@@ -73,11 +75,13 @@ var pageSizes = [...]int{
 	5190,
 	68883,
 	11588,
+	7211,
 	2677,
 	7287,
 	24363,
-	15365,
+	15750,
 	6957,
+	4482,
 	7618,
 	9366,
 	10918,
@@ -115,4 +119,4 @@ var pageSizes = [...]int{
 }
 
 // contentDigest is the digest of the pages: sha256 over "name\x00size\x00contents" of each page in name order, in hex.
-const contentDigest = "ad062359bb71471d59f00f39116919af456943d55f7a25bbe0d6fc17437d3ab1"
+const contentDigest = "100ac72fbb6f0af95df7181c1d5c54bf44b4ac455217281d72a9be1dfd637d65"

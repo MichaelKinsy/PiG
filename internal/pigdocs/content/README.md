@@ -35,6 +35,8 @@ Read the one row that matches the task, then follow only its direct links.
 | take a Piglet from a file to an installed, signed, published agent (author, validate, run, inspect, register, build, sign, publish, install, update) | [Piglet lifecycle](piglet-lifecycle.md) | [Piglets](piglets.md) |
 | learn why extension cells are packed into host processes | [Runtime cells](runtime-cells.md) | [Extensions](extensions.md) |
 | write an extension | [Extensions](extensions.md) | [Extension API](extension-api.md) |
+| make one extension call another, in any language (a Go extension asks a Node or Python extension) | [Event bus](event-bus.md) | [Extension API](extension-api.md) |
+| edit a Go extension and run the change without restarting `pig` (`/reload`) | [Go hot reload](go-hot-reload.md) | [Extensions](extensions.md) |
 | look up a host API call, the wire protocol, or an SDK quickstart | [Extension API](extension-api.md) | [Message types](message-types.md) |
 | configure models and credentials | [Providers](providers.md) | [Models](models.md) |
 | choose a model, scope the model cycle, or add my own model to `models.json` | [Models](models.md) | [Providers](providers.md) |
