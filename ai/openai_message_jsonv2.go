@@ -11,7 +11,7 @@ import (
 //
 // It is on the pointer: encoding/json calls it on an element of a slice without copying the element, and handing the encoder a pointer to the fields keeps it from boxing and then copying each message again. A message the encoder could only reach by a copy takes MarshalJSON.
 func (message *oaiMessage) MarshalJSONTo(encoder *jsontext.Encoder) error {
-	if message.Tools != nil {
+	if message.Tools != nil || message.reasoningContentLast {
 		return jsonv2.MarshalEncode(encoder, message.wire())
 	}
 	return jsonv2.MarshalEncode(encoder, (*oaiMessageFields)(message))

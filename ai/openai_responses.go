@@ -20,6 +20,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -284,6 +286,42 @@ type ResponsesInputItem struct {
 
 	// For type=configuration_update
 	Reasoning *respReasoningEffort `json:"reasoning,omitempty"`
+
+	// stored is a replayed item as JSON.stringify writes the object its stored text holds: Pi pushes JSON.parse(thinkingSignature) into
+	// the input (openai-responses-shared.ts:337-338), so the item goes out with the members it was stored with, in their order.
+	stored json.RawMessage
+}
+
+// MarshalJSON writes the item with its members in the order Pi creates them.
+func (item ResponsesInputItem) MarshalJSON() ([]byte, error) {
+	return marshalStringify(item.wire())
+}
+
+// wire is the value MarshalJSON writes. The two items of a client tool search are the literals of openai-responses-shared.ts:251-264:
+// type, call_id, execution, status, then arguments or tools.
+func (item ResponsesInputItem) wire() any {
+	switch {
+	case item.stored != nil:
+		return item.stored
+	case item.Type == "tool_search_call":
+		return struct {
+			Type      string          `json:"type"`
+			CallID    string          `json:"call_id"`
+			Execution string          `json:"execution"`
+			Status    string          `json:"status"`
+			Arguments json.RawMessage `json:"arguments"`
+		}{item.Type, item.CallID, item.Execution, item.Status, item.Arguments}
+	case item.Type == "tool_search_output":
+		return struct {
+			Type      string          `json:"type"`
+			CallID    string          `json:"call_id"`
+			Execution string          `json:"execution"`
+			Status    string          `json:"status"`
+			Tools     []ResponsesTool `json:"tools,omitempty"` //portlint:allow emptydrop the item exists only for a system message that adds tools (openai-responses-shared.ts:233-235)
+		}{item.Type, item.CallID, item.Execution, item.Status, item.Tools}
+	}
+	type fields ResponsesInputItem
+	return fields(item)
 }
 
 // respReasoningEffort is the reasoning member of a configuration_update item.
@@ -1038,10 +1076,22 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, transcrip
 				switch block := block.(type) {
 				case ThinkingContent:
 					if block.ThinkingSignature != "" {
-						var reasoning ResponsesInputItem
-						if json.Unmarshal([]byte(block.ThinkingSignature), &reasoning) == nil && reasoning.Type == "reasoning" {
-							items = append(items, reasoning)
+						// output.push(JSON.parse(block.thinkingSignature)): whatever the stored text holds is the item, and text that
+						// does not parse ends the request with JSON.parse's SyntaxError (openai-responses-shared.ts:337-338).
+						stored, err := jsonstringify.Canonicalize([]byte(block.ThinkingSignature))
+						if err != nil {
+							if message := jsonparse.SyntaxError([]byte(block.ThinkingSignature)); message != nil {
+								return nil, errors.New(jsstring.FromUTF16(message))
+							}
+							return nil, err
 						}
+						// The members the converter reads; a stored value that is not an object of this shape has none.
+						var reasoning ResponsesInputItem
+						if json.Unmarshal(stored, &reasoning) != nil {
+							reasoning = ResponsesInputItem{}
+						}
+						reasoning.stored = stored
+						items = append(items, reasoning)
 					}
 				case TextContent:
 					text := sanitizeSurrogates(block.Text)
@@ -1471,7 +1521,12 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	}
 	store := false
 	req.Store = &store
-	req.ServiceTier = opts.ServiceTier
+	// azure-openai-responses.ts buildParams (:204-262) writes its own request: no service tier, no cache retention or cache options, a
+	// prompt cache key whatever the retention, and max_output_tokens whatever the model's compat says.
+	azure := p.api() == APIAzureOpenAIResponses
+	if !azure {
+		req.ServiceTier = opts.ServiceTier
+	}
 	if p.cfg.Codex {
 		req.Instructions = "You are a helpful assistant."
 		// openai-codex-responses.ts buildParams reads the initial system message of the resolved transcript, before transformMessages drops an errored or aborted turn ahead of it.
@@ -1500,7 +1555,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		req.Tools = convertedTools
 	}
 	omitUnsupportedFields := p.isChatGPTSignIn(apiKey)
-	if !p.cfg.Codex && !omitUnsupportedFields && opts.MaxTokens > 0 && (p.cfg.Compat == nil || p.cfg.Compat.SupportsMaxOutputTokens == nil || *p.cfg.Compat.SupportsMaxOutputTokens) {
+	if !p.cfg.Codex && !omitUnsupportedFields && opts.MaxTokens > 0 && (azure || p.cfg.Compat == nil || p.cfg.Compat.SupportsMaxOutputTokens == nil || *p.cfg.Compat.SupportsMaxOutputTokens) {
 		// OpenAI Responses rejects max_output_tokens below 16 (earendil-works/pi#6265).
 		req.MaxOutputTokens = max(opts.MaxTokens, openAIResponsesMinOutputTokens)
 	}
@@ -1568,11 +1623,11 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if !p.cfg.Codex {
 		cacheRetention = string(resolveCompletionsCacheRetention(opts.CacheRetention, mergeProviderEnv(p.cfg.Env, opts.Env)))
 	}
-	if opts.SessionID != "" && cacheRetention != "none" && (p.cfg.Codex || compat.PromptCacheKeyMode != PromptCacheKeyDisabled) {
+	if opts.SessionID != "" && (azure || cacheRetention != "none") && (p.cfg.Codex || compat.PromptCacheKeyMode != PromptCacheKeyDisabled) {
 		req.PromptCacheKey = ClampOpenAIPromptCacheKey(opts.SessionID)
 	}
 	// Retention and write policy do not depend on a session-affinity key.
-	if !p.cfg.Codex && !omitUnsupportedFields {
+	if !p.cfg.Codex && !azure && !omitUnsupportedFields {
 		if ret := getPromptCacheRetention(compat, cacheRetention); ret != nil {
 			req.PromptCacheRetention = *ret
 		}

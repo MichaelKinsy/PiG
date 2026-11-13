@@ -102,6 +102,7 @@ func checkGooglePayload(t *testing.T, vertex bool) {
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, script, probes)
+	g.requireReplayCoverage(t, want, googleReplay)
 	failures := 0
 	classes := map[string]int{}
 	for i, p := range probes {

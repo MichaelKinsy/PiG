@@ -18,7 +18,7 @@ import (
 // providers and base URLs that select OpenRouter, Vercel, OpenAI and Z.ai. The payload handed to onPayload by the pinned pi-ai and by PiG must be equal as parsed JSON.
 func TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewSource(101))
-	g := &payloadGen{rng: rng, api: "openai-completions", provider: "p", model: "m", thinkingSignatures: []string{""}}
+	g := &payloadGen{rng: rng, api: "openai-completions", provider: "p", model: "m", thinkingSignatures: []string{"", `,"thinkingSignature":"reasoning_content"`, `,"thinkingSignature":"reasoning"`, `,"thinkingSignature":"sig"`}}
 	pick, boolean := g.pick, g.boolean
 	routing := func() string {
 		return pick(`{}`, `{"only":["a","b"]}`, `{"order":["x"]}`, `{"only":[],"order":["y","z"]}`, `{"allow_fallbacks":false}`, `{"data_collection":"deny","zdr":true}`, `{"sort":"price"}`, `{"sort":{"by":"latency","partition":null}}`, `{"max_price":{"prompt":1,"completion":"2"}}`, `{"order":["o"],"only":["n"],"ignore":["i"],"quantizations":["fp8"]}`)
@@ -81,10 +81,14 @@ func TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi(t *testing.T) {
 		if !p.Simple && rng.Intn(2) == 0 {
 			p.Options["reasoningEffort"] = pick("minimal", "low", "medium", "high")
 		}
+		// A provider replays a turn's reasoning only for the model that produced it (transformMessages, isSameModel): the transcript's own
+		// turns are of the probe's provider.
+		g.provider = p.Provider
 		p.Context = withSystemMessages(g, g.context())
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, "testdata/openai_completions_payload.mjs", probes)
+	g.requireReplayCoverage(t, want, completionsReplay)
 	failures := 0
 	classes := map[string]int{}
 	for i, p := range probes {
@@ -114,7 +118,7 @@ func TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi(t *testing.T) {
 		var got string
 		sentinel := errors.New("payload captured")
 		options.OnPayload = func(payload any, _ *ai.Model) (any, error) {
-			encoded, err := json.Marshal(payload)
+			encoded, err := ai.MarshalRequestBody(payload)
 			if err != nil {
 				t.Fatal(err)
 			}

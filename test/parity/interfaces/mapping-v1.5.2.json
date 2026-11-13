@@ -9287,8 +9287,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -26614,8 +26614,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -26769,8 +26769,8 @@
       ],
       "evidence": [
         "test:ai/provider_option_fields_upstream_test.go#TestCodexTextVerbosityOption",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -29083,8 +29083,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -38162,8 +38162,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -44620,8 +44620,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -44775,8 +44775,8 @@
       ],
       "evidence": [
         "test:ai/provider_option_fields_upstream_test.go#TestCodexTextVerbosityOption",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -47237,8 +47237,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -53877,8 +53877,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -72322,8 +72322,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -72477,8 +72477,8 @@
       ],
       "evidence": [
         "test:ai/provider_option_fields_upstream_test.go#TestCodexTextVerbosityOption",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -74879,8 +74879,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {

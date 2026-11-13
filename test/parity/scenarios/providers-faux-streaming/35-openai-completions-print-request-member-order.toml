@@ -1,0 +1,35 @@
+# Behavior family: providers-faux-streaming
+# Surface: the member order of the OpenAI Chat Completions request body in print mode.
+#
+# JSON.stringify writes the members of an object in the order Pi's code created
+# them: a replayed assistant message is { role, content }, then the reasoning
+# field its thinking came in, then tool_calls (openai-completions.ts
+# convertMessages), and the z.ai thinking member is { type, clear_thinking }
+# (buildParams). Both CLIs run in print mode against a local Chat Completions
+# endpoint that answers with reasoning and a call of the read tool, so the second
+# request replays that turn, and the harness prints the member names of each
+# request body in wire order. Strings other than type and role are elided: the
+# system prompt and the paths differ per run.
+
+name = "35-openai-completions-print-request-member-order"
+description = "Print mode sends the Chat Completions body with the members of each object in Pi's order."
+covers = ["packages/ai/src/api/openai-completions.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/provider-print-request-order.mjs", "openai-completions", "pig"]
+pi_args = ["node", "./test/parity/testdata/provider-print-request-order.mjs", "openai-completions", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["{role:assistant,content:null,reasoning_content:s,tool_calls:[", "thinking:{type:enabled,clear_thinking:boolean}"]
+runs = 3

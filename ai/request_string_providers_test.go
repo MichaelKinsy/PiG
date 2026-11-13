@@ -253,7 +253,8 @@ func TestProvidersSendTheSameBodyForEveryLargeStringOfARequest(t *testing.T) {
 			messages = append(messages,
 				UserMessage{Content: UserContentBlocks{TextContent{Text: large()}, ImageContent{Data: image, MimeType: "image/png"}}},
 				AssistantMessage{API: api, Provider: provider, Model: model, StopReason: StopReasonToolUse, Content: []AssistantContentBlock{
-					ThinkingContent{Thinking: large(), ThinkingSignature: strings.Repeat("sig", 2000)},
+					// A stored Responses reasoning item, which the Responses kinds replay as the object it holds; the other kinds send or drop the text.
+					ThinkingContent{Thinking: large(), ThinkingSignature: `{"type":"reasoning","id":"rs_1","summary":[],"encrypted_content":"` + strings.Repeat("sig", 2000) + `"}`},
 					TextContent{Text: large()},
 					ToolCall{ID: id, Name: "write", Arguments: JsonObject{"path": id, "nested": map[string]any{"deep": []any{large(), 1.0, nil}}, "content": large()}}}},
 				ToolResultMessage{ToolCallID: id, ToolName: "write", Content: []ToolResultMessageContent{TextContent{Text: large()}, ImageContent{Data: image, MimeType: "image/png"}}, IsError: index == 1})
