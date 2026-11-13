@@ -35,6 +35,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "7ae9ff8c7: adds the `./telemetry-ingest` subpath export (source, types, import) of the recorder, batches, objects, facet and senders. PiG ships Chord as part of the Go binary with no npm package.json; the exports are the Go package chord/next/telemetryingest, which already holds all of them (index.ts is a re-export barrel, PORT_MAP n/a). The interface inventory is generated from the pin's exports (c23b9ec1), so it does not change until a pin bump."
+oracle = "not carried: an exports entry of chord, which the oracle does not install; no dependency changes."
 
 [[files]]
 path = "tsconfig.json"

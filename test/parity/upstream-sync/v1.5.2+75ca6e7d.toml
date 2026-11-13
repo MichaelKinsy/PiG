@@ -42,6 +42,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "926b2f8cd (#12053): the optional peer dependencies of Pi's Chord npm package on react, ws and esbuild become caret ranges. PiG ships Chord as part of the Go binary with no npm package.json or peerDependencies; only the upstream mirror carries one."
+oracle = "not carried: the oracle does not install chord (it is outside pi-coding-agent's closure), and 926b2f8cd turns exact optional peer pins into ranges without moving an installed version."
 
 [[files]]
 path = "package-lock.json"
@@ -49,6 +50,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "926b2f8cd: the lockfile mirror of the Chord peer dependency ranges; PiG has no Pi workspace lockfile."
+oracle = "not carried: 926b2f8cd changes chord's peer ranges in the lock and no entry of a package the oracle installs."
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session.ts"
