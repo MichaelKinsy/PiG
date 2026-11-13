@@ -210529,7 +210529,7 @@
       "evidence": [
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
         "test:internal/codingagent/compaction/compaction_oracle_test.go#TestCompactionMatchesPi",
-        "test:internal/codingagent/session_context_upstream_test.go#TestBuildSessionContextUpstream"
+        "test:internal/codingagent/resumed_tool_call_request_order_oracle_test.go#TestResumedSessionToolCallArgumentsReachEachProviderInTheStoredOrder"
       ]
     },
     {
@@ -211989,9 +211989,9 @@
         "call:internal/codingagent/session.go#Session.BuildSessionContext"
       ],
       "evidence": [
+        "test:internal/codingagent/resumed_tool_call_request_order_oracle_test.go#TestResumedSessionToolCallArgumentsReachEachProviderInTheStoredOrder",
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate",
-        "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
+        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate"
       ]
     },
     {
@@ -212011,9 +212011,9 @@
         "call:internal/codingagent/session.go#Session.BuildSessionContext"
       ],
       "evidence": [
+        "test:internal/codingagent/resumed_tool_call_request_order_oracle_test.go#TestResumedSessionToolCallArgumentsReachEachProviderInTheStoredOrder",
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate",
-        "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
+        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate"
       ]
     },
     {

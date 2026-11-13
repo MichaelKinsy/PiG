@@ -658,12 +658,23 @@ func codeBlockLines(code string, t *Theme) []string {
 
 // LanguageFromPath returns the highlight language for a file path, or "" when none maps, as theme.ts getLanguageFromPath does: the extension is the text after the path's last dot, or the whole path when it has none, lowercased as String.prototype.toLowerCase does.
 func LanguageFromPath(path string) string {
-	ext := path[strings.LastIndexByte(path, '.')+1:]
+	ext := pathExtension(path)
 	if ext == "" {
 		return ""
 	}
+	return extToLang()[ext]
+}
+
+// pathExtension is getLanguageFromPath's `filePath.split(".").pop()?.toLowerCase()`.
+func pathExtension(path string) string {
 	// strings.ToLower maps U+0130 to "i"; toLowerCase maps it to "i\u0307" (SpecialCasing.txt). Every other character lowercases to the same ASCII letters in both.
-	return extToLang()[strings.ToLower(strings.ReplaceAll(ext, "\u0130", "i\u0307"))]
+	return strings.ToLower(strings.ReplaceAll(path[strings.LastIndexByte(path, '.')+1:], "\u0130", "i\u0307"))
+}
+
+// LanguageFromPathThrows reports whether Pi's highlighter throws for the value theme.ts getLanguageFromPath returns for path. Pi's extToLang is a plain object (theme.ts:997), so its lookup (theme.ts:1062) finds, for the extensions "constructor" and "__proto__", a member the object inherits from Object.prototype (the Object function, Object.prototype itself); every other inherited name holds an upper-case letter and the extension is lowercased. The value is truthy, so read.ts:125 and write.ts:64 and :127 pass it to highlightCode, whose supportsLanguage check (theme.ts:937, before the try at theme.ts:949) throws a TypeError in highlight.js getLanguage. The throw leaves the tool's renderer, and tool-execution.ts updateDisplay draws the call or result fallback instead. LanguageFromPath returns "" for such a path.
+func LanguageFromPathThrows(path string) bool {
+	ext := pathExtension(path)
+	return ext == "constructor" || ext == "__proto__"
 }
 
 // extToLang is getLanguageFromPath's extension table, built on first use, not on every start.

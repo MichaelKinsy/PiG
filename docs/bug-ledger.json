@@ -12130,6 +12130,26 @@
       ]
     },
     {
+      "id": "BF-417e1e6",
+      "title": "A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell…",
+      "symptom": "A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell back) with the call's arguments in alphabetical order; Pi and a live PiG turn draw them in the order the model sent them.",
+      "rootCause": "When a session is reopened, the transcript builds each tool card from the stored assistant message. It encoded the call's arguments from the argument map, which writes the keys sorted; a live call's card gets the arguments in the member order the model sent (ToolCall.ArgumentsJSON), and Pi keeps that order in both cases (the parsed object of the session file). The card that lists its arguments draws them in that order: the call fallback (render-utils.ts formatToolCallWithArgs walks Object.entries), which a tool without a renderer and a renderer that throws both reach.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A reopened session drew a tool call's generic card (a tool with no renderer of its own, or a card that fell back) with the call's arguments in alphabetical order; Pi and a live PiG turn draw them in the order the model sent them. The transcript encoded the arguments from a Go map, which sorts its keys, instead of the stored member order.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "417e1e6158",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-41b25ac",
       "title": "fix(chord): surfaces followers stop before their pick watch binds and call out with no lock held…",
       "symptom": "fix(chord): surfaces followers stop before their pick watch binds and call out with no lock held; Message(key) sends []; page state keyed by weak host identity; PageState nil and sameValue panics",
@@ -50468,6 +50488,33 @@
         "internal/codingagent/startup_changelog_init_test.go::TestChangelogForDisplayFollowsTheSessionMessages",
         "test/parity/scenarios/startup/20-startup-changelog-version-recorded-before-session-start.toml",
         "test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml"
+      ]
+    },
+    {
+      "id": "BF-dd2727b",
+      "title": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…",
+      "symptom": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result.",
+      "rootCause": "Pi's getLanguageFromPath (theme.ts:993-1062) looks the lowercased extension up in a plain object, so `constructor` and `__proto__` find a member the object inherits from Object.prototype. The value is truthy: read.ts formatReadResult (:124-125) and write.ts renderCall (:55-64, :123-127) pass it to highlightCode, whose supportsLanguage check (theme.ts:937) throws a TypeError before the try, and tool-execution.ts updateDisplay (:303-341) catches the throw and draws the call or result fallback. PiG looked the extension up in a Go map, found no language and drew the write card with its content rows and the expanded read card with its blank row, which Pi does not draw for such a path.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws, and Pi falls back to its generic card; PiG looked the extension up in a Go map, found no language and drew the ordinary cards.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dd2727b68a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsDrawTheFallbackForAPathNamedLikeAnObjectPrototypeMember",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
+        "test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml",
+        "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml",
+        "tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsForAnInheritedMember",
+        "tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsLikePi"
       ]
     },
     {
