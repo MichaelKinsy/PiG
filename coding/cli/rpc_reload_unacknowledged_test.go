@@ -37,7 +37,7 @@ export default function (pi) {
 	f.expectStream("the reload of an extension that does not acknowledge it", "notify shutdown done g1", "response c success=true", "notify started g2", "response b success=true")
 	f.finish()
 	var lines, notices []string
-	for _, line := range strings.Split(f.p.stderr.String(), "\n") {
+	for line := range strings.SplitSeq(f.p.stderr.String(), "\n") {
 		switch {
 		case strings.Contains(line, "did not acknowledge the reload"):
 			lines = append(lines, line)

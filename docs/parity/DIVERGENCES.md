@@ -3712,3 +3712,23 @@ Call-site markers: `tui/loader.go` (`requestStepRender`), `tui/tui.go` (`Request
 Evidence: `tui/render_within_test.go` (`TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn`, `TestFrameDrawnWithinTheDelayCarriesTheChange`, `TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor`, `TestRequestRenderWithinDuringAFrameAsksForTheNextFrame`, `TestLoaderAnimationStepAsksForItsFrameWithin`, `TestLoaderTickStepAsksForNoFrame`, `TestCancelRenderWithinDropsTheWaitingStepFrame`) and `internal/codingagent/status_tick_within_test.go` (`TestStatusTickAsksForItsFrameWithinTheStepDelay`, `TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `TestRemovingTheIndicatorCancelsItsWaitingStepFrame`).
 
 Parity allowance: the frame count differs from Pi's on a streaming call (3,278 against 3,951 frames in 66 s of the `write:50` cell) and the final screen is identical; the frames of a spinner step that another frame draws are not written; the settled screen and every frame a request other than a spinner step asks for are Pi's.
+
+## D630 RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads
+
+What: Pi's `session.reload()` awaits the resource loader after it has invalidated the old runner (`agent-session.ts:3825-3826`, `:3838`). When a reloaded extension's factory awaits a timer or I/O, Pi's event loop turns inside the reload and its RPC mode reads stdin there (`rpc-mode.ts:832-834`). A prompt written meanwhile is dispatched on the old runner: an extension command still resolves, its `ctx` throws the stale message (`runner.ts:729-741`), RPC writes `extension_error` and answers the prompt "handled" before the reload ends. Stdin's end read there exits 0 at once, and the command that awaited `ctx.reload()` never answers. PiG holds stdin from the reload's start to the continuation of the command that awaited it, also while a factory awaits: the prompt is read after the reload, runs on the reloaded extension and answers after the reloading command; at stdin's end the reload finishes, its command answers and the process exits.
+
+Why: A prompt read inside the load can only fail: it runs on extensions the reload has already invalidated. Holding it gives the client the answer of the extension it reloaded, in the order it wrote its records, and never loses the reloading command's response. The host sees a loading factory's wait in no runtime today, and a Go, Python or Rust extension has no factory that awaits on the host's loop at all.
+
+Scope: `coding/cli/rpc_settle_gate.go` (`rpcSettleGate.holdReload`), `coding/cli/rpc_mode.go` (the reload the mode installs with `Runtime.SetReload`).
+
+Owner decision: approved by the owner, 2026-11-13T00:54:22Z. The owner's words that day: "I want the divergences that keep us on brand but still want to be faithful as we can plus our additions of go support and then my hero demo I was asking for plus ensuring the optimal quality release given how I've held it back and we can make this an exciting announcment from many angles." The decision recorded from them at that time: "Divergences APPROVED where PiG keeps a user safe or told the truth (on brand), each numbered, minimal, with remove-when and an upstream issue draft: D630 (hold a prompt during a reload), D632 (serialised reloads), D633 (show a failed settings save), p2 guest per-turn authority (pending the lane's evidence that Pi does not limit guests elsewhere). Everything else stays faithful to Pi."
+
+Call-site markers: `coding/cli/rpc_settle_gate.go` (`holdReload`).
+
+Evidence: Pi 1.5.2 with `coding/cli/testdata/rpc-reload.mjs` and `RL_LOAD=await`: a `/ping` written while the reloaded factory awaits gives `extension_error command:ping` with the stale message, `response c`, and only then `notify started g2`, `response b`; stdin's end there exits 0 with nothing written. PiG gives `notify started g2`, `response b`, `notify ping g2`, `response c` (`TestRPCPromptWrittenWhileAReloadedFactoryAwaitsRunsOnTheReloadedExtension`), and at stdin's end `notify started g2`, `response b`, exit 0 (`TestRPCReloadHoldEnds/stdin_ends_while_the_reloaded_factory_awaits`). A factory that does not await is the same in both: `TestRPCPromptWrittenDuringAReloadRunsOnTheReloadedExtension`.
+
+Parity allowance: none.
+
+Remove when: Pi stops reading stdin inside `reload()`, or rejects a prompt that arrives during it.
+
+SCRUTINIZED:approved 2026-11-13

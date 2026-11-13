@@ -213696,7 +213696,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime_replacement.go#Runtime.EmitQuitShutdownContext"
+        "call:coding/extension/host/subprocess/host.go#reloadChainEvent"
       ],
       "evidence": [
         "test:coding/cli/print_mode_upstream_test.go#TestPrintModeShutdownUpstream",
@@ -213805,7 +213805,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/child_sessions.go#createChildSession"
+        "call:coding/extension/host/subprocess/host.go#reloadChainEvent"
       ],
       "evidence": [
         "test:coding/runner_model_registry_upstream_test.go#TestNewExtensionRunnerBindsItsConstructorArguments",
