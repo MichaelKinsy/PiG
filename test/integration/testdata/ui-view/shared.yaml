@@ -1,0 +1,11 @@
+name: ui-view-shared
+description: "The view fixture with the terminal view client and the view endpoint: one session, clients in and outside the process."
+viewClient: terminal
+viewEndpoint: socket
+extensions:
+  - name: viewfx
+    origins:
+      - local:fixture
+discovery:
+  extensions: []
+  skills: []

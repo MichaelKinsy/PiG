@@ -38,8 +38,9 @@
   section[data-slot=notify] { position: fixed; top: .75rem; right: .75rem; width: 18rem; }
   section[data-slot=dialog], section[data-slot=overlay] { position: fixed; inset: 15% 0 auto 0; margin: auto; width: min(36rem, 92%); background: Canvas; box-shadow: 0 .5rem 2rem #0006; border-radius: .5rem; }
   #prompt { display: flex; gap: .5rem; }
+  #prompt[hidden] { display: none; }
   #prompt input { flex: 1; padding: .4rem .6rem; }
-  #state { font-size: .8em; opacity: .7; }
+  #state, #attached { font-size: .8em; opacity: .7; margin: 0; }
 </style>
 </head>
 <body>
@@ -53,6 +54,7 @@
   </div>
   <section data-slot="widget-above"></section>
   <form id="prompt"><input name="message" autocomplete="off" aria-label="Message" placeholder="Message, or a /command of an extension"><button>Send</button></form>
+  <p id="attached" hidden>This page shows the views of a running pig session and has no prompt: the session's view endpoint takes view commands only, so type in its terminal.</p>
   <section data-slot="widget-below"></section>
   <section data-slot="status"></section>
   <section data-slot="footer"></section>

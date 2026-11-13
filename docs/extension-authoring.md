@@ -684,6 +684,7 @@ there are any, and mount when a client arrives (step 11).
     state the extension starts in (read `viewAbilities()` at `session_start` for a client that was attached before you loaded)
     and never runs in a session no client attaches to. Handlers run one change at a time, in order; the host does not wait for
     them, and an error in one is written to the extension's log.
+    A `/reload` loads your extension as a new instance: the mounts of the instance before it have ended (`broken`, reason `owner_gone`) and the new instance holds none, so it mounts as on a first start (`MountView`, `mount_view`, `ctx-mount-view`, `ctx.ui.mountView`), at `session_start` for a client that is attached already, and the mount succeeds under a new epoch. `viewState(key)` (`ViewState`, `view_state`, `ctx-view-state`) of such a key reports the ended mount; there is nothing to take over. `TestConformance_UIViewMountsEndAtAReload` pins this in every SDK.
 
     ```js
     pi.onViewAbilities(async (abilities, ctx) => {
