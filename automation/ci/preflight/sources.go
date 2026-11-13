@@ -236,12 +236,21 @@ func (f prFile) whole() bool {
 type prCommit struct {
 	SHA    string `json:"sha"`
 	Commit struct {
-		Message      string `json:"message"`
+		Message   string `json:"message"`
+		Committer struct {
+			Name  string `json:"name"`
+			Email string `json:"email"`
+		} `json:"committer"`
 		Verification struct {
 			Verified bool   `json:"verified"`
 			Reason   string `json:"reason"`
 		} `json:"verification"`
 	} `json:"commit"`
+	Parents []struct {
+		SHA string `json:"sha"`
+	} `json:"parents"`
+	// Merge is set by askGit, never by the API: the list of a PR's commits has no such field.
+	Merge *mergeFacts `json:"merge,omitempty"`
 }
 
 type comparison struct {
