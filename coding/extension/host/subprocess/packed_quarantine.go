@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // armPackedProcessGenerations bumps packedCellGeneration for every packed
@@ -130,7 +132,7 @@ func (h *Host) quarantinePackedCellGeneration(cellKey string, generation int, re
 		}
 	}
 	// One end of a process is reported in one order, the load order, as a recovery reports its members (recoverNodeProcess, recoverNativeProcess).
-	slices.SortFunc(members, func(a, b *managedExt) int {
+	sortx.Func(members, func(a, b *managedExt) int {
 		return cmp.Or(cmp.Compare(h.loadOrder[a.config.Name], h.loadOrder[b.config.Name]), strings.Compare(a.config.Name, b.config.Name))
 	})
 	h.mu.Unlock()
