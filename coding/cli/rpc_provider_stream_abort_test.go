@@ -11,8 +11,9 @@ import (
 
 // providerStreamAbortExtension registers an extension provider whose stream shows "alpha beta " and then waits for the abort of its request. The model id names what its
 // author does once the request's signal aborts. A prompt without the word HOLD is answered at once with the context the request received, as JSON text.
+// The author-never model does nothing after the abort: it neither pushes nor ends its stream. It shows the id of its process after "alpha beta ".
 const providerStreamAbortExtension = `import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
-const ids = ["author-error", "author-result", "author-ignores", "author-throws"];
+const ids = ["author-error", "author-result", "author-ignores", "author-throws", "author-never"];
 const usage = () => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } });
 const texts = (message) => Array.isArray(message.content) ? message.content.map((part) => part.type === "text" ? part.text : part.type) : message.content;
 const aborted = (signal) => new Promise((resolve) => { if (signal.aborted) resolve(); else signal.addEventListener("abort", () => resolve(), { once: true }); });
@@ -59,6 +60,7 @@ function streamProbe(model, context, options) {
     delta("alpha ");
     await later(5);
     delta("beta ");
+    if (model.id === "author-never") delta("pid " + process.pid + " ");
     await aborted(options.signal);
     if (model.id === "author-error") {
       output.stopReason = "aborted";
@@ -67,6 +69,8 @@ function streamProbe(model, context, options) {
       stream.end();
     } else if (model.id === "author-result") {
       stream.end({ ...output, content: [{ type: "text", text: block.text }], stopReason: "stop" });
+    } else if (model.id === "author-never") {
+      await new Promise(() => {});
     } else {
       await later(300);
       delta("gamma ");
@@ -416,4 +420,79 @@ func providerAbortWant(text, stopReason, errorMessage string) string {
 	}
 	state, _ := json.Marshal(map[string]any{"blocks": blocks, "text": text, "stopReason": stopReason, "errorMessage": errorMessage})
 	return string(state)
+}
+
+// TestRPCAbortedExtensionProviderTurnIsKeptWhenStdinClosesAtTheAbort: the client sends the abort and closes stdin at once, without waiting for the turn's end. Pi's
+// shutdown awaits session.abort() (rpc-mode.ts shutdown, agent-session-runtime.ts dispose), and its event loop stays alive while the author's stream has work pending: an
+// author that answers the abort in its listener, and one that goes on for 0.3 s on a timer and completes, both end the turn, the message is persisted, and the process
+// exits 0. (An author that never reacts leaves Pi's loop empty, and the process exits without the message: TestRPCAbortedExtensionProviderTurnWhoseAuthorNeverReacts.)
+func TestRPCAbortedExtensionProviderTurnIsKeptWhenStdinClosesAtTheAbort(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ model, text, stopReason, errorMessage string }{
+		{model: "author-error", text: "alpha beta ", stopReason: "aborted", errorMessage: "the author saw the abort"},
+		{model: "author-result", text: "alpha beta ", stopReason: "stop"},
+		{model: "author-ignores", text: "alpha beta gamma ", stopReason: "stop"},
+	}
+	for _, kind := range []string{"isolated", "packed"} {
+		for _, tc := range cases {
+			t.Run(tc.model+"/"+kind, func(t *testing.T) {
+				t.Parallel()
+				dir := t.TempDir()
+				fixture := filepath.Join(dir, "provider-abort.mjs")
+				if err := os.WriteFile(fixture, []byte(providerStreamAbortExtension), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				sessions := filepath.Join(dir, "sessions")
+				args := []string{"--model", "abort-probe/" + tc.model, "--session-dir", sessions, "-e", fixture}
+				if kind == "packed" {
+					sibling := filepath.Join(dir, "provider-abort-sibling.mjs")
+					if err := os.WriteFile(sibling, []byte(providerStreamAbortSibling), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					args = append(args, "-e", sibling)
+				}
+				p := startRPCProcess(t, nil, args...)
+				shown := ""
+				p.send(`{"id":"hold","type":"prompt","message":"HOLD the stream"}`)
+				p.await("the partial text before the abort", func(record rpcRecord) bool {
+					if record["type"] == "message_update" {
+						if event, _ := record["assistantMessageEvent"].(map[string]any); event["type"] == "text_delta" {
+							delta, _ := event["delta"].(string)
+							shown += delta
+						}
+					}
+					return shown == "alpha beta "
+				})
+				p.send(`{"id":"abort","type":"abort"}`)
+				p.closeAndWait("at the abort of an extension provider turn")
+				if got, want := providerAbortPersisted(t, sessions), []string{providerAbortWant(tc.text, tc.stopReason, tc.errorMessage)}; strings.Join(got, "\n") != strings.Join(want, "\n") {
+					t.Errorf("the session file holds the assistant messages %q, want %q: the turn's message as its author's stream ended it", got, want)
+				}
+			})
+		}
+	}
+}
+
+// providerAbortPersisted is providerAbortMessage of each assistant message in the one session file under sessions.
+func providerAbortPersisted(t *testing.T, sessions string) []string {
+	t.Helper()
+	files, err := filepath.Glob(filepath.Join(sessions, "*.jsonl"))
+	if err != nil || len(files) != 1 {
+		t.Fatalf("session files = %v (%v), want one", files, err)
+	}
+	data, err := os.ReadFile(files[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	persisted := []string{}
+	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
+		var entry struct {
+			Type    string         `json:"type"`
+			Message map[string]any `json:"message"`
+		}
+		if json.Unmarshal([]byte(line), &entry) == nil && entry.Type == "message" && entry.Message["role"] == "assistant" {
+			persisted = append(persisted, providerAbortMessage(entry.Message))
+		}
+	}
+	return persisted
 }

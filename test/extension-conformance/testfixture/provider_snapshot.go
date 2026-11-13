@@ -2,6 +2,8 @@ package testfixture
 
 import (
 	"errors"
+	"os"
+	"strconv"
 	"strings"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
@@ -135,6 +137,28 @@ func registerProviderCancelThrow(ext *sdk.Extension) {
 		"streamSimple": func(ctx sdk.Context, _, _, _ map[string]any) (*sdk.ModelEventStream, error) {
 			<-ctx.Done()
 			return nil, errors.New(ProviderCancelThrowMessage)
+		},
+	})
+}
+
+// registerProviderCancelNever registers a provider whose author never reacts to the abort of its request: it pushes start and one text_delta whose text is the id of its
+// process, waits until its request's signal aborts, and returns: it pushes nothing more and never ends its stream.
+func registerProviderCancelNever(ext *sdk.Extension) {
+	ext.RegisterProvider("cancel-never-provider", sdk.ProviderConfig{
+		"api": "cancel-never-extension-api", "baseUrl": "https://extension.invalid", "apiKey": "extension-key",
+		"models": []any{map[string]any{"id": "faux", "name": "Faux", "reasoning": false, "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 128000, "maxTokens": 4096}},
+		"streamSimple": func(ctx sdk.Context, model, _, _ map[string]any) (*sdk.ModelEventStream, error) {
+			block := map[string]any{"type": "text", "text": ""}
+			message := map[string]any{"role": "assistant", "api": model["api"], "provider": model["provider"], "model": model["id"], "content": []any{block}, "stopReason": "stop", "timestamp": 1, "usage": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}}
+			stream := sdk.CreateAssistantMessageEventStream()
+			go func() {
+				stream.Push(map[string]any{"type": "start", "partial": message})
+				pid := strconv.Itoa(os.Getpid())
+				block["text"] = pid
+				stream.Push(map[string]any{"type": "text_delta", "contentIndex": 0, "delta": pid, "partial": message})
+				<-ctx.Done()
+			}()
+			return stream, nil
 		},
 	})
 }

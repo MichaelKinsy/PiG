@@ -111,6 +111,23 @@
   (loop repeat 2000 until (pig:ctx-cancelled-p ctx) do (sleep 0.005))
   (error "the author's stream threw at the abort"))
 
+(defun cancel-never-stream (ctx model request options)
+  "The author never reacts to the abort of its request: it pushes start and one text_delta whose text is the id of its process, waits until its request's signal aborts, and returns: it pushes nothing more and never ends its stream."
+  (declare (ignore request options))
+  (let* ((block (pig:obj "type" "text" "text" ""))
+         (message (pig:obj "role" "assistant" "api" (pig:jget model "api") "provider" (pig:jget model "provider") "model" (pig:jget model "id")
+                           "content" (vector block) "stopReason" "stop" "timestamp" 1 "usage" (zero-usage)))
+         (result (pig:make-model-event-stream)))
+    (sb-thread:make-thread
+     (lambda ()
+       (pig:model-stream-push result (pig:obj "type" "start" "partial" message))
+       (let ((pid #+win32 "0" #-win32 (format nil "~D" (sb-unix:unix-getpid))))
+         (setf (gethash "text" block) pid)
+         (pig:model-stream-push result (pig:obj "type" "text_delta" "contentIndex" 0 "delta" pid "partial" message)))
+       (loop until (pig:ctx-cancelled-p ctx) do (sleep 0.005)))
+     :name "cancel never producer")
+    result))
+
 (defun new-extension ()
   (let ((ext (pig:make-extension "provider-producer")))
     (pig:register-provider ext "extension-provider"
@@ -149,4 +166,10 @@
                                                               "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
                                                               "contextWindow" 128000 "maxTokens" 4096))
                                     "streamSimple" #'cancel-throw-stream))
+    (pig:register-provider ext "cancel-never-provider"
+                           (pig:obj "api" "cancel-never-extension-api" "baseUrl" "https://extension.invalid" "apiKey" "extension-key"
+                                    "models" (vector (pig:obj "id" "faux" "name" "Faux" "reasoning" :false "input" (vector "text")
+                                                              "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                              "contextWindow" 128000 "maxTokens" 4096))
+                                    "streamSimple" #'cancel-never-stream))
     ext))

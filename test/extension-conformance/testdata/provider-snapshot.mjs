@@ -55,4 +55,15 @@ export default function(pi){
   if(!options.signal.aborted)await new Promise(resolve=>options.signal.addEventListener('abort',resolve,{once:true}));
   throw new Error("the author's stream threw at the abort");
  }});
+ // The author never reacts to the abort of its request: it yields start and one text_delta whose text is the id of its process, waits until its request's signal aborts, and then yields nothing more and never ends its stream.
+ pi.registerProvider('cancel-never-provider',{api:'cancel-never-extension-api',baseUrl:'https://extension.invalid',apiKey:'extension-key',models:[{id:'faux',name:'Faux',reasoning:false,input:['text'],cost:{input:0,output:0,cacheRead:0,cacheWrite:0},contextWindow:128000,maxTokens:4096}],streamSimple:async(model,context,options)=>{
+  const block={type:'text',text:''};
+  const message={role:'assistant',api:model.api,provider:model.provider,model:model.id,content:[block],usage:{input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}},stopReason:'stop',timestamp:1};
+  return {async *[Symbol.asyncIterator](){
+   yield {type:'start',partial:message};
+   block.text=String(process.pid);yield {type:'text_delta',contentIndex:0,delta:block.text,partial:message};
+   if(!options.signal.aborted)await new Promise(resolve=>options.signal.addEventListener('abort',resolve,{once:true}));
+   await new Promise(()=>{});
+  },result:async()=>message};
+ }});
 }
