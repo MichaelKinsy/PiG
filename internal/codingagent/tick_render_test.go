@@ -75,8 +75,10 @@ func newTickRenderProbeIn(t testing.TB, mode, cwd string) (*InteractiveMode, *te
 	m.widgetContainer = tui.NewContainer()
 	m.agent = mustNewAgent(agent.AgentOptions{})
 	m.keybindings = NewKeybindingsManager(t.TempDir())
-	m.mountInteractiveTui(true)
+	// The loop owns the frame deadline before the renderer starts, as in Init: a frame requested by the start is then
+	// the loop's, not a timer goroutine's that may or may not have run by the time the probe is returned.
 	m.installRenderDispatcher()
+	m.mountInteractiveTui(true)
 	return m, term
 }
 

@@ -6,8 +6,8 @@ set -e
 here=$(cd "$(dirname "$0")" && pwd)
 cd "$here"
 export GOTOOLCHAIN=${GOTOOLCHAIN:-go$(tr -d '\r\n' <"$here/../../../../.go-version")}
-# The host's Pi packages are the pin's (a commit pin's build, or the pinned release), never whatever npm holds for the locked version.
-python3 "$here/../../../../automation/pin/pin.py" check-durable-host durable/core/host/cf
+# The host's Pi packages are the vendored build of the pin (third_party/pi-packs), never whatever npm holds for a version.
+python3 "$here/../../../../automation/pin/pin.py" check-vendored
 node_modules/.bin/tsc -p .
 status=0
 for tc in ${TOOLCHAINS:-go tinygo}; do

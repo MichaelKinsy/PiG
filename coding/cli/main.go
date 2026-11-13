@@ -61,6 +61,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/frontendpack"
+	_ "github.com/MichaelKinsy/PiG/internal/memprofrate" // pig additive (D627): its init turns heap-profile sampling off
 	"github.com/MichaelKinsy/PiG/internal/nativeplatform"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
@@ -893,7 +894,7 @@ func Main(args []string, options *MainOptions) {
 	// pig additive (D232): a --listen server skips D175's GOGC 400 start, because resident memory across many sessions is its objective.
 	if policy, ok := gcPolicyFor(runMode, flags.Listen); ok {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
-		// pig additive (D621): an interactive run collects at GOGC 150 until 8 MiB are live, then at 100, unless the environment sets GOGC or GOMEMLIMIT; its watcher ends after 2 minutes without a collection.
+		// pig additive (D621): an interactive run keeps a heap goal of at least 16 MiB, at GOGC 150 until 8 MiB are live and at 100 from then on, unless the environment sets GOGC or GOMEMLIMIT; its watcher ends at 100 after 2 seconds without a collection.
 		stopGCPolicy = policy.Apply()
 		// Deferred after stopProfiles, so it runs first: the exit record counts no watcher.
 		defer stopGCPolicy()
@@ -1187,6 +1188,8 @@ func Main(args []string, options *MainOptions) {
 	flags.Name = sessionName
 	// pig additive (D211): the active Piglet decides whether an untrusted project loads its context files.
 	flags.ContextFilesTrustedOnly = activePiglet.WithholdsUntrustedContextFiles()
+	// pig additive (D614): the active Piglet decides whether the TUI draws the views extensions mount.
+	flags.TerminalViewClient = activePiglet.TerminalViewClient()
 	timings.Time("createSessionManager")
 	// The builder is Pi's createRuntime closure: every mode builds its first Session
 	// and every replacement Session from the same process-fixed inputs.
@@ -1621,6 +1624,7 @@ func Main(args []string, options *MainOptions) {
 	if subprocBridge != nil {
 		iopts.SubprocessUIBridge = subprocBridge
 	}
+	iopts.TerminalViewClient = flags.TerminalViewClient
 	if subprocHost != nil {
 		iopts.SubprocessHost = subprocHost
 		// /reload recompiles these, and it is the command reached for after

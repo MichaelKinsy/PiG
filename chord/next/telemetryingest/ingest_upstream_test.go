@@ -6,9 +6,9 @@ package telemetryingest_test
 
 // pi: packages/chord/src/telemetry-ingest/batch.ts
 
-// Ports packages/chord/test/telemetry-ingest/facet.test.ts and sender.test.ts at Pi main c23b9ec1: the server's telemetry
-// ingest (decisions "Telemetry from browser pages", "The server is the one place telemetry is stored", "Who a span was
-// for"): a page's batch is checked by its schema (size, every field, no control characters), its spans must carry the
+// Ports packages/chord/test/telemetry-ingest/facet.test.ts and sender.test.ts at Pi main 7ae9ff8c7 (admit(principal),
+// facet.test.ts:84-94 and sender.test.ts:33): the server's telemetry ingest (decisions "Telemetry from browser pages", "The
+// server is the one place telemetry is stored", "Who a span was for"): only admitted principals' pages send; a page's batch is checked by its schema (size, every field, no control characters), its spans must carry the
 // page's own ids, are capped per page and minute, marked `chord.host: browser` and stamped with the link's principal; a
 // worker's batch is written as it is, stamped with its host; nobody else gets the worker's `ingest`; the calls record no
 // span of their own; the senders send what a recorder kept once the object is bound.
@@ -85,8 +85,12 @@ type server struct {
 
 // serving is a server with the ingest facet (its batches collected); workers maps a principal's canonical JSON to the
 // worker's address key.
-func serving(t *testing.T, workers map[string]string, who func(data.Principal) telemetry.SpanAttributes) server {
+func serving(t *testing.T, workers map[string]string, who func(data.Principal) telemetry.SpanAttributes, admit ...func(data.Principal) bool) server {
 	t.Helper()
+	admitted := func(data.Principal) bool { return true }
+	if len(admit) > 0 {
+		admitted = admit[0]
+	}
 	address := serverKind.Address(nil)
 	memory := telemetry.NewInMemoryTelemetryContext()
 	batches := &collector{}
@@ -95,6 +99,7 @@ func serving(t *testing.T, workers map[string]string, who func(data.Principal) t
 	t.Cleanup(func() { _ = h.Close(background) })
 	facet := telemetryingest.IngestFacet(telemetryingest.IngestOptions{
 		Target: batches,
+		Admit:  admitted,
 		WorkerHost: func(principal data.Principal) (string, bool) {
 			key, ok := workers[principalJSON(principal)]
 			return key, ok
@@ -163,6 +168,33 @@ func ingest(t *testing.T, client host.Host, spans []any) (delta.JsonValue, error
 	page, err := client.Get(background, telemetryingest.PageTelemetry, delta.NewJsonObject(0), host.GetOptions{})
 	must(t, err)
 	return page.Call("ingest", delta.JsonObjectOf("spans", spans), background)
+}
+
+// facet.test.ts:84-94 "admitting pages › refuses the page of a principal the app does not admit: its hold fails forbidden,
+// nothing is written".
+func TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten(t *testing.T) {
+	owner := func(who data.Principal) bool { return who.Value("kind") == "owner" }
+	s := serving(t, nil, ownerAttributes, owner)
+	client, _ := clientOf(t, s, principalOf("guest"), host.HostOptions{})
+	// Pi's `ingest` helper holds and calls in one expression and catches either: the refusal fails the hold.
+	var err error
+	if page, getErr := client.Get(background, telemetryingest.PageTelemetry, delta.NewJsonObject(0), host.GetOptions{}); getErr != nil {
+		err = getErr
+	} else {
+		_, err = page.Call("ingest", delta.JsonObjectOf("spans", []any{spanRow(incarnationOf(client), 1, nil)}), background)
+	}
+	if _, ok := data.IsChordErrorCode(err, data.CodeForbidden); !ok {
+		t.Fatalf("error = %v, want forbidden", err)
+	}
+	if len(s.batches.taken()) != 0 {
+		t.Fatal("a refused page's batch was written")
+	}
+	admitted, _ := clientOf(t, s, principalOf("owner"), host.HostOptions{})
+	receipt, err := ingest(t, admitted, []any{spanRow(incarnationOf(admitted), 1, nil)})
+	must(t, err)
+	if !reflect.DeepEqual(receipt, delta.JsonObjectOf("written", 1.0, "dropped", 0.0)) {
+		t.Fatalf("receipt = %v", receipt)
+	}
 }
 
 func TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding(t *testing.T) {
@@ -394,6 +426,7 @@ func sending(t *testing.T, principal data.Principal, scope func(incarnation stri
 	t.Cleanup(func() { _ = srv.Close(background) })
 	facet := telemetryingest.IngestFacet(telemetryingest.IngestOptions{
 		Target: batches,
+		Admit:  func(data.Principal) bool { return true },
 		WorkerHost: func(who data.Principal) (string, bool) {
 			return "project|p1", who.Value("kind") == "worker"
 		},

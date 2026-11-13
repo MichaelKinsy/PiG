@@ -14,15 +14,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
-// Namespace is a group of tools named by a common prefix, such as an MCP server's `mcp__github__`.
-type Namespace struct {
-	Name         string
-	Description  string
-	Instructions string
-	// Prefix: tool names starting with it belong to the namespace; the longest matching prefix wins.
-	Prefix string
-}
-
 // DefaultInlineBudget is the default token budget of the tool declarations in the `codemode` section, as in the coding
 // agent.
 const DefaultInlineBudget = 3000
@@ -80,16 +71,37 @@ func sampleOf(tool *durable.ToolRegistration) (string, error) {
 	return cm.RenderToolSample(declaration, cm.ToolRenderOptions{}), nil
 }
 
-// namespaceOf is the namespace of a tool: the one with the longest prefix its name starts with.
-func namespaceOf(name string, namespaces []Namespace) *Namespace {
-	var found *Namespace
-	for i := range namespaces {
-		namespace := &namespaces[i]
-		if strings.HasPrefix(name, namespace.Prefix) && (found == nil || jsstring.Length(namespace.Prefix) > jsstring.Length(found.Prefix)) {
-			found = namespace
+// NamespacesOf is the namespace of each tool the extensions bring, by tool name: its extension's `Namespace`. A tool several
+// extensions name belongs to the first one's (with none when the first declares none).
+func NamespacesOf(extensions []*durable.Extension) map[string]*durable.ToolNamespace {
+	namespaces := map[string]*durable.ToolNamespace{}
+	seen := map[string]bool{}
+	for _, extension := range extensions {
+		for _, tool := range extension.Tools {
+			if seen[tool.Name] {
+				continue
+			}
+			seen[tool.Name] = true
+			if extension.Namespace != nil {
+				namespaces[tool.Name] = extension.Namespace
+			}
 		}
 	}
-	return found
+	return namespaces
+}
+
+// declaredNamespaces are the namespaces the extensions declare, by name (the first declaration of a name wins), sorted by name.
+func declaredNamespaces(extensions []*durable.Extension) []*durable.ToolNamespace {
+	byName := map[string]bool{}
+	var declared []*durable.ToolNamespace
+	for _, extension := range extensions {
+		if namespace := extension.Namespace; namespace != nil && !byName[namespace.Name] {
+			byName[namespace.Name] = true
+			declared = append(declared, namespace)
+		}
+	}
+	slices.SortStableFunc(declared, func(a, b *durable.ToolNamespace) int { return localecompare.Compare(a.Name, b.Name) })
+	return declared
 }
 
 // renderToolSection is `### `id` (`raw name`)` followed by the tool's description and declaration.
@@ -113,7 +125,7 @@ type catalogEntry struct {
 }
 
 type catalogGroup struct {
-	namespace *Namespace
+	namespace *durable.ToolNamespace
 	entries   []catalogEntry
 }
 
@@ -152,25 +164,28 @@ func selectCatalog(groups []*catalogGroup, budget int) map[string]bool {
 	return shown
 }
 
-// Section is the `codemode` section: the tools scripts can call, grouped by namespace, with their declarations as far as
-// the budget allows. Nil without callable tools.
-func Section(tools []*durable.ToolRegistration, namespaces []Namespace, budget int) (*string, error) {
-	if len(tools) == 0 {
+// Section is the `codemode` section: the tools scripts can call (ungrouped ones first), then every namespace the selected
+// extensions declare, by name, as `## <name>` and its description, each followed by its tools' declarations as far as the
+// budget allows. Headers carry no counts, so the text changes only with the declared tools. Nil without callable tools and
+// namespaces.
+func Section(tools []*durable.ToolRegistration, extensions []*durable.Extension, budget int) (*string, error) {
+	namespaces := declaredNamespaces(extensions)
+	if len(tools) == 0 && len(namespaces) == 0 {
 		return nil, nil
 	}
-	groups := map[string]*catalogGroup{"": {}}
-	order := []string{""}
+	toolNamespaces := NamespacesOf(extensions)
+	ungrouped := &catalogGroup{}
+	ordered := []*catalogGroup{ungrouped}
+	groups := map[string]*catalogGroup{}
+	for _, namespace := range namespaces {
+		group := &catalogGroup{namespace: namespace}
+		groups[namespace.Name] = group
+		ordered = append(ordered, group)
+	}
 	for _, tool := range tools {
-		namespace := namespaceOf(tool.Name, namespaces)
-		key := ""
-		if namespace != nil {
-			key = "ns:" + namespace.Name
-		}
-		group, ok := groups[key]
-		if !ok {
-			group = &catalogGroup{namespace: namespace}
-			groups[key] = group
-			order = append(order, key)
+		group := ungrouped
+		if namespace := toolNamespaces[tool.Name]; namespace != nil {
+			group = groups[namespace.Name]
 		}
 		section, err := renderToolSection(tool)
 		if err != nil {
@@ -179,53 +194,20 @@ func Section(tools []*durable.ToolRegistration, namespaces []Namespace, budget i
 		//portlint:allow numbers Math.ceil of a string length over a positive constant is a small non-negative integer (describe.ts:131)
 		group.entries = append(group.entries, catalogEntry{name: tool.Name, section: section, cost: int(math.Ceil(float64(jsstring.Length(section)) / charsPerToken))})
 	}
-	ordered := make([]*catalogGroup, len(order))
-	for i, key := range order {
-		ordered[i] = groups[key]
-	}
-	slices.SortStableFunc(ordered, func(a, b *catalogGroup) int {
-		switch {
-		case a.namespace == nil && b.namespace == nil:
-			return 0
-		case a.namespace == nil:
-			return -1
-		case b.namespace == nil:
-			return 1
-		}
-		return localecompare.Compare(a.namespace.Name, b.namespace.Name)
-	})
 	shown := selectCatalog(ordered, budget)
 
 	toolSections := []string{"Tools scripts can call (`await tools.<name>(args)`):"}
+	if len(shown) < len(tools) {
+		toolSections = append(toolSections, "Some tools are not listed: find them with `searchTools()`.")
+	}
 	for _, group := range ordered {
-		if len(group.entries) == 0 {
-			continue
+		if group.namespace != nil {
+			toolSections = append(toolSections, "## "+group.namespace.Name+"\n"+jsstring.Trim(group.namespace.Description))
 		}
-		var visible []catalogEntry
 		for _, entry := range group.entries {
 			if shown[entry.name] {
-				visible = append(visible, entry)
+				toolSections = append(toolSections, entry.section)
 			}
-		}
-		if group.namespace != nil {
-			listing := ""
-			switch {
-			case len(visible) == len(group.entries):
-			case len(visible) == 0:
-				listing = " (tools not listed)"
-			default:
-				listing = " (some tools not listed)"
-			}
-			heading := "## " + group.namespace.Name + listing
-			if description := jsstring.Trim(group.namespace.Description); description != "" {
-				heading += "\n" + description
-			}
-			toolSections = append(toolSections, heading)
-		} else if len(visible) < len(group.entries) {
-			toolSections = append(toolSections, "Some tools are not listed: find them with `searchTools()`.")
-		}
-		for _, entry := range visible {
-			toolSections = append(toolSections, entry.section)
 		}
 	}
 	text := strings.Join(toolSections, "\n\n")

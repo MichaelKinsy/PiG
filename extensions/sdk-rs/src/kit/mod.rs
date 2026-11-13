@@ -1236,6 +1236,29 @@ impl Encoded {
             .any(|image| refs.contains(&image.reference))
     }
 
+    /// The view body with the data of every image it references (D614 mounts carry their images whole; no connection
+    /// state decides what the host already holds).
+    pub(crate) fn inline_wire(&self) -> Value {
+        let mut body = self.body.clone();
+        if !self.images.is_empty()
+            && let Value::Object(body) = &mut body
+        {
+            let images = self
+                .images
+                .iter()
+                .map(|image| {
+                    serde_json::json!({
+                        "ref": image.reference,
+                        "mimeType": image.mime_type,
+                        "data": digest::base64(&image.data),
+                    })
+                })
+                .collect();
+            body.insert("images".into(), Value::Array(images));
+        }
+        body
+    }
+
     pub(crate) fn refs(&self) -> Vec<String> {
         self.images
             .iter()

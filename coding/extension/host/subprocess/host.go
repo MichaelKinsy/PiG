@@ -2600,6 +2600,7 @@ func (h *Host) Shutdown(reason string) {
 
 	// All consumers are ending together. Retire their UI/catalog subscriptions before provider removal, so cleanup cannot rebuild and send snapshots to siblings that are also shutting down.
 	if h.uiBridge != nil {
+		h.uiBridge.ViewsShutdown()
 		for _, me := range exts {
 			h.uiBridge.ClearExtensionConn(me.config.Name, me.connection())
 		}
@@ -4659,6 +4660,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		} else {
 			_ = request()
 		}
+		// The reply's frame is reused once the handler holds nothing of it: what leaves is a copy of its result.
+		defer releaseResponse(resp)
 		if streamed && (err != nil || resp.Response == nil || resp.Response.Error != nil) {
 			// The runtime may not hold the payload this frame carried: the next one is a keyframe.
 			if update != nil {
@@ -4753,7 +4756,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			}
 			// A user_bash reply that names a BashOperations object the extension holds becomes the object Pi's runner holds.
 			if event == "user_bash" && len(resp.Response.Result) > 0 {
-				if typed, ok := userBashOperationsResult(conn, resp.Response.Result); ok {
+				//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy per user_bash operation, not per streamed event
+				if typed, ok := userBashOperationsResult(conn, bytes.Clone(resp.Response.Result)); ok {
 					return typed, nil
 				}
 			}
@@ -4762,7 +4766,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			// so null never reaches the Runner as a result value.
 			if result := resp.Response.Result; len(result) > 0 && strings.TrimSpace(string(result)) != "null" {
 				// Return raw JSON for the Runner to interpret.
-				return result, nil
+				//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy of a non-null handler result
+				return slices.Clone(result), nil
 			}
 		}
 

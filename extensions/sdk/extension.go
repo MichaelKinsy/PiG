@@ -263,6 +263,9 @@ type Extension struct {
 	// instead of fetching the entire log over IPC.
 	session sessionMirror
 
+	// views is the D614 mount state: what the attached client draws and the intent handler. It carries its own lock, so it
+	// stands before mu and the replicated fields mu guards; applyAbilities takes every state snapshot.
+	views viewState
 	// session info from host (set after ready message).
 	mu          sync.RWMutex
 	sessionName string
@@ -302,6 +305,8 @@ type Extension struct {
 	themeFeed    stateFeed[UITheme]
 	expandedFeed stateFeed[bool]
 	branchFeed   stateFeed[struct{}]
+	// viewAbilitiesFeed delivers a change of the replicated client abilities (D614) to the OnViewAbilities handlers.
+	viewAbilitiesFeed stateFeed[*ViewAbilities]
 
 	requestsMu sync.Mutex
 	requests   map[string]requestCancel
@@ -734,6 +739,7 @@ func New(name string) *Extension {
 		themeFeed:                stateFeed[UITheme]{what: "theme"},
 		expandedFeed:             stateFeed[bool]{what: "tools expanded"},
 		branchFeed:               stateFeed[struct{}]{what: "footer branch"},
+		viewAbilitiesFeed:        stateFeed[*ViewAbilities]{what: "view abilities"},
 		toolFuncs:                make(map[string]ToolFunc),
 		toolPrepareFuncs:         make(map[string]ToolPrepareArgumentsFunc),
 		commandFuncs:             make(map[string]CommandFunc),
@@ -1381,6 +1387,7 @@ func (e *Extension) stopRequests() error {
 	e.themeFeed.stop()
 	e.expandedFeed.stop()
 	e.branchFeed.stop()
+	e.viewAbilitiesFeed.stop()
 	// The sessions end with the connection, as the host disposes them: no listener runs after it.
 	e.children.closeAll()
 	if e.runCancel != nil {
@@ -1724,6 +1731,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		req.keyOrder, req.Args = nil, nil
 		req.keyMu.Unlock()
 
+	case "ui.view.intent":
+		result, err := e.handleViewIntent(ctx, req.Args)
+		_ = e.conn.respond(id, result, err)
+
 	case "shortcut":
 		e.toolMu.RLock()
 		handler, ok := e.shortcutFuncs[req.Tool]
@@ -1985,6 +1996,8 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				Settings      json.RawMessage `json:"settings"`
 				McpServers    json.RawMessage `json:"mcpServers"`
 				FooterData    *footerDataWire `json:"footerData"`
+				// UIAbilities (D614) is absent while no client is attached; every state is a full snapshot, so absent clears it.
+				UIAbilities json.RawMessage `json:"uiAbilities"`
 			} `json:"state"`
 		}
 		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil {
@@ -2007,6 +2020,9 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.hasUI = *payload.State.HasUI
 		}
 		e.frontend = payload.State.Frontend
+		if changed, abilities := e.views.applyAbilities(payload.State.UIAbilities); changed {
+			e.viewAbilitiesFeed.publish(e, abilities)
+		}
 		if sessionState.SessionFile != "" {
 			e.sessionFile = sessionState.SessionFile
 		}

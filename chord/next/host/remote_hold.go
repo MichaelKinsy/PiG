@@ -135,6 +135,16 @@ type hold struct {
 	touchedFlag bool
 	// counted is whether the hold counts as one of the host's references (`host.activity`): from its arrival until it ends.
 	counted bool
+	// taps are its binding's taps on its instance's event members: their events go into the event flush's message; none
+	// for a variant without event members, and once its object no longer shows it live (state may still follow its
+	// instance then).
+	taps []heldTap
+}
+
+// heldTap is a tap of a bound hold on one event member's node.
+type heldTap struct {
+	node *eventNode
+	tap  *tap
 }
 
 type heldChange struct {
@@ -306,9 +316,11 @@ func (h *hold) moved() {
 		if shown.Kind == RefStateLive {
 			return
 		}
-		// Its instance still changes (a live failure's admitted commits, a restart's old attempt draining): it follows it on
-		// until it stopped (decision "References are the only indirection").
+		// Its instance still changes (a live failure's admitted commits, a restart's old attempt draining): its state follows
+		// it on until it stopped (decision "References are the only indirection"); its events stop now, as a reference's do:
+		// a binding not shown live gets no event (decision "Events: fire-and-forget members").
 		if current.kind == holdBound && object.attachable() == current.instance {
+			h.untap()
 			return
 		}
 		var cause *data.ChordError
@@ -358,7 +370,7 @@ func (h *hold) memberHealed(index int) {
 func (h *hold) unbind(err *data.ChordError) {
 	previous := h.names()
 	if h.state.kind == holdBound {
-		unfollow(&h.state)
+		h.stopFollowing(&h.state)
 	}
 	h.changes = nil
 	h.failures = nil
@@ -453,8 +465,9 @@ func (h *hold) method(index int) (name string, resultBytes bool, err error) {
 }
 
 // boundEntry is the hold's binding, sent when a slot is free. The snapshot of every member, as a value or failed, and the
-// subscription are taken in this synchronous step (race 2), so each member's next ops continue exactly from it. Names
-// travel as indexes into the bound version (2b). Counts one encode (`chord.link.encodes`).
+// subscription are taken in this synchronous step (race 2), so each member's next ops continue exactly from it, and its
+// event members are tapped from the counter value now: it gets only what is emitted after its `bound`. Names travel as
+// indexes into the bound version (2b). Counts one encode (`chord.link.encodes`).
 func (h *hold) boundEntry(ctx context.Context) link.BoundEntry {
 	object := h.object
 	// It binds the instance its object shows it (`shown` live): the live one, or a restart's open old attempt; the object
@@ -511,6 +524,10 @@ func (h *hold) boundEntry(ctx context.Context) link.BoundEntry {
 		if handle, ok := source.(state.SourceHandle); ok {
 			h.follow(bound, index, handle)
 		}
+	}
+	// A variant without event members taps nothing (no cost per binding for contracts without events).
+	if len(bound.names.Events) > 0 {
+		h.tapEvents(bound, instance, version)
 	}
 	h.changes = nil
 	h.failures = nil
@@ -597,7 +614,7 @@ func (h *hold) drop() {
 	host := h.provider.link.host
 	switch {
 	case h.state.kind == holdBound:
-		unfollow(&h.state)
+		h.stopFollowing(&h.state)
 	case h.state.kind == holdUnplaced || (h.state.kind == holdRefused && h.state.cause.Kind == data.FailureWaiting):
 		host.unindex(h.state.request.Type, h)
 	}
@@ -652,7 +669,7 @@ func (h *hold) removed(r removal) {
 		return
 	}
 	if h.state.kind == holdBound {
-		unfollow(&h.state)
+		h.stopFollowing(&h.state)
 	}
 	h.changes = nil
 	h.failures = nil
@@ -668,6 +685,39 @@ func unfollow(bound *holdState) {
 	for _, member := range bound.followed {
 		member.source.Unsubscribe(member.subscriber)
 	}
+}
+
+// stopFollowing stops following every member of a bound hold, and its event members.
+func (h *hold) stopFollowing(bound *holdState) {
+	unfollow(bound)
+	h.untap()
+}
+
+// untap stops its event members (its state may still follow its instance).
+func (h *hold) untap() {
+	for _, tapped := range h.taps {
+		tapped.node.untap(tapped.tap)
+	}
+	h.taps = nil
+}
+
+// tapEvents taps the event members of bound's variant (it has some) on instance at version, from the counter now.
+func (h *hold) tapEvents(bound *holdState, instance *attempt, version int) {
+	boundAt := h.provider.link.host.eventFlow.counter()
+	var taps []heldTap
+	for index, member := range bound.names.Events {
+		node := instance.eventNode(member, version)
+		if node == nil {
+			continue
+		}
+		index := index
+		t := &tap{boundAt: boundAt, deliver: func(entry *eventEntry, flush *eventFlush) {
+			h.provider.queueEvent(h.id, index, entry, flush)
+		}}
+		node.tap(t)
+		taps = append(taps, heldTap{node: node, tap: t})
+	}
+	h.taps = taps
 }
 
 // follow follows member index from its snapshot on (a failed one too: it may recover in this hold): its own encoder and

@@ -69,6 +69,11 @@ export type ClientOptions<P extends Principal> = {
 	 * first span, after the host was made).
 	 */
 	readonly telemetry?: (incarnation: () => string) => TelemetryContext;
+	/**
+	 * Whether the client follows the scripts object (new sets applied, another base `outdated`, the server's base asked
+	 * before each reconnect): yes by default; `false` for a static client (a page built offline and served elsewhere).
+	 */
+	readonly follow?: boolean;
 	readonly onError: (error: ClientError) => void;
 };
 
@@ -94,7 +99,10 @@ export type ClientStyles = {
 /** A running client: its host, once its plugins are loaded, and its stop. */
 export type Client<P extends Principal> = { readonly host: Host<P>; stop(context: Context): Promise<void> };
 
-/** Starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. */
+/**
+ * Starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current from the scripts
+ * object once the server answers (resolving before: a client starts offline).
+ */
 export async function startClient<P extends Principal>(options: ClientOptions<P>): Promise<Client<P>> {
 	const context = BACKGROUND_CONTEXT;
 	let made: Host<P> | undefined;
@@ -106,10 +114,15 @@ export async function startClient<P extends Principal>(options: ClientOptions<P>
 	const { loaded, report } = await LoadedFacets.load(host, options.core, entries, context);
 	if (report.failed.length > 0) options.onError({ kind: "plugins", failed: report.failed });
 	const updates = new Updates(host, loaded, new Set(report.failed.map(({ plugin }) => plugin)), options);
-	const loop = connect(host, options, (state) => {
-		if (state === "connected") updates.reconnected(context);
+	const follow = options.follow !== false;
+	// A static client asks no base: it never learns it is outdated.
+	const serverBase = follow ? options.serverBase : async () => undefined;
+	const loop = connect(host, options, serverBase, (state) => {
+		if (follow && state === "connected") updates.reconnected(context);
 	});
-	await updates.follow(context);
+	// In the background: the scripts object is the server's, and a client starts (a page renders) without it, offline too.
+	if (follow)
+		void updates.follow(context).catch((error: unknown) => options.onError({ kind: "update_failed", error }));
 	return {
 		host,
 		stop: async (ctx) => {
@@ -127,6 +140,7 @@ export async function startClient<P extends Principal>(options: ClientOptions<P>
 function connect<P extends Principal>(
 	host: Host<P>,
 	options: ClientOptions<P>,
+	serverBase: () => Promise<string | undefined>,
 	onState: (state: ConnectionState) => void,
 ): { stop(): void } {
 	return keepConnected({
@@ -142,7 +156,7 @@ function connect<P extends Principal>(
 			onState(state);
 		},
 		canRetry: async () => {
-			const base = await options.serverBase();
+			const base = await serverBase();
 			if (base !== undefined && base !== options.base) {
 				options.outdated();
 				return false;
@@ -244,15 +258,20 @@ class Updates<P extends Principal> {
 		const held = this.#host.hold(this.#options.scripts, {}, context);
 		this.#release = () => held.release();
 		const watch = await held.set.watch(withAbortSignal(this.#abort.signal, context));
+		// The set shown when the watch began (a set published before it, while the client started, is no frame).
+		void this.#take(watch.value as ScriptSet, context);
 		watch.start(async (call, ctx) => {
-			if (call.kind !== "value") return;
-			const set = call.value as ScriptSet;
-			this.#latest = set;
-			this.#retry?.cancel();
-			this.#retry = undefined;
-			this.#pause = 0;
-			await this.#queue(set, ctx);
+			if (call.kind === "value") await this.#take(call.value as ScriptSet, ctx);
 		});
+	}
+
+	/** Takes `set` as the newest: a pending retry of an older one is dropped, `set` applied in turn. */
+	#take(set: ScriptSet, context: Context): Promise<void> {
+		this.#latest = set;
+		this.#retry?.cancel();
+		this.#retry = undefined;
+		this.#pause = 0;
+		return this.#queue(set, context);
 	}
 
 	/**

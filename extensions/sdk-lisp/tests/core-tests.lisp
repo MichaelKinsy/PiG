@@ -87,9 +87,9 @@
           (check-equal "exec.cancel" (pig:jget (pig:jget cancel "call") "method"))
           (check-equal (pig:jget args "execId") (pig:jget (pig:jget (pig:jget cancel "call") "args") "execId"))
           (answer-call host cancel nil))
-        (answer-call host call (pig:obj "stdout" "so far" "code" 0 "killed" t))
+        (answer-call host call (pig:obj "stdout" "so far" "code" 143 "killed" t))
         (hread-type host "response")
-        (check-equal '(t 0 "so far") *core-result*)))))
+        (check-equal '(t 143 "so far") *core-result*)))))
 
 (deftest execute-tool-delivers-updates-in-order-and-returns-the-outcome
   (let ((updates '()))

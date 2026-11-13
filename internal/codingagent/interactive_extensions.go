@@ -479,6 +479,22 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 			above = append(above, entry.component)
 		}
 	}
+	// pig additive (D614): the mounts the terminal view client draws follow the widgets of their side, and the panels are
+	// the rows nearest the editor.
+	for _, region := range [...]viewRegion{viewAboveEditor, viewPanel, viewBelowEditor} {
+		if region == viewPanel && m.viewTabRow != nil {
+			above = append(above, m.viewTabRow)
+		}
+		for _, mount := range m.viewMounts {
+			switch {
+			case mount.slot.region != region:
+			case region == viewBelowEditor:
+				below = append(below, mount)
+			default:
+				above = append(above, mount)
+			}
+		}
+	}
 	// pig divergence (D228): the one-time copy tip sits under the editor, after the below-editor widgets.
 	if m.queueCopyTip != nil {
 		below = append(below, m.queueCopyTip)
@@ -657,6 +673,8 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	b.SetHostAction("getSystemPromptOptions", func() extension.BuildSystemPromptOptions {
 		return *m.currentSystemPromptOptions()
 	})
+	// Interactive mode has no version of its base options, which an in-process extension may edit in place, so it reports no key and the bridge encodes the options for every state push.
+	b.SetHostAction("getSystemPromptOptionsKey", func() any { return nil })
 
 	// getEntriesPage backs bounded per-extension state pushes. Session entries
 	// are append-only, so a cursor beyond the current length means the session

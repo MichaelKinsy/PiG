@@ -11,6 +11,19 @@
 # The scenario reads the raw transcript (tmux pipe-pane) and counts frames that begin after the last occurrence of the reply text, in both binaries.
 # Mutation runs: restoring the RequestRender in handleAgentEvent's AgentSettledEvent case, and restoring the turn's final flush, each fail the pig run with
 # "N frame(s) began after the reply text".
+#
+# The marker is not in the prompt (2026-11-12, xd670, Ubuntu 26.04, tmux 3.6a, Pi 1.5.2 source oracle b4afdddf, a timestamping transcript reader, 8 runs of each
+# binary). The step used to type "reply with exactly: FRAMETAILOK", whose reply is the same word, so wait_contains fired on the typed prompt in the editor, a
+# millisecond before Enter, and only the fixed 1 s settle lay between the keys and the read of the transcript. In a transcript that lacked the reply the last
+# occurrence of the text was the typed prompt, and the clear of the editor on Enter counted as a frame after the reply (Pi: 20 of 20 runs); a PiG transcript cut before
+# its reply frame passed without the comparator seeing the frame it guards (PiG: 0 of 20 failed). The transcripts were short because the runner read them through cat,
+# which on this host is uutils coreutils 0.8.0 and stops copying the pipe-pane socket after the first chunk; the runner's own reader (transcript.go) replaced it, and a
+# transcript whose reader did not finish is an error. The prompt "Send after overflow compaction" gets the reply "queued-after-compaction-ok" from the fake
+# provider on both sides (test-faux-provider.ts and ai/test_faux.go: a text-only reply like "reply with exactly:", no compaction, no extra turn), so the token the
+# step waits for and reads exists only in the reply, and a transcript without it fails as "the reply text is not in the raw transcript".
+# Measured frames with a complete transcript: Pi writes the typed prompt, clears the editor 1 ms after Enter, and 35 ms after Enter writes ONE frame that holds the user
+# message, the reply and the footer, then nothing (the fake provider answers in one chain of microtasks, so the 16 ms render throttle of tui.ts coalesces the turn's
+# requests); PiG writes the typed prompt, the clear, a frame with the user message and the working indicator and, 5 ms later, the frame with the reply, which is its last.
 
 name = "68-no-frame-after-reply"
 description = "No frame begins after the frame that carries the end of a reply, in the raw terminal stream."
@@ -36,16 +49,16 @@ height = 35
 ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
-capture_start = "reply with exactly: FRAMETAILOK"
-capture_end = "FRAMETAILOK"
+capture_start = "queued-after-compaction-ok"
+capture_end = "queued-after-compaction-ok"
 
 [[tmux.steps]]
-keys = ["reply with exactly: FRAMETAILOK", "Enter"]
+keys = ["Send after overflow compaction", "Enter"]
 settle_seconds = 1
-wait_contains = ["FRAMETAILOK"]
+wait_contains = ["queued-after-compaction-ok"]
 wait_timeout_seconds = 10
 [tmux.steps.final_frame]
-text = "FRAMETAILOK"
+text = "queued-after-compaction-ok"
 quiet_milliseconds = 400
 
 [assert]

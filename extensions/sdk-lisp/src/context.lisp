@@ -311,7 +311,7 @@ MAX-BUFFER caps the bytes of stdout and stderr together (default 256 MiB, capped
 result reports TRUNCATED and KILLED with a nonzero code; a character the cap cuts is dropped whole. It must be an integer from 0 to the runtime string limit: the
 host fails the call for a fraction, a negative value or one above the limit, and a NaN or infinity signals a host-call-error here, as it cannot cross the wire.
 SIGNAL, an abort-signal, ends the command when it is set (SIGTERM to the command alone, SIGKILL five seconds later if it has not exited): the call returns the output
-so far, killed, code 0. It replaces the cancellation of the calling request."
+so far, killed, code 143 (128 + SIGTERM). It replaces the cancellation of the calling request."
   (let ((call-args (obj "command" command "args" (coerce args 'simple-vector)))
         (options (obj)))
     (when timeout (setf (gethash "timeout" options) timeout))

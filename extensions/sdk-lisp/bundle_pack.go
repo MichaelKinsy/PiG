@@ -75,10 +75,11 @@ var bundledFiles = []string{
 	"src/type-engine.lisp",
 	"src/type-schema.lisp",
 	"src/ui-custom.lisp",
+	"src/ui-view.lisp",
 	"src/virtual-model.lisp",
 	"src/widgets.lisp",
 	"src/wire.lisp",
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "6dfcb12eb8fc17ca"
+const stagedHash = "f4640dc4ca1652b5"

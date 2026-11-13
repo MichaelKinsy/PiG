@@ -183,3 +183,43 @@ func TestUpdateOverThePinnedMirrorWritesTheLedger(t *testing.T) {
 		t.Fatalf("the update wrote no gap baseline: %v", err)
 	}
 }
+
+// A check writes nothing, so it runs over any mirror. Over another Pi's mirror its verdict is that Pi's: make test-carried-oracles left
+// .upstream/current at the commit it tests, the next make interface-gaps reported seven gaps in pkg:durable that the tree does not have,
+// and nothing in the output said why. A failed check over such a mirror names the mirror and the fix; over the pin's it reads as before.
+func TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild(t *testing.T) {
+	root, reach := mirrorFixture(t)
+	args := []string{"-root", root, "-reach", reach, "-out", filepath.Join(root, "build/interface-gaps")}
+	writeMirror(t, root, pigversion.UpstreamVersion, pigversion.UpstreamRef, pigversion.UpstreamCommit, pigversion.UpstreamPackageVersion)
+	if code, out := runAutobind(t, append(args, "-update")...); code != 0 {
+		t.Fatalf("autobind -update over the pinned mirror exited %d; output:\n%s", code, out)
+	}
+	if code, out := runAutobind(t, append(args, "-check")...); code != 0 {
+		t.Fatalf("autobind -check of the ledger just written exited %d; output:\n%s", code, out)
+	}
+	mapping := filepath.Join(root, "test/parity/interfaces/mapping-v"+pigversion.UpstreamVersion+".json")
+	data, err := os.ReadFile(mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(mapping, append(data, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out := runAutobind(t, append(args, "-check")...)
+	if code == 0 || !strings.Contains(out, "is not what the detector derives") {
+		t.Fatalf("autobind -check of a ledger that is not the derived one exited %d; output:\n%s", code, out)
+	}
+	if strings.Contains(out, "make upstream-mirror") {
+		t.Errorf("the failed check over the pinned mirror names the mirror; output:\n%s", out)
+	}
+	writeMirror(t, root, pigversion.UpstreamVersion+"+33333333", strings.Repeat("3", 40), strings.Repeat("3", 40), pigversion.UpstreamPackageVersion)
+	code, out = runAutobind(t, append(args, "-check")...)
+	if code == 0 || !strings.Contains(out, "is not what the detector derives") {
+		t.Fatalf("autobind -check over another Pi's mirror exited %d; output:\n%s", code, out)
+	}
+	for _, want := range []string{"this verdict is not the pin's", strings.Repeat("3", 40), "make upstream-mirror"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the failed check over another Pi's mirror does not say %q; output:\n%s", want, out)
+		}
+	}
+}

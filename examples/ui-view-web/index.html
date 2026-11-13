@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PiG plugin views</title>
+<style>
+  :root { color-scheme: light dark; font: 15px/1.45 system-ui, sans-serif; }
+  body { margin: 0; display: flex; justify-content: center; }
+  main { width: min(52rem, 100%); min-height: 100vh; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; box-sizing: border-box; }
+  section[data-slot] { display: flex; flex-direction: column; gap: .5rem; }
+  section[data-slot]:empty { display: none; }
+  #chat { flex: 1; display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; }
+  .line { white-space: pre-wrap; padding: .35rem .6rem; border-radius: .4rem; background: color-mix(in srgb, CanvasText 6%, Canvas); }
+  .line.user { align-self: flex-end; background: color-mix(in srgb, Highlight 25%, Canvas); }
+  .line.note { font-size: .85em; opacity: .75; }
+  .mount { border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .5rem; padding: .6rem; }
+  .mount > header { display: flex; gap: .5rem; align-items: center; font-size: .8em; opacity: .75; margin-bottom: .4rem; }
+  .mount > header span { flex: 1; }
+  .mount > footer { font-size: .8em; opacity: .75; margin-top: .4rem; min-height: 1.2em; }
+  .hstack { display: flex; flex-direction: row; gap: .5rem; align-items: baseline; }
+  .vstack, .container, .box { display: flex; flex-direction: column; gap: .25rem; }
+  .box { padding: .35rem .6rem; border-radius: .35rem; background: color-mix(in srgb, CanvasText 5%, Canvas); }
+  .text, .lines { white-space: pre-wrap; margin: 0; font: inherit; }
+  .lines { font-family: ui-monospace, monospace; }
+  .rule { border: 0; border-top: 1px solid color-mix(in srgb, CanvasText 30%, Canvas); width: 100%; }
+  [role=listbox] { display: flex; flex-direction: column; border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .35rem; }
+  [role=option] { padding: .2rem .5rem; cursor: pointer; display: flex; gap: .75rem; }
+  [role=option] small { opacity: .7; }
+  [role=option][aria-selected=true] { background: color-mix(in srgb, Highlight 30%, Canvas); }
+  .mouse-region { cursor: pointer; border: 1px dashed color-mix(in srgb, CanvasText 35%, Canvas); border-radius: .35rem; padding: .3rem .5rem; }
+  .scroll-view { max-height: 9rem; overflow-y: auto; border: 1px solid color-mix(in srgb, CanvasText 20%, Canvas); border-radius: .35rem; padding: .3rem .5rem; }
+  .undrawn { font-style: italic; opacity: .6; }
+  :focus-visible { outline: 2px solid Highlight; outline-offset: 1px; }
+  input, textarea, select, button { font: inherit; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 4rem; }
+  form.arg { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .4rem; }
+  section[data-slot=notify] { position: fixed; top: .75rem; right: .75rem; width: 18rem; }
+  section[data-slot=dialog], section[data-slot=overlay] { position: fixed; inset: 15% 0 auto 0; margin: auto; width: min(36rem, 92%); background: Canvas; box-shadow: 0 .5rem 2rem #0006; border-radius: .5rem; }
+  #prompt { display: flex; gap: .5rem; }
+  #prompt input { flex: 1; padding: .4rem .6rem; }
+  #state { font-size: .8em; opacity: .7; }
+</style>
+</head>
+<body>
+<main>
+  <section data-slot="header"></section>
+  <div id="chat" aria-live="polite">
+    <section data-slot="message"></section>
+    <section data-slot="entry"></section>
+    <section data-slot="tool-card"></section>
+    <section data-slot="panel"></section>
+  </div>
+  <section data-slot="widget-above"></section>
+  <form id="prompt"><input name="message" autocomplete="off" aria-label="Message" placeholder="Message, or a /command of an extension"><button>Send</button></form>
+  <section data-slot="widget-below"></section>
+  <section data-slot="status"></section>
+  <section data-slot="footer"></section>
+  <div id="state" role="status">connecting</div>
+</main>
+<section data-slot="notify"></section>
+<section data-slot="dialog"></section>
+<section data-slot="overlay"></section>
+<script type="module" src="client.js"></script>
+</body>
+</html>

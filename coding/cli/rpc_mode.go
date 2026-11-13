@@ -33,6 +33,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/viewcarrier"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -264,6 +265,15 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 		}
 		writeJSONLine(rawStdout, v)
 	}
+	// pig additive (D614): the plugin UI carrier's event lines are encoded when they are queued and enter the same ordered tail.
+	writeLine := func(line []byte) {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		if stdoutClosed.Load() {
+			return
+		}
+		_, _ = rawStdout.Write(line)
+	}
 	responses := &rpcResponseTurn{write: writeImmediate}
 	writeRPC := func(v any) {
 		switch v.(type) {
@@ -346,7 +356,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	host.rt = rt
 	runRpcMode(withRPCModeOptions(ctx, rpcModeOptions{
 		exitCode: &exitCode, host: host, cancel: cancel, shutdownGate: shutdownGate, stdoutClosed: &stdoutClosed,
-		rawStdout: rawStdout, transport: transport, responses: responses, writeRPC: writeRPC, writeImmediate: writeImmediate, rpcUI: rpcUI,
+		rawStdout: rawStdout, transport: transport, responses: responses, writeRPC: writeRPC, writeImmediate: writeImmediate, writeLine: writeLine, rpcUI: rpcUI,
 		promptWG: &promptWG, bashWG: &bashWG, commandWG: &commandWG,
 	}), rt)
 	return exitCode
@@ -366,6 +376,7 @@ type rpcModeOptions struct {
 	responses      *rpcResponseTurn
 	writeRPC       func(any)
 	writeImmediate func(any)
+	writeLine      func([]byte)
 	rpcUI          *rpcUIContext
 	promptWG       *sync.WaitGroup
 	bashWG         *sync.WaitGroup
@@ -411,6 +422,18 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	var compactResolved <-chan struct{} = initialResolved
 	runner := func() *inproc.Runner { return rt.Session().ExtensionRunner() }
 	commandCatalog := func() headlessCommandCatalog { return host.admission.Load().catalog }
+	// pig additive (D614): the plugin UI carrier of this connection. It writes nothing until the client attaches, and its events enter the tail from one goroutine per attachment, which alone waits on the client.
+	views := viewcarrier.New(viewcarrier.Transport{
+		Host: func() viewcarrier.Host {
+			if _, bridge := rpcExtensionHost(sess()); bridge != nil {
+				return bridge
+			}
+			return nil
+		},
+		Write:   options.writeLine,
+		Flushed: rawStdout.Wait,
+	})
+	defer views.Close()
 
 	// Upstream shutdown() runs once, on stdin end, ctx.shutdown(), or the first termination signal (rpc-mode.ts:728-744). It stops writing
 	// Session events and awaits runtimeHost.dispose(): session_shutdown, then AgentSession.dispose, while the Session still runs. It then
@@ -1046,6 +1069,18 @@ commandLoop:
 			rpcUI.HandleResponse(env.Raw)
 			continue
 		}
+		// pig additive (D614): the seven plugin UI carrier commands. Every other type, a near miss of these names included, takes Pi's path below.
+		if viewcarrier.Handles(string(env.Type)) {
+			views.Handle(env.ID, string(env.Type), env.Raw, func(response any, written func()) {
+				turn.Microtask(func() {
+					writeImmediate(response)
+					if written != nil {
+						written()
+					}
+				})
+			})
+			continue
+		}
 
 		var adaptMessage string
 		var adaptFailed bool
@@ -1638,6 +1673,8 @@ commandLoop:
 	// is in commandWG, so waiting first would deadlock on EOF.
 	cancel()
 	rpcUI.Close()
+	// The connection ended: its attachment ends with it, and an intent in flight settles stale.
+	views.Close()
 	host.tasks.CloseAndWait()
 	responses.Begin()
 	responses.End()

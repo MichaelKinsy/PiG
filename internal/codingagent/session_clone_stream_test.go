@@ -121,7 +121,7 @@ func TestCloneReadsNoSourceEntryBackToDecodeIt(t *testing.T) {
 	}
 	resident := 0
 	for i := range source.slots {
-		if source.slots[i].entry != nil {
+		if source.resident.get(i) != nil {
 			resident++
 		}
 	}
@@ -180,7 +180,7 @@ func TestCloneReadsRecordsFromCompressedBlocks(t *testing.T) {
 			source, leaf, appended := blockBackedSource(t)
 			inBlocks := 0
 			for i := range source.slots {
-				if slot := &source.slots[i]; slot.entry == nil && source.coldPart(slot).block != 0 {
+				if source.resident.get(i) == nil && source.coldPart(&source.slots[i]).blockOf() != 0 {
 					inBlocks++
 				}
 			}

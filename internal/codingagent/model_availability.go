@@ -19,9 +19,9 @@ func (r *ModelRegistry) SetAvailabilitySnapshot(configured func(providerID strin
 	r.availabilityAuth, r.registrationSync = configured, sync
 }
 
-// AvailabilityReadContext gives a full availability pass one view of auth.json (readSnapshotContext) when no provider in it runs extension
-// code. Pi's runAvailabilityRefresh makes every credential read before any I/O of the pass completes, so the pass stats once. An extension
-// provider's check runs its own code between Pi's reads, so a pass with one reads as before, each read statting.
+// AvailabilityReadContext gives a full availability pass one view of auth.json: one revision check at the start of the pass serves all of its
+// reads. Pi's runAvailabilityRefresh makes every credential read before any I/O of the pass completes, so a pass without extension providers
+// publishes what Pi's does and may run its providers on the caller (readSnapshotContext).
 func (r *ModelRegistry) AvailabilityReadContext(ctx context.Context) context.Context {
 	r.mu.RLock()
 	extension := len(r.native) > 0
@@ -30,9 +30,18 @@ func (r *ModelRegistry) AvailabilityReadContext(ctx context.Context) context.Con
 	models := r.nativeModels
 	r.nativeMu.Unlock()
 	if extension || models != nil && len(models.GetProviders()) > 0 {
-		return ctx
+		// pig divergence (D628): a pass with an extension provider takes the one view too, on a goroutine per provider. Pi stats on every
+		// credential read (auth-storage.ts:409), so an extension provider's check that rewrites auth.json on disk is used by the later reads
+		// of Pi's pass; here it is used by the next request and the next pass.
+		return ai.WithFileReadSnapshot(ctx)
 	}
 	return r.readSnapshotContext(ctx, false)
+}
+
+// availabilityPassContext gives a synchronous availability pass (GetAvailableModelData, AvailableProviderCount) one view of auth.json. The pass
+// reads on its caller and runs no provider code between its reads.
+func availabilityPassContext() context.Context {
+	return ai.WithFileReadSnapshot(context.Background())
 }
 
 // readSnapshotContext starts an operation's file-read snapshot. When the credential store, and with catalogs also the models store, are PiG's
@@ -171,6 +180,6 @@ func (r *ModelRegistry) availableProviderModels(ctx context.Context, id string) 
 		return nil, err
 	}
 	models := r.GetProviderModelData(id)
-	filter := r.accountModelFilter(id)
+	filter := r.accountModelFilter(context.WithoutCancel(ctx), id)
 	return slices.DeleteFunc(models, func(model *ai.Model) bool { return !filter(model.ID) }), nil
 }

@@ -9,9 +9,9 @@ import (
 // Pi's isRetryableAssistantError (utils/retry.js) run against the vendored Pi module: both case-insensitive, non-unicode JavaScript RegExps over error text with every separator spelling `.?` accepts (JS `.` excludes \n, \r, U+2028 and U+2029), ASCII-only case folding and UTF-16 units. Known gap, not in the corpus: a supplementary character between the words, which a non-unicode `.?` cannot span (two units) and Go's `.` spans (one code point); lazyregexp.NewJSIgnoreCase documents it.
 func TestIsRetryableAssistantErrorMatchesPiOracle(t *testing.T) {
 	var messages []string
-	phrases := []string{"rate.limit", "timed out", "service unavailable", "provider returned error", "websocket closed", "internal error", "connection refused", "insufficient_quota", "ResourceExhausted", "billing", "quota exceeded", "ENOTFOUND", "retry delay", "ended without", "socket hang up"}
+	phrases := []string{"rate.limit", "timed out", "service unavailable", "provider returned error", "websocket closed", "internal error", "connection refused", "insufficient_quota", "ResourceExhausted", "billing", "quota exceeded", "ENOTFOUND", "retry delay", "ended without", "socket hang up", "connection closed", "Connection closed.", "CONNECTION CLOSED", "connection was closed", "socket connection was closed"}
 	separators := []string{" ", "_", "-", "", "\n", "\r", "\u2028", "\u2029", "\t", "\u0085", "\u00a0", "ab", "é", "\v", "\f"}
-	cases := []string{"rate%slimit", "service%sunavailable", "provider%sreturned%serror", "websocket%sclosed", "internal%serror", "connection%srefused"}
+	cases := []string{"rate%slimit", "service%sunavailable", "provider%sreturned%serror", "websocket%sclosed", "internal%serror", "connection%srefused", "connection%sclosed"}
 	for _, format := range cases {
 		for _, separator := range separators {
 			messages = append(messages, replaceAllSep(format, separator), "Error: "+replaceAllSep(format, separator)+" (retry later)")
@@ -26,6 +26,7 @@ func TestIsRetryableAssistantErrorMatchesPiOracle(t *testing.T) {
 		"ſerver error", "server\u00a0error", "SERVER_ERROR", "sErVeR.eRrOr", "5xx", "500", "5000", "x500x", "50", "reset before headers", "RESET BEFORE HEADERS", "upstream\u2028connect", "upstream\u2029connect", "upstream\nconnect", "upstream\rconnect", "upstream connect",
 		"😀 429", "stream ended before message_stop", "stream ended before a terminal response event", "HTTP2 request did not get a response", "pending stream has been canceled", "you can retry your request", "TRY YOUR REQUEST AGAIN",
 		"subscription_sharing_usage_limit_exceeded 503", "subscription_sharing_usage_unavailable", "Monthly usage limit reached 429", "available balance", "AVAILABLE BALANCE 500", "out of budget", "Out Of Budget",
+		`{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`, "Connection closed by proxy server before the response completed", `{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}`, "connection\u2028closed", "connectionclosed", "Connection closed 429 billing",
 	)
 	type result struct {
 		Retryable bool `json:"retryable"`

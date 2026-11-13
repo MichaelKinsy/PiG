@@ -1,6 +1,16 @@
 {
 	"commit": "b4afdddf44e059c67ccf5097e5317d913521b470",
 	"pin": "b4afdddf44e059c67ccf5097e5317d913521b470",
+	"carried": [
+		"bb3e7a05e01359d5c94b54fdfc73de3a2d04c2a6",
+		"edbdf8d1cf1d57c97047dc4928bde95ea582135e",
+		"df9114563eee224abd0b7a562d8c7502af314599",
+		"b033ade0006e4538d963dc95d419c5ae9eb54b78",
+		"8d30e63067c5b0ebef4e0f8fe4150a5dd7a53d7e",
+		"22fe46c7b889bb469017e00f621ec1f2779d7809",
+		"da44c4df38c9e74a1bcb165af237e86c1ad33124",
+		"3c771bd18ebf71be1ee6a2df5a9b214d123b755d"
+	],
 	"piSchema": "1.5.2",
 	"piTelemetry": "1.5.2",
 	"files": [
@@ -10,23 +20,23 @@
 		},
 		{
 			"path": "pi/chord/src/contracts/accepts.ts",
-			"sha256": "a9108237a7f26e4799534c72b0c6c23f8215cc5e7e7a289c3f32d03e29a7c74c"
+			"sha256": "cbd27da2d0da705e356f8bf713671dc145335cbbeeb8ff729fde5720e991e416"
 		},
 		{
 			"path": "pi/chord/src/contracts/contract.ts",
-			"sha256": "e23a04a3bf3a4d7f569ce96ecceb801f5268099c0fe83f747ff6a1c25c61524a"
+			"sha256": "0c660936d1b3586dc04a0eccf3765aa5a2ab3741d8c255c71c342cdfaf40eaed"
 		},
 		{
 			"path": "pi/chord/src/contracts/declare.ts",
-			"sha256": "1675ae26f43db4c1cb96da0db60a182a50c2c2c8d5fb148971d66e9bd09df57d"
+			"sha256": "85e848d8e4c2ebba14a84f69311260937369fe1b0e29ab79175b762f2a675911"
 		},
 		{
 			"path": "pi/chord/src/contracts/evolve.ts",
-			"sha256": "6ca7c79ed053369961ef6a0e14827bbc022a0388287c30f15d3f951b5f955451"
+			"sha256": "165d90ee71f34f6bc76a0e272f87325c34ef2272934c3c27b3a553fa22a15263"
 		},
 		{
 			"path": "pi/chord/src/contracts/fingerprint.ts",
-			"sha256": "b807e92b2ab8a99a73e2e397a362b7d78878ea807fa0f172582a80681df721fa"
+			"sha256": "cf8db2b4e84208553e500da16c38d1031c27924f2d2e2ed558e2889bec993910"
 		},
 		{
 			"path": "pi/chord/src/contracts/host-kind.ts",
@@ -34,7 +44,7 @@
 		},
 		{
 			"path": "pi/chord/src/contracts/index.ts",
-			"sha256": "ca1c999d409b30bd1420c6216de4cd13c2aa33945b831e8550081286d91360f8"
+			"sha256": "e659a923ccaf6394f58039c14acb1e73af9ff0472e35a41a03bc4cda70296e29"
 		},
 		{
 			"path": "pi/chord/src/contracts/internal.ts",
@@ -50,7 +60,7 @@
 		},
 		{
 			"path": "pi/chord/src/contracts/schema.ts",
-			"sha256": "3942d3ffcba96388dec489a0bd9adc0e92df693e50e94d93c2b78c3a63e67b3a"
+			"sha256": "50274b0c39b68ef006f209c41d3d16f31147341e8b587e39a8d17d0bdfbe8d30"
 		},
 		{
 			"path": "pi/chord/src/contracts/snapshot.ts",
@@ -166,11 +176,11 @@
 		},
 		{
 			"path": "pi/chord/src/host/adapted.ts",
-			"sha256": "b2f87f789d8e776a6a11b37b4fcaa88a5468dfd3912bb5877ee34f051cbfc90a"
+			"sha256": "e2f3d451233266b0c13d0a434f1b86b0a8de216ea9ebfa5864b673bb47f2e03f"
 		},
 		{
 			"path": "pi/chord/src/host/attempt.ts",
-			"sha256": "1cf6f35d4e85d3326deda8f92b862c4e790f8423f40253bce29457545c2362c8"
+			"sha256": "8cffaed968afe86fe11351749276871e16615b94a11bae61f453d935aeeec822"
 		},
 		{
 			"path": "pi/chord/src/host/backoff.ts",
@@ -193,6 +203,10 @@
 			"sha256": "f9e05d38d74d734bfc26bc7b7bf9d0024a03d2529d2032c8d5e37935f10313f8"
 		},
 		{
+			"path": "pi/chord/src/host/events.ts",
+			"sha256": "8b70760a913e19fe0a3b30e260a9c6690c668de875a3d1a5aad7e8f3a2634dff"
+		},
+		{
 			"path": "pi/chord/src/host/facet.ts",
 			"sha256": "0ee7e54b360f34c705db0a69038858135d49d4774e24266692d99a32f28d78a5"
 		},
@@ -206,7 +220,7 @@
 		},
 		{
 			"path": "pi/chord/src/host/host.ts",
-			"sha256": "b31bd0ac56350e3a0183a0a39e33f494f512e174a096d8b040fdab34e97e3e08"
+			"sha256": "dd410ca34a060bfd6fa5715005bc0f05375f745e4d4e9f1b4b08a3023c51c02a"
 		},
 		{
 			"path": "pi/chord/src/host/index.ts",
@@ -214,11 +228,11 @@
 		},
 		{
 			"path": "pi/chord/src/host/internal.ts",
-			"sha256": "2b41e1c3f3befbd6899a05e844288231da75338fbbdf64e873e53b318bfd4fee"
+			"sha256": "47b4acae21170e817898f541c6616469acd811307b540c31cd3e5e9196359149"
 		},
 		{
 			"path": "pi/chord/src/host/members.ts",
-			"sha256": "872a98892aaa8e7fd6b0b2468e12695338d9c84ff09576963239a2c0d656489f"
+			"sha256": "28e3534c0377104735463cbb682ed6b0e97dfe2ddb959d9cabe1b2fb2ba0ffa7"
 		},
 		{
 			"path": "pi/chord/src/host/native.ts",
@@ -249,6 +263,10 @@
 			"sha256": "8067afa29a332cad25e2f1fc40c1255acf3f8e2e2f75860786ea96787911a966"
 		},
 		{
+			"path": "pi/chord/src/host/reference-events.ts",
+			"sha256": "8d6a277cf2903d8f63e495ffa9120d8d898062e30d1a380ea564fb86e02246d5"
+		},
+		{
 			"path": "pi/chord/src/host/reference-keys.ts",
 			"sha256": "e5cb7be79b754ce455954797e09fed63b088f4d7642e1a98e61a498449e15f98"
 		},
@@ -258,7 +276,7 @@
 		},
 		{
 			"path": "pi/chord/src/host/reference.ts",
-			"sha256": "cc83f8cb327100ea88441c8f8bdd04af4d616b3deb331ee4184ef70d87b2f2ef"
+			"sha256": "1334f0a290f37293169298cb0c1b50bfddba9c987136a87def4977c102b73d11"
 		},
 		{
 			"path": "pi/chord/src/host/reload-cycle.ts",
@@ -290,7 +308,7 @@
 		},
 		{
 			"path": "pi/chord/src/host/staging.ts",
-			"sha256": "0d252bd69672ff652642d565b64f464ed28664579d8e2682d3c522930bd6a47f"
+			"sha256": "56c429ea0c06d82a344b6a8b066a475234d0161491165cbd38a2614ff84a5738"
 		},
 		{
 			"path": "pi/chord/src/host/unbound-clock.ts",
@@ -354,11 +372,11 @@
 		},
 		{
 			"path": "pi/chord/src/link/binary.ts",
-			"sha256": "d1db55f6e0b9e6daea676f717f56dca93f4f762d19063331a431fa598ed9d562"
+			"sha256": "12ac9196a048fdfa2c7c3bd49d72115bf6e9c7ae7dcbef41efde79a8869484ff"
 		},
 		{
 			"path": "pi/chord/src/link/channel.ts",
-			"sha256": "47fe2a6d3cba15602fd256c4214a76944108e79b226e82095e15ff11ad8e2ef6"
+			"sha256": "e5f95b02d8e144067763b8e3504f438e1a780e7a2cc2149d4bcd82028ba282dc"
 		},
 		{
 			"path": "pi/chord/src/link/errors.ts",
@@ -370,7 +388,7 @@
 		},
 		{
 			"path": "pi/chord/src/link/internal.ts",
-			"sha256": "55ec7dcce180652a80f8594bcd3d88970f1787876494e32d978dd6d2ff4c33c1"
+			"sha256": "858b164468fc14863a4e310e985478ad6442caf32b27593501b9cb55e4421325"
 		},
 		{
 			"path": "pi/chord/src/link/ipc.ts",
@@ -382,7 +400,7 @@
 		},
 		{
 			"path": "pi/chord/src/link/message.ts",
-			"sha256": "d0a74009bd16b6c56bbe0c78b8bb7f15e939da9cf6deca450d81a0a092160ccd"
+			"sha256": "e323bafd127f2c7a8ee37a79bc2afeed21853abb2dbfacc0aef87f3d1eeaf477"
 		},
 		{
 			"path": "pi/chord/src/link/part.ts",
@@ -390,7 +408,7 @@
 		},
 		{
 			"path": "pi/chord/src/link/text.ts",
-			"sha256": "89f99e7ddac22213ec1ea7982b1327cf47315fd240ebc8434b1b71b850e1aacb"
+			"sha256": "3da0084ae4c9f0967a2377a12b8bfa76cf3210c62ce6ce7e2694b1223d4a01ce"
 		},
 		{
 			"path": "pi/chord/src/link/values.ts",
@@ -446,19 +464,19 @@
 		},
 		{
 			"path": "pi/chord/src/remote/calls.ts",
-			"sha256": "0d35145aaa39e69ffedf6bdcba300cc54723cdbdc7afba89ef2e943d588a8823"
+			"sha256": "4312659f14786ee74d2c9b8ac340a4b320cb868dc192495efa5af9281583e6d4"
 		},
 		{
 			"path": "pi/chord/src/remote/consumer.ts",
-			"sha256": "17b4b2993f8da9e1a6f9f3dd13102539b654f94feadb975b7c741ab0bc2d2528"
+			"sha256": "b1c7f0d1cc1d901abe24e551efed727386c962741d3f1905a3598fc7e5b4bda8"
 		},
 		{
 			"path": "pi/chord/src/remote/hold.ts",
-			"sha256": "223f9c6b43e5f6f8e8265094dc67e457ed7f9f549dd500db860d209b29d1fad3"
+			"sha256": "9625dd847d9dc866562f9bcd8d67fc02cd14ae2e0633e881600bc18daf6fd2d0"
 		},
 		{
 			"path": "pi/chord/src/remote/host-link.ts",
-			"sha256": "c682a523653e5bd87a1e1be8bff040e20519980f65f4f2a0d59ea91e2cef2d5e"
+			"sha256": "ed8b406f025269d6db9b6986c3409a4fa8cd84d3dd0ce9d96edb1570dcd17f93"
 		},
 		{
 			"path": "pi/chord/src/remote/internal.ts",
@@ -470,15 +488,15 @@
 		},
 		{
 			"path": "pi/chord/src/remote/provider.ts",
-			"sha256": "5e01b9db25f8a5e1eb14e7ee09fa8587d38823b9ff6eaa32c42d39433ceadf6c"
+			"sha256": "864670d94ef7a42f82bdbcb64f7ba529b1162881bacc554af98026ffb2c09364"
 		},
 		{
 			"path": "pi/chord/src/remote/relay.ts",
-			"sha256": "dcdd066a24b8466c604d7c0a12d12d8b30a5bc41ac6422269042282fd8656d70"
+			"sha256": "075de1a7ef1da64ceefab681266f5a805f2f550cdb3e44d5d7310f2197a85723"
 		},
 		{
 			"path": "pi/chord/src/remote/remote-object.ts",
-			"sha256": "279e1858c0a82386b91d273bc3c351a63f85150dff7f4e8fccc4ec922d992469"
+			"sha256": "2afc2de6d4244b088bd7945562b5ef2881f89c085b7b68274ebf13bd7234637d"
 		},
 		{
 			"path": "pi/chord/src/remote/replica.ts",
@@ -690,7 +708,7 @@
 		},
 		{
 			"path": "pi/chord/src/surfaces/client.ts",
-			"sha256": "969b4a518ee8863d9724a76bb5962b9161f5b400e5365f8539fcedb16e8d46b5"
+			"sha256": "17f44a09d45886ecd35ce6f46262ffb18cdcb1188172819315bdab0268c6b8f3"
 		},
 		{
 			"path": "pi/chord/src/surfaces/connection.ts",
@@ -750,7 +768,7 @@
 		},
 		{
 			"path": "pi/chord/src/telemetry.ts",
-			"sha256": "88cba188b5df259fab23e6fa33c4ba0fa35f6e75b2ed7fbb68dc474a0db8d91f"
+			"sha256": "58026a75e64b53f57738c5bb96084bccaa0188d36c3ea956cab189c7eb8992d6"
 		},
 		{
 			"path": "pi/chord/src/watch.ts",

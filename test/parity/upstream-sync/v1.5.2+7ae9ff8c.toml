@@ -1,0 +1,65 @@
+from = "1.5.2+8d30e630"
+to = "1.5.2+7ae9ff8c"
+
+[[files]]
+path = "packages/chord/src/telemetry-ingest/facet.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten"]
+rationale = "7ae9ff8c7: telemetryIngestFacet requires admit(principal). PageTelemetry's serve function runs it first, before the per-page budgets and any batch check: a refused principal's hold fails with the forbidden error `chord.telemetry.page: not admitted` and nothing is written; WorkerTelemetry is untouched. chord/next/telemetryingest/facet.go ports it as IngestOptions.Admit (required, as in Pi: a nil Admit panics at the first page hold where Pi throws a TypeError) and data.Forbidden in the PageTelemetry serve function."
+
+[[files]]
+path = "packages/chord/src/node/app/app.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_page_principal_test.go#TestTheAppsIngestFacetStampsAPagesSpansWithTheAppsPrincipalAttributesNotThePagesClaim"]
+rationale = "7ae9ff8c7: startServer gives the kit's ingest facet `admit: () => true` (every link of the kit's server is signed in). chord/nextnode/app/app.go passes Admit returning true to IngestOptions; the nearest caller test sends a page's spans through the app's host and fails with a nil-Admit panic without it."
+
+[[files]]
+path = "packages/chord/test/telemetry-ingest/facet.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten"]
+rationale = "7ae9ff8c7: the ingesting helper takes admit (default admits all) and the new case `admitting pages` refuses a guest's page with forbidden, writes nothing, and still writes an admitted owner's span. The Go serving helper takes an optional admit and the new test runs the same inputs."
+
+[[files]]
+path = "packages/chord/test/telemetry-ingest/sender.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder"]
+rationale = "7ae9ff8c7: the sending helper's facet gets `admit: () => true`; the Go sending helper sets Admit the same."
+
+[[files]]
+path = "packages/chord/package.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "7ae9ff8c7: adds the `./telemetry-ingest` subpath export (source, types, import) of the recorder, batches, objects, facet and senders. PiG ships Chord as part of the Go binary with no npm package.json; the exports are the Go package chord/next/telemetryingest, which already holds all of them (index.ts is a re-export barrel, PORT_MAP n/a). The interface inventory is generated from the pin's exports (c23b9ec1), so it does not change until a pin bump."
+
+[[files]]
+path = "tsconfig.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "7ae9ff8c7: the TypeScript path alias `@earendil-works/chord/telemetry-ingest` of Pi's workspace. PiG's Go packages have no tsconfig paths."
+
+[[files]]
+path = "packages/chord/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "7ae9ff8c7: Pi's Chord changelog entries for the subpath export and admit. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "7ae9ff8c7: the decision \"Telemetry from browser pages\" now says an app admits the principals whose pages send. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "7ae9ff8c7: the design of the telemetry ingest names admit. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."

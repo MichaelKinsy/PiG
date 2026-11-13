@@ -24,7 +24,7 @@ func TestListingOpenRouterRoutingVariantsAllocatesNothingPerVariant(t *testing.T
 	}
 }
 
-// Deriving a variant builds its entry, id, name and record, and nothing around them: a held entry is one allocation and the three strings.
+// Deriving a variant builds its id, name and record, and nothing around them: the entry is an element of the one held list.
 func TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries(t *testing.T) {
 	models := ListModels("openrouter")
 	variants := 0
@@ -33,22 +33,15 @@ func TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries(t *testing.T) 
 			variants++
 		}
 	}
-	derivedVariants.Lock()
-	held := derivedVariants.byKey
-	derivedVariants.byKey = nil
-	derivedVariants.Unlock()
-	defer func() {
-		derivedVariants.Lock()
-		derivedVariants.byKey = held
-		derivedVariants.Unlock()
-	}()
+	resetDerivedVariants(t)
 	allocs := testing.AllocsPerRun(1, func() {
 		derivedVariants.Lock()
-		derivedVariants.byKey = nil
+		derivedVariants.bundle.Store(nil)
+		derivedVariants.byKey, derivedVariants.bySpec = nil, nil
 		derivedVariants.Unlock()
 		_ = ListModels("openrouter")
 	})
-	if perVariant := allocs / float64(variants); perVariant > 5 {
-		t.Errorf("deriving %d variants allocates %v times, %.1f per variant, want at most 5 (entry, id, name, record)", variants, allocs, perVariant)
+	if perVariant := allocs / float64(variants); perVariant > 4 {
+		t.Errorf("deriving %d variants allocates %v times, %.1f per variant, want at most 4 (id, name, record)", variants, allocs, perVariant)
 	}
 }

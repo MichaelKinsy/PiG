@@ -238,3 +238,9 @@ generator = "schema/testdata/gen-coerce-golden.mjs"
 paths = ["tui/testdata/utf8-decoder-oracle.json"]
 owner = "pi"
 generator = "tui/testdata/utf8-decoder-oracle.mjs"
+
+[[golden]]
+paths = ["internal/viewcarrier/testdata/transcripts/*.txt"]
+owner = "pig"
+invariant = "TestCarrierMessagesAreTheGoAPI"
+why = "Pi has no plugin UI carrier, so the nine messages of the view carrier (D614) are PiG's own wire format. The invariant test asserts as values that every message carries the Go API's records and codes; the transcripts add the exact member order and bytes a client or a relay on another protocol builds against, which TestCarrierTranscripts pins."

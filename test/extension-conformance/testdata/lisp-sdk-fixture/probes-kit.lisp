@@ -8,6 +8,78 @@
 
 (defun kp-bool (value) (if value "true" "false"))
 
+;;; ---------------------------------------------------------------- the redraw panel and the abilities watcher
+;;; D614: the same way in every SDK fixture (conformance TestConformance_UIViewAnswerRedraw and TestConformance_UIViewAbilitiesEvent).
+
+(defvar *kp-redraw-command* nil
+  "The context of the command that mounted the redraw panel: an update made through it is the extension's, not an intent handler's.")
+(defvar *kp-watch-armed* nil)
+(defvar *kp-watch-block* nil)
+(defvar *kp-watch-released* nil)
+(defvar *kp-watch-events* 0)
+
+(defun kp-text-view (text) (pig:kit-view (pig:kit-text text 0 0)))
+
+(defun kp-redraw-intents ()
+  (let ((int (pig:view-shape "integer")))
+    (loop for name in '("fx.redraw" "fx.foreign")
+          collect (pig:view-intent name (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n"))
+                                   :answer (pig:view-shape "object" :properties (list (cons "rev" int)) :required '("rev"))))))
+
+(defun kp-describe-abilities (ab)
+  (if ab
+      (format nil "slots=~{~A~^+~},mounts=~D" (coerce (pig:jget ab "slots") 'list) (pig:jref ab "limits" "mounts"))
+      "none"))
+
+(defun kp-redraw-intent (ctx inv)
+  "Answer fx.redraw and fx.foreign: both replace the view of the mount the intent came from and answer done with the new rev. fx.redraw
+updates through the handler's context; fx.foreign through the context of the command that mounted the panel."
+  (let* ((own (equal (pig:jget inv "intent") "fx.redraw"))
+         (ab (pig:ctx-view-abilities ctx))
+         (n (+ (pig:jget (pig:jget inv "arg") "n") (if ab (pig:jref ab "limits" "intentArgBytes") 0)))
+         (mount (pig:view-ref (pig:jref inv "mount" "key") (pig:jref inv "mount" "epoch") (pig:jget inv "rev"))))
+    (handler-case
+        (let ((st (pig:ctx-update-view (if own ctx *kp-redraw-command*) mount
+                                       (kp-text-view (format nil "fixture-~A-~D" (if own "redraw" "foreign") n))
+                                       :intents (kp-redraw-intents))))
+          (pig:view-intent-result "done" :answer (pig:obj "rev" (pig:view-ref-rev (pig:view-status-mount st)))))
+      (pig:host-call-error (e) (pig:view-intent-result "failed" :error (pig:host-call-error-code e))))))
+
+(defun kp-register-view-rows (ext)
+  (pig:command ext "ui_view_redraw" "Mount the panel whose intents redraw it"
+               (lambda (ctx args) (declare (ignore args))
+                 (let ((st (pig:ctx-mount-view ctx "redraw" "panel" (kp-text-view "fixture-redraw-0") :intents (kp-redraw-intents))))
+                   (setf *kp-redraw-command* ctx)
+                   (kp-notify ctx (format nil "view-redraw:rev=~D" (pig:view-ref-rev (pig:view-status-mount st)))))))
+  (pig:on-view-abilities
+   ext
+   (lambda (ctx ab)
+     (incf *kp-watch-events*)
+     (when *kp-watch-armed*
+       (when *kp-watch-block*
+         (setf *kp-watch-block* nil)
+         (kp-notify ctx "view-event-blocked")
+         (loop until *kp-watch-released* do (sleep 0.01))
+         (setf *kp-watch-released* nil)
+         (kp-notify ctx "view-event-released"))
+       (cond ((null ab) (kp-notify ctx "view-event:none"))
+             (t (kp-notify ctx (format nil "view-event:~A,same=~A" (kp-describe-abilities ab)
+                                       (kp-bool (equal (kp-describe-abilities ab) (kp-describe-abilities (pig:ctx-view-abilities ctx))))))
+                (kp-notify ctx (format nil "view-arrived:~A"
+                                       (handler-case
+                                           (pig:view-status-state
+                                            (pig:ctx-mount-view ctx "arrived" "panel"
+                                                                (kp-text-view (format nil "fixture-arrived-~D" (pig:jref ab "limits" "mounts")))))
+                                         (pig:host-call-error (e) (pig:host-call-error-code e))))))))))
+  (pig:command ext "ui_view_watch" "Arm the abilities watcher"
+               (lambda (ctx args) (declare (ignore args)) (setf *kp-watch-armed* t) (kp-notify ctx "view-watch:armed")))
+  (pig:command ext "ui_view_block" "Block the abilities watcher on its next event"
+               (lambda (ctx args) (declare (ignore args)) (setf *kp-watch-released* nil *kp-watch-block* t) (kp-notify ctx "view-block:set")))
+  (pig:command ext "ui_view_release" "Release the blocked abilities watcher"
+               (lambda (ctx args) (declare (ignore args)) (setf *kp-watch-released* t) (kp-notify ctx "view-release:done")))
+  (pig:command ext "ui_view_events" "Report how often the abilities watcher ran"
+               (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "view-events:~D" *kp-watch-events*)))))
+
 ;;; ---------------------------------------------------------------- kit-probe and mouse-probe
 
 (defun kp-probe-view ()
@@ -597,6 +669,167 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
   (pig:command ext "surface_widget" "Set a string list widget wider than the pane"
                (lambda (ctx args) (declare (ignore args))
                  (pig:ctx-set-widget ctx "wide" (list (concatenate 'string (make-string 60 :initial-element #\A) " tail") "short"))))
+  ;; D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
+  (flet ((view-text (ctx suffix)
+           (let ((ab (pig:ctx-view-abilities ctx)))
+             (pig:kit-view (pig:kit-text (format nil "fixture-view-~D~A" (if ab (pig:jref ab "limits" "intentArgBytes") 0) suffix) 0 0))))
+         (code-of (thunk)
+           (handler-case (progn (funcall thunk) "none")
+             (pig:host-call-error (e) (pig:host-call-error-code e)))))
+    (let ((cancelled-tag (list ""))
+          (int (pig:view-shape "integer")))
+      (pig:command ext "ui_view_abilities" "Report the replicated client abilities"
+                   (lambda (ctx args) (declare (ignore args))
+                     (let ((ab (pig:ctx-view-abilities ctx)))
+                       (kp-notify ctx (if ab
+                                          (format nil "view-abilities:mounts=~D,argbytes=~D,slots=~{~A~^+~},nodes=~{~A~^+~},markdown=~A"
+                                                  (pig:jref ab "limits" "mounts") (pig:jref ab "limits" "intentArgBytes")
+                                                  (coerce (pig:jget ab "slots") 'list) (coerce (pig:jget ab "nodes") 'list)
+                                                  (kp-bool (eq (pig:jget ab "markdown") t)))
+                                          "view-abilities:none")))))
+      (pig:command ext "ui_view_probe" "Mount, update, hide, show, finish and remove a view"
+                   (lambda (ctx args) (declare (ignore args))
+                     (let* ((st (pig:ctx-mount-view ctx "probe" "panel" (view-text ctx "")))
+                            (first (pig:view-status-mount st)))
+                       (kp-notify ctx (format nil "view-mounted:epoch=~D,rev=~D,state=~A" (pig:view-ref-epoch first) (pig:view-ref-rev first) (pig:view-status-state st)))
+                       (setf st (pig:ctx-update-view ctx first (view-text ctx "-2")))
+                       (kp-notify ctx (format nil "view-updated:rev=~D" (pig:view-ref-rev (pig:view-status-mount st))))
+                       (kp-notify ctx (format nil "view-stale:~A" (code-of (lambda () (pig:ctx-update-view ctx first (view-text ctx "-stale"))))))
+                       (let ((cur (pig:view-status-mount st)))
+                         (kp-notify ctx (format nil "view-hidden:~A" (pig:view-status-state (pig:ctx-hide-view ctx cur))))
+                         (kp-notify ctx (format nil "view-shown:~A" (pig:view-status-state (pig:ctx-show-view ctx cur))))
+                         (kp-notify ctx (format nil "view-finished:~A" (pig:view-status-state (pig:ctx-finish-view ctx cur))))
+                         (kp-notify ctx (format nil "view-terminal:~A" (code-of (lambda () (pig:ctx-remove-view ctx cur))))))
+                       (kp-notify ctx (format nil "view-final:~A" (pig:view-status-state (pig:ctx-view-state ctx "probe"))))
+                       (setf st (pig:ctx-mount-view
+                                 ctx "probe2" "panel" (view-text ctx "-live")
+                                 :intents (list (pig:view-intent "fx.add" (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n"))
+                                                                 :answer (pig:view-shape "object" :properties (list (cons "sum" int)) :required '("sum")))
+                                                (pig:view-intent "fx.wait" (pig:view-shape "object" :properties (list (cons "tag" (pig:view-shape "string"))) :required '("tag"))
+                                                                 :cancellable t :timeout-ms 5000))))
+                       (kp-notify ctx (format nil "view-second:epoch=~D,rev=~D" (pig:view-ref-epoch (pig:view-status-mount st)) (pig:view-ref-rev (pig:view-status-mount st)))))))
+      ;; D614 amendment: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewExtras).
+      (labels ((x-claim (claims name)
+                 (let ((claim (find name (coerce claims 'list) :key (lambda (c) (pig:jget c "name")) :test #'equal)))
+                   (and claim (pig:jget claim "value"))))
+               (x-picked (ab)
+                 (let ((slot (find "panel" (coerce (pig:jget ab "slotClaims") 'list) :key (lambda (s) (pig:jget s "slot")) :test #'equal)))
+                   (and slot (x-claim (pig:jget slot "claims") "display.colors"))))
+               (x-list (id label) (pig:kit-view (pig:kit-select-list id (list (pig:kit-select-item id label)))))
+               (x-base () (x-list "base" "fixture-x-base"))
+               (x-rect (w h) (pig:obj "kind" "rect" "width" w "height" h))
+               (x-rects (n) (coerce (loop repeat n collect (x-rect 1 1)) 'simple-vector))
+               (x-scene (shapes) (pig:obj "profile" "scene" "shapes" shapes)))
+        (pig:command ext "ui_view_extras" "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds"
+                     (lambda (ctx args) (declare (ignore args))
+                       (let* ((ab (pig:ctx-view-abilities ctx))
+                              (claims (pig:jget ab "claims"))
+                              (picked (x-picked ab))
+                              (shapes (pig:jref ab "drawing" "shapes"))
+                              (drawing (x-scene (x-rects (1- shapes)))))
+                         (kp-notify ctx (format nil "view-x-claims:colors=~D,kind=~A,gestures=~{~A~^+~},hover=~A,panel.colors=~D,profiles=~{~A~^+~},shapes=~D,pixels=~D"
+                                                (x-claim claims "display.colors") (x-claim claims "display.kind")
+                                                (coerce (x-claim claims "input.gestures") 'list) (kp-bool (eq (x-claim claims "display.hover") t))
+                                                picked (coerce (pig:jref ab "drawing" "profiles") 'list) shapes (pig:jref ab "drawing" "pixels")))
+                         (setf (gethash "regions" drawing)
+                               (vector (pig:obj "key" "r" "shape" (x-rect 4 4) "gestures" (vector "activate") "intent" "fx.tap" "name" "Tap")))
+                         (let* ((st (pig:ctx-mount-view
+                                     ctx "extras" "panel" (x-base)
+                                     :intents (list (pig:view-intent "fx.tap" (pig:view-shape "object")))
+                                     :alternatives (list (pig:view-alternative (pig:view-when (list (pig:view-clause "display.colors" "equals" picked)))
+                                                                               (x-list "alt" (format nil "fixture-x-alt-~D" picked))
+                                                                               :drawing drawing))
+                                     :a11y (list (pig:obj "node" "alt" "name" (format nil "Extras ~D" picked) "role" "button" "checked" t
+                                                          "relations" (vector (pig:obj "kind" "describedBy" "target" "base")))
+                                                 (pig:obj "node" "base" "name" "Base"))
+                                     :focus (list (pig:obj "node" "alt" "request" "mount" "restore" "previous"))))
+                                (mount (pig:view-status-mount st)))
+                           (kp-notify ctx (format nil "view-x-mounted:~A" (pig:view-status-state st)))
+                           (flet ((attempt (label &rest content)
+                                    (kp-notify ctx (format nil "view-x-~A:~A" label
+                                                           (code-of (lambda () (apply #'pig:ctx-update-view ctx mount (x-base) content)))))))
+                             (attempt "alts" :alternatives (loop repeat 9 collect (pig:view-alternative (pig:view-when (list (pig:view-clause "display.hover" "present")))
+                                                                                                       (x-base))))
+                             (let ((nested (x-rect 1 1)))
+                               (dotimes (i 8) (setf nested (pig:obj "kind" "group" "children" (vector nested))))
+                               (attempt "nest" :drawing (x-scene (vector nested))))
+                             (attempt "points" :drawing (x-scene (vector (pig:obj "kind" "polyline"
+                                                                                  "points" (coerce (loop for i below 1025 collect (pig:obj "x" i "y" i)) 'simple-vector)))))
+                             (attempt "shapes" :drawing (x-scene (x-rects 4097)))
+                             (attempt "a11y" :a11y (loop for i below 257 collect (pig:obj "node" (format nil "n~D" i))))
+                             (attempt "over" :drawing (x-scene (x-rects (1+ shapes))))
+                             (attempt "pixels"
+                                      :drawing (pig:obj "profile" "pixels" "pixels" (pig:obj "width" 2 "height" 2 "asset" "img" "scaling" "nearest"))
+                                      :assets (list (pig:view-asset "img" "image/png" 4 (make-string 64 :initial-element #\a) "inline"))))
+                           (let ((old (pig:view-ref (pig:view-ref-key mount) (pig:view-ref-epoch mount) (+ 50 (pig:view-ref-rev mount))))
+                                 (stale "none"))
+                             (dotimes (i 3) (setf stale (code-of (lambda () (pig:ctx-update-view ctx old (x-base))))))
+                             (kp-notify ctx (format nil "view-x-stale:~A" stale)))
+                           (let ((notices (pig:ctx-view-diagnostics ctx "extras")))
+                             (flet ((count-of (code)
+                                      (loop for n in notices
+                                            when (and (equal (pig:jget n "code") code) (equal (pig:jget n "path") "update")) sum (pig:jget n "count"))))
+                               (kp-notify ctx (format nil "view-x-diag:invalid=~D,limit=~D,unsupported=~D,stale=~D"
+                                                      (count-of "invalid") (count-of "limit") (count-of "unsupported") (count-of "stale")))))
+                           (kp-notify ctx (format nil "view-x-bigresult:~A"
+                                                  (code-of (lambda () (pig:ctx-finish-view ctx mount :result (make-string 65536 :initial-element #\r))))))))))
+        (pig:command ext "ui_view_extras_end" "Read the notices of the extras mount and finish it with a result"
+                     (lambda (ctx args) (declare (ignore args))
+                       (let* ((picked (x-picked (pig:ctx-view-abilities ctx)))
+                              (st (pig:ctx-view-state ctx "extras"))
+                              (notices (pig:ctx-view-diagnostics ctx "extras")))
+                         (kp-notify ctx (format nil "view-x-diag2:n=~D,last=~A" (length notices) (if notices (pig:jget (car (last notices)) "path") "")))
+                         (let ((done (pig:ctx-finish-view ctx (pig:view-status-mount st) :result (pig:obj "picked" picked))))
+                           (kp-notify ctx (format nil "view-x-finished:~A,picked=~D" (pig:view-status-state done) (pig:jget (pig:view-status-result done) "picked"))))
+                         (let ((cur (pig:ctx-view-state ctx "extras")))
+                           (kp-notify ctx (format nil "view-x-state:~A,picked=~D" (pig:view-status-state cur) (pig:jget (pig:view-status-result cur) "picked"))))))))
+      ;; D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+      ;; updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+      (pig:command ext "ui_view_tool" "Register the tool that shows a titled view"
+                   (lambda (ctx args) (declare (ignore ctx args))
+                     (pig:tool ext "view_show" "Mount, show and focus a titled view" (pig:obj "type" "object")
+                               (lambda (ctx params)
+                                 (if (equal (pig:jget params "op") "hide")
+                                     (format nil "view-tool:~A" (pig:view-status-state (pig:ctx-hide-view ctx (pig:view-status-mount (pig:ctx-view-state ctx "shown")))))
+                                     (let* ((title (pig:jget params "title"))
+                                            (node (pig:jget params "node"))
+                                            (view (pig:kit-view (pig:kit-select-list node (list (pig:kit-select-item node "fixture-shown")))))
+                                            (intents (list (pig:view-intent "fx.reopen" (pig:view-shape "object") :when-hidden t)
+                                                           (pig:view-intent "fx.tap" (pig:view-shape "object"))))
+                                            (st (pig:ctx-mount-view ctx "shown" "panel" view :title title :intents intents :focus (list (pig:obj "node" node)))))
+                                       (setf st (pig:ctx-hide-view ctx (pig:view-status-mount st)))
+                                       (setf st (pig:ctx-show-view ctx (pig:view-status-mount st)))
+                                       (setf st (pig:ctx-update-view ctx (pig:view-status-mount st) view :title (concatenate 'string title "/2") :intents intents
+                                                                     :focus (list (pig:obj "node" node "request" "update"))))
+                                       (format nil "view-tool:~A,rev=~D" (pig:view-status-state st) (pig:view-ref-rev (pig:view-status-mount st)))))))))
+      (pig:command ext "ui_view_cancelled" "Report the intent whose handler was cancelled"
+                   (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "intent-cancelled:~A" (car cancelled-tag)))))
+      (pig:command ext "ui_view_state" "Report the state of the second mount"
+                   (lambda (ctx args) (declare (ignore args))
+                     (let ((st (pig:ctx-view-state ctx "probe2")))
+                       (kp-notify ctx (format nil "view-state:~A:~A" (pig:view-status-state st) (pig:view-status-reason st))))))
+      (kp-register-view-rows ext)
+      (pig:on-view-intent
+       ext
+       (lambda (ctx inv)
+         (let ((intent (pig:jget inv "intent")) (arg (pig:jget inv "arg")))
+           (cond ((member intent '("fx.redraw" "fx.foreign") :test #'equal) (kp-redraw-intent ctx inv))
+                 ((equal intent "fx.reopen")
+                  ;; the user opened the hidden view: its handler shows it
+                  (pig:ctx-show-view ctx (pig:view-ref (pig:jref inv "mount" "key") (pig:jref inv "mount" "epoch") (pig:jget inv "rev")))
+                  (pig:view-intent-result "done"))
+                 ((equal intent "fx.add")
+                  (let ((ab (pig:ctx-view-abilities ctx)))
+                    (pig:view-intent-result "done" :answer (pig:obj "sum" (+ (* 2 (pig:jget arg "n")) (if ab (pig:jref ab "limits" "intentArgBytes") 0))))))
+                 ((equal intent "fx.wait")
+                  ;; the host cancels as soon as it reads this notice, so the cancel can land before the call returns, and a
+                  ;; Lisp host call of a cancelled request signals: the notice's outcome is not what this handler reports
+                  (ignore-errors (kp-notify ctx (format nil "intent-started:~A" (pig:jget arg "tag"))))
+                  (pig:ctx-wait-cancelled ctx)
+                  ;; a call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled
+                  (setf (car cancelled-tag) (pig:jget arg "tag"))
+                  (pig:view-intent-result "done" :answer (pig:obj)))
+                 (t (pig:view-intent-result "refused" :error "unknown intent"))))))))
   (pig:command ext "report_geometry" "Report the terminal geometry"
                (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "geometry:~Dx~D" (pig:ctx-width ctx) (pig:ctx-height ctx)))))
   (pig:own-thinking-runs ext t)

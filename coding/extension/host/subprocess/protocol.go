@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/uiview"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
@@ -88,6 +89,9 @@ type Envelope struct {
 
 	// barrier, when set, is a host-side marker, not a frame: the dispatcher closes it when it reaches it, so everything the read loop read before the marker is dispatched.
 	barrier *dispatchMark
+
+	// pooled is the reusable frame the read loop built this envelope in (response_frame.go); releaseResponse returns it.
+	pooled *responseFrame
 
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
@@ -572,6 +576,9 @@ type StatePayload struct {
 	// The Node runtime installs it as pi-tui's keybindings manager, the one
 	// Pi hands editor and custom-component factories and sets globally.
 	Keybindings any `json:"keybindings,omitempty"`
+	// UIAbilities (D614) is what the attached client draws; absent when none is attached, so an extension cannot mount.
+	// Every state is a full snapshot, so an absent value clears it.
+	UIAbilities *uiview.ClientAbilities `json:"uiAbilities,omitempty"`
 }
 
 // TerminalCapabilitiesPayload mirrors pi-tui's TerminalCapabilities.
@@ -1062,6 +1069,23 @@ const (
 	// NotifyUIViewEvicted (host→ext) reports image refs whose bytes the
 	// host dropped; the next frame that references one sends its data again.
 	NotifyUIViewEvicted = "ui.view.evicted"
+)
+
+// pig additive (D614): plugin UI mounts over D107 views. An extension mounts a view in a client slot and the host sends
+// back the user's intents. The records are in coding/uiview; the wire has no version field.
+const (
+	CallUIViewMount  = "ui.view.mount"
+	CallUIViewUpdate = "ui.view.update"
+	CallUIViewHide   = "ui.view.hide"
+	CallUIViewShow   = "ui.view.show"
+	CallUIViewFinish = "ui.view.finish"
+	CallUIViewRemove = "ui.view.remove"
+	CallUIViewState  = "ui.view.state"
+	// CallUIViewDiagnostics returns the notices of a mount: what the host rejected or ended and what a client could not draw.
+	CallUIViewDiagnostics = "ui.view.diagnostics"
+	// RequestUIViewIntent (host→ext) raises one intent of a mount and expects {outcome: done|refused|failed, answer?, error?}.
+	// A cancellable intent that times out or is cancelled by its caller is cancelled through the request's ordinary cancel frame.
+	RequestUIViewIntent = "ui.view.intent"
 )
 
 // View node kinds. Each mirrors the upstream pi-tui (or coding-agent
