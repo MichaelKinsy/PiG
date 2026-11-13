@@ -74,6 +74,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Linux / test-conformance-1, test-conformance-2 | queue | 30 | Conformance of every SDK, in two halves of ten shards (twenty in all, each its own go test process under the 10-minute package limit; the cells are built once per job and shared) |
 | Linux / toolchains | queue | 7 | Race, integration, SDK (including `make lint-rust`) and extension corpus gates |
 | Node extensions | queue | 11 | |
+| Chord surfaces | queue | 20 | The terminal surface's tests under current Node and the web surface's in the runner's Chrome (`make ci-chord-tui`, `make ci-chord-web`), each failing, not skipping, without its Node or browser. They were the last two steps of Node extensions and have their own job as in Pi (aca89cfe14). The limit is the job's, not yet a measured run time, and the job is not in the totals below |
 | Durable Cloudflare host | queue | 25 | |
 | Durable contract / pi, wasm-tinygo, native | queue | 60 | The Durable core conformance gate (`make ci-durable-contract`), one build of the core per job; the limit is the job's, not yet a measured run time |
 | Windows cli-2 cli-5, cli-1 cli-3, cli-4 cli-7, cli-6 cli-8 | queue | 96 | |

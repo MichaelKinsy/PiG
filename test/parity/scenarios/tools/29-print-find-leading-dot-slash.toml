@@ -1,0 +1,35 @@
+# Behavior family: tools
+# Surface: the find tool ignores a leading "./" in its pattern.
+#
+# Upstream evidence (Pi bbfc6c7ce, #12044; packages/coding-agent/src/core/tools/find.ts): fd matches a pattern that holds a "/" against the
+# full path (--full-path), and a full path never contains "/./", so "./src/**/*.spec.ts" found nothing. The fix drops every leading "./"
+# from the pattern before the path prefix is added. Pi v1.5.2 as published answers "No files found matching pattern"; Pi with bbfc6c7ce
+# answers src/foo/bar/example.spec.ts, as it does for "src/**/*.spec.ts" (05-print-find-tool-exec).
+#
+# The oracle is the pinned Pi plus the post-release backports (automation/gen/pi-post-release-backports.mjs), bbfc6c7ce among them. `pi` runs
+# the package's bundle (dist/bundle), so this pair is also the behavioral proof that the backports reach the program the scenarios run: against
+# a bundle of the unpatched dist Pi finds nothing and the outputs differ.
+# The faux provider echoes the tool's actual result instead of a canned success token, so a failed search cannot satisfy the scenario.
+name = "29-print-find-leading-dot-slash"
+description = "Print mode finds a nested path glob written with a leading ./, as pi does"
+covers = ["packages/coding-agent/src/core/tools/find.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions", "--tools", "find"]
+pi_args = ["--tools", "find"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: find dot slash glob"
+timeout_seconds = 30
+cwd = "testdata/find-regressions"
+
+[assert]
+exit_code = 0
+both_contain = ["src/foo/bar/example.spec.ts"]
+output_equal = true
+runs = 3

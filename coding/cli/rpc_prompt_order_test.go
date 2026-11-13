@@ -9,10 +9,11 @@ import (
 	"testing"
 )
 
-// Two prompts of one batch (Pi 1.2.0, agent-session.ts:2053-2136 and :1832-1837): each prompt awaits its input handlers, and their awaits resume
-// in call order. The first then marks the Session busy in _startRun before its compaction check and before_agent_start, so the second finds it
-// streaming and is rejected for naming no streamingBehavior; its error answers before the first prompt's "started", and one run follows.
-// Pi 1.1.0 marked the run busy only in _runAgentPrompt, so both prompts answered "started" (p, p2, agent_start, agent_end).
+// Two prompts of one batch (D629). PiG's second prompt finds the Session busy in BeginRunStart, where the first marked it, and is rejected for
+// naming no streamingBehavior; its error answers before the first prompt's "started", and one run follows. Pi 1.5.2 (agent-session.ts:2162-2196
+// and :1943-1988) awaits _preparePrompt in prompt() (:2191), so both prompts pass its isStreaming check (:2227) before either reaches _startRun
+// (:2195), which marks the Session busy (:1944) without a check: both answer "started" (:1960), the second's agent.prompt throws (:1969), its
+// error is dropped and an agent_settled is emitted for it (:1986). TestRPCPromptsWrittenInOneChunkDivergeFromPi records Pi's side.
 func TestRPCPromptsOfOneBatchAnswerInRequestOrder(t *testing.T) {
 	source, err := os.ReadFile("../../test/parity/scenarios/rpc/testdata/session/sessions/source.jsonl")
 	if err != nil {
@@ -57,7 +58,8 @@ func awaitBatchPromptOrder(p *rpcProcess) (order []string, rejected string) {
 }
 
 // The prompts of one batch whose compaction check finds a compaction due (a Session whose last response filled 126k of faux-1's 128k window, slow
-// summary). Pi 1.2.0's first prompt is busy from _startRun on while its compaction runs, so the second is rejected at once and answers first.
+// summary). The first prompt is busy from BeginRunStart on while its compaction runs (Pi 1.5.2's _startRun, agent-session.ts:1944-1948), so
+// PiG rejects the second at once and its error answers first (D629).
 func TestRPCPromptsWithDueCompactionsAnswerInRequestOrder(t *testing.T) {
 	session := strings.ReplaceAll(largeRPCSession(), `"totalTokens":2,`, `"totalTokens":126000,`)
 	for run := range 3 {
