@@ -2021,17 +2021,27 @@ allocs = 4
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkConnRequestRoundTrip/1KiB"
-allocs = 16
+allocs = 10
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkConnRequestRoundTrip/64KiB"
-allocs = 20
+allocs = 14
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkConnRequestRoundTrip/empty"
-allocs = 17
+allocs = 10
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkContextEventEncoding/kept"
+allocs = 5
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkContextEventEncoding/whole"
+allocs = 1742
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2052,6 +2062,36 @@ allocs = 36910
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkEditorStateSnapshot"
 allocs = 95
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEnvelopeDecode/call/sdk"
+allocs = 8
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEnvelopeDecode/call/v2"
+allocs = 5
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEnvelopeDecode/notify/sdk"
+allocs = 7
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEnvelopeDecode/notify/v2"
+allocs = 10
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEnvelopeDecode/response/sdk"
+allocs = 7
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEnvelopeDecode/response/v2"
+allocs = 12
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2080,8 +2120,38 @@ allocs = 845
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFillContentHashesGoExtensions/16_extensions,_one_at_a_time"
+allocs = 72190
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFillContentHashesGoExtensions/16_extensions,_together"
+allocs = 72229
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFillContentHashesGoExtensions/1_extensions,_one_at_a_time"
+allocs = 4513
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFillContentHashesGoExtensions/1_extensions,_together"
+allocs = 4517
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFillContentHashesGoExtensions/4_extensions,_one_at_a_time"
+allocs = 18048
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFillContentHashesGoExtensions/4_extensions,_together"
+allocs = 18060
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFusedDispatch"
-allocs = 8937
+allocs = 8334
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2111,12 +2181,12 @@ allocs = 453
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkLoadInProcessProviders/providers=64"
-allocs = 5210
+allocs = 3684
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkLoadInProcessProviders/providers=8"
-allocs = 910
+allocs = 734
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2181,12 +2251,12 @@ allocs = 1105
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAutocompleteRoundTrip"
-allocs = 192
+allocs = 171
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeEventLoopTurn"
-allocs = 41
+allocs = 30
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2196,7 +2266,7 @@ allocs = 36566
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeToolCallEvent"
-allocs = 51
+allocs = 39
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2210,13 +2280,43 @@ allocs = 0
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkObjectMembers/jsontext"
+allocs = 38
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkObjectMembers/v1"
+allocs = 59
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkPlanCells_Isolated"
 allocs = 129
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkPromptHandlerFIFOThroughFusedSDK"
-allocs = 170
+allocs = 150
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReadFrameLargePayload/16MiB"
+allocs = 11
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReadFrameLargePayload/1MiB"
+allocs = 11
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReadFrameLargePayload/43MiB"
+allocs = 11
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReadFrameLargePayload/64KiB"
+allocs = 8
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2296,12 +2396,12 @@ allocs = 8
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkXrefEventBusEmit/one-realm"
-allocs = 71
+allocs = 58
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkXrefEventBusEmit/two-realms"
-allocs = 65833
+allocs = 56069
 
 [[benchmark]]
 package = "./internal/codingagent"
