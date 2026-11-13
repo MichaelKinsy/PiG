@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	registerViewWidget(ViewKindCustomMessage, &viewWidget{build: buildCustomMessage})
+	registerViewWidget(ViewKindCustomMessage, &viewWidget{})
 }
 
 func buildCustomMessage(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {

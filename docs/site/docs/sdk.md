@@ -394,13 +394,17 @@ Notes:
 
 `mcpext.CreateMcpExtension(mcpext.Options{...})` is the headless entry point. Leave `Options.Terminal` nil: then the extension has no `/mcp` manager view and no tool renderers, and nothing from package `mcptui` is linked. The `pig` command sets `Options.Terminal` to `mcptui.Terminal()`. `mcpext.NewHeadless` does the same for a caller that builds the extension from a `Host` of its own.
 
+### Widgets in extension views
+
+Extensions can put widgets in a view they draw: `grid`, `input`, `scroll-view`, `mouse-region`, `bordered-loader`, `cancellable-loader`, `branch-summary`, `compaction-summary`, `custom-message` and `skill-invocation`. The host builds them once the program has called `subprocess.EnableViewWidgets()`. The `pig` command calls it before it runs a command. A headless embedder that mounts widgets, for a frontend of its own or to render what an extension's message or tool renderer returns, must call `subprocess.EnableViewWidgets()` once before the first view is built. A program that does not call it links none of the widget builders. Until then a view that holds a widget is rejected with an error that names the call: the surface keeps its previous frame, a renderer's result counts as a failed render, the rejection is reported once per surface through the session's extension error listeners, and the extension is sent nothing. A widget node that is not valid is rejected as before. The call does not enable editors, which have their own.
+
 ### Editors in extension views
 
-Extensions can put an editor in a view they draw. The component that builds it uses the terminal editor, which pulls in the word dictionaries. The `pig` command enables it with `subprocess.EnableEditorViews()` where it creates the extension host. A program that never draws an extension's editor does not call it, and the editor is not linked. A program that serves extension views to its own terminal calls `subprocess.EnableEditorViews()` once before the first view is built. Until then a view with an editor fails with an error that names the call, and an editor node that is not valid is rejected as before.
+Extensions can put an editor in a view they draw. The component that builds it uses the terminal editor, which pulls in the word dictionaries. The `pig` command enables it with `subprocess.EnableEditorViews()` before it runs a command. A program that never draws an extension's editor does not call it, and the editor is not linked. A program that serves extension views to its own terminal calls `subprocess.EnableEditorViews()` once before the first view is built. Until then a view with an editor fails with an error that names the call, and an editor node that is not valid is rejected as before.
 
 ### TuiAltScreen for extensions
 
-An extension that constructs a `TuiAltScreen` (Pi's alternate-screen TUI) draws it through the host's renderer, which links the word dictionaries through its text inputs. The `pig` command enables it with `subprocess.EnableTuiAltScreens()` where it creates the extension host. A program that never serves one does not call it, and the renderer is not linked. A program that serves them to its own terminal calls `subprocess.EnableTuiAltScreens()` once before the first extension loads. Until then a `tui.alt` call fails with an error that names the call.
+An extension that constructs a `TuiAltScreen` (Pi's alternate-screen TUI) draws it through the host's renderer, which links the word dictionaries through its text inputs. The `pig` command enables it with `subprocess.EnableTuiAltScreens()` before it runs a command. A program that never serves one does not call it, and the renderer is not linked. A program that serves them to its own terminal calls `subprocess.EnableTuiAltScreens()` once before the first extension loads. Until then a `tui.alt` call fails with an error that names the call.
 
 ### The test-only test-faux provider
 
