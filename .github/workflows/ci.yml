@@ -1312,13 +1312,14 @@ jobs:
         # cli-7 217, cli-8 174, extension-host-1 507, extension-host-2 407, extension-host-3 1323, packages 204.
         # extension-host-3 has a job to itself, 27 of the 40 minutes: after cli-1 and before packages it ran into the limit.
         # The other three jobs hold 1379, 1352 and 1304 s of tests, 26 to 28 minutes with the setup.
+        # test/ci-images holds these times and fails when a job's units and setup pass three quarters of the limit.
         # native: the smoke run of the packages with macOS-specific code.
         # cli-1 to cli-8: the eight cmd/pig shards that make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
         # extension-host-1 to extension-host-3: the subprocess extension host tests, split in three.
         # packages: the remaining packages whose tests bind Unix sockets, watch paths or resolve symlinked temporary
         # directories, which macOS spells differently from Linux (104-byte socket paths, /var -> /private/var).
-        # The shards come from automation/ci/ci-tiers.txt through the changes job: the light pull-request run keeps native,
-        # the full run every shard, under the same check names.
+        # The shards come from automation/ci/ci-tiers.txt through the changes job. They are all queue rows: the full run runs every
+        # shard and the light pull-request run none.
         include: ${{ fromJSON(needs.changes.outputs.macos) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

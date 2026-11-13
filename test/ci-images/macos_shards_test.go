@@ -273,6 +273,38 @@ func TestMacOSJobsRestoreTheCargoTargetsAndACompleteJobSavesThem(t *testing.T) {
 	}
 }
 
+// macosUnitSeconds is what go test itself took for each unit in run 43302835411 (a full run on macos-15), and macosJobSetupSeconds what a job of that run spent besides its units: the checkout, the toolchains, the oracle and compiling, 4 to 5 minutes.
+// Every unit prints its ten slowest tests and the time of each package, so a later full run gives the numbers to replace these with. native is not a unit of macos-units.sh: its job is the smoke run, 13 minutes whole in run 39510928254.
+var macosUnitSeconds = map[string]int{
+	"cli-1": 559, "cli-2": 567, "cli-3": 506, "cli-4": 432, "cli-5": 239, "cli-6": 223, "cli-7": 217, "cli-8": 174,
+	"extension-host-1": 507, "extension-host-2": 407, "extension-host-3": 1323,
+	"packages": 204,
+}
+
+const macosJobSetupSeconds = 300
+
+// A macOS job that reaches its limit is cancelled with no failing test, and the run is red for a reason no log names: "macOS cli-1 extension-host-3 packages" held 2086 s of tests under a 40-minute limit.
+// So at the measured times every job of the plan keeps a quarter of its limit free, which leaves extension-host-3 (1323 s) room for no second unit but the shortest.
+func TestMacOSJobsKeepAQuarterOfTheirLimit(t *testing.T) {
+	limit := verificationJobs(t)["macos"].Timeout * 60
+	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
+		if entry == "native" {
+			continue
+		}
+		total := macosJobSetupSeconds
+		for unit := range strings.FieldsSeq(entry) {
+			seconds, ok := macosUnitSeconds[unit]
+			if !ok {
+				t.Errorf("macos job %q holds the unit %s, which has no measured time", entry, unit)
+			}
+			total += seconds
+		}
+		if total*4 > limit*3 {
+			t.Errorf("macos job %q takes %d s at the measured times (%d s of them setup), more than three quarters of its %d s limit: move a unit to another job in automation/ci/ci-tiers.txt", entry, total, macosJobSetupSeconds, limit)
+		}
+	}
+}
+
 // The macOS shards run the Pi oracle and the Node extensions under the node on PATH. A step that prepends the whole Homebrew bin directory puts the image's default node (22.x) ahead of the pinned one; Node 22 then warns about an empty NO_COLOR under FORCE_COLOR and the oracle's stderr differs. The toolchain identity check must run after the last PATH change and before any test.
 func TestMacOSShardsTestUnderThePinnedToolchain(t *testing.T) {
 	job, ok := verificationJobs(t)["macos"]
