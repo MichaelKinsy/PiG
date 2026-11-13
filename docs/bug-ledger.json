@@ -36516,7 +36516,7 @@
     },
     {
       "id": "BF-D619",
-      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
+      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are…",
       "symptom": "none; Pi's frame per step is correct, only costlier.",
       "rootCause": "while a reply or a tool call streams in, Pi draws a frame every 16-20 ms and the spinner step adds a frame of its own every 80 ms, about one frame in five. The frames dropped carry only a glyph of the spinner that the next frame draws anyway.",
       "rootCauseSource": "divergence record",
@@ -36543,6 +36543,14 @@
         {
           "hash": "e3373144bb",
           "date": "2026-11-11"
+        },
+        {
+          "hash": "440cb8b15a",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "c3fdda8351",
+          "date": "2026-11-12"
         }
       ],
       "tests": [
@@ -36553,6 +36561,7 @@
         "tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange",
         "tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin",
         "tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame",
+        "tui/render_within_test.go::TestRequestRenderWithinAsksAtOnceWhenNoFrameWasDrawnWithinTheDelay",
         "tui/render_within_test.go::TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn",
         "tui/render_within_test.go::TestRequestRenderWithinDuringAFrameAsksForTheNextFrame",
         "tui/render_within_test.go::TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor"
@@ -58996,7 +59005,7 @@
     },
     {
       "id": "D619",
-      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
+      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are…",
       "entry": "BF-D619"
     }
   ],

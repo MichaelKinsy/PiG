@@ -191067,9 +191067,9 @@
         "call:internal/codingagent/interactive_lifecycle.go#InteractiveMode.Stop"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_init_changelog_full_test.go#TestInitShowsTheStartupChangelogOfAnUpdateChild",
-        "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild"
+        "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestOwnerLoopKeepsTheFrameDeadlineOnAKernelTimerOnlyWhenAsked",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
       ]
     },
     {
@@ -191089,9 +191089,9 @@
         "call:internal/codingagent/interactive_lifecycle.go#InteractiveMode.Stop"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_init_changelog_full_test.go#TestInitShowsTheStartupChangelogOfAnUpdateChild",
-        "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild"
+        "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestOwnerLoopKeepsTheFrameDeadlineOnAKernelTimerOnlyWhenAsked",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
       ]
     },
     {
@@ -191298,7 +191298,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.createInteractiveTui"
+        "call:internal/codingagent/interactive.go#InteractiveMode.drawsOnProcessTerminal"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption"
@@ -313831,7 +313831,9 @@
         "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested"
+        "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
       ]
     },
     {
@@ -313851,7 +313853,9 @@
         "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested"
+        "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
       ]
     },
     {
@@ -319118,7 +319122,9 @@
         "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested"
+        "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
       ]
     },
     {
@@ -319138,7 +319144,9 @@
         "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested"
+        "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiSelectsAlternateRendererOnlyWhenRequested",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestFirstFrameOfARunTicksAtOnceWithoutArmingTheKernelTimer",
+        "test:internal/codingagent/frame_timer_linux_test.go#TestStoppedRendererLeavesTheKernelFrameTimerDisarmed"
       ]
     },
     {
