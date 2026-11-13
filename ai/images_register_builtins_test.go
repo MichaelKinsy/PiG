@@ -48,7 +48,7 @@ func TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI(t *testin
 	}
 	RegisterImagesAPIProvider(ImagesAPIProvider{API: api, GenerateImages: generate("first")}, "source-one")
 	got, ok := GetImagesAPIProvider(api)
-	if !ok || got.API != api || got.GenerateImages(t.Context(), ImageModel{}, ImagesContext{}, ImagesOptions{}).ResponseID != "first" {
+	if !ok || got.API != api || got.GenerateImages(t.Context(), ImageModel{API: api}, ImagesContext{}, ImagesOptions{}).ResponseID != "first" {
 		t.Fatalf("GetImagesAPIProvider = %+v, %v", got, ok)
 	}
 	imagesAPIProviderMu.RLock()
@@ -59,7 +59,7 @@ func TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI(t *testin
 	}
 	RegisterImagesAPIProvider(ImagesAPIProvider{API: api, GenerateImages: generate("second")})
 	got, _ = GetImagesAPIProvider(api)
-	if got.GenerateImages(t.Context(), ImageModel{}, ImagesContext{}, ImagesOptions{}).ResponseID != "second" {
+	if got.GenerateImages(t.Context(), ImageModel{API: api}, ImagesContext{}, ImagesOptions{}).ResponseID != "second" {
 		t.Error("a later registration did not replace the earlier one")
 	}
 	if _, ok := GetImagesAPIProvider("test-images-registry-other"); ok {

@@ -266,6 +266,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-26d302a-2](#bf-26d302a-2) | A provider object's own `auth.apiKey.login` runs in the login dialog, as Pi's `showApiKeyLoginDialog` runs… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26d302a-3](#bf-26d302a-3) | A provider object's login that sends a prompt or event type Pi does not define fails with an error that names… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-270da2f](#bf-270da2f) | fix: raw content blocks sized without continue or discarded errors, tsruntime in a race group, provenance of… | PiG's own defect | All platforms | Unreleased |
+| [BF-274fef9](#bf-274fef9) | ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected… | PiG's own defect | All platforms | Unreleased |
 | [BF-27a1650](#bf-27a1650) | The keybindings manager's key text and key matching now cover every keybinding the merged table defines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27b7a4e](#bf-27b7a4e) | Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail… | A fix Pi shipped that PiG ported | Windows, WSL | 0.7.0 |
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
@@ -1658,6 +1659,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-caae28a](#bf-caae28a) | In RPC mode, `exit.log` no longer says "received SIGTERM" for a single signal that arrived during a shutdown… | PiG's own defect | All platforms | Unreleased |
 | [BF-cafa121](#bf-cafa121) | fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-cb00273](#bf-cb00273) | OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-cb16094](#bf-cb16094) | ai: `Models.GenerateImages` given a model of another api than its images provider's ends with the error… | PiG's own defect | All platforms | Unreleased |
 | [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
@@ -5535,6 +5537,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `270da2fced` (2026-11-08)
 - **Tests:** None recorded.
+
+### BF-274fef9
+
+**ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected…**
+
+- **Source:** PiG's own defect
+- **Symptom:** ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected <api>` before it runs, as Pi's images registry does; GitHub Copilot and OpenAI Codex logins report `Login cancelled` when the login is cancelled while a prompt or request is in flight, and GitHub Copilot login errors are no longer prefixed.
+- **Root cause:** Fixes: images registry rejects a model of another api before running (images-api-registry.ts); github-copilot login returns Pi's "Login cancelled" and unwrapped errors; openai-codex fetch after abort is "Login cancelled".
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `274fef902d` (2026-11-12)
+- **Tests:** `agent/tool_update_join_test.go::TestExecutePreparedToolCallJoinsAnUpdateStillBeingDeliveredWhenTheToolReturns`, `ai/auth_resolve_cancellation_test.go::TestAPIKeyAuthResolveObservesACancellationDuringAnyEnvLookup`, `ai/classifier_request_lifecycle_test.go::TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle`, `ai/compat_radius_cancellation_test.go::TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage`, `ai/compat_radius_cancellation_test.go::TestLoadRadiusGatewayConfigIsCancelledWhileTheGatewayHasNotAnswered`, `ai/githubcopilot_login_cancelled_test.go::TestLoginGitHubCopilotPromptOutcomesMatchPi`, `ai/images_register_builtins_test.go::TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI`, `ai/images_registry_mismatch_test.go::TestRegisteredImagesProviderRefusesAModelOfAnotherAPIBeforeRunning` and 7 more in docs/bug-ledger.json
+- **Release note:** ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected <api>` before it runs, as Pi's images registry does; GitHub Copilot and OpenAI Codex logins report `Login cancelled` when the login is cancelled while a prompt or request is in flight, and GitHub Copilot login errors are no longer prefixed.
 
 ### BF-27a1650
 
@@ -24849,6 +24865,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cb002735d6` (2026-10-09)
 - **Tests:** `ai/openai_reasoning_signature_only_test.go::TestOpenAICompletionsKeepsSignatureOnlyReasoningText`
 - **Release note:** OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block (D122, pi-mono #9534).
+
+### BF-cb16094
+
+**ai: `Models.GenerateImages` given a model of another api than its images provider's ends with the error…**
+
+- **Source:** PiG's own defect
+- **Symptom:** ai: `Models.GenerateImages` given a model of another api than its images provider's ends with the error `Mismatched api: <model api> expected <api>`, as Pi's `generateImages` returns the images registry's refusal as an error result; PiG 0.4.0 to 0.7.0 ran the provider with that model.
+- **Root cause:** Pi models.ts generateImages wraps the provider call in one try/catch, so the registry Mismatched api throw comes back as an error AssistantImages; PiG let the panic through. Caller-level tests: Models.GenerateImages with a model of another api, the registered GitHub Copilot and OpenAI Codex providers on abort, pig login github-copilot without a PiG prefix, and the models.ts login, logout, generateImages and getAllAvailable abort and error contracts.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cb160949e7` (2026-11-12)
+- **Tests:** `ai/images_models_mismatch_test.go::TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult`, `ai/login_callers_cancelled_test.go::TestCodexOAuthProviderLoginRequestFailingAfterAbortIsLoginCancelled`, `ai/login_callers_cancelled_test.go::TestCopilotOAuthProviderLoginSettledPromptAfterAbortIsLoginCancelled`, `ai/models_async_contract_test.go::TestModelsGenerateImagesAbortedSignalReachesTheProviderAndEndsAborted`, `ai/models_async_contract_test.go::TestModelsGenerateImagesTransformHeadersIsAwaitedWithTheSignalAndItsRejectionIsTheResult`, `ai/models_async_contract_test.go::TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending`, `ai/models_async_contract_test.go::TestModelsLoginAbortBeforeTheModifyStartedDoesNotWaitForTheStore`, `ai/models_async_contract_test.go::TestModelsLoginAbortWhileTheFlowRunsSettlesWithTheReasonAndStoresNothing` and 6 more in docs/bug-ledger.json
+- **Release note:** ai: `Models.GenerateImages` given a model of another api than its images provider's ends with the error `Mismatched api: <model api> expected <api>`, as Pi's `generateImages` returns the images registry's refusal as an error result; PiG 0.4.0 to 0.7.0 ran the provider with that model.
 
 ### BF-cb20ec0
 

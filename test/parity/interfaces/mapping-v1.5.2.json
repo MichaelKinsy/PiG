@@ -11410,8 +11410,8 @@
       ],
       "evidence": [
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned",
-        "test:ai/function_types_exercise_test.go#TestBuiltInClassifiersAreClassifierFunctionsAndReportFailuresInTheResult"
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
+        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -11433,8 +11433,8 @@
       ],
       "evidence": [
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned",
-        "test:ai/function_types_exercise_test.go#TestBuiltInClassifiersAreClassifierFunctionsAndReportFailuresInTheResult"
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
+        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -11916,6 +11916,7 @@
       ],
       "evidence": [
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
         "test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -11938,6 +11939,7 @@
       ],
       "evidence": [
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
         "test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -18414,7 +18416,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/model_types.go#imageErrorResult"
+        "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
@@ -21901,8 +21903,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -21924,8 +21926,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -24081,8 +24083,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -24104,8 +24106,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -46156,7 +46158,8 @@
       ],
       "evidence": [
         "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi",
-        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"
+        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -46178,7 +46181,8 @@
       ],
       "evidence": [
         "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi",
-        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"
+        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -51590,8 +51594,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
+        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ]
     },
     {
@@ -51612,8 +51616,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
+        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ]
     },
     {
@@ -51633,9 +51637,9 @@
         "call:ai/compat.go#compatStream"
       ],
       "evidence": [
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
       ]
     },
     {
@@ -51655,9 +51659,9 @@
         "call:ai/compat.go#compatStream"
       ],
       "evidence": [
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
       ]
     },
     {
@@ -51677,9 +51681,9 @@
         "call:ai/compat.go#compatStream"
       ],
       "evidence": [
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
       ]
     },
     {
@@ -51699,9 +51703,9 @@
         "call:ai/compat.go#compatStream"
       ],
       "evidence": [
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
       ]
     },
     {
@@ -56067,8 +56071,8 @@
       ],
       "evidence": [
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned",
-        "test:ai/function_types_exercise_test.go#TestBuiltInClassifiersAreClassifierFunctionsAndReportFailuresInTheResult"
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
+        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -56090,8 +56094,8 @@
       ],
       "evidence": [
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned",
-        "test:ai/function_types_exercise_test.go#TestBuiltInClassifiersAreClassifierFunctionsAndReportFailuresInTheResult"
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
+        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -56573,6 +56577,7 @@
       ],
       "evidence": [
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
         "test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -56595,6 +56600,7 @@
       ],
       "evidence": [
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
         "test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -57488,6 +57494,7 @@
       ],
       "evidence": [
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -57510,6 +57517,7 @@
       ],
       "evidence": [
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -61764,7 +61772,7 @@
       "evidence": [
         "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI",
         "test:ai/function_types_exercise_test.go#TestRegisterImagesAPIProviderStoresTheSourceID",
-        "test:ai/images_register_builtins_test.go#TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ]
     },
     {
@@ -61786,7 +61794,7 @@
       "evidence": [
         "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI",
         "test:ai/function_types_exercise_test.go#TestRegisterImagesAPIProviderStoresTheSourceID",
-        "test:ai/images_register_builtins_test.go#TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ]
     },
     {
@@ -63853,7 +63861,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/model_types.go#imageErrorResult"
+        "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
@@ -64186,7 +64194,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openrouter_images.go#RegisterBuiltInImagesAPIProviders"
+        "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
         "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI",
@@ -64209,7 +64217,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openrouter_images.go#RegisterBuiltInImagesAPIProviders"
+        "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
         "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI",
@@ -67482,7 +67490,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -67505,7 +67513,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -67527,8 +67535,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -67550,8 +67558,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69679,7 +69687,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69702,7 +69710,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69724,8 +69732,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69747,8 +69755,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -77712,8 +77720,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
+        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ]
     },
     {
@@ -77734,8 +77742,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
+        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ]
     },
     {
@@ -84106,7 +84114,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -84129,7 +84137,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -84151,8 +84159,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -84174,8 +84182,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85891,7 +85899,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85914,7 +85922,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85936,8 +85944,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85959,8 +85967,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -236296,7 +236304,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/session/cached_storage_test.go#TestCachedStoragePassesEveryOtherCallThroughWithItsArguments",
-        "test:durable/session/keys_test.go#TestGatedStorageAFailedTouchSkipsEveryRead"
+        "test:durable/session/forks_contract_test.go#TestPrepareForkDocumentCopiesAwaitsItsReadsInOrderWithTheCallersContext"
       ]
     },
     {
@@ -258930,8 +258938,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/upgrade_in_place_core_test.go#TestOpenHarnessUpgradesAVersionOneStoreInPlace",
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
-        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace"
+        "test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258953,8 +258961,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/upgrade_in_place_core_test.go#TestOpenHarnessUpgradesAVersionOneStoreInPlace",
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
-        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace"
+        "test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258976,6 +258984,7 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace",
+        "test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ]
     },
@@ -259613,6 +259622,7 @@
       ],
       "evidence": [
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
+        "test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ]
     },
@@ -293931,7 +293941,7 @@
       "evidence": [
         "test:tui/loader_constructor_oracle_test.go#TestLoaderConstructorIndicatorMatchesPi",
         "test:tui/output_pad_upstream_test.go#TestLoaderSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestCancellableLoaderSignalAndDispose"
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns"
       ]
     },
     {
@@ -293953,7 +293963,7 @@
       "evidence": [
         "test:tui/bordered_loader_input_oracle_test.go#TestBorderedLoaderHandleInputMatchesPi",
         "test:tui/bordered_loader_oracle_test.go#TestBorderedLoaderMatchesPi",
-        "test:tui/bordered_loader_test.go#TestBorderedLoader_HandleInput"
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns"
       ]
     },
     {
@@ -294017,9 +294027,9 @@
         "call:tui/cancellable_loader.go#CancellableLoader.HandleInput"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns",
         "test:tui/box_slice_style_gaps_test.go#TestCancellableLoaderSignalAndDispose",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelWithoutOnAbortOnlyAborts"
+        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress"
       ],
       "behaviorContracts": [
         "tui/cancellable-loader/cancel-input"
@@ -294042,9 +294052,9 @@
         "call:tui/cancellable_loader.go#CancellableLoader.HandleInput"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns",
         "test:tui/box_slice_style_gaps_test.go#TestCancellableLoaderSignalAndDispose",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelWithoutOnAbortOnlyAborts"
+        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress"
       ],
       "behaviorContracts": [
         "tui/cancellable-loader/cancel-input"
@@ -294111,9 +294121,9 @@
         "call:tui/bordered_loader.go#NewBorderedLoader"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns",
         "test:tui/bordered_loader_test.go#TestBorderedLoader_HandleInput",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
-        "test:tui/loader_image_parity_test.go#TestCancellableLoaderDisposeStopsWithoutAborting"
+        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress"
       ]
     },
     {
@@ -314220,9 +314230,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.CopyActiveSelectionToClipboard"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
         "test:tui/tui_alt_screen_test.go#TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenCopyOnSelectAndManualCopy",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenCopySelectionOsc52Payload"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenCopyOnSelectAndManualCopy"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -314243,9 +314253,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.CopyActiveSelectionToClipboard"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
         "test:tui/tui_alt_screen_test.go#TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenCopyOnSelectAndManualCopy",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenCopySelectionOsc52Payload"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenCopyOnSelectAndManualCopy"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -315832,8 +315842,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_transcript_selection_test.go#TestRenderSessionEntriesDropsFullscreenSelection",
-        "test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
+        "test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret"
       ]
     },
     {
@@ -315853,9 +315863,9 @@
         "call:tui/tui_alt_screen.go#newTuiAltScreen"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
         "test:tui/mouse_components_test.go#TestMouseSelectsAndCopiesEditorTextOnDrag",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenSelectionCopyAndShutdownDoNotRace"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
