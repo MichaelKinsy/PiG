@@ -91,7 +91,7 @@ func providerFixtureAPI(sc *Scenario) (string, error) {
 	return api, nil
 }
 
-// handler serves one provider turn per request: HTTP_ERROR fails, READ from a user turn calls the read tool, and any other newest turn is echoed as text.
+// handler serves one provider turn per request: HTTP_ERROR fails, READ from a user turn calls the read tool, ECHO_REQUEST from a user turn is answered with the named part of the request (provider_fixture_echo.go), and any other newest turn is echoed as text.
 func (f providerFixture) handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -110,9 +110,20 @@ func (f providerFixture) handler() http.Handler {
 			_, _ = fmt.Fprint(w, f.errorBody)
 			return
 		}
-		events := f.reply(text)
-		if !toolResult && text == "READ" {
+		var events []sseEvent
+		pointer, echo := echoRequestPointer(text)
+		switch {
+		case !toolResult && echo:
+			part, err := renderRequestPart(body, pointer)
+			if err != nil {
+				http.Error(w, "invalid fixture request: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+			events = f.reply(part)
+		case !toolResult && text == "READ":
 			events = f.toolCall()
+		default:
+			events = f.reply(text)
 		}
 		payload, err := encodeSSE(events)
 		if err != nil {
