@@ -194886,7 +194886,7 @@
       "evidence": [
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer"
+        "test:coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go#TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure"
       ]
     },
     {
@@ -274007,7 +274007,7 @@
       "evidence": [
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer"
+        "test:coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go#TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure"
       ]
     },
     {
@@ -274798,7 +274798,7 @@
       "evidence": [
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer"
+        "test:coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go#TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure"
       ]
     },
     {
@@ -275045,7 +275045,7 @@
       "evidence": [
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer"
+        "test:coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go#TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure"
       ]
     },
     {
@@ -305882,8 +305882,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
+        "test:internal/latex/prototype_names_oracle_test.go#TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi"
       ]
     },
     {
@@ -305904,8 +305904,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
+        "test:internal/latex/prototype_names_oracle_test.go#TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi"
       ]
     },
     {
@@ -305926,8 +305926,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
+        "test:internal/latex/prototype_names_oracle_test.go#TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi"
       ]
     },
     {

@@ -183,6 +183,7 @@ func ParseKey(data string) (string, bool) {
 	if IsKittyProtocolActive() && (data == "\x1b\r" || data == "\n") {
 		return "shift+enter", true
 	}
+	// pig divergence (D645): the table is a Go map with no inherited members, so an input chunk that spells an Object.prototype member (constructor, toString, __proto__) is no key; Pi's plain LEGACY_SEQUENCE_KEY_IDS object returns the inherited function or object as the key id.
 	if keyID, ok := parsedLegacySequenceKeyIDs[data]; ok {
 		return keyID, true
 	}
