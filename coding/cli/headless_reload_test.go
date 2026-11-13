@@ -28,7 +28,7 @@ export default function (pi) {
     const commands = pi.getCommands().map((command) => command.name).filter((name) => name.includes("reloaded")).sort();
     log("start:" + event.reason + " quiet=" + pi.getSettings().quietStartup + " marker=" + ctx.getSystemPrompt().includes("RELOAD_MARKER_CONTEXT") + " tools=" + pi.getActiveTools().join(",") + " commands=" + commands.join(","));
   });
-  pi.on("session_shutdown", async (event) => log("shutdown:" + event.reason));
+  pi.on("session_shutdown", async (event) => log("shutdown:" + event.reason + (event.reason === "reload" ? " tools=" + pi.getActiveTools().join(",") : "")));
   pi.registerCommand("reloadme", {
     description: "Rewrite settings and a context file, then reload",
     handler: async (_args, ctx) => {
@@ -86,7 +86,15 @@ func Extension() *sdk.Extension {
 		return nil, nil
 	})
 	e.OnSessionShutdown(func(ctx sdk.Context, event map[string]any) (any, error) {
-		logLine(fmt.Sprintf("shutdown:%v", event["reason"]))
+		line := fmt.Sprintf("shutdown:%v", event["reason"])
+		if event["reason"] == "reload" {
+			tools, err := ctx.GetActiveTools()
+			if err != nil {
+				return nil, err
+			}
+			line += " tools=" + strings.Join(tools, ",")
+		}
+		logLine(line)
 		return nil, nil
 	})
 	e.Command("reloadme", "Rewrite settings and a context file, then reload", func(ctx sdk.Context, args string) error {
@@ -143,7 +151,8 @@ def new_extension() -> pig_sdk.Extension:
         log(f"start:{event['reason']} quiet={quiet} marker={marker} tools={','.join(ctx.get_active_tools())} commands={','.join(commands)}")
 
     def session_shutdown(ctx, event):
-        log("shutdown:" + event["reason"])
+        tools = " tools=" + ",".join(ctx.get_active_tools()) if event["reason"] == "reload" else ""
+        log("shutdown:" + event["reason"] + tools)
 
     def reloadme(ctx, _args):
         agent_dir = os.environ["PIG_CODING_AGENT_DIR"]
@@ -214,8 +223,14 @@ pub fn new_extension() -> Extension {
         ));
         None
     });
-    ext.on_event("session_shutdown", |_ctx, event| {
-        log_line(&format!("shutdown:{}", event["reason"].as_str().unwrap_or("")));
+    ext.on_event("session_shutdown", |ctx, event| {
+        let reason = event["reason"].as_str().unwrap_or("");
+        let tools = match (reason, ctx.get_active_tools()) {
+            ("reload", Ok(tools)) => format!(" tools={}", tools.join(",")),
+            ("reload", Err(err)) => format!(" tools threw: {err}"),
+            _ => String::new(),
+        };
+        log_line(&format!("shutdown:{reason}{tools}"));
         None
     });
     ext.command(
@@ -284,8 +299,9 @@ const reloadProbeLisp = `(defpackage "reload-probe" (:use "COMMON-LISP"))
                                   commands)))))
     (pig:on ext "session_shutdown"
             (lambda (ctx event)
-              (declare (ignore ctx))
-              (log-line (format nil "shutdown:~A" (pig:jget event "reason")))))
+              (if (equal (pig:jget event "reason") "reload")
+                  (log-line (format nil "shutdown:reload tools=~{~A~^,~}" (coerce (pig:ctx-get-active-tools ctx) 'list)))
+                  (log-line (format nil "shutdown:~A" (pig:jget event "reason"))))))
     (pig:command ext "reloadme" "Rewrite settings and a context file, then reload"
                  (lambda (ctx args)
                    (declare (ignore args))
@@ -301,10 +317,11 @@ const reloadProbeLisp = `(defpackage "reload-probe" (:use "COMMON-LISP"))
 `
 
 // wantReloadLog is the extension's log for one /reloadme and the quit that ends the run. grep joins the active tools because the settings the command wrote add it to defaultTools (agent-session.ts:3598-3609).
+// The session_shutdown handler of the reload reads the active tools through its ctx: Pi invalidates the old runner only once those handlers have returned (agent-session.ts:3825-3826 `await emitSessionShutdownEvent(oldRunner, ...); oldRunner.invalidate();`), so a call a handler of it makes is served. Both callers of the host's reload emit the event and await it first: coding.Session.Reload for print, JSON and RPC mode, the interactive /reload for the TUI.
 var wantReloadLog = []string{
 	"factory",
 	"start:startup quiet=true marker=false tools=read,bash,edit,write commands=",
-	"shutdown:reload",
+	"shutdown:reload tools=read,bash,edit,write",
 	"factory",
 	"start:reload quiet=false marker=true tools=read,bash,edit,write,grep commands=reloaded,skill:reloaded-skill",
 	"returned",

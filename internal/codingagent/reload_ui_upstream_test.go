@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func reloadOriginalPair(t testing.TB, handler extension.HandlerFn) (*coding.Session, *icodingagent.TestHarness, *inproc.Runner) {
@@ -39,6 +41,32 @@ func reloadOriginalPair(t testing.TB, handler extension.HandlerFn) (*coding.Sess
 	t.Cleanup(func() { _ = session.Close() })
 	h := icodingagent.NewTestHarness(t, icodingagent.InteractiveModeOptions{CWD: services.CWD(), AgentDir: services.AgentDir(), Model: model, SessionHandle: session, SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), ExtensionRunner: runner, NoSkills: true, NoThemes: true, NoPromptTemplates: true}, nil)
 	return session, h, runner
+}
+
+// Pi's /reload restores the session's title when it begins (interactive-mode.ts:2613 resetExtensionUI calls updateTerminalTitle), and
+// writes it on the terminal the renderer draws on (:1173-1179 `this.ui.terminal.setTitle`).
+func TestReloadWritesTheSessionTitleOnTheRenderersTerminal(t *testing.T) {
+	session, h, runner := reloadOriginalPair(t, func(...any) (any, error) { return nil, nil })
+	if err := session.BindExtensions(t.Context(), coding.ExtensionBindings{UIContext: runner.GetUIContext(), Mode: extension.ModeTUI}); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var titles []string
+	h.ObserveTerminalTitles(t, func(title string) {
+		mu.Lock()
+		defer mu.Unlock()
+		titles = append(titles, title)
+	})
+	h.Do(func() {
+		if err := h.Reload(); err != nil {
+			t.Error(err)
+		}
+	})
+	mu.Lock()
+	defer mu.Unlock()
+	if want := tui.BuildTerminalTitle("", session.Services().CWD()); len(titles) == 0 || titles[len(titles)-1] != want {
+		t.Fatalf("the reload wrote the titles %q on the renderer's terminal, want the session's title %q last", titles, want)
+	}
 }
 
 type reloadRequestKey struct{}

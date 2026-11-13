@@ -61,6 +61,8 @@ type reloadLeakRow struct {
 	parallel bool
 	// afterLoad runs once after the first load and before the warm-up reloads.
 	afterLoad func(t *testing.T)
+	// invalidated marks a row whose every reload follows a reload that failed: the host holds the stale message when the reload starts, as after the Host.Invalidate a mode calls when its reload fails, and the reload ends that staleness.
+	invalidated bool
 	// surfaces is the kind of a row whose extensions draw, "views", "keys" or "surfaces" (both): after every reload the row draws what that kind names (reload_leak_surfaces_test.go).
 	surfaces string
 }
@@ -120,6 +122,13 @@ func reloadLeakRows() []reloadLeakRow {
 	for _, row := range slices.Clone(rows) {
 		if row.sdk == sdkscenarios.Node && row.realization == "isolated" || row.sdk == sdkscenarios.Go && row.realization == "packed" {
 			row.realization, row.parallel = row.realization+"-parallel", true
+			rows = append(rows, row)
+		}
+	}
+	// A reload that failed leaves the host invalidated, and the next reload ends that (Host.Invalidate, Host.Reload). These rows run again with every reload preceded by the invalidation: it leaves nothing behind either.
+	for _, row := range slices.Clone(rows) {
+		if (row.sdk == sdkscenarios.Node || row.sdk == sdkscenarios.Go) && row.realization == "isolated" || row.sdk == sdkscenarios.Node && row.realization == "packed" {
+			row.realization, row.invalidated = row.realization+"-invalidated", true
 			rows = append(rows, row)
 		}
 	}
@@ -400,6 +409,9 @@ func TestReloadLeak(t *testing.T) {
 					t.Fatalf("reload %d: session_shutdown: %v", n, err)
 				}
 				runner.Invalidate("")
+				if row.invalidated {
+					host.Invalidate("")
+				}
 				var err error
 				if loaded, err = host.Reload(t.Context()); err != nil {
 					t.Fatalf("reload %d: %v", n, err)

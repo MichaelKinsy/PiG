@@ -407,7 +407,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// Update terminal title + status-line name
 		// whenever /name sets a new session name.
 		OnNameChange: func(name string) {
-			tui.SetTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
+			m.setTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
 			m.statusLine.SetName(name)
 		},
 		FlushCompactionQueue: func() {
@@ -779,6 +779,20 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}); err != nil {
 				return err
 			}
+			// upstream: agent-session.ts:3825-3826 invalidates the old runner right after session_shutdown, before the steps that can throw, and builds the new one only at _buildRuntime (:3844); interactive-mode.ts:6670-6704 catches the throw and shows it. A reload that fails in between leaves the old instance stale. When this reload ends with the old runner still current, the extension processes get the stale message too, as after a failed reload in print, JSON and RPC mode (their Runtime.SetReload). The runner's runtime stays active: the next reload's runner is built over it (replaceExtensionRunner).
+			// A mode with no extension host and no reloadable built-in extensions rebuilds no runner on /reload, so its runner stays in service.
+			if runner != nil && (m.opts.SubprocessHost != nil || m.opts.ReloadBuiltinExtensions != nil) {
+				previous := runner
+				previous.InvalidateKeepingRuntime("")
+				defer func() {
+					if m.newRunner != previous {
+						return
+					}
+					if host, ok := m.opts.SubprocessHost.(interface{ Invalidate(message string) }); ok {
+						host.Invalidate(previous.StaleMessage())
+					}
+				}()
+			}
 
 			// 2. Reload settings.
 			discardStagedTools := func() {}
@@ -893,8 +907,8 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				if reloadErr != nil {
 					// The rebuild does not run, so the staged tools must not activate when a handler of this reload registers a tool below.
 					discardStagedTools()
-					m.reloadIssues = append(m.reloadIssues, "[extension] reload failed: "+reloadErr.Error())
-					fmt.Fprintf(os.Stderr, "extension reload: %v\n", reloadErr)
+					// upstream: a throw of _resourceLoader.reload() rejects session.reload() (agent-session.ts:3838): no runner is built and no session_start is emitted, and the mode shows "Reload failed: <message>".
+					return fmt.Errorf("extension reload: %w", reloadErr)
 				} else {
 					resetLogin = true
 					if m.opts.ReloadBuiltinExtensions != nil {
@@ -1006,6 +1020,10 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				if rep := m.opts.SubprocessHost.LastReloadReport(); rep != nil {
 					if rep.Error != "" {
 						diag.Diagnostics = append(diag.Diagnostics, "[extension] "+rep.Error)
+					}
+					// pig additive (D19): an extension whose runtime did not acknowledge the reload was ended and loaded again; the reload says so in one line (subprocess.ReloadReport.Unacknowledged).
+					for _, line := range rep.Unacknowledged {
+						diag.Diagnostics = append(diag.Diagnostics, "[extension] "+line)
 					}
 					diag.ReloadDuration = rep.Duration
 					for _, c := range rep.Cells {

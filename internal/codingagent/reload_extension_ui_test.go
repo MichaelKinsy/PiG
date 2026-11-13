@@ -179,18 +179,15 @@ func TestExtensionUIResetRestoresTheFooterAndTheHeader(t *testing.T) {
 }
 
 func TestExtensionUIResetWritesTheSessionTitle(t *testing.T) {
-	var titles []string
-	previous := setTerminalTitle
-	setTerminalTitle = func(title string) { titles = append(titles, title) }
-	t.Cleanup(func() { setTerminalTitle = previous })
 	eachExtensionUIReset(t, func(t *testing.T, p *extensionUIProbe, reset func()) {
+		terminal := recordTerminalCalls(t, p.m)
 		p.ui.SetTitle("title of a host-process extension")
 		p.call(t, "ui.setTitle", map[string]any{"title": "title of an extension process"})
-		titles = nil
+		terminal.takeTitles()
 		reset()
 		want := tui.BuildTerminalTitle("", p.m.opts.CWD)
-		if len(titles) == 0 || titles[len(titles)-1] != want {
-			t.Errorf("the reset wrote the terminal titles %q, want the session's title %q last; Pi restores it (updateTerminalTitle)", titles, want)
+		if titles := terminal.takeTitles(); len(titles) == 0 || titles[len(titles)-1] != want {
+			t.Errorf("the reset wrote the titles %q on the renderer's terminal, want the session's title %q last; Pi restores it there (updateTerminalTitle)", titles, want)
 		}
 	})
 }
