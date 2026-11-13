@@ -592,3 +592,33 @@ func TestLedgerSurvivesSquashMerge(t *testing.T) {
 		t.Fatalf("in-range entry matching nothing: problems %v prunable %v", p, pr)
 	}
 }
+
+// A unit-evidence file that does not parse is an error that names it. Skipped, its tests would lose their mutation-proven class and the reports would offer them for deletion.
+func TestLoadUnitEvidenceNamesTheFileThatDoesNotParse(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "test/parity/unit-evidence/good.json", `[{"package": "./pkg", "tests": ["TestA"]}]`)
+	keys, err := loadUnitEvidence(dir)
+	if err != nil || !keys["pkg|TestA"] {
+		t.Fatalf("keys = %v, err = %v; want pkg|TestA", keys, err)
+	}
+	write(t, dir, "test/parity/unit-evidence/bad.json", `[{"package": "./pkg", "tests": ["TestB"]]`)
+	if _, err := loadUnitEvidence(dir); err == nil || !strings.Contains(err.Error(), "bad.json") {
+		t.Fatalf("err = %v, want it to name bad.json", err)
+	}
+}
+
+// The inventory classifies Pi goldens from the provenance manifest: a manifest that is missing or does not parse is an error that names it, not an inventory with no Pi golden.
+func TestLoadPiGoldenBasesNamesTheManifestThatDoesNotParse(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := loadPiGoldenBases(dir); err == nil || !strings.Contains(err.Error(), provenanceFile) {
+		t.Fatalf("missing manifest: err = %v, want it to name %s", err, provenanceFile)
+	}
+	write(t, dir, provenanceFile, "[[golden]]\npaths = [\"a/testdata/x.golden\"]\nowner = \"pi\"\n")
+	if bases, err := loadPiGoldenBases(dir); err != nil || !slices.Equal(bases, []string{"x.golden"}) {
+		t.Fatalf("bases = %v, err = %v; want x.golden", bases, err)
+	}
+	write(t, dir, provenanceFile, "[[golden]]\npaths = [\"a/testdata/x.golden\"]\nowner = \"pi\"\"\n")
+	if _, err := loadPiGoldenBases(dir); err == nil || !strings.Contains(err.Error(), provenanceFile) || !strings.Contains(err.Error(), "line 3") {
+		t.Fatalf("err = %v, want it to name %s and line 3", err, provenanceFile)
+	}
+}
