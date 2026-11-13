@@ -267,7 +267,7 @@ export function createBridge({ port, wireError, host }) {
 	return {
 		operations: { ...contractOperations, get, value, watch, pin, call },
 		/** The host package of the Go core facets' proxies (`GO_PACKAGE`), answered to the scripts that import it. */
-		hostPackage: createProxies({ ask, tell, watches: observers, mirrors: copies, fatal: (error) => port.control({ event: "fatal", error: wireError(error) }) }),
+		hostPackage: createProxies({ ask, tell, watches: observers, mirrors: copies, sinks: events.sinks, fatal: (error) => port.control({ event: "fatal", error: wireError(error) }) }),
 		/**
 		 * Handles a control message that is no request of `operations`: a notification of the Go side (no id, no reply), or
 		 * what the Go side sends for a request it serves for this side (an answer, a frame or the end of a watch of the Go
