@@ -3,7 +3,9 @@
 // with the picked value. vtabs mounts three titled panels and hides the third, which the user can open; vfocus updates
 // the second with a focus request; vbind mounts a panel whose keys are bindings; vdialog mounts a panel whose key m
 // opens a dialog, whose keys close it, open a second dialog over it and raise an intent that only ends when it is
-// cancelled; vlater mounts that dialog two seconds later, and vdiag shows the notices the client left on it. With
+// cancelled, and whose keys o, d and u open dialogs that declare a dismiss intent: the memo hides itself when that is
+// raised, the deaf one answers and stays, and the mute one never answers;
+// vlater mounts the first dialog two seconds later, and vdiag shows the notices the client left on it. With
 // PIG_UI_VIEW_FIXTURE_MOUNTS=0 every command runs and makes no ui.view call, so a session
 // that never mounted takes the same keys. With PIG_UI_VIEW_FIXTURE_ABILITIES=panel or =widget-above it mounts one view
 // in that slot when it is told the abilities of the client that attached (OnViewAbilities), before any command; with
@@ -87,23 +89,32 @@ var (
 	openLegend   = sdk.ViewIntent{Name: "viewfx.legend", Arg: object, TimeoutMs: 5000}
 	closeDialog  = sdk.ViewIntent{Name: "viewfx.close", Arg: object, TimeoutMs: 5000}
 	slow         = sdk.ViewIntent{Name: "viewfx.slow", Arg: object, TimeoutMs: 120000, Cancellable: true}
-	dialogTitles = map[string]string{"map": "Map", "legend": "Legend"}
+	openMemo     = sdk.ViewIntent{Name: "viewfx.memo", Arg: object, TimeoutMs: 5000}
+	openDeaf     = sdk.ViewIntent{Name: "viewfx.deaf", Arg: object, TimeoutMs: 5000}
+	openMute     = sdk.ViewIntent{Name: "viewfx.mute", Arg: object, TimeoutMs: 5000}
+	dismiss      = sdk.ViewIntent{Name: "viewfx.dismiss", Arg: object, TimeoutMs: 120000, Dismiss: true}
+	dialogTitles = map[string]string{"map": "Map", "legend": "Legend", "memo": "Memo", "deaf": "Deaf", "mute": "Mute"}
+	dialogOpener = map[string]string{openMap.Name: "map", openLegend.Name: "legend", openMemo.Name: "memo", openDeaf.Name: "deaf", openMute.Name: "mute"}
 	pickItems    = []kit.SelectItem{{Value: "alpha", Label: "Alpha item"}, {Value: "beta", Label: "Beta item"}}
 )
 
 // places is the panel a dialog is opened from: a list, and the key m.
 func places(text string) sdk.ViewContent {
 	return sdk.ViewContent{
-		View:     kit.View{Root: kit.NewContainer(kit.NewText(text, 1, 0), kit.NewSelectList("pick", pickItems, 4)), Focus: "pick"},
-		Intents:  []sdk.ViewIntent{pick, openMap},
-		Bindings: []sdk.ViewBinding{{Key: "m", Intent: openMap.Name, Name: "map"}},
-		Focus:    []sdk.ViewFocus{{Node: "pick", Request: "mount"}},
+		View:    kit.View{Root: kit.NewContainer(kit.NewText(text, 1, 0), kit.NewSelectList("pick", pickItems, 4)), Focus: "pick"},
+		Intents: []sdk.ViewIntent{pick, openMap, openMemo, openDeaf, openMute},
+		Bindings: []sdk.ViewBinding{
+			{Key: "m", Intent: openMap.Name, Name: "map"}, {Key: "o", Intent: openMemo.Name, Name: "memo"},
+			{Key: "d", Intent: openDeaf.Name}, {Key: "u", Intent: openMute.Name},
+		},
+		Focus: []sdk.ViewFocus{{Node: "pick", Request: "mount"}},
 	}
 }
 
-// dialog is the content of the dialog key: a title, a list, and its keys.
+// dialog is the content of the dialog key: a title, a list, and its keys. The memo, the deaf and the mute dialog bind
+// no key that closes them: their second intent is the one the client raises when the user dismisses the dialog.
 func dialog(key, text string) sdk.ViewContent {
-	return sdk.ViewContent{
+	content := sdk.ViewContent{
 		Title:   dialogTitles[key],
 		View:    kit.View{Root: kit.NewContainer(kit.NewText(text, 1, 0), kit.NewSelectList("pick", pickItems, 4)), Focus: "pick"},
 		Intents: []sdk.ViewIntent{pick, closeDialog, openLegend, slow},
@@ -113,6 +124,11 @@ func dialog(key, text string) sdk.ViewContent {
 			{Key: "s", Intent: slow.Name, Name: "slow"},
 		},
 	}
+	if key == "memo" || key == "deaf" || key == "mute" {
+		content.Intents = []sdk.ViewIntent{pick, dismiss, slow}
+		content.Bindings = []sdk.ViewBinding{{Key: "s", Intent: slow.Name, Name: "slow"}}
+	}
+	return content
 }
 
 func note(text string) sdk.ViewContent {
@@ -123,7 +139,7 @@ func main() {
 	ext := sdk.New("viewfx")
 	mounts := os.Getenv("PIG_UI_VIEW_FIXTURE_MOUNTS") != "0"
 	var mu sync.Mutex
-	var cancelled atomic.Int64
+	var cancelled, dismissed atomic.Int64
 	refs := map[string]sdk.ViewRef{}
 	keep := func(st sdk.ViewStatus, err error) error {
 		if err != nil {
@@ -236,19 +252,30 @@ func main() {
 			return sdk.ViewIntentResult{Outcome: "done"}
 		}
 		switch in.Intent {
-		case openMap.Name, openLegend.Name:
-			// A key of the panel opens the map and a key of the map the legend: the first press mounts the dialog, a
-			// later one shows the dialog its own key hid.
-			key := "map"
-			if in.Intent == openLegend.Name {
-				key = "legend"
-			}
+		case openMap.Name, openLegend.Name, openMemo.Name, openDeaf.Name, openMute.Name:
+			// A key of the panel opens a dialog and a key of the map the legend: the first press mounts the dialog, a
+			// later one shows the dialog that was hidden.
+			key := dialogOpener[in.Intent]
 			if hidden := ref(key); hidden.Key != "" {
 				return failed(keep(in.Context.ShowView(hidden)))
 			}
 			return failed(keep(in.Context.MountView(sdk.ViewMount{Key: key, Slot: sdk.ViewSlotDialog, ViewContent: dialog(key, key+" rows")})))
 		case closeDialog.Name:
 			return failed(keep(in.Context.HideView(at)))
+		case dismiss.Name:
+			// The user dismissed a dialog: closing it is this handler's, and it says what the client sent. The memo's
+			// closes it; the deaf and the mute dialog say it in their own rows and stay open, the deaf one answering
+			// and the mute one never.
+			asked := fmt.Sprintf("%s asked %d with %s", dialogTitles[in.Mount.Key], dismissed.Add(1), in.Arg)
+			if in.Mount.Key == "memo" {
+				in.Context.Notify(asked, "info")
+				return failed(keep(in.Context.HideView(at)))
+			}
+			if err := keep(in.Context.UpdateView(sdk.ViewUpdate{Mount: at, ViewContent: dialog(in.Mount.Key, asked)})); err != nil || in.Mount.Key == "deaf" {
+				return failed(err)
+			}
+			<-in.Context.Done()
+			return sdk.ViewIntentResult{Outcome: "failed", Error: "cancelled"}
 		case slow.Name:
 			// Ends only when the client cancels it. The next pick of any dialog shows how many were cancelled.
 			<-in.Context.Done()

@@ -261,4 +261,47 @@ func TestTerminalViewClientDialogIsLaidOutOnceForItsFrames(t *testing.T) {
 	})
 }
 
+// The key that interrupts in a dialog whose plugin declared a dismiss intent is the plugin's once: the frame stays with
+// the focus, no row is drawn and the editor's interrupt does not run. A second press in the dialog the plugin did not
+// close leaves it for its row, and the third interrupts. Entered again and hidden by its plugin, the dialog closes and
+// the editor has the focus again.
+func TestTerminalViewClientEscapeDismissesADialogThatDeclaresItOnce(t *testing.T) {
+	viewDialogModes(t, func(t *testing.T, p *viewModeProbe) {
+		interrupts := 0
+		p.m.defaultCustomEditor().OnEscape = func() { interrupts++ }
+		mount := strings.Replace(viewDialogProbeMount("map"), `"view":`, `"intents":[{"name":"ext.shut","arg":{"type":"object"},"dismiss":true}],"view":`, 1)
+		ref := p.must("ui.view.mount", mount)
+		p.frame()
+		dialog := p.mounted("map")
+		if !dialog.focused || !p.framed() {
+			t.Fatalf("the dialog shown over an empty editor: focused %v, frame %v", dialog.focused, p.framed())
+		}
+		p.key("\x1b")
+		frame := widthx.StripAnsi(p.frame())
+		if strings.Contains(frame, "F6 to enter") || interrupts != 0 || !dialog.focused || !p.framed() || p.m.tuiInst.GetFocusedComponent() == p.m.editor {
+			t.Fatalf("after Escape in a dialog that declares a dismiss intent: interrupts %d, the dialog focused %v, frame %v:\n%s", interrupts, dialog.focused, p.framed(), frame)
+		}
+		p.key("\x1b")
+		if frame := widthx.StripAnsi(p.frame()); !strings.Contains(frame, "Probe map: F6 to enter") || interrupts != 0 || dialog.focused || p.framed() || p.m.tuiInst.GetFocusedComponent() != p.m.editor {
+			t.Fatalf("after the second Escape: interrupts %d, the dialog focused %v, frame %v:\n%s", interrupts, dialog.focused, p.framed(), frame)
+		}
+		p.key("\x1b")
+		if interrupts != 1 {
+			t.Fatalf("the third Escape interrupted %d times, want 1", interrupts)
+		}
+		if _, consumed := p.m.tuiInst.RunInputListeners("\x1b[17~"); !consumed {
+			t.Fatal("F6 was not taken")
+		}
+		p.frame()
+		if !dialog.focused || !p.framed() {
+			t.Fatalf("F6 did not enter the dialog: focused %v, frame %v", dialog.focused, p.framed())
+		}
+		p.must("ui.view.hide", `{"mount":`+string(ref)+`}`)
+		p.frame()
+		if p.framed() || p.m.tuiInst.HasOverlay() || p.m.tuiInst.GetFocusedComponent() != p.m.editor {
+			t.Fatalf("after the plugin hid the dialog: frame %v, overlay %v", p.framed(), p.m.tuiInst.HasOverlay())
+		}
+	})
+}
+
 var _ tui.Component = (*viewMount)(nil)

@@ -653,3 +653,132 @@ func TestUIViewDialogLeavesATypingUserTheKeys(t *testing.T) {
 		})
 	}
 }
+
+// The key that interrupts in a dialog of a real session, for both kinds of dialog. A dialog whose extension declared a
+// dismiss intent is dismissed by it: the extension's handler is raised with {}, says so and hides the dialog, so the
+// frame closes, no row waits above the editor and the panel that opened the dialog has the keys again; pressed again
+// in the dialog shown again, the key dismisses it again. A dialog whose extension declared none is left by the key and
+// stays open: its row waits above the editor. In both TUI modes.
+func TestUIViewDialogEscapeDismissesOrLeaves(t *testing.T) {
+	for _, mode := range []string{"fullscreen", "regular"} {
+		t.Run(mode, func(t *testing.T) {
+			r := startUIView(t, "on.yaml", mode, true)
+			r.send("/vdialog\r")
+			r.settle("places rows", "m map", "o memo")
+			for _, nth := range []string{"1", "2"} {
+				r.send("o")
+				r.settle("┌ Memo ", "memo rows", "s slow")
+				r.sendKey("Escape")
+				r.gone("┌ Memo ", "memo rows")
+				if pane := r.settle("Memo asked "+nth+" with {}", "m map"); strings.Contains(pane, "F6 to enter") {
+					t.Fatalf("the dialog its extension closed at Escape %s waits on a row:\n%s", nth, pane)
+				}
+			}
+			r.send("m")
+			r.settle("┌ Map ", "map rows", "q close")
+			r.sendKey("Escape")
+			r.gone("┌ Map ", "q close")
+			if pane := r.settle("Map: F6 to enter", "places rows"); strings.Contains(pane, "Memo asked 3") {
+				t.Fatalf("Escape in a dialog without a dismiss intent raised one:\n%s", pane)
+			}
+			r.sendKey("F6")
+			r.settle("┌ Map ", "map rows", "q close")
+		})
+	}
+}
+
+// How many presses of the key that interrupts reach the editor from a dialog, counted on a real session: at most three,
+// whatever the extension does. The editor holds a line in bash mode, which only its own interrupt clears, and the
+// dialog is opened from the panel. From a dialog without a dismiss intent the second press is the editor's. From one
+// that declares a dismiss intent the first press raises it (the extension says so). When the extension's handler
+// answers and leaves the dialog open, or never answers, the second press leaves the dialog for its row and raises
+// nothing, and the third is the editor's; the dialog entered afterwards shows it was asked once. When the handler hides
+// the dialog the keyboard returns to what held it before: the panel, which the second press leaves, or, for a dialog
+// entered from the editor with F6, the editor, whose interrupt the second press is. In both TUI modes.
+func TestUIViewDialogEscapeReachesTheEditorInABoundedCount(t *testing.T) {
+	cases := []struct {
+		name, key, title string
+		fromEditor       bool // the dialog is left and entered again with F6, so the editor held the keyboard before it
+		closes           bool // the extension hides the dialog when it is dismissed
+		presses          int
+	}{
+		{"none", "m", "Map", false, false, 2},
+		{"ignored", "d", "Deaf", false, false, 3},
+		{"unanswered", "u", "Mute", false, false, 3},
+		{"closed-from-the-panel", "o", "Memo", false, true, 3},
+		{"closed-from-the-editor", "o", "Memo", true, true, 2},
+	}
+	for _, mode := range []string{"fullscreen", "regular"} {
+		for _, c := range cases {
+			t.Run(mode+"/"+c.name, func(t *testing.T) {
+				r := startUIView(t, "on.yaml", mode, true)
+				r.send("/vdialog\r")
+				r.settle("places rows", "m map")
+				r.sendKey("Escape")
+				r.gone("m map")
+				r.send("!held line")
+				r.settle("!held line")
+				r.sendKey("F6")
+				r.settle("m map", "!held line")
+				r.send(c.key)
+				frame, row, rows := "┌ "+c.title+" ", c.title+": F6 to enter", strings.ToLower(c.title)+" rows"
+				r.settle(frame, rows)
+				if c.fromEditor {
+					r.sendKey("F6")
+					r.gone(frame)
+					r.settle(row, "!held line")
+					r.sendKey("F6")
+					r.settle(frame, rows)
+				}
+				asked := c.title + " asked 1 with {}"
+				pressed := 0
+				press := func() {
+					r.sendKey("Escape")
+					pressed++
+				}
+				switch {
+				case c.closes && c.fromEditor:
+					press()
+					r.gone(frame)
+					if pane := r.settle(asked, "!held line"); strings.Contains(pane, "F6 to enter") || strings.Contains(pane, "m map") {
+						t.Fatalf("the dialog its extension closed left a row, or the keys went to the panel:\n%s", pane)
+					}
+				case c.closes:
+					press()
+					r.gone(frame)
+					if pane := r.settle(asked, "m map", "!held line"); strings.Contains(pane, "F6 to enter") {
+						t.Fatalf("the dialog its extension closed waits on a row:\n%s", pane)
+					}
+					press()
+					r.gone("m map")
+					r.settle("!held line")
+				case c.key != "m":
+					rows = asked
+					press()
+					if pane := r.settle(rows, frame); strings.Contains(pane, "F6 to enter") {
+						t.Fatalf("the first Escape left the dialog that declares a dismiss intent:\n%s", pane)
+					}
+					fallthrough
+				default:
+					press()
+					r.gone(frame)
+					r.settle(row, "!held line")
+				}
+				press()
+				r.gone("!held line")
+				if pressed != c.presses {
+					t.Fatalf("the editor's interrupt ran at press %d, want %d", pressed, c.presses)
+				}
+				if c.closes {
+					return
+				}
+				if pane := r.settle(row); strings.Contains(pane, frame) {
+					t.Fatalf("the Escape of the editor reached the dialog:\n%s", pane)
+				}
+				// The dialog was asked once at most: entered again it shows what it showed.
+				r.sendKey("F6")
+				r.settle(frame, rows)
+			})
+		}
+	}
+}

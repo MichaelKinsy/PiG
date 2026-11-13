@@ -292,3 +292,125 @@ func TestViewClientDialogTitleAndBindings(t *testing.T) {
 		t.Fatalf("the dialog without the focus draws the hint row: %q", rows)
 	}
 }
+
+// The key that interrupts dismisses a dialog whose plugin declared a dismiss intent: the client raises that intent with
+// {} and no node, and the dialog keeps its frame and the focus, as closing it is the plugin's. The key offers the
+// intent, so the plugin reads no notice for it. Pressed again in the dialog its plugin did not close, the key raises
+// nothing and leaves the dialog for its row; entered again, the dialog is dismissed by it again. While an intent of the
+// dialog is in flight the key cancels a cancellable one and leaves, as in a dialog without a dismiss intent. A panel
+// that declares a dismiss intent is left, not dismissed, and its plugin reads that the terminal does not offer it.
+func TestViewClientEscapeRaisesADialogsDismissIntentOnce(t *testing.T) {
+	f := newViewFixture(t)
+	var raised []string
+	f.host.invoke = func(ctx context.Context, inv uiview.Invocation) (uiview.Result, error) {
+		raised = append(raised, inv.Mount.Key+" "+inv.Intent+" ["+inv.NodeKey+"] "+string(inv.Arg))
+		if inv.Intent == viewPickIntent.Name {
+			<-ctx.Done()
+			return uiview.Result{}, ctx.Err()
+		}
+		return uiview.Result{Outcome: uiview.OutcomeDone}, nil
+	}
+	shut := uiview.IntentDecl{Name: "ext.shut", Arg: uiview.Shape{Type: "object"}, Dismiss: true, TimeoutMs: 30000}
+	content := viewDialogContent()
+	content.Intents = append(content.Intents, shut)
+	ref := f.mount("d", uiview.SlotDialog, content)
+	dialog := f.loop.open()[0].mount
+	if notices := f.notices("d"); len(notices) != 0 {
+		t.Fatalf("a dialog whose dismiss intent the key that interrupts raises left notices %v", notices)
+	}
+	const dismissal = "d ext.shut [] {}"
+	left := func() bool {
+		return f.loop.focused == nil && !dialog.focused && len(f.loop.open()) == 0 && waitingRow(f) == "d: F6 to enter"
+	}
+	enter := func() {
+		t.Helper()
+		if !f.loop.key("\x1b[17~") || f.loop.focused != dialog {
+			t.Fatal("F6 did not enter the dialog")
+		}
+		f.loop.run()
+	}
+	dialog.HandleInput("\x1b")
+	f.awaitResult()
+	f.loop.run()
+	if !slices.Equal(raised, []string{dismissal}) {
+		t.Fatalf("Escape in the dialog sent the plugin %q, want %q", raised, dismissal)
+	}
+	if f.loop.focused != dialog || !dialog.focused || len(f.loop.open()) != 1 || waitingRow(f) != "" {
+		t.Fatalf("after Escape in a dialog its plugin did not close: focused %v, frames %d, row %q", f.loop.focused == dialog, len(f.loop.open()), waitingRow(f))
+	}
+	// The plugin answered and closed nothing: the second press is not the plugin's.
+	dialog.HandleInput("\x1b")
+	f.loop.run()
+	if len(raised) != 1 || !left() {
+		t.Fatalf("the second Escape: the plugin was sent %q, focused %v, frames %d, row %q", raised, f.loop.focused, len(f.loop.open()), waitingRow(f))
+	}
+
+	// An intent in flight: the key cancels it and leaves, and raises nothing more.
+	enter()
+	dialog.HandleInput("\r")
+	dialog.HandleInput("\x1b")
+	f.awaitResult()
+	f.loop.run()
+	if len(raised) != 2 || !strings.HasPrefix(raised[1], "d ext.pick [pick] ") || !left() {
+		t.Fatalf("Escape with an intent in flight: the plugin was sent %q, focused %v, frames %d, row %q", raised, f.loop.focused, len(f.loop.open()), waitingRow(f))
+	}
+
+	// Entered again the key dismisses again, and this time the plugin closes the dialog.
+	enter()
+	dialog.HandleInput("\x1b")
+	f.awaitResult()
+	f.loop.run()
+	if len(raised) != 3 || raised[2] != dismissal || f.loop.focused != dialog {
+		t.Fatalf("Escape in the entered dialog sent the plugin %q, focused %v", raised, f.loop.focused == dialog)
+	}
+	f.transition("hide", ref)
+	if f.loop.focused != nil || len(f.loop.open()) != 0 || waitingRow(f) != "" {
+		t.Fatalf("the dialog its plugin hid: focused %v, frames %d, row %q", f.loop.focused, len(f.loop.open()), waitingRow(f))
+	}
+
+	f.mount("p", uiview.SlotPanel, uiview.Content{View: viewList("choose"), Intents: []uiview.IntentDecl{viewPickIntent, shut}, Focus: []uiview.Focus{{Node: "pick", Request: "mount"}}})
+	panel := f.loop.drawn()[0]
+	if notices := f.notices("p"); len(notices) != 1 || notices[0].Code != string(uiview.CodeUnsupported) || !strings.Contains(notices[0].Message, shut.Name) {
+		t.Fatalf("a panel that declares a dismiss intent left the notices %v, want one unsupported for %s", notices, shut.Name)
+	}
+	if f.loop.focused != panel {
+		t.Fatal("the panel that asked for the focus does not hold it")
+	}
+	panel.HandleInput("\x1b")
+	f.loop.run()
+	if len(raised) != 3 || f.loop.focused != nil || panel.focused {
+		t.Fatalf("Escape in a panel that declares a dismiss intent: the plugin was sent %q, the panel focused %v", raised, panel.focused)
+	}
+}
+
+// A plugin whose handler never answers the dismiss intent does not hold the key either: the intent is in flight, so the
+// second press leaves the dialog for its row and raises nothing.
+func TestViewClientSecondEscapeLeavesADialogWhoseDismissIsNotAnswered(t *testing.T) {
+	f := newViewFixture(t)
+	release := make(chan struct{})
+	defer close(release)
+	asked := make(chan string, 4)
+	f.host.invoke = func(_ context.Context, inv uiview.Invocation) (uiview.Result, error) {
+		asked <- inv.Intent
+		<-release
+		return uiview.Result{Outcome: uiview.OutcomeDone}, nil
+	}
+	content := viewDialogContent()
+	content.Intents = append(content.Intents, uiview.IntentDecl{Name: "ext.shut", Arg: uiview.Shape{Type: "object"}, Dismiss: true, TimeoutMs: 30000})
+	f.mount("d", uiview.SlotDialog, content)
+	dialog := f.loop.open()[0].mount
+	dialog.HandleInput("\x1b")
+	select {
+	case intent := <-asked:
+		if intent != "ext.shut" || f.loop.focused != dialog {
+			t.Fatalf("the first Escape raised %q, the dialog focused %v", intent, f.loop.focused == dialog)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first Escape raised no intent")
+	}
+	dialog.HandleInput("\x1b")
+	f.loop.run()
+	if f.loop.focused != nil || dialog.focused || len(f.loop.open()) != 0 || waitingRow(f) != "d: F6 to enter" || len(asked) != 0 {
+		t.Fatalf("the second Escape with the dismissal unanswered: focused %v, frames %d, row %q, raised %d more", f.loop.focused, len(f.loop.open()), waitingRow(f), len(asked))
+	}
+}
