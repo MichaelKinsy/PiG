@@ -209,6 +209,13 @@ func settingsOracleBase() settingsOracleConfig {
 // must agree. Pi has no "Mask secret input" row (D80), so the oracle driver inserts that one row into its own copy of the module, and
 // PiG has no "Session share destination" row (D64; TestSettingsSelectorOmitsShareDestination), so the copy drops Pi's.
 func TestSettingsSelectorMatchesPi(t *testing.T) {
+	// D2 ("Product name in messages"): the hardware cursor row's description names PiG, one cell longer than Pi's sentence, so
+	// it wraps at other widths. This oracle is about the selector's layout, keys and events: it lays the row out with Pi's
+	// sentence, the d2ProductNameTexts pair read backwards, and compares every frame as before.
+	// TestShowHardwareCursorDescriptionNamesPiG holds PiG's sentence.
+	pigDescription := showHardwareCursorDescription
+	showHardwareCursorDescription = d2PiText(pigDescription)
+	t.Cleanup(func() { showHardwareCursorDescription = pigDescription })
 	base := settingsOracleBase()
 	variants := []settingsOracleConfig{base}
 	{
