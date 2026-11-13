@@ -126,7 +126,7 @@ allocs = 2641
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAnthropicSSEInitialBlocks"
-allocs = 1994
+allocs = 1465
 
 [[benchmark]]
 package = "./ai"
@@ -136,12 +136,12 @@ allocs = 728
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAnthropicToolResultContent/image_only"
-allocs = 15
+allocs = 11
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAnthropicToolResultContent/mixed"
-allocs = 70
+allocs = 59
 
 [[benchmark]]
 package = "./ai"
@@ -251,7 +251,7 @@ allocs = 1
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAssistantStreamBuilderLongStream"
-allocs = 356443
+allocs = 296222
 
 [[benchmark]]
 package = "./ai"
@@ -396,7 +396,7 @@ allocs = 635
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCompletionsRequestLongSession"
-allocs = 3146
+allocs = 2019
 
 [[benchmark]]
 package = "./ai"
@@ -456,22 +456,22 @@ allocs = 78
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkFauxToolCallMultibyteArguments/180KB"
-allocs = 180259
+allocs = 165176
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkFauxToolCallMultibyteArguments/18KB"
-allocs = 18232
+allocs = 16744
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkFauxToolCallMultibyteArguments/45KB"
-allocs = 45199
+allocs = 41364
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkFauxToolCallMultibyteArguments/90KB"
-allocs = 90409
+allocs = 82836
 
 [[benchmark]]
 package = "./ai"
@@ -506,7 +506,7 @@ allocs = 70
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkGoogleStream10kDeltas"
-allocs = 691761
+allocs = 261582
 
 [[benchmark]]
 package = "./ai"
@@ -571,7 +571,7 @@ allocs = 0
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkMistralParseEvent"
-allocs = 16
+allocs = 2
 
 [[benchmark]]
 package = "./ai"
@@ -601,7 +601,7 @@ allocs = 59
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkModelsRuntimeRefresh"
-allocs = 35
+allocs = 29
 
 [[benchmark]]
 package = "./ai"
@@ -861,7 +861,7 @@ allocs = 2788
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderRequestLongHistory/openai-completions-text"
-allocs = 1946
+allocs = 1823
 
 [[benchmark]]
 package = "./ai"
@@ -876,7 +876,7 @@ allocs = 1081
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderRequestShape/completions-cache"
-allocs = 666
+allocs = 475
 
 [[benchmark]]
 package = "./ai"
@@ -906,42 +906,42 @@ allocs = 1243
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderStreamFrames/anthropic-text"
-allocs = 96032
+allocs = 46009
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderStreamFrames/anthropic-toolcall"
-allocs = 146294
+allocs = 96231
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderStreamFrames/google-text"
-allocs = 346125
+allocs = 130971
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderStreamFrames/mistral-text"
-allocs = 201454
+allocs = 106010
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderStreamFrames/openai-codex-responses-text"
-allocs = 166160
+allocs = 146146
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderStreamFrames/openai-completions-text"
-allocs = 61076
+allocs = 41065
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderStreamFrames/openai-completions-toolcall"
-allocs = 111374
+allocs = 91344
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderStreamFrames/openai-responses-text"
-allocs = 65870
+allocs = 45864
 
 [[benchmark]]
 package = "./ai"
@@ -1066,32 +1066,32 @@ allocs = 395
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkStreamToolCallArguments/anthropic/250KB"
-allocs = 289061
+allocs = 203219
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkStreamToolCallArguments/anthropic/25KB"
-allocs = 29899
+allocs = 21219
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkStreamToolCallArguments/openai-completions/250KB"
-allocs = 280182
+allocs = 245838
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkStreamToolCallArguments/openai-completions/25KB"
-allocs = 28952
+allocs = 25483
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkStreamToolCallArguments/openai-responses/250KB"
-allocs = 237662
+allocs = 203312
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkStreamToolCallArguments/openai-responses/25KB"
-allocs = 24642
+allocs = 21166
 
 [[benchmark]]
 package = "./ai"
@@ -1166,7 +1166,7 @@ allocs = 4098
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkTslibAsyncStack"
-allocs = 81029
+allocs = 14986
 
 [[benchmark]]
 package = "./ai"
@@ -1196,7 +1196,7 @@ allocs = 3021
 [[benchmark]]
 package = "./ai/providers/bedrock"
 benchmark = "BenchmarkBedrockStream10kDeltas"
-allocs = 422458
+allocs = 382426
 
 [[benchmark]]
 package = "./ai/providers/bedrock"
@@ -1281,12 +1281,12 @@ allocs = 24036
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkModelRuntimeObservation/openai-completions"
-allocs = 3407
+allocs = 2508
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkModelRuntimeObservation/openai-responses"
-allocs = 2901
+allocs = 1997
 
 [[benchmark]]
 package = "./coding"
@@ -1311,12 +1311,12 @@ allocs = 573605
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkPrintPipelineDeltas/openai-text/deltas=1000"
-allocs = 44527
+allocs = 39121
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkPrintPipelineDeltas/openai-text/deltas=10000"
-allocs = 405290
+allocs = 355215
 
 [[benchmark]]
 package = "./coding"
@@ -1346,7 +1346,7 @@ allocs = 12555
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkRuntimeNewSession"
-allocs = 3337
+allocs = 2884
 
 [[benchmark]]
 package = "./coding"
@@ -1701,7 +1701,7 @@ allocs = 584136
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPrintTextOpenAIDeltas"
-allocs = 164575
+allocs = 134303
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1831,22 +1831,22 @@ allocs = 2294
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/1ext"
-allocs = 11084
+allocs = 9768
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/4ext"
-allocs = 17815
+allocs = 15682
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementPhases/1ext"
-allocs = 20173
+allocs = 18496
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementPhases/4ext"
-allocs = 23707
+allocs = 22098
 
 [[benchmark]]
 package = "./coding/cli"
@@ -2411,7 +2411,7 @@ allocs = 9
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkActiveKeyDiagnostics"
-allocs = 322
+allocs = 52
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2436,17 +2436,17 @@ allocs = 86
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendTypedReadToolResult/1024KiB"
-allocs = 20
+allocs = 16
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendTypedReadToolResult/1KiB"
-allocs = 43
+allocs = 23
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendTypedReadToolResult/64KiB"
-allocs = 20
+allocs = 16
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2522,6 +2522,11 @@ allocs = 161
 package = "./internal/codingagent"
 benchmark = "BenchmarkChangelogCommandRender"
 allocs = 6410
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkClassifyTypedKey"
+allocs = 0
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2601,7 +2606,7 @@ allocs = 166
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCopilotAccountAvailability"
-allocs = 364
+allocs = 250
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2696,7 +2701,7 @@ allocs = 36
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveLongAnswerStream"
-allocs = 1017779
+allocs = 709351
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2726,6 +2731,21 @@ allocs = 910
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveThinkingStateBinding"
+allocs = 0
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkKernelFrameTimer/ArmAndStop"
+allocs = 0
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkKernelFrameTimer/DueAtOnce"
+allocs = 0
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkKernelFrameTimer/Expiry"
 allocs = 0
 
 [[benchmark]]
@@ -2896,7 +2916,7 @@ allocs = 97
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/0"
-allocs = 4079
+allocs = 3694
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3076,7 +3096,7 @@ allocs = 71
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkStartupInputHandoff"
-allocs = 77
+allocs = 20
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3116,12 +3136,12 @@ allocs = 127
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkStreamedWriteCard/50KB"
-allocs = 475958
+allocs = 255804
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkStreamedWriteCard/5KB"
-allocs = 381127
+allocs = 156699
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3231,22 +3251,22 @@ allocs = 155106
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWriteCardFrames/warm=off/200KB"
-allocs = 290388
+allocs = 247280
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWriteCardFrames/warm=off/50KB"
-allocs = 136618
+allocs = 86446
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWriteCardFrames/warm=on/200KB"
-allocs = 1835842
+allocs = 815616
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWriteCardFrames/warm=on/50KB"
-allocs = 434473
+allocs = 195668
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3281,7 +3301,7 @@ allocs = 14
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenFirstFrameLongTranscript"
-allocs = 549720
+allocs = 440420
 
 [[benchmark]]
 package = "./tui"
@@ -3566,22 +3586,22 @@ allocs = 6
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongAnswerStream/20000"
-allocs = 163200
+allocs = 108482
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongAnswerStream/5000"
-allocs = 44554
+allocs = 28451
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongAnswerStream/60000"
-allocs = 458945
+allocs = 313697
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongStreamingAssistantMessage/default"
-allocs = 99875
+allocs = 77111
 
 [[benchmark]]
 package = "./tui"
@@ -3661,12 +3681,12 @@ allocs = 1919
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownStreaming"
-allocs = 1335256
+allocs = 667105
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMarkdownStreamingCached"
-allocs = 146491
+allocs = 131883
 
 [[benchmark]]
 package = "./tui"
@@ -4025,28 +4045,43 @@ allocs = 24
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkStreamedCodeBlocks/json-200-lines"
+allocs = 11030
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkStreamedCodeBlocks/md20000"
+allocs = 22852
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkStreamedCodeBlocks/ts-200-lines"
+allocs = 22612
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkStreamedFence/bash"
-allocs = 1463559
+allocs = 1288235
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedFence/go"
-allocs = 1622325
+allocs = 1334699
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedFence/json"
-allocs = 2372074
+allocs = 1440917
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedFence/python"
-allocs = 1826313
+allocs = 1607264
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamedFence/typescript"
-allocs = 13974398
+allocs = 5744113
 
 [[benchmark]]
 package = "./tui"
@@ -4110,6 +4145,11 @@ allocs = 7
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkStreamingMessageAcrossCollections"
+allocs = 44680
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkStripControlEscapes/clean"
 allocs = 0
 
@@ -4121,17 +4161,17 @@ allocs = 1
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkSyntaxThemeScopes/diff"
-allocs = 9364
+allocs = 5567
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkSyntaxThemeScopes/html"
-allocs = 31083
+allocs = 13088
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkSyntaxThemeScopes/python"
-allocs = 23984
+allocs = 10487
 
 [[benchmark]]
 package = "./tui"
