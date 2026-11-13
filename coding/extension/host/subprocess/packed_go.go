@@ -954,6 +954,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 
 	h.markExtension(me.config.Name, "handshake-start")
 	conn := NewConn(me.config.Name, rawConn)
+	conn.awaitReady()
 	// Every member of a packed process has its own socket, and the process's exit ends them all (peer_exit.go).
 	conn.watchPeerExit(me.packedProcess.startWait())
 	if turns := me.processFileMutations(); turns != nil {
@@ -1010,7 +1011,9 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 	h.joinRoutedBus(ctx, me)
 	// sendReady, or activateNode for a deferred Node payload, fills the geometry.
 	readyPayload := &ReadyPayload{Group: h.Group(), Cwd: h.cwd, Mode: h.mode, SourceInfo: h.readySourceInfo(me)}
+	var stateEpoch uint64
 	if h.uiBridge != nil {
+		stateEpoch = h.readyStateEpoch(conn)
 		// Same contract as the isolated path: a registering extension gets the
 		// whole log once, then only what is new.
 		me.entryCursorMu.Lock()
@@ -1024,7 +1027,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 	}
 	if me.packedProcess.node {
 		me.pendingReady = &Envelope{Type: MsgReady, Ready: readyPayload}
-	} else if err := h.sendReady(me, conn, &Envelope{Type: MsgReady, Ready: readyPayload}); err != nil {
+	} else if err := h.sendReady(me, conn, &Envelope{Type: MsgReady, Ready: readyPayload}, stateEpoch); err != nil {
 		loadErr := newLoadError(me.config.Name, "ready", "send_ready_failed", fmt.Errorf("send ready: %w", err))
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr

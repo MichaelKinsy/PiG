@@ -219,6 +219,8 @@ type Conn struct {
 
 	// runSignal is the last run signal state the runtime was sent.
 	runSignal runSignalSync
+	// readyState is where a connection the Host adopted stands in its handshake (awaitReady, readySent); see the connReady constants.
+	readyState atomic.Uint32
 
 	stateMu       sync.Mutex
 	requestStates map[string]requestStateSink
