@@ -393,6 +393,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-390964d](#bf-390964d) | A program that embeds the alternate-screen renderer without a `CopySelection` function no longer copies a… | PiG's own defect | All platforms | Unreleased |
 | [BF-397866f](#bf-397866f) | A Go MCP client that declares an empty capability, such as `sampling` or `elicitation`, now sends it as `{}` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3a0d0e1](#bf-3a0d0e1) | A `Provider` object that an extension registers while it loads is now applied after every extension has… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-3a220c1](#bf-3a220c1) | `/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its… | PiG's own defect | macOS, Linux | Unreleased |
 | [BF-3a6a63b](#bf-3a6a63b) | On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its… | PiG's own defect | Windows | Unreleased |
 | [BF-3a708ed](#bf-3a708ed) | fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ab4c24](#bf-3ab4c24) | fix(coding-agent): render HTML export for sessions deeper than the call stack (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -7218,6 +7219,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3a0d0e1711` (2026-10-25)
 - **Tests:** `coding/cli/extension_host_wiring_guard_test.go::TestBuildFlushesTheExtensionHostProviderRegistrations`, `coding/extension/host/subprocess/native_provider_callback_context_test.go::TestNodeNativeProviderReceivesTheCallersOnResponseAndOnPayloadByName`, `coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthRefreshAndLogin`, `coding/extension/host/subprocess/provider_load_rejection_rollback_test.go::TestRejectedLoadRegistrationLeavesAnEarlierRegistrationIntact`, `coding/extension/host/subprocess/provider_object_load_queue_test.go::TestProviderObjectRegisteredWhileLoadingIsQueuedForABoundRegistry`, `test/parity/scenarios/extensions-runtime/89-reload-provider-registration-failure.toml`
 - **Release note:** A `Provider` object that an extension registers while it loads is now applied after every extension has loaded, like a provider configuration, instead of at once. When the model registry rejects a registration, PiG now leaves nothing of it behind: the login it declared, its entry in the model list that extensions read, and its claim on the provider are given back, so a registration of the same provider by another extension stays as it was. Pi's registry validates a registration before it stores anything of it.
+
+### BF-3a220c1
+
+**`/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its caller has no deadline or a later one.
+- **Root cause:** fetchJSON joined the caller's context with a 15 s timeout of the request's own (client.ts:193-194, huggingface.ts:75-76). When the caller's deadline and the request's were due at the same instant, both timers existed and Go fired them in either order: the request's timeout could end a registry refresh before the 15 s signal of syncCatalog (index.ts:51) was cancelled, and the sync then returned "The operation was aborted due to timeout" where Pi returns "Model catalog refresh timed out." (index.ts:60). In Pi the caller's timer is created first and Node fires the timers of one delay in creation order.
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS, Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `3a220c1b33` (2026-11-13)
+- **Tests:** `internal/codingagent/llama/index_async_ext_b_test.go::TestLlamaCommandSyncCatalogEndsAtTheSharedFifteenSecondTimeout`, `internal/codingagent/llama/index_async_ext_b_test.go::TestLlamaRequestLeavesTheTimeoutToACallerWhoseDeadlineIsDueNoLater`
+- **Release note:** `/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its caller has no deadline or a later one. When the caller's deadline was due at the same instant, both timers ran and either could fire first, so a model registry refresh that did not answer could end as `Could not connect to the server.` where Pi shows `Model catalog refresh timed out.`; in Pi the caller's timer is created first and fires first. No user on Linux or macOS sees a change: their clocks advance between the start of the catalog sync and its request, so the request never had a timer of its own (measured on Linux: Pi's text in 450 of 450 real-time runs before the change). The other text was reachable only on a clock that does not advance between those two calls; no run was made on such a platform.
 
 ### BF-3a6a63b
 

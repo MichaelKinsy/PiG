@@ -10591,6 +10591,29 @@
       ]
     },
     {
+      "id": "BF-3a220c1",
+      "title": "`/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its…",
+      "symptom": "`/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its caller has no deadline or a later one.",
+      "rootCause": "fetchJSON joined the caller's context with a 15 s timeout of the request's own (client.ts:193-194, huggingface.ts:75-76). When the caller's deadline and the request's were due at the same instant, both timers existed and Go fired them in either order: the request's timeout could end a registry refresh before the 15 s signal of syncCatalog (index.ts:51) was cancelled, and the sync then returned \"The operation was aborted due to timeout\" where Pi returns \"Model catalog refresh timed out.\" (index.ts:60). In Pi the caller's timer is created first and Node fires the timers of one delay in creation order.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/llama`: a request to the llama.cpp server or to Hugging Face starts its own 15-second timeout only when its caller has no deadline or a later one. When the caller's deadline was due at the same instant, both timers ran and either could fire first, so a model registry refresh that did not answer could end as `Could not connect to the server.` where Pi shows `Model catalog refresh timed out.`; in Pi the caller's timer is created first and fires first. No user on Linux or macOS sees a change: their clocks advance between the start of the catalog sync and its request, so the request never had a timer of its own (measured on Linux: Pi's text in 450 of 450 real-time runs before the change). The other text was reachable only on a clock that does not advance between those two calls; no run was made on such a platform.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3a220c1b33",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/llama/index_async_ext_b_test.go::TestLlamaCommandSyncCatalogEndsAtTheSharedFifteenSecondTimeout",
+        "internal/codingagent/llama/index_async_ext_b_test.go::TestLlamaRequestLeavesTheTimeoutToACallerWhoseDeadlineIsDueNoLater"
+      ]
+    },
+    {
       "id": "BF-3a6a63b",
       "title": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its…",
       "symptom": "The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds.",

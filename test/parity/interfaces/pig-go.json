@@ -320492,6 +320492,17 @@
       "shapeHash": "sha256:70884ba7f880821f721381b602ddc5c2fbd42425f185f610727e4d6992eaa3b3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#requestContext",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
+      "name": "requestContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) (context.Context, context.CancelFunc)"
+      },
+      "shapeHash": "sha256:85bc6ce39c4ca6b4fe2929b252e71d812591ee465c969bc30a7580e1e14f9869"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#requestTimeout",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
       "name": "requestTimeout",
