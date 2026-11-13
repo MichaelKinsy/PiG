@@ -212,6 +212,7 @@ func TestRunFailsOnAnUnreadableAsyncContractsLedger(t *testing.T) {
 		{"malformed", strings.Replace(orderedLedger, "agent-loop.ts\"", "agent-loop.ts\"\"", 1), true, []string{"async-contracts.toml", "line 4"}},
 		{"empty", "", true, []string{"async-contracts.toml", "lists no files"}},
 		{"no files", "version = \"1\"\n", true, []string{"async-contracts.toml", "lists no files"}},
+		{"no ordering row", strings.Replace(orderedLedger, "microtask-ordering", "promise-rejection", 1), true, []string{"async-contracts.toml", "lists no files with the microtask-ordering contract (1 [[files]] rows)"}},
 		{"missing", "", false, []string{"async-contracts.toml"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
