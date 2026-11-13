@@ -2000,6 +2000,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f7b245a](#bf-f7b245a) | A frontend member's main region now matches the transcript after an extension's custom entry is placed before… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f7c4b01](#bf-f7c4b01) | `pig extension upgrade` no longer changes, breaks or rejects a Go extension that already builds against the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f7d701e](#bf-f7d701e) | Tool argument validation asserts the `format` keyword for the formats TypeBox checks (date, time, date-time… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f7dbf54](#bf-f7dbf54) | Go SDK: the stack of a panic the SDK recovered in a settings storage's `WithLock`, an MCP credential store's… | PiG's own defect | All platforms | Unreleased |
 | [BF-f803eca](#bf-f803eca) | The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's… | PiG's own defect | All platforms | Unreleased |
 | [BF-f81b457](#bf-f81b457) | fix(telemetry): the span clock re-anchors when Date.now() is replaced; conformance steps both clocks together | PiG's own defect | All platforms | Unreleased |
 | [BF-f81ce00](#bf-f81ce00) | Interactive mode: when the first message flushed from the compaction queue was rejected (a… | PiG's own defect | All platforms | Unreleased |
@@ -29534,6 +29535,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8cc072521` (2026-10-08), `093cf5c781` (2026-10-09), `6f4a82fd86` (2026-10-09), `d1b3ad0151` (2026-10-09), `d1cbde3321` (2026-10-09), `d490a8b161` (2026-10-09), `f7d701e67d` (2026-10-09)
 - **Tests:** `ai/error_body_oracle_test.go::TestErrorBodyHelpersMatchPiOnSeededProbes`, `ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes`, `ai/service_urls_oracle_test.go::TestProviderServiceURLsMatchPiOnSeededProbes`, `chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder`, `internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages`, `internal/evals/report_oracle_test.go::TestEvalReportMatchesPiOnSeededDesigns`
 - **Release note:** Tool argument validation asserts the `format` keyword for the formats TypeBox checks (date, time, date-time, duration, email, ipv4, ipv6, iri, iri-reference, json-pointer, json-pointer-uri-fragment, relative-json-pointer, uri, uri-reference, uri-template, url, uuid) with TypeBox's own rules. Before, a value that violated a format passed validation.
+
+### BF-f7dbf54
+
+**Go SDK: the stack of a panic the SDK recovered in a settings storage's `WithLock`, an MCP credential store's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Go SDK: the stack of a panic the SDK recovered in a settings storage's `WithLock`, an MCP credential store's `WithRefreshLock` or a custom editor component (a queued task, a guarded call such as `HandleInput`) was written to the extension process's stderr, which the host forwards to the terminal, so it painted over the interactive screen.
+- **Root cause:** The Node runtime runs Pi's compiled output (createAgentSession and its built-in llama.cpp extension, the built-in tools, pi-tui components, the HTML export), so a Go port of a post-v1.5.2 Pi fix left the Node path on the old behavior; the llama.cpp default stayed http://127.0.0.1:8080 there while Go used 9931.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f55df43e29` (2026-11-11), `f7dbf5424d` (2026-11-13)
+- **Tests:** `extensions/sdk/guarded_panic_diagnostic_test.go::TestEditorComponentPanicStacksGoToTheExtensionLogAndNotStderr`, `extensions/sdk/guarded_panic_diagnostic_test.go::TestGuardedCallbackPanicStackGoesToTheExtensionLogAndNotStderr`, `internal/codingagent/llama/vendored_default_test.go::TestVendoredPiDistDefaultServerURLMatchesGo`
+- **Release note:** Go SDK: the stack of a panic the SDK recovered in a settings storage's `WithLock`, an MCP credential store's `WithRefreshLock` or a custom editor component (a queued task, a guarded call such as `HandleInput`) was written to the extension process's stderr, which the host forwards to the terminal, so it painted over the interactive screen. It now goes to the extension's log, as the stacks of the SDK's other recovered panics do; the user still sees the one-line error (Pi shows one line for a throwing callback and writes no stack to the console).
 
 ### BF-f803eca
 

@@ -56902,6 +56902,34 @@
       ]
     },
     {
+      "id": "BF-f7dbf54",
+      "title": "Go SDK: the stack of a panic the SDK recovered in a settings storage's `WithLock`, an MCP credential store's…",
+      "symptom": "Go SDK: the stack of a panic the SDK recovered in a settings storage's `WithLock`, an MCP credential store's `WithRefreshLock` or a custom editor component (a queued task, a guarded call such as `HandleInput`) was written to the extension process's stderr, which the host forwards to the terminal, so it painted over the interactive screen.",
+      "rootCause": "The Node runtime runs Pi's compiled output (createAgentSession and its built-in llama.cpp extension, the built-in tools, pi-tui components, the HTML export), so a Go port of a post-v1.5.2 Pi fix left the Node path on the old behavior; the llama.cpp default stayed http://127.0.0.1:8080 there while Go used 9931.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Go SDK: the stack of a panic the SDK recovered in a settings storage's `WithLock`, an MCP credential store's `WithRefreshLock` or a custom editor component (a queued task, a guarded call such as `HandleInput`) was written to the extension process's stderr, which the host forwards to the terminal, so it painted over the interactive screen. It now goes to the extension's log, as the stacks of the SDK's other recovered panics do; the user still sees the one-line error (Pi shows one line for a throwing callback and writes no stack to the console).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f55df43e29",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "f7dbf5424d",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/guarded_panic_diagnostic_test.go::TestEditorComponentPanicStacksGoToTheExtensionLogAndNotStderr",
+        "extensions/sdk/guarded_panic_diagnostic_test.go::TestGuardedCallbackPanicStackGoesToTheExtensionLogAndNotStderr",
+        "internal/codingagent/llama/vendored_default_test.go::TestVendoredPiDistDefaultServerURLMatchesGo"
+      ]
+    },
+    {
       "id": "BF-f803eca",
       "title": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's…",
       "symptom": "The bash tool no longer returns no output, with a footer like `[Showing lines 3-2 of 2]`, when a command's output ends in one line longer than about 100KB, such as a `grep` match in a minified file; it shows the end of that line, as Pi does (upstream #12092).",
