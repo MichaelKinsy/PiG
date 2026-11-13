@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 func toolDeclarations(current []AgentTool) []ai.ToolSchema {
@@ -130,7 +131,8 @@ type systemMessageWire struct {
 
 func decodeSystemMessage(data []byte) (*ai.SystemMessage, error) {
 	var wire systemMessageWire
-	if err := json.Unmarshal(data, &wire); err != nil {
+	// A session line Pi wrote holds a lone UTF-16 surrogate of a tool as its escape, which encoding/json reads as U+FFFD.
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 		return nil, err
 	}
 	content, err := decodeSystemContent(wire.Content)

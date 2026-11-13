@@ -1,0 +1,36 @@
+# Behavior family: tools
+# Surface: the bytes of an extension tool whose strings hold a lone UTF-16 surrogate.
+#
+# A JavaScript string can hold a lone surrogate, and an extension can register a
+# tool whose name, description or parameter schema has one. Pi does not sanitize
+# a tool: JSON.stringify writes the unit as its escape into the request of every
+# API kind (convertTools of anthropic-messages.ts, openai-completions.ts,
+# openai-responses-shared.ts, google-shared.ts), into the session line
+# (session-manager.ts) and into the RPC line (modes/rpc/jsonl.ts) of the system
+# message that declares the tools. Two tools may differ in that unit alone: the
+# model's call names one of them, the agent loop finds it by that name and the
+# next request names it again. Both CLIs run in RPC mode against a local endpoint;
+# the harness prints the marked strings of each place with every byte outside
+# ASCII as hex, and says which tool ran.
+
+name = "34-extension-tool-lone-surrogate"
+description = "An extension tool's lone UTF-16 surrogates reach the request, the RPC lines and the session file as Pi writes them, and a call finds its tool."
+covers = ["packages/ai/src/api/anthropic-messages.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses-shared.ts", "packages/ai/src/api/google-shared.ts", "packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/tool-lone-surrogate.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/tool-lone-surrogate.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 180
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["wire, 0 bytes outside ASCII: N_high[\\ud83d] D[\\ud83d] K[\\ud83d] PD[\\ud83d] E[\\ud83d] DF[\\ud83d]", "rpc tool_execution_end: N[\\ude00] ran low"]

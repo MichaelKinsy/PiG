@@ -1405,6 +1405,19 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			// lone_decl: the declaration of testfixture/fixture.go, whose text holds a lone UTF-16 surrogate
+			// (TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs): every transport registers it, so this baseline does too.
+			"lone_decl": {
+				Definition: extension.ToolDefinition{
+					Name:        "lone_decl",
+					Description: "D[\xed\xa0\xbd]",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"K[\ude00\ud83d]":{"type":"string","description":"PD[\ud83d]","enum":["E[\ude00]"],"default":"DF[\ud83d]"}}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "lone"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"echo_params": {
 				Definition: extension.ToolDefinition{
 					Name:        "echo_params",

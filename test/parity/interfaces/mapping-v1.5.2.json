@@ -4717,11 +4717,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:agent/proxy.go#ProxyAssistantMessageEvent"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:agent/proxy_partial_arguments_upstream_test.go#TestStreamProxyShowsGrowingPartialArgumentsWithoutKeepingTheRawTextOnTheBlockInLinearTime",
@@ -34681,9 +34681,9 @@
         "call:ai/anthropic.go#anthConvertTools"
       ],
       "evidence": [
+        "test:test/extension-conformance/tool_declaration_surrogates_test.go#TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs",
         "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages",
-        "test:agent/agent_transcript_upstream_test.go#TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState",
-        "test:agent/agent_transcript_upstream_test.go#TestAgent_DeclaresToolLoadoutChangesBeforeNextRequest"
+        "test:agent/agent_transcript_upstream_test.go#TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState"
       ]
     },
     {
@@ -35693,8 +35693,8 @@
       ],
       "evidence": [
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -49346,7 +49346,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/system_one.go#ClassifySystemOne"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:ai/system_one_wire_test.go#TestSystemOneWireRequestImagesKeepAnExplicitEmptyList",
@@ -81597,9 +81597,9 @@
         "call:ai/anthropic.go#anthConvertTools"
       ],
       "evidence": [
+        "test:test/extension-conformance/tool_declaration_surrogates_test.go#TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs",
         "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages",
-        "test:agent/agent_transcript_upstream_test.go#TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState",
-        "test:agent/agent_transcript_upstream_test.go#TestAgent_DeclaresToolLoadoutChangesBeforeNextRequest"
+        "test:agent/agent_transcript_upstream_test.go#TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState"
       ]
     },
     {
@@ -82649,8 +82649,8 @@
       ],
       "evidence": [
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -101060,8 +101060,8 @@
       ],
       "evidence": [
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -142306,11 +142306,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -142328,11 +142328,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteReply"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -146701,11 +146701,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -146723,11 +146723,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteReply"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -149462,11 +149462,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#WorkerToHostMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -150688,11 +150688,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -150710,11 +150710,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteReply"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -153298,11 +153298,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#WorkerToHostMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -161008,11 +161008,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#BashToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
@@ -173824,16 +173824,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#EditToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -188315,16 +188315,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/find_tool_input.go#FindToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -190214,16 +190214,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#GrepToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -194228,11 +194228,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#LsToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputOmitsAbsentOptionalMembers",
@@ -202349,11 +202349,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#PowerShellToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
@@ -204194,7 +204194,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/core/session/errorf.go#appendArg"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
@@ -204651,16 +204651,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#ReadToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -232796,16 +232796,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#WriteToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -246235,8 +246235,8 @@
       ],
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
-        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets"
+        "test:test/extension-conformance/tool_declaration_surrogates_test.go#TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs",
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi"
       ]
     },
     {
@@ -270457,7 +270457,7 @@
       "evidence": [
         "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -279021,7 +279021,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/mcpext/tools.go#CreateMcpToolDefinition"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:mcp/deepjson_test.go#TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
