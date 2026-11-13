@@ -112123,7 +112123,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce"
       ]
     },
     {
@@ -112145,7 +112145,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce"
       ]
     },
     {
@@ -112211,7 +112211,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -112233,7 +112233,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -122441,7 +122441,7 @@
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
         "test:chord/next/host/remote_websocket_test.go#TestWebSocketLinksOverALoopbackServer",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -122463,7 +122463,7 @@
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
         "test:chord/next/host/remote_websocket_test.go#TestWebSocketLinksOverALoopbackServer",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
