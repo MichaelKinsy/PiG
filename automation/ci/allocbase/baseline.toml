@@ -16,12 +16,17 @@ allocs = 6
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkAgentMessageMarshalJSON"
-allocs = 159
+allocs = 136
 
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkAgentMessageUnmarshalJSON"
 allocs = 155
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkAgentMessageUnmarshalJSONLarge"
+allocs = 42
 
 [[benchmark]]
 package = "./agent"
@@ -36,7 +41,7 @@ allocs = 16
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkLegacyWireMessageMarshalJSON"
-allocs = 71
+allocs = 45
 
 [[benchmark]]
 package = "./agent"
@@ -81,7 +86,7 @@ allocs = 4
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkToolResultMessageEmptyText"
-allocs = 39
+allocs = 14
 
 [[benchmark]]
 package = "./agent"
