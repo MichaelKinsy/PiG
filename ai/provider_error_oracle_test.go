@@ -5,6 +5,7 @@ package ai
 import (
 	"encoding/base64"
 	"math/rand"
+	"slices"
 	"testing"
 )
 
@@ -46,13 +47,20 @@ func providerErrorResponses() ([][][]byte, []int) {
 	return bodies, codes
 }
 
+// providerErrorCase is a provider of TestProviderErrorResponsesMatchPi.
+type providerErrorCase struct {
+	name string
+	pi   [4]string
+	make func(baseURL string) Provider
+}
+
+// googleVertexErrorCases holds the Vertex row of TestProviderErrorResponsesMatchPi; a build that strips the Vertex provider leaves
+// it out (provider_error_oracle_vertex_test.go).
+var googleVertexErrorCases []providerErrorCase
+
 func TestProviderErrorResponsesMatchPi(t *testing.T) {
 	bodies, statuses := providerErrorResponses()
-	for _, test := range []struct {
-		name string
-		pi   [4]string
-		make func(baseURL string) Provider
-	}{
+	for _, test := range slices.Concat([]providerErrorCase{
 		{"anthropic", [4]string{"anthropic-messages", "anthropicMessagesApi", "anthropic-messages", "anthropic"}, func(baseURL string) Provider {
 			return NewAnthropicProvider(AnthropicConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
 		}},
@@ -71,13 +79,11 @@ func TestProviderErrorResponsesMatchPi(t *testing.T) {
 		{"azure-openai-responses", [4]string{"azure-openai-responses", "azureOpenAIResponsesApi", "azure-openai-responses", "azure-openai-responses"}, func(baseURL string) Provider {
 			return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
 		}},
-		{"google-vertex", [4]string{"google-vertex", "googleVertexApi", "google-vertex", "google-vertex"}, func(baseURL string) Provider {
-			return NewGoogleVertexProvider(GoogleVertexConfig{APIKey: "k", Model: "m", BaseURL: baseURL})
-		}},
+	}, googleVertexErrorCases, []providerErrorCase{
 		{"pi-messages", [4]string{"pi-messages", "piMessagesApi", "pi-messages", "pi"}, func(baseURL string) Provider {
 			return NewPiMessagesProvider(PiMessagesConfig{APIKey: "k", Model: "m", ProviderID: "pi", BaseURL: baseURL})
 		}},
-	} {
+	}) {
 		t.Run(test.name, func(t *testing.T) {
 			providerResponseOracle(t, test.pi, true, bodies, statuses, false, test.make)
 		})
