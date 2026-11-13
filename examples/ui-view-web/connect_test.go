@@ -1173,3 +1173,53 @@ func TestPageFollowsARunningSession(t *testing.T) {
 		t.Errorf("resyncs/gaps/reports = %s, want 0/0/0", got)
 	}
 }
+
+// TestPageSaysNothingOfAMountItsExtensionEndedOrMountedAgain: what the page tells the user when a mount ends. A mount
+// its extension ended itself goes from the page without a line. A mount that breaks because its extension stopped
+// (`broken`, reason `owner_gone`, which is also what a reload sends before the extensions load again) leaves one line
+// in the user's words, by the mount's title, and that line goes when the same key is mounted again under a higher
+// epoch; it stays while the key is not mounted again.
+func TestPageSaysNothingOfAMountItsExtensionEndedOrMountedAgain(t *testing.T) {
+	s := newFakeSession(t)
+	h := newHost(t)
+	first := h.put("board", "panel", `"title":"Plan",`+board("plan one"))
+	slip := h.put("slip", "widget-above", note("a slip"))
+	s.serve(h)
+	b := connectBridge(t, s.dir)
+	browser := browsertest.Start(t)
+	browser.Open(b.base + "/?token=" + b.token)
+	browser.Wait(`window.uiView && window.uiView.attachment > 0 && document.querySelectorAll(".mount").length === 2`)
+	lines := func() string {
+		return browser.String(`[...document.querySelectorAll(".line.note")].map((line) => line.textContent).join("|")`)
+	}
+	const stopped = "Plan closed: its extension stopped."
+
+	// The extension ends its own mount.
+	if _, err := h.reg.Finish(boardPlugin, uiview.FinishArgs{Mount: slip}); err != nil {
+		t.Fatalf("finish: %v", err)
+	}
+	browser.Wait(`document.querySelectorAll(".mount").length === 1 && window.uiView.mounts.size === 1`)
+	if got := lines(); got != "" {
+		t.Errorf("after the extension ended its own mount the page says %q, want no line", got)
+	}
+	// A reload, as the page is sent it: the mount broken with owner_gone, then the same key under a higher epoch.
+	h.ownerGone()
+	browser.Wait(`document.querySelectorAll(".mount").length === 0 && window.uiView.mounts.size === 0`)
+	if got := lines(); got != stopped {
+		t.Errorf("while the board is broken the page says %q, want %q", got, stopped)
+	}
+	again := h.put("board", "panel", `"title":"Plan",`+board("plan two"))
+	if again.Epoch <= first.Epoch {
+		t.Fatalf("the board mounted again has epoch %d, the one before had %d", again.Epoch, first.Epoch)
+	}
+	browser.Wait(`document.querySelector('[data-key="board"] .text')?.textContent === "plan two"`)
+	if got := lines(); got != "" {
+		t.Errorf("with the board mounted again the page still says %q, want no line", got)
+	}
+	// An extension that stopped and does not come back: the line stays.
+	h.ownerGone()
+	browser.Wait(`document.querySelectorAll(".mount").length === 0 && window.uiView.mounts.size === 0`)
+	if got := lines(); got != stopped {
+		t.Errorf("after the extension stopped for good the page says %q, want %q", got, stopped)
+	}
+}
