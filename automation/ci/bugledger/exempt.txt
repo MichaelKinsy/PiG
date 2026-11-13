@@ -44,3 +44,5 @@ a95098aa83 Follow-up to unreleased work: the --listen socket is bound in a priva
 b18fc1ee00 Follow-up to unreleased work: comment-only D238 and D257 markers on two existing constants, no product behaviour
 c6ab561d18 Follow-up to unreleased work: the --listen server's isolated Node launcher gets its Host's group from connectExt only, and a user's PIG_EXT_GROUP never reaches it (D232), found in review before any release
 2a4c3c0bd7 Follow-up to unreleased work: the --listen server's exit removes the socket path only if it still names the socket it created, pinned by file ID on Windows (D232), found in CI before any release
+f98b572dcad57038e727d73145c89f271bb38cf5 see 4a0c240b0159238c7200ffb66f902727a74e81d7
+da08a31d17e4c10902bf4fa81cf1ddb3347214d1 see 4a0c240b0159238c7200ffb66f902727a74e81d7
