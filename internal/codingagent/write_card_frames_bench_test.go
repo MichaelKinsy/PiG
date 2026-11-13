@@ -13,7 +13,10 @@ import (
 // BenchmarkWriteCardFrames is a write call as the harness's write:N scenario streams it through the interactive mode: a
 // message_update per 16 characters of content, and a frame of the card (at 160 columns) every eight of them, as the 16 ms frame
 // tick finds them 2 ms apart. One op is the whole stream; the metrics are per frame. With warm=off the highlight warm-up, which
-// runs on the session's worker, is replaced by nothing, so the frames are what is measured.
+// runs on the session's worker, is replaced by nothing, so the frames are what is measured. With warm=on the worker ends each
+// warm-up before the next update: content handed to it while a warm-up runs is folded into the next one (warmWholeHighlight), so
+// how many warm-ups a stream took, and what they allocated, followed the scheduler (208,516 to 288,255 allocations for 50KB in
+// five runs). Here every step of writeWarmStep is a warm-up of its own, the most the worker does for a stream.
 func BenchmarkWriteCardFrames(b *testing.B) {
 	for _, warm := range []string{"off", "on"} {
 		for _, kb := range []int{50, 200} {
@@ -51,6 +54,7 @@ func BenchmarkWriteCardFrames(b *testing.B) {
 							card.Render(width)
 							frames++
 						}
+						m.backgroundTasks.Wait()
 						if end == len(content) {
 							break
 						}
