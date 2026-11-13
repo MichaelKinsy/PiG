@@ -32,20 +32,41 @@
     {
       "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
       "ownerFamily": "llama-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/llama/ui.go#HandleInput",
+        "internal/codingagent/llama/ui.go#runSearch",
+        "internal/codingagent/llama/ui.go#scheduleSearch"
+      ],
+      "evidence": [
+        "internal/codingagent/llama/search_contract_test.go#TestLlamaSearchDirectedKeysMatchPi",
+        "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchMatchesPi",
+        "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchStartsNoSearchAfterClose",
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands",
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse",
+        "internal/codingagent/llama/ui_test.go#TestHuggingFaceSearchPageKeysMoveTenResults",
+        "test/parity/scenarios/extensions-runtime/76-llama-search.toml"
+      ],
+      "contracts": [
+        "coding-agent/llama-search/handle-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.handleInput",
       "ownerFamily": "llama-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/llama/ui.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/llama/ui_oracle_test.go#TestLlamaViewMatchesPi",
+        "test/parity/scenarios/extensions-runtime/75-llama-view.toml"
+      ],
+      "contracts": [
+        "coding-agent/llama-view/handle-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2184,10 +2205,20 @@
     {
       "id": "render:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.render",
       "ownerFamily": "llama-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/llama/ui.go#Render",
+        "internal/codingagent/llama/ui.go#ShowModels",
+        "internal/codingagent/llama/ui.go#frame",
+        "internal/codingagent/llama/ui.go#updateProgressLocked"
+      ],
+      "evidence": [
+        "internal/codingagent/llama/ui_oracle_test.go#TestLlamaViewMatchesPi",
+        "test/parity/scenarios/extensions-runtime/75-llama-view.toml"
+      ],
+      "contracts": [
+        "coding-agent/llama-view/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
