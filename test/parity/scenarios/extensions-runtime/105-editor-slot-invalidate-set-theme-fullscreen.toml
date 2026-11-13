@@ -1,0 +1,50 @@
+# Behavior family: extensions-runtime
+# Surface: TUI.invalidate reaches every mounted root (packages/tui/src/tui.ts:951-954): how often a ui.custom component in the editor slot is invalidated by one theme set, alternate screen.
+#
+# Upstream evidence (Pi 1.5.2 at the pin b4afdddf, probed through this driver on 2026-11-13, 100x35, regular and fullscreen):
+# testdata/ext/editor-slot-invalidate.mjs opens a ui.custom component without the overlay option, so it takes the editor's place under the
+# editor container. It keeps a row colored with theme.fg("accent") until invalidate() is called, beside a segment colored at every
+# render and the count of invalidate() calls. "t" calls ctx.ui.setTheme("light").
+# Pi's row afterwards: EDINV \x1b[38;2;116;89;180mCACHED\x1b[39m \x1b[38;2;116;89;180mLIVE\x1b[39m inv=2 EDEND
+# (Pi invalidates the component twice per theme set: the onThemeChange callback, interactive-mode.ts:1147-1151, and the theme
+# controller's own invalidation). In PiG the component is reached by the renderer's walk and sits under a Container that also compares
+# the theme at its render: the count must still be Pi's.
+# The crop is the component's one row; escaped equality compares both colors and the invalidation count. No normalization.
+name = "105-editor-slot-invalidate-set-theme-fullscreen"
+description = "A ui.custom component in the editor slot is invalidated as often as Pi invalidates it by one theme set, alternate screen."
+covers = ["packages/tui/src/tui.ts", "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/overlay-invalidate-fullscreen-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/overlay-invalidate-fullscreen-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/editor-slot-invalidate.mjs"]
+pi_extensions = ["testdata/ext/editor-slot-invalidate.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "EDINV READY"
+ready_pattern_pi = "EDINV READY"
+ready_timeout_seconds = 30
+capture_start = "EDINV"
+capture_end = "EDEND"
+
+[[tmux.steps]]
+keys = ["/edinv", "Enter"]
+wait_contains = ["inv=0 EDEND"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["t"]
+wait_contains = ["inv=2 EDEND"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_contain = ["inv=2 EDEND"]
+escaped_output_equal = true
+runs = 3

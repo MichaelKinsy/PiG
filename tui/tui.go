@@ -120,13 +120,17 @@ type Container struct {
 	// identity. renderedLines is the immutable concatenation consumed by the
 	// package renderers; settled frames reuse it without copying Session history.
 	// Render clones it to preserve upstream's fresh-array ownership for callers.
-	cacheWidth     int
-	cacheTheme     *Theme
-	childCache     map[Component]cachedChild
-	renderLineHint int
-	renderedLines  []string
-	renderedValid  bool
-	renderVersion  uint64
+	cacheWidth int
+	cacheTheme *Theme
+	// invalidatedTheme is the theme under which the whole-tree walk (invalidateComponentTree, Pi's TUI.invalidate) last invalidated
+	// this container's children. The render's own theme check leaves them alone for that theme, so a theme change invalidates a
+	// mounted child as often as Pi does (once per TUI.invalidate) and not once more at the next render.
+	invalidatedTheme *Theme
+	childCache       map[Component]cachedChild
+	renderLineHint   int
+	renderedLines    []string
+	renderedValid    bool
+	renderVersion    uint64
 	// structureGen counts the changes of the children. A render that finds it changed when its loop ends knows a child's Render changed the children
 	// (a subprocess extension's component calls the screen's addChild or removeChild, as Pi's render may), so what it built is not the children now.
 	structureGen uint64
@@ -533,8 +537,9 @@ func (c *Container) renderBorrowedLocked(width int, recycle bool) []string {
 	if c.cacheWidth != width || c.cacheTheme != ActiveTheme() {
 		c.childCache = nil
 		c.cacheWidth = width
-		if c.cacheTheme != nil && c.cacheTheme != ActiveTheme() {
-			// Upstream's UI invalidates every component when the theme changes (container.ts invalidate forwards to its children); components that bake theme colors into their strings, like ThemedText, rebuild on the next render.
+		if c.cacheTheme != nil && c.cacheTheme != ActiveTheme() && c.invalidatedTheme != ActiveTheme() {
+			// A container the renderer's walk did not reach under this theme (it is not mounted, or the theme changed with no TUI
+			// invalidation) tells its children here. Upstream's UI invalidates every component when the theme changes (container.ts invalidate forwards to its children); components that bake theme colors into their strings, like ThemedText, rebuild on the next render.
 			for _, child := range c.children {
 				child.Invalidate()
 			}

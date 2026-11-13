@@ -94,6 +94,7 @@ func (c *Container) childSnapshot() []Component {
 }
 
 func (d *altScreenDocument) childSnapshot() []Component { return d.base.childSnapshot() }
+func (d *altScreenDocument) noteChildrenInvalidated()   { d.base.noteChildrenInvalidated() }
 
 // invalidateComponentTree invalidates root and its descendants. Upstream
 // Container.invalidate recurses into every child; pig's Container.Invalidate
@@ -111,4 +112,15 @@ func invalidateComponentTree(root Component) {
 	for _, child := range parent.childSnapshot() {
 		invalidateComponentTree(child)
 	}
+	if noter, ok := root.(interface{ noteChildrenInvalidated() }); ok {
+		noter.noteChildrenInvalidated()
+	}
+}
+
+// noteChildrenInvalidated records that the whole-tree walk invalidated the container's children under the active theme; see
+// Container.invalidatedTheme.
+func (c *Container) noteChildrenInvalidated() {
+	c.mu.Lock()
+	c.invalidatedTheme = ActiveTheme()
+	c.mu.Unlock()
 }
