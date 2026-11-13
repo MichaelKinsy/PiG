@@ -124,7 +124,11 @@ export interface PiGViewAsset {
   sha256: string;
   delivery: "inline" | "managed";
 }
-/** The D107 wire view, `{ root: { kind: "text", text: "..." } }`. */
+/**
+ * The D107 wire view, `{ root: { kind: "text", text: "..." } }`. A node of any kind may carry `id`, a string unique in the view: an
+ * a11y, focus or drawing record names a node by it. The colour of a `text` or a `box` node is `bg`, a background token; neither has a
+ * `color` member, and the host draws none it is sent.
+ */
 export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
 /** D614: one event of a grid cell: its text (at most 256 bytes) and its colour (a theme token, "#rrggbb" or "#rrggbbaa"). */
 export type PiGViewGridChip = { text: string; color?: string };

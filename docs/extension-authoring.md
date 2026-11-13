@@ -228,6 +228,19 @@ To draw Pi's own components (container, box, text, truncated text, markdown, spa
 | message/entry renderers | `MessageViewRenderer`/`EntryViewRenderer` | `message_view_renderer`/`entry_view_renderer` | `message_view_renderer`/`entry_view_renderer` |
 | message/entry renderer events and state | `MessageViewEvent`/`EntryViewEvent`, `options.State` | `message_view_event`/`entry_view_event`, `options.state` | `message_view_event`/`entry_view_event`, `options.state` |
 
+A node of any kind can carry an id, a string unique in the view. The records of a mounted view (`a11y`, `focus`, a drawing's `node`; see [Plugin UI mounts](#plugin-ui-mounts-d614)) name a node by its id, and the host keeps the component of a node with an id across frames. Set it with the Go field `ID`, Rust's `.id("…")`, Python's `id=`, Lisp's `:id`, or the `id` member of a Node view's node object.
+
+| node kinds | id | colour members (theme tokens) |
+|---|---|---|
+| container, hstack, vstack, spacer, truncated text, lines, user message, diff | optional | none |
+| box, text | optional | `bg`, a background token. Neither has a `color` member, and the host draws none it is sent: for coloured text use markdown's default text style, or a drawing |
+| markdown | optional | `defaultTextStyle`: `color` (foreground), `bgColor` (background) |
+| dynamic border | optional | `color` (foreground, default `border`) |
+| image | optional | `fallbackColor` (foreground) |
+| loader | optional | `spinnerColor`, `messageColor` (foreground) |
+| assistant message, tool execution, bash execution, branch summary, compaction summary, skill invocation, custom message | optional | none |
+| select list, settings list, input, editor, scroll view, mouse region, grid, cancellable loader, bordered loader | given when the node is built | input `placeholderColor`, editor `borderColor`, scroll view `scrollbarTrackColor` and `scrollbarThumbColor`, a grid cell's and chip's `color` |
+
 A card that a click expands is written as Pi writes it, with the pieces the SDK cannot give as closures: Pi's renderer keeps the card's state in a `WeakMap` keyed by the message and returns a component whose `MouseRegion` flips it. The SDK renderer returns a view with a `mouse-region` node (`types: ["click"]`), keeps the state in `options.state` (one map per displayed message, the same for the renderer and the event handler, dropped when the transcript drops the message), and flips it in the handler it registers with `MessageViewEvent` (Rust `message_view_event`, Python `message_view_event`, Lisp `message-view-event`). The host answers the click from the region's description and the extension hears of it with the next render request, which draws the card again; the Node SDK needs nothing new, because its renderer is Pi's own. See D276 (`docs/additive-features.md`).
 
 The host owns the state of a view's lists: keys the focused list binds move it, and its callbacks arrive as `kit.Event`s (`select`, `cancel`, `selectionChange`, `change`) on the overlay's input queue, after the input sent before them; every other key reaches the input handler. `View.theme` overrides theme tokens for one surface. An image's bytes cross the wire once per connection. The `lines` node's `image`, `progress` and `list` annotations are frontend-only: the SDKs send them only while a frontend draws.
@@ -619,7 +632,7 @@ there are any, and mount when a client arrives (step 12).
    asset. Read `abilities.drawing` first: a client that does not draw the profile makes the call fail with `unsupported`, and more
    shapes than it states fail with `limit`. `regions` turn a gesture inside a shape into one of your declared intents.
 7. Describe nodes to assistive technology with `a11y` and make them focusable with `focus`. Both name view nodes by their `id`,
-   so give those nodes an id.
+   so give those nodes an id: a node of any kind takes one (the table of node kinds under the component kit above).
 8. Bind keys and gestures with `bindings` (at most 32): each entry has a `key` (a key id such as `d`, `shift+left`, `ctrl+shift+p`
    or `ctrl++`) or a `gesture` (`swipe-left`, `swipe-right`, `swipe-up`, `swipe-down`), the `intent` it raises, and optionally a
    constant `arg` and a `name` the client shows. The intent is one you declared without a `nodeKey`; several bindings may raise it
