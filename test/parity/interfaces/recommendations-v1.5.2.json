@@ -155598,6 +155598,7 @@
         "go:github.com/MichaelKinsy/PiG/tui#lastKeystroke.Store",
         "go:github.com/MichaelKinsy/PiG/tui#modifyOtherKeysActive.Store",
         "go:github.com/MichaelKinsy/PiG/tui#resolvedWriteLogs.Store",
+        "go:github.com/MichaelKinsy/PiG/tui#screenWriters.Store",
         "go:github.com/MichaelKinsy/PiG/tui#selectedThemeName.Store",
         "go:github.com/MichaelKinsy/PiG/tui#terminalColorScheme.Store",
         "go:github.com/MichaelKinsy/PiG/tui#terminalColorsPending.Store",

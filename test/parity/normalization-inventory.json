@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "3da86a852d098537c3279afa61ae2d66f22fbef09b01bb45278066b57ee2e2cc",
+      "sha256": "5535679b376ab81ce0575cbfd4f380db98e57d0831dbbd32a2a06d935112c88e",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -32,7 +32,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "d2388fd63d543abbc8cf7d86f8a970ab9062828469798354e6128b92cd2a7fd3",
+      "sha256": "1e8a258021ff07a141637976a0e03bf948b5562722e261d6b05cd53d8a690b14",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
@@ -3282,6 +3282,25 @@
             "capture_end_regex": "faux-1\\s*$"
           },
           "reason": "Owned visible surface: Fullscreen transcript search highlights the matches and the selected match in the transcript rows identically in pig and pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/fullscreen/19-alt-screen-row-grows-in-place.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "grow-0123456789",
+            "capture_end": "\n",
+            "capture_join_wrapped": true
+          },
+          "reason": "Owned visible surface: The line tmux stored for the editor's row after its text grew past a quarter of the pane while frames kept arriving (capture-pane -J) is the same in pig and pi.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
