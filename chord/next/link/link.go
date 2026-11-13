@@ -61,11 +61,18 @@ func (end *LinkEnd) OnMessage(listener func(message []byte)) {
 	for {
 		// A listener may close the link: what is still queued then is dropped (ended cleared it).
 		if end.closed || end.listener == nil || len(end.queued) == 0 {
+			if len(end.queued) == 0 {
+				// Handed over: the array goes too. What is left of the queue is empty and still points into it, and an end
+				// whose listener is set does not queue again, so nothing would replace it before the close.
+				end.queued = nil
+			}
 			end.draining = false
 			end.mu.Unlock()
 			return
 		}
 		message, current := end.queued[0], end.listener
+		// The slot is cleared as its message goes to the listener: the array would keep it for as long as the queue lives.
+		end.queued[0] = nil
 		end.queued = end.queued[1:]
 		end.mu.Unlock()
 		current(message)
