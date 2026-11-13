@@ -56,7 +56,7 @@ func parse(data []byte) *piglet.Piglet {
 		return nil
 	}
 	// pig additive (D92): a strip list alone defines a Piglet Binary's agent.
-	if p.Model == nil && p.SystemPrompt == nil && len(p.Extensions) == 0 && len(p.Skills) == 0 && p.BuiltinTools == nil && p.Discovery == nil && p.ContextFiles == "" && p.ViewClient == "" && p.Strip.IsEmpty() {
+	if p.Model == nil && p.SystemPrompt == nil && len(p.Extensions) == 0 && len(p.Skills) == 0 && p.BuiltinTools == nil && p.Discovery == nil && p.ContextFiles == "" && p.ViewClient == "" && p.ViewEndpoint == "" && p.Strip.IsEmpty() {
 		return nil
 	}
 	return p
@@ -206,7 +206,7 @@ func matchManifest(manifest signature.Manifest, record *artifact.Record) error {
 		{"Piglet definition", manifest.PigletDigest, pigletDigest},
 		{"component plan", manifest.ComponentPlanDigest, record.Resolution.ComponentPlan.Digest},
 		{"target", manifest.Target, runtime.GOOS + "/" + runtime.GOARCH},
-		{"Pig version", manifest.PigVersion, coding.PigVersion},
+		{"PiG version", manifest.PigVersion, coding.PigVersion},
 	} {
 		if check.signed != check.actual {
 			return fmt.Errorf("signed Piglet manifest names %s %q, but this binary has %q", check.name, check.signed, check.actual)

@@ -1,0 +1,66 @@
+# Behavior family: rpc
+# Surface: an abort in the middle of a tool batch answers every call of the batch (Pi 4438c58ba, #9986). The faux provider asks for two tools at once (read, bash). An extension's tool_call handler aborts the run while it decides about the first call, the way a user presses Esc at a permission prompt. The first call ends "Operation aborted" after its handler (agent-loop.ts prepareToolCall, the check after beforeToolCall). The second call, which the loop had not reached, is still started and ends "Operation aborted" too, and its handler is not asked. Neither tool runs. The session then holds a tool result for both calls, and the next request ends aborted.
+# No timing decides the order: the abort is made inside the handler of the first call.
+
+name = "82-rpc-abort-mid-batch-answers-every-call"
+description = "RPC: an abort while the first of two tool calls is prepared leaves a tool result for both calls."
+covers = [
+  "packages/agent/src/agent-loop.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"prompt","type":"prompt","message":"Run: parallel reads"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"id":"messages","type":"response","command":"get_messages","success":true']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../../../../coding/cli/testdata/abort-first-tool-call.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC abort probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../../../coding/cli/testdata/abort-first-tool-call.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC abort probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = [
+  '"toolName":"read","content":[{"type":"text","text":"Operation aborted"}]',
+  '"toolName":"bash","content":[{"type":"text","text":"Operation aborted"}]',
+  '"stopReason":"aborted"',
+]
+both_not_contain = [
+  '"text":"parallel-ok',
+  'parallel-done',
+  'extension_error',
+]
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
+[[assert.json_aliases]]
+paths = ["/25/message/durationMs", "/26/message/durationMs", "/27/message/durationMs", "/28/messages/5/durationMs", "/30/data/messages/5/durationMs"]
+kind = "duration"
+optional = true
+reason = "The next request's setup-error message, at every record that carries it: Pi sets its durationMs only when the millisecond did not tick between lazy.ts's startedAt and the stream's own #startedAt (event-stream.ts #time returns early when message.timestamp < #startedAt), so Pi's own presence varies from run to run (rpc/55 records the measurement); PiG times it the same way."
+[[assert.json_aliases]]
+paths = ["/**/wall_time_seconds", "/**/durationMs"]
+kind = "duration"
+reason = "Pi times each response with a monotonic clock (event-stream.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling. bash does not run here, so no wall_time_seconds is emitted; the path is named because the prompt is a faux bash prompt (TestJSONScenariosAliasMeasuredDurations)."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd in the system section."

@@ -307,10 +307,27 @@ type rpcCommandFlight struct {
 	runs     *rpcCommandRuns
 	running  bool
 	answered bool
+	// resumed is the work a call the handler awaited left for the handler's settlement (invocation.Resumption): a reload's hold on stdin.
+	resumed []func()
 }
 
-func (f *rpcCommandFlight) Resumed()   { f.runs.set(f, true, nil) }
-func (f *rpcCommandFlight) Suspended() { f.runs.set(f, false, nil) }
+func (f *rpcCommandFlight) Resumed() { f.runs.set(f, true, nil) }
+func (f *rpcCommandFlight) Suspended() {
+	f.runs.set(f, false, nil)
+	f.runs.settle(f)
+}
+
+// AfterResumption keeps fn until the handler, resumed by the answer of a call it awaited, awaits again or its response is written; the response of a command that has answered is written, so fn runs at once.
+func (f *rpcCommandFlight) AfterResumption(fn func()) {
+	f.runs.mu.Lock()
+	if f.answered {
+		f.runs.mu.Unlock()
+		fn()
+		return
+	}
+	f.resumed = append(f.resumed, fn)
+	f.runs.mu.Unlock()
+}
 
 // rpcCommandRuns holds the start of a run an extension command sent while a command's handler runs. Pi runs a command's handler
 // on its one event loop: pi.sendMessage and pi.sendUserMessage return inside the handler, which goes on until it awaits or
@@ -342,6 +359,17 @@ func (r *rpcCommandRuns) set(f *rpcCommandFlight, running bool, a *rpcAdmission)
 	r.releaseLocked(a)
 }
 
+// settle runs the work left for the settlement of f's handler.
+func (r *rpcCommandRuns) settle(f *rpcCommandFlight) {
+	r.mu.Lock()
+	resumed := f.resumed
+	f.resumed = nil
+	r.mu.Unlock()
+	for _, fn := range resumed {
+		fn()
+	}
+}
+
 // answered retires f once its response is written.
 func (r *rpcCommandRuns) answered(f *rpcCommandFlight, a *rpcAdmission) {
 	r.mu.Lock()
@@ -350,13 +378,18 @@ func (r *rpcCommandRuns) answered(f *rpcCommandFlight, a *rpcAdmission) {
 		return
 	}
 	f.answered = true
-	if !f.running {
+	resumed := f.resumed
+	f.resumed = nil
+	if f.running {
+		f.running = false
+		r.running--
+		r.releaseLocked(a)
+	} else {
 		r.mu.Unlock()
-		return
 	}
-	f.running = false
-	r.running--
-	r.releaseLocked(a)
+	for _, fn := range resumed {
+		fn()
+	}
 }
 
 // releaseLocked unlocks r and runs the held starts once no handler runs, in the order they were held. With a nil admission (a

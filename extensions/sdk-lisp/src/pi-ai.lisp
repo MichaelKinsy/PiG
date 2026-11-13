@@ -498,6 +498,8 @@ only the end of the text. Supported: literals, . [] [^] \\d \\w \\s \\S, (?:) ()
                ;; Pi 9b88b94e2 (#12064): a gateway's mid-stream drop relayed as an Anthropic-style api_error event reading "Connection closed.".
                "connection.?closed"
                "other side closed" "fetch failed" "request to \\S+ failed, reason:" "getaddrinfo"
+               ;; Pi 4699b5b26 (#12128): bare Node socket error codes, e.g. "read ECONNRESET", "write EPIPE", or "connect ETIMEDOUT 1.2.3.4:443", not part of a longer identifier.
+               "(?<![a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?![a-z0-9_])" "connection reset by peer"
                "ENOTFOUND" "EAI_AGAIN" "upstream.?connect" "reset before headers" "socket hang up" "socket connection was closed"
                "timed? out" "timeout" "terminated" "websocket.?closed" "websocket.?error" "ended without" "stream ended before message_stop"
                "stream ended before a terminal response event" "http2 request did not get a response"

@@ -50,9 +50,31 @@ func TestModelsConfigurationReferenceMatchesThePinnedPiPage(t *testing.T) {
 		return strings.Join(kept, "\n")
 	}
 	got := configschema.RenderReferences()[configschema.ModelsConfigurationReferencePath]
-	if withoutComment(got) != withoutComment(string(pi)) {
-		t.Error("the rendered models.json reference differs from the page the pinned Pi renders")
+	if withoutComment(got) != d2ReferenceText(t, withoutComment(string(pi))) {
+		t.Error("the rendered models.json reference differs from the page the pinned Pi renders, read through d2ReferenceTexts")
 	}
+}
+
+// d2ReferenceTexts maps the fragments of Pi's page that name the product to PiG's (D2, "Product name in messages",
+// docs/parity/divergences/D2.md): PiG's page is Pi's page through this table and nothing else. The schemas themselves keep
+// Pi's text (TestRenderedSchemasAreByteEqualToThePinnedPiPackage).
+var d2ReferenceTexts = [][2]string{
+	{"Pi warms only tiers with a known lifetime.", "PiG warms only tiers with a known lifetime."},
+	{"When false, pi infers stop or toolUse", "When false, PiG infers stop or toolUse"},
+	{"When omitted, Pi auto-detects the format", "When omitted, PiG auto-detects the format"},
+	{"for pi-controlled values.", "for PiG-controlled values."},
+}
+
+// d2ReferenceText is Pi's page with each mapped fragment replaced by PiG's. A fragment Pi's page no longer holds is a stale row.
+func d2ReferenceText(t *testing.T, piPage string) string {
+	t.Helper()
+	for _, pair := range d2ReferenceTexts {
+		if !strings.Contains(piPage, pair[0]) {
+			t.Errorf("d2ReferenceTexts: Pi's page no longer says %q", pair[0])
+		}
+		piPage = strings.ReplaceAll(piPage, pair[0], pair[1])
+	}
+	return piPage
 }
 
 func keys(m map[string]string) []string {

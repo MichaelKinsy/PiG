@@ -222,6 +222,7 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript ai.TranscriptCo
 	// Pi returns the event stream before the request settles: the async body of `stream` starts at its first await (bedrock-converse-stream.ts:129-330).
 	requestContext, abort := context.WithCancel(ctx)
 	builder.SetAbort(abort)
+	//portlint:allow asyncorder Pi's stream() starts a detached async IIFE and returns the stream (bedrock-converse-stream.ts:151, :403); the stream owns this goroutine, which sends the request and runs the body pipeline as a turn of the stream's continuation executor (ResponseTurn in streamResponse), the ordering point with the consumer; TestBedrockObservationMatchesPi holds each record's epoch and tick to Pi's
 	go builder.RunResponse(func() error {
 		p.streamResponse(ctx, requestContext, converse, input, hasPreferredStrictTools, buildInput, opts, modelMeta, builder)
 		return nil
@@ -1623,7 +1624,7 @@ func mapBedrockTransportError(ctx context.Context, err error, message string) er
 // bedrockSendError is the error Pi's AWS SDK client rejects with when the request could not be sent. Its Node handlers report a
 // failed connect or lookup with Node's own error, not a fetch rejection. Through NodeHttpHandler (an HTTP proxy for the endpoint,
 // or AWS_BEDROCK_FORCE_HTTP1=1; bedrock-converse-stream.ts:220-232) that is the net error itself, "connect ECONNREFUSED …", which
-// retry.ts does not retry. The default NodeHttp2Handler cancels the pending stream with it as the cause, which retry.ts retries.
+// retry.ts retries by its code since Pi 4699b5b26 (#12128). The default NodeHttp2Handler cancels the pending stream with it as the cause, which retry.ts retries.
 func bedrockSendError(ctx context.Context, err error, baseURL string, env ai.ProviderEnv) error {
 	if ctx.Err() != nil || !ai.IsGoTransportError(err) {
 		return err

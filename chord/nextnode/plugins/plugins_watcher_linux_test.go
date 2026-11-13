@@ -158,3 +158,41 @@ func TestTheBaseMarkRenewsNothingForABurstOfAttributeChangesOnAnAncestorAndRenew
 	writeWhenRead(t, pipe, "as built")
 	f.baseIs(false)
 }
+
+// Not a port (Pi's watcher watches no tree on request). Closing the watcher releases the watches of a tree it was asked to
+// watch: a discovery keeps them, and after the close the process holds as many inotify watches as before the watcher was made.
+func TestClosingTheWatcherReleasesTheWatchesOfATreeItWasAskedToWatch(t *testing.T) {
+	root := realOf(t, tempRoot(t))
+	writePlugin(t, root, "a", "@test/a", map[string]string{"worker.ts": ""}, nil)
+	tree := realOf(t, t.TempDir())
+	if err := os.Mkdir(filepath.Join(tree, "inside"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	discovery, err := model.DiscoverPlugins([]model.PluginRoot{{Path: root}}, model.DiscoveryOptions{Kinds: kinds}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := inotifyWatches(t)
+	watcher := newPluginWatcher(watcherOptions{Roots: []string{root}, Base: []string{}, Kinds: kinds, Failed: func(error) {}},
+		state.NewBatch(func(state.BatchError) {}, nil))
+	own := inotifyWatches(t)
+	if _, watching := watcher.alsoWatch(tree); !watching {
+		t.Fatal("the watcher watches nothing")
+	}
+	// The tree and the directory in it.
+	if got := inotifyWatches(t) - own; got != 2 {
+		t.Fatalf("the request added %d inotify watches, want 2", got)
+	}
+	watcher.know(discovery, watcher.discoverySnapshot())
+	if got := inotifyWatches(t) - own; got != 2 {
+		t.Fatalf("after a discovery the tree holds %d inotify watches, want 2", got)
+	}
+	watcher.close()
+	watcher.join()
+	if got := inotifyWatches(t) - before; got != 0 {
+		t.Fatalf("%d inotify watches are left after the close, want none", got)
+	}
+	if len(watcher.trees) != 0 || len(watcher.asked) != 0 {
+		t.Fatalf("trees = %v, asked = %v after the close, want none", watcher.trees, watcher.asked)
+	}
+}

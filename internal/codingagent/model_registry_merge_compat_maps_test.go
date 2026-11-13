@@ -11,9 +11,9 @@ import (
 // an override object merges key by key over the base object (`{ ...base, ...override }`), so the base keys the override leaves out
 // stay and a shared key takes the override's value. An override object with no keys over a missing base is still an object
 // (`{}`), and when neither side carries the key it stays absent.
-// mutation-checked: the mutant "mergeCompatMap drops the base keys" (model_registry.go:1950) fails it.
-// mutation-checked: the mutant "mergeCompatMap returns nil for an empty override over a missing base" (model_registry.go:1947) fails it.
-// mutation-checked: the mutant "mergeCompatMap aliases the base map" (model_registry.go:1950) fails it.
+// mutation-checked: the mutant "ai.mergeCompatObject drops the base keys" (ai/openai_compat_objects.go) fails it.
+// mutation-checked: the mutant "ai.mergeCompatObject returns nil for an empty override over a missing base" (ai/openai_compat_objects.go) fails it.
+// mutation-checked: the mutant "ai.mergeCompatObject aliases the base map" (ai/openai_compat_objects.go) fails it.
 func TestMergeCompatMergesNestedMapKeysKeyByKey(t *testing.T) {
 	type access struct {
 		name string

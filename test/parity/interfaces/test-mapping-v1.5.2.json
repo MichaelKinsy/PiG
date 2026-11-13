@@ -10,7 +10,7 @@
         "agent/new_agent_stream_error_test.go#TestNewAgentAcceptsEachStreamFunctionSource",
         "agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
       ],
-      "rationale": "All 36 cases are ported (Pi names appear in the cited test comments), including the 1.1.0 durationMs case ('records how long execute() took on the tool result, excluding hooks', on a synthetic clock) and the default-stream-function case added with this change (a nil streamFn calls the host default once; a compiling mutation that ignores the default fails it). Pi v1.4.0→v1.5.0 delta (v1.5.0 has 36 upstream case sites, every changed hunk of the file diff checked against its Go assertion): the only changes are Type.Object/Type.String/Type.Array schema construction replaced by pi-schema obj/str/arr; no case, input or expectation changes. Go tool schemas are JSON schema documents, so agent_loop_upstream_test.go already carries the same closed-object schemas (see the 'should prepare tool arguments for validation' port, Pi 6536f801)."
+      "rationale": "All 36 cases are ported (Pi names appear in the cited test comments), including the 1.1.0 durationMs case ('records how long execute() took on the tool result, excluding hooks', on a synthetic clock) and the default-stream-function case added with this change (a nil streamFn calls the host default once; a compiling mutation that ignores the default fails it). Pi v1.4.0→v1.5.0 delta (v1.5.0 has 36 upstream case sites, every changed hunk of the file diff checked against its Go assertion): the only changes are Type.Object/Type.String/Type.Array schema construction replaced by pi-schema obj/str/arr; no case, input or expectation changes. Go tool schemas are JSON schema documents, so agent_loop_upstream_test.go already carries the same closed-object schemas (see the 'should prepare tool arguments for validation' port, Pi 6536f801). Pi 4438c58ba (#9986) adds two cases at :1003 and :1034, `answers every tool call of a sequential batch aborted mid-batch` and `answers every tool call of a parallel batch aborted while calls are prepared`, with the helpers runToolBatch, toolResultTexts and toolEventIds (:80-130). Both are ported with the same three calls, tool, hook and expectations (TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch, TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared; both red on the loop before the port: results for tool-1 only, and for tool-1 and tool-2 only). The pinned test hash is unchanged: the two cases are not in the pin's file."
     },
     {
       "path": "packages/agent/test/agent-tool-typebox.test.ts",
@@ -763,7 +763,7 @@
       "evidence": [
         "cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict"
       ],
-      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
+      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests. Pi 1397070024 delta: the mocked source lists deepseek-v4.1-flash-1017, which the Individual allowlist now requires; the Go case's source lists it too."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
@@ -1753,7 +1753,7 @@
         "ai/port_wave_12_helpers_test.go#assertThinkingLevelPresence",
         "ai/auth_env_keys_test.go#TestEnvAPIKeysQwenIndividualCnUsesChinaTokenPlanVariable"
       ],
-      "rationale": "All ten upstream sites at qwen-token-plan-models.test.ts:122,130,136,143,151,184,202,220,228,260 retain 88 expanded cases: exact Individual catalog, environment lookup, two text and two image-provider rows, 39 thinking payloads, 14 reasoning maps, six qwen3.8 maps, three retired-preview exclusions, 14 reasoning payloads and six qwen3.8 payloads. Original model lists, Hi prompts and reasoning levels are preserved; map checks distinguish null, absent and empty string. Case-by-case review and go test -count=1 -race ./ai pass on stable tip 4 (636bab50a9872bd92ec0d2dd4e62bf8669eec62e) with isolated HOME/Pig/Pi roots. Pi c23b9ec1 delta: Pi c23b9ec1 adds the individual-cn provider rows, glm-5.3 and the China env variable case; the env case is that test."
+      "rationale": "All ten upstream sites at qwen-token-plan-models.test.ts:122,130,136,143,151,184,202,220,228,260 retain 88 expanded cases: exact Individual catalog, environment lookup, two text and two image-provider rows, 39 thinking payloads, 14 reasoning maps, six qwen3.8 maps, three retired-preview exclusions, 14 reasoning payloads and six qwen3.8 payloads. Original model lists, Hi prompts and reasoning levels are preserved; map checks distinguish null, absent and empty string. Case-by-case review and go test -count=1 -race ./ai pass on stable tip 4 (636bab50a9872bd92ec0d2dd4e62bf8669eec62e) with isolated HOME/Pig/Pi roots. Pi c23b9ec1 delta: Pi c23b9ec1 adds the individual-cn provider rows, glm-5.3 and the China env variable case; the env case is that test. Pi 1397070024 delta: the Team lists lose deepseek-v3.2 and deepseek-v4-flash, the Individual lists gain deepseek-v4.1-flash and deepseek-v4.1-flash-1017, the two single-variable environment cases become `prefers the per-plan key on %s and falls back to the shared one` (TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne, four providers through the provider's auth and GetEnvAPIKey) and `keeps a per-plan key away from the other plan` (TestQwenTokenPlanKeepsAPerPlanKeyAwayFromTheOtherPlan), the glm-5.3 case no longer asserts a base URL, and `omits retired models on %s` checks three ids (TestQwenTokenPlanOmitsRetiredModels); the two earlier environment cases stay in auth_env_keys_test.go because the shared variable is still the fallback."
     },
     {
       "path": "packages/ai/test/radius-oauth.test.ts",
@@ -1816,9 +1816,10 @@
         "ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification",
         "ai/assistant_retry_test.go#TestRetryDelayMsCapsAgentRetryDelay",
         "ai/assistant_retry_test.go#TestRetryAssistantCall",
-        "ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle"
+        "ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_socket_codes_upstream_test.go#TestIsRetryableAssistantErrorNodeSocketErrorCodes"
       ],
-      "rationale": "Audited all 19 case sites (22 cases after expanding the four DNS table rows) against the existing assistant retry tests. Added recognizable classification names and source-line citations; tightened successful content assertions to exact block equality. Tests preserve exact strings, callback arguments and ordering, retry budgets, capped delay sequences, aborted backoff normalization, and error propagation. No cases are designed out. Pi 0.99.2 review: 0.99.1 adds \"keeps the ChatGPT subscription usage limit non-retryable\" (retry.test.ts:88) and \"retries temporary ChatGPT subscription errors\" (:94, two rows), ported at assistant_retry_test.go:52-53,67. All 21 case sites are ported. Pi 1.0.4 adds the \"pending stream has been canceled\" classification rows (bare and \"(caused by: ...)\" wording), ported at assistant_retry_test.go:44-45; all case sites are ported. Pi 550f1f3e (#10965): \"matches service unavailable wording\" with its two messages (:73-81) is two rows of TestIsRetryableAssistantErrorClassification; reverting the retry pattern fails both. Pi 0fbdbd3f (#10996, two rows) and 698a2d23 (#10920, four rows) add classification rows; all six are in assistant_retry_test.go TestIsRetryableAssistantErrorClassification. ai/vertex_adc_token_error_test.go now expects the node-fetch wording retryable, as Pi 0fbdbd3f makes it. Pi cedefc53 adds 'keeps the ChatGPT Business workspace usage limit non-retryable' (the subscription_sharing_workplace_individual_usage_limit_exceeded 429) and Pi 6e491cfa adds the two 'does not match status codes inside ids or longer numbers' rows (a req_011CU503xyz request id and 5316784 bytes); all three are ported in TestIsRetryableAssistantErrorClassification (assistant_retry_test.go) and TestIsRetryableAssistantErrorMatchesPiOracle compares the classifier with the vendored Pi module over those messages, with stream disconnected before completion (Pi 29057ece) and the boundary cases x429, 5000 and _429_. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
+      "rationale": "Audited all 19 case sites (22 cases after expanding the four DNS table rows) against the existing assistant retry tests. Added recognizable classification names and source-line citations; tightened successful content assertions to exact block equality. Tests preserve exact strings, callback arguments and ordering, retry budgets, capped delay sequences, aborted backoff normalization, and error propagation. No cases are designed out. Pi 0.99.2 review: 0.99.1 adds \"keeps the ChatGPT subscription usage limit non-retryable\" (retry.test.ts:88) and \"retries temporary ChatGPT subscription errors\" (:94, two rows), ported at assistant_retry_test.go:52-53,67. All 21 case sites are ported. Pi 1.0.4 adds the \"pending stream has been canceled\" classification rows (bare and \"(caused by: ...)\" wording), ported at assistant_retry_test.go:44-45; all case sites are ported. Pi 550f1f3e (#10965): \"matches service unavailable wording\" with its two messages (:73-81) is two rows of TestIsRetryableAssistantErrorClassification; reverting the retry pattern fails both. Pi 0fbdbd3f (#10996, two rows) and 698a2d23 (#10920, four rows) add classification rows; all six are in assistant_retry_test.go TestIsRetryableAssistantErrorClassification. ai/vertex_adc_token_error_test.go now expects the node-fetch wording retryable, as Pi 0fbdbd3f makes it. Pi cedefc53 adds 'keeps the ChatGPT Business workspace usage limit non-retryable' (the subscription_sharing_workplace_individual_usage_limit_exceeded 429) and Pi 6e491cfa adds the two 'does not match status codes inside ids or longer numbers' rows (a req_011CU503xyz request id and 5316784 bytes); all three are ported in TestIsRetryableAssistantErrorClassification (assistant_retry_test.go) and TestIsRetryableAssistantErrorMatchesPiOracle compares the classifier with the vendored Pi module over those messages, with stream disconnected before completion (Pi 29057ece) and the boundary cases x429, 5000 and _429_. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests. Pi 4699b5b26 delta: \"matches Node socket error codes: %s\" (six rows) and \"does not match socket error codes inside longer identifiers: %s\" (three rows) are the nine subtests of TestIsRetryableAssistantErrorNodeSocketErrorCodes, with the same text and expectation."
     },
     {
       "path": "packages/ai/test/sampling-options.test.ts",
@@ -3159,9 +3160,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:fab1945f8e105433609797ebe1e35d35ba97a4ff6b0ca5e4f112fed332fe9fea",
       "evidence": [
-        "chord/nextnode/app/ephemeral_sessions_test.go"
+        "chord/nextnode/app/ephemeral_sign_ins_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
+      "rationale": "All 3 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane). Pi ff7414d51 renames the file ephemeral-sign-ins.test.ts and its describe (ephemeral sign-ins), the three cases unchanged: the Go file is ephemeral_sign_ins_test.go, its tests TestEphemeralSignIns...; the path and the hash are the pin's."
     },
     {
       "path": "packages/chord/test/node/app/ephemeral.test.ts",
@@ -3170,7 +3171,7 @@
       "evidence": [
         "chord/nextnode/app/ephemeral_upstream_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
+      "rationale": "All 2 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane). Pi ff7414d51 renames one case title (ends its sign-ins with the server): TestEphemeralLoginEndsItsSignInsWithTheServer; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/app/files-copy.test.ts",
@@ -3243,7 +3244,7 @@
       "evidence": [
         "chord/nextnode/app/owner_upstream_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi ff7414d51 renames three case titles (session to sign-in) and reads the list through SignIns: the three Go tests are renamed alike; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/app/pairing.test.ts",
@@ -3252,7 +3253,7 @@
       "evidence": [
         "chord/nextnode/app/pairing_upstream_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi ff7414d51 renames one case title (issues the device sign-in for it) and reads the list through SignIns: TestAnOwnerTheAppChoosesAloneApprovesGetsTheDeviceSignInAndIsNotCounted; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/app/secrets.test.ts",
@@ -3269,9 +3270,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:80ef31c8fdfc51eed65bf752cb66e2e3839dfa8846cac85d4c345d5e4487c77f",
       "evidence": [
-        "chord/nextnode/app/sessions_upstream_test.go"
+        "chord/nextnode/app/sign_ins_upstream_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi ff7414d51 renames the file sign-ins.test.ts and six case titles (session to sign-in; `limits.ephemeralSignIns`), same inputs and results but the cookie's name chord-sign-in: the Go file is sign_ins_upstream_test.go with its tests renamed alike, and the start option is run through the whole app in sign_ins_limits_test.go; the path and the hash are the pin's."
     },
     {
       "path": "packages/chord/test/node/app/tar.test.ts",
@@ -3643,7 +3644,7 @@
       "evidence": [
         "chord/nextnode/app/app_surfaces_test.go"
       ],
-      "rationale": "All 6 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the base bundle and the page › answers the current base hash publicly, and refuses the page and files to a request without a session\" -\u003e nextnode/app/app_surfaces_test.go:TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession; \"plugin scripts › publishes a new set on a rollout without waiting for clients; the previous files stay served\" -\u003e nextnode/app/app_surfaces_test.go:TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed."
+      "rationale": "All 6 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the base bundle and the page › answers the current base hash publicly, and refuses the page and files to a request without a session\" -\u003e nextnode/app/app_surfaces_test.go:TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn; \"plugin scripts › publishes a new set on a rollout without waiting for clients; the previous files stay served\" -\u003e nextnode/app/app_surfaces_test.go:TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed. Pi ff7414d51 renames one case title (a request without a sign-in) and issues through SignIns: TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/tui/actions.test.ts",
@@ -3679,7 +3680,7 @@
       "evidence": [
         "chord/nextnode/tui/tui_kit_upstream_test.go"
       ],
-      "rationale": "All 10 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the Node it needs › refuses a Node older than 26.5.1 with a clear error\" -\u003e nextnode/tui/tui_launcher_test.go:TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError; \"the files the sandbox may fetch › are the terminal surface's, after dot segments and encodings resolve (Opus M2, Fable L1)\" -\u003e nextnode/tui/tui_launcher_test.go:TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEncodingsResolveOpusM2FableL1; \"a terminal client › runs the app's terminal code with the plugins, confirms its actions, applies an edit in place, exits\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits; \"a terminal client › answers eight requests at once, refuses more, and ignores SIGUSR1 (Opus E10, E8)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8; \"a terminal client › ends on Ctrl-C while its prompt is open, whatever the sandbox asks (Opus E11)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11; \"a terminal client › ends on three Ctrl-C within a second, though the sandbox ignores them (Opus R2)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnThreeCtrlCWithinASecondThoughTheSandboxIgnoresThemOpusR2."
+      "rationale": "All 10 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the Node it needs › refuses a Node older than 26.5.1 with a clear error\" -\u003e nextnode/tui/tui_launcher_test.go:TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError; \"the files the sandbox may fetch › are the terminal surface's, after dot segments and encodings resolve (Opus M2, Fable L1)\" -\u003e nextnode/tui/tui_launcher_test.go:TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEncodingsResolveOpusM2FableL1; \"a terminal client › runs the app's terminal code with the plugins, confirms its actions, applies an edit in place, exits\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits; \"a terminal client › answers eight requests at once, refuses more, and ignores SIGUSR1 (Opus E10, E8)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8; \"a terminal client › ends on Ctrl-C while its prompt is open, whatever the sandbox asks (Opus E11)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11; \"a terminal client › ends on three Ctrl-C within a second, though the sandbox ignores them (Opus R2)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnThreeCtrlCWithinASecondThoughTheSandboxIgnoresThemOpusR2. Pi ff7414d51 issues and lists through SignIns (no title changes): tui_kit_upstream_test.go reads app.SignIns; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/tui/pipe.test.ts",
@@ -6279,7 +6280,7 @@
       "evidence": [
         "coding/cli/model_resolver_defaults_upstream_test.go"
       ],
-      "rationale": "The changed Pi default-model expectations are asserted with the same provider ids and model ids."
+      "rationale": "The changed Pi default-model expectations are asserted with the same provider ids and model ids. Pi bacd45b9c delta: the case \"resolveModelScope preserves CLI warning output\" is removed with resolveModelScope, and its Go subtest with it."
     },
     {
       "path": "packages/coding-agent/test/model-runtime-auth-options.test.ts",
@@ -8729,6 +8730,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:1c25e117e5ccd1df1d572f1300995a9dc458ac4d5e454ed0511da32069f14457",
       "evidence": [
+        "internal/codingagent/read_image_unsupported_upstream_test.go#TestReadKeepsTextOnlyImageWarningOutOfWhatTheModelGetsUpstream",
         "internal/codingagent/tools/tools_read_port_test.go#TestToolsReadPort",
         "internal/codingagent/tools/tools_edit_port_test.go#TestToolsWritePort",
         "internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditPort",
@@ -8751,7 +8753,7 @@
         "internal/codingagent/tools/edit_window_test.go",
         "internal/codingagent/tools/find_ls_limit_test.go"
       ],
-      "rationale": "All 109 cases are ported: the previous pin's through the cited tests, and the cases the leap added through grep_ripgrep_context_test.go (rg context events, the match limit on proof of one more match, a lone CR, folder globs relative to path; Pi 8da141c2a, 6bf2ab9bb), edit_window_test.go (line endings of untouched lines; Pi d448c51e2) and find_ls_limit_test.go (result and entry limits)."
+      "rationale": "All 109 cases are ported: the previous pin's through the cited tests, and the cases the leap added through grep_ripgrep_context_test.go (rg context events, the match limit on proof of one more match, a lone CR, folder globs relative to path; Pi 8da141c2a, 6bf2ab9bb), edit_window_test.go (line endings of untouched lines; Pi d448c51e2) and find_ls_limit_test.go (result and entry limits). Pi 4be4cb4f5e9c (#12139, after the pin) adds \"should keep a text-only model's image warning out of what the model gets\" (:240 there): ported as TestReadKeepsTextOnlyImageWarningOutOfWhatTheModelGetsUpstream (the text, the image block, the card collapsed and expanded), with the details member in TestToolsReadPort's subtest of the same title."
     },
     {
       "path": "packages/coding-agent/test/tree-selector.test.ts",
@@ -10021,6 +10023,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:5587d0f92d75de10cdfb3fe4b227f51c5238040c34318c20584499c4ad9d6a7c",
       "evidence": [
+        "durable/tools/read_images_test.go#TestReadNamesAModelThatTakesNoImagesInDetails",
         "durable/tools/tools_images_test.go#TestReadOfImagesWithoutAnImageProcessor",
         "durable/tools/tools_images_test.go#TestReadOfAnImageThatChangesWhileItIsRead",
         "durable/tools/tools_images_test.go#TestImageDimensions",
@@ -10031,7 +10034,7 @@
         "durable/images/node/tools_images_test.go#TestCreateNodePhotonImages",
         "internal/photonimage/png_test.go#TestEncodePhotonPNGWritesPhotonsBytes"
       ],
-      "rationale": "All 26 Pi 1.2.0 case sites are ported as subtests named by their Pi titles and cited with their 1.2.0 lines (the orientation loop :403 runs eight times): the no-processor cases :221 :230 :239 :249 :257 :280 :295 :441 in durable/tools/tools_images_test.go (replacing read_images_changes_pi_test.go), the Photon cases :265 :273 :305 :312 :322 :336 :341 :346 :355 :361 :368 :403 :424 :434 :497 :524 :537 in durable/images/node/tools_images_test.go, and toBase64 :488 in read_images_test.go. Pixel data and the noisy-PNG generator are Pi's (JavaScript float arithmetic reproduced; checked against node). Source fix, red then green: ':322 re-encodes a PNG too large for the byte limit as JPEG at its size, and shrinks it when that is not enough' failed with mimeType = \"image/png\" because Go's png.Encode compressed the noise far below Photon's size; durable/images/png.go now ports Photon's PNG encoder (png 0.17.14 Compression::Fast with adaptive filtering over fdeflate 0.3.6), byte-identical to Photon (TestEncodePhotonPNGWritesPhotonsBytes), and the JPEG encoder and the resampler were ported next (internal/photonimage). Adapted: ':497 prepares in a worker thread, leaving the event loop free' measures Node event-loop blocking (over 200 ms inline, under 100 ms with the worker); Go has no event loop for a preparation to block, so the subtest checks that both processors prepare the photo, the plain one on the caller's goroutine and the worker one on the worker's goroutine. The adaptation keeps Pi's intent that preparing an image does not block the caller's loop. SCRUTINIZED:approved by the owner ruling 2026-10-13 (tests-120-b). Pi 3daa2028→b06c1f2c: Pi b0429971 adds the 8 KiB chunk edges to the remainder lengths (ported in TestToBase64MatchesTheStandardEncodingForEveryRemainder) and 'encodes a 3 MiB image within a 128 MB heap', a V8 heap bound on the JavaScript encoder. Go encoding/base64 builds one output buffer without string-concatenation trees, so that case is designed out."
+      "rationale": "All 26 Pi 1.2.0 case sites are ported as subtests named by their Pi titles and cited with their 1.2.0 lines (the orientation loop :403 runs eight times): the no-processor cases :221 :230 :239 :249 :257 :280 :295 :441 in durable/tools/tools_images_test.go (replacing read_images_changes_pi_test.go), the Photon cases :265 :273 :305 :312 :322 :336 :341 :346 :355 :361 :368 :403 :424 :434 :497 :524 :537 in durable/images/node/tools_images_test.go, and toBase64 :488 in read_images_test.go. Pixel data and the noisy-PNG generator are Pi's (JavaScript float arithmetic reproduced; checked against node). Source fix, red then green: ':322 re-encodes a PNG too large for the byte limit as JPEG at its size, and shrinks it when that is not enough' failed with mimeType = \"image/png\" because Go's png.Encode compressed the noise far below Photon's size; durable/images/png.go now ports Photon's PNG encoder (png 0.17.14 Compression::Fast with adaptive filtering over fdeflate 0.3.6), byte-identical to Photon (TestEncodePhotonPNGWritesPhotonsBytes), and the JPEG encoder and the resampler were ported next (internal/photonimage). Adapted: ':497 prepares in a worker thread, leaving the event loop free' measures Node event-loop blocking (over 200 ms inline, under 100 ms with the worker); Go has no event loop for a preparation to block, so the subtest checks that both processors prepare the photo, the plain one on the caller's goroutine and the worker one on the worker's goroutine. The adaptation keeps Pi's intent that preparing an image does not block the caller's loop. SCRUTINIZED:approved by the owner ruling 2026-10-13 (tests-120-b). Pi 3daa2028→b06c1f2c: Pi b0429971 adds the 8 KiB chunk edges to the remainder lengths (ported in TestToBase64MatchesTheStandardEncodingForEveryRemainder) and 'encodes a 3 MiB image within a 128 MB heap', a V8 heap bound on the JavaScript encoder. Go encoding/base64 builds one output buffer without string-concatenation trees, so that case is designed out. Pi 4be4cb4f5e9c (#12139, after the pin) replaces \"says when the model sees a placeholder instead of the image\" (:257) by \"names a text-only model in details for UIs, not in what the model gets\" (:260 there): the subtest carries the new title and its four expectations, and the helper's model the id \"test\"."
     },
     {
       "path": "packages/durable/test/tools-read-differential.test.ts",

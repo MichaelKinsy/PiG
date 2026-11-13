@@ -40,8 +40,9 @@ func TestMigrationDocsURLsUseEarendilWorksRepo(t *testing.T) {
 	if !strings.Contains(MigrationGuideURL, "github.com/earendil-works/pi") {
 		t.Fatalf("MigrationGuideURL = %q, want earendil-works repo", MigrationGuideURL)
 	}
-	if !strings.Contains(ExtensionsDocURL, "github.com/earendil-works/pi") {
-		t.Fatalf("ExtensionsDocURL = %q, want earendil-works repo", ExtensionsDocURL)
+	// D2 ("Product name in messages"): the extensions page a PiG warning links is PiG's own.
+	if ExtensionsDocURL != "https://pi-in-go.dev/docs/latest/extensions" {
+		t.Fatalf("ExtensionsDocURL = %q, want PiG's extensions page", ExtensionsDocURL)
 	}
 }
 

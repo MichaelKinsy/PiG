@@ -863,10 +863,14 @@ type StreamOptions struct {
 	Temperature float64
 	// TemperatureSet distinguishes an explicit zero temperature from omission.
 	// Non-zero Temperature values remain present for existing callers.
-	TemperatureSet  bool
-	SamplingParams  map[string]any
-	ThinkingBudgets *ThinkingBudgets
-	Thinking        ThinkingLevel `json:"reasoning,omitempty"`
+	TemperatureSet bool
+	SamplingParams map[string]any
+	// SamplingParamsOrder is the insertion order of SamplingParams' keys: the order in which they follow the request's own members on an
+	// OpenAI-compatible wire. Keys missing from it follow in sorted order, so a caller that sets only the map sends them sorted. Callers that
+	// decode the parameters from JSON fill it.
+	SamplingParamsOrder []string `json:"-"`
+	ThinkingBudgets     *ThinkingBudgets
+	Thinking            ThinkingLevel `json:"reasoning,omitempty"`
 	// GoogleThinking carries Google's raw thinking object; Thinking is the provider-neutral reasoning option.
 	GoogleThinking       *GoogleThinkingOptions `json:"thinking,omitempty"`
 	ThinkingEnabled      *bool                  `json:"thinkingEnabled,omitempty"`
@@ -1173,7 +1177,12 @@ type Model struct {
 	SamplingParams   map[string]any
 	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level on OpenAI-compatible APIs.
 	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
-	PromptCache                   ModelPromptCache
+	// SamplingParamsOrder is the insertion order of SamplingParams' keys, and SamplingParamsByThinkingLevelOrder that of each level's: the
+	// order in which the parameters reach an OpenAI-compatible wire. Keys missing from a list follow in sorted order, so a model that sets
+	// only the maps sends them sorted. Callers that decode a model from JSON fill them.
+	SamplingParamsOrder                []string                        `json:"-"`
+	SamplingParamsByThinkingLevelOrder map[ModelThinkingLevel][]string `json:"-"`
+	PromptCache                        ModelPromptCache
 	// InputLimits mirrors upstream Model.inputLimits.
 	InputLimits *ModelInputLimits
 	// catalog is the persisted record this model was decoded from; it keeps the fields the model has no member for.

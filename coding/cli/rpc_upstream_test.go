@@ -55,6 +55,13 @@ func newUpstreamRPC(t *testing.T, blocked bool, args ...string) *upstreamRPC {
 		case <-r.Context().Done():
 			return
 		}
+		if strings.Contains(string(body), "fail-12119") {
+			// A provider error: the turn ends with an empty assistant message whose stopReason is "error".
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = io.WriteString(w, `{"type":"error","error":{"type":"invalid_request_error","message":"400 invalid_request_error"}}`)
+			return
+		}
 		var request struct {
 			Messages []struct {
 				Content json.RawMessage `json:"content"`
@@ -579,6 +586,21 @@ func TestRPCModeUpstream(t *testing.T) {
 		f.prompt("Reply with just: test123")
 		if r := f.command("get_last_assistant_text", nil); !strings.Contains(r["text"].(string), "test123") {
 			t.Fatal(r)
+		}
+		f.finish()
+	})
+	// Pi ede360e4d (#12121, issue #12119) test/suite/regressions/12119-copy-after-abort-or-error.test.ts "returns the previous answer after a
+	// provider error", through RPC get_last_assistant_text (rpc-mode.ts), which returned null before the fix.
+	t.Run("should get the previous answer after a provider error", func(t *testing.T) {
+		f := newUpstreamRPC(t, false)
+		f.prompt("Reply with just: test123")
+		f.prompt("fail-12119")
+		messages, _ := f.command("get_messages", nil)["messages"].([]any)
+		if last, _ := messages[len(messages)-1].(map[string]any); last["role"] != "assistant" || last["stopReason"] != "error" || len(last["content"].([]any)) != 0 {
+			t.Fatalf("last message = %#v, want an empty assistant message with stopReason error", messages[len(messages)-1])
+		}
+		if r := f.command("get_last_assistant_text", nil); r["text"] != "test123" {
+			t.Fatalf("get_last_assistant_text = %#v, want the previous answer", r)
 		}
 		f.finish()
 	})

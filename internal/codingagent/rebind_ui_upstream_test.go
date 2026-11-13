@@ -95,7 +95,6 @@ func rebindOriginalRecord(t *testing.T, family string, site int, title string) {
 func TestSessionStartNotifyOriginalReplacement(t *testing.T) {
 	for _, site := range []int{241, 279, 335} {
 		t.Run(fmt.Sprint(site), func(t *testing.T) {
-			icodingagent.ObserveRebindTitles(t, func(string) {})
 			var f *rebindFixture
 			var received []string
 			assistantDone := make(chan struct{})
@@ -204,7 +203,6 @@ func (s *countedRebindSession) Events() <-chan agent.AgentEvent {
 // Original startup-session-rebind-duplicate-subscription.test.ts:24. Each bind completion is released independently; count the actual subscription boundary as well as the title updates.
 func TestStartupRebindOriginalStaleCompletion(t *testing.T) {
 	var titles, binds, subscriptions atomic.Int32
-	icodingagent.ObserveRebindTitles(t, func(string) { titles.Add(1) })
 	startupEntered, replacementEntered := make(chan struct{}), make(chan struct{})
 	startupRelease, replacementRelease := make(chan struct{}), make(chan struct{})
 	releaseStartup := sync.OnceFunc(func() { close(startupRelease) })
@@ -222,6 +220,7 @@ func TestStartupRebindOriginalStaleCompletion(t *testing.T) {
 		return nil, nil
 	}, nil)
 	t.Cleanup(func() { releaseStartup(); releaseReplacement() })
+	f.h.ObserveTerminalTitles(t, func(string) { titles.Add(1) })
 	startup := f.runtime.Session()
 	startupHandle := &countedRebindSession{InteractiveSessionHandle: startup, subscriptions: &subscriptions}
 	f.runtime.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
@@ -284,7 +283,6 @@ func TestStartupRebindOriginalStaleCompletion(t *testing.T) {
 
 // Pi 1.1.0 interactive-mode.ts rebindCurrentSession resets the program status before it binds the replacement (`this.programStatus.reset()`, #10607): a run of the old session is not reported for the new one.
 func TestRebindResetsProgramStatus(t *testing.T) {
-	icodingagent.ObserveRebindTitles(t, func(string) {})
 	f := newRebindFixture(t, func(*coding.Session, ...any) (any, error) { return nil, nil }, nil)
 	var states func() []tui.ProgramState
 	f.h.Do(func() {

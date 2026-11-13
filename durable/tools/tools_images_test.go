@@ -207,7 +207,7 @@ func readImageFile(t *testing.T, dir, name string, data []byte, options imageRea
 	if err := os.WriteFile(filepath.Join(dir, name), data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	model := &ai.Model{Input: options.input}
+	model := &ai.Model{ID: "test", Input: options.input}
 	if model.Input == nil {
 		model.Input = []string{"text", "image"}
 	}
@@ -318,14 +318,27 @@ func TestReadOfImagesWithoutAnImageProcessor(t *testing.T) {
 		}
 	})
 
-	// Pi 1.2.0 packages/durable/test/tools-images.test.ts:257 "says when the model sees a placeholder instead of the image"
-	t.Run("says when the model sees a placeholder instead of the image", func(t *testing.T) {
-		result := mustReadImageFile(t, t.TempDir(), "a.png", encodeTestImage(t, 4, 4, "png"), imageReadOptions{input: []string{"text"}})
-		if len(result.Output) != 1 {
-			t.Fatalf("output = %+v, want one block", result.Output)
+	// Pi 4be4cb4f5e9c packages/durable/test/tools-images.test.ts:260 "names a text-only model in details for UIs, not in what the model gets"
+	t.Run("names a text-only model in details for UIs, not in what the model gets", func(t *testing.T) {
+		dir := t.TempDir()
+		result := mustReadImageFile(t, dir, "a.png", encodeTestImage(t, 4, 4, "png"), imageReadOptions{input: []string{"text"}})
+		// The result is replayed after a switch to a vision model, so it keeps the image and no note that the model
+		// cannot see it; pi-ai replaces the image per request instead (#12131).
+		if got := onlyImage(t, result).MimeType; got != "image/png" {
+			t.Errorf("mimeType = %q, want image/png", got)
 		}
-		if got, want := imageMessages(result), []string{"Read image file [image/png]. The current model does not support images; it sees a placeholder instead."}; !reflect.DeepEqual(got, want) {
-			t.Fatalf("messages = %q, want %q", got, want)
+		if got, want := imageMessages(result), []string{"Read image file [image/png]."}; !reflect.DeepEqual(got, want) {
+			t.Errorf("messages = %q, want %q", got, want)
+		}
+		if !result.HasDetails {
+			t.Fatalf("details = %v, want imageUnsupportedByModel", result.Details)
+		}
+		if got, want := plainMap(t, result.Details), map[string]any{"imageUnsupportedByModel": "test"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("details = %v, want %v", got, want)
+		}
+		vision := mustReadImageFile(t, dir, "a.png", encodeTestImage(t, 4, 4, "png"), imageReadOptions{})
+		if vision.HasDetails || vision.Details != nil {
+			t.Errorf("details of a vision model's read = %v, want none", vision.Details)
 		}
 	})
 }

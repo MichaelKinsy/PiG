@@ -40,7 +40,7 @@ func (m *InteractiveMode) setExtensionSessionName(name string) error {
 	if m.statusLine != nil {
 		m.statusLine.SetName(name)
 	}
-	tui.SetTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
+	m.setTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
 	return nil
 }
 
@@ -65,7 +65,19 @@ func (m *InteractiveMode) setExtensionThinkingLevel(level ai.ModelThinkingLevel)
 	m.runOnMain(m.runCtx, m.refreshThinkingLevel)
 }
 
-// setExtensionModel is the in-process setModel action. It takes the model object where the wire action takes a spec.
+// bindExtensionModelObject gives the model object of a wire setModel a backend: the Session runtime's (ModelBinder), so the Session's model is the object
+// the extension passed. A mode constructed without a binder builds the model the object's provider and id name.
+func (m *InteractiveMode) bindExtensionModelObject(object *ai.Model) (*ai.Model, error) {
+	if m.opts.ModelBinder != nil {
+		return m.opts.ModelBinder(object), nil
+	}
+	if m.opts.ModelBuilder == nil {
+		return nil, fmt.Errorf("model switching not configured")
+	}
+	return m.opts.ModelBuilder(object.ProviderMeta.ProviderID + "/" + object.ID)
+}
+
+// setExtensionModel is the in-process setModel action. Its model object carries its own backend; the wire action's is bound by bindExtensionModelObject.
 func (m *InteractiveMode) setExtensionModel(ctx context.Context, model extension.Model) (bool, error) {
 	if model == nil {
 		return false, errors.New("setModel requires a model")

@@ -11,9 +11,9 @@ package rssdk
 
 import "slices"
 
-// The bundle is one file, sdk.zst: the crate's files without its unit-test modules (src/*tests.rs, each declared under #[cfg(test)], which cargo does not load in a build) as one zstd frame, in the layout internal/sdkpack documents. The unicode property tables (src/tui/tables.rs) are the largest of them. bundle_pack.go (go generate, automation/gen/packsdk) embeds the frame as Source and lists its files and their staging hash; coding/extension/pigsdk decodes it only when it stages the SDK. TestBundledFilesMatchRustSourceTree fails when the list and the source tree disagree.
+// The bundle is one file, sdk.zst: the crate's files without its unit-test modules (src/*tests.rs, each declared under #[cfg(test)], which cargo does not load in a build) and without src/go.mod (it only keeps src out of the root module zip) as one zstd frame, in the layout internal/sdkpack documents. The unicode property tables (src/tui/tables.rs) are the largest of them. bundle_pack.go (go generate, automation/gen/packsdk) embeds the frame as Source and lists its files and their staging hash; coding/extension/pigsdk decodes it only when it stages the SDK. TestBundledFilesMatchRustSourceTree fails when the list and the source tree disagree.
 //
-//go:generate go run ../../automation/gen/packsdk -pkg rssdk -skip tests.rs -skip bundle.go -skip bundle_pack.go -walk src LICENSE Cargo.toml Cargo.lock
+//go:generate go run ../../automation/gen/packsdk -pkg rssdk -skip tests.rs -skip go.mod -skip bundle.go -skip bundle_pack.go -walk src LICENSE Cargo.toml Cargo.lock
 
 // BundledFiles lists the bundled files, relative to the crate root, in a stable
 // order. Paths use forward slashes; a stager recreates subdirectories. The

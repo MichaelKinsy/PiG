@@ -10,22 +10,35 @@ import (
 )
 
 // resolveSamplingParamsInOrder is ResolveSamplingParams plus the order in which the spread {...model.samplingParams, ...levelParams,
-// ...requestParams} (simple-options.ts:31-33) enumerates the result: the model's keys, then the level's new keys, then the request's new
-// keys. A Go map keeps no insertion order, so the keys that come from one source are enumerated in sorted order.
-func resolveSamplingParamsInOrder(model *Model, thinkingLevel ModelThinkingLevel, requestParams SamplingParams) ([]string, SamplingParams) {
+// ...requestParams} (simple-options.ts:44-46) enumerates the result: the model's keys, then the level's new keys, then the request's new
+// keys. The keys of one source are enumerated in the order recorded for it (Model.SamplingParamsOrder, the level's entry of
+// Model.SamplingParamsByThinkingLevelOrder, requestOrder) and its other keys after them, sorted: a Go map keeps no insertion order, so a
+// source without a record is enumerated sorted.
+func resolveSamplingParamsInOrder(model *Model, thinkingLevel ModelThinkingLevel, requestParams SamplingParams, requestOrder []string) ([]string, SamplingParams) {
 	merged := ResolveSamplingParams(model, thinkingLevel, requestParams)
 	if merged == nil {
 		return nil, nil
 	}
-	var sources []SamplingParams
-	if model != nil {
-		sources = append(sources, model.SamplingParams, model.SamplingParamsByThinkingLevel[ClampThinkingLevel(model, thinkingLevel)])
+	var sources [3]struct {
+		params SamplingParams
+		order  []string
 	}
-	sources = append(sources, requestParams)
+	if model != nil {
+		level := ClampThinkingLevel(model, thinkingLevel)
+		sources[0].params, sources[0].order = model.SamplingParams, model.SamplingParamsOrder
+		sources[1].params, sources[1].order = model.SamplingParamsByThinkingLevel[level], model.SamplingParamsByThinkingLevelOrder[level]
+	}
+	sources[2].params, sources[2].order = requestParams, requestOrder
 	keys := make([]string, 0, len(merged))
 	seen := make(map[string]bool, len(merged))
 	for _, source := range sources {
-		for _, key := range slices.Sorted(maps.Keys(source)) {
+		for _, key := range source.order {
+			if _, ok := source.params[key]; ok && !seen[key] {
+				seen[key] = true
+				keys = append(keys, key)
+			}
+		}
+		for _, key := range slices.Sorted(maps.Keys(source.params)) {
 			if !seen[key] {
 				seen[key] = true
 				keys = append(keys, key)

@@ -438,6 +438,9 @@ func (r *Runner) BindCore(
 	if actions.SetLabel == nil {
 		actions.SetLabel = r.runtime.SetLabel
 	}
+	if actions.SetLabelNull == nil {
+		actions.SetLabelNull = r.runtime.SetLabelNull
+	}
 	// upstream: agent-session.ts:3339-3355 binds each of these once, for the runtime the extension API reads and for the contexts; a mode that supplies
 	// one through its context actions only still has the extension API reach the same function.
 	if actions.GetAllTools == nil {

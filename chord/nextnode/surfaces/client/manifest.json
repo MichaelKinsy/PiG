@@ -18,7 +18,19 @@
 		"0b48a1d18910d73094d46aedf2607f7306014d74",
 		"f7734109c7cf1b27682b3bd6f32b326c3ed9676c",
 		"47e9d74f9186de37e700693fac0f6e56a499657a",
-		"90ed3e3b14b58c48193a467e4d5af035570ce56d"
+		"90ed3e3b14b58c48193a467e4d5af035570ce56d",
+		"cc96b4a90b1cb94c1a34911f9d3b415628cc2d98",
+		"2e74510dedfe41e90e14e87760eee567be81bf31",
+		"6268cc5cda2b97f1af95e10c350a72975406ea16",
+		"c8390defa9b69a05629a1a0877cd91aa18585ecd",
+		"926b2f8cd8a8ac966f331882557f1bdc98e200de",
+		"7ae9ff8c7be018d526cd50c6ffe35ad9e8128127"
+	],
+	"patches": [
+		{
+			"name": "D636-apply-acquired-pick.patch",
+			"sha256": "be36842369fd837b3330c094623486d1647267a7eae73906ecdf715797a19e7a"
+		}
 	],
 	"piSchema": "1.5.2",
 	"piTelemetry": "1.5.2",
@@ -666,7 +678,7 @@
 		},
 		{
 			"path": "pi/chord/src/store/store.ts",
-			"sha256": "002d713fa42f8c1afeef829000c1442c419da696b06d157142d2935d267a9626"
+			"sha256": "ff16c327cb0399cf4da07b51593ca682985c825795b3e1943f574a6ccec51d95"
 		},
 		{
 			"path": "pi/chord/src/store/table-changes.ts",
@@ -702,11 +714,11 @@
 		},
 		{
 			"path": "pi/chord/src/surfaces/active-language.ts",
-			"sha256": "1ef415ca186e8937ae30d66d5fa939e188588fc801bf662cdea7082be0d8b2d3"
+			"sha256": "394bb8f04d41ebda7fd3219714ffbdb76eb2d9792d06cfeb832fa7db570b6a8c"
 		},
 		{
 			"path": "pi/chord/src/surfaces/active-theme.ts",
-			"sha256": "4ff8b1a2a0b2838f3e4f1605551f350ccc269e37dada61dc7883f27fef3608d5"
+			"sha256": "f4fdc47a28bc5632843db61821d6e51892bbdfef8a4ec0e3ff371ce2e9454276"
 		},
 		{
 			"path": "pi/chord/src/surfaces/client.ts",
@@ -774,7 +786,7 @@
 		},
 		{
 			"path": "pi/chord/src/telemetry-ingest/facet.ts",
-			"sha256": "82adf82ecbefafc52fee9ff0f84a14517e318850ddd9106b851347bfa160e7b9"
+			"sha256": "b1315424801d7ed648e1bd92ede8056815958d5545bfb8d08a1bdc7d32a2f547"
 		},
 		{
 			"path": "pi/chord/src/telemetry-ingest/index.ts",

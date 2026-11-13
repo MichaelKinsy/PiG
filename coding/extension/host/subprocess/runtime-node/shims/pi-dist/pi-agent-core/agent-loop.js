@@ -405,9 +405,6 @@ async function executeToolCallsSequential(currentContext, assistantMessage, tool
         await emitToolResultMessage(toolResultMessage, emit);
         finalizedCalls.push(finalized);
         messages.push(toolResultMessage);
-        if (signal?.aborted) {
-            break;
-        }
     }
     return {
         messages,
@@ -432,9 +429,6 @@ async function executeToolCallsParallel(currentContext, assistantMessage, toolCa
             };
             await emitToolExecutionEnd(finalized, emit);
             finalizedCalls.push(finalized);
-            if (signal?.aborted) {
-                break;
-            }
             continue;
         }
         finalizedCalls.push(async () => {
@@ -452,9 +446,6 @@ async function executeToolCallsParallel(currentContext, assistantMessage, toolCa
             await emitToolExecutionEnd(finalized, emit);
             return finalized;
         });
-        if (signal?.aborted) {
-            break;
-        }
     }
     const orderedFinalizedCalls = await Promise.all(finalizedCalls.map((entry) => (typeof entry === "function" ? entry() : Promise.resolve(entry))));
     const messages = [];
@@ -485,6 +476,16 @@ function prepareToolCallArguments(tool, toolCall) {
     };
 }
 async function prepareToolCall(currentContext, assistantMessage, toolCall, config, signal, tools = currentContext.tools ?? []) {
+    // Pi 4438c58ba (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // Once aborted, skip preparation and the hooks; callers still record this result, so no call
+    // is left without one (#9986).
+    if (signal?.aborted) {
+        return {
+            kind: "immediate",
+            result: createErrorToolResult("Operation aborted"),
+            isError: true,
+        };
+    }
     const tool = tools.find((t) => t.name === toolCall.name);
     if (!tool) {
         return {
@@ -522,13 +523,6 @@ async function prepareToolCall(currentContext, assistantMessage, toolCall, confi
                 };
             }
         }
-        if (signal?.aborted) {
-            return {
-                kind: "immediate",
-                result: createErrorToolResult("Operation aborted"),
-                isError: true,
-            };
-        }
         return {
             kind: "prepared",
             toolCall,
@@ -559,8 +553,9 @@ function emitToolExecutionUpdate(toolCall, emit) {
  * messages. Tools that call other tools use this so the hooks (for example permission checks)
  * apply to those calls too.
  *
- * Never rejects for tool failures: unknown tools, validation errors, blocked calls, and thrown
- * errors come back as `isError: true`.
+ * Never rejects for tool failures: an aborted `signal`, unknown tools, validation errors, blocked
+ * calls, and thrown errors come back as `isError: true`. An aborted `signal` is checked first,
+ * before the hooks run.
  */
 export async function runToolCall(toolCall, options) {
     const { assistantMessage, context, signal } = options;

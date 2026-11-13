@@ -21,6 +21,10 @@ func TestGoogleGenerativeAIPayloadMatchesPi(t *testing.T) { checkGooglePayload(t
 func TestGoogleVertexPayloadMatchesPi(t *testing.T) { checkGooglePayload(t, true) }
 
 func checkGooglePayload(t *testing.T, vertex bool) {
+	if vertex && !ai.BuiltAPI(ai.APIGoogleVertex) {
+		requireStrippedStream(t, ai.APIGoogleVertex, ai.StreamGoogleVertex)
+		return
+	}
 	rng := rand.New(rand.NewSource(97))
 	api, script, stream, streamSimple, apiName, providerID := "google-generative-ai", "testdata/google_generative_ai_payload.mjs", ai.StreamGoogle, ai.StreamSimpleGoogle, ai.APIGoogleGenerativeAI, "google"
 	if vertex {
@@ -98,6 +102,7 @@ func checkGooglePayload(t *testing.T, vertex bool) {
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, script, probes)
+	g.requireReplayCoverage(t, want, googleReplay)
 	failures := 0
 	classes := map[string]int{}
 	for i, p := range probes {

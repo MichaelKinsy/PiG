@@ -698,9 +698,7 @@ func (m *InteractiveMode) setBuiltInHeader(expanded bool) {
 }
 
 func (u *ExtUIContext) SetTitle(title string) {
-	if u.m.tuiInst != nil {
-		u.m.tuiInst.Terminal().SetTitle(title)
-	}
+	u.m.setTerminalTitle(title)
 }
 
 // RunRemoteOverlay mounts remote custom UI as an overlay or editor-slot replacement and waits for its result. The owner loop mounts the component and transfers renderer focus; this caller drains its modal input lease off-loop while the component has focus. Normal completion restores the editor slot and focus before returning.
@@ -896,8 +894,13 @@ func (u *ExtUIContext) remoteOwnerLoop() (context.Context, func(context.Context,
 // that gains and loses it; published is the focus the extension assumes at mount.
 func (u *ExtUIContext) serveRemoteInput(ctx context.Context, runOnOwner func(context.Context, func()), overlay *customOverlay, host extension.RemoteOverlayHost, published bool) bool {
 	focusHost, _ := host.(extension.RemoteOverlayFocusHost)
+	invalidateHost, _ := host.(extension.RemoteOverlayInvalidateHost)
 	for !overlay.Done() {
 		inputCh, changed := overlay.inputRoute()
+		// Pi's TUI.invalidate reaches the component (tui.ts:951-954): each invalidation the owner loop counted is published here.
+		if n := overlay.takeInvalidations(); n > 0 && invalidateHost != nil {
+			invalidateHost.OnInvalidate(n)
+		}
 		if focused := inputCh != nil; focusHost != nil && focused != published {
 			published = focused
 			focusHost.OnFocus(focused)

@@ -304,6 +304,8 @@ type terminalSettingsWire struct {
 	ImageWidthCells      *int  `json:"imageWidthCells,omitempty"`
 	ClearOnShrink        *bool `json:"clearOnShrink,omitempty"`
 	ShowTerminalProgress *bool `json:"showTerminalProgress,omitempty"`
+	// ScreenWriter is PiG's own key; see Settings.TerminalScreenWriter.
+	ScreenWriter string `json:"screenWriter,omitempty"`
 	// Hyperlinks, Images, and TrueColor keep the authored JSON value; see
 	// Settings.GetTerminalCapabilityOverrides.
 	Hyperlinks json.RawMessage `json:"hyperlinks,omitempty"`
@@ -741,6 +743,10 @@ type Settings struct {
 	// Default: false.
 	ShowTerminalProgress *bool `json:"showTerminalProgress,omitempty"`
 
+	// TerminalScreenWriter is terminal.screenWriter, what a fullscreen terminal is sent: "writer" for only what changes its screen, "pi" for Pi's bytes; see GetTerminalScreenWriter. PIG_TUI_SCREEN_WRITER overrides it. It is read once, when interactive mode starts. Global setting only.
+	// pig divergence (D624): Pi has no such key; it writes every row a frame holds.
+	TerminalScreenWriter string `json:"screenWriter,omitempty"`
+
 	// terminalHyperlinks, terminalImages, and terminalTrueColor hold the
 	// authored terminal.hyperlinks, terminal.images, and terminal.trueColor
 	// JSON values. Upstream types them boolean | "auto",
@@ -1057,6 +1063,7 @@ func cloneSettings(s Settings) Settings {
 		AutocompleteMaxVisible:         cloneIntPtr(s.AutocompleteMaxVisible),
 		ClearOnShrink:                  cloneBoolPtr(s.ClearOnShrink),
 		ShowTerminalProgress:           cloneBoolPtr(s.ShowTerminalProgress),
+		TerminalScreenWriter:           s.TerminalScreenWriter,
 		terminalHyperlinks:             slices.Clone(s.terminalHyperlinks),
 		terminalImages:                 slices.Clone(s.terminalImages),
 		terminalTrueColor:              slices.Clone(s.terminalTrueColor),
@@ -1160,12 +1167,13 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		}
 	}
 	if s.ShowImages != nil || s.ImageWidthCells > 0 || s.imageWidthCellsSet || s.ClearOnShrink != nil || s.ShowTerminalProgress != nil ||
-		s.terminalHyperlinks != nil || s.terminalImages != nil || s.terminalTrueColor != nil {
+		s.TerminalScreenWriter != "" || s.terminalHyperlinks != nil || s.terminalImages != nil || s.terminalTrueColor != nil {
 		w.Terminal = &terminalSettingsWire{
 			ShowImages:           s.ShowImages,
 			ImageWidthCells:      imageWidthCellsWire(s),
 			ClearOnShrink:        s.ClearOnShrink,
 			ShowTerminalProgress: s.ShowTerminalProgress,
+			ScreenWriter:         s.TerminalScreenWriter,
 			Hyperlinks:           s.terminalHyperlinks,
 			Images:               s.terminalImages,
 			TrueColor:            s.terminalTrueColor,
@@ -1327,6 +1335,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 		}
 		s.ClearOnShrink = w.Terminal.ClearOnShrink
 		s.ShowTerminalProgress = w.Terminal.ShowTerminalProgress
+		s.TerminalScreenWriter = w.Terminal.ScreenWriter
 		s.terminalHyperlinks = w.Terminal.Hyperlinks
 		s.terminalImages = w.Terminal.Images
 		s.terminalTrueColor = w.Terminal.TrueColor
@@ -1672,6 +1681,31 @@ func decodeSettingJSON(raw json.RawMessage) any {
 		return nil
 	}
 	return value
+}
+
+// The values of terminal.screenWriter.
+const (
+	TerminalScreenWriterWriter = "writer"
+	TerminalScreenWriterPi     = "pi"
+)
+
+// TerminalScreenWriterDefault is what terminal.screenWriter means when the key is unset or holds neither value: the one place
+// that says what a fullscreen terminal is sent when nobody chose (D624). Nothing else in the tree names the default. The screen
+// writer is opt-in in 0.8.0: the default is Pi's bytes until the writer is shown on the owner's terminals.
+const TerminalScreenWriterDefault = TerminalScreenWriterPi
+
+// GetTerminalScreenWriter returns the terminal.screenWriter setting, TerminalScreenWriterWriter or TerminalScreenWriterPi. The key unset, and any other value, is TerminalScreenWriterDefault.
+// pig divergence (D624): see Settings.TerminalScreenWriter.
+func (s Settings) GetTerminalScreenWriter() string {
+	return terminalScreenWriterOr(s.TerminalScreenWriter, TerminalScreenWriterDefault)
+}
+
+// terminalScreenWriterOr is value when it is one of the two values of terminal.screenWriter, byDefault otherwise.
+func terminalScreenWriterOr(value, byDefault string) string {
+	if value == TerminalScreenWriterWriter || value == TerminalScreenWriterPi {
+		return value
+	}
+	return byDefault
 }
 
 // GetShowTerminalProgress returns whether OSC 9;4 terminal progress indicators are enabled.
@@ -2847,8 +2881,11 @@ func (sm *SettingsManager) GetEnableInstallTelemetry() bool {
 // headers (provider-attribution.ts) in addition to package-install telemetry.
 // pig divergence (D26): gates the OpenRouter/NVIDIA/Cloudflare attribution headers in coding/model.go.
 func (sm *SettingsManager) IsInstallTelemetryEnabled() bool {
-	if env, ok := os.LookupEnv("PI_TELEMETRY"); ok {
-		return isTruthyTelemetryEnvFlag(env)
+	// pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY; Pi's name wins when both are set.
+	for _, name := range []string{"PI_TELEMETRY", "PIG_TELEMETRY"} {
+		if env, ok := os.LookupEnv(name); ok {
+			return isTruthyTelemetryEnvFlag(env)
+		}
 	}
 	return sm.GetEnableInstallTelemetry()
 }
@@ -3292,6 +3329,12 @@ func (sm *SettingsManager) GetExtensionsTypescriptRuntime() string {
 		return *runtime
 	}
 	return ""
+}
+
+// GetTerminalScreenWriter returns the global terminal.screenWriter setting, normalized as Settings.GetTerminalScreenWriter does. A project file cannot set it.
+// pig divergence (D624): see Settings.TerminalScreenWriter.
+func (sm *SettingsManager) GetTerminalScreenWriter() string {
+	return sm.GetGlobalSettings().GetTerminalScreenWriter()
 }
 
 // GetExtensionsAutoUpgrade reports whether the global settings turn on the automatic Go extension upgrade. It is off unless set, and a project file cannot turn it on.

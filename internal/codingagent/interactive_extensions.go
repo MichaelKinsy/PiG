@@ -495,6 +495,10 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 			}
 		}
 	}
+	// pig additive (D614): the row that stands for the dialogs is the row directly above the editor.
+	if m.viewWaitRow != nil {
+		above = append(above, m.viewWaitRow)
+	}
 	// pig divergence (D228): the one-time copy tip sits under the editor, after the below-editor widgets.
 	if m.queueCopyTip != nil {
 		below = append(below, m.queueCopyTip)
@@ -625,17 +629,21 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 			opts.OnError(errors.New("compaction is not available"))
 		}
 	})
-	b.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
+	b.SetHostAction(subprocess.CallSetModel, func(ctx context.Context, object *ai.Model) (bool, error) {
 		m.invalidatePostLoginSelection()
 		extension.CallInitiated(ctx)
-		if m.opts.ModelBuilder == nil {
-			return false, fmt.Errorf("model switching not configured")
-		}
-		newModel, err := m.opts.ModelBuilder(spec)
+		newModel, err := m.bindExtensionModelObject(object)
 		if err != nil {
 			return false, err
 		}
 		return m.switchExtensionModel(ctx, newModel)
+	})
+	b.SetHostAction(subprocess.CallResolveModel, func(ctx context.Context, spec string) (*ai.Model, error) {
+		extension.CallInitiated(ctx)
+		if m.opts.ModelBuilder == nil {
+			return nil, fmt.Errorf("model switching not configured")
+		}
+		return m.opts.ModelBuilder(spec)
 	})
 	b.SetHostAction("getSessionName", m.extensionSessionName)
 	b.SetHostAction("getSessionID", func() string {
@@ -698,16 +706,12 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	b.SetHostAction("exec", func(ctx context.Context, command string, args []string, opts *extension.ExecOptions) (extension.ExecResult, error) {
 		return extension.ExecCommand(ctx, m.opts.CWD, command, args, opts)
 	})
-	// agent-session.ts:3419 binds setLabel into the runner's runtime; the host action reaches that one handler. An empty label clears it (upstream label undefined).
-	b.SetHostAction("setLabel", func(entryID, label string) error {
+	// agent-session.ts:3419 binds setLabel into the runner's runtime; the host action reaches that one handler with the label as the extension gave it: a string (an empty one included), null, or none.
+	b.SetHostAction("setLabel", func(entryID string, label *string, null bool) error {
 		if m.currentSession() == nil || m.newRunner == nil || m.newRunner.Runtime().SetLabel == nil {
 			return fmt.Errorf("session not available")
 		}
-		var value *string
-		if label != "" {
-			value = &label
-		}
-		return m.newRunner.Runtime().SetLabel(entryID, value)
+		return m.newRunner.Runtime().ApplyLabel(entryID, label, null)
 	})
 	b.SetHostAction("setSessionName", m.setExtensionSessionName)
 	b.SetHostAction("sendMessage", func(msg extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {
@@ -1244,6 +1248,26 @@ func subprocessRequestMetadata(raw any, path string) (map[string]string, []strin
 	return values, keys, nil
 }
 
+// subprocessSamplingParams reads samplingParams, an object. An *orderedjson.Object (the subprocess bridge's decoding of an object whose
+// members are not in sorted order) also gives the member order, which the provider keeps on the wire.
+func subprocessSamplingParams(raw any) (map[string]any, []string, error) {
+	ordered, ok := raw.(*orderedjson.Object)
+	if !ok {
+		object, ok := raw.(map[string]any)
+		if !ok {
+			return nil, nil, fmt.Errorf("model request.samplingParams must be an object")
+		}
+		return object, nil, nil
+	}
+	keys := ordered.Keys()
+	object := make(map[string]any, len(keys))
+	for _, key := range keys {
+		value, _ := ordered.Get(key)
+		object[key] = orderedjson.Value(value)
+	}
+	return object, keys, nil
+}
+
 func subprocessProviderHeaders(raw any, path string) (ai.ProviderHeaders, error) {
 	object, ok := raw.(map[string]any)
 	if !ok {
@@ -1302,11 +1326,11 @@ func subprocessStreamOptions(request map[string]any, defaults ai.StreamOptions) 
 		options.TemperatureSet = true
 	}
 	if raw, exists := request["samplingParams"]; exists {
-		object, ok := raw.(map[string]any)
-		if !ok {
-			return ai.StreamOptions{}, fmt.Errorf("model request.samplingParams must be an object")
+		object, order, err := subprocessSamplingParams(raw)
+		if err != nil {
+			return ai.StreamOptions{}, err
 		}
-		options.SamplingParams = object
+		options.SamplingParams, options.SamplingParamsOrder = object, order
 	}
 	if raw, exists := request["thinkingBudgets"]; exists {
 		object, ok := raw.(map[string]any)

@@ -1884,7 +1884,11 @@ function addCommandContextMembers(target, context) {
       this.runtime.extensionRuntime.assertActive();
       return this.runtime.callReplacement("switchSession", { sessionPath }, options?.withSession);
     },
-    reload() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("reload", {}); },
+    reload() {
+      this.runtime.extensionRuntime.assertActive();
+      // pig additive (D19): Pi's loop runs the reload and the continuation of the command that awaited it in one chain of microtasks (agent-session.ts:3815-3861), so the host reads no input until that command answers or awaits again. A command that awaits after the reload reports it at the loop's next turn (reportCommandYield).
+      return this.runtime.call("reload", {}).finally(() => this.runtime.reportCommandYield());
+    },
   };
   for (const [name, member] of Object.entries(members)) {
     Object.defineProperty(target, name, { value: member.bind(context), writable: true, enumerable: true, configurable: true });
@@ -2083,13 +2087,14 @@ class RuntimeUI {
     return abilities ? structuredClone(abilities) : null;
   }
   // The amendment members ride beside the view: alternatives ([{ when, view, drawing? }], the first whose `when` holds for a
-  // client's claims is what that client draws), drawing, a11y and focus. The host checks every bound and answers invalid.
+  // client's claims is what that client draws), drawing, a11y, focus and bindings ([{ key | gesture, intent, arg?, name? }],
+  // keys and gestures a client turns into intents while the mount holds the focus). The host checks every bound and answers invalid.
   // title is the short text a client labels the mount with; an update replaces it like the rest of the content.
-  mountView({ key, slot, target, title, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
-    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  mountView({ key, slot, target, title, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings } = {}) {
+    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings }));
   }
-  updateView(mount, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
-    return this.runtime.call("ui.view.update", viewArgs({ mount }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  updateView(mount, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings } = {}) {
+    return this.runtime.call("ui.view.update", viewArgs({ mount }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings }));
   }
   hideView(mount) { return this.runtime.call("ui.view.hide", { mount }); }
   showView(mount) { return this.runtime.call("ui.view.show", { mount }); }
@@ -2688,7 +2693,8 @@ export class Runtime {
       }),
       setModel: async (model) => {
         if (!this.conn || !this.hostReady) throw new Error("Extension runtime not initialized");
-        const result = await this.call("setModel", { model: `${model.provider}/${model.id}` });
+        // The Session takes the object as given (agent-session.ts setModel: `this.agent.state.model = model`), so the whole object crosses, with the members the extension left on it.
+        const result = await this.call("setModel", { model });
         if (result?.error) throw new Error(result.error);
         return result?.success === true;
       },
@@ -4808,6 +4814,8 @@ export class Runtime {
           args = {};
         }
         this.extensionRuntime.invalidate(args?.message || undefined);
+        // pig additive (D19): Pi's runner.invalidate() is synchronous, so the old ctx is stale before reload() goes on (agent-session.ts:3825-3826). The host's reload waits at that point for this acknowledgement (Host.supersedeGenerations): the members this runtime answers locally throw from here on, and every call it made before is on the wire ahead of the acknowledgement.
+        if (args?.ack) this.conn?.notify("invalidate_ack", { seq: args.ack });
         return;
       }
       case "runtime_input_end":
@@ -4956,6 +4964,22 @@ export class Runtime {
       case "ui.custom.opened": {
         const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
         this.customOverlays.get(args?.key)?.onMounted?.(args);
+        return;
+      }
+      case "ui.custom.invalidate": {
+        // The host's TUI was invalidated: Pi's TUI.invalidate calls invalidate() on every mounted root and every overlay's component
+        // (tui.ts:951-954), and the next frame draws what the component builds then. A theme_change with the new palette precedes
+        // this on the connection when the palette changed. count is how many invalidations the host counted since the last notify.
+        const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
+        const overlay = this.customOverlays.get(args?.key);
+        const count = Number.isInteger(args?.count) ? args.count : 0;
+        if (!overlay?.active || !overlay.component || count < 1) return;
+        try {
+          for (let i = 0; i < count; i++) overlay.component.invalidate?.();
+          overlay.renderFrame();
+        } catch (err) {
+          overlay.reject?.(err instanceof Error ? err : new Error(String(err)));
+        }
         return;
       }
       case "ui.custom.focus": {
@@ -5570,6 +5594,8 @@ export class Runtime {
           // The host also hears in print and JSON mode when the handler's window closes: Pi's run, held still while a signal's disposal runs synchronously, goes on from that turn of its loop.
           if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
           if (request.event === "agent_settled") this.armSettleTailWindow(id, ctx);
+          // pig additive (D19): Pi's reload awaits its session_shutdown, session_start and resources_discover handlers in one chain of microtasks unless a handler waits on a timer or I/O, during which Pi reads stdin (agent-session.ts:3815-3861). The host holds stdin through the reload, so such a handler reports its wait as a settle-tail handler does.
+          if ((request.event === "session_shutdown" || request.event === "session_start" || request.event === "resources_discover") && event?.reason === "reload") this.armSettleTailWindow(id, ctx);
           // Calling an async handler executes its synchronous prefix before returning its Promise. Unawaited notifications admit the next caller at that boundary; Pi emits session_info_changed and thinking_level_select with `void runner.emit` (agent-session.ts:2629, 3946).
           if (request.event === "ui_prompt_start" || request.event === "ui_prompt_end" || request.event === "session_info_changed" || request.event === "thinking_level_select") {
             this.conn.requestState(id, "blocked", "external_io");

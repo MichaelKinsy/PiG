@@ -183,6 +183,10 @@ data: [DONE]
 			want: `{"input":3000,"output":300,"cacheRead":1000,"cacheWrite":0,"totalTokens":4300,"cost":{"input":0.0015,"output":0.00045,"cacheRead":0.00005,"cacheWrite":0,"total":0.002,"totalFromProvider":false}}`,
 		},
 	} {
+		if !BuiltCatalogModel(tc.spec) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			generated, ok := LookupModelExact(tc.spec)
 			if !ok {

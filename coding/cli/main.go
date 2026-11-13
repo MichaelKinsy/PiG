@@ -873,6 +873,7 @@ func Main(args []string, options *MainOptions) {
 	}
 
 	exportOfflineMode(flags.Offline)
+	exportTelemetryOverride()
 
 	// --list-models is handled after extensions load (below), so
 	// extension-contributed providers appear in the catalog, matching upstream
@@ -1193,6 +1194,8 @@ func Main(args []string, options *MainOptions) {
 	flags.ContextFilesTrustedOnly = activePiglet.WithholdsUntrustedContextFiles()
 	// pig additive (D614): the active Piglet decides whether the TUI draws the views extensions mount.
 	flags.TerminalViewClient = activePiglet.TerminalViewClient()
+	// pig additive (D614): the active Piglet decides whether an interactive session serves its view carrier on a Unix socket. Stock PiG has no Piglet key, so nothing listens.
+	flags.ViewEndpoint = activePiglet.ViewEndpointSocket()
 	timings.Time("createSessionManager")
 	// The builder is Pi's createRuntime closure: every mode builds its first Session
 	// and every replacement Session from the same process-fixed inputs.
@@ -1268,9 +1271,9 @@ func Main(args []string, options *MainOptions) {
 	timings.Time("createAgentSessionRuntime")
 	flags = build.Flags
 	selected, modelErr := build.Selected, build.ModelErr
-	// resolveModelScope reports immediately; buildSessionOptions diagnostics follow extension errors in the runtime's report.
+	// Pi bacd45b9c (#11973, #11264): the model scope warnings are diagnostics of the runtime, after the extension diagnostics and before buildSessionOptions' diagnostics. The factory does not print them: it runs again on /new, /resume and /fork while the interactive TUI draws on the terminal, and only this initial runtime's diagnostics are reported.
 	for _, warning := range selected.ScopeWarnings {
-		printModelDiagnostic(warning)
+		startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: warning})
 	}
 	timings.Time("resolveModelScope")
 	for _, warning := range selected.Warnings {
@@ -1603,6 +1606,7 @@ func Main(args []string, options *MainOptions) {
 			return coding.BuildModel(spec, services)
 		},
 		DefaultModelPerProvider: codingagent.DefaultModelPerProvider(),
+		ModelBinder:             codingSess.ModelRuntime().BindModelObject,
 		ModelLookup:             codingSess.ModelRuntime().GetModel,
 		ModelCatalog:            codingSess.ModelRuntime().GetModels,
 		ModelClassify:           codingSess.ModelRuntime().Classify,
@@ -1640,6 +1644,7 @@ func Main(args []string, options *MainOptions) {
 		iopts.SubprocessUIBridge = subprocBridge
 	}
 	iopts.TerminalViewClient = flags.TerminalViewClient
+	iopts.ViewEndpoint = flags.ViewEndpoint
 	if subprocHost != nil {
 		iopts.SubprocessHost = subprocHost
 		// /reload recompiles these, and it is the command reached for after
@@ -1827,6 +1832,18 @@ func exportOfflineMode(flagOffline bool) {
 	if flagOffline || truthyEnvFlag(os.Getenv("PI_OFFLINE")) || truthyEnvFlag(strings.TrimSpace(os.Getenv("PIG_OFFLINE"))) {
 		_ = os.Setenv("PI_OFFLINE", "1")
 		_ = os.Setenv("PI_SKIP_VERSION_CHECK", "1")
+	}
+}
+
+// exportTelemetryOverride gives PIG_TELEMETRY to the processes that read Pi's name: the Node extension runtime runs Pi's own
+// isInstallTelemetryEnabled, which reads PI_TELEMETRY. A PI_TELEMETRY that is set wins and stays as it is.
+// pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY ("Product name in messages").
+func exportTelemetryOverride() {
+	if _, ok := os.LookupEnv("PI_TELEMETRY"); ok { //perf:ok cold: read once per process start (Main)
+		return
+	}
+	if value, ok := os.LookupEnv("PIG_TELEMETRY"); ok { //perf:ok cold: read once per process start (Main)
+		_ = os.Setenv("PI_TELEMETRY", value)
 	}
 }
 

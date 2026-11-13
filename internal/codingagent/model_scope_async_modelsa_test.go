@@ -5,7 +5,6 @@ package codingagent
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 )
 
@@ -22,19 +21,11 @@ func TestResolveModelScopeAbortedAvailabilityBuildsNoScopeAndWarnsNothing(t *tes
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
 	runtime := &causeScopeRuntime{}
-	var warnings strings.Builder
-	scoped, err := resolveModelScopeWarningTo(ctx, &warnings, false, []string{"p/alpha", "nope"}, runtime)
-	if !errors.Is(err, cause) || scoped != nil {
-		t.Fatalf("scope = %+v, err = %v, want nil and %v", scoped, err, cause)
-	}
-	if warnings.Len() != 0 {
-		t.Fatalf("warnings = %q, want none", warnings.String())
-	}
-	result, err := ResolveModelScopeWithDiagnostics(ctx, []string{"p/alpha"}, runtime)
+	result, err := ResolveModelScopeWithDiagnostics(ctx, []string{"p/alpha", "nope"}, runtime)
 	if !errors.Is(err, cause) || len(result.ScopedModels) != 0 || len(result.Diagnostics) != 0 {
 		t.Fatalf("result = %+v, err = %v, want an empty result and %v", result, err, cause)
 	}
-	if runtime.called != 2 {
-		t.Fatalf("GetAvailable calls = %d, want 2", runtime.called)
+	if runtime.called != 1 {
+		t.Fatalf("GetAvailable calls = %d, want 1", runtime.called)
 	}
 }

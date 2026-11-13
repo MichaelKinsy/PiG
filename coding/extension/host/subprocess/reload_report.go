@@ -31,6 +31,8 @@ type ReloadReport struct {
 	// extensions that failed to resolve, build, start, or register. They do
 	// not fail the reload.
 	Issues []string
+	// Unacknowledged lists, one plain line each, the extensions whose Node runtime did not acknowledge the reload's invalidation by the pong deadline, as a runtime whose thread a handler holds does not. The host ended the requests in flight on them with an error that names the reload, and the reload loaded them again in a new process (Host.supersedeGenerations). Every mode shows the lines with the reload's result; the host reports no crash for these extensions.
+	Unacknowledged []string
 }
 
 func (h *Host) recordReloadReport(rep *ReloadReport) {
@@ -56,5 +58,6 @@ func (h *Host) LastReloadReport() *ReloadReport {
 	}
 	cp.Removed = append([]string(nil), h.lastReload.Removed...)
 	cp.Issues = append([]string(nil), h.lastReload.Issues...)
+	cp.Unacknowledged = append([]string(nil), h.lastReload.Unacknowledged...)
 	return &cp
 }

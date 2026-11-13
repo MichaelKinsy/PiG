@@ -474,11 +474,15 @@ func readRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 // file's language, the first ten lines while collapsed, and the truncation
 // warning.
 func readRenderResult(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
-	if !options.Expanded && !context.IsError {
-		return tui.NewPaddedText("", 0, 0, nil)
-	}
 	theme := tui.ActiveTheme()
 	value := renderResultValue(result)
+	imageWarning := ""
+	if unsupportedBy := readImageUnsupportedByModel(value.Details); unsupportedBy != "" {
+		imageWarning = "\n" + themeFg(theme.Warning, "["+unsupportedBy+" does not support images; it saw a placeholder instead]")
+	}
+	if !options.Expanded && !context.IsError {
+		return tui.NewPaddedText(imageWarning, 0, 0, nil)
+	}
 	rawPath, _ := stringArg(context.Args, "file_path", "path")
 	output := toolResultTextOutput(value, context.ShowImages)
 	lang := ""
@@ -524,7 +528,24 @@ func readRenderResult(result extension.AgentToolResult, options extension.ToolRe
 		}
 		text += "\n" + themeFg(theme.Warning, warning)
 	}
-	return tui.NewPaddedText(text, 0, 0, nil)
+	return tui.NewPaddedText(text+imageWarning, 0, 0, nil)
+}
+
+// readImageUnsupportedByModel is `${details.imageUnsupportedByModel}` of a read result when the member is truthy, as read.ts
+// formatReadResult reads it, else "": the tool's own details, or the JSON a stored result carries.
+func readImageUnsupportedByModel(details any) string {
+	switch value := detailsObject(details).(type) {
+	case *tools.ReadDetails:
+		if value == nil || value.ImageUnsupportedByModel == nil {
+			return ""
+		}
+		return *value.ImageUnsupportedByModel
+	case map[string]any:
+		if truthyValue(value["imageUnsupportedByModel"]) {
+			return jsTemplateText(value, "imageUnsupportedByModel")
+		}
+	}
+	return ""
 }
 
 // truncationView is details.truncation as read.ts formatReadResult reads it. The counts are the text `${value}` makes of the member, so one a

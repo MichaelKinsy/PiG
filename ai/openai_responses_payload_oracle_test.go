@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // pi: packages/ai/src/api/openai-responses.ts
@@ -38,7 +37,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 	case azure:
 		script, stream, streamSimple, apiName = "testdata/azure_openai_responses_payload.mjs", ai.StreamAzureOpenAIResponses, ai.StreamSimpleAzureOpenAIResponses, ai.APIAzureOpenAIResponses
 	}
-	g := &payloadGen{rng: rng, api: api, provider: "openai", model: "gpt-test", thinkingSignatures: []string{"", `,"thinkingSignature":"{\"type\":\"reasoning\",\"id\":\"rs_1\",\"summary\":[]}"`}}
+	g := &payloadGen{rng: rng, api: api, provider: "openai", model: "gpt-test", thinkingSignatures: []string{"", `,"thinkingSignature":"{\"type\":\"reasoning\",\"id\":\"rs_1\",\"summary\":[]}"`, `,"thinkingSignature":"{\"id\":\"rs_2\",\"type\":\"reasoning\",\"encrypted_content\":\"enc\",\"summary\":[],\"provider_member\":1}"`}}
 	pick, boolean := g.pick, g.boolean
 	type probe struct {
 		Provider  string          `json:"provider"`
@@ -71,9 +70,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 				compat = append(compat, member)
 			}
 		}
-		if !azure { // azure-openai-responses.ts buildParams reads neither supportsMaxOutputTokens nor the cache options
-			add(`"supportsMaxOutputTokens":` + boolean())
-		}
+		add(`"supportsMaxOutputTokens":` + boolean())
 		add(`"supportsStrictMode":` + boolean())
 		add(`"supportsMidConvoSystemMessages":` + boolean())
 		add(`"supportsLongCacheRetention":` + boolean())
@@ -101,7 +98,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 		if rng.Intn(2) == 0 {
 			p.Options["temperature"] = []float64{0, 0.2, 1}[rng.Intn(3)]
 		}
-		if !azure && rng.Intn(3) == 0 {
+		if rng.Intn(3) == 0 {
 			p.Options["cacheRetention"] = pick("none", "short", "long")
 		}
 		if rng.Intn(3) == 0 {
@@ -111,7 +108,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 		if codex && !p.Simple && rng.Intn(3) == 0 {
 			p.Options["textVerbosity"] = pick("low", "medium", "high")
 		}
-		if !azure && !p.Simple && rng.Intn(4) == 0 {
+		if !p.Simple && rng.Intn(4) == 0 {
 			p.Options["serviceTier"] = pick("flex", "priority", "auto", "default")
 		}
 		if rng.Intn(4) == 0 {
@@ -129,11 +126,15 @@ func checkResponsesPayload(t *testing.T, api string) {
 				p.Options["reasoningSummary"] = pick("auto", "concise", "detailed")
 			}
 		}
+		// A provider replays a turn's reasoning only for the model that produced it (transformMessages, isSameModel): the transcript's own
+		// turns are of the probe's provider.
+		g.provider = p.Provider
 		p.Context = withSystemMessages(g, g.context())
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, script, probes)
-	failures := 0
+	g.requireReplayCoverage(t, want, responsesReplay)
+	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {
 		model := &ai.Model{ID: "gpt-test", DisplayName: "gpt-test", Input: p.Input, Capabilities: ai.ModelCapabilities{ContextWindow: 400000, MaxOutputTokens: 16384}, ProviderMeta: ai.ProviderMetadata{API: apiName, ProviderID: p.Provider, BaseURL: p.BaseURL, Reasoning: p.Reasoning}}
@@ -181,7 +182,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 		}
 		var got string
 		options.OnPayload = func(payload any, _ *ai.Model) (any, error) {
-			encoded, err := sdkjson.Marshal(payload)
+			encoded, err := ai.MarshalRequestBody(payload)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -202,9 +203,14 @@ func checkResponsesPayload(t *testing.T, api string) {
 			}
 			t.Fatalf("probe %d: Pi produced no payload where PiG did: %.300s", i, got)
 		}
-		comparePayload(t, fmt.Sprintf("probe %d provider=%s reasoning=%v simple=%v compat=%s levels=%s options=%v", i, p.Provider, p.Reasoning, p.Simple, p.Compat, p.Levels, p.Options), got, want[i], &failures, classes)
+		label := fmt.Sprintf("probe %d provider=%s reasoning=%v simple=%v compat=%s levels=%s options=%v", i, p.Provider, p.Reasoning, p.Simple, p.Compat, p.Levels, p.Options)
+		comparePayload(t, label, got, want[i], &failures, classes)
+		comparePayloadBytes(t, label, got, want[i], &reordered)
 	}
 	if failures > 0 {
 		t.Errorf("%d of %d probes differ from Pi; differing members: %v", failures, len(probes), classes)
+	}
+	if reordered > 0 {
+		t.Errorf("%d of %d probes write Pi's payload in another member order", reordered, len(probes))
 	}
 }

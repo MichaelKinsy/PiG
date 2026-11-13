@@ -45,6 +45,24 @@ func (t *tuiBase) ConsumeCellSizeResponse(data string) bool {
 	return true
 }
 
+// Invalidate is Pi's TUI.invalidate (tui.ts:951-954): every mounted root and every overlay's component, with their
+// descendants, so a component that keeps its rows until it is told draws them again after a theme, cell-size or image-support
+// change. Its callers are those causes, never a frame: the renderer's own bookkeeping asks for a frame with markDirty.
+func (t *tuiBase) Invalidate() {
+	t.markDirty()
+	if t.frameActive.Load() {
+		// A frame holds mu and the base container's lock while its components render, and a render may ask for this (Pi's single
+		// thread lets it): the walk, which reads the mounted roots under those locks, runs when the frame ends (unlockFrame), and
+		// the next frame draws what the components build then.
+		t.invalidateAfterFrame.Store(true)
+		return
+	}
+	t.invalidateMounted()
+}
+
+// markDirty flags the renderer's root for the next frame and invalidates no component.
+func (t *tuiBase) markDirty() { t.Container.Invalidate() }
+
 // invalidateMounted invalidates every mounted root and overlay component with
 // their descendants. Mirrors upstream TuiBase.invalidate over getMountedRoots
 // and the overlay stack.
@@ -76,6 +94,7 @@ func (c *Container) childSnapshot() []Component {
 }
 
 func (d *altScreenDocument) childSnapshot() []Component { return d.base.childSnapshot() }
+func (d *altScreenDocument) noteChildrenInvalidated()   { d.base.noteChildrenInvalidated() }
 
 // invalidateComponentTree invalidates root and its descendants. Upstream
 // Container.invalidate recurses into every child; pig's Container.Invalidate
@@ -93,4 +112,15 @@ func invalidateComponentTree(root Component) {
 	for _, child := range parent.childSnapshot() {
 		invalidateComponentTree(child)
 	}
+	if noter, ok := root.(interface{ noteChildrenInvalidated() }); ok {
+		noter.noteChildrenInvalidated()
+	}
+}
+
+// noteChildrenInvalidated records that the whole-tree walk invalidated the container's children under the active theme; see
+// Container.invalidatedTheme.
+func (c *Container) noteChildrenInvalidated() {
+	c.mu.Lock()
+	c.invalidatedTheme = ActiveTheme()
+	c.mu.Unlock()
 }

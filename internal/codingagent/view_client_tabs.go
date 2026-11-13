@@ -97,7 +97,13 @@ func (c *viewClient) arrange() {
 	for _, m := range c.order {
 		visible := m.live && (!m.slot.tabs || m == c.front)
 		c.dirty = c.dirty || visible != m.visible
-		if m.visible = visible; visible {
+		m.visible = visible
+		switch {
+		case m.slot.float && visible:
+			c.float(m)
+		case m.slot.float:
+			c.unfloat(m)
+		case visible:
 			drawn = append(drawn, m)
 		}
 	}

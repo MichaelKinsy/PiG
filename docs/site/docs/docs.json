@@ -17,10 +17,12 @@
     "development.md": "pig-authored",
     "environment-variables.md": "adapted-pi",
     "evals.md": "pig-authored",
+    "event-bus.md": "pig-authored",
     "extensions.md": "adapted-pi",
     "first-extension.md": "pig-authored",
     "first-run.md": "pig-authored",
     "glossary.md": "pig-authored",
+    "go-hot-reload.md": "pig-authored",
     "how-pig-works.md": "adapted-pi",
     "index.md": "pig-authored",
     "install-troubleshooting.md": "pig-authored",
@@ -61,6 +63,7 @@
     "tui.md": "adapted-pi",
     "typescript-runtimes.md": "pig-authored",
     "trust.md": "pig-authored",
+    "ui-views.md": "pig-authored",
     "usage.md": "adapted-pi",
     "usecase-clean-spreadsheet.md": "pig-authored",
     "usecase-draft-document.md": "pig-authored",
@@ -252,12 +255,24 @@
               "path": "extensions.md"
             },
             {
+              "title": "Call Another Extension",
+              "path": "event-bus.md"
+            },
+            {
+              "title": "Reload a Go Extension",
+              "path": "go-hot-reload.md"
+            },
+            {
               "title": "Add Custom Providers",
               "path": "custom-provider.md"
             },
             {
               "title": "Build Terminal UI Components",
               "path": "tui.md"
+            },
+            {
+              "title": "Build Extension Views",
+              "path": "ui-views.md"
             },
             {
               "title": "Integrate with the CLI",

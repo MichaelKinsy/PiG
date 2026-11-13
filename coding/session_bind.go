@@ -7,6 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // ExtensionBindings supplies mode-owned UI, command actions and handlers before session_start dispatch (upstream ExtensionBindings, agent-session.ts:300-307). A field left at its zero value is Pi's undefined: BindExtensions keeps the earlier value for it.
@@ -96,6 +97,10 @@ func (s *Session) bindExtensionCore(runner *inproc.Runner) {
 		GetActiveTools: s.ActiveToolNames, GetAllTools: s.GetAllTools, SetActiveTools: s.SetActiveToolsByName, RefreshTools: s.RefreshTools,
 		SetLabel: func(entryID string, label *string) error {
 			_, err := s.inner.Load().AppendLabelChange(entryID, label)
+			return err
+		},
+		SetLabelNull: func(entryID string) error {
+			_, err := s.inner.Load().AppendLabelEntry(icodingagent.LabelEntry{TargetID: entryID, LabelNull: true})
 			return err
 		},
 	}, extension.ContextActions{

@@ -45,7 +45,7 @@ func startsAsync(method string) bool {
 		// The public call remains synchronous in its SDK. A reverse factory/provider callback can reenter the host, so release its call lane at callback initiation.
 		return true
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom,
-		"setModel", "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
+		CallSetModel, CallResolveModel, "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
 		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool, CallBuiltinToolExecute, CallBuiltinToolLocalExec, CallSessionGraphAsync,
 		CallChildSessionCreate, CallChildSessionPrompt, CallChildSessionQueue, CallChildSessionAbort, CallChildSessionBindExtensions, CallChildSessionEmit, CallChildSessionOpAsync,
 		CallOAuthOnPrompt, CallOAuthOnSelect, CallOAuthOnManualCodeInput:
@@ -368,15 +368,17 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		refuseReferences()
 		return
 	}
-	// A reload invalidates the replaced runner, so its captured pi and ctx throw Pi's stale message (runner.ts:721-734, agent-session.ts:3580). The generation still runs while its command returns from `await ctx.reload()` (retireGeneration), so answer each call with that error: a dropped call would block the command, and the stop that waits for it, forever.
-	if me.replaced.Load() {
-		refuseReferences()
-		if callID != "" {
-			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: (&inproc.StaleError{}).Error()}}})
+	// A reload invalidates the runner of the generations it replaces before the extensions load again, so their captured pi and ctx throw Pi's stale message from then on (agent-session.ts:3825-3826 oldRunner.invalidate(), runner.ts:729-741). A generation runs on past that point: every handler that was in flight goes on until the commit, and its command until it returns from `await ctx.reload()` (retireGeneration). So each call it makes from that point (Host.supersedes) is answered with that error: a dropped call would block the handler that waits for it, and the stop that waits for that handler, forever. A call that was running at that point keeps its result: Pi checks staleness where a member is used, not where a pending promise settles.
+	if me.replaced.Load() || h.supersedes(me) {
+		// The runtime releases its bus listeners when the invalidate notification arrives, and Pi's unsubscribe never throws (releasesBusListeners): a refusal would end the process with the handlers the generation still runs.
+		if !releasesBusListeners(call.Method) {
+			refuseReferences()
+			if callID != "" {
+				_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: (&inproc.StaleError{}).Error()}}})
+			}
+			return
 		}
-		return
-	}
-	if !h.acceptsNodeGeneration(me) {
+	} else if !h.acceptsNodeGeneration(me) {
 		refuseReferences()
 		return
 	}
@@ -404,8 +406,13 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	if mark != nil {
 		callCtx = extension.WithCallInitiation(callCtx, mark)
 	}
-	// pig additive (D232): a runtime releases its bus listeners (events.off, after its lazy xref.hello) when the invalidate notification arrives, and Pi's unsubscribe never throws; refusing them would end a process other Hosts share.
-	if message := h.staleMessage.Load(); message != nil && (h.cells == nil || (call.Method != callEventsOff && call.Method != callXrefHello)) {
+	// The handler of such a call leaves work for the settlement of the handler that awaits it (extension.AfterCallerSettles); the answer hands it on.
+	var afterCaller []func()
+	if settlesCaller(call.Method) {
+		callCtx = extension.WithCallerSettlement(callCtx, func(fn func()) { afterCaller = append(afterCaller, fn) })
+	}
+	// pig additive (D232): refusing a runtime's bus release (releasesBusListeners) would end a process other Hosts share.
+	if message := h.staleMessage.Load(); message != nil && (h.cells == nil || !releasesBusListeners(call.Method)) {
 		if callID != "" {
 			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: *message}}})
 		}
@@ -573,7 +580,17 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		dialogSlot.Run(func() { h.replyToCall(me, conn, callID, call, callCtx, result, err) })
 		return
 	}
+	// The work is registered before the answer is written, so the caller's first report after it is not missed.
+	afterCaller = conn.afterCallerSettles(call.ParentRequestID, afterCaller)
 	h.replyToCall(me, conn, callID, call, callCtx, result, err)
+	for _, fn := range afterCaller {
+		fn()
+	}
+}
+
+// settlesCaller reports whether the handler of method leaves work for the settlement of the code that awaits it. Pi's reload is one chain of awaits that ends in the continuation of the command that awaited it (agent-session.ts:3815-3861, rpc-mode.ts:345-347), and RPC mode reads no input inside that chain.
+func settlesCaller(method string) bool {
+	return method == "reload"
 }
 
 // publishesStateBeforeResult reports whether the host sends the caller its state before the result of method. Pi's Session writes are
@@ -582,7 +599,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 // focus exposes its state the same way. The Go SDK's statePublishingCalls lists the Session writes (extensions/sdk/context.go).
 func publishesStateBeforeResult(method string) bool {
 	switch method {
-	case "setModel", "appendEntry", "setLabel", "setSessionName", "sendMessage", "registerProvider", "unregisterProvider", CallRegisterVirtualModel, CallUnregisterVirtualModel, "refreshModelRegistry":
+	case CallSetModel, "appendEntry", "setLabel", "setSessionName", "sendMessage", "registerProvider", "unregisterProvider", CallRegisterVirtualModel, CallUnregisterVirtualModel, "refreshModelRegistry":
 		return true
 	}
 	return takesInteractiveFocus(method)

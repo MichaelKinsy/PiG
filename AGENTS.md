@@ -298,7 +298,7 @@ Raw PORT_MAP rows: 1144. Breakdown: 117 n/a (designed out) · 3 🟡 partial. Se
 - **Four core packages (agent, ai, coding-agent, tui):** 535 / 536 intended-portable files ✅ (99.8%) from 589 rows; 518 behavioral (96.8%), 0 weak-only, 17 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 620 / 621 intended-portable files ✅ (99.8%) from 685 rows; 553 behavioral (89.2%), 0 weak-only, 67 untested.
 - **Whole monorepo (12 packages):** 1024 / 1027 intended-portable files ✅ (99.7%) from 1144 rows; 824 behavioral (80.5%), 0 weak-only, 200 untested.
-- **Interface closure:** 15117 of 15117 semantic interface IDs closed (526 designed-out, 14591 ported). A file-level ✅ does not close an interface ID.
+- **Interface closure:** 15117 of 15117 semantic interface IDs closed (527 designed-out, 14590 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
@@ -313,25 +313,25 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `compaction` | 16 | 16 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 159 | 158 | 0 | 1 | 0 | 70 | not run |
+| `extensions-runtime` | 165 | 164 | 0 | 1 | 0 | 70 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 18 | 18 | 0 | 0 | 0 | 12 | not run |
-| `interactive-rendering` | 86 | 85 | 1 | 0 | 0 | 40 | not run |
+| `fullscreen` | 19 | 19 | 0 | 0 | 0 | 13 | not run |
+| `interactive-rendering` | 87 | 86 | 1 | 0 | 0 | 40 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 29 | 29 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 33 | 33 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |
 | `project-trust` | 27 | 27 | 0 | 0 | 0 | 19 | not run |
-| `providers-faux-streaming` | 69 | 68 | 0 | 1 | 0 | 49 | not run |
-| `providers-registry` | 10 | 7 | 0 | 3 | 0 | 27 | not run |
-| `rpc` | 93 | 93 | 0 | 0 | 0 | 32 | not run |
+| `providers-faux-streaming` | 72 | 71 | 0 | 1 | 0 | 49 | not run |
+| `providers-registry` | 15 | 12 | 0 | 3 | 0 | 28 | not run |
+| `rpc` | 94 | 94 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 17 | 17 | 0 | 0 | 1 | 15 | not run |
-| `session` | 44 | 44 | 0 | 0 | 0 | 19 | not run |
+| `session` | 47 | 47 | 0 | 0 | 0 | 20 | not run |
 | `settings` | 17 | 17 | 0 | 0 | 0 | 21 | not run |
-| `slash-commands` | 29 | 28 | 1 | 0 | 0 | 21 | not run |
-| `startup` | 26 | 25 | 1 | 0 | 0 | 10 | not run |
-| `tools` | 36 | 36 | 0 | 0 | 0 | 35 | not run |
+| `slash-commands` | 31 | 30 | 1 | 0 | 0 | 21 | not run |
+| `startup` | 27 | 26 | 1 | 0 | 0 | 10 | not run |
+| `tools` | 39 | 39 | 0 | 0 | 0 | 35 | not run |
 | `tree` | 12 | 11 | 1 | 0 | 0 | 10 | not run |
 | `tui-components` | 40 | 40 | 0 | 0 | 0 | 36 | not run |
 
@@ -674,7 +674,7 @@ artifacts, and published evidence.
 
 ## Commit hygiene
 
-User-facing changes go in `changelog.d/<lane>-<sha>.md`, one fragment per commit range, as `### Added`, `### Changed`, `### Fixed` (and `Upgrading`, `Deprecated`, `Removed`, `Security`, `Known issues`) sections of bullets in `CHANGELOG.md`'s style. `<sha>` is a commit of the range reachable from `HEAD`; a rebase, squash or amend replaces SHAs, so rename the fragment after the commit that replaced it. Every `### Fixed` bullet ends with `<!-- fix: <sha> -->` naming the commit (or commits, comma-separated) that fixes it, also reachable from `HEAD` (or named by a `Fix-Commit: <full sha>` trailer of a squash commit `HEAD` reaches, see `.github/CONTRIBUTING.md`): the bug ledger reads `### Fixed`, and a bullet without a marker has its commits guessed from history, which once credited the 0.5.0 squash and its ~11,000 tests to five bullets. `### Upgrading` is what a user of the previous release must change; the fold appends it to the release's "Upgrading from" section. Do not edit `CHANGELOG.md`. `make changelog-check` validates the names, sections, markers and reachability against the full history of `HEAD` (a shallow clone fails) and `make changelog-unreleased` prints the assembly; fragments whose commits a squash replaced before these rules are listed in `automation/ci/changelogfrag/legacy.txt`, are exempt from the name and marker rules, and the list only shrinks. The integrator runs `make changelog-fold VERSION=x.y.z` to append the fragments to that release in `CHANGELOG.md` and delete them; it runs again at release for fragments written since. The fold moves fragments only and stops, changing nothing, while `## [Unreleased]` in `CHANGELOG.md` still holds an entry: run `make set-version VERSION=x.y.z SET_VERSION_ARGS=--move-unreleased` first (`docs/project/RELEASING.md`). It does not fold into `Unreleased`, whose fragments `make changelog-unreleased` assembles. `make bug-ledger` refuses to attribute the tests of a commit that touches more than 500 files (a squash or merge) and names the entry; name the real fix commit in its marker.
+User-facing changes go in `changelog.d/<lane>-<sha>.md`, one fragment per commit range, as `### Added`, `### Changed`, `### Fixed` (and `Upgrading`, `Deprecated`, `Removed`, `Security`, `Known issues`) sections of bullets in `CHANGELOG.md`'s style. `<sha>` is a commit of the range reachable from `HEAD`; a rebase, squash or amend replaces SHAs, so rename the fragment after the commit that replaced it. Every `### Fixed` bullet ends with `<!-- fix: <sha> -->` naming the commit (or commits, comma-separated) that fixes it, also reachable from `HEAD` (or named by a `Fix-Commit: <full sha>` trailer of a squash commit `HEAD` reaches, see `.github/CONTRIBUTING.md`): the bug ledger reads `### Fixed`, and a bullet without a marker has its commits guessed from history, which once credited the 0.5.0 squash and its ~11,000 tests to five bullets. A bullet states the cause and the regression tests of its fix after the fix marker, as `<!-- cause: <why the bug happened> -->` and `<!-- tests: <test>[, <test>...] -->` (or the fix commit does, with a `Root-Cause:` trailer and `Regression-Test:` trailers); otherwise the ledger reads the cause from the prose of the commit message, never from a paragraph that reports how the fix was checked (`Tests:`, `Ran:`, `Evidence:`, `Verified on ...`), and lists only the tests the fix commit adds or edits. `make bug-ledger-check` fails for a fix committed on or after 2026-11-14 with no derivable cause, for an entry whose impact class its text no longer reads as, and for an entry that names a commit `HEAD` does not reach while its marker names the commit that replaced it (`.github/CONTRIBUTING.md`). `### Upgrading` is what a user of the previous release must change; the fold appends it to the release's "Upgrading from" section. Do not edit `CHANGELOG.md`. `make changelog-check` validates the names, sections, markers and reachability against the full history of `HEAD` (a shallow clone fails) and `make changelog-unreleased` prints the assembly; fragments whose commits a squash replaced before these rules are listed in `automation/ci/changelogfrag/legacy.txt`, are exempt from the name and marker rules, and the list only shrinks. The integrator runs `make changelog-fold VERSION=x.y.z` to append the fragments to that release in `CHANGELOG.md` and delete them; it runs again at release for fragments written since. The fold moves fragments only and stops, changing nothing, while `## [Unreleased]` in `CHANGELOG.md` still holds an entry: run `make set-version VERSION=x.y.z SET_VERSION_ARGS=--move-unreleased` first (`docs/project/RELEASING.md`). It does not fold into `Unreleased`, whose fragments `make changelog-unreleased` assembles. `make bug-ledger` refuses to attribute the tests of a commit that touches more than 500 files (a squash or merge) and names the entry; name the real fix commit in its marker.
 
 Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `.github/CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 

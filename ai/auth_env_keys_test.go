@@ -1,7 +1,7 @@
 package ai
 
-// Ports upstream packages/ai/test/env-api-keys.test.ts and the environment
-// case of packages/ai/test/qwen-token-plan-models.test.ts.
+// Ports upstream packages/ai/test/env-api-keys.test.ts. The environment cases of
+// packages/ai/test/qwen-token-plan-models.test.ts are in qwen_token_plan_models_test.go.
 
 import (
 	"os"
@@ -27,8 +27,8 @@ func clearEnvKeyVars(t *testing.T) {
 		"GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT", "GCLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION",
 		"AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_BEARER_TOKEN_BEDROCK",
 		"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "AWS_CONTAINER_CREDENTIALS_FULL_URI", "AWS_WEB_IDENTITY_TOKEN_FILE"}
-	for _, envVar := range envAPIKeyVars() {
-		names = append(names, envVar)
+	for provider := range envAPIKeyVars() {
+		names = append(names, getAPIKeyEnvVars(provider)...)
 	}
 	for _, name := range names {
 		t.Setenv(name, "")
@@ -109,6 +109,8 @@ func TestEnvAPIKeysAnthropicAuthTokenIsReportedButNotAnAPIKey(t *testing.T) {
 	}
 }
 
+// Pi 1397070024 replaced its two single-variable Qwen cases with the per-plan cases (qwen_token_plan_models_test.go). The shared region
+// variable is still each plan's fallback, so the two cases stay.
 func TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable(t *testing.T) {
 	clearEnvKeyVars(t)
 	got := FindEnvKeys("qwen-token-plan-individual", map[string]string{"QWEN_TOKEN_PLAN_API_KEY": "test"})
@@ -117,7 +119,6 @@ func TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable(t *testing
 	}
 }
 
-// Pi qwen-token-plan-models.test.ts "uses the China Token Plan environment variable" (3e4f8726).
 func TestEnvAPIKeysQwenIndividualCnUsesChinaTokenPlanVariable(t *testing.T) {
 	clearEnvKeyVars(t)
 	got := FindEnvKeys("qwen-token-plan-individual-cn", map[string]string{"QWEN_TOKEN_PLAN_CN_API_KEY": "test"})
@@ -134,10 +135,10 @@ func TestEnvAPIKeysTableMatchesUpstream(t *testing.T) {
 		"github-copilot":                {"COPILOT_GITHUB_TOKEN"},
 		"anthropic":                     {"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY"},
 		"ant-ling":                      {"ANT_LING_API_KEY"},
-		"qwen-token-plan":               {"QWEN_TOKEN_PLAN_API_KEY"},
-		"qwen-token-plan-cn":            {"QWEN_TOKEN_PLAN_CN_API_KEY"},
-		"qwen-token-plan-individual":    {"QWEN_TOKEN_PLAN_API_KEY"},
-		"qwen-token-plan-individual-cn": {"QWEN_TOKEN_PLAN_CN_API_KEY"},
+		"qwen-token-plan":               {"QWEN_TOKEN_PLAN_TEAM_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"},
+		"qwen-token-plan-cn":            {"QWEN_TOKEN_PLAN_TEAM_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"},
+		"qwen-token-plan-individual":    {"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"},
+		"qwen-token-plan-individual-cn": {"QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"},
 		"openai":                        {"OPENAI_API_KEY"},
 		"azure":                         {"AZURE_OPENAI_API_KEY"},
 		"nvidia":                        {"NVIDIA_API_KEY"},
@@ -175,7 +176,7 @@ func TestEnvAPIKeysTableMatchesUpstream(t *testing.T) {
 		"xiaomi-token-plan-sgp": {"XIAOMI_TOKEN_PLAN_SGP_API_KEY"},
 	}
 	if len(envAPIKeyVars()) != len(want)-2 {
-		t.Fatalf("env table has %d single-variable entries, want %d", len(envAPIKeyVars()), len(want)-2)
+		t.Fatalf("env table has %d entries, want %d", len(envAPIKeyVars()), len(want)-2)
 	}
 	for provider, vars := range want {
 		if got := getAPIKeyEnvVars(provider); !slices.Equal(got, vars) {

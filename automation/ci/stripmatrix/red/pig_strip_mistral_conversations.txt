@@ -1,0 +1,3 @@
+# Tests of ./ai/ that fail in a build with pig_strip_mistral_conversations. One per line: the test, then why.
+# make piglet-strip-matrix fails when one of them passes (remove its line) and when a test not listed here fails.
+# None: the expectation tables of the ai tests take the stripped APIs of a tagged build from ai/strip_built_test.go (BuiltAPI, BuiltStrippedAPIs, BuiltStrippedProviders).

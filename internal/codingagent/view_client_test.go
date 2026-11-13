@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"go/parser"
 	"go/token"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -54,10 +55,66 @@ type viewTestLoop struct {
 	onNotice  func()
 	size      viewSize
 	listeners []*tui.TuiInputListener
+	// keybindings are the user's: Pi's defaults until a test gives an action other keys.
+	keybindings *KeybindingsManager
+	// frames is every frame the client drew over the screen, closed ones too, in the order it drew them.
+	frames []*viewTestFrame
+	// waiting is the row the client laid for the dialogs that hold no keyboard, or nil.
+	waiting *viewWaiting
+}
+
+// viewTestFrame is a frame the test loop drew over the screen. It behaves as the renderer's overlay does: it takes the
+// focus when it is drawn, and closed while it holds the focus it gives it back to what held it before.
+type viewTestFrame struct {
+	l      *viewTestLoop
+	mount  *viewMount
+	title  string
+	before *viewMount
+	closed bool
+}
+
+func (fr *viewTestFrame) Close() {
+	fr.closed = true
+	if fr.l.focused != fr.mount {
+		return
+	}
+	if fr.before != nil && fr.before.visible {
+		fr.l.focus(fr.before)
+		return
+	}
+	fr.l.focus(nil)
+}
+
+func (fr *viewTestFrame) Leave() { fr.l.focus(nil) }
+
+// open is the frames on the screen, the top one last.
+func (l *viewTestLoop) open() []*viewTestFrame {
+	var open []*viewTestFrame
+	for _, fr := range l.frames {
+		if !fr.closed {
+			open = append(open, fr)
+		}
+	}
+	return open
+}
+
+// focus moves the keyboard focus to mount, or to the editor with nil, as the renderer does.
+func (l *viewTestLoop) focus(mount *viewMount) {
+	previous, wasOnRow := l.focused, l.onRow
+	l.focused, l.elsewhere, l.onRow = mount, false, false
+	if wasOnRow {
+		l.row.SetFocused(false)
+	}
+	if previous != nil && previous != mount {
+		previous.SetFocused(false)
+	}
+	if mount != nil {
+		mount.SetFocused(true)
+	}
 }
 
 func newViewTestLoop(t *testing.T) *viewTestLoop {
-	return &viewTestLoop{t: t, posted: make(chan struct{}, 4096), size: viewSize{columns: 40, rows: 24}}
+	return &viewTestLoop{t: t, posted: make(chan struct{}, 4096), size: viewSize{columns: 40, rows: 24}, keybindings: NewKeybindingsManagerFromBindings(nil, "")}
 }
 
 func (l *viewTestLoop) post(fn func()) bool {
@@ -82,19 +139,14 @@ func (l *viewTestLoop) ui() viewClientUI {
 		},
 		layout: func(mounts []*viewMount) { l.laid = append(l.laid, slices.Clone(mounts)) },
 		render: func() { l.renders++ },
-		focus: func(mount *viewMount) {
-			previous, wasOnRow := l.focused, l.onRow
-			l.focused, l.elsewhere, l.onRow = mount, false, false
-			if wasOnRow {
-				l.row.SetFocused(false)
-			}
-			if previous != nil && previous != mount {
-				previous.SetFocused(false)
-			}
-			if mount != nil {
-				mount.SetFocused(true)
-			}
+		focus:  l.focus,
+		float: func(mount *viewMount, title string) viewFloat {
+			fr := &viewTestFrame{l: l, mount: mount, title: title, before: l.focused}
+			l.frames = append(l.frames, fr)
+			l.focus(mount)
+			return fr
 		},
+		waitRow:       func(row *viewWaiting) { l.waiting = row },
 		editorFocused: func() bool { return l.focused == nil && !l.elsewhere && !l.onRow },
 		editorEmpty:   func() bool { return !l.typed },
 		tabRow:        func(row *viewTabs) { l.row = row },
@@ -113,7 +165,8 @@ func (l *viewTestLoop) ui() viewClientUI {
 				l.listeners = slices.DeleteFunc(l.listeners, func(o *tui.TuiInputListener) bool { return o == listener })
 			}
 		},
-		interrupts: func(data string) bool { return data == "\x1b" },
+		interrupts: func(data string) bool { return l.keybindings.Matches(data, string(AppInterrupt)) },
+		reserved:   func(data string) string { return viewReservedAction(l.keybindings, data) },
 		notify: func(message, level string) {
 			if l.onNotice != nil {
 				l.onNotice()
@@ -231,7 +284,10 @@ func (f *viewFixture) transition(op string, ref uiview.Ref) {
 	f.loop.run()
 }
 
-// awaitResult waits until the client's queue holds an intent's result and returns the queue as it is then.
+// awaitResult waits until the client's queue holds an intent's result and the loop holds the drain that applies it, and
+// returns the queue as it is then. The client queues a result and then wakes the loop, so the result alone does not say
+// that the loop can apply it: a test that ran the loop between the two left the intent in flight, and the client drops
+// an activation made while an intent is in flight.
 func (f *viewFixture) awaitResult() []viewItem {
 	f.t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -239,7 +295,10 @@ func (f *viewFixture) awaitResult() []viewItem {
 		f.client.mu.Lock()
 		queue := slices.Clone(f.client.queue)
 		f.client.mu.Unlock()
-		if slices.ContainsFunc(queue, func(it viewItem) bool { return it.result != nil }) {
+		f.loop.mu.Lock()
+		held := len(f.loop.tasks)
+		f.loop.mu.Unlock()
+		if held > 0 && slices.ContainsFunc(queue, func(it viewItem) bool { return it.result != nil }) {
 			return queue
 		}
 		if time.Now().After(deadline) {
@@ -261,11 +320,17 @@ func (f *viewFixture) notices(key string) []uiview.Notice {
 // pig additive (D614): a client that is attached and was never sent a mount adds nothing to the loop: no component, no
 // input listener, no goroutine, no timer. Extensions read its abilities.
 func TestViewClientIsInertUntilAMount(t *testing.T) {
-	before := runtime.NumGoroutine()
+	synctest.Test(t, testViewClientIsInertUntilAMount)
+}
+
+func testViewClientIsInertUntilAMount(t *testing.T) {
+	// The count is of the test's own bubble: a goroutine of another test is not the client's.
+	before := testenv.LiveGoroutines()
 	f := newViewFixture(t)
 	f.loop.run()
-	if after := runtime.NumGoroutine(); after != before {
-		t.Errorf("attaching started %d goroutines", after-before)
+	synctest.Wait()
+	if n := testenv.LiveGoroutines() - before; n != 0 {
+		t.Errorf("attaching started %d goroutines", n)
 	}
 	f.client.wake()
 	f.loop.run()
@@ -316,14 +381,20 @@ func TestViewClientStatesItsSize(t *testing.T) {
 		}
 		return out
 	}
-	want := map[string]string{"client.kind": `"terminal"`, "size.columns": "40", "widget-above/size.rows": "10", "widget-below/size.rows": "10", "panel/size.rows": "12"}
+	want := map[string]string{
+		"client.kind": `"terminal"`, "size.columns": "40", "widget-above/size.rows": "10", "widget-below/size.rows": "10", "panel/size.rows": "12",
+		"dialog/size.rows": strconv.Itoa(viewDialogCells(24)), "dialog/size.columns": strconv.Itoa(viewDialogCells(40)),
+	}
 	if got := claims(); !mapsEqual(got, want) {
 		t.Fatalf("claims = %v, want %v", got, want)
 	}
 	f.loop.size = viewSize{columns: 100, rows: 50, pointer: true}
 	f.client.wake()
 	f.loop.run()
-	want = map[string]string{"client.kind": `"terminal"`, "size.columns": "100", "widget-above/size.rows": "10", "widget-below/size.rows": "10", "panel/size.rows": "25", "pointer": "true"}
+	want = map[string]string{
+		"client.kind": `"terminal"`, "size.columns": "100", "widget-above/size.rows": "10", "widget-below/size.rows": "10", "panel/size.rows": "25", "pointer": "true",
+		"dialog/size.rows": strconv.Itoa(viewDialogCells(50)), "dialog/size.columns": strconv.Itoa(viewDialogCells(100)),
+	}
 	if got := claims(); !mapsEqual(got, want) {
 		t.Fatalf("claims after a resize = %v, want %v", got, want)
 	}

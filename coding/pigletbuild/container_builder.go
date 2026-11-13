@@ -79,7 +79,7 @@ func (b containerBuilder) Probe(ctx context.Context, request BuilderRequest) Bui
 		if _, ok := b.bootstrap.release(); !ok {
 			result.Code = "source-unavailable"
 			result.Message = "this PiG build is not a tagged release that the container can install"
-			result.Remedy = "build with --builder native from a Pig checkout, or configure a container builder whose image contains Pig"
+			result.Remedy = "build with --builder native from a PiG checkout, or configure a container builder whose image contains PiG"
 			return result
 		}
 	}
@@ -105,7 +105,7 @@ func (b containerBuilder) Probe(ctx context.Context, request BuilderRequest) Bui
 	if err != nil {
 		result.Code = "image-unavailable"
 		result.Message = fmt.Sprintf("digest-pinned builder image %s is not present locally", b.config.Image)
-		result.Remedy = fmt.Sprintf("authenticate with %s outside Pig if required, then run `%s pull %s`", imageRegistry(b.config.Image), engine, b.config.Image)
+		result.Remedy = fmt.Sprintf("authenticate with %s outside PiG if required, then run `%s pull %s`", imageRegistry(b.config.Image), engine, b.config.Image)
 		return result
 	}
 	metadata := strings.Fields(string(imageMetadata))

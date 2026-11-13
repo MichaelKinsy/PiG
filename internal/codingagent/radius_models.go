@@ -231,7 +231,7 @@ func radiusModelEntry(model *ai.Model) ModelEntry {
 		ContextWindow: capabilities.ContextWindow, MaxTokens: capabilities.MaxOutputTokens,
 		InputCost: capabilities.InputCostPer1M, OutputCost: capabilities.OutputCostPer1M, CacheReadCost: capabilities.CacheReadCostPer1M, CacheWriteCost: capabilities.CacheWriteCostPer1M,
 		CostTiers: capabilities.CostTiers, PromptCache: model.PromptCache,
-		SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, Headers: model.ProviderMeta.Headers, ModelHeaders: maps.Clone(model.ProviderMeta.Headers),
+		SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, SamplingParamsOrder: model.SamplingParamsOrder, SamplingParamsByThinkingLevelOrder: model.SamplingParamsByThinkingLevelOrder, Headers: model.ProviderMeta.Headers, ModelHeaders: maps.Clone(model.ProviderMeta.Headers),
 		Compat: mergeCompat((*providerCompat)(model.ProviderMeta.Compat), nil),
 	}
 }

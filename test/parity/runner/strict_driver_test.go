@@ -4,6 +4,7 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -51,6 +52,11 @@ func TestProviderFixtureDrivesActualToolResultsAndHTTPFailure(t *testing.T) {
 		{"openai-completions", `{"messages":[{"role":"user","content":[{"type":"text","text":"READ"}]}]}`, 200, `"name":"read"`},
 		{"openai-completions", `{"messages":[{"role":"tool","content":"actual  result\n"}]}`, 200, `"content":"actual  result\n"`},
 		{"openai-completions", `{"messages":[{"role":"user","content":"HTTP_ERROR"}]}`, 400, `"message":"strict wire bad request"`},
+		{"openai-responses", `{"input":[{"role":"user","content":[{"type":"input_text","text":"READ"}]}]}`, 200, `"item":{"arguments":"{\"path\":\"parity-read-target.txt\"}","call_id":"strict-read","id":"fc_strict_read","name":"read","status":"completed","type":"function_call"}`},
+		{"openai-responses", `{"input":[{"role":"user","content":"READ"},{"type":"function_call","call_id":"strict-read","name":"read","arguments":"{}"},{"type":"function_call_output","call_id":"strict-read","output":"actual  result\n"}]}`, 200, `"delta":"actual  result\n"`},
+		{"openai-responses", `{"input":[{"type":"function_call_output","call_id":"strict-read","output":[{"type":"input_text","text":"READ"}]}]}`, 200, `"content":[{"annotations":[],"text":"READ","type":"output_text"}]`},
+		{"openai-responses", `{"input":[{"role":"user","content":[{"type":"input_text","text":"ECHO_REQUEST /tools"}]}],"tools":[{"type":"function","name":"z","strict":false}]}`, 200, `"delta":"[{\"type\":\"function\",\"name\":\"z\",\"strict\":false}]"`},
+		{"openai-responses", `{"input":[{"role":"user","content":[{"type":"input_text","text":"HTTP_ERROR"}]}]}`, 400, `"message":"strict wire bad request"`},
 		{"mistral-conversations", `{"messages":[{"role":"user","content":[{"type":"text","text":"READ"}]}]}`, 200, `"name":"read"`},
 		{"mistral-conversations", `{"messages":[{"role":"tool","content":[{"type":"text","text":"actual  result\n"}]}]}`, 200, `"content":"actual  result\n"`},
 		{"mistral-conversations", `{"messages":[{"role":"user","content":"HTTP_ERROR"}]}`, 400, `"message":"strict wire bad request"`},
@@ -81,12 +87,46 @@ func TestProviderFixtureAPISelection(t *testing.T) {
 		{Scenario{}, "", false},
 		{Scenario{OpenAIFixture: true}, "openai-completions", false},
 		{Scenario{ProviderFixture: "anthropic-messages"}, "anthropic-messages", false},
+		{Scenario{ProviderFixture: "openai-responses"}, "openai-responses", false},
 		{Scenario{OpenAIFixture: true, ProviderFixture: "anthropic-messages"}, "", true},
 		{Scenario{ProviderFixture: "no-such-api"}, "", true},
+		{Scenario{ProviderFixture: "anthropic-messages", ProviderFixtureBasePath: "/api.anthropic.com"}, "anthropic-messages", false},
+		{Scenario{OpenAIFixture: true, ProviderFixtureCompat: map[string]any{"supportsStrictMode": true}}, "openai-completions", false},
+		{Scenario{ProviderFixture: "anthropic-messages", ProviderFixtureBasePath: "api.anthropic.com"}, "", true},
+		{Scenario{ProviderFixture: "anthropic-messages", ProviderFixtureBasePath: "/api.anthropic.com/"}, "", true},
+		{Scenario{ProviderFixtureBasePath: "/api.anthropic.com"}, "", true},
+		{Scenario{ProviderFixtureCompat: map[string]any{"supportsStrictMode": true}}, "", true},
 	} {
 		got, err := providerFixtureAPI(&tc.sc)
 		if got != tc.want || (err != nil) != tc.wantErr {
 			t.Fatalf("providerFixtureAPI(%+v) = %q, %v", tc.sc, got, err)
+		}
+	}
+}
+
+// The model definition without the two scenario options is the one the fixture has always written; each option changes its own member only.
+func TestProviderFixtureModels(t *testing.T) {
+	const model = `{"contextWindow":128000,"cost":{"cacheRead":0,"cacheWrite":0,"input":0,"output":0},"id":"strict","input":["text"],"maxTokens":1000,"name":"strict","reasoning":false}`
+	const withCompat = `{"compat":{"supportsMessageThreads":false,"supportsStrictMode":true},` + `"contextWindow":128000,"cost":{"cacheRead":0,"cacheWrite":0,"input":0,"output":0},"id":"strict","input":["text"],"maxTokens":1000,"name":"strict","reasoning":false}`
+	provider := func(api, baseURL, model string) string {
+		return `{"providers":{"strict-wire":{"api":"` + api + `","apiKey":"fixture-key","baseUrl":"` + baseURL + `","models":[` + model + `]}}}`
+	}
+	for _, tc := range []struct {
+		sc   Scenario
+		api  string
+		want string
+	}{
+		{Scenario{}, "openai-completions", provider("openai-completions", "http://127.0.0.1:1/v1", model)},
+		{Scenario{}, "anthropic-messages", provider("anthropic-messages", "http://127.0.0.1:1", model)},
+		{Scenario{}, "google-generative-ai", provider("google-generative-ai", "http://127.0.0.1:1/v1beta", model)},
+		{Scenario{ProviderFixtureBasePath: "/api.anthropic.com"}, "anthropic-messages", provider("anthropic-messages", "http://127.0.0.1:1/api.anthropic.com", model)},
+		{Scenario{ProviderFixtureBasePath: "/proxy"}, "openai-responses", provider("openai-responses", "http://127.0.0.1:1/proxy/v1", model)},
+		{Scenario{ProviderFixtureCompat: map[string]any{"supportsStrictMode": true, "supportsMessageThreads": false}}, "openai-completions", provider("openai-completions", "http://127.0.0.1:1/v1", withCompat)},
+		{Scenario{ProviderFixtureCompat: map[string]any{}}, "mistral-conversations", provider("mistral-conversations", "http://127.0.0.1:1", model)},
+	} {
+		data, err := json.Marshal(providerFixtureModels(&tc.sc, tc.api, "http://127.0.0.1:1"))
+		if err != nil || string(data) != tc.want {
+			t.Errorf("providerFixtureModels(%+v, %s) = %s, %v; want %s", tc.sc, tc.api, data, err, tc.want)
 		}
 	}
 }

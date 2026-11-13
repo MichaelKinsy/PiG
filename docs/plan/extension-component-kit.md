@@ -382,7 +382,11 @@ PiG keeps the ordering and moves the callback across the process:
 
 Loader animation is host-owned for authoritative views, like D94's working
 indicator. The host advances the frame every `intervalMs` while the surface
-is mounted, and stops when the surface closes or the frame drops the loader.
+is drawn: a tick asks for a repaint, and the next tick is armed only when the
+surface was drawn since. The animation stops when the surface closes, when
+the frame drops the loader, and when nothing draws the surface any more (the
+view of a renderer goes with its transcript component, which a rebuilt
+transcript drops without a call), and it starts again with the next draw.
 
 ## 5. Host rendering and validation
 

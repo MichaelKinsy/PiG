@@ -1,0 +1,63 @@
+# Behavior family: extensions-runtime
+# Surface: TUI.invalidate reaches every overlay's component (packages/tui/src/tui.ts:951-954): the /settings theme preview while a non-capturing overlay is open, alternate screen.
+#
+# Upstream evidence (Pi 1.5.2 at the pin b4afdddf, probed through this driver on 2026-11-13, 100x35, regular and fullscreen):
+# testdata/ext/overlay-invalidate.mjs opens a ui.custom overlay whose component keeps a row colored with theme.fg("accent") until
+# invalidate() is called, beside a segment colored at every render and the count of invalidate() calls. With the overlay open and the editor focused, /settings, the theme row and Down preview the light theme (theme-controller.ts preview).
+# Pi's row afterwards: OVINV \x1b[38;2;116;89;180mCACHED\x1b[39m \x1b[38;2;116;89;180mLIVE\x1b[39m inv=2 OVEND
+# (both segments in the light theme's accent; Pi invalidated the overlay's component twice). PiG before the fix did not render the overlay again: both segments stayed in the dark accent 167;152;215 with inv=0.
+# The crop is the overlay's one row; escaped equality compares both colors and the invalidation count. No normalization.
+# Mutation: the overlay loop of tuiBase.invalidateMounted removed fails this scenario (job w1).
+name = "101-overlay-invalidate-settings-preview-fullscreen"
+description = "An extension overlay that keeps a themed row until invalidate() shows the new theme: the /settings theme preview while a non-capturing overlay is open, alternate screen."
+covers = ["packages/tui/src/tui.ts", "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/overlay-invalidate-fullscreen-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/overlay-invalidate-fullscreen-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/overlay-invalidate.mjs"]
+pi_extensions = ["testdata/ext/overlay-invalidate.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "OVINV READY"
+ready_pattern_pi = "OVINV READY"
+ready_timeout_seconds = 30
+capture_start = "OVINV"
+capture_end = "OVEND"
+
+[[tmux.steps]]
+keys = ["/ovinvnc", "Enter"]
+wait_contains = ["inv=0 OVEND"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["Space", "t", "h", "e", "m", "e"]
+wait_contains = ["> theme"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Enter to select · Esc to go back"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_contains = ["inv=2 OVEND"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_contain = ["inv=2 OVEND"]
+escaped_output_equal = true
+runs = 3

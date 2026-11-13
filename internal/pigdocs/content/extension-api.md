@@ -2,6 +2,8 @@
 
 This document is the canonical reference for the wire protocol and host API surface that pig exposes to extensions. The same API is bridged by all official subprocess SDKs (Go in `extensions/sdk`, Rust in `extensions/sdk-rs`, Python in `extensions/sdk-py`). Node extensions use Pi's canonical TypeScript API through PiG's compatibility runtime. `extensions/sdk-ts` adds declarations for PiG-only calls. Method names below are normalized; SDK bindings use language-idiomatic spellings.
 
+The calls that mount views, which the terminal and a web page draw, are in [Extension views](ui-views.md) (D614).
+
 ## Wire protocol (subprocess, current unversioned shape)
 
 The host and extension exchange length-prefixed JSON envelopes over a Unix domain socket. Each frame is a 4-byte big-endian unsigned length followed by exactly that many bytes of one JSON object; a single frame is capped at `MaxFrameSize` (128 MB), a constant the host and every SDK share. The host binds the listening socket and passes the path via `PIG_EXT_SOCKET` (or `PIG_EXT_SOCKET_<EXT_NAME>` for each contained extension in a packed cell). Every envelope carries a `type`, an optional `id` for request/response correlation, and a body field named after the type:
@@ -187,7 +189,7 @@ width limits are 24 columns for `name`, 48 for `description`, and 76 for
 `tagline`. Name plus description and spacing are limited to 80 columns.
 
 `setLogin` and `setHeader` share one slot. The last successful call wins. Clear
-the header to restore Stock Pig's text header. A rejected definition returns a host
+the header to restore Stock PiG's text header. A rejected definition returns a host
 error and keeps the current header. Quiet startup keeps the header hidden.
 Terminals below 66 columns show compact text without art. PiG caches validated
 render data, so rendering performs no extension IPC.
@@ -216,7 +218,7 @@ missing login, or an invalid definition. Use `/reload` after an edit. A login
 remains an extension Resource. Activate it through a Piglet `extensions` entry,
 user extension policy, or `pig -e <path>`. Verify activation by starting or
 reloading through that path and checking the identity name. Keep product
-identities outside Stock Pig and select them through an ordinary Piglet
+identities outside Stock PiG and select them through an ordinary Piglet
 extension entry.
 
 ### Themes

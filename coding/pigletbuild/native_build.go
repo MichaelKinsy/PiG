@@ -37,7 +37,7 @@ import (
 func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet, cells []subprocess.CellSpec, componentPlan pigletartifact.Plan, resolution *pigletartifact.Record, opts Options, outPath string, stdout, stderr io.Writer) ([]signature.EmbeddedFile, error) {
 	sourceRoot := source.Root
 	if sourceRoot == "" {
-		return nil, fmt.Errorf("source-unavailable: no Pig source tree to build; remedy: %s", sourceUnavailableRemedy)
+		return nil, fmt.Errorf("source-unavailable: no PiG source tree to build; remedy: %s", sourceUnavailableRemedy)
 	}
 	cacheRoot, err := os.MkdirTemp("", "piglet-binary-build-*")
 	if err != nil {
@@ -623,11 +623,11 @@ func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry, fronten
 
 	originalGoMod, err := os.ReadFile(goModPath)
 	if err != nil {
-		return fusedModuleGraph{}, fmt.Errorf("read Pig go.mod: %w", err)
+		return fusedModuleGraph{}, fmt.Errorf("read PiG go.mod: %w", err)
 	}
 	parsed, err := modfile.Parse(goModPath, originalGoMod, nil)
 	if err != nil {
-		return fusedModuleGraph{}, fmt.Errorf("parse Pig go.mod: %w", err)
+		return fusedModuleGraph{}, fmt.Errorf("parse PiG go.mod: %w", err)
 	}
 	members := fused
 	if frontendMember != nil {
@@ -654,7 +654,7 @@ func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry, fronten
 	for _, sumFile := range sumFiles {
 		original, err := os.ReadFile(sumFile)
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fusedModuleGraph{}, fmt.Errorf("read Pig checksums: %w", err)
+			return fusedModuleGraph{}, fmt.Errorf("read PiG checksums: %w", err)
 		}
 		merged, err := mergeGoSum(original, graph.roots)
 		if err != nil {

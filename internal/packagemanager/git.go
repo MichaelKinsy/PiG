@@ -118,7 +118,8 @@ func CleanAndInstallGitDependencies(checkout, packageRoot, marker string, sm *co
 	cleaned := true
 	if err := RunPackageProcess(checkout, "git", "clean", "-fdx"); err != nil {
 		cleaned = false
-		EmitProgress(resolveInstallOptions(opts).progress, ProgressEvent{Type: "progress", Action: "update", Source: checkout, Message: new(fmt.Sprintf("Could not remove all untracked files in %s (%s). Files may be in use by another pi session; close it and run the update again.", checkout, err.Error()))})
+		// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
+		EmitProgress(resolveInstallOptions(opts).progress, ProgressEvent{Type: "progress", Action: "update", Source: checkout, Message: new(fmt.Sprintf("Could not remove all untracked files in %s (%s). Files may be in use by another pig session; close it and run the update again.", checkout, err.Error()))})
 	}
 	if err := RequireGitSubdirectoryWithinCheckout(checkout, packageRoot); err != nil {
 		return err

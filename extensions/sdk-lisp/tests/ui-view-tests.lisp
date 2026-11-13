@@ -16,6 +16,12 @@
   (kt-check-json "{\"name\":\"x.open\",\"arg\":{\"type\":\"object\"},\"whenHidden\":true}"
                  (pig::view-intent "x.open" (pig::view-shape "object") :when-hidden t)))
 
+(deftest ui-view-intent-the-users-dismissal-raises
+  (kt-check-json "{\"name\":\"x.close\",\"arg\":{\"type\":\"object\"},\"dismiss\":true}"
+                 (pig::view-intent "x.close" (pig::view-shape "object") :dismiss t))
+  (kt-check-json "{\"name\":\"x.tap\",\"arg\":{\"type\":\"object\"}}"
+                 (pig::view-intent "x.tap" (pig::view-shape "object"))))
+
 (deftest ui-view-target-sets-one-member
   (kt-check-json "{\"toolCallId\":\"c1\"}" (pig::view-target :tool-call-id "c1")))
 

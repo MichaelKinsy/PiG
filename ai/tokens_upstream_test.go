@@ -35,6 +35,10 @@ func abortUsageClass(m *GeneratedModel) int {
 
 func TestTokensOnAbortUpstream(t *testing.T) {
 	for _, tc := range tokensUpstreamCases() {
+		if tc.api == "" && !BuiltCatalogModel(tc.provider+"/"+tc.model) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.provider+"/"+tc.model+"/"+tc.name, func(t *testing.T) {
 			var generated *GeneratedModel
 			if tc.model == "preferred" {

@@ -754,6 +754,31 @@ export default function (pi) {
       ctx.ui.notify("overlay-handle=ok", "info");
     },
   });
+  pi.registerCommand("overlay-invalidate-probe", {
+    description: "Count the host's invalidations of a mounted overlay and draw the theme",
+    handler: async (args, ctx) => {
+      const row = () => `${ctx.ui.theme.name}|${ctx.ui.theme.fg("accent", "x")}`;
+      await ctx.ui.custom((_tui, _theme, _keys, done) => {
+        const handleInput = (data) => { if (data === "q") done("closed"); };
+        // A component without invalidate() is rendered again all the same.
+        if (String(args ?? "").trim() === "plain") return { render: () => [`plain live=${row()}`], handleInput };
+        let invalidations = 0;
+        let kept = row();
+        return {
+          render: () => [`inv=${invalidations} kept=${kept} live=${ctx.ui.theme.name}`],
+          handleInput,
+          invalidate() { invalidations++; kept = row(); },
+        };
+      }, { overlay: true });
+      ctx.ui.notify("overlay-invalidate=ok", "info");
+    },
+  });
+  pi.registerCommand("theme-read-probe", {
+    description: "Report the theme the extension holds, with no component mounted",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify(`theme-read=${ctx.ui.theme.name}|${ctx.ui.theme.fg("accent", "x")}`, "info");
+    },
+  });
   pi.registerCommand("overlay-focus-probe", {
     description: "Render the focus the host publishes to a mounted overlay",
     handler: async (_args, ctx) => {
@@ -842,7 +867,7 @@ export default function (pi) {
       f.push(`visibleOff=${screen.hasOverlay()}/${screen.hasOverlayEntries}`);hOff.hide();
       const ov2=screen.showOverlay(ov,{width:8});
       docInv=0;ovInv=0;screen.invalidate();
-      f.push(`invalidate=${docInv>0}/${ovInv>0}`);
+      f.push(`invalidate=${docInv}/${ovInv}`);
       ov2.hide();
       const mutLog=[];let armed=false,mutInv=0;
       const extra={render:()=>["EXTRA"],invalidate(){}},target={render:()=>["TARGET"],invalidate(){}},popup={render:()=>["POP"],invalidate(){}};
@@ -858,7 +883,7 @@ export default function (pi) {
         r.push(`overlay=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${h.isFocused()}/${first}`);
         h.hide();r.push(`hidden=${screen.hasOverlayEntries}`);
         screen.scrollBy(-2);r.push(`scroll=${screen.viewportTop}/${screen.isFollowingOutput}`);
-        mutInv=0;screen.invalidate();r.push(`invalidate=${mutInv>0}`);
+        mutInv=0;screen.invalidate();r.push(`invalidate=${mutInv}`);
         r.push(`lines=${screen.getScreenLines().length}`);
         mutLog.push(r.join(","));
         return ["MUT"];
@@ -1154,7 +1179,81 @@ export default function (pi) {
     const cur = await ctx.ui.viewState("grid");
     ctx.ui.notify(`view-g-state:${cur.state},rev=${cur.mount.rev}`, "info");
   } });
+  // D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The argument is the
+  // row's token: the ids of the container, the text and the box are built from it.
+  pi.registerCommand("ui_view_node_ids", { description: "Mount a view whose container, text and box carry an id", handler: async (args, ctx) => {
+    const tok = args.trim();
+    const st = await ctx.ui.mountView({
+      key: "ids",
+      slot: "panel",
+      view: { root: { kind: "container", id: `${tok}-root`, children: [
+        { kind: "text", id: `${tok}-label`, text: `Label ${tok}`, paddingX: 0, paddingY: 0, bg: "selectedBg" },
+        { kind: "box", id: `${tok}-frame`, paddingX: 1, paddingY: 0, bg: "toolPendingBg", children: [{ kind: "text", text: "inside", paddingX: 0, paddingY: 0 }] },
+      ] } },
+      a11y: [{ node: `${tok}-label`, name: `Label ${tok}` }],
+    });
+    ctx.ui.notify(`view-i-mounted:${st.state}`, "info");
+  } });
+  // D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+  pi.registerCommand("ui_view_bindings", { description: "Mount a view with bindings and probe what the host refuses", handler: async (args, ctx) => {
+    const [key, number] = args.split(" ");
+    const n = Number(number);
+    const content = (bindings) => ({
+      view: viewText(ctx, "-bind"), bindings,
+      intents: [{ name: "fx.go", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] } }, { name: "fx.tap", arg: { type: "object" } }],
+    });
+    const goTo = (key, n) => ({ key, intent: "fx.go", arg: { n } });
+    const tap = (key) => ({ key, intent: "fx.tap" });
+    const st = await ctx.ui.mountView({ key: "bind", slot: "panel", ...content([{ ...goTo(key, n), name: `Go ${n}` }, goTo("w", n + 1), { gesture: "swipe-left", intent: "fx.tap" }]) });
+    ctx.ui.notify(`view-b-mounted:${st.state}`, "info");
+    const attempt = async (label, bindings) => ctx.ui.notify(`view-b-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content(bindings)))}`, "info");
+    await attempt("many", [..."abcdefghijklmnopqrstuvwxyz0123456"].map(tap));
+    await attempt("reserved", [tap("shift+tab")]);
+    await attempt("order", [tap("ctrl+shift+p"), tap("shift+ctrl+p")]);
+    await attempt("gesture", [{ gesture: "pinch", intent: "fx.tap" }]);
+    await attempt("arg", [goTo("a", "x")]);
+    await attempt("ok", [goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n + 1)]);
+  } });
+  // D614 slot dialog: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDialog).
+  pi.registerCommand("ui_view_dialog", { description: "Mount a titled view with a bound key in the dialog slot, hide it and show it", handler: async (args, ctx) => {
+    const [key, number] = args.split(" ");
+    const n = Number(number);
+    let st;
+    try {
+      st = await ctx.ui.mountView({
+        key: "dlg", slot: "dialog", title: `Chart ${n}`, view: viewText(ctx, "-dlg"),
+        intents: [{ name: "fx.add", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] }, answer: { type: "object", properties: { sum: { type: "integer" } }, required: ["sum"] } }],
+        bindings: [{ key, intent: "fx.add", arg: { n } }],
+      });
+    } catch (err) {
+      ctx.ui.notify(`view-d-mounted:${err.code}`, "info");
+      return;
+    }
+    ctx.ui.notify(`view-d-mounted:${st.state}`, "info");
+    ctx.ui.notify(`view-d-hidden:${(await ctx.ui.hideView(st.mount)).state}`, "info");
+    ctx.ui.notify(`view-d-shown:${(await ctx.ui.showView(st.mount)).state}`, "info");
+  } });
+  // D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+  pi.registerCommand("ui_view_dismiss", { description: "Mount a dialog with a dismiss intent and probe what the host refuses", handler: async (args, ctx) => {
+    const object = { type: "object" };
+    const tap = { name: "fx.tap", arg: object };
+    const closing = (name) => ({ name, arg: object, dismiss: true });
+    const content = (intents) => ({ view: viewText(ctx, "-dismiss"), intents });
+    const st = await ctx.ui.mountView({ key: "dismiss", slot: "dialog", ...content([tap, closing(args)]) });
+    ctx.ui.notify(`view-d-mounted:${st.state}`, "info");
+    const attempt = async (label, intents) => ctx.ui.notify(`view-d-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content(intents)))}`, "info");
+    await attempt("two", [tap, closing(args), closing(`${args}2`)]);
+    await attempt("node", [tap, { ...closing(args), nodeKey: "n" }]);
+    await attempt("arg", [tap, { ...closing(args), arg: { type: "object", properties: { value: { type: "string" } }, required: ["value"] } }]);
+    await attempt("ok", [closing(args), tap]);
+  } });
   pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent.startsWith("fx.close-")) {
+      // The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+      if (JSON.stringify(inv.arg) !== "{}") return { outcome: "refused", error: "dismiss takes {}" };
+      await ctx.ui.removeView({ ...inv.mount, rev: inv.rev });
+      return { outcome: "done" };
+    }
     if (inv.intent === "fx.redraw" || inv.intent === "fx.foreign") {
       const own = inv.intent === "fx.redraw";
       const content = { view: textView(`fixture-${own ? "redraw" : "foreign"}-${inv.arg.n + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0)}`), intents: redrawIntents };
@@ -1357,8 +1456,29 @@ export default function (pi) {
     description: "Switch to the model in the arguments",
     handler: async (args, ctx) => {
       const slash = args.indexOf("/");
-      const ok = await pi.setModel({ provider: args.slice(0, slash), id: args.slice(slash + 1) });
+      const provider = args.slice(0, slash), id = args.slice(slash + 1);
+      // The registry's model of that name, as a Pi extension passes it; a name the registry does not list is an object built by hand.
+      const ok = await pi.setModel(ctx.modelRegistry.find(provider, id) ?? { provider, id });
       ctx.ui.notify(`setModel=${ok}`, "info");
+    },
+  });
+  pi.registerCommand("set_model_object", {
+    description: "Switch to the model object in the arguments",
+    handler: async (args, ctx) => {
+      try {
+        ctx.ui.notify(`setModelObject=${await pi.setModel(JSON.parse(args))}`, "info");
+      } catch (err) {
+        ctx.ui.notify(`setModelObject=error:${err.message}`, "info");
+      }
+    },
+  });
+  pi.registerCommand("set_model_object_before_agent_start", {
+    description: "Switch to the model object in the arguments before each agent start",
+    handler: async (args) => {
+      const model = JSON.parse(args);
+      pi.on("before_agent_start", async (_event, ctx) => {
+        ctx.ui.notify(`beforeAgentSetModel=${await pi.setModel(model)}`, "info");
+      });
     },
   });
   const eventProbeOn = new Map();
@@ -1494,7 +1614,7 @@ export default function (pi) {
   const builtinReport = (result) => {
     const report = { content: result.content.map((block) => block.type === "text" ? { type: "text", text: block.text } : { type: block.type, mimeType: block.mimeType }), isError: !!result.isError };
     if (result.details !== undefined && result.details !== null) { report.details = result.details; report.detailsJSON = JSON.stringify(result.details); }
-    if (result.structuredContent && typeof result.structuredContent === "object") { report.structuredKeys = Object.keys(result.structuredContent); report.exitCode = result.structuredContent.exit_code; }
+    if (result.structuredContent && typeof result.structuredContent === "object") { report.structuredKeys = Object.keys(result.structuredContent); report.exitCode = result.structuredContent.exit_code ?? null; /* an object without exit_code (an image read) reports null, as the native fixtures' nil does */ }
     return report;
   };
   const builtinOptions = (c, log) => {
@@ -1760,6 +1880,28 @@ export default function (pi) {
   pi.registerCommand("set_label", { description: "Set an entry label", handler: async () => pi.setLabel("label-entry", "conformance-label") });
   pi.registerShortcut("ctrl+alt+y", { description: "Conformance shortcut", handler: async () => {} });
   pi.registerCommand("append_entry", { description: "Append a custom entry", handler: async () => pi.appendEntry("conformance-entry", "hello-entry") });
+  // An entry and a message with the optional member left out, then with it written as null.
+  pi.registerCommand("entry_null_members", { description: "Append entries and send messages with an omitted and a null member", handler: async () => {
+    pi.appendEntry("conformance-null-omitted");
+    pi.appendEntry("conformance-null-explicit", null);
+    pi.sendMessage({ customType: "conformance-null-omitted", content: "x", display: false });
+    pi.sendMessage({ customType: "conformance-null-explicit", content: "x", display: false, details: null });
+  } });
+  // setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+  pi.registerCommand("label_members", { description: "Set a label that is omitted, null and empty", handler: async (args) => {
+    pi.setLabel(args);
+    pi.setLabel(args, null);
+    pi.setLabel(args, "");
+  } });
+  // The setup callback's SessionManager: an entry and a message with the optional member left out, then with it written as null.
+  pi.registerCommand("setup_null_members", { description: "Seed a new session with an omitted and a null member", handler: async (_args, ctx) => {
+    await ctx.newSession({ setup: async (sessionManager) => {
+      sessionManager.appendCustomEntry("api-custom");
+      sessionManager.appendCustomEntry("api-custom", null);
+      sessionManager.appendCustomMessageEntry("api-message", "x", false);
+      sessionManager.appendCustomMessageEntry("api-message", "x", true, null);
+    } });
+  } });
   pi.registerCommand("append-entries-probe", { description: "Append a custom entry for each comma-separated type", handler: async (args) => { for (const customType of String(args).split(",")) pi.appendEntry(customType, `data-of-${customType}`); } });
   pi.registerCommand("scoped-models-probe", { description: "Report the model scope", handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.scopedModels), "info") });
   pi.registerCommand("ui-availability", {
@@ -2775,7 +2917,24 @@ export default function (pi) {
     if (event.entries.length !== 2 || event.context.contextEntries.length !== 2 || event.entries[0].customType !== "kept" || event.entries[1].customType !== "before-error") {
       throw new Error("lost boundary mutation or preview");
     }
-    return { entries: [{ type: "custom", customType: "conformance-boundary" }], continue: true };
+    // One draft with a null replacement, one without the member, and a compaction that keeps nothing.
+    return {
+      entries: [
+        { type: "custom", customType: "conformance-boundary" },
+        { type: "context_edit", targetId: "conformance-failed-attempt", replacement: null },
+        { type: "context_edit", targetId: "conformance-omitted-member" },
+        { type: "compaction", summary: "conformance-summary", firstKeptEntryId: null, details: { format: "conformance-checkpoint" }, usage: null },
+        // A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+        { type: "custom", customType: "conformance-null-data", data: null },
+        { type: "custom_message", customType: "conformance-null-details", content: "x", display: false, details: null },
+      ],
+      continue: true,
+    };
+  });
+  pi.on("agent_before_settle", (event, ctx) => {
+    if (event.entries.length !== 6) throw new Error(`boundary result reached the next handler as ${event.entries.length} entries`);
+    const member = (index, key) => (key in event.entries[index] ? (event.entries[index][key] === null ? "null" : "value") : "absent");
+    ctx.ui.notify(`agent_before_settle_drafts:${event.entries.length}:${member(1, "replacement")}:${member(2, "replacement")}:${member(3, "firstKeptEntryId")}:${event.entries[3].details?.format}:${member(0, "data")}:${member(3, "usage")}:${member(4, "data")}:${member(5, "details")}`, "info");
   });
   pi.on("session_start", async (event, ctx) => {
     ctx.ui.notify(`session_start:${event.reason ?? ""}`, "info");

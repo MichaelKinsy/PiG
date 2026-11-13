@@ -169,6 +169,33 @@ from .provider import (
 # MaxFrameSize constants.
 MAX_FRAME_SIZE = 128 * 1024 * 1024
 
+
+class _Null:
+    """The type of :data:`NULL`."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "pig_sdk.NULL"
+
+    def __bool__(self) -> bool:
+        return False
+
+
+NULL: Any = _Null()
+"""An optional session entry member written as JSON null.
+
+``None`` leaves such a member out, as Pi leaves out an argument that is not given (``appendEntry(customType)``). ``NULL`` writes it as null, as
+``appendEntry(customType, null)`` does. It is accepted for the data of ``append_entry``, for the details of ``send_message`` and anywhere in a handler's
+result (a draft's ``data``, ``details`` or ``usage``, a compaction's ``details`` or ``usage``), where ``None`` under a key is also null."""
+
+
+def _json_default(value: Any) -> Any:
+    """The hook json.dumps calls for a value it cannot encode: NULL is JSON null."""
+    if value is NULL:
+        return None
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
 # Winsock's AF_UNIX family and sockaddr_un path capacity (afunix.h).
 _WINSOCK_AF_UNIX = 1
 _WINSOCK_UNIX_PATH_MAX = 108
@@ -1184,6 +1211,10 @@ class _RemoteOverlayState:
         """Queue the host's ui.custom.focus behind the input already queued."""
         return self._enqueue("focus", focused)
 
+    def enqueue_invalidate(self, count: int) -> bool:
+        """Queue the host's ui.custom.invalidate (its TUI was invalidated ``count`` times) behind the input already queued."""
+        return self._enqueue("invalidate", count)
+
     @property
     def is_view(self) -> bool:
         """Whether the component describes its frames as kit views."""
@@ -1345,7 +1376,7 @@ def _dispose_remote_component(component: RemoteComponent) -> None:
 def _json_text(value: Any) -> str:
     """json.dumps of ``value``, written with a stack of its own when the value is nested past the interpreter's recursion limit."""
     try:
-        return json.dumps(value)
+        return json.dumps(value, default=_json_default)
     except RecursionError:
         return _dumps_deep(value)
 
@@ -2879,6 +2910,9 @@ _RPC_SYNCHRONOUS_UI_EFFECTS = frozenset({
 })
 
 
+# Context has no method that continues a turn or appends a compaction at a turn's end: a turn_end or agent_before_settle handler does both with its result,
+# "entries" (custom, custom_message, context_edit and compaction drafts) and "continue" (one more provider request, no new user message). See "Own compaction
+# and continue after an overflow" in the extensions guide.
 @dataclass
 class Context:
     extension: "Extension"
@@ -3181,7 +3215,7 @@ class Context:
         optional, as upstream's are: None is sent as unset and the host applies
         upstream's default for the session's state. ``details`` is upstream's
         message ``details``, extension data kept with the message and not sent
-        to the model; None leaves it unset.
+        to the model; None leaves it unset and ``NULL`` writes it as null.
 
         ``trigger_turn=True`` marks the session busy, and ``is_idle`` stays
         busy until the code that sent it yields, as in Pi until its first
@@ -3212,7 +3246,11 @@ class Context:
         return self._call("getScopedModels", {}).get("result") or []
 
     def append_entry(self, custom_type: str, data: Any) -> None:
-        self._call("appendEntry", {"customType": custom_type, "data": data})
+        """Append a custom entry. ``None`` leaves the entry without a ``data`` member, as Pi's ``appendEntry(customType)`` does; ``NULL`` writes the member as null, as ``appendEntry(customType, null)`` does."""
+        args: dict[str, Any] = {"customType": custom_type}
+        if data is not None:
+            args["data"] = data
+        self._call("appendEntry", args)
 
     # Editor/session/model state -------------------------------------------
 
@@ -3341,8 +3379,12 @@ class Context:
     def set_session_name(self, name: str) -> None:
         self._call("setSessionName", {"name": name})
 
-    def set_label(self, entry_id: str, label: str) -> None:
-        self._call("setLabel", {"entryId": entry_id, "label": label})
+    def set_label(self, entry_id: str, label: Any = None) -> None:
+        """Set or clear an entry label. ``None`` (or no argument) leaves the entry without a ``label`` member, as Pi's ``setLabel(entryId)`` does; ``NULL`` writes it as null, as ``setLabel(entryId, null)`` does; a string is written as given. All but a string that is not empty clear the label."""
+        args: dict[str, Any] = {"entryId": entry_id}
+        if label is not None:
+            args["label"] = label
+        self._call("setLabel", args)
 
     def get_flag(self, name: str) -> Any:
         """Read the host value or first registered default, preserving falsy overrides."""
@@ -3404,7 +3446,24 @@ class Context:
         """Pi's stripFrontmatter over this handler's own connection."""
         return self.parse_frontmatter(content).body
 
-    def set_model(self, model: str) -> tuple[bool, str]:
+    def set_model(self, model: dict[str, Any] | str) -> tuple[bool, str]:
+        """Pi's ``pi.setModel(model)``: make ``model``, a Pi model object, the Session's model. Returns ``(switched, error)``.
+
+        ``switched`` is false, and nothing changes, when the model's provider has no configured auth. The Session uses the object as given, with the
+        members the caller left on it (its context window, limits, base URL, compat): a model taken from ``ctx.model_registry`` and edited, or one
+        built by hand for a provider the host knows. The ``model_select`` handlers have run when it returns.
+
+        A ``provider/id`` string stands for the registry's model of that name, or for an id the registry does not list a model the host builds from
+        the provider; a name with no slash is an openai model. The string form asks the host for the model object and then sets it, two calls: the
+        object the first call returned is the one set, whatever the registry became in between, and an error of the first call is returned without
+        setting.
+        """
+        if isinstance(model, str):
+            resolved = self._call("resolveModel", {"spec": model}).get("result") or {}
+            error = str(resolved.get("error") or "")
+            if error:
+                return False, error
+            model = resolved.get("model")
         result = self._call("setModel", {"model": model}).get("result") or {}
         return bool(result.get("success", result.get("ok", False))), str(result.get("error") or "")
 
@@ -3541,7 +3600,7 @@ class Context:
             wire["images"] = [{"ref": i.ref, "mimeType": i.mime_type, "data": base64.b64encode(i.data).decode("ascii")} for i in encoded.images]
         return wire
 
-    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any, alternatives: Any = (), drawing: Any = None, a11y: Any = (), focus: Any = (), title: str = "") -> dict[str, Any]:
+    def _view_content(self, view: "kit.View", intents: Any, assets: Any, fallback: Any, alternatives: Any = (), drawing: Any = None, a11y: Any = (), focus: Any = (), bindings: Any = (), title: str = "") -> dict[str, Any]:
         fallback_wire = None if fallback is None else self.extension._views.encode(kit.View(root=fallback)).body
         alts = []
         for alt in alternatives or ():
@@ -3549,7 +3608,7 @@ class Context:
             if alt.get("drawing") is not None:
                 entry["drawing"] = alt["drawing"]
             alts.append(entry)
-        return _ui_view.encode_content(self._view_wire(view), intents, assets, fallback_wire, alts, drawing, a11y, focus, title)
+        return _ui_view.encode_content(self._view_wire(view), intents, assets, fallback_wire, alts, drawing, a11y, focus, bindings, title)
 
     def mount_view(
         self,
@@ -3566,6 +3625,7 @@ class Context:
         drawing: Any = None,
         a11y: Any = (),
         focus: Any = (),
+        bindings: Any = (),
     ) -> ViewStatus:
         """Mount ``view`` in a slot the attached client draws. ``key`` names the mount among this extension's.
 
@@ -3573,9 +3633,12 @@ class Context:
         "drawing": ...}``; a client draws the first whose ``when`` holds for its claims. ``drawing`` is the wire record
         (``profile`` ``scene`` with ``shapes`` or ``pixels`` with ``pixels``, and ``regions``); ``a11y`` and ``focus`` are
         lists of wire records naming view nodes by id (at most 256 each); a focus record's ``request`` is ``"mount"`` or
-        ``"update"``. ``title`` is the short text a client labels the mount with (at most 64 bytes on one line). The host
-        checks every bound."""
-        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, title)
+        ``"update"``. ``title`` is the short text a client labels the mount with (at most 64 bytes on one line). ``bindings``
+        (at most 32) are wire records ``{"key" or "gesture", "intent", "arg", "name"}`` that tie a key id (``"d"``,
+        ``"shift+left"``) or a gesture (``"swipe-left"``, ``"swipe-right"``, ``"swipe-up"``, ``"swipe-down"``) to an intent that
+        names no node; a client fires one only while the mount holds the focus and the focused node did not take the key. The
+        host checks every bound."""
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings, title)
         args["key"], args["slot"] = key, slot
         if target is not None:
             args["target"] = target._wire()
@@ -3594,9 +3657,10 @@ class Context:
         drawing: Any = None,
         a11y: Any = (),
         focus: Any = (),
+        bindings: Any = (),
     ) -> ViewStatus:
         """Replace the content of a mount, its ``title`` included. Fails with ``ViewError`` code ``"stale"`` unless ``mount`` carries the epoch and rev the last operation returned."""
-        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, title)
+        args = self._view_content(view, intents, assets, fallback, alternatives, drawing, a11y, focus, bindings, title)
         args["mount"] = mount._wire()
         return self._view_call("ui.view.update", args)
 
@@ -6075,6 +6139,17 @@ class Extension:
             if overlay is not None and not overlay.enqueue_focus(bool(args.get("focused"))):
                 self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
             return
+        if method == "ui.custom.invalidate":
+            # The theme_change that precedes it on the connection is applied by now; the component's worker runs invalidate() and renders.
+            key = str(args.get("key") or "")
+            count = args.get("count")
+            if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+                return
+            with self._overlay_lock:
+                overlay = self._overlays.get(key)
+            if overlay is not None and not overlay.enqueue_invalidate(count):
+                self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
+            return
         if method == "ui.custom.input":
             key = str(args.get("key") or "")
             with self._overlay_lock:
@@ -6921,6 +6996,13 @@ class Extension:
                     continue
                 if kind == "focus":
                     overlay.apply_focus(bool(data))
+                elif kind == "invalidate":
+                    # Pi's optional Component.invalidate(): the host's TUI was invalidated (a theme change, a cell-size report, a change
+                    # of image support). A component without it is rendered again all the same.
+                    invalidate = getattr(overlay.component, "invalidate", None)
+                    if callable(invalidate):
+                        for _ in range(data):
+                            invalidate()
                 elif kind in ("input", "view_event", "mouse"):
                     if kind == "input":
                         result = overlay.component.handle_input(data or "")
@@ -7230,12 +7312,12 @@ class Extension:
         if self._sock is None:
             raise RuntimeError("extension socket is not connected")
         try:
-            data = json.dumps(env, separators=(",", ":"), allow_nan=False).encode()
+            data = json.dumps(env, separators=(",", ":"), allow_nan=False, default=_json_default).encode()
         except ValueError:
             # Python writes NaN and Infinity as bare words, which is not JSON: the host refused the frame and the extension's connection ended.
             # JSON.stringify writes them as null, so each SDK sends null.
             try:
-                data = json.dumps(_non_finite_to_null(env), separators=(",", ":"), allow_nan=False).encode()
+                data = json.dumps(_non_finite_to_null(env), separators=(",", ":"), allow_nan=False, default=_json_default).encode()
             except RecursionError:
                 data = _dumps_deep(env).encode()
         except RecursionError:

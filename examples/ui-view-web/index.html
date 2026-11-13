@@ -5,41 +5,246 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PiG plugin views</title>
 <style>
-  :root { color-scheme: light dark; font: 15px/1.45 system-ui, sans-serif; }
-  body { margin: 0; display: flex; justify-content: center; }
-  main { width: min(52rem, 100%); min-height: 100vh; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; box-sizing: border-box; }
-  section[data-slot] { display: flex; flex-direction: column; gap: .5rem; }
+  /* The page's look is these tokens: a theme (bridge.mjs --theme) overrides any of them. Light and dark follow the
+     system; colours are plain values so that every pair of text and surface can be checked (controls_test.go). */
+  :root {
+    color-scheme: light dark;
+    --view-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --view-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --view-text-sm: 13px; --view-text: 14px; --view-text-lg: 16px; --view-text-xl: 20px; --view-leading: 20px;
+    --view-space: 8px; --view-col: 8px; --view-row: 16px;
+    --view-radius: 8px; --view-radius-sm: 6px; --view-control: 32px;
+    --view-motion: 150ms;
+    --view-bg: #f6f7f9; --view-surface: #ffffff; --view-surface-2: #eef0f3; --view-surface-raised: #ffffff; --view-border: #d9dde3;
+    --view-fg: #1a1d21; --view-fg-muted: #5a6270;
+    --view-accent: #2456d6; --view-on-accent: #ffffff; --view-selected: #e3ebfd; --view-focus: #2456d6;
+    --view-success: #1a7f37; --view-warning: #8a5a00; --view-error: #c62b3b;
+    --view-success-bg: #e6f4ea; --view-error-bg: #fbe9eb;
+    --view-shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 4px 12px rgb(16 24 40 / 8%);
+    --view-shadow-raised: 0 2px 4px rgb(16 24 40 / 8%), 0 16px 40px rgb(16 24 40 / 18%);
+    --view-backdrop: rgb(0 0 0 / 20%);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --view-bg: #111315; --view-surface: #1b1e22; --view-surface-2: #262a30; --view-surface-raised: #23272d; --view-border: #343a43;
+      --view-fg: #e8eaed; --view-fg-muted: #a3abb8;
+      --view-accent: #8ab0ff; --view-on-accent: #0c1a3a; --view-selected: #253454; --view-focus: #8ab0ff;
+      --view-success: #5fd07f; --view-warning: #e6b450; --view-error: #ff8090;
+      --view-success-bg: #1d3324; --view-error-bg: #3a1f24;
+      --view-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 16px rgb(0 0 0 / 35%);
+      --view-shadow-raised: 0 2px 4px rgb(0 0 0 / 45%), 0 20px 48px rgb(0 0 0 / 55%);
+      --view-backdrop: rgb(0 0 0 / 30%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root { --view-motion: 0ms; }
+  }
+  /* The page's colours for the theme tokens a view names (client.js: colour), one for every colour of Pi's theme
+     schema (schemas/theme.schema.json), each a neutral token of this page; a view's theme overrides them for itself. */
+  :root {
+    --pig-text: var(--view-fg); --pig-accent: var(--view-accent); --pig-muted: var(--view-fg-muted); --pig-dim: var(--view-fg-muted);
+    --pig-border: var(--view-border); --pig-borderAccent: var(--view-accent); --pig-borderMuted: var(--view-border);
+    --pig-success: var(--view-success); --pig-warning: var(--view-warning); --pig-error: var(--view-error);
+    --pig-selectedBg: var(--view-selected); --pig-customMessageBg: var(--view-surface-2);
+    --pig-userMessageBg: var(--view-surface-2); --pig-toolPendingBg: var(--view-surface-2);
+    --pig-toolSuccessBg: var(--view-success-bg); --pig-toolErrorBg: var(--view-error-bg);
+    --pig-thinkingText: var(--view-fg-muted); --pig-userMessageText: var(--view-fg); --pig-customMessageText: var(--view-fg); --pig-customMessageLabel: var(--view-accent);
+    --pig-toolTitle: var(--view-fg); --pig-toolOutput: var(--view-fg-muted);
+    --pig-mdHeading: var(--view-fg); --pig-mdLink: var(--view-accent); --pig-mdLinkUrl: var(--view-fg-muted); --pig-mdCode: var(--view-fg); --pig-mdCodeBlock: var(--view-fg);
+    --pig-mdCodeBlockBorder: var(--view-border); --pig-mdQuote: var(--view-fg-muted); --pig-mdQuoteBorder: var(--view-border); --pig-mdHr: var(--view-border); --pig-mdListBullet: var(--view-accent);
+    --pig-toolDiffAdded: var(--view-success); --pig-toolDiffRemoved: var(--view-error); --pig-toolDiffContext: var(--view-fg-muted);
+    --pig-syntaxComment: var(--view-fg-muted); --pig-syntaxKeyword: var(--view-accent); --pig-syntaxFunction: var(--view-accent); --pig-syntaxVariable: var(--view-fg); --pig-syntaxString: var(--view-success);
+    --pig-syntaxNumber: var(--view-warning); --pig-syntaxType: var(--view-accent); --pig-syntaxOperator: var(--view-fg); --pig-syntaxPunctuation: var(--view-fg-muted);
+    --pig-thinkingOff: var(--view-border); --pig-thinkingMinimal: var(--view-fg-muted); --pig-thinkingLow: var(--view-accent); --pig-thinkingMedium: var(--view-accent);
+    --pig-thinkingHigh: var(--view-warning); --pig-thinkingXhigh: var(--view-error); --pig-thinkingMax: var(--view-error); --pig-bashMode: var(--view-success);
+    --pig-scrollbarThumb: var(--view-border); --pig-scrollbarTrack: var(--view-surface-2); --pig-searchMatchBg: var(--view-selected); --pig-searchMatchText: var(--view-fg);
+  }
+  html { font: var(--view-text)/var(--view-leading) var(--view-font); color: var(--view-fg); background: var(--view-bg); }
+  body { margin: 0; display: flex; justify-content: center; flex-wrap: wrap; }
+  [hidden] { display: none !important; }
+  /* A scrolling area shows a thin bar in the page's own colours. */
+  * { box-sizing: border-box; }
+  html, #chat, .scroll-view, dialog.mount, pre.lines { scrollbar-width: thin; scrollbar-color: var(--view-border) transparent; }
+  main { flex: 1 1 24rem; max-width: 52rem; min-height: 100vh; display: flex; flex-direction: column; gap: var(--view-space); padding: calc(2 * var(--view-space)); }
+  section[data-slot] { display: flex; flex-direction: column; gap: var(--view-space); }
   section[data-slot]:empty { display: none; }
-  #chat { flex: 1; display: flex; flex-direction: column; gap: .5rem; overflow-y: auto; }
-  .line { white-space: pre-wrap; padding: .35rem .6rem; border-radius: .4rem; background: color-mix(in srgb, CanvasText 6%, Canvas); }
-  .line.user { align-self: flex-end; background: color-mix(in srgb, Highlight 25%, Canvas); }
-  .line.note { font-size: .85em; opacity: .75; }
-  .mount { border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .5rem; padding: .6rem; }
-  .mount > header { display: flex; gap: .5rem; align-items: center; font-size: .8em; opacity: .75; margin-bottom: .4rem; }
-  .mount > header span { flex: 1; }
-  .mount > footer { font-size: .8em; opacity: .75; margin-top: .4rem; min-height: 1.2em; }
-  .hstack { display: flex; flex-direction: row; gap: .5rem; align-items: baseline; }
-  .vstack, .container, .box { display: flex; flex-direction: column; gap: .25rem; }
-  .box { padding: .35rem .6rem; border-radius: .35rem; background: color-mix(in srgb, CanvasText 5%, Canvas); }
-  .text, .lines { white-space: pre-wrap; margin: 0; font: inherit; }
-  .lines { font-family: ui-monospace, monospace; }
-  .rule { border: 0; border-top: 1px solid color-mix(in srgb, CanvasText 30%, Canvas); width: 100%; }
-  [role=listbox] { display: flex; flex-direction: column; border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); border-radius: .35rem; }
-  [role=option] { padding: .2rem .5rem; cursor: pointer; display: flex; gap: .75rem; }
-  [role=option] small { opacity: .7; }
-  [role=option][aria-selected=true] { background: color-mix(in srgb, Highlight 30%, Canvas); }
-  .mouse-region { cursor: pointer; border: 1px dashed color-mix(in srgb, CanvasText 35%, Canvas); border-radius: .35rem; padding: .3rem .5rem; }
-  .scroll-view { max-height: 9rem; overflow-y: auto; border: 1px solid color-mix(in srgb, CanvasText 20%, Canvas); border-radius: .35rem; padding: .3rem .5rem; }
-  .undrawn { font-style: italic; opacity: .6; }
-  :focus-visible { outline: 2px solid Highlight; outline-offset: 1px; }
-  input, textarea, select, button { font: inherit; }
-  textarea { width: 100%; box-sizing: border-box; min-height: 4rem; }
-  form.arg { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .4rem; }
-  section[data-slot=notify] { position: fixed; top: .75rem; right: .75rem; width: 18rem; }
-  section[data-slot=dialog], section[data-slot=overlay] { position: fixed; inset: 15% 0 auto 0; margin: auto; width: min(36rem, 92%); background: Canvas; box-shadow: 0 .5rem 2rem #0006; border-radius: .5rem; }
-  #prompt { display: flex; gap: .5rem; }
-  #prompt input { flex: 1; padding: .4rem .6rem; }
-  #state { font-size: .8em; opacity: .7; }
+  #chat { flex: 1; display: flex; flex-direction: column; gap: var(--view-space); overflow-y: auto; }
+  .line { white-space: pre-wrap; padding: var(--view-space) calc(1.5 * var(--view-space)); border-radius: var(--view-radius); background: var(--view-surface); border: 1px solid var(--view-border); }
+  .line.user { align-self: flex-end; background: var(--view-selected); border-color: transparent; }
+  .line.note { font-size: var(--view-text-sm); color: var(--view-fg-muted); background: none; border-color: transparent; padding-block: 0; }
+
+  /* A mount is a card: a surface with a hairline, a radius and a soft elevation. */
+  .mount { background: var(--view-surface); color: var(--view-fg); border: 1px solid var(--view-border); border-radius: var(--view-radius); box-shadow: var(--view-shadow); padding: calc(2 * var(--view-space)); }
+  .mount > header { display: flex; gap: var(--view-space); align-items: center; font-size: var(--view-text-sm); color: var(--view-fg-muted); margin-bottom: var(--view-space); min-height: var(--view-control); }
+  .mount > header span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A mount's title is the card's heading; a mount without one has a caption, its extension and key. A title that
+     the view's own first heading repeats is not drawn twice. */
+  .mount > header span.title { font-size: var(--view-text-xl); line-height: 28px; font-weight: 600; color: var(--view-fg); }
+  .mount > header span.repeated { visibility: hidden; }
+  .mount > header:has(> span.repeated:only-child) { display: none; }
+  .mount > footer { font-size: var(--view-text-sm); color: var(--view-fg-muted); display: flex; gap: var(--view-space); align-items: center; }
+  .mount > footer:not(:empty) { margin-top: var(--view-space); min-height: var(--view-control); }
+  .mount > footer[data-outcome]:not([data-outcome=done]) { color: var(--view-error); }
+  /* An intent that settled done with nothing to show is said to assistive technology and not drawn. */
+  .mount > footer[data-outcome=done]:not([data-answer]) { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* The dialog and the overlay slot: a dialog element over the page. */
+  dialog.mount { background: var(--view-surface-raised); width: min(40rem, calc(100vw - 4 * var(--view-space))); max-height: calc(100vh - 8 * var(--view-space)); overflow: auto; box-shadow: var(--view-shadow-raised); }
+  dialog.mount::backdrop { background: var(--view-backdrop); }
+  dialog.mount:not([open]) { display: none; }
+  section[data-slot=overlay] dialog.mount { position: fixed; inset: 15% 0 auto 0; margin: 0 auto; z-index: 2; }
+  /* A dialog mount that opened without the focus stands where the modal one does, without its backdrop. */
+  section[data-slot=dialog] dialog.mount:not(:modal) { position: fixed; inset: 0; margin: auto; height: fit-content; z-index: 2; }
+  section[data-slot=notify] { position: fixed; top: calc(2 * var(--view-space)); right: calc(2 * var(--view-space)); width: 20rem; z-index: 3; }
+
+  /* The panels stand beside the chat: side by side, or one at a time under their tabs (client.js: showPanels). */
+  #panels { flex: 1 1 28rem; min-width: 0; display: flex; flex-direction: column; gap: var(--view-space); padding: calc(2 * var(--view-space)); }
+  #panels > nav { display: flex; gap: var(--view-space); align-items: center; }
+  #panels [role=tablist] { flex: 1; display: flex; gap: calc(var(--view-space) / 2); flex-wrap: wrap; }
+  #panels > section { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  #panels .mount { flex: 1 1 12rem; min-width: 0; }
+  #panels .mount.behind { display: none; }
+  /* One column while there is no transcript: the panels, then the prompt, centred. Two columns once the chat holds a
+     line. A page beside a running session (bridge.mjs --connect) has no chat at all: its panels take the page. Under
+     panels taller than the window the page scrolls and the prompt stays in sight at the window's lower edge. */
+  body:not(:has(#chat .line)), body.attached { flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; align-items: center; min-height: 100vh; }
+  body:not(:has(#chat .line)) #panels, body.attached #panels { flex: none; width: 100%; max-width: 880px; padding-bottom: 0; }
+  body:not(:has(#chat .line)) main, body.attached main { order: 1; flex: 1 1 auto; width: 100%; max-width: 880px; min-height: 0; position: sticky; bottom: 0; z-index: 1; background: var(--view-bg); }
+  body.attached #panels, body.attached main { max-width: none; }
+
+  /* Controls: one height, one radius, one set of states. */
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button, [role=tab] {
+    min-height: var(--view-control); padding: 0 calc(1.5 * var(--view-space)); border: 1px solid var(--view-border); border-radius: var(--view-radius-sm);
+    background: var(--view-surface); font-weight: 500; cursor: pointer; text-align: start;
+    transition: background-color var(--view-motion), border-color var(--view-motion), box-shadow var(--view-motion), transform var(--view-motion);
+  }
+  button:hover, [role=tab]:hover { background: var(--view-surface-2); }
+  button:active { background: var(--view-selected); transform: translateY(1px); }
+  button:disabled { cursor: default; opacity: .55; }
+  [role=tab][aria-selected=true], button[aria-pressed=true] { background: var(--view-selected); border-color: var(--view-accent); }
+  #prompt button { background: var(--view-accent); border-color: var(--view-accent); color: var(--view-on-accent); }
+  input[type=text], input[type=number], input:not([type]), textarea, select {
+    min-height: var(--view-control); padding: 0 calc(1.5 * var(--view-space)); border: 1px solid var(--view-border); border-radius: var(--view-radius-sm);
+    background: var(--view-surface); max-width: 100%; transition: border-color var(--view-motion), box-shadow var(--view-motion);
+  }
+  input::placeholder, textarea::placeholder { color: var(--view-fg-muted); opacity: 1; }
+  input:hover, textarea:hover { border-color: var(--view-fg-muted); }
+  /* A label stands 4 px above the field under it. */
+  .vstack > * + input[type=text], .vstack > * + textarea { margin-top: calc(var(--view-space) / 2); }
+  textarea { width: 100%; min-height: calc(10 * var(--view-space)); padding-block: var(--view-space); resize: vertical; }
+  :focus-visible { outline: 2px solid var(--view-focus); outline-offset: 2px; }
+  input[type=checkbox], input[type=radio] { width: 16px; height: 16px; margin: 0; accent-color: var(--view-accent); cursor: pointer; flex: none; }
+  input[role=switch] {
+    appearance: none; width: 32px; height: 20px; border-radius: 10px; background-color: var(--view-fg-muted);
+    background-image: radial-gradient(circle, var(--view-surface) 6px, transparent 6.5px); background-size: 20px 20px; background-repeat: no-repeat; background-position: 0 0;
+    transition: background-color var(--view-motion), background-position var(--view-motion);
+  }
+  input[role=switch]:checked { background-color: var(--view-accent); background-position: 12px 0; }
+  progress { appearance: none; display: block; width: 100%; height: var(--view-space); border: 0; border-radius: 4px; overflow: hidden; background: var(--view-surface-2); }
+  progress::-webkit-progress-bar { background: var(--view-surface-2); }
+  progress::-webkit-progress-value { background: var(--view-accent); border-radius: 4px; transition: width var(--view-motion); }
+  progress::-moz-progress-bar { background: var(--view-accent); border-radius: 4px; }
+
+  /* A view. Its sizes are cells (client.js: cols, rows): a cell is --view-col wide and --view-row high. */
+  .view { --col: var(--view-col); --row: var(--view-row); color: var(--pig-text); }
+  .view a { color: var(--pig-accent); }
+  .canvas { display: flex; flex-direction: column; gap: var(--view-space); }
+  .hstack { display: flex; flex-direction: row; }
+  .vstack { display: flex; flex-direction: column; }
+  .box { border-radius: var(--view-radius); }
+  .box.card { border: 1px solid var(--view-border); box-shadow: var(--view-shadow); transition: background-color var(--view-motion), box-shadow var(--view-motion); }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: inherit; transition: background-color var(--view-motion), color var(--view-motion); }
+  .text.truncated { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+  h2.text { font-size: var(--view-text-xl); line-height: 28px; font-weight: 600; }
+  h3.text { font-size: var(--view-text-lg); line-height: 24px; font-weight: 600; }
+  h4.text, h5.text, h6.text { font-weight: 600; }
+  /* Rows a component drew are kept as they are: the one place a view is monospace, with code. */
+  pre.lines, span.lines { font: var(--view-text-sm)/var(--view-leading) var(--view-font-mono); white-space: pre; margin: 0; overflow-x: auto; }
+  .rows { display: grid; column-gap: calc(2 * var(--view-space)); border: 1px solid var(--view-border); border-radius: var(--view-radius); overflow: hidden; }
+  .rows > [role=listitem] { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: calc(4.5 * var(--view-space)); padding: 0 calc(1.5 * var(--view-space)); transition: background-color var(--view-motion); }
+  .rows > [role=listitem] + [role=listitem] { border-top: 1px solid var(--view-border); }
+  .rows > [role=listitem] > span + span { color: var(--view-fg-muted); font-size: var(--view-text-sm); font-variant-numeric: tabular-nums; }
+  .rows > [aria-current=true] { background: var(--pig-selectedBg); box-shadow: inset 2px 0 0 var(--view-accent); }
+  .rule { border: 0; border-top: 1px solid var(--pig-border); width: 100%; margin: calc(var(--row) / 2) 0; }
+  .image { display: block; max-width: 100%; }
+  .list { display: flex; flex-direction: column; border: 1px solid var(--view-border); border-radius: var(--view-radius); background: var(--view-surface); overflow: hidden; }
+  [role=option] { display: flex; gap: calc(1.5 * var(--view-space)); align-items: center; min-height: calc(4.5 * var(--view-space)); padding: 0 calc(1.5 * var(--view-space)); cursor: pointer; transition: background-color var(--view-motion), box-shadow var(--view-motion); }
+  [role=option] + [role=option] { border-top: 1px solid var(--view-border); }
+  [role=option]:hover { background: var(--view-surface-2); }
+  [role=option] small, [role=tab] small { margin-inline-start: auto; font-size: var(--view-text-sm); color: var(--view-fg-muted); }
+  [role=option][aria-selected=true] { background: var(--pig-selectedBg); box-shadow: inset 2px 0 0 var(--view-accent); }
+  /* An item of a select-list: its description is a second line under its label. A setting's value stands at the row's end. */
+  .list:not(.settings, .tabs) [role=option] { flex-direction: column; align-items: stretch; justify-content: center; gap: 0; padding-block: var(--view-space); }
+  .list:not(.settings, .tabs) [role=option] small { margin: 0; }
+  .list small:empty { display: none; }
+  .list [role=option] span, .list [role=option] small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list.tabs { flex-direction: row; flex-wrap: wrap; gap: calc(var(--view-space) / 2); border: 0; background: none; overflow: visible; }
+  .list.tabs [role=tab] { display: flex; align-items: center; gap: var(--view-space); }
+  .list.tabs small:empty { display: none; }
+  /* A grid: equal columns of cells, hairlines between them. */
+  .grid { display: grid; gap: 1px; background: var(--view-border); border: 1px solid var(--view-border); border-radius: var(--view-radius); overflow: hidden; }
+  .grid [role=row] { display: contents; }
+  .grid [role=columnheader] { background: var(--view-surface-2); color: var(--view-fg-muted); font-size: var(--view-text-sm); text-align: center; padding: calc(var(--view-space) / 2) var(--view-space); }
+  .grid [role=gridcell] { background: var(--view-surface); min-width: 0; min-height: calc(9 * var(--view-space)); padding: calc(var(--view-space) / 2) var(--view-space); display: flex; flex-direction: column; gap: 2px; transition: background-color var(--view-motion), box-shadow var(--view-motion); }
+  .grid [role=gridcell][data-act] { cursor: pointer; }
+  .grid [role=gridcell][data-act]:hover { background: var(--view-surface-2); }
+  .grid [role=gridcell][aria-selected=true] { background: var(--pig-selectedBg); box-shadow: inset 0 0 0 2px var(--view-accent); }
+  .grid .label { align-self: flex-start; font-size: var(--view-text-sm); font-variant-numeric: tabular-nums; border-radius: 10px; padding: 0 6px; }
+  .grid [aria-current] .label { background: var(--view-accent); color: var(--view-on-accent) !important; }
+  .grid .dim .label, .grid .more { color: var(--view-fg-muted); }
+  .grid .chip { font-size: var(--view-text-sm); line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--view-surface-2); border-inline-start: 3px solid var(--view-accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grid .more { font-size: var(--view-text-sm); }
+  /* The mount's named key bindings: buttons that show their key. */
+  .hints { display: flex; flex-wrap: wrap; gap: var(--view-space); margin-top: var(--view-space); }
+  .hints button { display: inline-flex; align-items: center; gap: var(--view-space); }
+  kbd { font: 12px/16px var(--view-font-mono); min-width: 20px; text-align: center; padding: 0 4px; border: 1px solid var(--view-border); border-bottom-width: 2px; border-radius: 4px; background: var(--view-surface-2); color: var(--view-fg-muted); }
+  .view:focus-visible { border-radius: var(--view-radius-sm); }
+  button.mouse-region { display: inline-flex; align-items: center; justify-content: center; gap: var(--view-space); }
+  div.mouse-region { cursor: pointer; border-radius: var(--view-radius-sm); }
+  .check { display: inline-flex; align-items: center; gap: var(--view-space); min-height: var(--view-control); cursor: pointer; }
+  .scroll-view { max-height: calc(30 * var(--view-space)); overflow-y: auto; border-radius: var(--view-radius-sm); }
+  .loader { display: flex; align-items: center; gap: var(--view-space); color: var(--view-fg-muted); }
+  * + .loader { margin-top: var(--view-space); }
+  .spinner { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 2px solid var(--view-border); border-top-color: currentColor; color: var(--view-accent); animation: spin 800ms linear infinite; }
+  @keyframes spin { to { transform: rotate(1turn); } }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; }
+  }
+  .undrawn { font-style: italic; color: var(--view-fg-muted); }
+  .markdown > :first-child { margin-top: 0; }
+  .markdown > :last-child { margin-bottom: 0; }
+  .markdown h1 { font-size: var(--view-text-xl); line-height: 28px; }
+  .markdown h2 { font-size: var(--view-text-lg); line-height: 24px; }
+  .markdown h3, .markdown h4, .markdown h5, .markdown h6 { font-size: var(--view-text); }
+  .markdown pre, .markdown code { font-family: var(--view-font-mono); font-size: var(--view-text-sm); white-space: pre-wrap; }
+  .markdown code { background: var(--view-surface-2); border-radius: 4px; padding: 0 4px; }
+  .markdown pre { background: var(--view-surface-2); border-radius: var(--view-radius-sm); padding: var(--view-space) calc(1.5 * var(--view-space)); }
+  .markdown pre code { background: none; padding: 0; }
+  .markdown blockquote { margin-inline: 0; padding-inline-start: var(--view-space); border-inline-start: 2px solid var(--pig-borderMuted); white-space: pre-wrap; }
+  .markdown p { white-space: pre-wrap; }
+  /* A drawing: one SVG element. A shape with a key keeps its element across updates, so what changed moves. */
+  .drawing { display: block; width: 100%; height: 100%; font-family: var(--view-font); border-radius: var(--view-radius-sm); touch-action: none; user-select: none; }
+  .drawing [data-k] { transition: transform var(--view-motion), opacity var(--view-motion), x var(--view-motion), y var(--view-motion), cx var(--view-motion), cy var(--view-motion), fill var(--view-motion), stroke var(--view-motion); }
+  .dragging .drawing [data-k] { transition: none; }
+  .drawing .region { fill: transparent; stroke: none; pointer-events: all; cursor: default; transition: none; }
+  .drawing .region[data-gestures~=activate] { cursor: pointer; }
+  .drawing .region[data-gestures~=drag] { cursor: grab; }
+  .dragging .drawing .region { cursor: grabbing; }
+  /* A region that is a button shows the pointer on it and the keyboard's focus by the same ring. */
+  .drawing .region[role=button]:hover { fill: var(--view-focus); fill-opacity: .16; stroke: var(--view-focus); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+  .drawing .region:focus-visible { outline: none; stroke: var(--view-focus); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+  /* A line of text directly above a drawing is its caption. */
+  .text:has(+ .drawn) { color: var(--view-fg-muted); font-size: var(--view-text-sm); }
+  form.arg { display: flex; flex-wrap: wrap; gap: var(--view-space); align-items: center; margin-top: var(--view-space); }
+  form.arg label { display: inline-flex; gap: var(--view-space); align-items: center; }
+  /* The hidden mounts the user can open (client.js: offer): a quiet button each, by title. */
+  #closed { display: flex; flex-wrap: wrap; gap: var(--view-space); align-items: center; font-size: var(--view-text-sm); color: var(--view-fg-muted); }
+  #closed button { border-radius: calc(var(--view-control) / 2); color: var(--view-fg); }
+  #prompt { display: flex; gap: var(--view-space); }
+  #prompt[hidden] { display: none; }
+  #prompt input { flex: 1; }
+  #state, #attached { font-size: var(--view-text-sm); color: var(--view-fg-muted); margin: 0; }
+  #state:empty { display: none; }
 </style>
 </head>
 <body>
@@ -49,15 +254,20 @@
     <section data-slot="message"></section>
     <section data-slot="entry"></section>
     <section data-slot="tool-card"></section>
-    <section data-slot="panel"></section>
   </div>
   <section data-slot="widget-above"></section>
+  <nav id="closed" aria-label="Hidden views" hidden><span>Open</span></nav>
   <form id="prompt"><input name="message" autocomplete="off" aria-label="Message" placeholder="Message, or a /command of an extension"><button>Send</button></form>
+  <p id="attached" hidden>This page shows the views of a running pig session and has no prompt: the session's view endpoint takes view commands only, so type in its terminal.</p>
   <section data-slot="widget-below"></section>
   <section data-slot="status"></section>
   <section data-slot="footer"></section>
   <div id="state" role="status">connecting</div>
 </main>
+<aside id="panels" aria-label="Panels" hidden>
+  <nav><div role="tablist" aria-label="Panels"></div><button id="side" aria-pressed="true">Side by side</button></nav>
+  <section data-slot="panel"></section>
+</aside>
 <section data-slot="notify"></section>
 <section data-slot="dialog"></section>
 <section data-slot="overlay"></section>

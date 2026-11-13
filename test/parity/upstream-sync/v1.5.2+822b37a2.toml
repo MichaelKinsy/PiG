@@ -5,15 +5,15 @@ to = "1.5.2+822b37a2"
 path = "packages/chord/src/store/store.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:chord/next/store/store_test.go#TestStore"]
-rationale = "6268cc5cd (backup coordinator, Chord part): Store.onCommitted announces lastSeq after a commit, a group, a series or an applied batch is durable, in a microtask of its own, once for however many commits it covers; a listener that throws is removed and its error handed to onError. store.go OnCommitted/committed announces from a goroutine of its own outside the store's lock (deliveries serialized by a mutex, so listeners see increasing seqs one at a time), coalesced by the announcing flag; a panic is Pi's throw. Pi's three cases are ported (onCommitted subtests of TestStore); the exact once-per-microtask count cannot be observed in Go, so the test asserts the last seq, order, no call under the lock, no call for a series-less refusal and the removal."
+evidence = ["test:chord/next/store/store_test.go#TestStore", "test:chord/nextnode/plugins/plugins_node_store_on_committed_vendored_test.go#TestTheVendoredTreesStoreAnnouncesItsCommits"]
+rationale = "6268cc5cd (backup coordinator, Chord part): Store.onCommitted announces lastSeq after a commit, a group, a series or an applied batch is durable, in a microtask of its own, once for however many commits it covers; a listener that throws is removed and its error handed to onError. store.go OnCommitted/committed announces from a goroutine of its own outside the store's lock (deliveries serialized by a mutex, so listeners see increasing seqs one at a time), coalesced by the announcing flag; a panic is Pi's throw. Pi's three cases are ported (onCommitted subtests of TestStore); the exact once-per-microtask count cannot be observed in Go, so the test asserts the last seq, order, no call under the lock, no call for a series-less refusal and the removal. Both vendored TypeScript trees (chord/nextnode/plugins/node, chord/nextnode/surfaces/client) carry this commit's store/store.ts too, by the vendoring tool (the manifests' carried lists; cc96b4a90 and 2e74510de, p2 only, are carried before it only so that it cherry-picks: it also changes two apps/p2 files they made): a plugin of the Node host that opens a store of its own has onCommitted."
 
 [[files]]
 path = "packages/chord/test/store/store.test.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:chord/next/store/store_test.go#TestStore"]
-rationale = "6268cc5cd: the three onCommitted cases, ported in TestStore/onCommitted."
+evidence = ["test:chord/next/store/store_test.go#TestStore", "test:chord/nextnode/plugins/plugins_node_store_on_committed_vendored_test.go#TestTheVendoredTreesStoreAnnouncesItsCommits"]
+rationale = "6268cc5cd: the three onCommitted cases, ported in TestStore/onCommitted. The three cases also run on Node over each vendored tree, with Pi's inputs and expectations (TestTheVendoredTreesStoreAnnouncesItsCommits; red on the trees before the carry: store.onCommitted is not a function)."
 
 [[files]]
 path = "packages/chord/src/sync/client.ts"

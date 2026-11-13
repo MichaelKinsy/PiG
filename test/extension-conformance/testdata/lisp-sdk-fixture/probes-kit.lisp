@@ -637,6 +637,27 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                                                   (pig:overlay-unfocus handle :target nil))))
                    (when failures (error "~{~A~^; ~}" (reverse failures)))
                    (kp-notify ctx "overlay-handle=ok"))))
+  (pig:command ext "overlay-invalidate-probe" "Count the host's invalidations of a mounted overlay and draw the theme"
+               (lambda (ctx args)
+                 (flet ((row () (let ((theme (pig:ctx-theme ctx))) (format nil "~A|~A" (pig:theme-name theme) (pig:theme-fg theme "accent" "x"))))
+                        (input (data) (if (equal data "q") (pig:make-custom-result :done t :value "closed") nil)))
+                   (let* ((invalidations 0) (kept (row))
+                          (component (if (equal (string-trim " " (if (stringp args) args "")) "plain")
+                                         ;; no :invalidate: the host's invalidation renders it again all the same
+                                         (pig:make-custom-component
+                                          :render (lambda (width) (declare (ignore width)) (list (format nil "plain live=~A" (row))))
+                                          :handle-input #'input)
+                                         (pig:make-custom-component
+                                          :render (lambda (width) (declare (ignore width))
+                                                    (list (format nil "inv=~D kept=~A live=~A" invalidations kept (pig:theme-name (pig:ctx-theme ctx)))))
+                                          :handle-input #'input
+                                          :invalidate (lambda () (incf invalidations) (setf kept (row)))))))
+                     (pig:ctx-custom ctx component :options (pig:obj "overlay" t))
+                     (kp-notify ctx "overlay-invalidate=ok")))))
+  (pig:command ext "theme-read-probe" "Report the theme the extension holds, with no component mounted"
+               (lambda (ctx args) (declare (ignore args))
+                 (let ((theme (pig:ctx-theme ctx)))
+                   (kp-notify ctx (format nil "theme-read=~A|~A" (pig:theme-name theme) (pig:theme-fg theme "accent" "x"))))))
   (pig:command ext "overlay-focus-probe" "Render the focus the host publishes to a mounted overlay"
                (lambda (ctx args) (declare (ignore args))
                  (let* ((handle nil)
@@ -844,6 +865,87 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                                (attempt "member" 7 (list odd))))
                            (let ((cur (pig:ctx-view-state ctx "grid")))
                              (kp-notify ctx (format nil "view-g-state:~A,rev=~D" (pig:view-status-state cur) (pig:view-ref-rev (pig:view-status-mount cur))))))))))
+      ;; D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The argument is
+      ;; the row's token: the ids of the container, the text and the box are built from it.
+      (pig:command ext "ui_view_node_ids" "Mount a view whose container, text and box carry an id"
+                   (lambda (ctx args)
+                     (let* ((tok (string-trim " " args))
+                            (label (format nil "Label ~A" tok))
+                            (root (pig:kit-container
+                                   (list (pig:kit-text label 0 0 :bg "selectedBg" :id (format nil "~A-label" tok))
+                                         (pig:kit-box 1 0 :bg "toolPendingBg" :id (format nil "~A-frame" tok)
+                                                          :children (list (pig:kit-text "inside" 0 0))))
+                                   :id (format nil "~A-root" tok)))
+                            (st (pig:ctx-mount-view ctx "ids" "panel" (pig:kit-view root)
+                                                    :a11y (list (pig:obj "node" (format nil "~A-label" tok) "name" label)))))
+                       (kp-notify ctx (format nil "view-i-mounted:~A" (pig:view-status-state st))))))
+      ;; D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+      (labels ((b-intents ()
+                 (list (pig:view-intent "fx.go" (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n")))
+                       (pig:view-intent "fx.tap" (pig:view-shape "object"))))
+               (b-go (key n) (pig:obj "key" key "intent" "fx.go" "arg" (pig:obj "n" n)))
+               (b-tap (key) (pig:obj "key" key "intent" "fx.tap")))
+        (pig:command ext "ui_view_bindings" "Mount a view with bindings and probe what the host refuses"
+                     (lambda (ctx args)
+                       (let* ((space (position #\Space args))
+                              (key (subseq args 0 space))
+                              (n (parse-integer args :start (1+ space)))
+                              (named (b-go key n)))
+                         (setf (gethash "name" named) (format nil "Go ~D" n))
+                         (let* ((st (pig:ctx-mount-view ctx "bind" "panel" (view-text ctx "-bind")
+                                                        :intents (b-intents)
+                                                        :bindings (list named (b-go "w" (1+ n)) (pig:obj "gesture" "swipe-left" "intent" "fx.tap"))))
+                                (mount (pig:view-status-mount st)))
+                           (kp-notify ctx (format nil "view-b-mounted:~A" (pig:view-status-state st)))
+                           (flet ((attempt (label bindings)
+                                    (kp-notify ctx (format nil "view-b-~A:~A" label
+                                                           (code-of (lambda () (pig:ctx-update-view ctx mount (view-text ctx "-bind")
+                                                                                                    :intents (b-intents) :bindings bindings)))))))
+                             (attempt "many" (map 'list (lambda (c) (b-tap (string c))) "abcdefghijklmnopqrstuvwxyz0123456"))
+                             (attempt "reserved" (list (b-tap "shift+tab")))
+                             (attempt "order" (list (b-tap "ctrl+shift+p") (b-tap "shift+ctrl+p")))
+                             (attempt "gesture" (list (pig:obj "gesture" "pinch" "intent" "fx.tap")))
+                             (attempt "arg" (list (b-go "a" "x")))
+                             (attempt "ok" (list (b-go "ctrl+shift+p" n) (b-go "shift+ctrl+q" (1+ n))))))))))
+      ;; D614 slot dialog: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDialog).
+      (pig:command ext "ui_view_dialog" "Mount a titled view with a bound key in the dialog slot, hide it and show it"
+                   (lambda (ctx args)
+                     (let* ((space (position #\Space args))
+                            (key (subseq args 0 space))
+                            (n (parse-integer args :start (1+ space)))
+                            (st (handler-case
+                                    (pig:ctx-mount-view ctx "dlg" "dialog" (view-text ctx "-dlg")
+                                                        :title (format nil "Chart ~D" n)
+                                                        :intents (list (pig:view-intent "fx.add" (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n"))
+                                                                                        :answer (pig:view-shape "object" :properties (list (cons "sum" int)) :required '("sum"))))
+                                                        :bindings (list (pig:obj "key" key "intent" "fx.add" "arg" (pig:obj "n" n))))
+                                  (pig:host-call-error (e) (pig:host-call-error-code e)))))
+                       (if (stringp st)
+                           (kp-notify ctx (format nil "view-d-mounted:~A" st))
+                           (let ((mount (pig:view-status-mount st)))
+                             (kp-notify ctx (format nil "view-d-mounted:~A" (pig:view-status-state st)))
+                             (kp-notify ctx (format nil "view-d-hidden:~A" (pig:view-status-state (pig:ctx-hide-view ctx mount))))
+                             (kp-notify ctx (format nil "view-d-shown:~A" (pig:view-status-state (pig:ctx-show-view ctx mount)))))))))
+      ;; D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+      (flet ((tap () (pig:view-intent "fx.tap" (pig:view-shape "object")))
+             (closing (name &rest members)
+               (apply #'pig:view-intent name (or (getf members :arg) (pig:view-shape "object")) :dismiss t
+                      (let ((rest (copy-list members))) (remf rest :arg) rest))))
+        (pig:command ext "ui_view_dismiss" "Mount a dialog with a dismiss intent and probe what the host refuses"
+                     (lambda (ctx args)
+                       (let* ((st (pig:ctx-mount-view ctx "dismiss" "dialog" (view-text ctx "-dismiss")
+                                                      :intents (list (tap) (closing args))))
+                              (mount (pig:view-status-mount st)))
+                         (kp-notify ctx (format nil "view-d-mounted:~A" (pig:view-status-state st)))
+                         (flet ((attempt (label intents)
+                                  (kp-notify ctx (format nil "view-d-~A:~A" label
+                                                         (code-of (lambda () (pig:ctx-update-view ctx mount (view-text ctx "-dismiss")
+                                                                                                  :intents intents)))))))
+                           (attempt "two" (list (tap) (closing args) (closing (concatenate 'string args "2"))))
+                           (attempt "node" (list (tap) (closing args :node-key "n")))
+                           (attempt "arg" (list (tap) (closing args :arg (pig:view-shape "object" :properties (list (cons "value" (pig:view-shape "string")))
+                                                                                                :required '("value")))))
+                           (attempt "ok" (list (closing args) (tap))))))))
       (pig:command ext "ui_view_cancelled" "Report the intent whose handler was cancelled"
                    (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "intent-cancelled:~A" (car cancelled-tag)))))
       (pig:command ext "ui_view_state" "Report the state of the second mount"
@@ -855,7 +957,13 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
        ext
        (lambda (ctx inv)
          (let ((intent (pig:jget inv "intent")) (arg (pig:jget inv "arg")))
-           (cond ((member intent '("fx.redraw" "fx.foreign") :test #'equal) (kp-redraw-intent ctx inv))
+           (cond ((and (> (length intent) 9) (string= "fx.close-" intent :end2 9))
+                  ;; the user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount
+                  (cond ((and (hash-table-p arg) (zerop (hash-table-count arg)))
+                         (pig:ctx-remove-view ctx (pig:view-ref (pig:jref inv "mount" "key") (pig:jref inv "mount" "epoch") (pig:jget inv "rev")))
+                         (pig:view-intent-result "done"))
+                        (t (pig:view-intent-result "refused" :error "dismiss takes {}"))))
+                 ((member intent '("fx.redraw" "fx.foreign") :test #'equal) (kp-redraw-intent ctx inv))
                  ((equal intent "fx.reopen")
                   ;; the user opened the hidden view: its handler shows it
                   (pig:ctx-show-view ctx (pig:view-ref (pig:jref inv "mount" "key") (pig:jref inv "mount" "epoch") (pig:jget inv "rev")))

@@ -17,8 +17,8 @@ import (
 // pig additive (D614): the terminal as a client of the plugin view registry. A Piglet selects it (viewClient: terminal);
 // Stock PiG attaches none. The client attaches to the registry of the session's extension bridge, draws the mounts it is
 // sent in the regions of viewSlots with the D107 view kit, and raises their intents from the keys and clicks of the
-// user. Until a mount arrives it adds no component to the tree, runs no goroutine and no timer, and no frame runs its
-// code.
+// user and, for a mount that holds the focus, from the keys the mount binds (view_client_bindings.go). Until a mount
+// arrives it adds no component to the tree, runs no goroutine and no timer, and no frame runs its code.
 //
 // Every field below the mutex is owned by the interactive loop. The registry's sink and the goroutine of an intent in
 // flight only append to the queue and post one drain task.
@@ -39,6 +39,8 @@ const (
 	viewBelowEditor
 	// viewPanel is the rows directly above the editor, under the widgets and the mounts of viewAboveEditor.
 	viewPanel
+	// viewDialog is a titled frame centred over the screen: an overlay of the renderer, outside the widget containers.
+	viewDialog
 )
 
 // viewSlot is one slot the terminal draws.
@@ -48,8 +50,13 @@ type viewSlot struct {
 	// rows is the most rows a mount of the slot is drawn with in a terminal of terminalRows rows. A taller view is cut
 	// to it, its last row replaced by viewCutRow.
 	rows func(terminalRows int) int
+	// columns is the columns a mount of the slot is drawn with in a terminal of terminalColumns columns, and nil for a
+	// slot as wide as the terminal.
+	columns func(terminalColumns int) int
 	// focus reports that a mount of the slot can hold the keyboard focus.
 	focus bool
+	// float reports that a mount of the slot is drawn over the screen in a frame of its own (see view_client_dialog.go).
+	float bool
 	// tabs reports that the mounts of the slot are tabs: one is drawn at a time, under a row of their titles (see
 	// viewTabs). Without it every live mount of the slot is drawn, one under the other.
 	tabs bool
@@ -67,12 +74,29 @@ func viewWidgetSlotRows(int) int { return viewWidgetRows }
 
 func viewPanelSlotRows(terminalRows int) int { return max(viewPanelMinRows, terminalRows/2) }
 
+// pig additive (D614): a dialog's frame is viewDialogFraction of the terminal's columns and of its rows, rounded down as
+// the renderer rounds an overlay's fractions (tui.OverlayOptions), and its border takes one cell on every side.
+const (
+	viewDialogFraction = 0.8
+	viewDialogBorder   = 2
+)
+
+func viewDialogSlotRows(terminalRows int) int { return viewDialogCells(terminalRows) }
+
+func viewDialogSlotColumns(terminalColumns int) int { return viewDialogCells(terminalColumns) }
+
+// viewDialogCells is the cells inside the frame of a dialog along one side of a terminal of terminalCells cells.
+func viewDialogCells(terminalCells int) int {
+	return max(1, int(float64(terminalCells)*viewDialogFraction)-viewDialogBorder)
+}
+
 // viewSlots is the table of the slots the terminal draws. A slot that is not here is not declared, so the registry
 // sends the terminal no mount of it.
 var viewSlots = []viewSlot{
 	{slot: uiview.SlotWidgetAbove, region: viewAboveEditor, rows: viewWidgetSlotRows},
 	{slot: uiview.SlotWidgetBelow, region: viewBelowEditor, rows: viewWidgetSlotRows},
 	{slot: uiview.SlotPanel, region: viewPanel, rows: viewPanelSlotRows, focus: true, tabs: true},
+	{slot: uiview.SlotDialog, region: viewDialog, rows: viewDialogSlotRows, columns: viewDialogSlotColumns, focus: true, float: true},
 }
 
 func viewSlotOf(slot uiview.Slot) *viewSlot {
@@ -102,7 +126,7 @@ type viewSize struct {
 
 // terminalViewAbilities is what the terminal declares: the slots of viewSlots, the node kinds the D107 view kit draws
 // for a mount, keyboard and text input, the pointer where the terminal reports it, and as claims the kind of client,
-// the columns of a mount and, per slot, the rows it is drawn with.
+// the columns of a mount and, per slot, the rows it is drawn with and the columns of a slot narrower than the terminal.
 func terminalViewAbilities(size viewSize) uiview.ClientAbilities {
 	integer := func(n int) json.RawMessage { return json.RawMessage(strconv.Itoa(max(n, 0))) }
 	a := uiview.ClientAbilities{
@@ -117,7 +141,11 @@ func terminalViewAbilities(size viewSize) uiview.ClientAbilities {
 	for i := range viewSlots {
 		s := &viewSlots[i]
 		a.Slots = append(a.Slots, s.slot)
-		a.SlotClaims = append(a.SlotClaims, uiview.SlotClaims{Slot: s.slot, Claims: []uiview.Claim{{Name: "size.rows", Value: integer(s.rows(size.rows))}}})
+		claims := []uiview.Claim{{Name: "size.rows", Value: integer(s.rows(size.rows))}}
+		if s.columns != nil {
+			claims = append(claims, uiview.Claim{Name: "size.columns", Value: integer(s.columns(size.columns))})
+		}
+		a.SlotClaims = append(a.SlotClaims, uiview.SlotClaims{Slot: s.slot, Claims: claims})
 	}
 	return a
 }
@@ -134,6 +162,12 @@ type viewClientUI struct {
 	render func()
 	// focus gives the keyboard focus to mount, or to the editor with nil.
 	focus func(mount *viewMount)
+	// float draws mount over the screen in a frame titled title, on top of every frame drawn before, and gives it the
+	// keyboard focus. It returns the frame, or nil when the renderer drew none.
+	float func(mount *viewMount, title string) viewFloat
+	// waitRow sets the row that stands for the dialogs while none holds the keyboard, directly above the editor, or none
+	// with nil.
+	waitRow func(row *viewWaiting)
 	// editorFocused reports whether the editor holds the keyboard focus.
 	editorFocused func() bool
 	// editorEmpty reports whether the editor holds no text.
@@ -148,10 +182,20 @@ type viewClientUI struct {
 	listen func(listener *tui.TuiInputListener) (remove func())
 	// interrupts reports whether data is the key that interrupts (app.interrupt).
 	interrupts func(data string) bool
+	// reserved returns the reserved action (viewReservedActions) the user's keybindings give data to, or "".
+	reserved func(data string) string
 	// notify shows one notice line.
 	notify func(message, level string)
 	// size returns the terminal's columns and rows and whether it reports the pointer.
 	size func() viewSize
+}
+
+// viewFloat is the frame of a mount that is drawn over the screen. The renderer's overlay is one.
+type viewFloat interface {
+	// Close removes the frame. The keyboard focus it held returns to what held it before.
+	Close()
+	// Leave returns the keyboard focus to the editor.
+	Leave()
 }
 
 type viewMountKey struct{ plugin, key string }
@@ -193,6 +237,13 @@ type viewClient struct {
 	order []*viewMount
 	// drawn is the mounts last given to layout.
 	drawn []*viewMount
+	// floats is the visible mounts of float slots in the order they were shown: the last is on top. left reports that
+	// one of them lost the keyboard since the last settle. waiting is the row that stands for them while none holds the
+	// keyboard, and waitingOn reports that it is in the tree.
+	floats    []*viewMount
+	left      bool
+	waiting   *viewWaiting
+	waitingOn bool
 	// focused is the mount that holds the keyboard focus.
 	focused *viewMount
 	// asks holds, in the order they arrived, the mounts that asked to be shown (they turned live) or for the focus (their
@@ -382,11 +433,17 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 			request = f
 		}
 	}
+	if m.frame != nil && m.title != s.Title {
+		// The frame carries the title, so a mount with another title is drawn in a new frame, on top.
+		c.unfloat(m)
+	}
 	m.ref, m.intents, m.digest, m.title = s.Mount, s.Intents, s.Digest, s.Title
 	if redraw {
+		m.bind(s.Bindings)
 		for i := range s.Intents {
-			// The intent a hidden mount takes is offered on the tab row while the mount is hidden.
-			if d := &s.Intents[i]; d.NodeKey == "" && (!d.WhenHidden || !slot.tabs) {
+			// The intent a hidden mount takes is offered on the tab row while the mount is hidden, one a key of the
+			// mount is bound to is offered by that key, and a dialog's dismiss intent by the key that interrupts.
+			if d := &s.Intents[i]; d.NodeKey == "" && (!d.WhenHidden || !slot.tabs) && !m.binds(d.Name) && (!d.Dismiss || !slot.float) {
 				m.reportNotOffered(d.Name, "the terminal offers no control for intent "+d.Name+", which names no node")
 			}
 		}
@@ -419,6 +476,7 @@ func (c *viewClient) drop(m *viewMount) {
 		m.cancel()
 		m.cancel = nil
 	}
+	c.unfloat(m)
 	m.surface.Close()
 	c.dirty = c.dirty || m.visible || m.hidden
 	m.visible, m.live, m.hidden = false, false, false
@@ -452,7 +510,8 @@ func (c *viewClient) settle() {
 	}
 	clear(c.asks[len(waiting):])
 	c.asks = waiting
-	switch stops := len(c.stops()); {
+	c.settleFloats()
+	switch stops := len(c.stops()) + len(c.floats); {
 	case stops > 0 && c.unlisten == nil:
 		c.unlisten = c.ui.listen(&c.listener)
 	case stops == 0 && c.unlisten != nil:
@@ -497,6 +556,10 @@ func (c *viewClient) grant(m *viewMount) {
 		why = "another component holds the keyboard focus"
 	case c.at != m && !c.ui.editorEmpty():
 		why = "the editor holds text"
+	case m.slot.float:
+		// A dialog that waits on its row is entered: every dialog of the stack is drawn, the last on top.
+		c.enter()
+		return
 	case !m.takesFocus():
 		why = "the terminal gives the nodes of the view no keyboard focus"
 	case c.at == m:
@@ -519,10 +582,25 @@ func (c *viewClient) rewired() {
 
 // focusKey is the input listener of viewFocusKey: from the editor it moves to the first stop, from a stop to the next,
 // and from the last back to the editor. The stops are the focusable panels, or the entries of the tab row while it is
-// drawn (see stops). While something else holds the focus it passes the key on.
+// drawn (see stops). While a dialog is live the key moves between the editor and the dialogs and passes every other
+// stop by: it draws their frames with the keyboard, and from the top frame it returns to the editor. While something
+// else holds the focus it passes the key on.
 func (c *viewClient) focusKey(data string) *tui.TuiInputResult {
 	if !tui.MatchesKeyID(data, viewFocusKey) {
 		return nil
+	}
+	if len(c.floats) > 0 {
+		switch top := c.floats[len(c.floats)-1]; {
+		case top.focused:
+			top.frame.Leave()
+		case c.standing() != nil || c.ui.editorFocused():
+			c.enter()
+		default:
+			return nil
+		}
+		c.settle()
+		c.ui.render()
+		return &tui.TuiInputResult{Consume: true}
 	}
 	panels, standing := c.stops(), c.standing()
 	switch at := slices.Index(panels, standing); {
@@ -539,8 +617,48 @@ func (c *viewClient) focusKey(data string) *tui.TuiInputResult {
 	return &tui.TuiInputResult{Consume: true}
 }
 
-// unhandledKey takes a key the focused node of a panel did not consume. The terminal drops it.
-func (c *viewClient) unhandledKey(*viewMount, string) {}
+// unhandledKey takes a key the focused node of a panel did not consume. It is the one place a key reaches the mount's
+// bindings: the mount holds the focus and its node declined the key. The key the terminal reported is compared with the
+// parsed key of each binding (tui.MatchesKeyID), never with its text, so the order the plugin wrote the modifiers in
+// changes nothing. The first match raises the binding's intent, with no node, and its argument; a key no binding names
+// is dropped. At most 32 bindings are compared. A key the user's keybindings give to a reserved action is asked for
+// first, when the key is pressed, and reaches no binding, whatever the mount binds and whenever the keybindings changed.
+func (c *viewClient) unhandledKey(m *viewMount, data string) {
+	if !m.focused || !m.keys {
+		return
+	}
+	if action := c.ui.reserved(data); action != "" {
+		c.withheld(m, data, action)
+		return
+	}
+	for i := range m.bindings {
+		b := &m.bindings[i]
+		if b.Key == "" || !tui.MatchesKeyID(data, b.Key) {
+			continue
+		}
+		at := slices.IndexFunc(m.intents, func(d uiview.IntentDecl) bool { return d.Name == b.Intent && d.NodeKey == "" })
+		if at < 0 {
+			return
+		}
+		arg := b.Arg
+		if len(arg) == 0 {
+			arg = json.RawMessage(`{}`)
+		}
+		c.raise(m, &m.intents[at], arg)
+		return
+	}
+}
+
+// withheld tells the plugin, once for a binding, that the key it names is the user's key of the reserved action, so the
+// terminal does not honour the binding.
+func (c *viewClient) withheld(m *viewMount, data, action string) {
+	for i := range m.bindings {
+		if b := &m.bindings[i]; b.Key != "" && tui.MatchesKeyID(data, b.Key) {
+			m.reportUnbound(i, b.Key, "key "+b.Key+" is the user's key of "+action+", so it raises nothing")
+			return
+		}
+	}
+}
 
 // raise raises one intent of m off the loop. A mount has at most one intent in flight: an activation made before the
 // last one settled was made on a view whose answer the user has not seen (the registry would settle it stale once the

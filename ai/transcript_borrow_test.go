@@ -29,7 +29,7 @@ func richTranscriptMessages(model *GeneratedModel, removal bool) []Message {
 	return []Message{
 		SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{{Name: "read", Description: "read a file", Parameters: map[string]any{"type": "object"}}}},
 		UserMessage{Content: UserText("start")},
-		same(ThinkingContent{Thinking: "plan", ThinkingSignature: "sig"}, ThinkingContent{Thinking: "plain"}, ThinkingContent{Redacted: true, ThinkingSignature: "r"}, ThinkingContent{Thinking: "  "},
+		same(ThinkingContent{Thinking: "plan", ThinkingSignature: `{"type":"reasoning","id":"rs_1","summary":[]}`}, ThinkingContent{Thinking: "plain"}, ThinkingContent{Redacted: true, ThinkingSignature: `{"type":"reasoning","id":"rs_2","summary":[]}`}, ThinkingContent{Thinking: "  "},
 			TextContent{Text: "calling", TextSignature: "t"}, validityToolCall("a"), validityToolCall("b")),
 		ToolResultMessage{ToolCallID: "a", ToolName: "read", Content: []ToolResultMessageContent{TextContent{Text: "A"}, image}},
 		later,
@@ -86,6 +86,10 @@ func TestRequestBuildLeavesTheTranscriptUnchanged(t *testing.T) {
 		t.Fatalf("the catalog selection lost a request shape: %d APIs, mid-conversation system messages %v", len(apis), midConversation)
 	}
 	for _, model := range models {
+		if !BuiltAPI(model.API) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		for _, variant := range []struct{ frozen, removal bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
 			frozen := variant.frozen
 			t.Run(fmt.Sprintf("%s/%s/frozen=%v/removal=%v", model.Provider, model.ID, frozen, variant.removal), func(t *testing.T) {

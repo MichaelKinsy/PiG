@@ -27,7 +27,7 @@ import (
 const pigModulePath = "github.com/MichaelKinsy/PiG"
 
 // sourceUnavailableRemedy is the remedy for a native build with no Pig source to compile.
-const sourceUnavailableRemedy = "run from a Pig checkout or set PIG_SOURCE_ROOT"
+const sourceUnavailableRemedy = "run from a PiG checkout or set PIG_SOURCE_ROOT"
 
 // releaseSourceVersion names the tagged module version a release binary was built from. A release
 // archive is built from extracted source without VCS metadata, so the release build stamps it with
@@ -277,7 +277,7 @@ func (s pigSource) sourceFiles() ([]string, error) {
 		linkerexec.Prepare(command)
 		output, err := command.Output()
 		if err != nil {
-			return nil, fmt.Errorf("enumerate Pig build sources: %w", err)
+			return nil, fmt.Errorf("enumerate PiG build sources: %w", err)
 		}
 		return strings.Split(strings.TrimSuffix(string(output), "\x00"), "\x00"), nil
 	}
@@ -300,7 +300,7 @@ func (s pigSource) sourceFiles() ([]string, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("enumerate Pig module sources: %w", err)
+		return nil, fmt.Errorf("enumerate PiG module sources: %w", err)
 	}
 	return paths, nil
 }
@@ -323,7 +323,7 @@ func (s pigSource) revision() (string, error) {
 	}
 	revision := strings.TrimSpace(string(output))
 	if revision == "" {
-		return "", fmt.Errorf("resolve Pig source revision: git returned an empty revision")
+		return "", fmt.Errorf("resolve PiG source revision: git returned an empty revision")
 	}
 	return revision, nil
 }
@@ -341,10 +341,10 @@ func sourceRevisionError(root string, err error) error {
 		if strings.TrimSpace(os.Getenv("PIG_SOURCE_ROOT")) != "" {
 			return fmt.Errorf("PIG_SOURCE_ROOT %s %s, or unset PIG_SOURCE_ROOT to fetch the release source", root, why)
 		}
-		return fmt.Errorf("the Pig source %s %s, or run outside it to fetch the release source", root, why)
+		return fmt.Errorf("the PiG source %s %s, or run outside it to fetch the release source", root, why)
 	}
 	if line, _, _ := strings.Cut(stderr, "\n"); line != "" {
-		return fmt.Errorf("resolve Pig source revision: %w: %s", err, line)
+		return fmt.Errorf("resolve PiG source revision: %w: %s", err, line)
 	}
-	return fmt.Errorf("resolve Pig source revision: %w", err)
+	return fmt.Errorf("resolve PiG source revision: %w", err)
 }

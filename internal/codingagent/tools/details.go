@@ -32,6 +32,10 @@ type ReadDetails struct {
 	// Truncation is the upstream-shaped truncation object for the extension SDK
 	// contract and the TUI warning. It is nil unless truncation occurred.
 	Truncation *TruncationResult `json:"truncation,omitempty"`
+	// ImageUnsupportedByModel is read.ts ReadToolDetails.imageUnsupportedByModel: the id of the model that was selected when the image
+	// was read, if it has no image input. Shown to the user only: the model gets pi-ai's placeholder per request, so the stored result
+	// stays right after a model switch. A pointer, because Pi writes the member for every such model, also one whose id is "".
+	ImageUnsupportedByModel *string `json:"imageUnsupportedByModel,omitempty"`
 }
 
 // BashDetails is attached to a BashTool result. The renderer reads

@@ -1,3 +1,7 @@
+//go:build !pig_strip_mistral_conversations
+
+// The whole file is about mistral-conversations requests, which a build with the API's strip tag does not build.
+
 package ai_test
 
 import (
@@ -66,7 +70,8 @@ func TestMistralMessagesPayloadMatchesPi(t *testing.T) {
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, "testdata/mistral_messages_payload.mjs", probesWithRawOptions(probes))
-	failures := 0
+	g.requireReplayCoverage(t, want, mistralReplay)
+	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {
 		model := &ai.Model{ID: "m", DisplayName: "m", Input: p.Input, Capabilities: ai.ModelCapabilities{ContextWindow: 128000, MaxOutputTokens: 16384}, ProviderMeta: ai.ProviderMetadata{API: ai.APIMistralConversations, ProviderID: p.Provider, BaseURL: "http://127.0.0.1:9", Reasoning: p.Reasoning}}
@@ -101,7 +106,7 @@ func TestMistralMessagesPayloadMatchesPi(t *testing.T) {
 		var got string
 		sentinel := errors.New("payload captured")
 		options.OnPayload = func(payload any, _ *ai.Model) (any, error) {
-			encoded, err := json.Marshal(payload)
+			encoded, err := ai.MarshalRequestBody(payload)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -122,9 +127,14 @@ func TestMistralMessagesPayloadMatchesPi(t *testing.T) {
 			}
 			t.Fatalf("probe %d: Pi produced no payload where PiG did: %.300s", i, got)
 		}
-		comparePayload(t, fmt.Sprintf("probe %d reasoning=%v simple=%v levels=%s options=%v", i, p.Reasoning, p.Simple, p.Levels, p.Options), got, want[i], &failures, classes)
+		label := fmt.Sprintf("probe %d reasoning=%v simple=%v levels=%s options=%v", i, p.Reasoning, p.Simple, p.Levels, p.Options)
+		comparePayload(t, label, got, want[i], &failures, classes)
+		comparePayloadBytes(t, label, got, want[i], &reordered)
 	}
 	if failures > 0 {
 		t.Errorf("%d of %d probes differ from Pi; differing members: %v", failures, len(probes), classes)
+	}
+	if reordered > 0 {
+		t.Errorf("%d of %d probes write Pi's payload in another member order", reordered, len(probes))
 	}
 }

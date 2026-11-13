@@ -107,6 +107,7 @@ var fileSymlinkCallers = map[string]string{
 	"coding/cli/self_update_npm_registry_test.go::isolatedNpmBin":                                                                                              "file link",
 	"coding/cli/self_update_npm_registry_test.go::TestIsolatedNpmBinBypassesVersionManagerWrapper":                                                             "file link",
 	"bench/k8s/cmd/k8sbench/bundle_test.go::fakeBundle":                                                                                                        "file link; npm's node_modules/.bin entries link to package files, and the bundle pack must keep them as links",
+	"internal/pioracle/bin_test.go::bundledOracle":                                                                                                             "file link; npm's node_modules/.bin/pi links to the bundle's cli.js, and the check reads the bundle pi runs through that link (the callers skip on Windows)",
 	"coding/extension/host/runtimecell/cache_identity_test.go::TestPublishedEntryRejectsForeignIdentity":                                                       "file link",
 	"coding/mcpext/connection_test.go::TestMCPConnectionsExpandsTildeInTheCommandArgumentsAndCwdOfStdioServers":                                                "file link; the test skips on Windows",
 	"coding/packagecontent/entry_shapes_test.go::TestExtensionDirectoryFollowsSymlinksAndIgnoreFiles":                                                          "file link",

@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -509,6 +510,92 @@ func TestOptimisticNeverCallsChangedAfterDispose(t *testing.T) {
 	<-done
 	if got := changes.Load(); got != 1 {
 		t.Errorf("changes = %d, want 1", got)
+	}
+}
+
+// Pi's add appends its action in its caller's turn (scope.ts `add`: the action, the count, the redraw, then it returns the
+// promise). begin is that part: when it returns, in the same turn, the reader shows the action, a call is pending and
+// changed was called once. An action appended only once its call started on another goroutine (what a handler that
+// cannot wait had to do with Optimistic's add) is not shown yet. Each settle drops its action once: called again it does
+// nothing, so the other action in flight stays.
+func TestOptimisticBeginShowsItsActionInItsCallersTurnAndASettleRunsOnce(t *testing.T) {
+	var changes atomic.Int64
+	scope := scopeOn(newHost(t), func() { changes.Add(1) })
+	defer scope.Dispose()
+	shown, begin, pending := OptimisticBegin(scope, func() string { return "real" }, func(_ string, action string) string { return action })
+	state := func() string {
+		return fmt.Sprintf("shown %s, pending %v, changes %d", shown(), pending(), changes.Load())
+	}
+	one := begin("one")
+	if got := state(); got != "shown one, pending true, changes 1" {
+		t.Fatalf("when begin returned: %s", got)
+	}
+	two := begin("two")
+	if got := state(); got != "shown two, pending true, changes 2" {
+		t.Fatalf("when the second begin returned: %s", got)
+	}
+	one()
+	// Kept until every action settled, as Optimistic keeps them.
+	if got := state(); got != "shown two, pending true, changes 3" {
+		t.Fatalf("after the first settled: %s", got)
+	}
+	one()
+	if got := state(); got != "shown two, pending true, changes 3" {
+		t.Fatalf("after the first settled again: %s", got)
+	}
+	two()
+	if got := state(); got != "shown real, pending false, changes 4" {
+		t.Fatalf("after both settled: %s", got)
+	}
+	two()
+	one()
+	if got := state(); got != "shown real, pending false, changes 4" {
+		t.Fatalf("after settles called again: %s", got)
+	}
+}
+
+// Optimistic's add is begin, the call and the settle: its caller sees what it saw when add did the three itself. While a
+// call runs the action is shown, a call is pending and changed was called once; after a call that returned, one that
+// failed and one that panicked the action is gone, nothing is pending and changed was called once more.
+func TestOptimisticAddShowsItsActionWhileItsCallRunsAndSettlesOnceWhenItReturnedFailedOrPanicked(t *testing.T) {
+	for _, each := range []struct {
+		name string
+		run  func() (int, error)
+		want string
+	}{
+		{"returned", func() (int, error) { return 7, nil }, "7, <nil>, <nil>"},
+		{"failed", func() (int, error) { return 0, errors.New("refused") }, "0, refused, <nil>"},
+		{"panicked", func() (int, error) { panic("broken") }, "0, <nil>, broken"},
+	} {
+		t.Run(each.name, func(t *testing.T) {
+			var changes atomic.Int64
+			scope := scopeOn(newHost(t), func() { changes.Add(1) })
+			defer scope.Dispose()
+			shown, add, pending := OptimisticLast[string, int](scope, func() string { return "real" })
+			state := func() string {
+				return fmt.Sprintf("shown %s, pending %v, changes %d", shown(), pending(), changes.Load())
+			}
+			var during string
+			var result int
+			var failure error
+			var panicked any
+			func() {
+				defer func() { panicked = recover() }()
+				result, failure = add("guess", func() (int, error) {
+					during = state()
+					return each.run()
+				})
+			}()
+			if during != "shown guess, pending true, changes 1" {
+				t.Errorf("while the call ran: %s", during)
+			}
+			if got := fmt.Sprintf("%v, %v, %v", result, failure, panicked); got != each.want {
+				t.Errorf("the call's result, error and panic = %s, want %s", got, each.want)
+			}
+			if got := state(); got != "shown real, pending false, changes 2" {
+				t.Errorf("after the call: %s", got)
+			}
+		})
 	}
 }
 

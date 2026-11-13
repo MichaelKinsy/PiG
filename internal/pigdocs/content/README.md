@@ -35,6 +35,8 @@ Read the one row that matches the task, then follow only its direct links.
 | take a Piglet from a file to an installed, signed, published agent (author, validate, run, inspect, register, build, sign, publish, install, update) | [Piglet lifecycle](piglet-lifecycle.md) | [Piglets](piglets.md) |
 | learn why extension cells are packed into host processes | [Runtime cells](runtime-cells.md) | [Extensions](extensions.md) |
 | write an extension | [Extensions](extensions.md) | [Extension API](extension-api.md) |
+| make one extension call another, in any language (a Go extension asks a Node or Python extension) | [Event bus](event-bus.md) | [Extension API](extension-api.md) |
+| edit a Go extension and run the change without restarting `pig` (`/reload`) | [Go hot reload](go-hot-reload.md) | [Extensions](extensions.md) |
 | look up a host API call, the wire protocol, or an SDK quickstart | [Extension API](extension-api.md) | [Message types](message-types.md) |
 | configure models and credentials | [Providers](providers.md) | [Models](models.md) |
 | choose a model, scope the model cycle, or add my own model to `models.json` | [Models](models.md) | [Providers](providers.md) |
@@ -54,11 +56,12 @@ Read the one row that matches the task, then follow only its direct links.
 | run scripts that call tools | [Codemode](codemode.md) | [MCP servers](mcp.md) |
 | route requests to different models | [Virtual models](virtual-models.md) | [Extensions](extensions.md) |
 | change colors | [Themes](themes.md) | [Settings](settings.md) |
+| build a GUI that an extension shows in the terminal and in a web page (views, intents, alternatives, a dialog, a drawing) | [Extension views](ui-views.md) | [Extensions](extensions.md) |
 | build terminal UI for an extension | [TUI components](tui.md) | [Extension API](extension-api.md) |
 | embed PiG in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
 | add a provider or model endpoint | [Custom providers](custom-provider.md) | [Models](models.md) |
 | look up a PiG-only feature for authors by its D number | [Additive features](additive-features.md) | [Divergences](divergences.md) |
-| understand Stock Pig and explicit compositions | [Stock Pig and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
+| understand Stock PiG and explicit compositions | [Stock PiG and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
 | map entities, paths, and the command that inspects each | [Knowledge graph](knowledge-graph.md) | [Concepts](concepts.md) |
 | run PiG from a script or another program | [CLI integration](cli-integration.md) | [JSON mode](json.md) or [RPC](rpc.md) |
 | use JSON mode or RPC | [JSON mode](json.md), [RPC](rpc.md) | [RPC commands](rpc-commands.md), [RPC extension UI](rpc-extension-ui.md) |

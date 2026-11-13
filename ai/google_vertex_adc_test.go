@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/oauth2"
 )
@@ -103,10 +104,21 @@ func TestGoogleVertexADCRequestCancellation(t *testing.T) {
 		_, err := provider.Stream(ctx, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hello")}}}), options)
 		completed <- err
 	}()
-	<-started
+	select {
+	case <-started:
+	case err := <-completed:
+		t.Fatalf("the stream ended before its request started: %v", err)
+	case <-time.After(30 * time.Second):
+		t.Fatal("the request never started")
+	}
 	cancel()
-	if err := <-completed; !errors.Is(err, context.Canceled) {
-		t.Fatalf("error=%v", err)
+	select {
+	case err := <-completed:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("error=%v", err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("the cancellation did not end the stream")
 	}
 }
 

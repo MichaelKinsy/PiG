@@ -78,6 +78,7 @@ type InteractiveReplacement struct {
 	ReloadBuiltinExtensions func() []extension.Extension
 	SubprocessUIBridge      SubprocessUIBridge
 	SubprocessHost          SubprocessHost
+	ModelBinder             func(*ai.Model) *ai.Model
 	ModelLookup             func(providerID, modelID string) *ai.Model
 	ModelCatalog            func(providerID ...string) []*ai.Model
 	ModelClassify           func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
@@ -115,20 +116,56 @@ func (m *InteractiveMode) resetWorkingStatus() {
 	}
 }
 
+// resetExtensionUI returns what extensions put on screen to the host's own, as Pi's resetExtensionUI does when a /reload begins and
+// before a Session replacement invalidates the outgoing Session's extensions (interactive-mode.ts resetExtensionUI): their dialogs,
+// overlays, terminal input listeners, footer, header, widgets, statuses, editor component and autocomplete providers go, and the
+// terminal title, the working message, visibility and indicator and the hidden thinking label return to their defaults. The extensions
+// that run afterwards set their own again; what an extension set before and does not set again is gone. The bridge forgets what it
+// kept of the extension processes, which it would show a UI bound later. It runs on the owner loop.
+func (m *InteractiveMode) resetExtensionUI() {
+	m.resetExtensionDialogs()
+	m.removeExtensionOverlays()
+	m.clearExtensionTerminalInputListeners()
+	// A slot or a label that no extension set is left alone: restoring what is already there would only draw the transcript again. The
+	// header slot also shows the login an extension defined (D60), which a reload that fails keeps; a reload restores the built-in
+	// header once the extensions have loaded.
+	m.extComponentMu.Lock()
+	footer, header := m.extFooterComponent != nil, m.extHeaderComponent != nil
+	m.editorFactory = nil
+	m.extComponentMu.Unlock()
+	ui := &ExtUIContext{m: m}
+	if footer {
+		ui.SetFooter(nil)
+	}
+	if header {
+		ui.SetHeader(nil)
+	}
+	if m.widgetContainer != nil {
+		m.clearExtensionWidgets()
+	}
+	if m.statusLine != nil {
+		m.statusLine.ClearExtensionStatuses()
+	}
+	m.setRemoteEditor(nil)
+	m.resetAutocompleteWrappers()
+	m.updateTerminalTitle()
+	m.resetWorkingStatus()
+	if m.hiddenThinkingLabel != nil {
+		m.setHiddenThinkingLabel(nil)
+	}
+	if bridge := m.opts.SubprocessUIBridge; bridge != nil {
+		bridge.ResetExtensionUI()
+	}
+}
+
 // resetExtensionUIForReplacement detaches what the outgoing Session's extensions put on screen before their contexts go stale.
 func (m *InteractiveMode) resetExtensionUIForReplacement() {
 	reset := func() {
-		m.resetExtensionDialogs()
-		m.removeExtensionOverlays()
+		m.resetExtensionUI()
 		m.detachSubprocess()
 		if m.widgetContainer != nil {
-			m.clearExtensionWidgets()
 			m.syncWidgets(nil)
 		}
-		m.setRemoteEditor(nil)
-		m.resetAutocompleteWrappers()
-		m.resetWorkingStatus()
-		m.setHiddenThinkingLabel(nil)
 	}
 	// The replacement runs on a worker while the owner services tasks. After the loop ended, nothing else touches the UI.
 	if m.runCtx == nil || m.runEnded.Load() || m.runCtx.Err() != nil {
@@ -195,6 +232,7 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	m.opts.ReloadBuiltinExtensions = r.ReloadBuiltinExtensions
 	m.opts.SubprocessUIBridge = r.SubprocessUIBridge
 	m.opts.SubprocessHost = r.SubprocessHost
+	m.opts.ModelBinder = r.ModelBinder
 	m.opts.ModelLookup = r.ModelLookup
 	m.opts.ModelCatalog = r.ModelCatalog
 	m.opts.ModelClassify = r.ModelClassify
@@ -252,6 +290,7 @@ func (m *InteractiveMode) attachSubprocess() {
 		bridge.SetFrontend(m.surface != nil)
 		m.detachModelRegistry = m.wireSubprocessHostCallbacks()
 		m.attachTerminalViewClient(bridge)
+		m.attachViewEndpoint(bridge)
 	}
 	if host := m.opts.SubprocessHost; host != nil {
 		if resolved, ok := host.(interface{ SetToolRenderersResolvedFunc(func(string)) }); ok {
@@ -293,6 +332,7 @@ func (m *InteractiveMode) detachSubprocess() {
 		m.detachModelRegistry = nil
 	}
 	m.detachTerminalViewClient()
+	m.detachViewEndpoint()
 	if bridge := m.opts.SubprocessUIBridge; bridge != nil {
 		bridge.SetUIContext(extension.NoopUIContext)
 		bridge.SetWidgetSyncFunc(func(map[string]*subprocess.PushProxy) {})

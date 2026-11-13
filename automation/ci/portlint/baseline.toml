@@ -479,12 +479,6 @@ snippet = "now := func() float64 { return float64(time.Now().UnixMilli()) }"
 [[hit]]
 check = "clock"
 file = "internal/codingagent/session.go"
-func = "Session.appendCompaction"
-snippet = "now := time.Now().UTC()"
-
-[[hit]]
-check = "clock"
-file = "internal/codingagent/session.go"
 func = "RFC3339NowNano"
 snippet = "return time.Now().UTC().Format(\"2006-01-02T15:04:05.000Z\")"
 
@@ -843,30 +837,6 @@ check = "emptydrop"
 file = "agent/proxy.go"
 func = "(decl)"
 snippet = "Headers                       map[string]string                `json:\"headers,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/anthropic.go"
-func = "(decl)"
-snippet = "Betas      []string          `json:\"betas,omitempty\" requestsplice:\"read\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/anthropic.go"
-func = "(decl)"
-snippet = "System     []anthSystemBlock `json:\"system,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/anthropic.go"
-func = "(decl)"
-snippet = "Tools      []anthTool        `json:\"tools,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "ai/anthropic.go"
-func = "(decl)"
-snippet = "Fallbacks   []anthFallback `json:\"fallbacks,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
@@ -2744,24 +2714,6 @@ check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.handleGetCommands"
 snippet = "result, _ := json.Marshal(map[string]any{\"commands\": commands})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": false, \"error\": \"not ready\"})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": false, \"error\": err.Error()})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSetModel"
-snippet = "result, _ := json.Marshal(map[string]any{\"success\": ok})"
 
 [[hit]]
 check = "mapkeyorder"

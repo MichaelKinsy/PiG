@@ -1,0 +1,30 @@
+from = "1.5.2+f7734109"
+to = "1.5.2+4438c58b"
+
+[[files]]
+path = "packages/agent/src/agent-loop.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch", "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared", "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi", "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi", "test:agent/abort_batch_answers_test.go#TestAbortBeforeTheFirstCallOfABatchAnswersEveryCall", "test:agent/abort_batch_answers_test.go#TestAbortDuringACallOfASequentialBatchAnswersTheRestInOrder", "test:agent/abort_batch_answers_test.go#TestAbortBetweenTwoCallsOfASequentialBatchAnswersTheRest", "test:agent/abort_batch_answers_test.go#TestAbortWhileAParallelBatchIsPreparedAnswersEveryCallInOrder", "test:agent/abort_batch_answers_test.go#TestAbortWhileEveryCallOfAParallelBatchRunsKeepsEachCallsOwnResult", "test:agent/abort_batch_answers_test.go#TestSteeringQueuedDuringAnAbortedBatchFollowsAResultForEveryCall", "test:agent/abort_batch_answers_test.go#TestABeforeHookEndedByTheAbortAnswersOperationAborted", "test:agent/abort_batch_answers_test.go#TestRunToolCallAnswersAnAbortedSignalBeforeTheLookupAndTheHooks", "test:agent/agent_test.go#TestExecuteSequentialAnswersEveryCallAfterContextAbort", "test:agent/agent_test.go#TestExecuteParallelAnswersUnstartedCallsAfterContextAbort", "test:agent/abort_batch_answers_test.go#TestOrphanedCallsOfAnOlderBuildAreAnsweredInTheRequestAndNotInTheTranscript", "test:coding/session_aborted_batch_test.go#TestSessionAbortedBatchPersistsAResultForEveryCall", "test:coding/cli/rpc_aborted_batch_test.go#TestRPCAbortedBatchAnswersEveryCallInOrder"]
+rationale = "4438c58ba (#9986): an abort in the middle of a tool batch left the calls the loop had not reached without a tool result. executeToolCallsSequential and executeToolCallsParallel no longer leave the batch at an aborted signal (three `if (signal?.aborted) break` removed), and prepareToolCall answers `Operation aborted` (isError true) first, before the tool lookup, prepareArguments, validation and beforeToolCall; the check after the hook block is removed and the one right after `await beforeToolCall` stays. So each remaining call gets tool_execution_start, tool_execution_end and a toolResult message, and the hooks are not asked about a call that will not run. runToolCall checks the signal first too. agent/tool_execution.go: the two `if ctx.Err() != nil { break }` are removed (executeToolCallsSequential, executeToolCallsParallel) and prepareToolCall returns the aborted outcome first; the check after the before hooks is removed, the one after each hook stays. A parallel call prepared before the abort still ends `Operation aborted` in runPreparedToolCall (Pi's thunk check, unchanged). One Go step keeps Pi's answer for a hook in another process: the host does not await an extension's tool_call handler past the abort, so that hook returns the context's error; prepareToolCall reads a hook error that is the cancelled context's own as the abort (`Operation aborted`, where the result read `event tool_call: context canceled`), and still reports an error the hook returned for its own reason, as Pi's catch does. agent/run_tool_call.go says the same of RunToolCall. Order, compared with Pi itself: TestAgentLoopMatchesPi and TestAgentClassMatchesPi (seeded programs with aborts from a tool, from a before hook and from the Agent's abort operation) now load the vendored compiled runtime (the pin plus the carried blocks, internal/pioracle.Root) instead of the mirror's TypeScript, which stays the pin; at the base both sources gave the same verdict, and the unchanged Go loop against the vendored runtime with this block fails both tests. For the re-pin lane: the two drivers stay on the vendored runtime after the pin moves; do not switch them back to the mirror. Released PiG 0.2.0, 0.3.0 and 0.7.0 have the defect (the same two breaks). A session an older build wrote keeps its orphaned calls on disk; the request still gives each one the synthetic `No result provided` result, and nothing is rewritten. Paired scenario: test/parity/scenarios/rpc/82-rpc-abort-mid-batch-answers-every-call.toml."
+
+[[files]]
+path = "packages/agent/test/agent-loop.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch", "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared"]
+rationale = "4438c58ba: adds the helpers runToolBatch, toolResultTexts and toolEventIds (:80-130) and two cases, `answers every tool call of a sequential batch aborted mid-batch` (:1003) and `answers every tool call of a parallel batch aborted while calls are prepared` (:1034). Both are ported 1:1 with the same three calls, the same tool and hook, and the same expectations (the executed values, the hook calls, the three results, the start ids in order, the end ids in order or sorted as Pi sorts them). Both are red on the loop before the port: results for tool-1 only (sequential), and for tool-1 and tool-2 only (parallel)."
+
+[[files]]
+path = "packages/agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4438c58ba: Pi's agent package changelog entry for #9986. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4438c58ba: Pi's coding-agent changelog entry for #9986 (Esc during a batch of tool calls). PiG's user-visible change is its own changelog.d fragment."

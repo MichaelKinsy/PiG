@@ -28,6 +28,9 @@ func StreamSimple(ctx context.Context, model *Model, transcript TranscriptContex
 func streamSimpleAs(ctx context.Context, api API, model *Model, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
 	meta := model.ProviderMeta
 	meta.API = api
+	if err := strippedDirectAPIError(api, model, options.Env); err != nil {
+		return nil, err
+	}
 	key, err := directSimpleAPIKey(meta, options)
 	if err != nil {
 		// The module's streamSimple asserts the key before its stream exists (for example openai-completions.ts streamSimple), so lazyApi's setup rejects.
@@ -111,11 +114,11 @@ func directAPIProviderFor(api API, model *Model, key string, env ProviderEnv) (P
 	case APIAnthropicMessages:
 		return NewAnthropicProvider(AnthropicConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, DynamicHeaders: copilotHeaders, UseBearerAuth: copilotHeaders != nil}), nil
 	case APIOpenAICompletions:
-		return NewOpenAIProvider(OpenAIConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, DynamicHeaders: copilotHeaders}), nil
+		return NewOpenAIProvider(OpenAIConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, SamplingParamsOrder: model.SamplingParamsOrder, SamplingParamsByThinkingLevelOrder: model.SamplingParamsByThinkingLevelOrder, DynamicHeaders: copilotHeaders}), nil
 	case APIOpenAIResponses:
-		return NewOpenAIResponsesProvider(OpenAIResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, IsReasoning: meta.Reasoning, DynamicHeaders: copilotHeaders}), nil
+		return NewOpenAIResponsesProvider(OpenAIResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, SamplingParamsOrder: model.SamplingParamsOrder, SamplingParamsByThinkingLevelOrder: model.SamplingParamsByThinkingLevelOrder, IsReasoning: meta.Reasoning, DynamicHeaders: copilotHeaders}), nil
 	case APIAzureOpenAIResponses:
-		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, IsReasoning: meta.Reasoning, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel}), nil
+		return NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, IsReasoning: meta.Reasoning, Env: env, ThinkingLevelMap: model.ThinkingLevelMap, SamplingParams: model.SamplingParams, SamplingParamsByThinkingLevel: model.SamplingParamsByThinkingLevel, SamplingParamsOrder: model.SamplingParamsOrder, SamplingParamsByThinkingLevelOrder: model.SamplingParamsByThinkingLevelOrder}), nil
 	case APIOpenAICodexResponses:
 		return NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, ThinkingLevelMap: model.ThinkingLevelMap}), nil
 	case APIBedrockConverseStream:

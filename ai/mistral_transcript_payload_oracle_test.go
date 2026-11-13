@@ -1,3 +1,7 @@
+//go:build !pig_strip_mistral_conversations
+
+// The whole file is about mistral-conversations requests, which a build with the API's strip tag does not build.
+
 package ai_test
 
 import (
@@ -8,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // pi: packages/ai/src/api/mistral-conversations.ts
@@ -52,7 +55,8 @@ func TestMistralTranscriptPayloadMatchesPi(t *testing.T) {
 		probes = append(probes, p)
 	}
 	want := piPayloads(t, "testdata/mistral_transcript_payload.mjs", probes)
-	failures := 0
+	g.requireReplayCoverage(t, want, mistralReplay)
+	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {
 		model := &ai.Model{ID: p.ID, DisplayName: p.ID, Input: p.Input, Capabilities: ai.ModelCapabilities{ContextWindow: 128000, MaxOutputTokens: 16384}, ProviderMeta: ai.ProviderMetadata{API: ai.APIMistralConversations, ProviderID: "mistral", BaseURL: "http://127.0.0.1:9", Reasoning: p.Reasoning}}
@@ -75,7 +79,7 @@ func TestMistralTranscriptPayloadMatchesPi(t *testing.T) {
 		var got string
 		sentinel := errors.New("payload captured")
 		options.OnPayload = func(payload any, _ *ai.Model) (any, error) {
-			encoded, err := sdkjson.Marshal(payload)
+			encoded, err := ai.MarshalRequestBody(payload)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -96,9 +100,14 @@ func TestMistralTranscriptPayloadMatchesPi(t *testing.T) {
 			}
 			t.Fatalf("probe %d: Pi produced no payload where PiG did: %.300s", i, got)
 		}
-		comparePayload(t, fmt.Sprintf("probe %d reasoning=%v simple=%v input=%v options=%v", i, p.Reasoning, p.Simple, p.Input, p.Options), got, want[i], &failures, classes)
+		label := fmt.Sprintf("probe %d reasoning=%v simple=%v input=%v options=%v", i, p.Reasoning, p.Simple, p.Input, p.Options)
+		comparePayload(t, label, got, want[i], &failures, classes)
+		comparePayloadBytes(t, label, got, want[i], &reordered)
 	}
 	if failures > 0 {
 		t.Errorf("%d of %d probes differ from Pi; differing members: %v", failures, len(probes), classes)
+	}
+	if reordered > 0 {
+		t.Errorf("%d of %d probes write Pi's payload in another member order", reordered, len(probes))
 	}
 }

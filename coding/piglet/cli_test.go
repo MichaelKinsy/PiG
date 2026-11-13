@@ -675,7 +675,7 @@ func TestRunCommandShowEffectiveHumanResolvesLocalResourcePaths(t *testing.T) {
 		"demo  tools=all  origin=local:" + paths["extension"],
 		"packaged  tools=all  origin=package:base",
 		"review  origin=local:" + paths["skill"],
-		"Pig runtime: inject@latest",
+		"PiG runtime: inject@latest",
 		"policy: standard",
 	} {
 		if !strings.Contains(stdout.String(), want) {

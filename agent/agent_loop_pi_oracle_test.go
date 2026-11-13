@@ -10,14 +10,13 @@ import (
 	"fmt"
 	"math/rand"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"sort"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 type loopTool struct {
@@ -357,9 +356,9 @@ func TestAgentLoopMatchesPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/agent_loop_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
-	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
+	// The oracle is the vendored Pi runtime: the pinned build's compiled packages plus the Pi commits PiG carries ahead of the pin
+	// (automation/gen/pi-post-release-backports.mjs), so a carried change of the loop is compared like the rest of it.
+	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/agent_loop_oracle.mjs", pioracle.Root(t))
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

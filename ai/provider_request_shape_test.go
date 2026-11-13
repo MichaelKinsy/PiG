@@ -111,6 +111,10 @@ func TestResponsesRequestEmptyContentDoesNotConsumeMessageID(t *testing.T) {
 func TestGoogleRequestPreservesEmptyText(t *testing.T) {
 	imageModel := &Model{ID: "test", Input: []string{"text", "image"}}
 	for _, providerID := range []string{"google", "google-vertex"} {
+		if providerID == "google-vertex" && !BuiltAPI(APIGoogleVertex) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(providerID, func(t *testing.T) {
 			// Pi's assistant messages always carry the API of the model that produced them; only the same API counts as the same model.
 			api := APIGoogleGenerativeAI
