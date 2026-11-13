@@ -1255,15 +1255,13 @@ func subprocessSamplingParams(raw any) (map[string]any, []string, error) {
 		}
 		return object, nil, nil
 	}
-	text, err := ordered.MarshalJSON()
-	if err != nil {
-		return nil, nil, fmt.Errorf("model request.samplingParams: %w", err)
+	keys := ordered.Keys()
+	object := make(map[string]any, len(keys))
+	for _, key := range keys {
+		value, _ := ordered.Get(key)
+		object[key] = orderedjson.Value(value)
 	}
-	var object map[string]any
-	if err := json.Unmarshal(text, &object); err != nil {
-		return nil, nil, fmt.Errorf("model request.samplingParams: %w", err)
-	}
-	return object, ordered.Keys(), nil
+	return object, keys, nil
 }
 
 func subprocessProviderHeaders(raw any, path string) (ai.ProviderHeaders, error) {

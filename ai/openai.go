@@ -155,12 +155,8 @@ type OpenAICompat struct {
 	// loaded by tool_reference blocks in tool results (Anthropic Messages).
 	// Default: true for first-party Anthropic except Haiku / pre-Claude-4.5.
 	// ChatTemplateArgs are provider-specific vLLM/Baseten chat-template values.
-	ChatTemplateArgs map[string]any `json:"chatTemplateArgs,omitempty"`
-	// objectOrder is the member order of OpenRouterRouting, ChatTemplateKwargs and ChatTemplateArgs, nested objects included, where the JSON the
-	// compat was decoded from or a merge of two compats lists them in another order than the sorted one encoding/json writes. A compat
-	// built in Go has none.
-	objectOrder                 schemaObjectOrder
-	SupportsThinkingTokenBudget *bool `json:"supportsThinkingTokenBudget,omitempty"`
+	ChatTemplateArgs            map[string]any `json:"chatTemplateArgs,omitempty"`
+	SupportsThinkingTokenBudget *bool          `json:"supportsThinkingTokenBudget,omitempty"`
 	// ThinkingTokenBudgetField selects the budget wire field and takes precedence over SupportsThinkingTokenBudget.
 	ThinkingTokenBudgetField       ThinkingTokenBudgetField `json:"thinkingTokenBudgetField,omitempty"`
 	SupportsAdditionalTools        *bool                    `json:"supportsAdditionalTools,omitempty"`
@@ -174,6 +170,10 @@ type OpenAICompat struct {
 	// Extra holds the members PiG does not model, as written. Pi's compat schemas allow additional properties and a compat object keeps
 	// them (model-config.ts getProvider, provider-composer.ts mergeCompat), so a custom API can read its own compat settings.
 	Extra map[string]json.RawMessage `json:"-"`
+	// objectOrder is the member order of OpenRouterRouting, ChatTemplateKwargs and ChatTemplateArgs, nested objects included, where the JSON the
+	// compat was decoded from or a merge of two compats lists them in another order than the sorted one encoding/json writes. A compat
+	// built in Go has none.
+	objectOrder schemaObjectOrder
 }
 
 func ptrBool(v bool) *bool { return new(v) }
