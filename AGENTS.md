@@ -315,7 +315,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 157 | 156 | 0 | 1 | 0 | 69 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 18 | 18 | 0 | 0 | 0 | 12 | not run |
+| `fullscreen` | 19 | 19 | 0 | 0 | 0 | 13 | not run |
 | `interactive-rendering` | 86 | 85 | 1 | 0 | 0 | 40 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 29 | 29 | 0 | 0 | 0 | 16 | not run |
@@ -327,7 +327,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `providers-registry` | 10 | 7 | 0 | 3 | 0 | 27 | not run |
 | `rpc` | 93 | 93 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 17 | 17 | 0 | 0 | 1 | 15 | not run |
-| `session` | 44 | 44 | 0 | 0 | 0 | 19 | not run |
+| `session` | 47 | 47 | 0 | 0 | 0 | 20 | not run |
 | `settings` | 17 | 17 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 29 | 28 | 1 | 0 | 0 | 21 | not run |
 | `startup` | 26 | 25 | 1 | 0 | 0 | 10 | not run |

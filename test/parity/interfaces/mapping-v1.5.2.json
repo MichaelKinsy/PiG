@@ -133699,9 +133699,9 @@
         "call:chord/sync/batch.go#EncodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
-        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource",
+        "test:chord/sync/batch_source_test.go#TestClosingABatchBodyClosesTheSourceItWraps"
       ]
     },
     {
@@ -133721,9 +133721,9 @@
         "call:chord/sync/batch.go#EncodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
-        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource",
+        "test:chord/sync/batch_source_test.go#TestClosingABatchBodyClosesTheSourceItWraps"
       ]
     },
     {
@@ -133973,7 +133973,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -133996,7 +133996,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -135282,7 +135282,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ]
     },
     {
@@ -136153,8 +136153,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource"
       ]
     },
     {
@@ -136742,7 +136742,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ]
     },
     {
@@ -191346,7 +191346,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.drawsOnProcessTerminal"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption"
+        "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption",
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame",
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterSettingChangeWaitsForTheNextStart"
       ]
     },
     {
@@ -261875,7 +261877,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -261898,7 +261900,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -261967,7 +261969,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ]
     },
     {
@@ -262032,8 +262034,8 @@
       ],
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount",
-        "test:durable/storage/storage_bench_test.go#TestStorageBenchmarkExpectations"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
+        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
     {
@@ -262053,6 +262055,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkPrimaryRecordCount"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -262073,6 +262076,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkPrimaryRecordCount"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -262093,6 +262097,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkScale"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -267556,7 +267561,7 @@
       "evidence": [
         "test:env/connection_request_test.go#TestRemoteWatchOptionsModeForcesTheWatcherMode",
         "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt",
-        "test:env/watch_semantics_test.go#TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished"
+        "test:env/remote_watch_abort_test.go#TestRemoteExecutionEnvWatchWithAnAbortedContextFailsAbortedBeforeTouchingTheConnection"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -267579,7 +267584,7 @@
       "evidence": [
         "test:env/connection_request_test.go#TestRemoteWatchOptionsModeForcesTheWatcherMode",
         "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt",
-        "test:env/watch_semantics_test.go#TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished"
+        "test:env/remote_watch_abort_test.go#TestRemoteExecutionEnvWatchWithAnAbortedContextFailsAbortedBeforeTouchingTheConnection"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -304620,9 +304625,9 @@
         "call:tui/overlay_spec.go#OverlaySpec.Options"
       ],
       "evidence": [
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
         "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
-        "test:tui/tui_surface_mouse_test.go#TestTuiSurfaceClickMatchesTheTerminalOnOverlays"
+        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
       ]
     },
     {
@@ -304772,9 +304777,9 @@
         "call:tui/overlay_spec.go#OverlaySpec.Options"
       ],
       "evidence": [
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
         "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
-        "test:tui/tui_surface_mouse_test.go#TestTuiSurfaceClickMatchesTheTerminalOnOverlays"
+        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
       ]
     },
     {
@@ -304817,8 +304822,8 @@
       ],
       "evidence": [
         "test:tui/overlay_options_upstream_test.go#TestOverlaySpecMarginUnionMatchesPi",
-        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
+        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ]
     },
     {
@@ -305359,6 +305364,7 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
         "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
         "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
       ]
@@ -305380,6 +305386,7 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
         "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
         "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
       ]
@@ -305589,8 +305596,8 @@
       ],
       "evidence": [
         "test:tui/terminal_pty_test.go#TestProcessTerminalOnPseudoTerminal",
-        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop",
-        "test:tui/terminal_interface_pty_test.go#TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterSuspendAndResume"
       ]
     },
     {
@@ -305611,8 +305618,8 @@
       ],
       "evidence": [
         "test:tui/terminal_pty_test.go#TestProcessTerminalOnPseudoTerminal",
-        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop",
-        "test:tui/terminal_interface_pty_test.go#TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterSuspendAndResume"
       ]
     },
     {
@@ -309468,8 +309475,8 @@
       ],
       "evidence": [
         "test:tui/overlay_options_upstream_test.go#TestOverlaySpecMarginUnionMatchesPi",
-        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
+        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ]
     },
     {
@@ -315843,7 +315850,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_transcript_selection_test.go#TestRenderSessionEntriesDropsFullscreenSelection",
         "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
-        "test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret"
+        "test:tui/terminal_screen_writer_autowrap_test.go#TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap"
       ]
     },
     {
@@ -315888,7 +315895,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/tui_alt_screen_keyboard_protocol_test.go#TestTuiAltScreenMovesOutstandingKeyboardPushAcrossScreens"
+        "test:tui/terminal_screen_writer_autowrap_test.go#TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap"
       ]
     },
     {
