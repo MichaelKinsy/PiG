@@ -40439,9 +40439,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "func() map[string]string"
+        "type": "func() map[string][]string"
       },
-      "shapeHash": "sha256:22f41c934ea78ede7d40353ffae8120c47cfb3814041833b80a2d310cbdb0241"
+      "shapeHash": "sha256:ddda23e09de25758e2cc50236119a433fcbc3df473735752b594b9f277f5f504"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#envAuthenticated",
@@ -42474,9 +42474,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[884]generatedMapRef"
+        "type": "[886]generatedMapRef"
       },
-      "shapeHash": "sha256:1b906a2d369f51fae05c1e692abead69171b7511d78fc47938ac5cd4733cbda7"
+      "shapeHash": "sha256:d50bb43df8d2c138d7a81ac0a0758b6dbfae7dc45f526e1f538a23d77362c1f9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",

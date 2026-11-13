@@ -77,10 +77,7 @@ func TestBuiltinCatalogsMatchPinnedProviderDataModules(t *testing.T) {
 		}
 		seen[provider[1]] = true
 		t.Run(provider[1], func(t *testing.T) {
-			raw, err := os.ReadFile(filepath.Join("../.upstream/current/packages/ai/src/providers/data", data[1]+".json"))
-			if err != nil {
-				t.Fatal(err)
-			}
+			raw := readPinnedMirror(t, "../.upstream/current/packages/ai/src/providers/data/"+data[1]+".json")
 			var groups map[string]map[string]map[string]any
 			if err := json.Unmarshal(raw, &groups); err != nil {
 				t.Fatal(err)

@@ -4,11 +4,14 @@ package providers
 
 import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 
-// Alibaba Cloud Model Studio Token Plan. International and China use separate
-// endpoints and API keys (sk-sp- prefix). models.dev lists them as
-// "alibaba-token-plan[-cn]".
-const interationalBaseURL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
-const cnBaseURL = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+// Qwen Token Plan: QwenCloud (international) and Qianwen AI Platform (China). Each region has its
+// own endpoint and API keys (sk-sp- prefix). models.dev lists them as "alibaba-token-plan[-cn]".
+// The former token-plan.{ap-southeast-1,cn-beijing}.maas.aliyuncs.com hosts resolve to the same
+// gateways and keep working for configurations that still name them.
+// https://docs.qwencloud.com/developer-guides/getting-started/regions
+// https://platform.qianwenai.com/docs/developer-guides/clients-and-developer-tools/other-tools
+const interationalBaseURL = "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"
+const cnBaseURL = "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"
 
 func qwenTokenPlanCompat() *Obj {
 	return O(
@@ -32,17 +35,17 @@ func qwenTokenPlanFallbackThinkingLevels() *Obj {
 
 var qwenTokenPlanReasoningEffortFallbackModelIDs = map[string]bool{"glm-5": true, "glm-5.1": true}
 
-// Retired preview id: models.dev may still list it after GA ships.
-var qwenTokenPlanExcludedModelIDs = map[string]bool{"qwen3.8-max-preview": true}
-
 // qwenTokenPlanModels maps one models.dev token plan provider. A nil modelIds keeps every model.
 func qwenTokenPlanModels(ctx *ProviderContext, source, baseURL string, modelIds map[string]bool) ([]ChatModel, error) {
 	return ModelsDevModels(ctx, source, ModelsDevOptions{
 		API:               "openai-completions",
 		BaseURL:           baseURL,
 		NoRecordReasoning: true,
+		// models.dev marks models dropped from the Token Plan lists deprecated, e.g. qwen3.8-max-preview,
+		// deepseek-v3.2 and deepseek-v4-flash.
+		SkipDeprecated: true,
 		Include: func(model *ModelsDevModel) bool {
-			return !qwenTokenPlanExcludedModelIDs[model.ID] && (modelIds == nil || modelIds[model.ID])
+			return modelIds == nil || modelIds[model.ID]
 		},
 		Map: func(model ChatModel, source *ModelsDevModel) (ChatModel, error) {
 			thinkingLevelMap := GetEffortThinkingLevelMap(source.ReasoningOptions)

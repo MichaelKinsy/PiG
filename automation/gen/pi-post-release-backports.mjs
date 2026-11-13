@@ -13,6 +13,7 @@
 // The source mirror (.upstream/current) stays the pinned release, which the sync ledger's delta audit compares with the earlier pin; the
 // tests that read the mirror's docs and schemas read them through `--read-mirror <mirror> <path>` (internal/upstreammirror.ReadPicked), the
 // pinned file plus the entries of packageFileBackports and backportPatches that cover it.
+// `--mirror-paths` lists the mirror files a backport covers (internal/upstreammirror.PickedPaths), so a test that reads many mirror files reads only those through `--read-mirror`.
 // `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned release's.
 //
 // Pi commits of the 0.8.0 list that are not here, and why:
@@ -26,6 +27,71 @@ const note = (sha) => `// Pi ${sha} (post-v1.5.2), backported by automation/gen/
 
 // 49fe0a237 (#11987): the supportsMessageThreads description of pi-ai's compat schema, which the models docs and the models.json schema repeat.
 const messageThreadsDefault = ["Default: true for provider anthropic with a baseUrl on api.anthropic.com", "Default: true for a baseUrl on api.anthropic.com"];
+
+// 1397070024 (#12112, #11773): Qwen Token Plan uses the current gateways, per-plan key variables and the current Team and Individual model lists.
+// Pi's four provider modules, its env-api-keys table, its help text and its providers doc carry the change as source; the provider data
+// (providers/data/*.json, which Pi regenerates from models.dev at each build) carries it as the result of that generation over the release's
+// data: the new base URL on every record, the Team lists without the records models.dev marks deprecated (catalog skipDeprecated), and the
+// two records the Individual allowlist gains, which are the Team records of the same models.dev source under the Individual provider id.
+const qwenGateways = {
+  international: ["https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1", "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"],
+  china: ["https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"],
+};
+// The four providers: id, the gateway, the name before and after, the per-plan variable, the variable both plans of a region shared, and whether its catalog is the Individual allowlist.
+const qwenTokenPlans = [
+  { id: "qwen-token-plan", gateway: qwenGateways.international, name: "Qwen Token Plan", newName: "Qwen Token Plan Team", planVar: "QWEN_TOKEN_PLAN_TEAM_API_KEY", sharedVar: "QWEN_TOKEN_PLAN_API_KEY", individual: false },
+  { id: "qwen-token-plan-cn", gateway: qwenGateways.china, name: "Qwen Token Plan CN", newName: "Qwen Token Plan Team CN", planVar: "QWEN_TOKEN_PLAN_TEAM_CN_API_KEY", sharedVar: "QWEN_TOKEN_PLAN_CN_API_KEY", individual: false },
+  { id: "qwen-token-plan-individual", gateway: qwenGateways.international, name: "Qwen Token Plan Individual", newName: "Qwen Token Plan Individual", planVar: "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY", sharedVar: "QWEN_TOKEN_PLAN_API_KEY", individual: true },
+  { id: "qwen-token-plan-individual-cn", gateway: qwenGateways.china, name: "Qwen Token Plan Individual CN", newName: "Qwen Token Plan Individual CN", planVar: "QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY", sharedVar: "QWEN_TOKEN_PLAN_CN_API_KEY", individual: true },
+];
+// The records of the release's Token Plan data by id, with the display name each record's text starts with (a patch needs it to name one record).
+const qwenRecordNames = {
+  "deepseek-v4-flash-0731": "DeepSeek V4 Flash 0731", "deepseek-v4-pro": "DeepSeek V4 Pro", "deepseek-v4-pro-0813": "DeepSeek V4 Pro 0813", "deepseek-v4.1-flash": "DeepSeek V4.1 Flash", "deepseek-v4.1-flash-1017": "DeepSeek V4.1 Flash 1017",
+  "glm-5": "GLM-5", "glm-5.1": "GLM-5.1", "glm-5.2": "GLM-5.2", "glm-5.3": "GLM-5.3", "kimi-k2.5": "Kimi K2.5", "kimi-k2.6": "Kimi K2.6", "kimi-k2.7-code": "Kimi K2.7 Code", "MiniMax-M2.5": "MiniMax-M2.5",
+  "qwen3.6-flash": "Qwen3.6 Flash", "qwen3.6-plus": "Qwen3.6 Plus", "qwen3.7-max": "Qwen3.7 Max", "qwen3.7-plus": "Qwen3.7 Plus", "qwen3.8-flash": "Qwen3.8 Flash", "qwen3.8-max": "Qwen3.8 Max",
+};
+// The Individual lists of the release, and the ids 1397070024 adds to them (catalog/providers/qwen-token-plan-individual.ts INDIVIDUAL_MODEL_IDS).
+const qwenIndividualIds = ["deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max"];
+const qwenIndividualAddedIds = ["deepseek-v4.1-flash", "deepseek-v4.1-flash-1017"];
+const qwenRecordHead = (provider, baseUrl, id, name) => `"chat:${id}":{"id":"${id}","name":"${name}","api":"openai-completions","provider":"${provider}","baseUrl":"${baseUrl}",`;
+const qwenCompat = (reasoningEffort) => `"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":${reasoningEffort}}`;
+const qwenFreeCost = `"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0}`;
+// The two Team records models.dev marks deprecated, which skipDeprecated drops, as [id, name, the record's text after its base URL].
+const qwenDeprecatedRecords = [
+  ["deepseek-v3.2", "DeepSeek V3.2", `"reasoning":true,"input":["text"],${qwenFreeCost},"contextWindow":131072,"maxTokens":65536,${qwenCompat(false)},"type":"chat"},`],
+  ["deepseek-v4-flash", "DeepSeek V4 Flash", `"reasoning":true,"input":["text"],${qwenFreeCost},"contextWindow":1000000,"maxTokens":384000,${qwenCompat(true)},"thinkingLevelMap":{"off":null,"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":"max"},"type":"chat"},`],
+];
+// The text of the deepseek-v4.1-flash and deepseek-v4.1-flash-1017 records after their base URL, as the Team data of the release holds it.
+const qwenDeepseek41FlashTail = `"reasoning":true,"input":["text","image"],${qwenFreeCost},"contextWindow":1000000,"maxTokens":384000,${qwenCompat(true)},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},`;
+const qwenDataPatches = ({ id: provider, gateway: [oldUrl, newUrl], individual }) => {
+  const moved = (ids) => ids.map((id) => [qwenRecordHead(provider, oldUrl, id, qwenRecordNames[id]), qwenRecordHead(provider, newUrl, id, qwenRecordNames[id])]);
+  if (!individual) return [...qwenDeprecatedRecords.map(([id, name, tail]) => [qwenRecordHead(provider, oldUrl, id, name) + tail, ""]), ...moved(Object.keys(qwenRecordNames))];
+  // The added records go where the generator's order puts them: after deepseek-v4-pro-0813, before glm-5.2. One entry moves glm-5.2 and
+  // puts them before it: an entry's `before` is text of the release's file, never the result of another entry.
+  const next = "glm-5.2";
+  const added = qwenIndividualAddedIds.map((id) => qwenRecordHead(provider, newUrl, id, qwenRecordNames[id]) + qwenDeepseek41FlashTail).join("");
+  const [[nextBefore, nextAfter]] = moved([next]);
+  return [...moved(qwenIndividualIds.filter((id) => id !== next)), [nextBefore, added + nextAfter]];
+};
+// The provider module's change in the compiled output (four-space indent, with the backport note) and in Pi's TypeScript source (tabs), which the source mirror holds.
+const qwenModulePatches = ({ name, newName, gateway: [oldUrl, newUrl], planVar, sharedVar }, indent, marker) => [
+  [`${indent}${indent}name: "${name}",
+${indent}${indent}baseUrl: "${oldUrl}",
+${indent}${indent}auth: { apiKey: envApiKeyAuth("${name} API key", ["${sharedVar}"]) },
+`, `${marker ? `${indent}${indent}${note("1397070024")}` : ""}${indent}${indent}name: "${newName}",
+${indent}${indent}baseUrl: "${newUrl}",
+${indent}${indent}auth: {
+${indent}${indent}${indent}apiKey: envApiKeyAuth("${newName} API key", [
+${indent}${indent}${indent}${indent}"${planVar}",
+${indent}${indent}${indent}${indent}"${sharedVar}",
+${indent}${indent}${indent}]),
+${indent}${indent}},
+`],
+];
+const qwenTokenPlanBackports = Object.fromEntries(qwenTokenPlans.flatMap((plan) => [
+  [`pi-ai/providers/${plan.id}.js`, qwenModulePatches(plan, "    ", true)],
+  [`pi-ai/providers/data/${plan.id}.json`, qwenDataPatches(plan)],
+]));
 
 export const backportPatches = {
   // b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
@@ -265,6 +331,33 @@ export function stripAnsiEscapes(text) {
     if (schema.anyOf !== undefined) {
 `],
   ],
+  // 1397070024 (#12112, #11773): the Qwen Token Plan provider modules and provider data (the gateways, the names, the key variables, the model lists).
+  ...qwenTokenPlanBackports,
+  // 1397070024: each Qwen Token Plan provider reads its per-plan variable first, then the region variable both plans used to share.
+  "pi-ai/env-api-keys.js": [
+    [`        "ant-ling": "ANT_LING_API_KEY",
+${qwenTokenPlans.map((plan) => `        "${plan.id}": "${plan.sharedVar}",\n`).join("")}`,
+      `        "ant-ling": "ANT_LING_API_KEY",
+        ${note("1397070024").trim()}
+        // Qwen Token Plan: the per-plan variable first, then the region variable both plans used to share.
+${qwenTokenPlans.map((plan) => `        "${plan.id}": ["${plan.planVar}", "${plan.sharedVar}"],\n`).join("")}`],
+    ["    const envVar = envMap[provider];\n    return envVar ? [envVar] : undefined;\n", '    const envVars = envMap[provider];\n    return typeof envVars === "string" ? [envVars] : envVars;\n'],
+  ],
+  // 1397070024: --help lists the four per-plan variables.
+  "pi-coding-agent/cli/args.js": [
+    [`  QWEN_TOKEN_PLAN_API_KEY          - Qwen Token Plan API key (international region)
+  QWEN_TOKEN_PLAN_CN_API_KEY       - Qwen Token Plan API key (China region)
+`, `  QWEN_TOKEN_PLAN_TEAM_API_KEY     - Qwen Token Plan Team API key (international region)
+  QWEN_TOKEN_PLAN_TEAM_CN_API_KEY  - Qwen Token Plan Team API key (China region)
+  QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY - Qwen Token Plan Individual API key (international region)
+  QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY - Qwen Token Plan Individual API key (China region)
+`],
+  ],
+  // 1397070024: the providers doc lists the four per-plan variables.
+  "pi-coding-agent/docs/providers.md": [
+    ["| Qwen Token Plan and Individual | `QWEN_TOKEN_PLAN_API_KEY` |\n| Qwen Token Plan (China) and Individual (China) | `QWEN_TOKEN_PLAN_CN_API_KEY` |\n",
+      "| Qwen Token Plan Team | `QWEN_TOKEN_PLAN_TEAM_API_KEY` |\n| Qwen Token Plan Team (China) | `QWEN_TOKEN_PLAN_TEAM_CN_API_KEY` |\n| Qwen Token Plan Individual | `QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY` |\n| Qwen Token Plan Individual (China) | `QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY` |\n"],
+  ],
 };
 
 // Files of a Pi package that are not compiled output and that the vendored runtime does not carry, but that the installed Pi package
@@ -273,6 +366,10 @@ export const packageFileBackports = {
   // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
   "pi-coding-agent/schemas/models.schema.json": [messageThreadsDefault],
 };
+
+// Pi's TypeScript sources that tests read from the source mirror and that a backport of their compiled output changes, by path in the Pi
+// repository, with the same change as Pi's commit makes to the source.
+export const mirrorSourceBackports = Object.fromEntries(qwenTokenPlans.map((plan) => [`packages/ai/src/providers/${plan.id}.ts`, qwenModulePatches(plan, "\t", false)]));
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
 
@@ -331,27 +428,35 @@ export function verifyPackageBackports(packages) {
   if (problems.length > 0) throw new Error(problems.join("\n"));
 }
 
-// mirrorKey is the backport key of a file of the Pi repository the source mirror holds (packages/coding-agent/docs/x.md), or undefined
-// for a file no backport table covers: the mirror's TypeScript sources stay Pi's, whose delta from the pin the sync ledger accounts for.
+// mirrorKey is the backport key of a file of the Pi repository the source mirror holds with the text of the installed package
+// (packages/coding-agent/docs/x.md, packages/ai/src/providers/data/x.json), or undefined for a file no backport table covers.
 const mirrorKey = (path) => {
   const match = /^packages\/coding-agent\/((?:docs|schemas)\/.+)$/.exec(path);
-  return match && `pi-coding-agent/${match[1]}`;
+  if (match) return `pi-coding-agent/${match[1]}`;
+  const data = /^packages\/ai\/src\/(providers\/data\/.+\.json)$/.exec(path);
+  return data ? `pi-ai/${data[1]}` : undefined;
 };
+const mirrorPathOf = (key) => key.replace(/^pi-coding-agent\//, "packages/coding-agent/").replace(/^pi-ai\//, "packages/ai/src/");
+
+// mirrorBackportPaths are the files of the source mirror a backport covers: those mirrorKey names, and the TypeScript sources of
+// mirrorSourceBackports. Every other mirror file is the pinned release's, whose delta from the pin the sync ledger accounts for.
+export const mirrorBackportPaths = () => [...packageBackportKeys().map(mirrorPathOf).filter((path) => mirrorKey(path) !== undefined && patchesOf(mirrorKey(path)).length > 0), ...Object.keys(mirrorSourceBackports)];
 
 // readMirrorFile returns the text of `path` (relative to the Pi repository) in the source mirror `mirror` with the backports applied:
 // the file of the pinned release plus the fixes the release line carries. The mirror itself stays the pinned release.
 export function readMirrorFile(mirror, path) {
-  const source = readFileSync(join(mirror, path), "utf8");
+  let source = readFileSync(join(mirror, path), "utf8");
+  for (const [before, after] of mirrorSourceBackports[path] ?? []) {
+    if (source.split(before).length !== 2) throw new Error(`Pi source changed in ${path}, a post-v1.5.2 backport no longer applies: ${before}`);
+    source = source.replace(before, () => after);
+  }
   const key = mirrorKey(path);
   return key === undefined ? source : patchBackports(key, source);
 }
 
 // verifyMirrorBackports throws when a mirror file a backport covers is not the pinned release's (the backport no longer applies once).
 export function verifyMirrorBackports(mirror) {
-  for (const key of packageBackportKeys()) {
-    const path = key.replace(/^pi-coding-agent\//, "packages/coding-agent/");
-    if (mirrorKey(path) === key) readMirrorFile(mirror, path);
-  }
+  for (const path of mirrorBackportPaths()) readMirrorFile(mirror, path);
 }
 
 const packagesOf = (args) => Object.fromEntries(args.map((arg) => arg.split(/=(.*)/s).slice(0, 2)));
@@ -362,5 +467,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   else if (mode === "--verify-packages") verifyPackageBackports(packagesOf(args));
   else if (mode === "--read-mirror") process.stdout.write(readMirrorFile(args[0], args[1]));
   else if (mode === "--verify-mirror") verifyMirrorBackports(args[0]);
+  else if (mode === "--mirror-paths") process.stdout.write(mirrorBackportPaths().map((path) => `${path}\n`).join(""));
   else applyBackportPatches(mode);
 }

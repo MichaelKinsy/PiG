@@ -244,10 +244,10 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 		{ID: "glm-5", Reasoning: `"supported":true,"toggle":true`},
 		{ID: "glm-5.1", Reasoning: `"supported":true,"toggle":true`},
 		{ID: "glm-5.2", Reasoning: `"supported":true,"toggle":true`},
-		{ID: "qwen3.8-max-preview"},
+		{ID: "qwen3.8-max-preview", Status: "deprecated"},
 		{ID: "intl-only"},
 	}
-	cn := []provBSpec{{ID: "cn-only"}, {ID: "qwen3.8-max-preview"}}
+	cn := []provBSpec{{ID: "cn-only"}, {ID: "qwen3.8-max-preview", Status: "deprecated"}}
 	sources := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan": intl, "alibaba-token-plan-cn": cn})}
 	withLevels := `{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true}`
 	without := `{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":false}`
@@ -259,7 +259,7 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 	}
 	provBIDsEqual(t, provBIDs(catalog), "qwen3.7-plus", "qwen3.7-max", "glm-5", "glm-5.1", "glm-5.2", "intl-only")
 	provBCheck(t, provBModelsOf(catalog), []provBWant{
-		{"qwen3.7-plus", "baseUrl", `"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"`},
+		{"qwen3.7-plus", "baseUrl", `"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"`},
 		{"qwen3.7-plus", "compat", withLevels},
 		{"qwen3.7-plus", "thinkingLevelMap", `{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":null}`},
 		{"qwen3.7-max", "compat", without},
@@ -278,24 +278,24 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 	}
 	provBIDsEqual(t, provBIDs(cnCatalog), "cn-only")
 	provBCheck(t, provBModelsOf(cnCatalog), []provBWant{
-		{"cn-only", "baseUrl", `"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"`},
+		{"cn-only", "baseUrl", `"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"`},
 		{"cn-only", "compat", without},
 	})
 
 	// The individual plan keeps its allowlist of the international models, and strict generation requires exactly that list.
-	all := []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max"}
+	all := []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4.1-flash", "deepseek-v4.1-flash-1017", "glm-5.2", "glm-5.3", "qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max"}
 	var allowed []provBSpec
 	for _, id := range all {
 		allowed = append(allowed, provBSpec{ID: id})
 	}
-	individual := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan": append(append([]provBSpec{}, allowed...), provBSpec{ID: "qwen3.8-max-preview"}, provBSpec{ID: "intl-only"})})}
+	individual := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan": append(append([]provBSpec{}, allowed...), provBSpec{ID: "qwen3.8-max-preview", Status: "deprecated"}, provBSpec{ID: "intl-only"})})}
 	individualCatalog, err := provBBuild(t, "qwen-token-plan-individual", individual, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	provBIDsEqual(t, provBIDs(individualCatalog), all...)
 	provBCheck(t, provBModelsOf(individualCatalog), []provBWant{
-		{"qwen3.7-max", "baseUrl", `"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"`},
+		{"qwen3.7-max", "baseUrl", `"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"`},
 		{"qwen3.7-max", "compat", without},
 	})
 	missing := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan": allowed[1:]})}
@@ -307,14 +307,14 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 	}
 
 	// qwen-token-plan-individual-cn serves the same allowlist from the China catalog (Pi 3e4f8726).
-	individualCn := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan-cn": append(append([]provBSpec{}, allowed...), provBSpec{ID: "qwen3.8-max-preview"}, provBSpec{ID: "cn-only"})})}
+	individualCn := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan-cn": append(append([]provBSpec{}, allowed...), provBSpec{ID: "qwen3.8-max-preview", Status: "deprecated"}, provBSpec{ID: "cn-only"})})}
 	individualCnCatalog, err := provBBuild(t, "qwen-token-plan-individual-cn", individualCn, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	provBIDsEqual(t, provBIDs(individualCnCatalog), all...)
 	provBCheck(t, provBModelsOf(individualCnCatalog), []provBWant{
-		{"qwen3.7-max", "baseUrl", `"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"`},
+		{"qwen3.7-max", "baseUrl", `"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"`},
 		{"qwen3.7-max", "compat", without},
 	})
 	missingCn := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"alibaba-token-plan-cn": allowed[1:]})}

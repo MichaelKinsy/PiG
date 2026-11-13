@@ -40,10 +40,10 @@ PiG ships the same built-in chat providers and classifier models as Pi 1.5.2. `t
 | `opencode` | OpenCode Zen | `anthropic-messages`, `google-generative-ai`, `openai-completions`, `openai-responses` | `OPENCODE_API_KEY` |
 | `opencode-go` | OpenCode Go | `anthropic-messages`, `openai-completions`, `openai-responses` | `OPENCODE_API_KEY` |
 | `openrouter` | OpenRouter | `anthropic-messages`, `openai-completions` | `OPENROUTER_API_KEY` or OAuth |
-| `qwen-token-plan` | Qwen Token Plan | `openai-completions` | `QWEN_TOKEN_PLAN_API_KEY` |
-| `qwen-token-plan-cn` | Qwen Token Plan (China) | `openai-completions` | `QWEN_TOKEN_PLAN_CN_API_KEY` |
-| `qwen-token-plan-individual` | Qwen Token Plan (Individual) | `openai-completions` | `QWEN_TOKEN_PLAN_API_KEY` |
-| `qwen-token-plan-individual-cn` | Qwen Token Plan (Individual, China) | `openai-completions` | `QWEN_TOKEN_PLAN_CN_API_KEY` |
+| `qwen-token-plan` | Qwen Token Plan (Team) | `openai-completions` | `QWEN_TOKEN_PLAN_TEAM_API_KEY` |
+| `qwen-token-plan-cn` | Qwen Token Plan (Team, China) | `openai-completions` | `QWEN_TOKEN_PLAN_TEAM_CN_API_KEY` |
+| `qwen-token-plan-individual` | Qwen Token Plan (Individual) | `openai-completions` | `QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY` |
+| `qwen-token-plan-individual-cn` | Qwen Token Plan (Individual, China) | `openai-completions` | `QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY` |
 | `radius` | Radius | `pi-messages` | `RADIUS_API_KEY` or OAuth. See [Radius](#radius). |
 | `together` | Together AI | `openai-completions` | `TOGETHER_API_KEY` |
 | `vercel-ai-gateway` | Vercel AI Gateway | `anthropic-messages` | `AI_GATEWAY_API_KEY` |
