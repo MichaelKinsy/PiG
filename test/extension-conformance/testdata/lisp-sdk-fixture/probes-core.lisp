@@ -623,7 +623,23 @@
             (lambda (ctx data) (declare (ignore ctx))
               (unless (equal (map 'list (lambda (e) (pig:jget e "customType")) (pig:jget data "entries")) '("kept" "before-error")) (error "entries"))
               (unless (= 2 (length (pig:jref data "context" "contextEntries"))) (error "context entries"))
-              (pig:obj "entries" (vector (pig:obj "type" "custom" "customType" "conformance-boundary")) "continue" t)))
+              ;; One draft with a null replacement, one without the member, and a compaction that keeps nothing.
+              (pig:obj "entries" (vector (pig:obj "type" "custom" "customType" "conformance-boundary")
+                                         (pig:obj "type" "context_edit" "targetId" "conformance-failed-attempt" "replacement" :null)
+                                         (pig:obj "type" "context_edit" "targetId" "conformance-omitted-member")
+                                         (pig:obj "type" "compaction" "summary" "conformance-summary" "firstKeptEntryId" :null
+                                                  "details" (pig:obj "format" "conformance-checkpoint")))
+                       "continue" t)))
+    (pig:on ext "agent_before_settle"
+            (lambda (ctx data)
+              (let ((entries (pig:jget data "entries")))
+                (unless (= 4 (length entries)) (error "boundary result reached the next handler as ~D entries" (length entries)))
+                (flet ((member-token (index key)
+                         (multiple-value-bind (value present) (gethash key (elt entries index))
+                           (cond ((not present) "absent") ((or (null value) (eq value :null)) "null") (t "value")))))
+                  (core-info ctx (format nil "agent_before_settle_drafts:~D:~A:~A:~A:~A" (length entries) (member-token 1 "replacement") (member-token 2 "replacement")
+                                         (member-token 3 "firstKeptEntryId") (pig:jref (elt entries 3) "details" "format"))))
+                nil)))
     (pig:on ext "session_start"
             (lambda (ctx data)
               (core-info ctx (concatenate 'string "session_start:" (core-key-str data "reason" "")))

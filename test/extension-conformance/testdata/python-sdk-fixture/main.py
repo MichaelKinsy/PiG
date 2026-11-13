@@ -3716,11 +3716,47 @@ def new_extension() -> pig_sdk.Extension:
     def boundary_result(_ctx: pig_sdk.Context, data: dict[str, Any]) -> dict[str, Any]:
         assert [entry["customType"] for entry in data["entries"]] == ["kept", "before-error"]
         assert len(data["context"]["contextEntries"]) == 2
-        return {"entries": [{"type": "custom", "customType": "conformance-boundary"}], "continue": True}
+        # One draft with a null replacement, one without the member, and a compaction that keeps nothing.
+        return {
+            "entries": [
+                {"type": "custom", "customType": "conformance-boundary"},
+                {"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": None},
+                {"type": "context_edit", "targetId": "conformance-omitted-member"},
+                {
+                    "type": "compaction",
+                    "summary": "conformance-summary",
+                    "firstKeptEntryId": None,
+                    "details": {"format": "conformance-checkpoint"},
+                },
+            ],
+            "continue": True,
+        }
+
+    def boundary_drafts(ctx: pig_sdk.Context, data: dict[str, Any]) -> None:
+        entries = data["entries"]
+        assert len(entries) == 4, "boundary result reached the next handler as %d entries" % len(entries)
+
+        def member(index: int, key: str) -> str:
+            if key not in entries[index]:
+                return "absent"
+            return "null" if entries[index][key] is None else "value"
+
+        ctx.notify(
+            "agent_before_settle_drafts:%d:%s:%s:%s:%s"
+            % (
+                len(entries),
+                member(1, "replacement"),
+                member(2, "replacement"),
+                member(3, "firstKeptEntryId"),
+                (entries[3].get("details") or {}).get("format"),
+            ),
+            "info",
+        )
 
     ext.on_event("agent_before_settle", agent_before_settle)
     ext.on_event("agent_before_settle", boundary_error)
     ext.on_event("agent_before_settle", boundary_result)
+    ext.on_event("agent_before_settle", boundary_drafts)
     def session_start(ctx, data):
         ctx.notify("session_start:" + str(data.get("reason", "")), "info")
         if data.get("previousSessionFile"):

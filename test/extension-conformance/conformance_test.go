@@ -73,6 +73,7 @@ type recording struct {
 	ActionCalls             []string            `json:"action_calls"`
 	SessionEventNotify      []string            `json:"session_event_notify"`
 	AgentBeforeSettle       string              `json:"agent_before_settle"`
+	AgentBeforeSettleDrafts string              `json:"agent_before_settle_drafts"`
 	ProjectTrustDecision    string              `json:"project_trust_decision"`
 	ProjectTrustErrors      []string            `json:"project_trust_errors"`
 	RegisteredToolNames     []string            `json:"registered_tool_names"`
@@ -255,6 +256,10 @@ func TestConformance_TransportsMatch(t *testing.T) {
 		}
 		if !strings.HasPrefix(got.AgentBeforeSettle, "agent_before_settle:completed:") {
 			t.Errorf("%s: agent_before_settle = %q", tc.name, got.AgentBeforeSettle)
+		}
+		// A handler's null and omitted draft members reach the host, and the next handler, as written (wantBoundaryDrafts).
+		if got.AgentBeforeSettleDrafts != wantBoundaryDrafts {
+			t.Errorf("%s: agent_before_settle drafts = %q, want %q", tc.name, got.AgentBeforeSettleDrafts, wantBoundaryDrafts)
 		}
 		if got.ProjectTrustDecision != "yes" {
 			t.Errorf("%s: project_trust decision = %q, want yes", tc.name, got.ProjectTrustDecision)
@@ -861,11 +866,13 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if len(boundaryErrors) != 1 {
 		t.Fatalf("boundary must surface only the deliberate handler failure: %+v", boundaryErrors)
 	}
-	if !boundary.Valid || !boundary.Continue || len(boundary.Entries) != 1 || boundary.Entries[0].CustomType != "conformance-boundary" {
+	if !boundary.Valid || !boundary.Continue || len(boundary.Entries) != 4 || boundary.Entries[0].CustomType != "conformance-boundary" {
 		t.Fatalf("boundary mutation/error/result chain: %+v", boundary)
 	}
-	waitFor(t, func() bool { return len(*h.notify) > 0 })
+	waitFor(t, func() bool { return len(*h.notify) > 1 })
 	agentBeforeSettle := fmt.Sprintf("%s:result=%d:%t", (*h.notify)[0], len(boundary.Entries), boundary.Continue)
+	// The drafts as the host decoded them, after the handler's own report of the drafts it was handed: a null member and an absent one stay apart both ways.
+	agentBeforeSettleDrafts := boundaryDraftsLine(t, (*h.notify)[1], boundary.Entries)
 
 	projectTrust, projectTrustErrors, err := inproc.EmitProjectTrust(h.runner, ctx, extension.ProjectTrustEvent{
 		Type: "project_trust",
@@ -1063,6 +1070,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 		ActionCalls:             actionCalls,
 		SessionEventNotify:      sessionEventNotify,
 		AgentBeforeSettle:       agentBeforeSettle,
+		AgentBeforeSettleDrafts: agentBeforeSettleDrafts,
 		ProjectTrustDecision:    projectTrustDecision,
 		ProjectTrustErrors:      projectTrustErrorMessages,
 		RegisteredToolNames:     registeredToolNames,
@@ -2584,9 +2592,37 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					if len(event.Entries) != 2 || len(event.Context.ContextEntries) != 2 || event.Entries[0].CustomType != "kept" || event.Entries[1].CustomType != "before-error" {
 						return nil, errors.New("lost boundary mutation or preview")
 					}
-					entries := []extension.SessionBoundaryDraft{{Type: "custom", CustomType: "conformance-boundary"}}
+					// One draft with a null replacement, one without the member, and a compaction that keeps nothing.
+					entries := []extension.SessionBoundaryDraft{
+						{Type: "custom", CustomType: "conformance-boundary"},
+						{Type: "context_edit", TargetID: "conformance-failed-attempt"},
+						{Type: "context_edit", TargetID: "conformance-omitted-member", ReplacementUndefined: true},
+						{Type: "compaction", Summary: "conformance-summary", Details: map[string]any{"format": "conformance-checkpoint"}},
+					}
 					continued := true
 					return extension.BoundaryResult{Entries: &entries, Continue: &continued}, nil
+				},
+				func(args ...any) (any, error) {
+					event := args[0].(*extension.AgentBeforeSettleEvent)
+					if len(event.Entries) != 4 {
+						return nil, fmt.Errorf("boundary result reached the next handler as %d entries", len(event.Entries))
+					}
+					replacement := func(draft extension.SessionBoundaryDraft) string {
+						switch {
+						case draft.ReplacementUndefined:
+							return "absent"
+						case len(draft.Replacement) == 0 || string(draft.Replacement) == "null":
+							return "null"
+						}
+						return "value"
+					}
+					firstKept := "null"
+					if event.Entries[3].FirstKeptEntryID != nil {
+						firstKept = "value"
+					}
+					details, _ := event.Entries[3].Details.(map[string]any)
+					ui.Notify(fmt.Sprintf("agent_before_settle_drafts:%d:%s:%s:%s:%v", len(event.Entries), replacement(event.Entries[1]), replacement(event.Entries[2]), firstKept, details["format"]), "info")
+					return nil, nil
 				},
 			},
 			"session_start": {

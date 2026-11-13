@@ -6763,10 +6763,38 @@ fn main() {
             data["context"]["contextEntries"].as_array().unwrap().len(),
             2
         );
+        // One draft with a null replacement, one without the member, and a compaction that keeps nothing.
         Some(json!({
-            "entries": [{"type": "custom", "customType": "conformance-boundary"}],
+            "entries": [
+                {"type": "custom", "customType": "conformance-boundary"},
+                {"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": null},
+                {"type": "context_edit", "targetId": "conformance-omitted-member"},
+                {"type": "compaction", "summary": "conformance-summary", "firstKeptEntryId": null, "details": {"format": "conformance-checkpoint"}}
+            ],
             "continue": true
         }))
+    });
+    ext.on_event("agent_before_settle", |ctx, data| {
+        let entries = data["entries"].as_array().cloned().unwrap_or_default();
+        assert_eq!(entries.len(), 4, "boundary result reached the next handler");
+        let member = |index: usize, key: &str| match entries[index].get(key) {
+            None => "absent",
+            Some(Value::Null) => "null",
+            Some(_) => "value",
+        };
+        let format = entries[3]["details"]["format"].as_str().unwrap_or("");
+        ctx.notify(
+            &format!(
+                "agent_before_settle_drafts:{}:{}:{}:{}:{}",
+                entries.len(),
+                member(1, "replacement"),
+                member(2, "replacement"),
+                member(3, "firstKeptEntryId"),
+                format
+            ),
+            "info",
+        );
+        None
     });
     ext.on_event("session_start", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");
