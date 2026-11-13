@@ -183898,7 +183898,7 @@
       "evidence": [
         "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads",
         "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost",
-        "test:test/extension-conformance/mcp_register_run_test.go#TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall"
+        "test:test/extension-conformance/mcp_change_proxy_ack_test.go#TestConformance_McpServersChangeFirstHandlerInAnotherProcessIsSentAndItsFailureReported"
       ]
     },
     {
@@ -183920,7 +183920,7 @@
       "evidence": [
         "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads",
         "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost",
-        "test:test/extension-conformance/mcp_register_run_test.go#TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall"
+        "test:test/extension-conformance/mcp_change_proxy_ack_test.go#TestConformance_McpServersChangeFirstHandlerInAnotherProcessIsSentAndItsFailureReported"
       ]
     },
     {
