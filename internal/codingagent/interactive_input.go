@@ -396,6 +396,7 @@ func (m *InteractiveMode) startTerminalInput(ctx context.Context, source io.Read
 		return
 	}
 	owner.done = make(chan struct{})
+	//portlint:allow asyncorder Node hands each stdin chunk to Pi's listener in arrival order (terminal.ts:281-283, :304) and ProcessTerminal.stop removes the listener; this router of a source that is not the terminal feeds the loop through the unbuffered inputReadCh and is joined by stopTerminalInput (<-owner.done); TestInteractiveShutdownJoinsInputBeforeTerminalTeardown holds the join, TestCtrlCWaitsForTerminalInputVerdictsInOrder the order
 	go func() {
 		defer close(owner.done)
 		owner.err = m.pumpTerminalInput(ctx, source, m.inputReadCh, m.inputErrCh)
@@ -623,6 +624,7 @@ func (*InteractiveMode) rawInputChannels(ctx context.Context, source io.Reader) 
 			close(closeDone)
 		})
 	}
+	//portlint:allow asyncorder a read worker Node has no counterpart of: its stdin chunks are events in arrival order (terminal.ts:304); each read goes to the router over the unbuffered data channel, and the returned stop function, which pumpTerminalInput defers, joins the worker (cancel, <-done); TestInteractiveShutdownReturnsReaderCloseErrorAfterJoining holds the join, TestPendingTerminalInputBackpressuresReader the one read ahead
 	go func() {
 		defer close(done)
 		disarmClose := func() {
