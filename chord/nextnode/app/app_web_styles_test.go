@@ -126,31 +126,6 @@ func (s *styleBrowser) call(method string, params any) {
 // ends too.
 func (s *styleBrowser) hold(plugin string, how holding) {
 	s.t.Helper()
-	s.holdRequests("*/_chord/web/plugin/*.css", plugin, how)
-}
-
-// holdBase holds back the page's asks for the server's base hash, which it makes before each reconnect, until release.
-func (s *styleBrowser) holdBase() {
-	s.t.Helper()
-	s.holdRequests("*/_chord/web/base", "/_chord/web/base", holding{kind: "stall"})
-}
-
-// waitHeld returns once a request is held back.
-func (s *styleBrowser) waitHeld() {
-	s.t.Helper()
-	err := browsertest.Poll(s.t.Context(), 30*time.Second, "a request held back", func(context.Context) (bool, error) {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		return len(s.stalled) > 0, nil
-	})
-	if err != nil {
-		s.t.Fatal(err)
-	}
-}
-
-// holdRequests holds back the page's requests the DevTools URL pattern matches and whose URL contains match, as how says.
-func (s *styleBrowser) holdRequests(pattern, match string, how holding) {
-	s.t.Helper()
 	s.browser.On("Fetch.requestPaused", func(params json.RawMessage) {
 		var paused struct {
 			RequestID string `json:"requestId"`
@@ -165,7 +140,7 @@ func (s *styleBrowser) holdRequests(pattern, match string, how holding) {
 		go func() {
 			pass := func() { s.call("Fetch.continueRequest", map[string]any{"requestId": paused.RequestID}) }
 			switch {
-			case !strings.Contains(paused.Request.URL, match):
+			case !strings.Contains(paused.Request.URL, plugin):
 				pass()
 			case how.kind == "fail":
 				s.call("Fetch.failRequest", map[string]any{"requestId": paused.RequestID, "errorReason": "Failed"})
@@ -183,11 +158,11 @@ func (s *styleBrowser) holdRequests(pattern, match string, how holding) {
 			}
 		}()
 	})
-	s.call("Fetch.enable", map[string]any{"patterns": []map[string]string{{"urlPattern": pattern}}})
+	s.call("Fetch.enable", map[string]any{"patterns": []map[string]string{{"urlPattern": "*/_chord/web/plugin/*.css"}}})
 	s.t.Cleanup(s.release)
 }
 
-// release lets what was held back through again, the held requests too.
+// release lets plugin stylesheets through again, the held ones too.
 func (s *styleBrowser) release() {
 	s.mu.Lock()
 	stalled := s.stalled
@@ -198,6 +173,38 @@ func (s *styleBrowser) release() {
 	}
 	s.browser.On("Fetch.requestPaused", nil)
 	s.call("Fetch.disable", nil)
+}
+
+// pause stops the page's scripts through DevTools at their next statement (the frame recorder's) until the returned resume (and the
+// test's end): a page whose scripts do not run makes no attempt to reconnect, and what its link did meanwhile reaches it at the
+// resume.
+func (s *styleBrowser) pause() (resume func()) {
+	s.t.Helper()
+	paused := make(chan struct{})
+	var stopped sync.Once
+	s.browser.On("Debugger.paused", func(json.RawMessage) { stopped.Do(func() { close(paused) }) })
+	ctx, cancel := context.WithTimeout(s.t.Context(), 30*time.Second)
+	defer cancel()
+	for _, method := range []string{"Debugger.enable", "Debugger.pause"} {
+		if _, err := s.browser.Call(ctx, method, nil); err != nil {
+			s.t.Fatalf("%s: %v", method, err)
+		}
+	}
+	select {
+	case <-paused:
+	case <-ctx.Done():
+		s.t.Fatal("the page's scripts did not pause")
+	}
+	var resumed sync.Once
+	resume = func() {
+		resumed.Do(func() {
+			s.call("Debugger.resume", nil)
+			s.call("Debugger.disable", nil)
+			s.browser.On("Debugger.paused", nil)
+		})
+	}
+	s.t.Cleanup(resume)
+	return resume
 }
 
 // started is a web app with plugins at port (a free one when 0), the browser signed in and its parts shown.
@@ -450,19 +457,20 @@ func TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsS
 	if got := s.browser.String(color("part-k")); got != "rgb(1, 1, 1)" {
 		t.Fatalf("part-k colour = %s, want the old code's", got)
 	}
-	// The script may load now; the server restarts with the same set, and the page reconnects. A page connects at once, as Pi's
-	// does: one that connected between the restarted server's listen and its bases built would hold the unbuilt set, whose base
-	// is none the page runs, and reload (`outdated`): `partReady`, the recorder and the failed script's retry would be gone. Pi's
-	// test leaves that to the timing of its server's build; here the page's ask for the server's base (it makes one before each
-	// reconnect) is held until the restarted server has built its bases, so the reconnect finds the set it is about.
+	// The script may load now; the server restarts with the same set, and the page reconnects. A restarted server refuses links
+	// until its plugins are loaded and builds its bases right after, as Pi's does; a link that connects before they are built is
+	// shown the scripts object's empty set (TestAppShowsALinkTheEmptySetWhileTheBasesAreBuildingThenTheBuiltOne), whose base is
+	// none the page runs, so a page whose reconnect came then would reload (`outdated`): `partReady`, the recorder and the failed
+	// script's retry would be gone. Pi's test leaves that to the timing of its server's build. A hold of the page's ask for the
+	// server's base ordered it while the page asked before each attempt; since Pi 21e4cb80d it asks beside the attempt, so here
+	// the page's scripts are paused while the server restarts: its reconnect comes once the restarted server has built its bases.
 	s.browser.Run("globalThis.partReady = true")
-	s.holdBase()
+	resume := s.pause()
 	if err := first.app.Close(background); err != nil {
 		t.Fatal(err)
 	}
-	s.waitHeld()
 	webBrowserApp(t, versionedEntry(t, "1", ""), port, nil, func(o *AppOptions) { o.DataDir, o.Root = first.dataDir, first.root })
-	s.release()
+	resume()
 	frames := s.framesUntil("v2 rgb(2, 2, 2)")
 	for _, frame := range frames {
 		if frame != "none" && frame != "v1 rgb(1, 1, 1)" && frame != "v2 rgb(2, 2, 2)" {
