@@ -1568,7 +1568,8 @@ func (s *ModelEventStream) Events(ctx context.Context) <-chan map[string]any {
 }
 
 // drain hands the queued events to emit in source order until the stream is terminal and empty or ctx is done. An event is consumed once emit returns true; when emit returns
-// false drain stops and the event stays queued.
+// false drain stops and the event stays queued. ctx is read again after an event is taken: an author that saw the cancel pushed its later events after ctx was done, so none of
+// them is handed to emit, also when the cancel arrived between the read at the top of the loop and the take.
 func (s *ModelEventStream) drain(ctx context.Context, emit func(modelStreamItem) bool) {
 	for {
 		select {
@@ -1581,7 +1582,7 @@ func (s *ModelEventStream) drain(ctx context.Context, emit func(modelStreamItem)
 		if len(s.queue) > 0 {
 			item := s.queue[0]
 			s.mu.Unlock()
-			if !emit(item) {
+			if ctx.Err() != nil || !emit(item) {
 				s.delivery.Unlock()
 				return
 			}
