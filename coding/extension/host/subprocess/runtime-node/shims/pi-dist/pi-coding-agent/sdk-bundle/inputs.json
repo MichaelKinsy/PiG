@@ -391,7 +391,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/read.js",
-      "sha256": "ffa747adf21ed25474c63b52b9ed5369ab68b3b43cc8699f0ff097aa5198246f"
+      "sha256": "02c4778b92d461e883e184d57746968d9be44690c35c1c3990a445289e29a25c"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/render-utils.js",
@@ -423,7 +423,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/renderers/read.js",
-      "sha256": "8b71a6bd3ff9af222a19872a7bf9c705b4e331a7a0e26249301e4da64baa1a3f"
+      "sha256": "dbbc9253fc2935008250a42a9c79fcc6b721b81ccb9e82d32c3a2a4196c19024"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/renderers/write.js",

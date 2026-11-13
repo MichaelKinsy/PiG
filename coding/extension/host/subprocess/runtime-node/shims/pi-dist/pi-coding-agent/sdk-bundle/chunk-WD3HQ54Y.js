@@ -10,7 +10,7 @@ import {
   createAllToolDefinitions,
   createLocalBashOperations,
   processImage
-} from "./chunk-QZRBRK3S.js";
+} from "./chunk-DUG27ILE.js";
 import {
   getPiUserAgent
 } from "./chunk-PNTN457B.js";

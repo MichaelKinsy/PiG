@@ -124,7 +124,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-P7ETM5TA.js";
+} from "./chunk-WD3HQ54Y.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -163,7 +163,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-QZRBRK3S.js";
+} from "./chunk-DUG27ILE.js";
 import {
   fetchWithRetry,
   getPiUserAgent
