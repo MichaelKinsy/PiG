@@ -63,7 +63,7 @@ func blockedInManualPromptJoin() bool {
 		}
 		buf = make([]byte, 2*len(buf))
 	}
-	for _, goroutine := range strings.Split(string(buf), "\n\n") {
+	for goroutine := range strings.SplitSeq(string(buf), "\n\n") {
 		header, _, _ := strings.Cut(goroutine, "\n")
 		if strings.Contains(header, "[chan receive") && strings.Contains(goroutine, "joinProbeWaiter(") && strings.Contains(goroutine, "WaitForCallbackOrManualInput") {
 			return true

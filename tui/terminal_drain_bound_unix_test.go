@@ -20,9 +20,7 @@ func TestProcessTerminalDrainInputEndsAtTheMaximumWhileInputKeepsArriving(t *tes
 	chunk := make([]byte, 4096)
 	stop := make(chan struct{})
 	var writer sync.WaitGroup
-	writer.Add(1)
-	go func() {
-		defer writer.Done()
+	writer.Go(func() {
 		for {
 			select {
 			case <-stop:
@@ -33,7 +31,7 @@ func TestProcessTerminalDrainInputEndsAtTheMaximumWhileInputKeepsArriving(t *tes
 				return
 			}
 		}
-	}()
+	})
 	defer func() { close(stop); _ = w.Close(); writer.Wait() }()
 
 	term := NewProcessTerminalWithOutput(r, nil, ioDiscard{})
