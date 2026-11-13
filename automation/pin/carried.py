@@ -12,6 +12,9 @@ Two kinds are carried, and `make pin-bump` decides each one against the target P
   deleted (retire_carried_oracle lists what goes and what stays); otherwise it stays.
 
 Every decision, with its evidence, is returned for the bump's state file and printed in its summary.
+
+Between bumps the sync ledgers of the followed Pi commits must account for the oracle (`oracle_ledger_problems`): a ported change of a file
+the oracle runs has a block, a changed manifest or lock says whether its dependency is carried, or the row says why not.
 """
 from __future__ import annotations
 
@@ -78,6 +81,70 @@ def retire_backport_blocks(text: str, carried: list[str]) -> str:
         if not n:
             raise PinError(f"automation/gen/pi-post-release-backports.mjs has no block for the entry {ident}")
     return text
+
+
+# -- the sync ledgers' account of the oracle ----------------------------------------------------------------------------
+
+LEDGERS = "test/parity/upstream-sync"
+ORACLE_SOURCES = {"ai": "pi-ai", "coding-agent": "pi-coding-agent", "tui": "pi-tui"}  # the source directory of each package a block can patch
+ORACLE_LOCKS = ("package-lock.json", "packages/coding-agent/install-lock/package-lock.json")
+ORACLE_MANIFEST = re.compile(r"packages/[a-z-]+/package\.json")
+
+
+def ledger_block_key(path: str) -> str | None:
+    """The backport key of the installed file a path of the Pi repository becomes (packages/ai/src/api/x.ts is pi-ai/api/x.js; the coding
+    agent's docs and schemas keep their path), or None for a path no block can carry (tests, the packages the script does not patch)."""
+    found = re.fullmatch(r"packages/([a-z-]+)/(.+)", path)
+    if not found or found[1] not in ORACLE_SOURCES:
+        return None
+    package, rest = ORACLE_SOURCES[found[1]], found[2]
+    if found[1] == "coding-agent" and rest.split("/")[0] in ("docs", "schemas"):
+        return f"{package}/{rest}"
+    if not rest.startswith("src/") or rest.endswith((".d.ts", ".test.ts")):
+        return None
+    return f"{package}/{rest[4:-3]}.js" if rest.endswith(".ts") else f"{package}/{rest[4:]}"
+
+
+def followed_ledgers(pin: Pin, root: Path = ROOT) -> list[Path]:
+    """The sync ledgers of the Pi commits the port follows past the pin: v<pin version>+<commit>.toml."""
+    return sorted((root / LEDGERS).glob(f"v{pin.version}+*.toml"))
+
+
+def oracle_ledger_problems(pin: Pin, root: Path = ROOT) -> list[str]:
+    """The rows of the followed commits' ledgers that change what the parity oracle installs or runs and do not account for it.
+
+    The port follows Pi commits past the pin, and the oracle answers as the pin unless the backports script carries the commit, so a
+    ported change the oracle lacks is a parity red that is the pin's age, found only by a full parity pass. Each such row must say what
+    the oracle does:
+    * a `ported` row of a file a block can patch (the compiled output of pi-ai, pi-coding-agent and pi-tui, the coding agent's docs and
+      schemas) has a block for that file in the script;
+    * a row of a package manifest or a lock (any disposition: `designed-out` there is about PiG's product, which installs no npm
+      dependency of Pi) carries `oracle = "carried: <backport id> ..."`, naming a commit the script has an entry for;
+    * or the row carries `oracle = "not carried: <reason>"`.
+    A ledger of a pin the script carries nothing for is read the same way: its rows then all say `not carried` or have nothing to carry."""
+    import tomllib
+
+    script = (root / "automation/gen/pi-post-release-backports.mjs").read_text(encoding="utf-8")
+    ids = oracle.backport_ids(script)
+    keys = set(re.findall(r'^(?:patch|packageFile|mirrorSource)\("\w+", "([^"]+)"', script, re.M))
+    problems = []
+    for ledger in followed_ledgers(pin, root):
+        for row in tomllib.loads(ledger.read_text(encoding="utf-8")).get("files", []):
+            path, said = row.get("path", ""), row.get("oracle")
+            where = f"{LEDGERS}/{ledger.name}: {path}"
+            if said is not None:
+                names = re.match(r"carried: (\w+)\b", said)
+                if names and names[1] not in ids:
+                    problems.append(f"{where}: oracle = {said!r} names the entry {names[1]}, which automation/gen/pi-post-release-backports.mjs does not carry")
+                elif not names and not re.match(r"not carried: \S", said):
+                    problems.append(f"{where}: oracle = {said!r} is neither 'carried: <backport id>' nor 'not carried: <reason>'")
+                continue
+            key = ledger_block_key(path)
+            if ORACLE_MANIFEST.fullmatch(path) or path in ORACLE_LOCKS:
+                problems.append(f'{where}: a followed Pi commit changes a package manifest or a lock, and the row does not say what the oracle installs: add oracle = "carried: <backport id>" (a dependency entry of automation/gen/pi-post-release-backports.mjs) or oracle = "not carried: <reason>"')
+            elif key is not None and row.get("disposition") == "ported" and key not in keys:
+                problems.append(f'{where}: ported, and the oracle\'s {key} has no backport block, so the parity oracle still answers as the pin: add the block, or oracle = "not carried: <reason>" to the row')
+    return problems
 
 
 # -- the carried oracle -------------------------------------------------------------------------------------------------

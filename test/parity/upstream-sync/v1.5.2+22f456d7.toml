@@ -56,6 +56,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "f72f799a4: `@google/genai` 2.21.0 to 2.32.0 (httpOptions.fetch). PiG's Google adapters speak the REST API directly and have no @google/genai dependency."
+oracle = "carried: f72f799a4: the oracle installs @google/genai 2.32.0 with the integrity Pi's lock records (a dependency entry of automation/gen/pi-post-release-backports.mjs). The disposition above is about PiG's product, which has no @google/genai; the oracle is Pi and needs it. The installed manifest keeps the range 2.21.0: published ranges follow the pin until the re-pin."
 
 [[files]]
 path = "scripts/generate-coding-agent-install-lock.mjs"
@@ -70,6 +71,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "f72f799a4: the regenerated install lock of the @google/genai update. PiG ships no npm install lock."
+oracle = "not carried: the oracle installs its frozen closure, not Pi's install lock. The install lock's one changed entry is the @google/genai entry of package-lock.json, which is carried (f72f799a4)."
 
 [[files]]
 path = "package-lock.json"
@@ -77,3 +79,4 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "f72f799a4: the workspace lock of the @google/genai update. PiG's Go module has no npm workspace lock."
+oracle = "carried: f72f799a4: the lock's one changed entry replaces the frozen closure's for the oracle's npm ci; the oracle installs @google/genai 2.32.0 with the integrity Pi's lock records (a dependency entry of automation/gen/pi-post-release-backports.mjs). The disposition above is about PiG's product, which has no @google/genai; the oracle is Pi and needs it."

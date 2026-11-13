@@ -684,6 +684,7 @@ class SharedStoreTests(unittest.TestCase):
         self.addCleanup(stack.close)
         stack.enter_context(mock.patch.object(pinlib, "committed", lambda: pin))
         stack.enter_context(mock.patch.object(oracle, "apply_backports", applied.append))
+        stack.enter_context(mock.patch.object(oracle, "carried_dependencies", lambda *_a: []))  # the fake closure installs no dependency to replace
         return applied
 
     def test_the_committed_pins_oracle_carries_the_backports_and_is_stamped_with_them(self):
@@ -1140,6 +1141,40 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(self.files(self.source), as_built, "the packages patched before the failure were not put back")
         self.assertNotIn("new", self.chunk.read_text())
 
+    def carries_a_dependency(self, source_version: str = "1.0.0") -> None:
+        """The backports script carries `sdk` 1.0.0 -> 2.0.0, and the bundler bundles the copy the source build resolves."""
+        dep = {"id": "c0ffee", "package": "pi-ai", "name": "sdk", "from": "1.0.0", "to": "2.0.0", "resolved": "https://registry.npmjs.org/sdk/-/sdk-2.0.0.tgz", "integrity": "sha512-x", "dependencies": {}}
+        listing = f'}} else if (mode === "--dependencies") process.stdout.write({json.dumps(json.dumps([dep]))});\nelse throw new Error'
+        (self.root / "backports.mjs").write_text("// BEGIN backport c0ffee\n// END backport c0ffee\n" + FAKE_BACKPORTS.replace("} else throw new Error", listing))
+        (self.source / oracle.BUNDLER).write_text(FAKE_BUNDLER.replace('.join("");', '.join("") + readFileSync(join(root, "node_modules", "sdk", "index.js"), "utf8");'))
+        for place, version, code in ((self.source / "node_modules" / "sdk", source_version, "sdk='one';"), (self.agent / "node_modules" / "sdk", "2.0.0", "sdk='two';")):
+            place.mkdir(parents=True)
+            (place / "package.json").write_text(json.dumps({"name": "sdk", "version": version}))
+            (place / "index.js").write_text(code)
+        oracle.run_bundler(self.source)
+        shutil.rmtree(self.agent / "dist" / "bundle")
+        shutil.copytree(self.source / "packages" / "coding-agent" / "dist" / "bundle", self.agent / "dist" / "bundle")
+
+    def test_a_carried_dependency_is_bundled_from_the_installed_copy_and_the_source_build_keeps_its_own(self):
+        self.carries_a_dependency()
+        as_built = self.files(self.source)
+        self.assertIn("sdk='one';", self.chunk.read_text())
+        oracle.apply_backports(self.modules)
+        digest = oracle.rebuild_bundle(self.source, self.modules)
+        self.assertEqual(self.chunk.read_text(), "exportconstai='new';exportconstcoding_agent='new';exportconsttui='new';sdk='two';")
+        self.assertEqual(digest, oracle.tree_digest(self.agent / "dist" / "bundle"))
+        self.assertEqual(self.files(self.source), as_built, "the source build must keep the dependency it was built with")
+        self.assertEqual(sorted(path.name for path in self.root.iterdir()), ["backports.mjs", "node_modules", "src"], "the rebuild left scratch beside the source build")
+
+    def test_a_source_build_that_does_not_resolve_the_version_a_carried_dependency_replaces_stops_the_build(self):
+        self.carries_a_dependency(source_version="1.5.0")
+        as_built = self.files(self.source)
+        oracle.apply_backports(self.modules)
+        with self.assertRaisesRegex(pinlib.PinError, r"does not resolve sdk to one copy of 1\.0\.0 .*found 1\.5\.0"):
+            oracle.rebuild_bundle(self.source, self.modules)
+        self.assertEqual(self.files(self.source), as_built)
+        self.assertIn("sdk='one';", self.chunk.read_text(), "the installed bundle was replaced although the build stopped")
+
     def test_a_pi_whose_bin_is_compiled_output_has_no_bundle_to_rebuild(self):
         (self.agent / "package.json").write_text(json.dumps({"name": oracle.AGENT, "version": "1.5.2", "bin": {"pi": "dist/cli.js"}}))
         (self.source / oracle.BUNDLER).unlink()
@@ -1459,6 +1494,82 @@ class MirrorLinkTests(unittest.TestCase):
                 self.assertFalse((self.mirror / "node_modules").exists())
                 (oracle.SDK_TS / "node_modules").unlink()
                 shutil.rmtree(self.root / "store")
+
+
+GENAI = {"id": "f00d", "package": "pi-ai", "name": "@google/genai", "from": "2.21.0", "to": "2.32.0",
+         "resolved": "https://registry.npmjs.org/@google/genai/-/genai-2.32.0.tgz", "integrity": "sha512-new", "dependencies": {"ws": "^8.18.0"}}
+
+
+class CarriedDependencyTests(unittest.TestCase):
+    """A Pi commit the release line carries can move a dependency a Pi package pins exactly: the oracle installs the frozen closure with
+    that one lock entry replaced by Pi's own at the carried commit."""
+
+    AI = oracle.LOCK_KEY + "/node_modules/@earendil-works/pi-ai"
+    SDK = oracle.LOCK_KEY + "/node_modules/@google/genai"
+
+    def lock(self, version: str = "2.21.0") -> dict:
+        return {"name": "pi-oracle", "version": "0.0.0", "lockfileVersion": 3, "packages": {
+            "": {"devDependencies": {oracle.AGENT: "1.5.2"}},
+            oracle.LOCK_KEY: {"version": "1.5.2", "dependencies": {"@earendil-works/pi-ai": "1.5.2"}},
+            self.AI: {"version": "1.5.2", "resolved": "pig-pack:@earendil-works/pi-ai", "integrity": "sha512-pack", "dependencies": {"@google/genai": version, "ws": "8.20.0"}},
+            self.SDK: {"version": version, "resolved": f"https://registry.npmjs.org/@google/genai/-/genai-{version}.tgz", "integrity": "sha512-old", "dependencies": {"ws": "^8.18.0"}, "hasInstallScript": True},
+            oracle.LOCK_KEY + "/node_modules/ws": {"version": "8.20.0", "resolved": "https://registry.npmjs.org/ws/-/ws-8.20.0.tgz", "integrity": "sha512-ws"},
+        }}
+
+    def test_the_closure_installs_the_carried_version_with_pis_integrity_and_the_frozen_lock_is_left_alone(self):
+        frozen = self.lock()
+        before = json.dumps(frozen, sort_keys=True)
+        got = oracle.carried_closure(frozen, [GENAI])
+        self.assertEqual(json.dumps(frozen, sort_keys=True), before, "the frozen closure is the single source for everything else and is never rewritten")
+        self.assertEqual({key for key in frozen["packages"] if frozen["packages"][key] != got["packages"][key]}, {self.AI, self.SDK})
+        self.assertEqual(got["packages"][self.SDK], {**frozen["packages"][self.SDK], "version": "2.32.0", "resolved": GENAI["resolved"], "integrity": "sha512-new"})
+        self.assertEqual(got["packages"][self.AI]["dependencies"], {"@google/genai": "2.32.0", "ws": "8.20.0"})
+        self.assertNotEqual(oracle.closure_digest(got), oracle.closure_digest(frozen), "the closure digest must cover the carried entry")
+        self.assertIs(oracle.carried_closure(frozen, []), frozen)
+
+    def test_a_pin_that_already_installs_the_carried_version_stops_the_build_and_says_to_delete_the_entry(self):
+        with self.assertRaisesRegex(pinlib.PinError, r"Pi f00d .*installs @google/genai 2\.32\.0 at .*, not 2\.21\.0\. .*delete the entry"):
+            oracle.carried_closure(self.lock("2.32.0"), [GENAI])
+
+    def test_an_entry_the_closure_cannot_hold_as_one_replaced_lock_entry_is_refused(self):
+        cases = {
+            "its own dependencies changed": ({**GENAI, "dependencies": {"ws": "^9.0.0"}}, lambda lock: None),
+            "installs no @google/genai": (GENAI, lambda lock: lock["packages"].pop(self.SDK)),
+            "replaces the exact pin 2.21.0 of @earendil-works/pi-ai and nothing else": (GENAI, lambda lock: lock["packages"][oracle.LOCK_KEY]["dependencies"].update({"@google/genai": "^2.0.0"})),
+            r"needs @google/genai \^2\.21\.0 \(dependencies\)": (GENAI, lambda lock: lock["packages"][self.AI]["dependencies"].update({"@google/genai": "^2.21.0"})),
+            "no @earendil-works/pi-ai of the frozen closure pins": (GENAI, lambda lock: lock["packages"][self.AI]["dependencies"].pop("@google/genai")),
+            "registry archive of that exact version": ({**GENAI, "resolved": "https://example.com/genai-2.32.0.tgz"}, lambda lock: None),
+            "its sha512 integrity": ({**GENAI, "integrity": "sha1-x"}, lambda lock: None),
+        }
+        for message, (dep, change) in cases.items():
+            with self.subTest(message=message):
+                lock = self.lock()
+                change(lock)
+                with self.assertRaisesRegex(pinlib.PinError, message):
+                    oracle.carried_closure(lock, [dep])
+
+    def test_the_installed_tree_must_hold_one_copy_of_the_carried_version_with_the_dependencies_pis_lock_records(self):
+        with tempfile.TemporaryDirectory() as root:
+            modules = make_tree(Path(root) / "node_modules", {"node_modules/@earendil-works/pi-coding-agent": "@earendil-works/pi-coding-agent@1.5.2", self.SDK: "@google/genai@2.21.0"})
+            manifest = modules.parent / self.SDK / "package.json"
+            self.assertRegex(oracle.carried_problems(modules, [GENAI])[0], r"0 copies of @google/genai 2\.32\.0")
+            manifest.write_text(json.dumps({"name": "@google/genai", "version": "2.32.0", "dependencies": {"ws": "^9.0.0"}}))
+            self.assertRegex(oracle.carried_problems(modules, [GENAI])[0], r"declares the dependencies \{'ws': '\^9\.0\.0'\}")
+            manifest.write_text(json.dumps({"name": "@google/genai", "version": "2.32.0", "dependencies": {"ws": "^8.18.0"}}))
+            self.assertEqual(oracle.carried_problems(modules, [GENAI]), [])
+            self.assertEqual(oracle.carried_place(modules, GENAI), modules.parent / self.SDK)
+
+    def test_the_committed_entries_replace_what_the_committed_pins_frozen_closure_installs(self):
+        """`make pin-check` runs this: a re-pin that already holds a carried commit, or an entry that names another archive than a
+        sha512-pinned registry archive, fails here naming the entry, before any oracle is built."""
+        pin = pinlib.committed()
+        carried = oracle.carried_dependencies()
+        got = oracle.carried_closure(oracle.read_frozen_lock(pin), carried)
+        for dep in carried:
+            self.assertEqual({item["version"] for key, item in got["packages"].items() if key.endswith("node_modules/" + dep["name"])}, {dep["to"]})
+            self.assertRegex(dep["integrity"], r"^sha512-[A-Za-z0-9+/]{86}==$")
+            self.assertIn(dep["id"], oracle.backport_ids())
+        self.assertEqual(oracle.oracle_closure_digest(pin), oracle.closure_digest(got))
 
 
 if __name__ == "__main__":

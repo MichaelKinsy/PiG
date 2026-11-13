@@ -16,7 +16,9 @@ frozen, so it is the tree a published install of that commit would have had.
 Either way each workspace pack is pinned by its own integrity: a source pack never
 has the published tarball's bytes (build output and file modes differ).
 `npm ci` of that pair lays the tree out as `install-strategy=shallow` does, and
-`check-oracle` compares the installed tree with the pair. The result is cached per
+`check-oracle` compares the installed tree with the pair. A Pi commit the release line carries ahead of the pin can move a
+dependency a Pi package pins exactly; its lock entry rides the backports script, and the pair installed is the frozen one
+with that entry in place (`carried_closure`). The result is cached per
 commit and frozen inputs in a build directory that is never changed once published
 (see `ensure`), and `extensions/sdk-ts/node_modules` links to it.
 """
@@ -24,6 +26,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import functools
 import glob
 import gzip
 import hashlib
@@ -132,6 +135,103 @@ def patch_packages(places: dict[str, Path], what: str) -> None:
         raise PinError(f"the post-release backports do not apply to {what}:\n{done.stderr.strip()}")
 
 
+@functools.lru_cache(maxsize=8)
+def _dependencies_of(script: str, digest: str) -> tuple:
+    done = backports_node("--dependencies")
+    if done.returncode != 0:
+        raise PinError(f"the post-release backports script does not list its carried dependencies:\n{done.stderr.strip()}")
+    return tuple(json.loads(done.stdout))
+
+
+def carried_dependencies(pin: Pin | None = None) -> list[dict]:
+    """The dependency changes of the Pi commits the backports script carries (its `dependency(...)` entries). Each names the Pi commit
+    (`id`), the Pi package that pins the dependency exactly (`package`), the dependency (`name`), the version the pin installs (`from`),
+    the carried one (`to`) and the lock entry of the carried version as Pi's own package-lock.json holds it at that commit (`resolved`,
+    `integrity`, `dependencies`). Empty for a script without entries and, with `pin`, for a pin whose oracle carries no backports."""
+    if (pin is not None and not backports_digest(pin)) or not backport_ids():
+        return []
+    return [dict(dep) for dep in _dependencies_of(str(BACKPORTS), hashlib.sha256(BACKPORTS.read_bytes()).hexdigest())]
+
+
+def carried_closure(lock: dict, carried: list[dict]) -> dict:
+    """The closure the oracle installs: `lock` (the frozen closure, left as it is) with each carried dependency in place of the version
+    the pin installs. The dependency's entry takes the carried version, archive and integrity, and the entry of the Pi package that pins
+    it names the carried version: the two changes Pi's lock has at the carried commit. `npm ci` of the result verifies the archive
+    against the integrity. Everything else stays the frozen closure's, so the carried version must stand where the pinned one stood,
+    with the same dependencies of its own; any other shape stops the build and names the entry (a pin that already holds the commit
+    has no pinned version left to replace: `make pin-bump` deletes the entry with the commit's blocks)."""
+    if not carried:
+        return lock
+    out = json.loads(json.dumps(lock))
+    packages = out["packages"]
+    for dep in carried:
+        name, owner = dep["name"], "@earendil-works/" + dep["package"]
+        what = f"the carried dependency {name} {dep['from']} -> {dep['to']} of Pi {dep['id']} (automation/gen/pi-post-release-backports.mjs)"
+        archive = f"https://registry.npmjs.org/{name}/-/{name.rsplit('/', 1)[-1]}-{dep['to']}.tgz"
+        if dep["resolved"] != archive or not dep["integrity"].startswith("sha512-"):
+            raise PinError(f"{what} must name the registry archive of that exact version ({archive}) and its sha512 integrity, as Pi's package-lock.json does; it names {dep['resolved']} {dep['integrity'][:16]}")
+        places = [key for key in packages if key.endswith("node_modules/" + name)]
+        if not places:
+            raise PinError(f"{what}: the frozen closure installs no {name}")
+        for key in places:
+            item = packages[key]
+            if item.get("version") != dep["from"]:
+                raise PinError(f"{what}: the frozen closure installs {name} {item.get('version')} at {key}, not {dep['from']}. A pin that already holds the Pi commit needs no carried dependency: delete the entry with the commit's blocks (`make pin-bump` does)")
+            if item.get("dependencies", {}) != dep.get("dependencies", {}):
+                raise PinError(f"{what}: Pi's lock gives {dep['to']} the dependencies {dep.get('dependencies', {})}, the frozen closure resolved {item.get('dependencies', {})} for {dep['from']}: its own dependencies changed, and the closure has no entries for them")
+            item.update(version=dep["to"], resolved=dep["resolved"], integrity=dep["integrity"])
+        pinned = 0
+        for key, item in packages.items():
+            for field in ("dependencies", "optionalDependencies", "peerDependencies"):
+                if name not in item.get(field, {}):
+                    continue
+                if not key.endswith("node_modules/" + owner) or field != "dependencies" or item[field][name] != dep["from"]:
+                    raise PinError(f"{what}: {key or 'the root'} needs {name} {item[field][name]} ({field}); the entry replaces the exact pin {dep['from']} of {owner} and nothing else")
+                item[field][name] = dep["to"]
+                pinned += 1
+        if not pinned:
+            raise PinError(f"{what}: no {owner} of the frozen closure pins {name}")
+    return out
+
+
+def carried_place(modules: Path, dep: dict) -> Path:
+    """The one installed copy of a carried dependency under the oracle's `modules`."""
+    places = [modules.parent / key for key, installed in tree_packages(modules).items() if installed == f"{dep['name']}@{dep['to']}"]
+    if len(places) != 1:
+        raise PinError(f"the installed oracle has {len(places)} copies of {dep['name']} {dep['to']}, the dependency carried for Pi {dep['id']}; it installs exactly one")
+    return places[0]
+
+
+def carried_problems(modules: Path, carried: list[dict]) -> list[str]:
+    """What the installed tree lacks of the carried dependencies: each is installed once at the carried version (its archive passed
+    `npm ci`'s integrity check) and declares the dependencies of its own that the entry records from Pi's lock. The manifest of the Pi
+    package that pins it is not looked at: it stays the pin's (published ranges follow the pin)."""
+    problems = []
+    for dep in carried:
+        try:
+            place = carried_place(modules, dep)
+        except PinError as error:
+            problems.append(str(error))
+            continue
+        own = json.loads((place / "package.json").read_text(encoding="utf-8")).get("dependencies", {})
+        if own != dep.get("dependencies", {}):
+            problems.append(f"{dep['name']} {dep['to']} declares the dependencies {own}, the entry carried for Pi {dep['id']} records {dep.get('dependencies', {})} from Pi's lock")
+    return problems
+
+
+def source_dependency(source: Path, dep: dict) -> Path:
+    """Where the source build resolves a carried dependency: the one copy `npm ci` of Pi's lock hoisted to the root, at the pinned version."""
+    place = source / "node_modules" / dep["name"]
+    try:
+        version = json.loads((place / "package.json").read_text(encoding="utf-8"))["version"]
+    except (OSError, ValueError, KeyError):
+        version = None
+    nested = sorted(path.relative_to(source).as_posix() for path in source.glob(f"packages/*/node_modules/{dep['name']}"))
+    if version != dep["from"] or place.is_symlink() or nested:
+        raise PinError(f"the source build under {source} does not resolve {dep['name']} to one copy of {dep['from']} at node_modules/{dep['name']} (found {version}{', also ' + ', '.join(nested) if nested else ''}); the dependency carried for Pi {dep['id']} replaces exactly that copy for the bundler")
+    return place
+
+
 def apply_backports(modules: Path) -> None:
     """Apply the post-release backports to the installed Pi packages under `modules` in place. The packs and the source tree stay
     as built: the frozen closure pins each pack's integrity, and the Durable oracle packs the source tree again."""
@@ -176,7 +276,9 @@ def run_bundler(source: Path) -> None:
 def rebuild_bundle(source: Path, modules: Path) -> str:
     """Replace the installed bundle with the one Pi's bundler makes of the compiled output plus the backports, and return its digest
     ("" for a Pi without a bundle). The bundler reads the source build's packages, so the backports are applied there for the run and
-    taken out again: the packs, the mirror and the Durable oracle need the source build as built."""
+    taken out again: the packs, the mirror and the Durable oracle need the source build as built. A carried dependency is bundled too:
+    for that run the source build's copy of it is replaced by a copy of the installed one (the archive `npm ci` verified), whose own
+    dependencies resolve from Pi's workspace as in Pi's build of the carried commit, and put back."""
     installed = bundle_of(modules)
     if installed is None:
         return ""
@@ -184,7 +286,11 @@ def rebuild_bundle(source: Path, modules: Path) -> str:
     places = {name: workspaces[f"@earendil-works/{name}"] for name in BACKPORT_PACKAGES}
     built = places["pi-coding-agent"] / installed.relative_to(modules / "@earendil-works" / "pi-coding-agent")
     parts = [place / part for place in places.values() for part in ("dist", "docs", "schemas") if (place / part).is_dir()]
+    carried = carried_dependencies()
+    parts += [source_dependency(source, dep) for dep in carried]
     as_built = [tree_digest(part) for part in parts]
+    shelf = source.parent / "dependencies-as-built"
+    shelved: list[tuple[Path, Path]] = []
     listed = backports_node("--package-files", *(f"{name}={place}" for name, place in places.items()))
     if listed.returncode != 0:
         raise PinError(f"the post-release backports script does not name the files it patches:\n{listed.stderr.strip()}")
@@ -196,12 +302,23 @@ def rebuild_bundle(source: Path, modules: Path) -> str:
         if tree_digest(built) != tree_digest(installed):
             raise PinError(f"Pi's bundler does not reproduce the installed bundle from the compiled output as built ({built} differs from {installed}): a bundle rebuilt with the backports would differ from Pi's by more than the backports")
         patch_packages(places, "the source build")
+        for dep in carried:
+            place = source_dependency(source, dep)
+            shelf.mkdir(exist_ok=True)
+            shelved.append((place, shelf / str(len(shelved))))
+            shutil.move(str(place), str(shelved[-1][1]))
+            shutil.copytree(carried_place(modules, dep), place, symlinks=True)
         run_bundler(source)
         shutil.rmtree(installed)
         shutil.copytree(built, installed)
     finally:
         for path, data in saved.items():
             path.write_bytes(data)
+        for place, held in reversed(shelved):
+            if held.exists():
+                shutil.rmtree(place, ignore_errors=True)
+                shutil.move(str(held), str(place))
+        shutil.rmtree(shelf, ignore_errors=True)
         shutil.rmtree(built, ignore_errors=True)
         shutil.move(str(kept), str(built))
     if [tree_digest(part) for part in parts] != as_built:
@@ -511,6 +628,21 @@ def frozen_closure_digest(pin: Pin) -> str | None:
     return closure_digest(lock) if lock is not None else None
 
 
+def oracle_closure(pin: Pin) -> dict | None:
+    """The closure the oracle of `pin` installs: the frozen one, with the carried dependencies of the pin whose oracle carries backports."""
+    lock = read_frozen_lock(pin)
+    return carried_closure(lock, carried_dependencies(pin)) if lock is not None else None
+
+
+def oracle_closure_digest(pin: Pin) -> str | None:
+    """The digest of `oracle_closure`: what a build's stamp records as closure_sha256 and what the oracle's key is made of. There is no
+    separate digest of the carried dependencies: they are in the lock this digest covers."""
+    if not carried_dependencies(pin):
+        return frozen_closure_digest(pin)
+    lock = oracle_closure(pin)
+    return closure_digest(lock) if lock is not None else None
+
+
 def read_frozen_lock(pin: Pin) -> dict | None:
     path = frozen_lock_path(pin)
     if not path.exists():
@@ -708,7 +840,7 @@ def reusable(pin: Pin, build: Path | None) -> bool:
     if build is None or not (build / STAMP).is_file() or not installed(build / "node_modules", pin):
         return False
     data = json.loads((build / STAMP).read_text())
-    return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (frozen_closure_digest(pin) or data.get("closure_sha256", "")) and data.get("backports", "") == backports_digest(pin) and not bundle_problem(build / "node_modules", data)
+    return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (oracle_closure_digest(pin) or data.get("closure_sha256", "")) and data.get("backports", "") == backports_digest(pin) and not bundle_problem(build / "node_modules", data)
 
 
 def ensure(pin: Pin, *, force: bool = False) -> Path:
@@ -716,7 +848,7 @@ def ensure(pin: Pin, *, force: bool = False) -> Path:
     directory and is published by an atomic ref write after its stamp, so a published oracle is never rewritten or removed:
     a forced rebuild publishes another directory, and a build that fails part-way publishes nothing."""
     home = entry(pin)
-    key = identity(frozen_digest(pin) or "", frozen_closure_digest(pin) or "", backports_digest(pin))
+    key = identity(frozen_digest(pin) or "", oracle_closure_digest(pin) or "", backports_digest(pin))
     candidates = (f"oracle-{key}", "current")
     if not force:
         for name in candidates:
@@ -747,12 +879,13 @@ def build_into(pin: Pin, build: Path) -> str:
     extract_source(pin, source)
     data_sha = build_source(pin, source)
     packed = pack(source, build / "packs")
-    closure = closure_for(pin, source, packed, build / "closure")
+    carried = carried_dependencies(pin)
+    closure = carried_closure(closure_for(pin, source, packed, build / "closure"), carried)
     flat = build / "flat"
     install_closure(closure, packed, flat)
     modules = build / "node_modules"
     lay_out(flat, modules, typescript_version())
-    problems = tree_differences(modules, closure)
+    problems = tree_differences(modules, closure) + carried_problems(modules, carried)
     if problems:
         raise PinError("the installed tree differs from the frozen closure:\n  " + "\n  ".join(problems[:20]))
     backports = backports_digest(pin)
