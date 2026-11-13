@@ -170266,7 +170266,7 @@
       "evidence": [
         "test:internal/codingagent/custom_editor_test.go#TestCustomEditorEscapeOverAutocompleteGoesToTheEditor",
         "test:internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
-        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientEscapeLeavesThePanelBeforeItInterrupts"
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientEscapeDismissesADialogThatDeclaresItOnce"
       ]
     },
     {
@@ -304002,6 +304002,7 @@
         "call:tui/mouse.go#tuiBase.dispatchMouseToOverlay"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
@@ -304044,6 +304045,7 @@
         "call:tui/mouse.go#tuiBase.dispatchMouseToOverlay"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
@@ -304086,6 +304088,7 @@
         "call:tui/mouse.go#tuiBase.dispatchMouseToOverlay"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
@@ -304171,6 +304174,7 @@
         "call:tui/tui.go#OverlayHandle.GetBounds"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
@@ -304192,6 +304196,7 @@
         "call:tui/tui.go#OverlayHandle.GetBounds"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
