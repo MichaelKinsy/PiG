@@ -5,9 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"slices"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
@@ -109,7 +108,17 @@ func (h *Host) unacknowledgedNotices(unacknowledged []unacknowledgedGeneration) 
 		}
 		return "stopped"
 	}
+	// A line is written as fmt writes it: a name as %q (strconv.AppendQuote), the deadline as %s (Duration.String).
+	unacknowledgedWithin := func(line []byte, deadline time.Duration, outcome string) string {
+		line = append(line, " did not acknowledge the reload within "...)
+		line = append(line, deadline.String()...)
+		line = append(line, " and was "...)
+		return string(append(line, outcome...))
+	}
 	var lines []string
+	// The lines are built in one buffer, which stays on the stack for the usual names.
+	var buffer [192]byte
+	line := buffer[:0]
 	for _, process := range order {
 		generations := processes[process]
 		named := generations
@@ -117,14 +126,19 @@ func (h *Host) unacknowledgedNotices(unacknowledged []unacknowledgedGeneration) 
 			named = slices.DeleteFunc(slices.Clone(generations), func(generation unacknowledgedGeneration) bool { return generation.lostRequests == 0 })
 		}
 		for _, generation := range named {
-			lines = append(lines, fmt.Sprintf("extension %q did not acknowledge the reload within %s and was %s", generation.me.config.Name, generation.deadline, outcome(generation)))
+			line = strconv.AppendQuote(append(line[:0], "extension "...), generation.me.config.Name)
+			lines = append(lines, unacknowledgedWithin(line, generation.deadline, outcome(generation)))
 		}
 		if len(named) == 0 {
-			names := make([]string, len(generations))
+			line = append(line[:0], "the runtime that extensions "...)
 			for i, generation := range generations {
-				names[i] = fmt.Sprintf("%q", generation.me.config.Name)
+				if i > 0 {
+					line = append(line, ", "...)
+				}
+				line = strconv.AppendQuote(line, generation.me.config.Name)
 			}
-			lines = append(lines, fmt.Sprintf("the runtime that extensions %s share did not acknowledge the reload within %s and was %s", strings.Join(names, ", "), generations[0].deadline, outcome(generations...)))
+			line = append(line, " share"...)
+			lines = append(lines, unacknowledgedWithin(line, generations[0].deadline, outcome(generations...)))
 		}
 	}
 	return lines
