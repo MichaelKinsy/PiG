@@ -481,21 +481,7 @@ func (s *Session) recordModelSelection(branch []icodingagent.SessionEntry) {
 //
 // upstream: agent-session.ts _recordThinkingLevel
 func (s *Session) recordThinkingLevel(branch []icodingagent.SessionEntry) {
-	var recorded ai.ModelThinkingLevel
-	found := false
-	for i := len(branch) - 1; i >= 0 && !found; i-- {
-		if branch[i].Base().Type != "thinking_level_change" {
-			continue
-		}
-		var entry struct {
-			ThinkingLevel string `json:"thinkingLevel"`
-		}
-		// upstream: packages/coding-agent/src/core/session-manager.ts:loadEntriesFromFile
-		if json.Unmarshal(branch[i].Raw(), &entry) != nil {
-			continue
-		}
-		recorded, found = ai.ModelThinkingLevel(entry.ThinkingLevel), true
-	}
+	recorded, found := recordedThinkingLevel(branch)
 	if !found {
 		return
 	}
@@ -507,6 +493,29 @@ func (s *Session) recordThinkingLevel(branch []icodingagent.SessionEntry) {
 		return
 	}
 	_, _ = s.inner.Load().AppendThinkingLevelChange(string(s.ThinkingLevel()))
+}
+
+// recordedThinkingLevel is the level of the last `thinking_level_change` entry of branch that holds one, and whether there is such an entry.
+// A session's own entry holds the level its record decodes to, so it is read from the entry: every agent run asks, and decoding the record
+// allocated the level again each time. An entry of any other shape is read from its record, and skipped when the record holds no level.
+func recordedThinkingLevel(branch []icodingagent.SessionEntry) (ai.ModelThinkingLevel, bool) {
+	for i := len(branch) - 1; i >= 0; i-- {
+		if branch[i].Base().Type != "thinking_level_change" {
+			continue
+		}
+		if typed, ok := branch[i].(icodingagent.ThinkingLevelEntry); ok {
+			return ai.ModelThinkingLevel(typed.ThinkingLevel), true
+		}
+		var entry struct {
+			ThinkingLevel string `json:"thinkingLevel"`
+		}
+		// upstream: packages/coding-agent/src/core/session-manager.ts:loadEntriesFromFile
+		if json.Unmarshal(branch[i].Raw(), &entry) != nil {
+			continue
+		}
+		return ai.ModelThinkingLevel(entry.ThinkingLevel), true
+	}
+	return "", false
 }
 
 // routeRequest routes the request of a virtual selection. The selection stays in agent state; only this request uses the routed model. Only messages the user wrote start a turn; extension messages can follow them, for example from before_agent_start.
