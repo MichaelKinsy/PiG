@@ -3158,6 +3158,26 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	ext.Command("overlay-invalidate-probe", "Count the host's invalidations of a mounted overlay and draw the theme", func(ctx sdk.Context, args string) error {
+		options := sdk.RemoteOverlayOptions{Overlay: true}
+		var err error
+		if strings.TrimSpace(args) == "plain" {
+			_, err = ctx.Custom(&plainThemeProbeComponent{ctx: ctx}, options)
+		} else {
+			_, err = ctx.Custom(&invalidateProbeComponent{ctx: ctx, kept: themeProbeRow(ctx)}, options)
+		}
+		if err != nil {
+			return err
+		}
+		ctx.Notify("overlay-invalidate=ok", "info")
+		return nil
+	})
+
+	ext.Command("theme-read-probe", "Report the theme the extension holds, with no component mounted", func(ctx sdk.Context, _ string) error {
+		ctx.Notify("theme-read="+themeProbeRow(ctx), "info")
+		return nil
+	})
+
 	ext.Command("overlay-focus-probe", "Render the focus the host publishes to a mounted overlay", func(ctx sdk.Context, _ string) error {
 		component := &focusProbeComponent{}
 		onHandle := func(handle *sdk.OverlayHandle) { component.handle.Store(handle) }
@@ -4607,6 +4627,44 @@ func (c *focusProbeComponent) Render(int) []string {
 }
 
 func (*focusProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
+}
+
+// themeProbeRow is the active theme's name and its accent foreground, as the extension holds them now.
+func themeProbeRow(ctx sdk.Context) string {
+	theme := ctx.UITheme()
+	return theme.Name + "|" + theme.Fg("accent", "x")
+}
+
+// invalidateProbeComponent keeps a themed row until the host invalidates it, as a Pi component that caches its rows does: the row
+// names the theme the component saw at its Invalidate, and each frame the theme it sees at its render.
+type invalidateProbeComponent struct {
+	ctx           sdk.Context
+	invalidations int
+	kept          string
+}
+
+func (c *invalidateProbeComponent) Render(int) []string {
+	return []string{fmt.Sprintf("inv=%d kept=%s live=%s", c.invalidations, c.kept, c.ctx.UITheme().Name)}
+}
+
+func (c *invalidateProbeComponent) Invalidate() {
+	c.invalidations++
+	c.kept = themeProbeRow(c.ctx)
+}
+
+func (*invalidateProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
+}
+
+// plainThemeProbeComponent has no Invalidate: the host's invalidation renders it again all the same.
+type plainThemeProbeComponent struct{ ctx sdk.Context }
+
+func (c *plainThemeProbeComponent) Render(int) []string {
+	return []string{"plain live=" + themeProbeRow(c.ctx)}
+}
+
+func (*plainThemeProbeComponent) HandleInput(data string) (sdk.RemoteComponentResult, error) {
 	return sdk.RemoteComponentResult{Done: data == "q", Value: "closed"}, nil
 }
 

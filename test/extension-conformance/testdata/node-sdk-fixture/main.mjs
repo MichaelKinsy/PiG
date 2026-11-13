@@ -754,6 +754,31 @@ export default function (pi) {
       ctx.ui.notify("overlay-handle=ok", "info");
     },
   });
+  pi.registerCommand("overlay-invalidate-probe", {
+    description: "Count the host's invalidations of a mounted overlay and draw the theme",
+    handler: async (args, ctx) => {
+      const row = () => `${ctx.ui.theme.name}|${ctx.ui.theme.fg("accent", "x")}`;
+      await ctx.ui.custom((_tui, _theme, _keys, done) => {
+        const handleInput = (data) => { if (data === "q") done("closed"); };
+        // A component without invalidate() is rendered again all the same.
+        if (String(args ?? "").trim() === "plain") return { render: () => [`plain live=${row()}`], handleInput };
+        let invalidations = 0;
+        let kept = row();
+        return {
+          render: () => [`inv=${invalidations} kept=${kept} live=${ctx.ui.theme.name}`],
+          handleInput,
+          invalidate() { invalidations++; kept = row(); },
+        };
+      }, { overlay: true });
+      ctx.ui.notify("overlay-invalidate=ok", "info");
+    },
+  });
+  pi.registerCommand("theme-read-probe", {
+    description: "Report the theme the extension holds, with no component mounted",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify(`theme-read=${ctx.ui.theme.name}|${ctx.ui.theme.fg("accent", "x")}`, "info");
+    },
+  });
   pi.registerCommand("overlay-focus-probe", {
     description: "Render the focus the host publishes to a mounted overlay",
     handler: async (_args, ctx) => {
@@ -842,7 +867,7 @@ export default function (pi) {
       f.push(`visibleOff=${screen.hasOverlay()}/${screen.hasOverlayEntries}`);hOff.hide();
       const ov2=screen.showOverlay(ov,{width:8});
       docInv=0;ovInv=0;screen.invalidate();
-      f.push(`invalidate=${docInv>0}/${ovInv>0}`);
+      f.push(`invalidate=${docInv}/${ovInv}`);
       ov2.hide();
       const mutLog=[];let armed=false,mutInv=0;
       const extra={render:()=>["EXTRA"],invalidate(){}},target={render:()=>["TARGET"],invalidate(){}},popup={render:()=>["POP"],invalidate(){}};
@@ -858,7 +883,7 @@ export default function (pi) {
         r.push(`overlay=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${h.isFocused()}/${first}`);
         h.hide();r.push(`hidden=${screen.hasOverlayEntries}`);
         screen.scrollBy(-2);r.push(`scroll=${screen.viewportTop}/${screen.isFollowingOutput}`);
-        mutInv=0;screen.invalidate();r.push(`invalidate=${mutInv>0}`);
+        mutInv=0;screen.invalidate();r.push(`invalidate=${mutInv}`);
         r.push(`lines=${screen.getScreenLines().length}`);
         mutLog.push(r.join(","));
         return ["MUT"];

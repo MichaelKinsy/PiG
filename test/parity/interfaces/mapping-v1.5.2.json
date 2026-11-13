@@ -314032,7 +314032,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/alt_screen_search.go#AltScreenSearchComponent.Invalidate"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
@@ -314754,9 +314754,9 @@
       "id": "pkg:tui/.#TuiAltScreen::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -314764,21 +314764,21 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
       "id": "pkg:tui/.#TuiAltScreen::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate::call:0 is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate::call:0 is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -314786,12 +314786,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
@@ -316133,7 +316133,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/alt_screen_search.go#AltScreenSearchComponent.Invalidate"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
@@ -316670,9 +316670,9 @@
       "id": "pkg:tui/.#TuiMainScreen::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -316680,21 +316680,21 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
       "id": "pkg:tui/.#TuiMainScreen::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate::call:0 is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate::call:0 is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -316702,12 +316702,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
