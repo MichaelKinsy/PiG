@@ -34,6 +34,14 @@ func (r *uiViewRun) clean(s string) string {
 // off.
 func startUIView(t *testing.T, piglet, mode string, mounts bool) *uiViewRun {
 	t.Helper()
+	return startUIViewOn(t, piglet, mode, mounts, "", false)
+}
+
+// startUIViewOn is startUIView with what the fixture does when it is told a client's abilities
+// (PIG_UI_VIEW_FIXTURE_ABILITIES: the slot it mounts a view in, "listen", or "" for no handler). With fromStart the
+// bytes written to the pane are recorded from before pig starts.
+func startUIViewOn(t *testing.T, piglet, mode string, mounts bool, arrival string, fromStart bool) *uiViewRun {
+	t.Helper()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -55,11 +63,15 @@ func startUIView(t *testing.T, piglet, mode string, mounts bool) *uiViewRun {
 	}
 	h := newHarness(t)
 	cwd := t.TempDir()
+	r := &uiViewRun{harness: h, home: home, cwd: cwd}
+	if fromStart {
+		r.record()
+	}
 	h.startArgsAt([]string{"--piglet", filepath.Join(root, "test", "integration", "testdata", "ui-view", piglet), "--model", "test-faux/faux-1"}, cwd,
-		"PIG_HOME="+home, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_UI_VIEW_FIXTURE_MOUNTS="+flag)
+		"PIG_HOME="+home, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_UI_VIEW_FIXTURE_MOUNTS="+flag, "PIG_UI_VIEW_FIXTURE_ABILITIES="+arrival)
 	// The first start builds the fixture.
 	h.expectContains(4*time.Minute, interactiveReadyMarker)
-	return &uiViewRun{harness: h, home: home, cwd: cwd}
+	return r
 }
 
 // settle waits until the pane shows every needle, or, with none, until it stopped changing.
@@ -125,6 +137,9 @@ func (r *uiViewRun) recorded() []byte {
 	}
 	return data
 }
+
+// uiViewEscape is a control sequence of the terminal: what is left without them is the text that was written.
+var uiViewEscape = regexp.MustCompile(`\x1b\[[0-9;:<=>?]*[ -/]*[@-~]`)
 
 var uiViewVolatile = regexp.MustCompile(`"(id|parentId|timestamp|responseId|cwd|durationMs)":("[^"]*"|[0-9]+)`)
 
@@ -276,33 +291,89 @@ func TestUIViewMountThenUnmountIsTheSessionThatNeverMounted(t *testing.T) {
 				uiViewScript(controlRun, false, end)
 				control := uiViewAfterwards(controlRun)
 
-				for _, c := range []struct{ what, got, want string }{
-					{"the screen after the mounts ended", mounted.screen, never.screen},
-					{"the screen after typing", mounted.typed, never.typed},
-					{"the screen after the answer", mounted.answered, never.answered},
-					{"the scrollback", mounted.scrollback, never.scrollback},
-					{"the session file", mounted.session, never.session},
-				} {
-					if c.got != c.want {
-						t.Errorf("%s differs:\n%s", c.what, uiViewDiff(c.got, c.want))
-					}
-					if strings.TrimSpace(c.want) == "" {
-						t.Errorf("%s is empty: the comparison proves nothing", c.what)
-					}
-				}
-				if !strings.Contains(never.session, "20+22") {
-					t.Errorf("the session file lacks the prompt:\n%s", never.session)
-				}
-				switch {
-				case !bytes.Equal(never.raw, control.raw):
-					t.Errorf("two never-mounted sessions wrote different bytes for the same keys: the comparison is unstable: %s", uiViewBytesDiff(never.raw, control.raw))
-				case !bytes.Equal(mounted.raw, never.raw):
-					t.Errorf("the bytes written for the same keys differ.\n--- mounted and ended ---\n%q\n--- never mounted ---\n%q", mounted.raw, never.raw)
-				case len(never.raw) == 0:
-					t.Error("no bytes were recorded: the comparison proves nothing")
-				}
+				uiViewIsNeverMounted(t, "mounted and ended", mounted, never, control)
 			})
 		}
+	}
+}
+
+// uiViewIsNeverMounted fails unless the run got (named who) shows what the never-mounted run shows. control is a second
+// never-mounted run: where the two differ in the bytes they wrote, the byte comparison is unstable and fails as such.
+func uiViewIsNeverMounted(t *testing.T, who string, got, never, control uiViewAfter) {
+	t.Helper()
+	for _, c := range []struct{ what, got, want string }{
+		{"the screen after the mounts ended", got.screen, never.screen},
+		{"the screen after typing", got.typed, never.typed},
+		{"the screen after the answer", got.answered, never.answered},
+		{"the scrollback", got.scrollback, never.scrollback},
+		{"the session file", got.session, never.session},
+	} {
+		if c.got != c.want {
+			t.Errorf("%s differs:\n%s", c.what, uiViewDiff(c.got, c.want))
+		}
+		if strings.TrimSpace(c.want) == "" {
+			t.Errorf("%s is empty: the comparison proves nothing", c.what)
+		}
+	}
+	if !strings.Contains(never.session, "20+22") {
+		t.Errorf("the session file lacks the prompt:\n%s", never.session)
+	}
+	switch {
+	case !bytes.Equal(never.raw, control.raw):
+		t.Errorf("two never-mounted sessions wrote different bytes for the same keys: the comparison is unstable: %s", uiViewBytesDiff(never.raw, control.raw))
+	case !bytes.Equal(got.raw, never.raw):
+		t.Errorf("the bytes written for the same keys differ.\n--- %s ---\n%q\n--- never mounted ---\n%q", who, got.raw, never.raw)
+	case len(never.raw) == 0:
+		t.Error("no bytes were recorded: the comparison proves nothing")
+	}
+}
+
+// An extension that mounts a view when it is told the abilities of the client that attached (OnViewAbilities) is drawn
+// once: the view's row is once in the text pig wrote from its start to the end of a typed line, and once on the screen,
+// in a panel and in a widget slot. An extension that takes the same event and mounts nothing leaves the session that
+// never mounted. In both TUI modes.
+func TestUIViewMountOnTheAbilitiesEvent(t *testing.T) {
+	const row = "fixture arrival view"
+	for _, mode := range []string{"fullscreen", "regular"} {
+		t.Run(mode, func(t *testing.T) {
+			for _, slot := range []string{"panel", "widget-above"} {
+				arrived := startUIViewOn(t, "on.yaml", mode, false, slot, true)
+				arrived.settle(row)
+				for _, key := range []string{"h", "e", "l", "l", "o"} {
+					arrived.send(key)
+					arrived.settle()
+				}
+				pane := arrived.settle("hello")
+				arrived.sendKey("C-c")
+				arrived.settle()
+				for _, c := range []struct{ where, text string }{
+					{"in what pig wrote from its start to the end of a typed line", uiViewEscape.ReplaceAllString(string(arrived.recorded()), "")},
+					{"on the screen", pane},
+					{"in the scrollback", uiViewEscape.ReplaceAllString(arrived.scrollback(), "")},
+				} {
+					if n := strings.Count(c.text, row); n != 1 {
+						t.Errorf("%s: the view mounted on the abilities event is %s %d times, want 1:\n%q", slot, c.where, n, c.text)
+					}
+				}
+				if strings.Contains(pane, "viewfx") {
+					t.Errorf("%s: the fixture reported an error:\n%s", slot, pane)
+				}
+			}
+
+			listeningRun := startUIViewOn(t, "on.yaml", mode, false, "listen", false)
+			uiViewScript(listeningRun, false, "vremove")
+			listening := uiViewAfterwards(listeningRun)
+
+			neverRun := startUIView(t, "on.yaml", mode, false)
+			uiViewScript(neverRun, false, "vremove")
+			never := uiViewAfterwards(neverRun)
+
+			controlRun := startUIView(t, "on.yaml", mode, false)
+			uiViewScript(controlRun, false, "vremove")
+			control := uiViewAfterwards(controlRun)
+
+			uiViewIsNeverMounted(t, "took the abilities event", listening, never, control)
+		})
 	}
 }
 
