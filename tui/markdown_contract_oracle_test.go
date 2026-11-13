@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/tui/internal/hljs"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -85,38 +86,48 @@ var markdownContractTransforms = map[string]func(markdown string, width int) str
 	"width":  func(_ string, width int) string { return strconv.Itoa(width) },
 }
 
-// markdownContractHighlightedFence opens a code block of a language highlight.js highlights, of those the documents of these tests name.
-var markdownContractHighlightedFence = regexp.MustCompile("```(go|js|py)\n")
+// markdownContractStockLanguages is the language table of a stock build: the highlight.js registry in which its highlighter looks up the language
+// tag of a code block (highlightCodeUncached asks highlightRegistry of highlight_hljs_on.go). A build that strips syntax-highlight links none into the
+// product; these tests link it to know which code a stock build highlights.
+var markdownContractStockLanguages = sync.OnceValue(hljs.NewRegistry)
 
-// rendersHighlightedCode reports whether a render of the probe draws such a code block under a stock theme, whose highlighter is highlight.js.
+// rendersHighlightedCode reports whether a render of the probe draws a code block that a stock build highlights: under a stock theme, whose highlighter
+// is HighlightCode, a block with a language tag the stock table has. The blocks and their tags are those the component hands its highlighter, read from the
+// probe's ops under the tagged theme with its recording highlighter: the theme changes neither what the text parses to nor what the highlighter is asked.
 func (p markdownContractProbe) rendersHighlightedCode() bool {
 	if p.Theme == "tagged" {
 		return false
 	}
-	text := p.Text
+	recorded := p
+	recorded.Theme, recorded.Highlight = "tagged", true
+	var log markdownContractLog
+	md := recorded.build(&log)
 	for _, op := range p.Ops {
 		switch op.Op {
-		case "setText":
-			text = op.Text
 		case "render":
-			if markdownContractHighlightedFence.MatchString(text) {
-				return true
-			}
+			md.Render(op.Width)
+		case "setText":
+			md.SetText(op.Text)
+		case "invalidate":
+			md.Invalidate()
 		}
 	}
-	return false
+	return slices.ContainsFunc(log.Highlight, func(call []string) bool {
+		lang := call[1]
+		return lang != "" && markdownContractStockLanguages().SupportsLanguage(lang)
+	})
 }
 
 // markdownContractProbesOfBuild returns the probes in their order, those that render highlighted code as rows of withHighlightedCode: a build that strips
-// syntax-highlight leaves them out.
+// syntax-highlight leaves them out. A build that keeps those rows keeps every probe and looks at none.
 func markdownContractProbesOfBuild(probes []markdownContractProbe) []markdownContractProbe {
 	out := make([]markdownContractProbe, 0, len(probes))
 	for _, p := range probes {
-		if p.rendersHighlightedCode() {
-			out = append(out, withHighlightedCode(p)...)
-			continue
+		kept := withHighlightedCode(p)
+		if len(kept) == 0 && !p.rendersHighlightedCode() {
+			kept = append(kept, p)
 		}
-		out = append(out, p)
+		out = append(out, kept...)
 	}
 	return out
 }
