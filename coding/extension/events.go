@@ -1049,10 +1049,15 @@ type BashToolDetails struct {
 // PowerShellToolDetails is the bash details shape (upstream powershell.ts).
 type PowerShellToolDetails = BashToolDetails
 
-// ReadToolDetails mirrors upstream read.ts:28. Attached only when output
-// was truncated (or the first line exceeded the byte limit).
+// ReadToolDetails mirrors upstream read.ts ReadToolDetails. Attached when output
+// was truncated (or the first line exceeded the byte limit), or when an image
+// was read while a model without image input was selected.
 type ReadToolDetails struct {
 	Truncation *TruncationResult `json:"truncation,omitempty"`
+	// ImageUnsupportedByModel is the id of the model that was selected when the
+	// image was read, if it has no image input. Shown to the user only: the
+	// model gets pi-ai's placeholder per request. Nil when the member is absent.
+	ImageUnsupportedByModel *string `json:"imageUnsupportedByModel,omitempty"`
 }
 
 // GrepToolDetails mirrors upstream grep.ts:41. Sparse fields retain the requested numeric limit without rounding.

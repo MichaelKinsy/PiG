@@ -315,6 +315,68 @@ patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
 ]);
 // END backport 406e719a6bff
 
+// BEGIN backport 4be4cb4f5e9c
+// 4be4cb4f5e9c (#12139): read's text no longer says that the selected model takes no images (the text is stored and replayed after a switch to a
+// vision model); the tool names such a model in details.imageUnsupportedByModel instead, which the TUI shows and the model never gets.
+patch("4be4cb4f5e9c", "pi-coding-agent/core/tools/read.js", [
+    [`function getNonVisionImageNote(model) {
+    if (!model || model.input.includes("image")) {
+        return undefined;
+    }
+    return "[Current model does not support images. The image will be omitted from this request.]";
+}
+`, ""],
+    ["                        const nonVisionImageNote = getNonVisionImageNote(ctx?.model);\n", ""],
+    [`                                let textNote = \`Read image file [\${mimeType}]\\n\${processed.message}\`;
+                                if (nonVisionImageNote)
+                                    textNote += \`\\n\${nonVisionImageNote}\`;
+                                content = [{ type: "text", text: textNote }];
+`, `                                const textNote = \`Read image file [\${mimeType}]\\n\${processed.message}\`;
+                                content = [{ type: "text", text: textNote }];
+`],
+    [`                                if (nonVisionImageNote)
+                                    textNote += \`\\n\${nonVisionImageNote}\`;
+                                content = [
+                                    { type: "text", text: textNote },
+                                    { type: "image", data: processed.data, mimeType: processed.mimeType },
+                                ];
+`, `                                content = [
+                                    { type: "text", text: textNote },
+                                    { type: "image", data: processed.data, mimeType: processed.mimeType },
+                                ];
+                                ${note("4be4cb4f5e9c").trim()}
+                                if (ctx?.model && !ctx.model.input.includes("image")) {
+                                    details = { imageUnsupportedByModel: ctx.model.id };
+                                }
+`],
+]);
+// END backport 4be4cb4f5e9c
+
+// BEGIN backport 4be4cb4f5e9c
+// 4be4cb4f5e9c (#12139): the read card draws the warning from details.imageUnsupportedByModel, collapsed and expanded, naming the model that read the image.
+patch("4be4cb4f5e9c", "pi-coding-agent/core/tools/renderers/read.js", [
+    [`function formatReadResult(args, result, options, theme, showImages, _cwd, isError) {
+    if (!options.expanded && !isError) {
+        return "";
+    }
+`, `function formatReadResult(args, result, options, theme, showImages, _cwd, isError) {
+    ${note("4be4cb4f5e9c").trim()}
+    const unsupportedBy = result.details?.imageUnsupportedByModel;
+    const imageWarning = unsupportedBy
+        ? \`\\n\${theme.fg("warning", \`[\${unsupportedBy} does not support images; it saw a placeholder instead]\`)}\`
+        : "";
+    if (!options.expanded && !isError) {
+        return imageWarning;
+    }
+`],
+    [`    return text;
+}
+export const readRenderers = {`, `    return text + imageWarning;
+}
+export const readRenderers = {`],
+]);
+// END backport 4be4cb4f5e9c
+
 // BEGIN backport 49fe0a237
 // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
 packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);

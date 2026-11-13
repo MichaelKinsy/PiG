@@ -309582,6 +309582,17 @@
       "shapeHash": "sha256:039a8e96647ec8cd435ee7ba295c64e3373982705477a07335b5f4c91dafddbc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#readImageUnsupportedByModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "readImageUnsupportedByModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(details any) string"
+      },
+      "shapeHash": "sha256:985dc999321b7ed1c9e704e2a0b71e118b9c25d9c8178f4ce7062ea3786a8dcc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#readMerged",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "readMerged",
