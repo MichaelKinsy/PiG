@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/pluginstest"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
@@ -94,7 +95,7 @@ func (c *pcComponent) quiet(t *testing.T) {
 		return
 	}
 	c.quieted = true
-	settle(t, c.Plugins)
+	pluginstest.Settle(t, c.Plugins)
 	c.section(func() { forgetMarks(c.watcher) })
 }
 
@@ -236,7 +237,7 @@ func (c *pcComponent) waitMarks(t *testing.T, what string, check func(PluginsSta
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	settle(t, c.Plugins)
+	pluginstest.Settle(t, c.Plugins)
 }
 
 func pcDirty(names ...string) func(PluginsState) bool {
@@ -394,7 +395,7 @@ func TestPluginsPerPluginAtReloadAddsAPluginDiscoveredSinceRemovesOneNoLongerThe
 // make a build discover again are cleared.
 func pcLagBehind(t *testing.T, c *pcComponent) {
 	t.Helper()
-	settle(t, c.Plugins)
+	pluginstest.Settle(t, c.Plugins)
 	c.section(func() { c.watcher.set, c.watcher.manifest = 0, 0 })
 }
 
