@@ -666,14 +666,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 			if options.APIKey == "" && modelRuntimeRequiresAuth(providerID) && registry.GetProvider(providerID) == nil && !registry.ModelRegistry.HasConfiguredAuth(providerID) {
 				return nil, nil, ai.StreamOptions{}, &modelRuntimeAuthMissingError{provider: providerID}
 			}
-			build := func() (*ai.Model, error) {
-				return buildModel(providerID+"/"+model.ID, runtime.services, options.APIKey)
-			}
-			// A model the registry does not list has no definition but its own members, as an extension's model object has: the start-up copy of a custom model id (BuildFallbackModel) is one. Built by provider and id it is the provider's connection alone, with no output limit and no compat.
-			if object || listed == nil {
-				build = func() (*ai.Model, error) { return buildRequestModel(model, runtime.services, options.APIKey) }
-			}
-			resolved, err := build()
+			resolved, err := buildUnauthenticatedRequestModel(model, listed, object, runtime.services, options.APIKey)
 			if err != nil {
 				return nil, nil, ai.StreamOptions{}, err
 			}

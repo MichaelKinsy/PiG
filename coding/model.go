@@ -111,6 +111,18 @@ func buildRequestModel(model *ai.Model, svcs *AgentSessionServices, apiKey strin
 	return buildModelFromEntry(providerID, modelID, own, svcs, apiKey)
 }
 
+// buildUnauthenticatedRequestModel builds the request's model of model where the registry resolved no credentials for its provider (prepareRequest).
+// listed is the registry's model of the same provider and id, nil when it lists none; object reports a model object an extension set. A model object
+// and a model the registry does not list are built from their own members (buildRequestModel): the start-up copy of a custom model id
+// (BuildFallbackModel) has no definition but itself, and built by provider and id it is the provider's connection alone, with no output limit and
+// no compat. A model the registry lists is built by provider and id.
+func buildUnauthenticatedRequestModel(model, listed *ai.Model, object bool, svcs *AgentSessionServices, apiKey string) (*ai.Model, error) {
+	if object || listed == nil {
+		return buildRequestModel(model, svcs, apiKey)
+	}
+	return buildModel(model.ProviderMeta.ProviderID+"/"+model.ID, svcs, apiKey)
+}
+
 // BuildModelFromEntry constructs the Model for an already-resolved entry. The
 // CLI model resolver resolves the entry itself (catalog match, models.json, or
 // the provider's default-model fallback) and shares this construction with
