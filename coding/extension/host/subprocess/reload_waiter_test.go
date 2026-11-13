@@ -30,6 +30,40 @@ type waiterFixture struct {
 	packed bool
 	// replacedByEdit is set when a reload after a source edit starts another process.
 	replacedByEdit bool
+	// death is how the host reports the end of the fixture's process (deathNotices).
+	death string
+}
+
+// The ways a host reports a process that was killed.
+const (
+	// deathRestarts: an extension alone in its process starts again.
+	deathRestarts = "restarts"
+	// deathRestartsCell: the members of a Node cell start again together.
+	deathRestartsCell = "restarts the cell"
+	// deathStopsCell: the members of a Go, Python or Rust cell stop until a /reload.
+	deathStopsCell = "stops the cell"
+)
+
+// deathNotices is what the host reports when the fixture's process is killed: one notice for each extension that ran in it, in load order, as
+// docs/runtime-cell-reload.md has it. The path of the process's log reads <log>.
+func (f waiterFixture) deathNotices(configs []ExtConfig) []string {
+	names := make([]string, len(configs))
+	for i, cfg := range configs {
+		names[i] = cfg.Name
+	}
+	sorted := slices.Sorted(slices.Values(names))
+	notices := make([]string, len(names))
+	for i, name := range names {
+		switch f.death {
+		case deathRestarts:
+			notices[i] = name + " restarts: (stderr: <log>)"
+		case deathRestartsCell:
+			notices[i] = name + " restarts: packed process exited: signal: killed; restart packed group; interrupted callbacks are not replayed (stderr: <log>)"
+		case deathStopsCell:
+			notices[i] = name + " stopped: packed process exited: signal: killed; " + strings.Join(sorted, ", ") + " stopped; /reload restarts them (stderr: <log>)"
+		}
+	}
+	return notices
 }
 
 func waiterFixtures() []waiterFixture {
@@ -51,11 +85,11 @@ func waiterFixtures() []waiterFixture {
 		}
 	}
 	return []waiterFixture{
-		{name: "node isolated", configs: node("waiter-node-lone")},
-		{name: "node packed", configs: node("waiter-node-a", "waiter-node-b"), packed: true},
-		{name: "go packed", packed: true, replacedByEdit: true, configs: func(t *testing.T, edit int) []ExtConfig {
+		{name: "node isolated", death: deathRestarts, configs: node("waiter-node-lone")},
+		{name: "node packed", death: deathRestartsCell, configs: node("waiter-node-b", "waiter-node-a"), packed: true},
+		{name: "go packed", death: deathStopsCell, packed: true, replacedByEdit: true, configs: func(t *testing.T, edit int) []ExtConfig {
 			var configs []ExtConfig
-			for _, name := range []string{"waiter-go-a", "waiter-go-b"} {
+			for _, name := range []string{"waiter-go-b", "waiter-go-a"} {
 				module := "example.com/waiter/" + name
 				root := writePackedFactoryModule(t, module, name, fmt.Sprintf("%s_tool_%d", strings.ReplaceAll(name, "-", "_"), edit))
 				configs = append(configs, packedFactoryConfig(name, root, module, fmt.Sprintf("%s-%d", name, edit)))
@@ -80,9 +114,13 @@ func newWaiterHost(t *testing.T, fixture waiterFixture, retention *RuntimeRetent
 		w.host.SetRuntimeRetention(retention)
 	}
 	w.host.SetConfigLoader(func() ([]ExtConfig, error) { return slices.Clone(w.configs), nil })
-	w.host.SetCrashHandler(func(name string, _ time.Duration, _ bool, reason string) {
+	w.host.SetCrashHandler(func(name string, _ time.Duration, disabled bool, reason string) {
+		outcome := "restarts"
+		if disabled {
+			outcome = "stopped"
+		}
 		w.mu.Lock()
-		w.reports = append(w.reports, name+": "+reason)
+		w.reports = append(w.reports, name+" "+outcome+": "+reason)
 		w.mu.Unlock()
 	})
 	t.Cleanup(func() { w.host.Shutdown("test done") })
@@ -221,11 +259,14 @@ func requireOneWaiterPerProcess(t *testing.T, fixture waiterFixture, w *waiterHo
 const waiterReloads = 5
 
 // processDeathReports loads the fixture, reloads it unchanged the given number of times, kills its process and returns what the host
-// reported, with the log's path replaced by a fixed word, and whether the log a report names is still there.
-func processDeathReports(t *testing.T, fixture waiterFixture, reloads int) (reports []string) {
+// reported, in the order it reported it and with the log's path replaced by a fixed word, beside what it is to report. The end of the process
+// reaches the host as the closed connection of each extension in it and, for a packed process, as the reaped process: order, when it is not
+// nil, is the order the host sees them in.
+func processDeathReports(t *testing.T, fixture waiterFixture, reloads int, order *deathOrder) (reports, want []string) {
 	t.Helper()
 	baseLoops, baseWatchers := processWaiters(t)
 	w := newWaiterHost(t, fixture, nil)
+	observers := newDeathObservers(t, w, order)
 	w.load(t)
 	pid, logPath := w.oneProcess(t)
 	for range reloads {
@@ -238,18 +279,22 @@ func processDeathReports(t *testing.T, fixture waiterFixture, reloads int) (repo
 	if !waiterFileExists(logPath) {
 		t.Fatalf("the stderr log %s is gone while its process runs", logPath)
 	}
+	observers.armed.Store(true)
 	if err := killTestProcess(pid); err != nil {
 		t.Fatal(err)
 	}
-	waiterEventually(t, "a crash report for each extension", func() bool { return len(w.crashReports()) >= len(w.configs) })
-	// A further report of the same death would come from a generation that should have ended: give it the time to arrive.
-	time.Sleep(1500 * time.Millisecond)
+	// The loops and the watcher counted above are all that waits for the process. Once each has acted on its end, nothing is left that could
+	// report it: a further report would come from a generation that should have ended, and that generation's loop or watcher is counted.
+	watchers := 0
+	if fixture.packed {
+		watchers = 1
+	}
+	observers.await(t, len(w.configs), watchers)
 	named := false
 	for _, report := range w.crashReports() {
 		named = named || strings.Contains(report, logPath)
 		reports = append(reports, strings.ReplaceAll(report, logPath, "<log>"))
 	}
-	slices.Sort(reports)
 	if named && !waiterFileExists(logPath) {
 		t.Errorf("after %d reloads a crash report names %s, and the file is gone: %q", reloads, logPath, reports)
 	}
@@ -257,18 +302,18 @@ func processDeathReports(t *testing.T, fixture waiterFixture, reloads int) (repo
 		waiterEventually(t, "the log no report names is removed", func() bool { return !waiterFileExists(logPath) })
 	}
 	w.host.Shutdown("test done")
-	return reports
+	return reports, fixture.deathNotices(w.configs)
 }
 
 // TestProcessExitAfterUnchangedReloadsIsReportedOnce: a process that dies after several generations ran in it is reported as one that
-// dies with its first generation is: the same notices, each once, and the log they name is still there.
+// dies with its first generation is: one notice for each extension, in load order, and the log they name is still there.
 func TestProcessExitAfterUnchangedReloadsIsReportedOnce(t *testing.T) {
 	for _, fixture := range waiterFixtures() {
 		t.Run(fixture.name, func(t *testing.T) {
-			first := processDeathReports(t, fixture, 0)
-			later := processDeathReports(t, fixture, waiterReloads)
-			if !slices.Equal(first, later) {
-				t.Errorf("the death of a process after %d unchanged reloads is reported as\n  %s\nand the death of one that was never reloaded as\n  %s", waiterReloads, strings.Join(later, "\n  "), strings.Join(first, "\n  "))
+			for _, reloads := range []int{0, waiterReloads} {
+				if got, want := processDeathReports(t, fixture, reloads, nil); !slices.Equal(got, want) {
+					t.Errorf("the death of a process after %d unchanged reloads is reported as\n  %s\nwant\n  %s", reloads, strings.Join(got, "\n  "), strings.Join(want, "\n  "))
+				}
 			}
 		})
 	}
