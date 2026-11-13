@@ -156,3 +156,44 @@ func TestPassesEachDistinctReportOnOnce(t *testing.T) {
 		t.Errorf("reports = %+v, want %+v", reports, want)
 	}
 }
+
+// D636: a pick the server stored before the follower's hold had its first values is applied when the hold binds (Pi's follower
+// applies only the pick's next change). The page has the same row over the patched TypeScript follower
+// (chord/nextnode/app/app_web_stored_pick_test.go).
+func TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted(t *testing.T) {
+	notes := notesEnDe(t)
+	client, closeAll := languageSetup(t, notes)
+	defer closeAll()
+	choose := func(locale any) {
+		t.Helper()
+		choice, err := client.Get(bg, LocaleChoice, delta.NewJsonObject(0), host.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer choice.Release()
+		if _, err := choice.Call("choose", locale, bg); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Stored before the follower starts.
+	choose("fr")
+	var mu sync.Mutex
+	var seen []string
+	last := func() string {
+		mu.Lock()
+		defer mu.Unlock()
+		if len(seen) == 0 {
+			return ""
+		}
+		return seen[len(seen)-1]
+	}
+	follower, err := FollowActiveLanguage(client, []string{"de-AT", "en"}, func(l *Language) { mu.Lock(); seen = append(seen, l.Locale); mu.Unlock(); wakeups.poke() }, func(MessagesReport) {}, bg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer follower.Stop()
+	until(t, func() bool { return last() == "fr" })
+	// The pick's next change is followed as before.
+	choose(nil)
+	until(t, func() bool { return last() == "de" })
+}
