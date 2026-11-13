@@ -153704,7 +153704,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -162155,8 +162155,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -162178,7 +162178,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -162534,12 +162534,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.BranchWithSummary"
+        "call:internal/sessionentry/union.go#BranchSummaryEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_tree_test.go#TestNavigateTreeExtensionSummary",
-        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder",
-        "test:internal/sessionentry/entry_test.go#TestBranchSummaryEntryWritesFromHookFalseInPiMemberOrder"
+        "test:internal/codingagent/session_null_members_rewrite_test.go#TestRewritersKeepNullMembers",
+        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder"
       ]
     },
     {
@@ -162556,7 +162556,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.BranchWithSummary"
+        "call:internal/sessionentry/union.go#BranchSummaryEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_tree_test.go#TestNavigateTreeExtensionSummary"
@@ -162576,7 +162576,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+        "call:internal/sessionentry/union.go#BranchSummaryEntry.MarshalJSON"
       ],
       "evidence": [
         "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream",
@@ -162642,7 +162642,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+        "call:internal/sessionentry/union.go#BranchSummaryEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -162708,7 +162708,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryListWithLive"
+        "call:internal/sessionentry/entry.go#BranchSummaryEntry.UnmarshalJSON"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -164711,11 +164711,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.appendCompaction"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
-        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder",
-        "test:internal/sessionentry/entry_test.go#TestCompactionEntryDecodesWithDetailsOrder"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:internal/codingagent/session_null_members_rewrite_test.go#TestRewritersKeepNullMembers",
+        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder"
       ]
     },
     {
@@ -164732,7 +164733,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_transcript.go#compactionTrimIndex"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream",
@@ -164754,12 +164755,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.appendCompaction"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder",
-        "test:internal/sessionentry/entry_test.go#TestCompactionEntryDecodesWithDetailsOrder"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder"
       ]
     },
     {
@@ -164820,7 +164821,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream",
@@ -164842,7 +164843,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.appendCompaction"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream"
@@ -164884,7 +164885,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream",
@@ -164928,12 +164929,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryListWithLive"
+        "call:internal/sessionentry/entry.go#CompactionEntry.UnmarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream",
         "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream",
-        "test:internal/codingagent/session_test.go#TestAppendCompaction"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -164976,8 +164977,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/session_boundary_publication_test.go#TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:coding/extension/null_members_test.go#TestBoundaryDraftKeepsNullMembersApartFromAbsent"
       ]
     },
     {
@@ -165021,7 +165022,7 @@
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/extension/session_boundary_draft_type_test.go#TestSessionBoundaryDraftTypeSelectsTheUpstreamMember"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -165050,7 +165051,7 @@
       "id": "pkg:coding-agent/.#CompactionEntryDraft::property:usage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:68962e1f2cc1a23b50b8214f3dd8cebcf889a046bb37b37cac2caefab4d5ec79",
-      "rationale": "Derived by the interface gap detector: CompactionEntryDraft::property:usage is Go coding/extension/events.go#SessionBoundaryDraft.Usage (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CompactionEntryDraft::property:usage is Go coding/extension/events.go#SessionBoundaryDraft.Usage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#SessionBoundaryDraft.Usage"
       ],
@@ -165063,7 +165064,9 @@
         "call:coding/extension/events.go#SessionBoundaryDraft.MarshalJSON"
       ],
       "evidence": [
-        "reach:coding/extension/events.go#SessionBoundaryDraft.MarshalJSON"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:coding/extension/null_members_test.go#TestBoundaryDraftKeepsNullMembersApartFromAbsent",
+        "test:coding/extension/null_members_test.go#TestExtensionUsageKeepsTheAuthorsObject"
       ]
     },
     {
@@ -171358,6 +171361,8 @@
         "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
       ],
       "evidence": [
+        "test:internal/codingagent/live_message_meta_test.go#TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity",
+        "test:internal/codingagent/live_message_meta_test.go#TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
         "test:internal/codingagent/session_member_order_test.go#TestSessionKeepsExtensionObjectsInWrittenMemberOrder"
       ]
     },
@@ -171375,7 +171380,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
+        "call:internal/sessionentry/entry.go#CustomMessageEntry.UnmarshalJSON"
       ],
       "evidence": [
         "test:internal/codingagent/custom_message_click_test.go#TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
@@ -171512,7 +171517,7 @@
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesRequestsAfterExtensionMessagesAsContinuations",
-        "test:coding/extension/session_boundary_draft_type_test.go#TestSessionBoundaryDraftTypeSelectsTheUpstreamMember"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -171555,8 +171560,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/session_boundary_publication_test.go#TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:coding/extension/null_members_test.go#TestBoundaryDraftKeepsNullMembersApartFromAbsent"
       ]
     },
     {
@@ -171573,12 +171578,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/events.go#SessionBoundaryDraft.MarshalJSON"
+        "call:coding/extension/events.go#SessionBoundaryDraft.DisplayMember"
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesRequestsAfterExtensionMessagesAsContinuations",
-        "test:coding/extension/session_boundary_draft_type_test.go#TestSessionBoundaryDraftTypeSelectsTheUpstreamMember"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -211508,8 +211513,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
-        "test:coding/cli/rpc_append_entry_cost_test.go#TestRPCNodeAppendEntryCostIsLinearInTheAppends"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -211530,8 +211535,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
-        "test:coding/cli/rpc_append_entry_cost_test.go#TestRPCNodeAppendEntryCostIsLinearInTheAppends"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -211552,8 +211557,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
-        "test:coding/extension/host/subprocess/boundary_kept_encoding_test.go#TestKeptProjectionEncodesAsTheWholePreview"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -211574,8 +211579,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
-        "test:coding/extension/host/subprocess/boundary_kept_encoding_test.go#TestKeptProjectionEncodesAsTheWholePreview"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -211729,7 +211734,7 @@
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
         "test:test/extension-conformance/session_identity_test.go#TestContextSessionIdentityAcrossSDKs",
-        "test:coding/session_readonly_manager_test.go#TestExtensionContextSessionManagerReadsTheSessionsOwnLog"
+        "test:coding/session_entry_null_members_test.go#TestSessionEntryNullMembersMatchPi"
       ]
     },
     {
@@ -211751,7 +211756,7 @@
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
         "test:test/extension-conformance/session_identity_test.go#TestContextSessionIdentityAcrossSDKs",
-        "test:coding/session_readonly_manager_test.go#TestExtensionContextSessionManagerReadsTheSessionsOwnLog"
+        "test:coding/session_entry_null_members_test.go#TestSessionEntryNullMembersMatchPi"
       ]
     },
     {
@@ -212430,8 +212435,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_session_writes_test.go#TestConformance_ExtensionAPISessionWrites",
-        "test:coding/cli/session_extension_actions_label_test.go#TestSessionExtensionActionsBindSetLabel",
-        "test:internal/codingagent/session_manager_lookup_test.go#TestGetLabelReturnsTheLatestLabelAndClears"
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetLabelOmittedNullAndEmptyAcrossSDKs",
+        "test:coding/cli/session_extension_actions_label_test.go#TestSessionExtensionActionsBindSetLabel"
       ]
     },
     {
@@ -212452,8 +212457,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_session_writes_test.go#TestConformance_ExtensionAPISessionWrites",
-        "test:coding/cli/session_extension_actions_label_test.go#TestSessionExtensionActionsBindSetLabel",
-        "test:internal/codingagent/session_manager_lookup_test.go#TestGetLabelReturnsTheLatestLabelAndClears"
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetLabelOmittedNullAndEmptyAcrossSDKs",
+        "test:coding/cli/session_extension_actions_label_test.go#TestSessionExtensionActionsBindSetLabel"
       ]
     },
     {
