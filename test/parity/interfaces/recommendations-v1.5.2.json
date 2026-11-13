@@ -315460,7 +315460,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "9 normalized-name Pig candidates are ambiguous."
+        "10 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -315475,6 +315475,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#sessionToolRegistry.entry",
         "go:github.com/MichaelKinsy/PiG/coding#virtualModelStore.entry",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Entry",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.Entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#lazyTree.entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#treeNodeAdapter.entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.entry",
@@ -317359,7 +317360,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "40 normalized-name Pig candidates are ambiguous."
+        "41 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -317407,6 +317408,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#oauthProxyWithStore.ID",
         "go:github.com/MichaelKinsy/PiG/coding/piglet/artifact#Component.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.ID",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#parityOAuthProvider.ID"
       ],
