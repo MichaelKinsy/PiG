@@ -39,6 +39,8 @@ func TestScanFindsEachPattern(t *testing.T) {
 		"env-stat|Env|os.Getenv",
 		"sort-instance|Sorts|slices.SortFunc",
 		"sort-instance|Sorts|slices.SortStableFunc",
+		"sort-instance|Sorts|slices.SortedFunc",
+		"sort-instance|Sorts|slices.SortedStableFunc",
 		"env-stat|Env|os.Stat",
 		"history-clone|History|append(nil,x...)",
 		"history-clone|History|slices.Clone",
@@ -87,10 +89,12 @@ func TestSortInstanceCountsOnlyLinkedPackages(t *testing.T) {
 	for _, f := range found {
 		got = append(got, f.File+"|"+f.Pattern+"|"+f.Detail)
 	}
-	// a/a.go: a function; a/a_vars.go: package-level var initializers (a func literal run at init and a plain call); a/a_windows.go: linked on windows only.
+	// a/a.go: two functions, a sort in place and a sorted collection; a/a_vars.go: package-level var initializers (a func literal run at init, a plain call and a sorted collection); a/a_windows.go: linked on windows only.
 	want := []string{
+		"a/a.go|sort-instance|slices.SortedFunc",
 		"a/a.go|sort-instance|slices.SortFunc",
 		"a/a_vars.go|sort-instance|slices.SortFunc",
+		"a/a_vars.go|sort-instance|slices.SortedStableFunc",
 		"a/a_vars.go|sort-instance|slices.SortStableFunc",
 		"a/a_windows.go|sort-instance|slices.SortFunc",
 	}

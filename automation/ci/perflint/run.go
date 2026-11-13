@@ -285,7 +285,7 @@ func (s *scanner) scanFunc(fn *ast.FuncDecl) {
 				s.add(owner, "compile-in-func", "regexp."+name, n.Pos())
 			case (p == "text/template" || p == "html/template") && name == "Parse" && fn.Name.Name != "init":
 				s.add(owner, "compile-in-func", "template.Parse", n.Pos())
-			case s.linked && p == "slices" && (name == "SortFunc" || name == "SortStableFunc"):
+			case s.linked && p == "slices" && sortInstance(name):
 				s.add(owner, "sort-instance", "slices."+name, n.Pos())
 			case p == "slices" && name == "Clone" && len(n.Args) == 1 && isMessageSlice(info.TypeOf(n.Args[0])):
 				s.add(owner, "history-clone", "slices.Clone", n.Pos())
@@ -472,6 +472,15 @@ func scan(root string, pkgs []*packages.Package) []finding {
 // sampleHot makes every package hot; the tests set it for their sample module.
 var sampleHot bool
 
+// sortInstance reports whether name is a function of package slices that compiles a copy of the sort for the element shape of its caller: the two sorts in place, and the two that collect a sequence and sort it (slices.SortedFunc is slices.Collect and slices.SortFunc).
+func sortInstance(name string) bool {
+	switch name {
+	case "SortFunc", "SortStableFunc", "SortedFunc", "SortedStableFunc":
+		return true
+	}
+	return false
+}
+
 // scanPackageVars finds sort-instance sites in package-level var initializers (a call or func literal there runs at init and is linked like a function body).
 func (s *scanner) scanPackageVars(d *ast.GenDecl) {
 	if !s.linked {
@@ -486,7 +495,7 @@ func (s *scanner) scanPackageVars(d *ast.GenDecl) {
 		for _, v := range vs.Values {
 			ast.Inspect(v, func(n ast.Node) bool {
 				if call, ok := n.(*ast.CallExpr); ok {
-					if p, name := s.callee(call); p == "slices" && (name == "SortFunc" || name == "SortStableFunc") {
+					if p, name := s.callee(call); p == "slices" && sortInstance(name) {
 						s.add(owner, "sort-instance", "slices."+name, call.Pos())
 					}
 				}

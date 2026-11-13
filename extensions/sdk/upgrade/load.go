@@ -38,25 +38,6 @@ type Package struct {
 	Errors     []types.Error
 }
 
-// LoadOptions selects the packages to read.
-type LoadOptions struct {
-	// Dir is where `go list` runs: the extension's module, or a generated
-	// module that imports it. Its go.mod must resolve the current SDK.
-	Dir string
-	// Roots are the extension's source directories. A package in one is type
-	// checked from source and may be rewritten; every other package is read
-	// from the compiler's export data.
-	Roots []string
-	// Flags are go list flags placed before the patterns, such as -modfile.
-	Flags []string
-	// Patterns are the packages to list. The default is "./...".
-	Patterns []string
-	// Command is the go command. The default is "go".
-	Command string
-	// Env is the environment of the go command. The default is the current one.
-	Env []string
-}
-
 // listedPackage is the part of `go list -json` the loader reads.
 type listedPackage struct {
 	ImportPath string

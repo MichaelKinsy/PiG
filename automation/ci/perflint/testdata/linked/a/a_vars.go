@@ -10,3 +10,5 @@ var stable = func() []int {
 }()
 
 var direct = func(s []int) int { slices.SortFunc(s, func(x, y int) int { return x - y }); return len(s) }(nil)
+
+var sorted = slices.SortedStableFunc(slices.Values([]int{2, 1}), func(x, y int) int { return x - y })
