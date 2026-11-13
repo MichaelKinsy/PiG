@@ -63,6 +63,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-06a8890](#bf-06a8890) | fix(bug): tell the reporter exactly what to do with the /bug archive | PiG's own defect | All platforms | Unreleased |
 | [BF-06cb94f](#bf-06cb94f) | In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-07151d0](#bf-07151d0) | In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0749ea1](#bf-0749ea1) | `pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-0790d5e](#bf-0790d5e) | `String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-07da4ea](#bf-07da4ea) | A configured package or `-e` source that cannot be installed no longer ends startup | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-07f4072](#bf-07f4072) | A Durable session on a Chord store no longer races the host's loop when a commit is published: the… | PiG's own defect | All platforms | Unreleased |
@@ -2689,6 +2690,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `07151d01a7` (2026-10-13)
 - **Tests:** `coding/extension/host/subprocess/loop_turned_forward_test.go::TestLoopTurnIsTakenOnlyOnceEveryRecipientTookIt`, `coding/extension/host/subprocess/loop_turned_forward_test.go::TestLoopTurnedReachesOnlyOtherNodeProcesses`, `coding/extension/host/subprocess/quit_handler_yield_test.go::TestPrintModeQuitHandlerReportsItsYield`, `coding/extension/host/subprocess/runtime_node_loop_turn_stall_test.go::TestNodeLoopTurnWaitsUntilAStalledProcessTookIt`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`
 - **Release note:** In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's `session_shutdown` or `agent_settled` handler awaits a timer, however busy the machine is. The immediate and the timer an earlier extension's handler queued ran before that handler resumed only if the earlier process read the forwarded `loop_turned` in time; a process the OS kept waiting ran them after the handler answered, with a stale ctx once the runner was invalidated. The yielding process now stays in its turn until every other Node process reports it took the turn (`loop_turn_taken`), after the immediates and due timers it queued before the turn ran.
+
+### BF-0749ea1
+
+**`pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the previewed extension was rejected with `editor views are not enabled in this program`.
+- **Root cause:** The registry now keeps each kind's validator, child count and focus rule only. The builders sit in one table behind one lookup in buildWidget: EnableViewWidgets fills the ten kinds, EnableEditorViews adds the editor, which stays apart because it brings the terminal editor and 2.8 MB of word dictionaries. Both calls are idempotent, order-independent and safe during a build. A kind that is not enabled fails with one sentence that names the kind and the call; validation is unchanged.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0749ea17ba` (2026-11-13)
+- **Tests:** `coding/cli/views_enable_test.go::TestPigEntriesEnableExtensionViews`, `coding/extension/host/subprocess/view_kit_enable_test.go::TestEnablingViewWidgetsIsSafeDuringABuild`, `coding/extension/host/subprocess/view_kit_enable_test.go::TestViewOfAKindThatIsNotEnabledIsReportedOnceAndTheExtensionIsSentNothing`, `coding/extension/host/subprocess/view_kit_enable_test.go::TestViewWidgetBuildNamesTheCallUntilItsBuilderIsEnabled`, `examples/headless/widget_link_test.go::TestHeadlessEmbedLinksNoViewWidget`
+- **Release note:** `pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the previewed extension was rejected with `editor views are not enabled in this program`. Every `pig` command now enables them before it runs.
 
 ### BF-0790d5e
 

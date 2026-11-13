@@ -1148,6 +1148,32 @@
       ]
     },
     {
+      "id": "BF-0749ea1",
+      "title": "`pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the…",
+      "symptom": "`pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the previewed extension was rejected with `editor views are not enabled in this program`.",
+      "rootCause": "The registry now keeps each kind's validator, child count and focus rule only. The builders sit in one table behind one lookup in buildWidget: EnableViewWidgets fills the ten kinds, EnableEditorViews adds the editor, which stays apart because it brings the terminal editor and 2.8 MB of word dictionaries. Both calls are idempotent, order-independent and safe during a build. A kind that is not enabled fails with one sentence that names the kind and the call; validation is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the previewed extension was rejected with `editor views are not enabled in this program`. Every `pig` command now enables them before it runs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0749ea17ba",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/views_enable_test.go::TestPigEntriesEnableExtensionViews",
+        "coding/extension/host/subprocess/view_kit_enable_test.go::TestEnablingViewWidgetsIsSafeDuringABuild",
+        "coding/extension/host/subprocess/view_kit_enable_test.go::TestViewOfAKindThatIsNotEnabledIsReportedOnceAndTheExtensionIsSentNothing",
+        "coding/extension/host/subprocess/view_kit_enable_test.go::TestViewWidgetBuildNamesTheCallUntilItsBuilderIsEnabled",
+        "examples/headless/widget_link_test.go::TestHeadlessEmbedLinksNoViewWidget"
+      ]
+    },
+    {
       "id": "BF-0790d5e",
       "title": "`String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which…",
       "symptom": "`String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which trims U+0085 and not U+FEFF where JavaScript trims U+FEFF and not U+0085 (`jsstring.Trim` is the JS rule, already used in 100 other places).",
