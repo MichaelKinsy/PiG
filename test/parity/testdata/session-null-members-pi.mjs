@@ -112,9 +112,9 @@ await row("api usage note empty", file, () => sm.appendUsage("k", "p", "m", usag
 await row("api usage note value", file, () => sm.appendUsage("k", "p", "m", usage, "n"));
 await row("api session_info name empty", file, () => sm.appendSessionInfo(""));
 await row("api session_info name value", file, () => sm.appendSessionInfo(" n\nm "));
+await row("api branch_summary fromHook omitted", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch"));
 // JavaScript rows: values the declarations do not allow, and JSON.stringify's rules.
 await row("js api compaction fromHook null", file, () => sm.appendCompaction("api-compaction", userId, 10, undefined, null), true);
-await row("js api branch_summary fromHook omitted", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch"), true);
 await row("js api branch_summary fromHook null", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch", undefined, null), true);
 await row("js api context_edit replacement null", file, () => sm.appendContextEdit(userId, null), true);
 await row("js api context_edit replacement value", file, () => sm.appendContextEdit(userId, {content: "c"}), true);

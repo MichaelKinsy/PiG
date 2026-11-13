@@ -45,6 +45,7 @@ func TestOptionalMembersKeepNullApartFromAbsent(t *testing.T) {
 		{"branch_summary members absent", branch(""), "details=absent,usage=absent"},
 		{"branch_summary members null", branch(`"details":null,"usage":null,`), "details=null,usage=null"},
 		{"branch_summary members value", branch(`"details":{"k":1},"usage":` + usage + `,`), "details=value,usage=value"},
+		{"branch_summary fromHook absent", `{"type":"branch_summary",` + base + `,"fromId":"cccccccc","summary":"s"}`, "details=absent,usage=absent"},
 		{"label absent", label(""), "label=absent"},
 		{"label null", label(`,"label":null`), "label=null"},
 		{"label empty", label(`,"label":""`), "label=value"},

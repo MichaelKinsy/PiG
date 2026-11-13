@@ -101,8 +101,8 @@ func (e *CompactionEntry) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// BranchSummaryEntry member order matches Pi's branchWithSummary object literal (session-manager.ts:1612-1622); fromHook is always written
-// because navigateTree passes fromExtension as a boolean (agent-session.ts:4110-4114).
+// BranchSummaryEntry member order matches Pi's branchWithSummary object literal (session-manager.ts:1612-1622). navigateTree passes fromExtension as a
+// boolean (agent-session.ts:4110-4114); a caller of SessionManager.branchWithSummary may leave fromHook undefined (FromHookAbsent).
 type BranchSummaryEntry struct {
 	SessionEntryBase
 	FromID  string `json:"fromId"`
@@ -114,9 +114,9 @@ type BranchSummaryEntry struct {
 	UsageNull bool `json:"-"`
 	FromHook  bool `json:"fromHook"`
 
-	// fromHookAbsent records that the record this entry was decoded from had no fromHook member (Pi's `fromHook?: boolean` left undefined, session-manager.ts:1604), so
-	// writing it back leaves the member out as Pi's parsed object does. An entry built in memory always writes it: PiG's callers pass a boolean, as navigateTree does.
-	fromHookAbsent bool
+	// FromHookAbsent leaves the fromHook member out when the entry is written: Pi's `fromHook?: boolean` left undefined by a caller of
+	// SessionManager.branchWithSummary (session-manager.ts:1604). A decoded entry has it set when its record has no fromHook member.
+	FromHookAbsent bool `json:"-"`
 }
 
 // UnmarshalJSON keeps the member order of `details`, the object the summarizer or an extension's session_before_tree result supplied, so a
@@ -129,7 +129,7 @@ func (e *BranchSummaryEntry) UnmarshalJSON(data []byte) error {
 	var probe struct {
 		FromHook *bool `json:"fromHook"`
 	}
-	e.fromHookAbsent = json.Unmarshal(data, &probe) == nil && probe.FromHook == nil
+	e.FromHookAbsent = json.Unmarshal(data, &probe) == nil && probe.FromHook == nil
 	e.UsageNull = e.Usage == nil && orderedjson.IsNullMember(data, "usage")
 	return nil
 }

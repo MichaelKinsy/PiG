@@ -280,6 +280,9 @@ func TestSessionEntryNullMembersMatchPi(t *testing.T) {
 	row("api usage note value", func() error { _, err := in().AppendUsage("k", "p", "m", usageValue, "n"); return err })
 	row("api session_info name empty", func() error { return appendID(in().AppendSessionInfo("")) })
 	row("api session_info name value", func() error { return appendID(in().AppendSessionInfo(" n\nm ")) })
+	row("api branch_summary fromHook omitted", func() error {
+		return appendID(in().BranchWithSummaryEntry(leaf(), icodingagent.BranchSummaryEntry{Summary: "api-branch", FromHookAbsent: true}))
+	})
 
 	entries, err := icodingagent.LoadEntriesFromFile(path)
 	if err != nil {

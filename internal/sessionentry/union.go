@@ -184,7 +184,7 @@ func (e BranchSummaryEntry) MarshalJSON() ([]byte, error) {
 		Details  any    `json:"details,omitempty"`
 		Usage    any    `json:"usage,omitempty"`
 		FromHook any    `json:"fromHook,omitempty"`
-	}{e.SessionEntryBase, e.FromID, e.Summary, e.Details, optionalMember(e.Usage, e.UsageNull), presentMember(e.FromHook, e.fromHookAbsent)})
+	}{e.SessionEntryBase, e.FromID, e.Summary, e.Details, optionalMember(e.Usage, e.UsageNull), presentMember(e.FromHook, e.FromHookAbsent)})
 }
 
 func (e CustomEntry) Base() SessionEntryBase { return e.withoutRecord() }
