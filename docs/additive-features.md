@@ -2240,3 +2240,30 @@ Approval: owner, 2026-11-11 ("higher setting until ~8 MiB live, then normal").
 
 Revision (minimum heap goal 16 MiB): approved by owner Michael Kinsy on 2026-11-12T14:42Z, through the owner's side: "D621 16 MiB floor approved if the complete numbers hold". The condition held: interactive CPU 18.6 % below Pi-Bolt (from 12.9 %), default theme 15.5 % below (from 7.9 %), interactive peak own memory 16.1 -> 20.3 MB against the bar of 22.44 MB; measured on shared cores, to be repeated on the clean host for the scoreboard. The idle change measured beside the floor is not part of this approval.
 SCRUTINIZED:approved
+
+## D627 Heap-profile sampling is off unless the process asks for a heap profile
+
+Summary: PiG does not sample heap allocations for profiling unless you set PIG_PROFILE to heap or allocs or set GODEBUG=memprofilerate; that saves about a megabyte of resident memory.
+
+Audience: runtime
+
+Stock disposition: inert capability. It selects no product behavior and changes no output; `PIG_PROFILE=heap` or `allocs`, or a `GODEBUG` with `memprofilerate`, turns it off.
+
+What: the Go runtime samples one allocation in every 512 KiB (`runtime.MemProfileRate`) and keeps a stack record, a special on the object and a slot in a hash table for each sample. The init of `internal/memprofrate`, which `coding/cli` imports, sets `runtime.MemProfileRate` to 0 unless `PIG_PROFILE` names `heap` or `allocs`, or the runtime already holds a rate other than its default (the user's `GODEBUG=memprofilerate=N`, parsed before any init). The package imports only `runtime`, `strings` and `syscall`, so its init is among the first of the process's package inits. The rate cannot be set before the runtime's own first allocations (`//go:debug` rejects `memprofilerate`), so the runtime takes one more sample on each P's next allocation after the change; that sample allocates the 1,439,992-byte hash table, and no sample follows it. The profiling-buckets memory class (`/memory/classes/profiling/buckets:bytes`) therefore still reads 1.457 MB (300 of 300 runs of `pig --version` at this change); it is address space whose pages stay untouched, and the gain below is the resident part, the pages that a default run's samples touch.
+
+What a user loses: nothing unless they profile the heap. `PIG_PROFILE=heap|allocs` and `GODEBUG=memprofilerate=N` keep sampling on from the start of the process; a heap profile that another tool takes from a default run is empty.
+
+Scope: every `pig` process (interactive, print, json, rpc, `--listen`) and every Piglet Binary, which is built from `cmd/pig`, carry the init. A Go extension subprocess built on the pinned extension SDK, and the Node processes of TypeScript extensions, do not import it and keep the runtime default; that is scope, not a gap this record closes.
+
+Pi source: none. Node has no sampling heap profiler running by default.
+
+Why: measured paired and interleaved, same harness invocation, pinned xd6702 node1 cores, base 1accad07e9dc against this change, the same base binary twice as the floor (n = 12 interleaved rounds on clean benchmark cores): interactive scenario peak own memory -1.5 MB (11 of 12), 40-prompt session own memory -1.05 MB (9 of 10) and resident memory -1.75 MB, 20-prompt session resident memory -0.9 MB (12 of 12), `-p` headless user instructions -0.9 % (12 of 12), each against a same-binary floor; measured on the branch before the merge onto the current line, by the lane that built it. The same binary with `GODEBUG=memprofilerate=0` from the first instruction measured the same rows within the floor. No CPU time, wall time or time-to-interactive claim: those did not move beyond the floor (time to interactive +0.15 ms in 28 pairs, floor -0.6 ms).
+
+Call-site markers: `internal/memprofrate/memprofrate.go` (`init`), `coding/cli/main.go` (the import).
+
+Locked by: `TestSamplingFollowsTheRequest` (`internal/memprofrate`: child processes on one P with no request, a CPU or metrics profile, `heap`, `allocs` and `GODEBUG=memprofilerate=65536`; the rate, whether 64 MiB of allocations from one function leave records, and that the profiling-buckets class does not grow during them), `TestRateFor`, `TestCommandProcessSamplesNoAllocations` (`coding/cli`: the command's process runs at rate 0).
+
+Remove when: the Go runtime stops allocating the profile table and touching its pages for a program that never reads the profile, or a measurement shows the sampling costs no resident memory.
+
+Approval: owner, 2026-11-12T20:58Z, through the maintainer ("D627 APPROVED"), after being told that the runtime samples heap allocations in every normal run, that nothing in PiG reads the samples unless a profile is asked for, that D627 turns the sampling off by default, and that a user who wants a heap profile must ask for it.
+SCRUTINIZED:approved
