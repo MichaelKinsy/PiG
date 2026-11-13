@@ -75062,17 +75062,6 @@
       "shapeHash": "sha256:12a228fcf8cab10fae3a3d8ed0d5483beeec20f09e7f56d728383d0b80690376"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.hasConfiguredAuth",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "ModelRuntime.hasConfiguredAuth",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(providerID string) bool"
-      },
-      "shapeHash": "sha256:ead0f5f0d21b275eac669debe690cbe283f347b126b45567b8258f3bdf3f1fbb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.keepsModelObject",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRuntime.keepsModelObject",
@@ -83158,17 +83147,6 @@
       "shapeHash": "sha256:aafcfaabcd6f293dfa2b039ab3f0ae41c2b4e76d2cab81173a76f2159f53706c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#firstNonEmpty",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "firstNonEmpty",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(values ...string) string"
-      },
-      "shapeHash": "sha256:19f02b8665baaeede17f726a388bd13cc7ca5db9f11a9c568b7996aaf6ac6b07"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#forkSessionKey",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "forkSessionKey",
@@ -85169,17 +85147,6 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#modelRuntimeRequiresAuth",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "modelRuntimeRequiresAuth",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(providerID string) bool"
-      },
-      "shapeHash": "sha256:ead0f5f0d21b275eac669debe690cbe283f347b126b45567b8258f3bdf3f1fbb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#modelRuntimeSnapshot",
@@ -101248,9 +101215,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session, runner *github.com/MichaelKinsy/PiG/coding/extension/host/inproc.Runner, catalog headlessCommandCatalog, services *github.com/MichaelKinsy/PiG/coding.AgentSessionServices, commands *rpcCommandJoin) *rpcAdmission"
+        "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session, runner *github.com/MichaelKinsy/PiG/coding/extension/host/inproc.Runner, catalog headlessCommandCatalog, commands *rpcCommandJoin) *rpcAdmission"
       },
-      "shapeHash": "sha256:4219c654ea1168d07ac1e15eb6a7c76db9696bf9b0f71b1cbd179c83d64317f2"
+      "shapeHash": "sha256:3d60fd1d1c214489713d3a7a313e014df12fe6015776537bf2765ce3a65799b1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.rebindAgain",

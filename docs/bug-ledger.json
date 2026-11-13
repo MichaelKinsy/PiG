@@ -56841,6 +56841,26 @@
       "tests": []
     },
     {
+      "id": "BF-f1fc6ab",
+      "title": "A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode…",
+      "symptom": "A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode (`pig -p`) and interactive mode, where Pi answers `No API key found for ollama.` and PiG's own RPC mode did too: PiG exempted that one provider name from the check for configured credentials (releases 0.2.0 to 0.7.0).",
+      "rootCause": "Pi refuses a prompt for a provider without configured auth in every mode: hasConfiguredAuth(provider) || checkAuth(provider) !== undefined, else No API key found for \u003cprovider\u003e. (agent-session.ts:2247-2259, auth-guidance.ts:22-25). A models.json provider without an apiKey is such a provider whatever its name (provider-composer.ts:422-457), and Pi has no provider that needs no auth method (provider-composer.ts:585).",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode (`pig -p`) and interactive mode, where Pi answers `No API key found for ollama.` and PiG's own RPC mode did too: PiG exempted that one provider name from the check for configured credentials (releases 0.2.0 to 0.7.0). PiG now applies Pi's one rule to every provider in every mode: a provider without configured credentials is refused before any request is sent, whatever it is called and whether or not `OLLAMA_HOST` is set. **If your local Ollama provider has no key, add one line to it in `~/.pig/agent/models.json`: `\"apiKey\": \"ollama\"`** (any text works; Ollama ignores it). That is the form the models and custom provider pages of PiG's docs and Pi's `docs/models.md` show, and a setup that already has it is unchanged, as is a keyless provider under any other name (it was always refused). The same name no longer passes the other credential gates either: selecting the model reports `No API key for ollama/\u003cmodel\u003e`, an extension's `setModel` answers `false`, a virtual model route to it fails with `which has no credentials.`, and a model object an extension builds for the provider gets no request.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f1fc6abc88",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f20cc08",
       "title": "A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of…",
       "symptom": "A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of the session: each append now costs the same, as in Pi.",
@@ -58018,6 +58038,26 @@
         "ai/anthropic_test.go::TestAnthropicConvertToolsStrict",
         "ai/tool_schema_wire_order_test.go::TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
+    },
+    {
+      "id": "BF-f56733c",
+      "title": "The provider id `ollama` no longer has a base URL of its own",
+      "symptom": "The provider id `ollama` no longer has a base URL of its own.",
+      "rootCause": "BuildModel's request building gave an OpenAI-completions model of the provider id ollama without a base URL the value of OLLAMA_HOST, or http://localhost:11434/v1. Pi has no such default: a model carries the base URL its definition, provider or catalog entry states (provider-composer.ts:224-225) and the request hands it to the OpenAI client unchanged (packages/ai/src/api/openai-completions.ts:778-780); OLLAMA_HOST is read nowhere in Pi. The default is removed (owner's decision of 2026-11-13T21:34Z, option A), with firstNonEmpty, which had no other caller; the BuildModel doc comment and the SDK example no longer name it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The provider id `ollama` no longer has a base URL of its own. `coding.BuildModel` and the request path gave an OpenAI-compatible model of that provider without a base URL the value of `OLLAMA_HOST`, or `http://localhost:11434/v1`; Pi has no such default and never reads `OLLAMA_HOST`, so that model is now addressed like a model of any other provider without a base URL (the OpenAI client's default, `https://api.openai.com/v1`). **If you relied on the default, state `\"baseUrl\": \"http://localhost:11434/v1\"` (or the value of your `OLLAMA_HOST`) in the provider's entry in `~/.pig/agent/models.json`**, as the models and custom provider pages show. A `models.json` provider that defines models already had to state its `baseUrl`, in PiG as in Pi; the Go SDK's `BuildModelFromEntry` and a model object an extension builds for the provider without a `baseUrl` are the callers that change.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f56733c5a4",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-f589900",
