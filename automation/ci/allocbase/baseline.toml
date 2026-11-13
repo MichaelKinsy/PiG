@@ -3270,16 +3270,6 @@ allocs = 3378634
 
 [[benchmark]]
 package = "./tui"
-benchmark = "BenchmarkLongStreamingAssistantMessage/default"
-allocs = 122545
-
-[[benchmark]]
-package = "./tui"
-benchmark = "BenchmarkLongStreamingAssistantMessage/foreign"
-allocs = 4814365
-
-[[benchmark]]
-package = "./tui"
 benchmark = "BenchmarkMainScreenLargeFrames/differential"
 allocs = 9
 
