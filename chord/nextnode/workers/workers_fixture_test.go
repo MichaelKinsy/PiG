@@ -31,6 +31,8 @@ func TestMain(m *testing.M) {
 		runChildFixture()
 	case "worker":
 		runWorkerFixture()
+	case "lastwords":
+		runLastWordsFixture()
 	case "grandchild":
 		time.Sleep(60 * time.Second)
 		os.Exit(0)
@@ -66,6 +68,41 @@ func runChildFixture() {
 	_, _ = port.Send([]byte{1, 2, 3}, nil)
 	payload, _ := envelope(FromWorker{Kind: FromWorkerStarted})
 	port.SendControl(payload)
+	select {}
+}
+
+// What the fixture of a worker that fails right after it started tells: a line of output, then its reason twice (the answer
+// to its holder, over the link, then `fatal`).
+const (
+	lastWordsOutput = "last words\n"
+	lastWordsAnswer = "the answer to the holder: Unknown model"
+	lastWordsReason = "Unknown model"
+)
+
+// lastWordsGrandchild, when set, has the fixture start a process outside its tree, `before` or `after` it opened its channel.
+const lastWordsGrandchild = "CHORD_WORKERS_FIXTURE_LASTWORDS_GRANDCHILD"
+
+// startOutsideTree starts a process the worker's tree does not hold (where a platform has the means: the Unix tests set it).
+var startOutsideTree func()
+
+// runLastWordsFixture is a worker that fails right after it started: it reports `started`, answers its holder over the link,
+// reports `fatal` with its reason, and exits 1 once all of it is written.
+func runLastWordsFixture() {
+	_, _ = fmt.Fprint(os.Stdout, lastWordsOutput)
+	grandchild := os.Getenv(lastWordsGrandchild)
+	if grandchild == "before" {
+		startOutsideTree()
+	}
+	port := openProcessChannel()
+	if grandchild == "after" {
+		startOutsideTree()
+	}
+	port.start()
+	started, _ := envelope(FromWorker{Kind: FromWorkerStarted})
+	port.SendControl(started)
+	_, _ = port.Send([]byte(lastWordsAnswer), nil)
+	fatal, _ := envelope(FromWorker{Kind: FromWorkerFatal, Error: &CrossedError{Message: lastWordsReason}})
+	port.sendControlThen(fatal, func() { os.Exit(1) })
 	select {}
 }
 

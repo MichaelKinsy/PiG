@@ -22,7 +22,9 @@ import (
 // Forced Go differences. A worker is an executable, not a Node module: `Entry` is its path and `ExecArgv` its arguments
 // (Node's `execArgv` and entry file). The IPC channel is workers_channel.go's. Events are called from the owned goroutines
 // that observe them (the channel's reader, the waiter), in the order each source tells them; a handler enters its own
-// serialization. `exited` is a closed channel plus the Exit the handler also receives: the handler runs before anyone
+// serialization. Node tells what a child wrote before its `exit` (one thread reads its channel and hears of its end, the
+// reads first), so the waiter tells the exit once the readers of what the child wrote, its channel's too, have told all
+// of it and ended. `exited` is a closed channel plus the Exit the handler also receives: the handler runs before anyone
 // waiting on `Exited` resumes, as Node runs the `exit` listener before the promise's continuations. A start that fails
 // (the executable is missing) leaves a process of pid -1 whose exit {null, null} is told like Node's `error` event; only a
 // channel that cannot be made fails the constructor, as Node's `fork` throws synchronously for it.
@@ -73,8 +75,9 @@ type WorkerProcess struct {
 	// killed: Kill ended the process (its exit is reported by killedExit).
 	killed atomic.Bool
 
-	// pumps are the goroutines reading its output; ended joins them.
-	pumps sync.WaitGroup
+	// readers are the goroutines reading what it writes, its output (pump) and its channel: each tells what it read, in
+	// order, and returns at its stream's end; ended joins them.
+	readers sync.WaitGroup
 
 	mu     sync.Mutex
 	stderr string
@@ -138,7 +141,10 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 	}
 	process.pump(stdout, "stdout", options.OnOutput)
 	process.pump(stderr, "stderr", options.OnOutput)
-	parent.start()
+	if parent.begin() {
+		//portlint:allow golifetime the channel's reader returns at its stream's end, once every holder of the child's end is gone, or when this side closes the channel; ended joins it
+		process.readers.Go(parent.run)
+	}
 	//portlint:allow golifetime the waiter returns when the leader exits
 	go func() { //portlint:allow asyncorder process.ts:79 child.once("exit", ...) is an event of the child with no ordering against other work; the exit handler runs inside it
 		state, _ := cmd.Process.Wait()
@@ -179,7 +185,7 @@ func environment(env map[string]string) []string {
 // process's own stream. It ends with the stream: when every process holding its write end is gone.
 func (p *WorkerProcess) pump(reader *os.File, stream string, onOutput func(stream string, chunk []byte)) {
 	//portlint:allow golifetime the reader returns at the stream's end, once every holder of its write end is gone; ended joins it
-	p.pumps.Go(func() {
+	p.readers.Go(func() {
 		defer func() { _ = reader.Close() }()
 		buffer := make([]byte, 32*1024)
 		for {
@@ -227,9 +233,11 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 		exit = killedExit(exit)
 	}
 	p.tree.kill()
-	// Everything it wrote is told before its exit, and nothing of it is left running: its output streams end with the last
-	// process holding them (the tree is gone), and its channel with it.
-	p.pumps.Wait()
+	// Everything it wrote is told before its exit, and nothing of it is left running: its output streams and its channel
+	// end with the last process holding them (the tree is gone), and what their readers took is told when they return. A
+	// channel the child never connected to is not waited for. The channel's read also ends when this side closes it.
+	p.channel.abandon()
+	p.readers.Wait()
 	p.channel.finish()
 	if events.Exited != nil {
 		events.Exited(exit)
