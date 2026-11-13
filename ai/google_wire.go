@@ -3,6 +3,8 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // The @google/genai SDK does not send the params Pi's buildParams hands it: generateContentParametersToMldev and the converters it calls
@@ -24,11 +26,7 @@ func (object geminiWireObject) MarshalJSON() ([]byte, error) {
 		if i > 0 {
 			buf = append(buf, ',')
 		}
-		key, err := json.Marshal(member.key)
-		if err != nil {
-			return nil, err
-		}
-		buf = append(append(append(buf, key...), ':'), member.value...)
+		buf = append(append(jsstring.AppendString(buf, member.key), ':'), member.value...)
 	}
 	return append(buf, '}'), nil
 }
@@ -174,7 +172,7 @@ func (dialect *geminiWireDialect) lowerBody(body map[string]json.RawMessage) (js
 func (request geminiRequest) wireBody(api API) (json.RawMessage, error) {
 	// A functionCall and a functionResponse part name a tool, and the name can hold a lone UTF-16 surrogate that Pi does not sanitize (google-shared.ts
 	// convertMessages): the request is written as JSON.stringify writes it.
-	native, err := marshalStringify(request)
+	native, err := jsstring.MarshalKeepingSurrogates(request)
 	if err != nil {
 		return nil, err
 	}

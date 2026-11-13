@@ -141,16 +141,29 @@ type mistralToolFn struct {
 
 // MarshalJSON writes the parameters with the tool schema's own member order: the SDK copies the parameters record entry by entry.
 func (f mistralToolFn) MarshalJSON() ([]byte, error) {
-	parameters, err := marshalToolParameters(f.Parameters, f.parameterOrder)
+	wire, err := f.wire()
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(struct {
-		Name        string          `json:"name"`
-		Description string          `json:"description"`
-		Parameters  json.RawMessage `json:"parameters"`
-		Strict      bool            `json:"strict"`
-	}{f.Name, f.Description, parameters, f.Strict})
+	// The name and the description are written as JSON.stringify writes them: a lone UTF-16 surrogate as its escape (mistral-conversations.ts
+	// toFunctionTools passes a tool through, and the SDK posts JSON.stringify of the request).
+	return jsstring.MarshalKeepingSurrogates(wire)
+}
+
+// mistralToolFnWire is a function tool as it is written: the parameters are already encoded, in the schema's own member order.
+type mistralToolFnWire struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
+	Strict      bool            `json:"strict"`
+}
+
+func (f mistralToolFn) wire() (mistralToolFnWire, error) {
+	parameters, err := marshalToolParameters(f.Parameters, f.parameterOrder)
+	if err != nil {
+		return mistralToolFnWire{}, err
+	}
+	return mistralToolFnWire{Name: f.Name, Description: f.Description, Parameters: parameters, Strict: f.Strict}, nil
 }
 
 // ─── Response wire types ─────────────────────────────────────────────────────
@@ -1018,7 +1031,7 @@ func (consumer *mistralChunkConsumer) toolCalls(calls []mistralSSEToolCall) erro
 			return fmt.Errorf("Cannot read properties of %s (reading '%s')", holder, property)
 		}
 		var function mistralSSEToolFunction
-		if err := json.Unmarshal(call.Function, &function); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(call.Function, &function); err != nil {
 			return err
 		}
 		start := streamToolCallDelta{index: blockIndex}

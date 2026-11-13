@@ -886,7 +886,7 @@ file = "ai/anthropic_event_jsread.go"
 func = "decodeAnthropicEventJS"
 call = "json.Unmarshal"
 dest = "any"
-count = 2
+count = 1
 
 # runs only after the typed decode rejected the record (mistyped or legacy member)
 [[hit]]

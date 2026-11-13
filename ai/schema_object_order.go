@@ -397,7 +397,7 @@ func (tool ToolSchema) MarshalJSON() ([]byte, error) {
 	var sampling json.RawMessage
 	switch {
 	case tool.ConstrainedSampling != nil:
-		encoded, err := json.Marshal(tool.ConstrainedSampling)
+		encoded, err := jsstring.MarshalKeepingSurrogates(tool.ConstrainedSampling)
 		if err != nil {
 			return nil, err
 		}

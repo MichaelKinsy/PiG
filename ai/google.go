@@ -147,7 +147,7 @@ func (request geminiRequest) parameters(model string) map[string]any {
 func marshalGeminiParameters(payload any, api API) (string, []byte, error) {
 	// A functionCall and a functionResponse part name a tool, and the name can hold a lone UTF-16 surrogate that Pi does not sanitize (google-shared.ts
 	// convertMessages): the payload a hook handed back is written as JSON.stringify writes it, as wireBody writes the request.
-	encoded, err := marshalStringify(payload)
+	encoded, err := jsstring.MarshalKeepingSurrogates(payload)
 	if err != nil {
 		return "", nil, err
 	}
@@ -254,7 +254,8 @@ func (call *geminiFunctionCall) UnmarshalJSON(data []byte) error {
 		call.idName = "null"
 		return nil
 	}
-	if err := json.Unmarshal(raw.Name, &name); err == nil {
+	// JSON.parse keeps a lone UTF-16 surrogate of the name (the agent loop finds the tool by that name).
+	if err := jsstring.UnmarshalKeepingSurrogates(raw.Name, &name); err == nil {
 		call.Name, call.idName = name, name
 		return nil
 	}

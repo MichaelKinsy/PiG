@@ -5,6 +5,8 @@ package ai
 import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // MarshalJSONTo is MarshalJSON written straight into the request encoder under the caller's options. encoding/json prefers it to MarshalJSON, which would encode each message into its own buffer and then validate and copy that buffer into the request. Without the json/v2 experiment encoding/json calls MarshalJSON.
@@ -23,6 +25,9 @@ type oaiMessageFields oaiMessage
 // MarshalJSONTo is MarshalJSON written straight into the request encoder (oaiMessage.MarshalJSONTo): each function tool is not encoded
 // into its own buffer and copied into the request again.
 func (f oaiToolFunction) MarshalJSONTo(encoder *jsontext.Encoder) error {
+	if jsstring.HoldsSurrogate(f.Name) || jsstring.HoldsSurrogate(f.Description) {
+		return encodeMarshaled(encoder, f)
+	}
 	wire, err := f.wire()
 	if err != nil {
 		return err

@@ -20,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -317,7 +318,7 @@ func (t ResponsesTool) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	// The name and the description are written as JSON.stringify writes them: a lone UTF-16 surrogate as its escape (openai-responses-shared.ts:386-393).
-	return marshalStringify(wire)
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // responsesToolWire is the value ResponsesTool's MarshalJSON writes.
@@ -392,7 +393,7 @@ type respRequest struct {
 
 // MarshalJSON writes the body in the member order of the builder that made it.
 func (req respRequest) MarshalJSON() ([]byte, error) {
-	return marshalStringify(req.wire())
+	return jsstring.MarshalKeepingSurrogates(req.wire())
 }
 
 // wire is the value MarshalJSON writes.
@@ -1451,7 +1452,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 
 	// An item names a called tool, and the name can hold a lone UTF-16 surrogate that Pi does not sanitize (openai-responses-shared.ts convertResponsesMessages,
 	// the function_call item): the items are written as JSON.stringify writes them.
-	inputJSON, marshalErr := marshalStringify(msgs)
+	inputJSON, marshalErr := jsstring.MarshalKeepingSurrogates(msgs)
 	if marshalErr != nil {
 		return nil, fmt.Errorf("openai-responses: marshal input: %w", marshalErr)
 	}

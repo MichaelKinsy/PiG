@@ -38,6 +38,8 @@ func TestBedrockRequestBodyMatchesPi(t *testing.T) {
 		// Strict sets compat.supportsStrictMode and a json_schema constrainedSampling tool, so toolSpec carries strict after description
 		// (ToolSpecification$ order) and the strict schema adds required and additionalProperties.
 		Strict bool `json:"strict,omitempty"`
+		// Tool replaces the declared tool: its JSON, so a lone UTF-16 surrogate reaches both sides as its escape.
+		Tool json.RawMessage `json:"tool,omitempty"`
 	}
 	const claude = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 	usage := `"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}`
@@ -64,6 +66,14 @@ func TestBedrockRequestBodyMatchesPi(t *testing.T) {
 			Schema:  json.RawMessage(`{"type":"object","properties":{"z":{"type":"string"}}}`),
 			History: json.RawMessage(`[{"role":"assistant","content":[{"type":"thinking","thinking":"hm","thinkingSignature":"sig"},{"type":"toolCall","id":"c1","name":"lookup","arguments":{}}],"api":"bedrock-converse-stream","provider":"amazon-bedrock","model":"` + claude + `",` + usage + `,"stopReason":"toolUse","timestamp":2},` +
 				`{"role":"toolResult","toolCallId":"c1","toolName":"lookup","content":[{"type":"text","text":"<&>"},{"type":"image","data":"aGk=","mimeType":"image/png"}],"isError":true,"timestamp":3}]`)},
+		// pi: bedrock-converse-stream.ts convertToolConfig and convertMessages sanitize neither a tool nor a tool call: the AWS SDK's JSON.stringify
+		// writes a lone UTF-16 surrogate of a name, a description, a schema or a call's input as its escape.
+		{Name: "tool with lone surrogates", Model: claude, Schema: json.RawMessage(`{"type":"object"}`),
+			Tool: json.RawMessage(`{"name":"N[\ud83d]","description":"D[\ude00]","parameters":{"type":"object","properties":{"K[\ude00\ud83d]":{"type":"string","description":"PD[\ud83d]","enum":["E[\ude00]"],"default":"DF[\ud83d]"}},"required":["K[\ude00\ud83d]"]}}`)},
+		{Name: "history Pi wrote with a lone surrogate", Model: claude,
+			Schema: json.RawMessage(`{"type":"object","properties":{"z":{"type":"string"}}}`),
+			History: json.RawMessage(`[{"role":"assistant","content":[{"type":"toolCall","id":"c1","name":"N[\ude00]","arguments":{"p":"A[\ud83d]"}}],"api":"bedrock-converse-stream","provider":"amazon-bedrock","model":"` + claude + `",` + usage + `,"stopReason":"toolUse","timestamp":2},` +
+				`{"role":"toolResult","toolCallId":"c1","toolName":"N[\ude00]","content":[{"type":"text","text":"r"}],"isError":false,"timestamp":3}]`)},
 	}
 	const script = `(async () => {
   const http = require('node:http');
@@ -81,7 +91,7 @@ func TestBedrockRequestBodyMatchesPi(t *testing.T) {
   for (const c of JSON.parse(casesJSON)) {
     const model = { id: c.model, name: 'Claude', provider: 'amazon-bedrock', api: 'bedrock-converse-stream', baseUrl: 'http://127.0.0.1:' + server.address().port, reasoning: !!c.reasoning,
       input: ['text', 'image'], maxTokens: 1000, contextWindow: 10000, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, ...(c.strict ? { compat: { supportsStrictMode: true } } : {}) };
-    const tools = [{ name: 'lookup', description: 'Look up', parameters: c.schema, ...(c.strict ? { constrainedSampling: { type: 'json_schema' } } : {}) }];
+    const tools = [c.tool ?? { name: 'lookup', description: 'Look up', parameters: c.schema, ...(c.strict ? { constrainedSampling: { type: 'json_schema' } } : {}) }];
     body = undefined;
     const first = c.image ? [{ type: 'text', text: 'hi' }, { type: 'image', data: 'aGk=', mimeType: 'image/jpeg' }] : 'hi';
     const messages = [{ role: 'user', content: first, timestamp: 1 }, ...(c.history ?? [])];
@@ -129,7 +139,11 @@ func TestBedrockRequestBodyMatchesPi(t *testing.T) {
 			if c.Strict {
 				sampling = `,"constrainedSampling":{"type":"json_schema"}`
 			}
-			tools := mustTools(t, `[{"name":"lookup","description":"Look up","parameters":`+string(c.Schema)+sampling+`}]`)
+			declared := `{"name":"lookup","description":"Look up","parameters":` + string(c.Schema) + sampling + `}`
+			if c.Tool != nil {
+				declared = string(c.Tool)
+			}
+			tools := mustTools(t, "["+declared+"]")
 			model := &ai.Model{ID: c.Model, DisplayName: "Claude", Input: []string{"text", "image"}, Capabilities: ai.ModelCapabilities{MaxOutputTokens: 1000, ContextWindow: 10000},
 				ProviderMeta: ai.ProviderMetadata{ProviderID: "amazon-bedrock", API: ai.APIBedrockConverseStream, BaseURL: server.URL, Reasoning: c.Reasoning != ""}}
 			if c.Strict {

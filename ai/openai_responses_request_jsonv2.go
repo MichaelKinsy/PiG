@@ -5,6 +5,8 @@ package ai
 import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // MarshalJSONTo is MarshalJSON written straight into the request encoder under the caller's options, so the body (its whole input
@@ -16,6 +18,9 @@ func (req respRequest) MarshalJSONTo(encoder *jsontext.Encoder) error {
 
 // MarshalJSONTo is MarshalJSON written straight into the request encoder (respRequest.MarshalJSONTo).
 func (t ResponsesTool) MarshalJSONTo(encoder *jsontext.Encoder) error {
+	if jsstring.HoldsSurrogate(t.Name) || jsstring.HoldsSurrogate(t.Description) {
+		return encodeMarshaled(encoder, t)
+	}
 	wire, err := t.wire()
 	if err != nil {
 		return err

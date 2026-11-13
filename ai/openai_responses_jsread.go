@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -160,7 +161,8 @@ func decodeResponsesItem(raw json.RawMessage, done bool, item *respOutputItem) (
 	if err := responsesItemMissing(raw); err != nil {
 		return nil, nil, err
 	}
-	err = json.Unmarshal(raw, item)
+	// JSON.parse keeps a lone UTF-16 surrogate, which the name of a called tool can hold (the agent loop finds the tool by that name).
+	err = jsstring.UnmarshalKeepingSurrogates(raw, item)
 	if err == nil {
 		if done && hasEmptyResponsesPart(item) {
 			// The typed decode reads a null part as an empty one, where reading its first member throws.

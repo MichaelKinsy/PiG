@@ -19,6 +19,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsonwire"
@@ -196,13 +197,9 @@ func (anthRequest) encodesRequestStrings() {}
 
 // Text and thinking blocks retain their required string fields, including explicit empty values.
 func (block anthContentBlock) MarshalJSON() ([]byte, error) {
-	switch block.Type {
-	case "tool_use", "tool_addition", "tool_removal":
-		// These blocks name a tool, and a name can hold a lone UTF-16 surrogate that Pi does not sanitize (anthropic-messages.ts convertMessages
-		// sanitizes text and thinking only): the block is written as JSON.stringify writes it. The other kinds keep the one encode.
-		return marshalStringify(block.wire())
-	}
-	return json.Marshal(block.wire())
+	// A block can name a tool, and a name can hold a lone UTF-16 surrogate that Pi does not sanitize (anthropic-messages.ts convertMessages
+	// sanitizes text and thinking only): the block is written as JSON.stringify writes it.
+	return jsstring.MarshalKeepingSurrogates(block.wire())
 }
 
 // wire is the value MarshalJSON writes.
@@ -259,7 +256,7 @@ func (t anthTool) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	// The name and the description are written as JSON.stringify writes them: a lone UTF-16 surrogate as its escape (anthropic-messages.ts:1925-1936).
-	return marshalStringify(wire)
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // anthToolWire is the value anthTool's MarshalJSON writes.
