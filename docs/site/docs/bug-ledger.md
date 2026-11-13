@@ -1473,6 +1473,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ad9ed64](#bf-ad9ed64) | Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad9ed64-2](#bf-ad9ed64-2) | A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ada7018](#bf-ada7018) | `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack | PiG's own defect | All platforms | Unreleased |
+| [BF-adc27a4](#bf-adc27a4) | A Chord host's link no longer drops the messages its transport delivered before closing when the close… | PiG's own defect | All platforms | Unreleased |
 | [BF-ae1ee6d](#bf-ae1ee6d) | The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae1ee6d-2](#bf-ae1ee6d-2) | A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae498eb](#bf-ae498eb) | A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -2010,6 +2011,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f2c00f9-4](#bf-f2c00f9-4) | `pig install <source> --validate-only` now validates git and npm sources that are not installed yet | PiG's own defect | All platforms | 0.5.3 |
 | [BF-f2c00f9-5](#bf-f2c00f9-5) | Installing a Package or Piglet from a local `git:file://` source on Windows no longer fails with `fatal… | PiG's own defect | Windows | 0.5.3 |
 | [BF-f2c8b02](#bf-f2c8b02) | After `await ctx.reload()`, a command's captured `pi` and `ctx` now throw Pi's stale message for every… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f32ec14](#bf-f32ec14) | fix(chord): a link end keeps nothing of the queue it handed over | PiG's own defect | All platforms | Unreleased |
 | [BF-f34b545](#bf-f34b545) | Durable: resolving harness settings no longer shares the default retry policy's max agent delay between… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f3b4045](#bf-f3b4045) | `.gitignore`, `.ignore` and `.fdignore` rules that skills, packages and extension entry discovery read now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f3ea39b](#bf-f3ea39b) | fix(chord/nextnode/plugins): the driver ends its socket after the frames it wrote are out | PiG's own defect | All platforms | Unreleased |
@@ -22290,6 +22292,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.
 
+### BF-adc27a4
+
+**A Chord host's link no longer drops the messages its transport delivered before closing when the close…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first.
+- **Root cause:** While the goroutine that set a link end's listener was still handing the queue over, the transport's goroutine could deliver another message (queued behind the hand-over) and then end: ended() closed the end at once and cleared the queue, so that message, and whatever else of the queue the listener had not reached, was dropped, and the close was told ahead of it. Pi's one thread finishes the hand-over inside onMessage before it hears of a close, so there the listener gets every message the transport delivered before it ended. The form with the messages queued before the listener was set is as old as the link layer (v0.7.0); the form with a message arriving during the hand-over came with.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `adc27a4cbe` (2026-11-13)
+- **Tests:** `chord/next/link/link_end_test.go::TestALinkEndHandsOverWhatArrivedBeforeItsTransportEndedThenEnds`, `chord/next/link/link_end_test.go::TestALinkEndWhoseListenerPanicsDuringTheHandOver`, `chord/next/link/link_end_transports_test.go::TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce`, `chord/next/link/link_end_transports_test.go::TestALinkHandsOverWhatArrivedBeforeItsTransportEndedThenCloses`, `chord/next/link/link_end_transports_test.go::TestALinkToldOfItsCloseHasLeftItsTransport`
+- **Release note:** A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first. The listener now gets them in order and the close after them, as in Pi, where the hand-over is finished before a close is heard; a link closed from its own side still drops what it has not delivered.
+
 ### BF-ae1ee6d
 
 **The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded…**
@@ -29724,6 +29740,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f2c8b02bd9` (2026-10-10)
 - **Tests:** `coding/extension/host/subprocess/generation_retirement_test.go::TestReplacedGenerationCallsFailWithThePiStaleMessage`, `test/extension-conformance/sdkscenario_test.go::TestSDKScenarios`, `test/parity/scenarios/extensions-runtime/77-reload-stale-context.toml`
 - **Release note:** After `await ctx.reload()`, a command's captured `pi` and `ctx` now throw Pi's stale message for every member, in every SDK (Node, Go, Python and Rust). Before, members an SDK answers locally, such as `ctx.cwd`, `getFlag`, `getCommands`, `getThinkingLevel`, `getSystemPrompt` and `isProjectTrusted`, kept answering for the replaced extension instance.
+
+### BF-f32ec14
+
+**fix(chord): a link end keeps nothing of the queue it handed over**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): a link end keeps nothing of the queue it handed over
+- **Root cause:** LinkEnd.OnMessage hands the queue over one message at a time () and moved on with `end.queued = end.queued[1:]`, so every message it had handed over stayed in the queue's array, and the drained queue, empty, still pointed into that array. An end whose listener is set does not queue again, so nothing replaced the array before the close: a link that queued ahead of its listener (a child's link queues until its start message) kept those messages for as long as it lived.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f32ec14fc9` (2026-11-13)
+- **Tests:** `chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNoMessageItHandedOverWhileALaterOneIsWithTheListener`, `chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNoQueuedMessageAfterItsEnd`, `chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNothingOfTheQueueItHandedOver`
 
 ### BF-f34b545
 
