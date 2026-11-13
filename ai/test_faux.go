@@ -174,13 +174,22 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 			builder.done(StopReasonStop, nil, "")
 			return
 		}
-		if strings.Contains(lastText, "Trigger: retryable provider error") {
-			if _, loaded := testFauxRetryState.LoadOrStore("retryable-provider-error", true); !loaded {
-				// test/parity/testdata/test-faux-provider.ts:531-535 sets the error state on its output, then pushes `start` and `error`.
+		// A retryable trigger fails its first request with the provider's wording and answers the retry. "Connection closed." is the gateway
+		// drop Pi 9b88b94e2 (#12093) added to the retryable wordings.
+		retryableError, retryableKey := "", ""
+		switch {
+		case strings.Contains(lastText, "Trigger: retryable provider error"):
+			retryableError, retryableKey = "please retry your request", "retryable-provider-error"
+		case strings.Contains(lastText, "Trigger: connection closed provider error"):
+			retryableError, retryableKey = "Connection closed.", "connection-closed-provider-error"
+		}
+		if retryableKey != "" {
+			if _, loaded := testFauxRetryState.LoadOrStore(retryableKey, true); !loaded {
+				// test/parity/testdata/test-faux-provider.ts sets the error state on its output, then pushes `start` and `error`.
 				builder.partial.StopReason = StopReasonError
-				builder.partial.ErrorMessage = "please retry your request"
+				builder.partial.ErrorMessage = retryableError
 				builder.start()
-				builder.fail(StopReasonError, errors.New("please retry your request"))
+				builder.fail(StopReasonError, errors.New(retryableError))
 				return
 			}
 			builder.textDelta("retry-ok")

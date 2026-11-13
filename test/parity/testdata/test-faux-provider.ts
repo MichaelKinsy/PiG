@@ -584,13 +584,20 @@ function streamTestFaux(model: any, context: any, options: any) {
     });
     return stream;
   }
-  if (lastText.includes("Trigger: retryable provider error")) {
-    const key = "retryable-provider-error";
+  // A retryable trigger fails its first request with the provider's wording and answers the retry. "Connection closed." is the gateway
+  // drop Pi 9b88b94e2 (#12093) added to the retryable wordings.
+  const retryable = lastText.includes("Trigger: retryable provider error")
+    ? { key: "retryable-provider-error", errorMessage: "please retry your request" }
+    : lastText.includes("Trigger: connection closed provider error")
+      ? { key: "connection-closed-provider-error", errorMessage: "Connection closed." }
+      : undefined;
+  if (retryable) {
+    const { key, errorMessage } = retryable;
     if (!retryState.has(key)) {
       retryState.add(key);
       queueMicrotask(() => {
         output.stopReason = "error";
-        output.errorMessage = "please retry your request";
+        output.errorMessage = errorMessage;
         stream.push({ type: "start", partial: output });
         stream.push({ type: "error", reason: "error", error: output });
         stream.end();
