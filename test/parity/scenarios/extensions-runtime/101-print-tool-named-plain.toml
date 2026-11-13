@@ -1,0 +1,42 @@
+# Behavior family: extensions-runtime
+# Scenario: print mode with an extension tool that has an ordinary name (`plain`): the control of 100-print-tool-named-constructor.
+#
+# The tool is the one of 100-print-tool-named-constructor but for its name. Pi cannot run a turn while a tool named `constructor` is registered
+# (divergence D645), so the ordinary path cannot be asserted inside that scenario: this one runs the same extension shape
+# and the same kind of call and requires the two outputs to be equal, so a break of the ordinary path is not hidden under
+# the divergence.
+#
+# Upstream evidence (Pi 1.5.2 source build b4afdddf oracle, Linux amd64 host in the CI image, Node 24.22.2, 2026-11-13, 3 runs,
+# test-faux):
+#   PI_CODING_AGENT_DIR=<empty agent dir> pi --no-extensions -e test-faux-provider.ts -e tool-named-plain.mjs \
+#     --model test-faux/faux-1 -p 'Run: ext tool plain {}'
+#   output: "ext-tool-done: ran plain"; exit: 0
+
+name = "101-print-tool-named-plain"
+description = "An extension tool with an ordinary name runs in print mode on both sides: the control of the tool named constructor"
+covers = [
+  "packages/coding-agent/src/core/system-prompt.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/tool-named-plain.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/tool-named-plain.mjs",
+]
+
+[print]
+prompt = "Run: ext tool plain {}"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["ext-tool-done: ran plain"]
+output_equal = true
+runs = 3

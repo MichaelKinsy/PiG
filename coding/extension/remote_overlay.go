@@ -186,6 +186,20 @@ type RemoteOverlayFocusHost interface {
 	OnFocus(focused bool)
 }
 
+// RemoteOverlayInvalidateHost is an optional [RemoteOverlayHost] that tells the remote producer that the TUI was invalidated: Pi's
+// TUI.invalidate calls invalidate() on every mounted root and every overlay's component (tui.ts:951-954), so a component that keeps
+// rows until it is told builds them again after a theme change.
+//
+// pig-specific: Pi's component is in-process; a remote component learns of the invalidation through this callback.
+type RemoteOverlayInvalidateHost interface {
+	// OnInvalidate reports count invalidations (at least 1) the TUI made since the last report. Called from the goroutine that
+	// delivers the component's input, never from the TUI's owner loop, so a producer that does not read holds no frame. While a
+	// call waits for room on the producer's connection the owner loop keeps counting, and the next call carries that count: no
+	// invalidation is lost and at most one report per component is waiting. It returns when the report is queued, when ctx of the
+	// component ends, or when the connection closes.
+	OnInvalidate(count int)
+}
+
 // RemoteOverlayViewportHost is an optional [RemoteOverlayHost] that publishes the component's capturesViewportInput: Pi's optional
 // Component.capturesViewportInput (packages/tui/src/tui.ts) is read from the focused component whenever a fullscreen viewport key
 // arrives, and the key goes to the component instead of scrolling the transcript while it is true.

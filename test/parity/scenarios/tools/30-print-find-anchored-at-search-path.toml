@@ -1,0 +1,37 @@
+# Behavior family: tools
+# Surface: a relative path pattern of the find tool is anchored at the search path.
+#
+# Upstream evidence (Pi 282b01c80, #12116, #12066; packages/coding-agent/src/core/tools/find.ts): fd matches a pattern that holds a "/"
+# against the full path (--full-path). Pi used to put "**/" in front of such a pattern, so it matched through any folder: the folders above
+# the search path and every folder below it ("src/**/*.ts" in ~/src/app returned every .ts file). Since the commit the pattern is prefixed
+# with the glob-escaped search path instead, like grep's glob: "src/*.ts" finds src/a.ts and not pkg/src/b.ts.
+#
+# The fixture holds src/foo/bar/example.spec.ts and some/parent/child/test.spec.ts. The pattern "{src,parent}/**/*.spec.ts" names both
+# folders: anchored at the search path only src/ is a first folder, so the answer is src/foo/bar/example.spec.ts alone; with the old "**/"
+# prefix "parent/" also matched below some/, and the answer held some/parent/child/test.spec.ts too. Pi v1.5.2 as published gives both
+# paths; Pi with 282b01c80 (the oracle: the pin plus the post-release backports, find.js's second block) gives the one.
+# The faux provider echoes the tool's actual result, sorted, instead of a canned success token.
+name = "30-print-find-anchored-at-search-path"
+description = "Print mode anchors a find path glob at the search path and does not match the same folder name deeper down, as pi does"
+covers = ["packages/coding-agent/src/core/tools/find.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions", "--tools", "find"]
+pi_args = ["--tools", "find"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: find anchored glob"
+timeout_seconds = 30
+cwd = "testdata/find-regressions"
+
+[assert]
+exit_code = 0
+both_contain = ["src/foo/bar/example.spec.ts"]
+both_not_contain = ["some/parent/child/test.spec.ts"]
+output_equal = true
+runs = 3

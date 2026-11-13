@@ -58,6 +58,10 @@ func TestProviderSendSeamChecksEveryAPIsRequest(t *testing.T) {
 		"anthropic/claude-sonnet-4-5", "openai/gpt-5", "azure/gpt-4.1", "openai-codex/gpt-5.6-sol", "groq/llama-3.1-8b-instant",
 		"google/gemini-2.5-flash", "mistral/devstral-medium-latest", "amazon-bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
 	} {
+		if !BuiltCatalogModel(spec) {
+			// A build with the pig_strip tag of this model's API has no provider to send its request.
+			continue
+		}
 		t.Run(spec, func(t *testing.T) {
 			model, ok := LookupModelExact(spec)
 			if !ok {

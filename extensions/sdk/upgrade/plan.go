@@ -341,6 +341,7 @@ func (p *filePlanner) run() {
 	if len(p.errors) > 0 || p.legacy {
 		p.planOptionalBools()
 		p.planContextUsage(p.legacy)
+		p.planSetModelNames()
 	}
 	p.accept()
 }

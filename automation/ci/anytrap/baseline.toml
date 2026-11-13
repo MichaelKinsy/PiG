@@ -544,13 +544,6 @@ dest = "*any"
 count = 1
 
 [[hit]]
-file = "internal/codingagent/interactive_events.go"
-func = "InteractiveMode.handleAgentEvent"
-call = "json.Unmarshal"
-dest = "*map[string]any"
-count = 1
-
-[[hit]]
 file = "internal/codingagent/interactive_extensions.go"
 func = "WireModelOperations"
 call = "json.Unmarshal"

@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/screenwriter"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 
 	"golang.org/x/term"
@@ -98,6 +99,8 @@ type ProcessTerminal struct {
 	outMu  sync.Mutex
 	// writeLog receives every Write when PI_TUI_WRITE_LOG names a log.
 	writeLog *terminalWriteLog
+	// screen is the screen writer under write (D624): nil when the terminal was given none, as before an interactive run starts and in byte mode; a writer that was dropped stays and passes every write on as it came (terminal_screen_writer.go).
+	screen atomic.Pointer[screenwriter.Writer]
 
 	// startMu guards reader, resize and protocol-query ownership. Start is idempotent until Stop releases that ownership.
 	startMu         sync.Mutex
@@ -161,13 +164,15 @@ func NewProcessTerminalWithOutput(stdin, stdout *os.File, out io.Writer) *Proces
 }
 
 func newProcessTerminal(stdin, stdout *os.File, out io.Writer) *ProcessTerminal {
-	return &ProcessTerminal{
+	t := &ProcessTerminal{
 		stdin:             stdin,
 		stdout:            stdout,
 		out:               out,
 		writeLog:          newTerminalWriteLog(),
 		progressKeepalive: terminalProgressKeepalive,
 	}
+	t.screen.Store(newTerminalScreenWriter(t, os.Getenv))
+	return t
 }
 
 var processTerminal = NewStdioProcessTerminal()
@@ -791,6 +796,11 @@ func (t *ProcessTerminal) write(data string) {
 	if t.out == nil || t.exitRestored.Load() {
 		return
 	}
+	if screen := t.screen.Load(); screen != nil {
+		if data = screen.Translate(data); data == "" {
+			return
+		}
+	}
 	writeTerminalText(t.out, data)
 }
 
@@ -801,6 +811,7 @@ func (t *ProcessTerminal) write(data string) {
 func WriteToTerminal(out io.Writer, data string) {
 	if !encodesOwnWrites(out) {
 		data = jsstring.StreamText(data)
+		screenWriterWrittenPast(out, data)
 	}
 	writeTerminalText(out, data)
 }
@@ -832,6 +843,11 @@ func writeTerminalText(out io.Writer, data string) {
 func writeString(out io.Writer, data string) (int, error) {
 	if sw, ok := out.(io.StringWriter); ok {
 		return sw.WriteString(data)
+	}
+	//portlint:allow utf16units a byte count against the write pool's byte bound maxPooledTerminalWrite, not a text length; terminal.ts has no pool and takes no length here
+	if len(data) > maxPooledTerminalWrite {
+		// The pool keeps no buffer of this size, so a pooled copy would cost the bytes and a new holder for the pool on every such write. The copy alone is the one allocation io.WriteString makes.
+		return out.Write([]byte(data))
 	}
 	buf := terminalWriteBuffers.Get().(*[]byte)
 	*buf = append((*buf)[:0], data...)

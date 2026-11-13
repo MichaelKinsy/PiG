@@ -56,11 +56,12 @@ func (r *loopRun) toolCtx() context.Context {
 // sequential execution or any call targets a tool whose ExecutionMode is
 // sequential; otherwise in parallel.
 func (r *loopRun) executeToolCalls(assistant *AssistantMessage, calls []pendingToolCall) executedToolCallBatch {
-	ctx := WithToolCallHookContext(r.toolCtx(), r.toolCallHookContext(assistant))
 	if r.h.cfg.ToolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {
+		// The hooks of these calls run one at a time, so they receive the run's own messages, as Pi's hooks do (hookView).
+		ctx := WithToolCallHookContext(r.toolCtx(), r.toolCallHookContext(assistant, hookView(r.context)))
 		return r.executeToolCallsSequential(ctx, calls)
 	}
-	return r.executeToolCallsParallel(ctx, calls)
+	return r.executeToolCallsParallel(r.toolCtx(), assistant, calls)
 }
 
 func (r *loopRun) hasSequentialToolCall(calls []pendingToolCall) bool {
@@ -74,7 +75,9 @@ func (r *loopRun) hasSequentialToolCall(calls []pendingToolCall) bool {
 
 // executeToolCallsSequential prepares, executes, and finalizes each call
 // before the next one starts, emitting each call's tool-result message as soon
-// as the call is finalized.
+// as the call is finalized. An aborted run does not end the batch early: the
+// calls it had not reached are still started and answered (prepareToolCall),
+// so no call is left without a result (Pi 4438c58ba, #9986).
 func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendingToolCall) executedToolCallBatch {
 	finalized := make([]finalizedToolCall, 0, len(calls))
 	messages := make([]ToolResultMessage, 0, len(calls))
@@ -93,9 +96,6 @@ func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendin
 		r.h.emitToolExecutionEnd(f)
 		messages = append(messages, r.appendToolResult(f))
 		finalized = append(finalized, f)
-		if ctx.Err() != nil {
-			break
-		}
 	}
 	return executedToolCallBatch{messages: messages, terminate: shouldTerminateToolBatch(finalized)}
 }
@@ -112,14 +112,21 @@ func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendin
 // prefix — including a file-mutation-queue registration — in call order,
 // before any call's async work begins, and Go's per-call goroutines below
 // have no equivalent guarantee on their own (see QueueOrderable).
-func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingToolCall) executedToolCallBatch {
+// executeToolCallsParallel runs the calls at once. Every call is handed the run's own messages (hookView), as Pi hands every call
+// currentContext (prepareToolCall, and each call's closure under Promise.all): what a before hook, a tool or an after hook replaces in
+// place, the batch's other calls and the next request see. The run does not read or write that array from the start of the first
+// call's tool to the end of the last call's after hooks. The before hooks run one after another here. The after hooks of a call start
+// once the hooks of every call that settled before it returned or invoked their first extension handler (finalizeCalledTool), so the
+// batch's hooks write the array one at a time. The tools run at the same time, which Pi's never do (one thread): a tool that reads or
+// writes the messages while another call's tool or after hook does shares memory with that code and synchronizes with it.
+func (r *loopRun) executeToolCallsParallel(ctx context.Context, assistant *AssistantMessage, calls []pendingToolCall) executedToolCallBatch {
 	outcomes := make([]toolCallOutcome, 0, len(calls))
 	callCtxs := make([]context.Context, 0, len(calls))
 	var registration registrationOrder
 	for _, call := range calls {
 		r.h.emitToolExecutionStart(call)
-		outcome := r.h.prepareToolCall(ctx, call)
-		callCtx := ctx
+		callCtx := WithToolCallHookContext(ctx, r.toolCallHookContext(assistant, hookView(r.context)))
+		outcome := r.h.prepareToolCall(callCtx, call)
 		if outcome.prepared != nil {
 			tool := outcome.prepared.tool
 			if mayTake, ok := tool.(MayTakeFileMutationQueue); ok && mayTake.MayTakeFileMutationQueue() {
@@ -147,9 +154,6 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 		}
 		outcomes = append(outcomes, outcome)
 		callCtxs = append(callCtxs, callCtx)
-		if ctx.Err() != nil {
-			break
-		}
 	}
 
 	registration.prepared()
@@ -350,7 +354,15 @@ func (h *loopHost) prepareToolCall(ctx context.Context, call pendingToolCall) to
 // prepareToolCall resolves the call against tools; see Agent.prepareToolCall.
 // Mirrors upstream prepareToolCall, whose config is ToolCallHooks and whose
 // tools default to the context's (.upstream/v0.99.1/packages/agent/src/agent-loop.ts:707-716).
+//
+// Once aborted, it skips preparation and the hooks: the answer is "Operation
+// aborted" before the tool lookup, the argument preparation, the validation
+// and the before hooks. Callers still record this result, so no call is left
+// without one (Pi 4438c58ba agent-loop.ts:716-725, #9986).
 func prepareToolCall(ctx context.Context, tools []AgentTool, hooks ToolCallHooks, call pendingToolCall) (outcome toolCallOutcome) {
+	if ctx.Err() != nil {
+		return immediateOutcome(call, errorToolResult("Operation aborted"))
+	}
 	tool := findTool(tools, call.name)
 	if tool == nil {
 		return immediateOutcome(call, errorToolResult("Tool "+call.name+" not found"))
@@ -390,7 +402,10 @@ func prepareToolCall(ctx context.Context, tools []AgentTool, hooks ToolCallHooks
 	}
 	for _, hook := range hooks.before() {
 		hookResult := hook(ctx, call.id, call.name, args)
-		if hookResult.Err != nil {
+		// upstream awaits the hook to its end and then finds the signal aborted (agent-loop.ts:747-753): the answer is the abort's. A Go hook
+		// that stops waiting because the run was aborted returns the context's own error (a handler in another process is not awaited past the
+		// abort); that is the abort, not an error the hook threw, which upstream's catch still reports under an aborted signal.
+		if hookResult.Err != nil && (ctx.Err() == nil || !errors.Is(hookResult.Err, ctx.Err())) {
 			return immediateOutcome(call, errorToolResult(hookResult.Err.Error()))
 		}
 		if ctx.Err() != nil {
@@ -408,9 +423,6 @@ func prepareToolCall(ctx context.Context, tools []AgentTool, hooks ToolCallHooks
 		if hookResult.Args != nil {
 			args = hookResult.Args
 		}
-	}
-	if ctx.Err() != nil {
-		return immediateOutcome(call, errorToolResult("Operation aborted"))
 	}
 	return toolCallOutcome{prepared: &preparedToolCall{call: call, tool: tool, args: args}}
 }

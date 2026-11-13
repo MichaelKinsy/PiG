@@ -17,7 +17,7 @@ export function relativizeFindResultPath(resultPath, searchPath, pathModule = pa
 }
 const findSchema = Type.Object({
     pattern: Type.String({
-        description: "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'",
+        description: "Glob pattern relative to the search directory, e.g. 'src/**/*.ts'. Without '/', e.g. '*.ts', it matches file names at any depth",
     }),
     path: Type.Optional(Type.String({ description: "Directory to search in (default: current directory)" })),
     limit: Type.Optional(Type.Number({ description: "Maximum number of results (default: 1000)" })),
@@ -149,8 +149,7 @@ export function createFindToolDefinition(cwd, options) {
                         if (!insideGitRepo)
                             args.push("--no-require-git");
                         // fd --glob matches against the basename unless --full-path is set; in --full-path
-                        // mode it matches against the absolute candidate path, so a path-containing
-                        // pattern like 'src/**/*.spec.ts' needs a leading '**/' to match anything.
+                        // mode it matches against the absolute candidate path.
                         // On Windows `\` is a path separator, so native patterns like 'src\**\*.ts' are
                         // normalized to '/' (#9262). On POSIX `\` stays a glob escape character.
                         let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\", "/") : pattern;
@@ -158,23 +157,25 @@ export function createFindToolDefinition(cwd, options) {
                         // fd's full paths never contain "/./", so "./src/*.ts" would find nothing; drop the "./".
                         effectivePattern = effectivePattern.replace(/^(?:\.\/)+/, "");
                         const isPathPattern = effectivePattern.includes("/");
-                        if (isPathPattern &&
-                            !effectivePattern.startsWith("/") &&
-                            !effectivePattern.startsWith("**/") &&
-                            effectivePattern !== "**") {
-                            effectivePattern = `**/${effectivePattern}`;
-                        }
+                        // Pi 282b01c80 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+                        // fd's smart case: an all-lowercase pattern matches case-insensitively.
+                        const ignoreCase = effectivePattern === effectivePattern.toLowerCase();
+                        // A relative path pattern is anchored at the search path, like grep's glob (#12066):
+                        // 'src/*.ts' finds 'src/a.ts' but not 'pkg/src/b.ts'; '**/src/*.ts' finds both.
+                        // Absolute patterns are matched as given.
+                        const isRelativePathPattern = isPathPattern && !path.isAbsolute(effectivePattern);
                         // fd before 10.5.1 never matches --full-path globs on Windows, and workarounds for that
                         // break on fd 10.5.1 (sharkdp/fd#2067). pi cannot rely on either fd version, so on
-                        // Windows fd lists every entry and minimatch matches path patterns. The options keep
-                        // fd's glob behavior: `*` matches dotfiles, `+(a|b)` is literal, and an all-lowercase
-                        // pattern matches case-insensitively (smart case). A trailing '/**' becomes '/**/*'
-                        // because minimatch's 'src/**' also matches 'src' itself and fd's does not.
+                        // Windows fd lists every entry and minimatch matches path patterns against the path
+                        // relative to the search path, or the absolute path for absolute patterns. The options
+                        // keep fd's glob behavior: `*` matches dotfiles, `+(a|b)` is literal, and smart case.
+                        // A trailing '/**' becomes '/**/*' because minimatch's 'src/**' also matches 'src'
+                        // itself and fd's does not.
                         const windowsPathMatcher = process.platform === "win32" && isPathPattern
                             ? new Minimatch(effectivePattern.replace(/\/\*\*$/, "/**/*"), {
                                 dot: true,
                                 noext: true,
-                                nocase: effectivePattern === effectivePattern.toLowerCase(),
+                                nocase: ignoreCase,
                             })
                             : undefined;
                         if (windowsPathMatcher) {
@@ -185,6 +186,15 @@ export function createFindToolDefinition(cwd, options) {
                             args.push("--glob", "--max-results", String(effectiveLimit + 1));
                             if (isPathPattern)
                                 args.push("--full-path");
+                            if (isRelativePathPattern) {
+                                // fd matches the absolute path, so the pattern is prefixed with the glob-escaped
+                                // search path. Smart case is decided by the user's pattern, not by the search
+                                // path's letters, so it is set explicitly.
+                                const escapedRoot = searchPath.replace(/\/+$/, "").replace(/[\\*?[\]{}]/g, "\\$&");
+                                effectivePattern = `${escapedRoot}/${effectivePattern}`;
+                                if (ignoreCase)
+                                    args.push("--ignore-case");
+                            }
                             args.push("--", effectivePattern, searchPath);
                         }
                         // An abort during the .git lookup above already rejected the call, but there was no
@@ -216,7 +226,8 @@ export function createFindToolDefinition(cwd, options) {
                             const line = rawLine.replace(/\r$/, "").trim();
                             if (!line)
                                 return;
-                            if (windowsPathMatcher && !windowsPathMatcher.match(line))
+                            const result = relativizeFindResultPath(line, searchPath);
+                            if (windowsPathMatcher && !windowsPathMatcher.match(isRelativePathPattern ? result : line))
                                 return;
                             if (resultCount === effectiveLimit) {
                                 resultLimitReached = true;
@@ -225,7 +236,6 @@ export function createFindToolDefinition(cwd, options) {
                                     stopChild?.();
                                 return;
                             }
-                            const result = relativizeFindResultPath(line, searchPath);
                             resultCount++;
                             if (outputBytes - 1 <= DEFAULT_MAX_BYTES)
                                 storedResults.push(result);

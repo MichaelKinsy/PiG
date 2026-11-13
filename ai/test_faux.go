@@ -174,13 +174,22 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 			builder.done(StopReasonStop, nil, "")
 			return
 		}
-		if strings.Contains(lastText, "Trigger: retryable provider error") {
-			if _, loaded := testFauxRetryState.LoadOrStore("retryable-provider-error", true); !loaded {
-				// test/parity/testdata/test-faux-provider.ts:531-535 sets the error state on its output, then pushes `start` and `error`.
+		// A retryable trigger fails its first request with the provider's wording and answers the retry. "Connection closed." is the gateway
+		// drop Pi 9b88b94e2 (#12093) added to the retryable wordings.
+		retryableError, retryableKey := "", ""
+		switch {
+		case strings.Contains(lastText, "Trigger: retryable provider error"):
+			retryableError, retryableKey = "please retry your request", "retryable-provider-error"
+		case strings.Contains(lastText, "Trigger: connection closed provider error"):
+			retryableError, retryableKey = "Connection closed.", "connection-closed-provider-error"
+		}
+		if retryableKey != "" {
+			if _, loaded := testFauxRetryState.LoadOrStore(retryableKey, true); !loaded {
+				// test/parity/testdata/test-faux-provider.ts sets the error state on its output, then pushes `start` and `error`.
 				builder.partial.StopReason = StopReasonError
-				builder.partial.ErrorMessage = "please retry your request"
+				builder.partial.ErrorMessage = retryableError
 				builder.start()
-				builder.fail(StopReasonError, errors.New("please retry your request"))
+				builder.fail(StopReasonError, errors.New(retryableError))
 				return
 			}
 			builder.textDelta("retry-ok")
@@ -548,13 +557,15 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	}
 
 	// Find results are echoed, not replaced with a success token: a failed search must fail the scenario.
-	if strings.Contains(lastText, "Run: find txt files") || strings.Contains(lastText, "Run: find path glob") || strings.Contains(lastText, "Run: find dot slash glob") || strings.Contains(lastText, "Run: find scoped ignores") {
+	if strings.Contains(lastText, "Run: find txt files") || strings.Contains(lastText, "Run: find path glob") || strings.Contains(lastText, "Run: find dot slash glob") || strings.Contains(lastText, "Run: find anchored glob") || strings.Contains(lastText, "Run: find scoped ignores") {
 		pattern := "*.txt"
 		switch {
 		case strings.Contains(lastText, "Run: find path glob"):
 			pattern = "src/**/*.spec.ts"
 		case strings.Contains(lastText, "Run: find dot slash glob"):
 			pattern = "./src/**/*.spec.ts"
+		case strings.Contains(lastText, "Run: find anchored glob"):
+			pattern = "{src,parent}/**/*.spec.ts"
 		case strings.Contains(lastText, "Run: find scoped ignores"):
 			pattern = "**/*.txt"
 		}
@@ -572,6 +583,11 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	// Edit tool parity.
 	if strings.Contains(lastText, "Run: edit parity-edit-target.txt") {
 		return "tool", "", []testFauxToolCall{{Name: "edit", ArgsJSON: `{"newText":"REPLACED","oldText":"REPLACE_ME","path":"parity-edit-target.txt"}`}}
+	}
+
+	// A short line, then one line that alone overflows the bash tool's rolling tail and ends the output with its newline (Pi 935f0ac0ccfc, #12092).
+	if strings.Contains(lastText, "Run: bash long last line") {
+		return "tool", "", []testFauxToolCall{{Name: "bash", ArgsJSON: `{"command":"echo short; head -c 219000 /dev/zero | tr '\\0' x; echo END"}`}}
 	}
 
 	// Long-output bash tool parity (exercises visual-truncate.ts via bash.ts collapse hint).
@@ -686,7 +702,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		if strings.Contains(currentUserText, "Run: grep hello") {
 			return "text", "found", nil
 		}
-		if strings.Contains(currentUserText, "Run: find txt files") || strings.Contains(currentUserText, "Run: find path glob") || strings.Contains(currentUserText, "Run: find dot slash glob") || strings.Contains(currentUserText, "Run: find scoped ignores") {
+		if strings.Contains(currentUserText, "Run: find txt files") || strings.Contains(currentUserText, "Run: find path glob") || strings.Contains(currentUserText, "Run: find dot slash glob") || strings.Contains(currentUserText, "Run: find anchored glob") || strings.Contains(currentUserText, "Run: find scoped ignores") {
 			// fd traversal order is unspecified; upstream's find regression tests sort the paths too.
 			paths := strings.Split(lastText, "\n")
 			slices.Sort(paths)
@@ -703,6 +719,10 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 		if strings.Contains(currentUserText, "Run: tui live tool") {
 			return "text", "LIVE-TOOL-DONE", nil
+		}
+		if strings.Contains(currentUserText, "Run: bash long last line") {
+			// The tool's result is the answer, so the kept end of the line and the notice under it are what the scenario compares.
+			return "text", lastText, nil
 		}
 		if strings.Contains(currentUserText, "Run: bash long output") {
 			return "text", "ran", nil
@@ -849,4 +869,15 @@ func messageImages(message Message) []ImageContent {
 		}
 	}
 	return images
+}
+
+// TestFauxInput is the input of the harness model faux-1 as test/parity/testdata/test-faux-provider.ts declares it: text and
+// image, or text only under TEST_FAUX_TEXT_ONLY=1 (the scenarios of a read under a model without image input). The switch
+// changes only the model's input.
+func TestFauxInput() []string {
+	//perf:ok read once per registration of the harness provider (coding/services.go registerHarnessTestFaux, the only caller), the moment test/parity/testdata/test-faux-provider.ts:727 reads process.env; a value kept for the process would outlive a test's Setenv
+	if os.Getenv("TEST_FAUX_TEXT_ONLY") == "1" {
+		return []string{"text"}
+	}
+	return []string{"text", "image"}
 }

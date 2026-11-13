@@ -1941,3 +1941,205 @@ commit = "e6e4f9acc50b26111b6f83f48ea004ca1fa9927e"
 class = "CITE"
 cite = "packages/env/src/remote-env.ts:694"
 reason = "Pi 75ca6e7d0849 (#12055, after the pin v1.5.2: the mirror's listDir at remote-env.ts:694 still throws on an entry the daemon could not lstat) lists a directory without the entries removed during the enumeration, as Pi's directory readers do. The differential test's two expectations for names Node decodes with replacement characters, which cannot be lstat'ed under that name, change from listDir failing with not_found to listDir leaving them out (names b, z, é)."
+
+[[entry]]
+path = "chord/nextnode/app/sign_ins_upstream_test.go"
+commit = "fea26ba8cba7565d66b8b7f8461b67b695b97495"
+class = "CITE"
+cite = "packages/chord/src/node/app/sign-ins.ts:79"
+reason = "Pi ff7414d51 renames the app kit's sessions to sign-ins and its cookie with them: SIGN_IN_COOKIE is \"chord-sign-in\" (sign-ins.ts:79 at that commit; sessions.ts held \"chord-session\"). The two requests that send a forged cookie send it under the new name and still expect 401."
+
+[[entry]]
+path = "chord/nextnode/app/app_surfaces_test.go"
+commit = "fea26ba8cba7565d66b8b7f8461b67b695b97495"
+class = "CITE"
+cite = "packages/chord/src/node/app/sign-ins.ts:43"
+reason = "Pi ff7414d51 renames the facet chord.app.sessions to chord.app.sign-ins (sign-ins.ts:43 at that commit). Failure text only: the two messages say `without a sign-in` where they said `without a session`; the expected status of a page and of a base script asked for without one stays 401."
+
+[[entry]]
+path = "chord/nextnode/app/ephemeral_upstream_test.go"
+commit = "fea26ba8cba7565d66b8b7f8461b67b695b97495"
+class = "CITE"
+cite = "packages/chord/src/node/app/ephemeral-sign-ins.ts:20"
+reason = "Pi ff7414d51 renames EphemeralSessions to EphemeralSignIns (ephemeral-sign-ins.ts:20 at that commit, was ephemeral-sessions.ts). Failure text only: `the sign-in outlived its server` where it said `the session`; the expected status stays 401."
+
+[[entry]]
+path = "chord/nextnode/app/owner_upstream_test.go"
+commit = "fea26ba8cba7565d66b8b7f8461b67b695b97495"
+class = "CITE"
+cite = "packages/chord/src/node/app/owner.ts:107"
+reason = "Pi ff7414d51 makes the owner token read the SignIns facet (owner.ts:107 at that commit, was Sessions). Failure text only: `other sign-in whoami` where it said `other session whoami`; the compared whoami answer is unchanged."
+
+[[entry]]
+path = "internal/orderedjson/value_test.go"
+commit = "8b8b8d33b3c40b44a2184d2c4d3e0a9f1dcbb2dc"
+class = "CITE"
+cite = "packages/coding-agent/src/core/session-manager.ts:1301"
+reason = "Pi's appendCustomEntry (session-manager.ts:1301 at v1.5.2, and appendCustomMessageEntry, appendCompaction, branchWithSummary, appendLabelChange beside it) stores a member as its caller gave it, and JSON.stringify writes a null member as null where it leaves an undefined one out. PiG decoded both into nil and wrote neither. The commit gives the decoder a Null value for a member that is present and null, so the test of a null member expects Null where it expected nil."
+
+[[entry]]
+path = "ai/auth_env_keys_test.go"
+commit = "f9bef61b43325cfafdd74bd1bef6ae420641e283"
+class = "CITE"
+cite = "packages/ai/src/env-api-keys.ts:87"
+reason = "Pi 1397070024 (#12112) gives each Qwen Token Plan provider a list of key variables (env-api-keys.ts:87 at that commit: QWEN_TOKEN_PLAN_TEAM_API_KEY before QWEN_TOKEN_PLAN_API_KEY), so the entries of the table are no longer single variables. Failure text only: `env table has %d entries` where it said `single-variable entries`; the compared count is the same expression."
+
+[[entry]]
+path = "agent/hook_context_view_test.go"
+commit = "b77f2ed370ba3521ef8d94c7387342928ff81dbc"
+class = "CITE"
+cite = "packages/agent/src/agent-loop.ts:614"
+reason = "Pi's executeToolCallsParallel prepares the calls of a batch one after another and hands every prepareToolCall, and so every beforeToolCall hook, the one currentContext (agent-loop.ts:614 at v1.5.2): what the first call's hook replaces in place the second call's hook and the next request see. PiG gave each hook a copy, and the test pinned that the write was lost (`echo both`). It now expects the message the last before hook wrote, as Pi sends it."
+
+[[entry]]
+path = "coding/cli/model_list_catalog_providers_test.go"
+commit = "b91a45414fe5a88a545de56aca92416787e2e5ef"
+class = "CITE"
+cite = "packages/coding-agent/src/cli/list-models.ts:29"
+reason = "The commit ports Pi's listModels (list-models.ts:29 at v1.5.2: the availability pass, then the table) and splits printModelList into listModels and printModelTable. Failure text only: the message names printModelTable; the expected OPENCODE_API_KEY line of the table is unchanged."
+
+[[entry]]
+path = "coding/cli/model_list_no_auth_message_test.go"
+commit = "b91a45414fe5a88a545de56aca92416787e2e5ef"
+class = "CITE"
+cite = "packages/coding-agent/src/cli/list-models.ts:29"
+reason = "The commit ports Pi's listModels (list-models.ts:29 at v1.5.2) and splits printModelList into listModels and printModelTable. Failure text only: the message names printModelTable; the expected login guidance is unchanged."
+
+[[entry]]
+path = "internal/codingagent/migrations_test.go"
+commit = "0ca206e73ed0798e3956e19187e288ee8d3bd4c7"
+class = "CITE"
+cite = "packages/coding-agent/src/migrations.ts:277"
+reason = "The commit ports Pi's showDeprecationWarnings (migrations.ts:277 at v1.5.2), which prints the migration guide and extensions documentation links, so the two URL constants are exported for the caller in coding/cli. Failure text only: the messages name MigrationGuideURL and ExtensionsDocURL; the expected earendil-works URLs are unchanged."
+
+[[entry]]
+path = "coding/extension/host/subprocess/ui_bridge_test.go"
+commit = "0392315da8719059ee687e50634705367a79f18c"
+class = "CITE"
+cite = "packages/coding-agent/src/core/extensions/types.ts:1840"
+reason = "Pi's pi.setModel takes a model object (types.ts:1840 at v1.5.2: setModel(model: Model<any>)) and the session uses it as given. PiG's wire carried the name \"provider/id\" and the host looked the model up, losing every other member. The bridge test sends the object and expects the host to receive its members (id, provider, base URL, context window) where it expected the name gpt-4, expects the old string to be refused, and expects resolveModel to answer the object of a name."
+
+[[entry]]
+path = "chord/next/surfaces/surfaces_client_test.go"
+commit = "a24f91954616ac41c18a6d007730ff5d967d13ff"
+class = "CITE"
+cite = "packages/chord/src/surfaces/client.ts:123"
+reason = "Pi 3c771bd18 makes startClient follow the scripts object in the background (client.ts:123-125 at that commit) and apply the set shown when the watch begins (client.ts:261-262), so a client starts without its server. The existing expectation is unchanged but for its failure text (`naming @test/a, first`: the plugins error is now followed by others); the commit adds the cases of the offline start."
+
+[[entry]]
+path = "coding/extension/exec_test.go"
+commit = "0bb39707e5ff8b4c09b61a970f8617b0e3c2f816"
+class = "CITE"
+cite = "packages/coding-agent/src/core/exec.ts:153"
+reason = "Pi a83b75a07 (#12089) reports a pi.exec command that a signal ended as 128 + the signal number where it reported `code ?? 0` (exec.ts:153 at that commit), so the command the timeout ends with SIGTERM has code 143 where the test expected 0."
+
+[[entry]]
+path = "durable/codemode/describe_pi_oracle_test.go"
+commit = "350b233578fe331671c43ff092ef49aedc873fda"
+class = "CITE"
+cite = "packages/durable/src/codemode/describe.ts:66"
+reason = "Pi 5e24c6b1f replaces namespaceOf(name, namespaces), which matched a tool to a namespace by its name prefix, with namespacesOf(extensions) (describe.ts:66 at that commit): a namespace is its extension's. The oracle test runs Pi's namespacesOf and compares the map of names where it compared one name per tool."
+
+[[entry]]
+path = "durable/codemode/output_tool_test.go"
+commit = "350b233578fe331671c43ff092ef49aedc873fda"
+class = "CITE"
+cite = "packages/durable/test/codemode.test.ts:1138"
+reason = "Pi 5e24c6b1f rewrites the upstream test `finds tools with searchTools(), describeTool(), and describeNamespace(), and lists them in ALL_TOOLS` for namespaces declared by extensions (codemode.test.ts:1122-1138 at that commit): the tool is list_issues of the github namespace whatever its name, searchTools also searches a namespace's instructions (byInstructions), describeNamespace answers the instructions, and a namespace without tools is described. The ported test expects the same object."
+
+[[entry]]
+path = "env/differential_test.go"
+commit = "1be82286e09314595dc7f7b9dd4de33c4f4bd95d"
+class = "CITE"
+cite = "packages/env/src/remote-env.ts:694"
+reason = "Pi 75ca6e7d0849 (#12055, after the pin v1.5.2: the mirror's listDir at remote-env.ts:694 still throws on an entry the daemon could not lstat) lists a directory without the entries removed during the enumeration, as Pi's directory readers do. The differential test's two expectations for names Node decodes with replacement characters, which cannot be lstat'ed under that name, change from listDir failing with not_found to listDir leaving them out (names b, z, é). The same review is recorded under e6e4f9acc5, a copy of this commit that the release line does not hold."
+
+[[entry]]
+path = "durable/harness/harness_tool_hooks_test.go"
+commit = "646e44905eaa1b94664676cf9e6e6a8e17108472"
+class = "CITE"
+cite = "packages/durable/src/harness/generation.ts:186"
+reason = "Pi 473515f9c adds the afterTools and yield phases and the onYield tasks to the generation and writes it as version 3 (generation.ts:186 at that commit: `version: 3`), so the two expectations of the stored generation version, at first write and after reopening, change from 2 to 3."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_install_test.go"
+commit = "35cf9bcc9fac435422f2b9c8ff0d3a844d86b7d2"
+class = "CITE"
+cite = "packages/chord/src/node/plugins/install.ts:245"
+reason = "Pi 75d59639a (after the pin v1.5.2, so the mirror's install.ts:245 still shows the old `const [tarball] = JSON.parse(...)`) reads npm's pack output as `Array.isArray(output) ? output[0] : output[name]`: the first tarball of the list npm 11 and earlier print, or the member of the package asked for in the object npm 12 prints. packedTarball takes the package name and does the same, so the expectations that read the object's first member (D501, retired by this commit) now read the member of the name, an object without the name packs nothing, and the errors for a string, a number and a JSON null follow JavaScript's reads. The same review is recorded under 2a0a44d8b0, a copy of this commit that the release line does not hold."
+
+[[entry]]
+path = "tui/render_within_test.go"
+commit = "440cb8b15ad8c1f8ed228c6e7dd8e28b1b2d1625"
+class = "DIVERGENCE"
+cite = "D619"
+reason = "D619 is PiG's own rule that a spinner step may wait min(40 ms, interval/2) for a frame something else is about to ask for; Pi has no such wait, so no Pi line governs the test. The commit narrows the rule: RequestRenderWithin asks for the frame at once when no frame was drawn within the last delay. A step taken while nothing else draws is no longer folded into a later frame, so the two expectations of that case change from 1 frame drawn to 2; the commit adds the cases of a frame never drawn and of the time since the last frame."
+
+[[entry]]
+path = "internal/screenwriter/autowrap_test.go"
+commit = "6db3b075a5fd96882d2332ea2dfecf73724f6973"
+class = "DIVERGENCE"
+cite = "D624"
+reason = "The screen writer is PiG's own (D624; Pi sends every row a frame writes), so no Pi line governs the test. The commit changes D624's rule, in the record too: a row as wide as the screen that changes through its last cell is written whole. The assertions of TestTranslationResumesWithWholeRows are unchanged; its INPUT rows change (`two!`, `two!!`, `two!!!`, `two!!!!` become `tWo`, `tWo!`, `tWo!!`, `tWO!!`) so that the rows it expects to be written in place change before their last cell and still reach the in-place path under the new rule. The new rule has its own tests, added by the commit (whole_row_test.go, nine tests)."
+
+[[entry]]
+path = "tui/terminal_screen_writer_switch_test.go"
+commit = "30eff09b915461e8aa23b06776a2ea0c17d6658f"
+class = "DIVERGENCE"
+cite = "D624"
+reason = "The screen writer is PiG's own (D624), so no Pi line governs the test. The commit builds the writer when an interactive run applies the terminal.screenWriter setting (tui.SetScreenWriter) instead of in the package initializer, and removes NoScreenWriter. TestNoScreenWriter and its expectation (the terminal is sent exactly what was written after NoScreenWriter) go with the function; the tests now expect no writer at initialization whatever PIG_TUI_SCREEN_WRITER says, and one after SetScreenWriter, on the process's terminal and on a terminal built later."
+
+[[entry]]
+path = "tui/terminal_screen_writer_test.go"
+commit = "2b55d338f1d2340007f658852e42b2eda6278b81"
+class = "DIVERGENCE"
+cite = "D624"
+reason = "The screen writer is PiG's own (D624), so no Pi line governs the test. The commit makes the writer the default and byte mode the choice (PIG_TUI_SCREEN_WRITER=pi or 0, or the terminal.screenWriter setting), in the record too. The switch table changes with it: it expected the writer only for the exact value 1 and byte mode for every other value and for the variable unset; it now expects byte mode only for pi and 0, the setting to decide when the variable is unset or empty, and the writer otherwise."
+
+[[entry]]
+path = "internal/nativeplatform/clipboard_x11_display_range_linux_test.go"
+commit = "57dc298c19948c5c79d9ecf57b09e754dfdbd116"
+class = "NOBEHAVIOR"
+reason = "The X11 display parser is PiG-original native code (Pi has no counterpart), so no Pi line governs it. The oracle is external: the test compiles a C program that calls libxcb's xcb_parse_display and compares PiG's parse with it. The commit requires that libxcb to be 1.16 or later through pkg-config (the table was libxcb 1.15's), and the two inputs libxcb 1.16 no longer accepts, `unix:-1` and `unix:60000.-1`, move from the accepted rows to the rejected list; rows for socket paths (`/tmp/.X11-unix/X0`, `unix:/path`) are added. The commit is a cherry-pick of main's 56b0e0f8e (#424); main's ledger holds no row for it."
+
+[[entry]]
+path = "tui/internal/hljs/dispatch_test.go"
+commit = "609f1820859575ba1b09a49adb151010689a9faf"
+class = "NOBEHAVIOR"
+reason = "tui/internal/hljs is PiG's port of highlight.js, not of a Pi file, so no Pi line governs the test. Failure text only: the message prints `joined %s, dispatch %s (rule %d)` through describeMatch where it printed `joined %+v, dispatch %+v`. The expectation is unchanged: at every scanned position the branch dispatch finds the match the joined expression finds; the comparison reads the bounds, the rule and the kept groups that the new exec returns in place of the remapped match object."
+
+[[entry]]
+path = "coding/extension/host/inproc/markdown_collection_alloc_norace_test.go"
+commit = "3309e82ea1ebd2ea28038a6a2b682038c1b70d09"
+class = "NOBEHAVIOR"
+reason = "Allocation ceiling tightened, 65 -> 1 for collecting 64 Markdown transformers (the list and one wrapper each -> the list alone); behaviour assertions unchanged (TestRunnerMarkdownTransformerCollectionFollowsRegistrations passes before and after). The count is PiG's own measure: Pi's getMarkdownTransformers (runner.ts:793-801 at v1.5.2) makes a wrapper per transformer on every call and did not change; a registration now holds its wrapper."
+
+[[entry]]
+path = "ai/compat_api_streams_oracle_test.go"
+commit = "c1292ecbab9f906915f4de1c41c5e25d5c7f82be"
+class = "NOBEHAVIOR"
+reason = "Stock-build Pi-oracle expectation unchanged: the test still compares with what Pi answered (`want := pi.Setup[name]`, and `Bedrock Runtime` for the missing credential); the failure text says `want` where it said `Pi`. The commit adds a branch taken only in a build with a pig_strip tag for the API (a Piglet Binary strip, PiG-only), where the expected error message is the strip's own (strippedAPIMessage) in place of the credential error."
+
+[[entry]]
+path = "ai/openrouter_variants_allocs_norace_test.go"
+commit = "a1141479c115f68bab879f1f7bd407bb732bd9c2"
+class = "NOBEHAVIOR"
+reason = "Allocation ceiling tightened, at most 5 -> at most 4 per derived OpenRouter routing variant (entry, id, name, record -> id, name, record: the entry is an element of the one held list); behaviour assertions unchanged. The routing variants are PiG's own (D199) and the count is PiG's own measure; no Pi line governs it."
+
+[[entry]]
+path = "ai/anthropic_sse_raw_test.go"
+commit = "05349f17aa06bbf3a243d31d27eb24dcb3a3affd"
+class = "NOBEHAVIOR"
+reason = "Failure text only; the compared values are unchanged: the two messages gain the prefix `reserve %d:` (`events = %d, want %d` and `event %d Raw = %q, want %q`), because the same lines are now decoded once for each of three line reserves (0, 2, all) and every pass expects the same three events with the same Raw lines."
+
+[[entry]]
+path = "bench/k8s/cmd/k8sbench/pireference_test.go"
+commit = "0022dfc94a0e68a24ec51f1a3566b0827cce9e9b"
+class = "NOBEHAVIOR"
+reason = "The k8s benchmark's Pi reference install is PiG-original build tooling, so no Pi line governs the test. The commit installs Pi's durable closure from the vendored packs (third_party/pi-packs) through file: dependencies locked by sha512 and removes the frozen closures. The nine values are the fixture's expectations of the written install: the package.json dependency of pi-durable (the version 1.2.3 -> file:packs/earendil-works-pi-durable-1.2.3.tgz), the lock's integrity of that pack and its registry URL for typebox, the reported version, and the refusal texts (a missing pack is named by its file; `no packs of the pinned Pi` and `frozen closure for pi-durable` go with the removed paths)."
+
+[[entry]]
+path = "internal/pioracle/bin_test.go"
+commit = "0022dfc94a0e68a24ec51f1a3566b0827cce9e9b"
+class = "NOBEHAVIOR"
+reason = "internal/pioracle is PiG-original test support (it finds and checks the installed Pi oracle), so no Pi line governs the test. The commit makes the durable check read the vendored packs: the eight values are the fixture of the check and its refusals, which were a package.json version and a build stamp file and are the packs' manifest.json (commit and package version) and the installed .package-lock.json (resolved file and sha512 integrity); the case `another commit of the same package version` (`build of Pi commit`) becomes `packs of another commit` (`want <the pinned commit>`), and the messages name checkDurable where they named CheckDurable."

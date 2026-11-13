@@ -185,6 +185,8 @@ GitHub Releases owns the public release identity. Installers and self-update met
 
 Do not publish a release, tag, installer, package, image, or binary until every release gate is complete.
 
+`make release-check` is the release gate of the candidate commit. Its `piglet-strip-matrix` step proves that a Piglet Binary built without a model API (each of the three API strip tags alone, and every strip tag together) still vets, passes the `ai` tests, lists its models and answers a request through the provider bridge and an extension's pi-ai `complete()`; the step took 2610 s (43.5 minutes) at 8 CPUs, and the nightly workflow runs it too.
+
 ## Publishing the candidate
 
 `.github/workflows/release-candidate.yml`'s `publish` job runs after every `binary` matrix target, its `native-smoke` test, the pig-acp jobs, the PiG Standard jobs (`standard-build`, `standard`, `standard-native-smoke`), and `source` finish. It is the only job in the workflow with a write permission (`permissions: contents: write`), scoped to that job alone, and the only job gated by the `release` GitHub environment. Configure that environment with required reviewers before the first release.

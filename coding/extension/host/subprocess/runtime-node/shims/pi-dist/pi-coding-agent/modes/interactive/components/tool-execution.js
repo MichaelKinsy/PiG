@@ -180,7 +180,10 @@ export class ToolExecutionComponent extends Container {
             const lines = [];
             if (contentLines.length > 0) {
                 lines.push("");
-                lines.push(...contentLines);
+                // Pi 5b5be2c316e0 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+                // Append in a loop: spreading hundreds of thousands of wrapped lines exceeds V8's argument limit.
+                for (const line of contentLines)
+                    lines.push(line);
             }
             for (let i = 0; i < this.imageComponents.length; i++) {
                 const spacer = this.imageSpacers[i];

@@ -140,6 +140,11 @@ func (c *Container) scanSettledLocked(width int, n *nestedRender) int {
 			break
 		}
 		if !c.trustKidLocked(first, c.children[first]) {
+			if len(c.polled) == cap(c.polled) {
+				// The list grows once to hold every child the scan has yet to ask: appended one index at a time, the first scan of a
+				// transcript whose children are polled allocated it again each time it filled (13 times for 1,500 children).
+				c.polled = slices.Grow(c.polled, len(c.children)-first)
+			}
 			c.polled = append(c.polled, first)
 		}
 		first++

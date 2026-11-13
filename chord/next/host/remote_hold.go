@@ -392,7 +392,7 @@ func (h *hold) unbind(err *data.ChordError) {
 func (h *hold) retry(message *link.RetryMessage) {
 	if h.state.kind != holdRefused {
 		if h.object != nil {
-			h.object.retry(newRetryWalk(message.Hops - 1))
+			h.object.retry(newRetryWalk(message.Hops-1), nil)
 		}
 		return
 	}
@@ -449,7 +449,7 @@ func (h *hold) call(method string, args any, ctx context.Context, parent telemet
 		result.settle(nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Message: "hold released"}, nil))
 		return result
 	}
-	return h.object.call(method, args, ctx, parent, h.from, h.contract().version)
+	return h.object.callAs(method, args, ctx, parent, h.from, h.contract().version)
 }
 
 // method is the method at index of the bound variant and whether its result carries byte segments (its schema has a

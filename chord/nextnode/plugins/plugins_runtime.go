@@ -77,6 +77,10 @@ type RuntimeLoad struct {
 	// ReloadDrainTimeout is the subprocess host's `reloadDrainTimeout` (host.HostOptions'): how long a reload's restart keeps an
 	// object's old attempt open for old work, at most CloseTimeout (5 s by default). Nil: the host's default.
 	ReloadDrainTimeout *time.Duration
+	// EventWindow is the subprocess host's `eventWindow` (host.HostOptions'): how many `event` messages of its own it
+	// leaves unacknowledged, per link and origin and towards the Go side that holds its plugins' objects (NodeReference's
+	// event members); it drops what it emits beyond that, counted. Nil: the host's default, 32.
+	EventWindow *int
 	// Compression makes the subprocess host compress as Pi's Node hosts do (`createHost({ compression: nodeCompression })`):
 	// the JSON parts above 16 KiB it originates are deflated, and the deflated parts it owns inflated in place. The Go
 	// host the link is attached to compresses its own parts when it is created with host.HostOptions.Compression
@@ -189,6 +193,7 @@ type loadRequest struct {
 	ReadyTimeout *int64 `json:"readyTimeout,omitempty"`
 	// ReloadDrainTimeout is milliseconds.
 	ReloadDrainTimeout *int64     `json:"reloadDrainTimeout,omitempty"`
+	EventWindow        *int       `json:"eventWindow,omitempty"`
 	Compression        bool       `json:"compression,omitempty"`
 	Store              *storeWire `json:"store,omitempty"`
 	callbacksWire
@@ -341,6 +346,7 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 		drain := options.ReloadDrainTimeout.Milliseconds()
 		request.ReloadDrainTimeout = &drain
 	}
+	request.EventWindow = options.EventWindow
 	store, err := storeToWire(options.Store)
 	if err != nil {
 		return nil, host.LoadReport{}, err

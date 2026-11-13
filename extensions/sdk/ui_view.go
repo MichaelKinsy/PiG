@@ -108,7 +108,9 @@ type ViewShape struct {
 // ViewIntent declares one intent the view's nodes may raise. Name is "<extension>.<verb>". TimeoutMs defaults to 30000
 // and is 100..300000. WhenHidden lets a client raise the intent while the mount is hidden: it is how the user opens a
 // view the extension hid, and the handler shows the mount. At most one intent of a mount has it; it names no node and
-// its Arg accepts the empty object.
+// its Arg accepts the empty object. Dismiss names the intent a client raises, with the empty object, when the user
+// dismisses a dialog or overlay mount: the handler closes the mount. The same three rules hold for it. Without one,
+// Escape leaves the mount and it stays open until the extension closes it.
 type ViewIntent struct {
 	Name        string     `json:"name"`
 	NodeKey     string     `json:"nodeKey,omitempty"`
@@ -117,6 +119,7 @@ type ViewIntent struct {
 	Cancellable bool       `json:"cancellable,omitempty"`
 	TimeoutMs   int        `json:"timeoutMs,omitempty"`
 	WhenHidden  bool       `json:"whenHidden,omitempty"`
+	Dismiss     bool       `json:"dismiss,omitempty"`
 }
 
 // ViewAsset is a bounded image a view refers to by id.
@@ -335,6 +338,19 @@ type ViewFocus struct {
 	Restore string `json:"restore,omitempty"`
 }
 
+// ViewBinding ties a key or a gesture to an intent of the same content that names no node; a client fires it only while
+// the mount holds the focus and the focused node did not take the key. Exactly one of Key and Gesture is set. Key is a
+// key id as RegisterShortcut writes it ("d", "shift+left", "ctrl+shift+p"); Gesture is "swipe-left", "swipe-right",
+// "swipe-up" or "swipe-down". Arg is the constant argument the intent is raised with ({} when nil) and Name what a client
+// shows for the binding. At most 32; the host checks the record and answers "invalid".
+type ViewBinding struct {
+	Key     string `json:"key,omitempty"`
+	Gesture string `json:"gesture,omitempty"`
+	Intent  string `json:"intent"`
+	Arg     any    `json:"arg,omitzero"`
+	Name    string `json:"name,omitempty"`
+}
+
 // ViewNotice is one diagnostic of a mount: an operation the host rejected (Code "invalid", "unsupported", "limit",
 // "stale", "terminal"), an intent it ended ("refused", "failed", "timeout", "stale"), a part a client could not draw
 // ("undrawn") or a focus request a client did not grant ("unfocused"). Severity is "info", "warning" or "error"; Count
@@ -354,7 +370,8 @@ type ViewNotice struct {
 }
 
 // ViewContent is what a mount shows: the view, the intents its nodes raise, its assets and a degrade node; and beside
-// them the alternatives the client's claims select from, a drawing, and the a11y and focus records of the view's nodes.
+// them the alternatives the client's claims select from, a drawing, the a11y and focus records of the view's nodes, and
+// the bindings of keys and gestures to its intents.
 // Title is the short text a client labels the mount with, in a tab or a list of views: at most 64 bytes on one line.
 type ViewContent struct {
 	Title        string
@@ -366,6 +383,7 @@ type ViewContent struct {
 	Drawing      *ViewDrawing
 	A11y         []ViewA11y
 	Focus        []ViewFocus
+	Bindings     []ViewBinding
 }
 
 // ViewMount is the argument of [Context.MountView].
@@ -579,6 +597,9 @@ func (c Context) encodeViewContent(v ViewContent) (map[string]any, error) {
 	}
 	if len(v.Focus) > 0 {
 		out["focus"] = v.Focus
+	}
+	if len(v.Bindings) > 0 {
+		out["bindings"] = v.Bindings
 	}
 	if len(v.Intents) > 0 {
 		out["intents"] = v.Intents

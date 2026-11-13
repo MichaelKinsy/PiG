@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "3da86a852d098537c3279afa61ae2d66f22fbef09b01bb45278066b57ee2e2cc",
+      "sha256": "5535679b376ab81ce0575cbfd4f380db98e57d0831dbbd32a2a06d935112c88e",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -32,7 +32,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "d2388fd63d543abbc8cf7d86f8a970ab9062828469798354e6128b92cd2a7fd3",
+      "sha256": "1e8a258021ff07a141637976a0e03bf948b5562722e261d6b05cd53d8a690b14",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
@@ -92,12 +92,12 @@
     },
     {
       "source": "test/parity/testdata/session-wire.py",
-      "sha256": "1dd7760ef58d24d9f8011eda25774e0c932bb0c889ff6a84551ff368c21a3841",
+      "sha256": "8d63667437f9aa75bc3e6407438a6fb4eee5ccbc33c5c9c3e47f1c301da95961",
       "reason": "The Session query probe validates unique eight-hex generated IDs and exact millisecond ISO timestamps before injective substitution. Imported IDs/times remain unchanged; only reconstructed label identities are aliased after collision checks. Complete get_entries records are compared, not unrelated mutation events. Signal probes compare process wait status after real provider/command barriers, not terminal rendering. The session_shutdown signal cases replace the probe's temporary directory with <root> in stderr, because the extension path a handler's error names lives there; the rest of stderr, stdout, the session records and the request count are compared exactly."
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "7496298e10fbaeca1c41c905fb4380d271050fe5b9615b8e98e4dc79705a6a59",
+      "sha256": "2b84f77e627afedac81393f3daaf50872eb4d5fa9c72cb7c25659c335865e4c3",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -622,17 +622,6 @@
       "scenario": "test/parity/scenarios/clipboard-images/05-kitty-settings-visible.toml",
       "transforms": [
         {
-          "kind": "normalize_replace",
-          "pattern": "\\(1/35\\)",
-          "with": "(1/34)",
-          "reason": "D80 adds exactly one visible PiG-only settings row; raw assertions require 35 PiG rows and 34 Pi rows before this replacement."
-        },
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Image-related settings appear when terminal reports Kitty image capability.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Show images",
@@ -1088,6 +1077,119 @@
             "capture_end": "shortcut-new"
           },
           "reason": "Owned visible surface: Atomic reload replaces extension shortcut dispatch with the current registration.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: the /settings theme preview while a non-capturing overlay is open, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: the /settings theme preview while a non-capturing overlay is open, alternate screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/102-export-osc8-links.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd",
+            "/*/data/path"
+          ],
+          "reason": "D2: substitute only exact isolated cwd roots in the system section and export destination; retain all surrounding text and suffixes."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message wall clocks vary; no event, tool result or rendered HTML field is removed."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/103-extension-exec-signal-code.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui-request",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "reason": "extension_ui_request ids are random UUIDs; the pattern leaves the fixed command id \"probe\" compared as written."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "EDINV",
+            "capture_end": "EDEND"
+          },
+          "reason": "Owned visible surface: A ui.custom component in the editor slot is invalidated as often as Pi invalidates it by one theme set, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "EDINV",
+            "capture_end": "EDEND"
+          },
+          "reason": "Owned visible surface: A ui.custom component in the editor slot is invalidated as often as Pi invalidates it by one theme set, alternate screen.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -2646,6 +2748,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: an extension's ctx.ui.setTheme while its overlay is open, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: an extension's ctx.ui.setTheme while its overlay is open, alternate screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -3252,6 +3390,25 @@
             "capture_end_regex": "faux-1\\s*$"
           },
           "reason": "Owned visible surface: Fullscreen transcript search highlights the matches and the selected match in the transcript rows identically in pig and pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/fullscreen/19-alt-screen-row-grows-in-place.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "grow-0123456789",
+            "capture_end": "\n",
+            "capture_join_wrapped": true
+          },
+          "reason": "Owned visible surface: The line tmux stored for the editor's row after its text grew past a quarter of the pane while frames kept arriving (capture-pane -J) is the same in pig and pi.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -4657,6 +4814,165 @@
     {
       "scenario": "test/parity/scenarios/interactive-rendering/69-startup-frames-after-grammar-load.toml",
       "transforms": [
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool write",
+            "capture_end": "ext-tool-done: alpha line"
+          },
+          "reason": "Owned visible surface: A write and a read of a path whose extension is `constructor` draw Pi's call and result fallbacks, expanded, byte for byte.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/70-theme-load-failure-unknown-variable.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+",
+          "with": "<agent-dir>",
+          "reason": "D2: the runner allocates independent agent-root names. Keep the block's order, the file's relative path and every message."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A theme selected by settings.json whose file names an unknown variable: the error line repeats the loader's reason.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[Theme conflicts]",
+            "capture_end": "Fell back to the system theme."
+          },
+          "reason": "Owned visible surface: A theme selected by settings.json whose file names an unknown variable: the error line repeats the loader's reason.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Prototype path redraw start",
+            "capture_end": "Prototype path redraw end"
+          },
+          "reason": "Owned visible surface: Reopened write and read cards of paths whose extension is `constructor` or `__proto__` draw Pi's fallbacks from the stored entries.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/71-theme-load-failure-invalid-json.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+",
+          "with": "<agent-dir>",
+          "reason": "D2: the runner allocates independent agent-root names. Keep the block's order, the file's relative path and every message."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A theme selected by settings.json whose file is not JSON: the error line repeats the parse error, labelled with the theme name.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[Theme conflicts]",
+            "capture_end": "Fell back to the system theme."
+          },
+          "reason": "Owned visible surface: A theme selected by settings.json whose file is not JSON: the error line repeats the parse error, labelled with the theme name.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/72-resume-very-large-edit-diff.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "+189990 a",
+            "capture_end": "LARGE-EDIT-END"
+          },
+          "reason": "Owned visible surface: A resumed session whose edit result draws 190 000 rows shows its last rows and the message after them, as Pi does from 5b5be2c316 on.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/72-theme-load-failure-missing-colors.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+",
+          "with": "<agent-dir>",
+          "reason": "D2: the runner allocates independent agent-root names. Keep the block's order, the file's relative path and every message."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A theme selected by settings.json whose colors map is empty: the error line repeats the validator's list of missing tokens.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[Theme conflicts]",
+            "capture_end": "Fell back to the system theme."
+          },
+          "reason": "Owned visible surface: A theme selected by settings.json whose colors map is empty: the error line repeats the validator's list of missing tokens.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/73-theme-loads-by-file-name.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Pick a color",
+            "capture_end": "Resume marker end"
+          },
+          "reason": "Owned visible surface: A valid theme file selected by its file name loads although its JSON carries another name.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
         {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
@@ -6260,6 +6576,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/oauth/33-login-partner-rows-release-brand-style.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Select provider to configure",
+            "capture_end": "(3/42)"
+          },
+          "reason": "Owned visible surface: /login API-key picker: after the selection passes the animated Radius and OpenRouter rows, the picker is byte-identical with the selection on the third row.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/print/02-print-extension-command.toml",
       "transforms": [
         {
@@ -6617,6 +6951,47 @@
         {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/providers-faux-streaming/34-json-faux-connection-closed-retry.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "parity-snap-cwd-[0-9]{10}",
+          "with": "parity-snap-cwd-0000000000",
+          "reason": "Alias the isolated working-directory identity while preserving path suffixes and content."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi times each response with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"id\":\"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\"",
+          "with": "\"id\":\"SESSION\"",
+          "reason": "The header UUID is independently generated; no message content or property order is replaced."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId|targetId)\":\"[0-9a-f]{8}\"",
+          "with": "\"${1}\":\"ENTRY\"",
+          "reason": "The context_edit entry the retry appends carries generated 8-hex entry ids (its own, its parent, its target); the keys, their order and the id shape stay."
         }
       ]
     },
@@ -8819,6 +9194,45 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/rpc/82-rpc-abort-mid-batch-answers-every-call.toml",
+      "transforms": [
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/25/message/durationMs",
+            "/26/message/durationMs",
+            "/27/message/durationMs",
+            "/28/messages/5/durationMs",
+            "/30/data/messages/5/durationMs"
+          ],
+          "optional": true,
+          "reason": "The next request's setup-error message, at every record that carries it: Pi sets its durationMs only when the millisecond did not tick between lazy.ts's startedAt and the stream's own #startedAt (event-stream.ts #time returns early when message.timestamp < #startedAt), so Pi's own presence varies from run to run (rpc/55 records the measurement); PiG times it the same way."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds",
+            "/**/durationMs"
+          ],
+          "reason": "Pi times each response with a monotonic clock (event-stream.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling. bash does not run here, so no wall_time_seconds is emitted; the path is named because the prompt is a faux bash prompt (TestJSONScenariosAliasMeasuredDurations)."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/selectors/01-config-empty.toml",
       "transforms": [
         {
@@ -9790,6 +10204,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/settings/15-settings-roster-d64-d80.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "> theme",
+            "capture_end": "Type to search · Enter/Space to change · Esc to cancel"
+          },
+          "reason": "Owned visible surface: The /settings search finds Pi's Session share destination row only in Pi (D64) and the Mask secret input row only in PiG (D80).",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/slash-commands/01-session-info-empty.toml",
       "transforms": [
         {
@@ -10305,6 +10737,42 @@
             "capture_end": "Session name set: hotkeys-ext-end"
           },
           "reason": "Owned visible surface: Hotkeys lists extension-registered shortcuts in an Extensions table",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/27-copy-after-aborted-turn.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "first question",
+            "capture_end": "to clipboard"
+          },
+          "reason": "Owned visible surface: /copy after Esc during a tool call copies the previous answer and prints the copy status line on both sides.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/28-copy-after-errored-turn.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "first question",
+            "capture_end": "to clipboard"
+          },
+          "reason": "Owned visible surface: /copy after a provider error copies the previous answer and prints the copy status line on both sides.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -10842,6 +11310,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/startup/24-startup-model-scope-warning-in-chat.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Warning: No models match pattern",
+            "capture_end_regex": "─{10}"
+          },
+          "reason": "Owned visible surface: An unmatched model scope pattern is shown once as a chat warning at startup, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/tools/17-tool-rpc-error-and-bash-wire.toml",
       "transforms": [
         {
@@ -10893,6 +11379,89 @@
             "/**/durationMs"
           ],
           "reason": "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tools/31-print-bash-long-last-line.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "pi-bash-[0-9a-f]{16}\\.log",
+          "with": "pi-bash-ID.log",
+          "reason": "The full-output file name carries 16 random hex digits (bash.ts); the directory, prefix and extension stay compared."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\(line is (0B|213\\.9KB)\\)",
+          "with": "(line is D153)",
+          "reason": "D153: Pi counts the bytes after the final newline (0B), PiG names the last line's size (213.9KB); [diverge] pins each text to its side."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tools/32-rpc-read-image-text-only-model.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 times each response and tool run with a monotonic clock (event-stream.ts, agent-loop.ts), so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "id",
+          "paths": [
+            "/**/id",
+            "/**/parentId",
+            "/**/leafId"
+          ],
+          "group": "entry",
+          "pattern": "^[a-f0-9]{8,16}$",
+          "reason": "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tools/33-interactive-read-image-text-only-model.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: read parity-read-target.txt",
+            "capture_end_regex": "it saw a placeholder instead\\][\\s\\S]*?done"
+          },
+          "reason": "Owned visible surface: The read card of an image read under a text-only model names the model in a warning, collapsed and expanded",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
         }
       ]
     },

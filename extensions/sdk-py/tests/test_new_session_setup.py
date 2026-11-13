@@ -92,3 +92,21 @@ def test_new_session_names_the_setup_callback_by_handle() -> None:
     assert setups._entries == {}  # noqa: SLF001  the handle is released once the call returns
     with pytest.raises(TypeError, match="setup must be callable"):
         pig_sdk.Context.new_session(self_, {"setup": "nope"})  # type: ignore[arg-type]
+
+
+def test_setup_manager_leaves_out_a_member_that_is_none_and_sends_null() -> None:
+    # Pi's appendCustomEntry(customType) and appendCustomMessageEntry(customType, content, display) write no data and no details member; a null one is written.
+    import pig_sdk
+
+    ctx = _Ctx()
+    manager = SetupSessionManager(ctx)
+    manager.append_custom_entry("note")
+    manager.append_custom_entry("note", pig_sdk.NULL)
+    manager.append_custom_message_entry("c", "hi", False)
+    manager.append_custom_message_entry("c", "hi", True, pig_sdk.NULL)
+    assert ctx.calls == [
+        ("sessionWrite", {"method": "appendCustomEntry", "args": {"customType": "note"}}),
+        ("sessionWrite", {"method": "appendCustomEntry", "args": {"customType": "note", "data": pig_sdk.NULL}}),
+        ("sessionWrite", {"method": "appendCustomMessageEntry", "args": {"customType": "c", "content": "hi", "display": False}}),
+        ("sessionWrite", {"method": "appendCustomMessageEntry", "args": {"customType": "c", "content": "hi", "display": True, "details": pig_sdk.NULL}}),
+    ]

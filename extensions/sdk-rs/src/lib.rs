@@ -216,8 +216,8 @@ mod extension;
 pub mod kit;
 mod ui_view;
 pub use ui_view::{
-    ViewA11y, ViewAbilities, ViewAlternative, ViewAsset, ViewClaim, ViewClause, ViewDrawShape,
-    ViewDrawing, ViewDrawingAbilities, ViewError, ViewFocus, ViewInput, ViewIntent,
+    ViewA11y, ViewAbilities, ViewAlternative, ViewAsset, ViewBinding, ViewClaim, ViewClause,
+    ViewDrawShape, ViewDrawing, ViewDrawingAbilities, ViewError, ViewFocus, ViewInput, ViewIntent,
     ViewIntentInvocation, ViewIntentResult, ViewLimits, ViewMount, ViewNotice, ViewPathCommand,
     ViewPixels, ViewPoint, ViewRef, ViewRegion, ViewRelation, ViewShape, ViewSlotClaims,
     ViewStatus, ViewStroke, ViewTarget, ViewUpdate, ViewViewport, ViewWhen, ViewWhenAll,
@@ -285,8 +285,8 @@ pub use context::{
     CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelFetchRequest,
     ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds,
     OverlayHandle, OverlayState, RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult,
-    SendMessageOptions, SourceInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo,
-    ToolInfoReachesTools, UnfocusTarget, UsageInfo, ViewComponent,
+    SendMessageOptions, SetModelArg, SourceInfo, TerminalInputResult, TerminalInputSubscription,
+    ToolInfo, ToolInfoReachesTools, UnfocusTarget, UsageInfo, ViewComponent,
     create_assistant_message_event_stream, is_bash_tool_result, is_edit_tool_result,
     is_find_tool_result, is_grep_tool_result, is_ls_tool_result, is_powershell_tool_result,
     is_read_tool_result, is_tool_call_event_type, is_write_tool_result, message_role, message_text,

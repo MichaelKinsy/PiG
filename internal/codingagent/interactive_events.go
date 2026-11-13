@@ -4,12 +4,15 @@ package codingagent
 
 import (
 	"encoding/json"
+	"encoding/json/jsontext"
+	jsonv2 "encoding/json/v2"
 	"fmt"
 	"slices"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -66,6 +69,61 @@ func (m *InteractiveMode) finalizeRunningTools() {
 		delete(m.toolFileCalls, id)
 	}
 	m.toolMu.Unlock()
+}
+
+// fileCallMembers is the members of a read or write call's arguments the file renderers read (toolBodyRendererForCall).
+type fileCallMembers struct {
+	FilePath fileCallMember `json:"file_path"`
+	Path     fileCallMember `json:"path"`
+	Content  fileCallMember `json:"content"`
+}
+
+// fileCallMember is what the renderers ask of one member: whether it is absent (missing or null), a string, or a value of another
+// type. A value of another type is skipped, not built. A repeated member's last value, null included, is the one kept.
+type fileCallMember struct {
+	kind jsontext.Kind // 0 for a missing member
+	text string        // the value of a string member
+}
+
+func (member *fileCallMember) UnmarshalJSONFrom(decoder *jsontext.Decoder) error {
+	kind := decoder.PeekKind()
+	if kind != '"' {
+		*member = fileCallMember{kind: kind}
+		return decoder.SkipValue()
+	}
+	token, err := decoder.ReadToken()
+	if err != nil {
+		return err
+	}
+	*member = fileCallMember{kind: kind, text: token.String()}
+	return nil
+}
+
+// otherFileCallArgument stands for a member the model sent as a boolean, a number, an array or an object.
+type otherFileCallArgument struct{}
+
+// fileCallArguments reads from a read or write call's arguments the three members the file renderers use and nothing else: a string
+// member as its string, a missing or null one as no member, and one of any other type as otherFileCallArgument. Text that is not one
+// JSON object gives no members. Member names match exactly, as upstream's property reads on event.args do.
+func fileCallArguments(args json.RawMessage) ai.JsonObject {
+	var members fileCallMembers
+	if err := jsonv2.Unmarshal(args, &members, jsonopts.Parse); err != nil {
+		return nil
+	}
+	arguments := make(ai.JsonObject, 3)
+	for _, member := range [...]struct {
+		name  string
+		value *fileCallMember
+	}{{"file_path", &members.FilePath}, {"path", &members.Path}, {"content", &members.Content}} {
+		switch member.value.kind {
+		case 0, 'n':
+		case '"':
+			arguments[member.name] = member.value.text
+		default:
+			arguments[member.name] = otherFileCallArgument{}
+		}
+	}
+	return arguments
 }
 
 // handleAgentEvent handles one event from the agent loop for live rendering.
@@ -453,12 +511,10 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 		argsPreview := tui.HeaderForTool(e.ToolName, e.Args, m.opts.CWD)
 		m.toolMu.Lock()
 		if e.ToolName == "read" || e.ToolName == "write" {
-			var args map[string]any
-			_ = json.Unmarshal(e.Args, &args)
 			if m.toolFileCalls == nil {
 				m.toolFileCalls = make(map[string]ai.ToolCall)
 			}
-			m.toolFileCalls[e.ToolCallID] = ai.ToolCall{Name: e.ToolName, Arguments: args}
+			m.toolFileCalls[e.ToolCallID] = ai.ToolCall{Name: e.ToolName, Arguments: fileCallArguments(e.Args)}
 		}
 		comp := m.toolByID[e.ToolCallID]
 		if comp != nil {

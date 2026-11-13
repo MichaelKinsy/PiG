@@ -1163,6 +1163,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	builder.abort = abort
 	_, builder.managed = resp.Body.(*observedResponseBody)
 	streaming = true
+	//portlint:allow asyncorder Pi's stream() starts a detached async IIFE and returns the stream (google-generative-ai.ts:67, :296); the stream owns this goroutine, which runs the body after the response headers as a turn of the stream's continuation executor (responseTurn in streamResponse), the ordering point with the consumer; TestGoogleProviderConsumerMatchesNodeTickOrder holds each event's segment and round to Pi's
 	go builder.runResponse(func() error { return p.streamResponse(ctx, resp, builder) })
 	return builder.stream, nil
 }

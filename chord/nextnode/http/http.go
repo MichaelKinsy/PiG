@@ -135,7 +135,7 @@ func (s *registrySet) authenticatorsNow() []AuthenticatorEntry {
 
 // ErrRequestFinished is the cause the component ends a request's context with once the request is over (its consumer finished and its
 // scope ended). Pi's request `AbortController` is aborted by a disconnect or by `close` only and is never aborted for a finished
-// request: work an authenticator or a handler left running on the context (a session's `lastUsed` write) goes on after the
+// request: work an authenticator or a handler left running on the context (a sign-in's `lastUsed` write) goes on after the
 // request, so it stays on when the cause is this one.
 var ErrRequestFinished = errors.New("http: the request finished")
 

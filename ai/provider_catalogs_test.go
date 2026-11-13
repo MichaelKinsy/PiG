@@ -5,7 +5,6 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,10 +15,7 @@ import (
 // order flattenModelCatalog in packages/ai/src/model-catalog.ts visits them: groups in key order, then models in key order.
 func pinnedCatalogIDs(t *testing.T, provider string) map[string][]string {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("../.upstream/current/packages/ai/src/providers/data", provider+".json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	raw := readPinnedMirror(t, "../.upstream/current/packages/ai/src/providers/data/"+provider+".json")
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	expect := func(want json.Delim) {
 		t.Helper()
@@ -63,6 +59,10 @@ func TestProviderCatalogExportsMatchPinnedData(t *testing.T) {
 	for _, tc := range providerCatalogCases() {
 		t.Run(tc.provider, func(t *testing.T) {
 			want := pinnedCatalogIDs(t, tc.provider)
+			if slices.Contains(BuiltStrippedProviders(), tc.provider) {
+				// A build with the pig_strip tag of this provider's API exports its chat catalog empty.
+				want["chat"] = nil
+			}
 			chat, image, classifier := tc.chat(), tc.image(), tc.classifier()
 			// OpenRouter's :nitro and :floor variants are PiG's addition (D199); the pinned data has none.
 			var chatIDs []string

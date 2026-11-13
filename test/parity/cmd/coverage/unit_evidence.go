@@ -3,15 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"unicode"
-	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/test/parity/internal/gotests"
 )
 
 // Unit evidence names reviewed observable assertions and their compiling
@@ -78,53 +74,12 @@ func declaredTests(dir string) (map[string]bool, error) {
 	}
 	tests := map[string]bool{}
 	for _, path := range paths {
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		file, err := gotests.Parse(path)
 		if err != nil {
 			return nil, err
 		}
-		testingAliases := map[string]bool{}
-		for _, imp := range file.Imports {
-			name, err := strconv.Unquote(imp.Path.Value)
-			if err != nil || name != "testing" {
-				continue
-			}
-			alias := "testing"
-			if imp.Name != nil {
-				alias = imp.Name.Name
-			}
-			testingAliases[alias] = true
-		}
-		for _, decl := range file.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv != nil || fn.Type.Params.NumFields() != 1 || fn.Type.Results.NumFields() != 0 || fn.Body == nil {
-				continue
-			}
-			// A fuzz target runs its seed corpus under go test, so unit evidence may name one like a test.
-			prefix, paramType := "Test", "T"
-			if strings.HasPrefix(fn.Name.Name, "Fuzz") {
-				prefix, paramType = "Fuzz", "F"
-			}
-			if !strings.HasPrefix(fn.Name.Name, prefix) {
-				continue
-			}
-			suffix := strings.TrimPrefix(fn.Name.Name, prefix)
-			r, _ := utf8.DecodeRuneInString(suffix)
-			if suffix != "" && unicode.IsLower(r) {
-				continue
-			}
-			param, ok := fn.Type.Params.List[0].Type.(*ast.StarExpr)
-			if !ok {
-				continue
-			}
-			typ, ok := param.X.(*ast.SelectorExpr)
-			if !ok || typ.Sel.Name != paramType {
-				continue
-			}
-			ident, ok := typ.X.(*ast.Ident)
-			if !ok || !testingAliases[ident.Name] {
-				continue
-			}
-			tests[fn.Name.Name] = true
+		for name := range file.Tests {
+			tests[name] = true
 		}
 	}
 	return tests, nil

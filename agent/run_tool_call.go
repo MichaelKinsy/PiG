@@ -53,8 +53,10 @@ type RunToolCallOptions struct {
 // call other tools use it so the hooks (for example permission checks) apply
 // to those calls too. Mirrors upstream runToolCall (agent-loop.ts:800-820).
 //
-// It never fails for tool failures: unknown tools, validation errors, blocked
-// calls, and panics come back as an outcome with IsError set. It returns the
+// It never fails for tool failures: a cancelled ctx (upstream's aborted
+// signal), unknown tools, validation errors, blocked calls, and panics come
+// back as an outcome with IsError set. A cancelled ctx is checked first,
+// before the hooks run (Pi 4438c58ba agent-loop.ts:810-812). It returns the
 // first error of options.OnUpdate after the tool returned, without running the
 // after hooks, as upstream's promise rejects.
 func RunToolCall(ctx context.Context, call AgentToolCall, options RunToolCallOptions) (AgentToolCallOutcome, error) {

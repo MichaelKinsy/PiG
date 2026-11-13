@@ -275,7 +275,7 @@ func TestDelegateIsRefusedForAKindThatIsNotTheHostsAddressAfterLoadAndTwice(t *t
 
 func TestDestinationDelegatesOnlyTheRemoteTypesTheHostDoesNotServe(t *testing.T) {
 	served := map[string]bool{"app.a": true}
-	d := newDestination(new(Server.Address(nil)), map[string]*route{}, newPath(func(pathEvent) {}), func(name string) bool { return served[name] })
+	d := newDestination(new(Server.Address(nil)), map[string]*route{}, newPath(func(pathEvent) {}, nil), func(name string) bool { return served[name] })
 	if d.delegates("app.b", nil) {
 		t.Fatal("a host without a delegate delegates")
 	}

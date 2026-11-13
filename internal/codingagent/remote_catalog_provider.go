@@ -199,7 +199,10 @@ func encodeURIComponent(value string) string {
 	return encoded.String()
 }
 
-// newCatalogRequest is the GET of a provider's catalog, with the validator of a stored body when there is one.
+// newCatalogRequest is the GET of a provider's catalog, with the validator of a stored body when there is one. The User-Agent carries
+// this client's version, and Pi's catalog protocol serves a `pi/<version>` client the newest catalog published for a minimum version
+// at or below it (Pi's scripts/model-catalog-minimum-version.mjs and selectModelCatalog() in scripts/model-catalog-protocol.ts). So a
+// client receives catalogs published after its release, and those catalogs must work with this client's code.
 // upstream: remote-catalog-provider.ts:requestCatalog (ee409a85 factors it out of withRemoteCatalog)
 func newCatalogRequest(ctx context.Context, providerID, catalogBaseURL, validator string) (*http.Request, error) {
 	// new URL("/api/models/providers/<id>", catalogBaseUrl): the absolute route replaces the base URL's path and query.

@@ -177,8 +177,8 @@ func TestBedrockUpstreamErrorMetadata(t *testing.T) {
 }
 
 // Pi's Bedrock client is the AWS SDK on Node's http modules, so a refused connect fails with Node's own error (probed: Pi 1.1.0).
-// Through NodeHttpHandler (a proxy, or AWS_BEDROCK_FORCE_HTTP1=1) it is "connect ECONNREFUSED <address>:<port>", which matches
-// none of retry.ts's patterns, so Pi does not retry it; PiG's "fetch failed" was retried three times. Through the default
+// Through NodeHttpHandler (a proxy, or AWS_BEDROCK_FORCE_HTTP1=1) it is "connect ECONNREFUSED <address>:<port>", which
+// retry.ts retries by the bare code since Pi 4699b5b26 (#12128; before it, no pattern matched). Through the default
 // NodeHttp2Handler it is "The pending stream has been canceled (caused by: connect ECONNREFUSED …)", which Pi retries.
 func TestBedrockRefusedConnectIsNodesErrorLikePi(t *testing.T) {
 	address := closedTCPAddress(t, "tcp4", "127.0.0.1:0")
@@ -188,7 +188,7 @@ func TestBedrockRefusedConnectIsNodesErrorLikePi(t *testing.T) {
 		want      string
 		retryable bool
 	}{
-		{"http1", ai.ProviderEnv{"AWS_BEDROCK_FORCE_HTTP1": "1"}, "connect ECONNREFUSED " + address.String(), false},
+		{"http1", ai.ProviderEnv{"AWS_BEDROCK_FORCE_HTTP1": "1"}, "connect ECONNREFUSED " + address.String(), true},
 		{"http2", ai.ProviderEnv{}, "The pending stream has been canceled (caused by: connect ECONNREFUSED " + address.String() + ")", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

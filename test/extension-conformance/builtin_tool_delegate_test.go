@@ -2,6 +2,7 @@ package extensionconformance
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -137,6 +138,10 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			// The same command with the local operations run on another thread (a goroutine, a Python thread, a Lisp thread, a Rust std::thread; the Node reference runs them in
 			// another turn of its event loop): the shell's exit belongs to the error and not to the thread that made it, so it survives the hop in every SDK.
 			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": shellExitedWriterCommand, "timeout": 2}, "ops": "localThread"},
+			// An image read while the session's model takes no images (the harness's model: provider "conformance", id "current", input []). Pi 4be4cb4f5e9c
+			// names that model in details.imageUnsupportedByModel and keeps the text free of it. The id is the host's: an SDK that dropped the details, or
+			// rebuilt them from a type without the member, could not report it.
+			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "pixel.png"}},
 			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
 			// createCodingTools and createReadOnlyTools
@@ -155,6 +160,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			filepath.Join(hostCwd, "multi.txt"):        multi.String(),
 			filepath.Join(hostCwd, "grepdir", "g.txt"): "needle-1\nhay\n",
 			filepath.Join(hostCwd, "big.txt"):          strings.Repeat("a line of the big file\n", 2500),
+			filepath.Join(hostCwd, "pixel.png"):        string(onePixelPNGForDelegation()),
 			filepath.Join(factoryCwd, "marker.txt"):    "from-X\n",
 			filepath.Join(factoryCwd, "multi.txt"):     "x1\nx2\n",
 		} {
@@ -375,6 +381,15 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 	if details, _ := bigResult["detailsJSON"].(string); !strings.HasPrefix(details, `{"truncation":{"content":`) {
 		t.Fatalf("Pi's own details = %q", details)
 	}
+	// Pi 4be4cb4f5e9c: the text of an image read under a model without image input says nothing of the model, and the details name it.
+	imageRead := reference[len(reference)-3]
+	imageResult, _ := imageRead["result"].(map[string]any)
+	if got, _ := json.Marshal(imageResult["content"]); string(got) != `[{"text":"Read image file [image/png]","type":"text"},{"mimeType":"image/png","type":"image"}]` {
+		t.Fatalf("Pi's own read of an image under a model without image input reported the content %s", got)
+	}
+	if details, _ := imageResult["detailsJSON"].(string); details != `{"imageUnsupportedByModel":"current"}` {
+		t.Fatalf("Pi's own read of an image under a model without image input reported the details %q", details)
+	}
 	// bash's structured content lists its members in insertion order
 	if keys, _ := reference[16]["result"].(map[string]any)["structuredKeys"].([]any); fmt.Sprint(keys) != "[output truncated exit_code wall_time_seconds]" {
 		t.Fatalf("Pi's own structuredContent keys = %v", keys)
@@ -573,4 +588,13 @@ func TestConformance_BuiltinEditOverrideNormalisesLegacyArgumentsAcrossSDKs(t *t
 			}
 		})
 	}
+}
+
+// onePixelPNGForDelegation is the 1x1 PNG of Pi's tools.test.ts image cases.
+func onePixelPNGForDelegation() []byte {
+	data, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg==")
+	if err != nil {
+		panic(err)
+	}
+	return data
 }

@@ -7,6 +7,7 @@ set -euo pipefail
 
 name=vendor-chord-plugins-node
 default_out=chord/nextnode/plugins/node
+# shellcheck source=automation/gen/vendor-chord-common.sh
 . "$(dirname -- "${BASH_SOURCE[0]}")/vendor-chord-common.sh"
 
 node --disable-warning=ExperimentalWarning "$root/automation/gen/vendor-chord-plugins-node.mjs" "$tree" "$commit" "$telemetry" "$out" "$pin" "$carried"

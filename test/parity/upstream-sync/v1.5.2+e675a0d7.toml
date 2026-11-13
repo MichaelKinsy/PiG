@@ -1,0 +1,17 @@
+from = "1.5.2+7ae9ff8c"
+to = "1.5.2+e675a0d7"
+
+[[files]]
+path = "packages/ai/catalog/README.md"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "e675a0d7f adds the section \"Released clients\": pi.dev serves each published catalog to every released pi at or above MINIMUM_PI_VERSION, released clients use it within hours and combine it with their own code's defaults, so a catalog change must work with the latest release's code or raise the minimum version. internal/modelgen/README.md carries the section and says what a released pig does with the catalog its own endpoint serves (D64, D65): it requests /api/models/providers/<id> from pi-in-go.dev and a catalog later than the bundled data's generation time replaces the bundled models of the same type and id and adds the others."
+
+[[files]]
+path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = ["test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"]
+rationale = "e675a0d7f adds a doc comment to requestCatalog and no code: the User-Agent carries the client's version, pi.dev serves the newest catalog published for a minimum version at or below it, so a client receives catalogs published after its release. newCatalogRequest (internal/codingagent/remote_catalog_provider.go) carries the comment; its request is unchanged and the existing port test covers it."
+oracle = "not carried: comment only"

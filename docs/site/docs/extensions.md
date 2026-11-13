@@ -4,6 +4,8 @@ Extensions add executable behavior to PiG. They can register tools, commands, ev
 
 PiG preserves the Pi extension model while using a process-oriented host that supports Go, Rust, Python, and Node. A compatible Go extension can also be compiled into a Piglet Binary.
 
+To show one GUI in the terminal and in a web page, mount a view: [Extension views](ui-views.md) (D614).
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)
@@ -230,9 +232,17 @@ A command handler receives the same context plus the calls that replace or reloa
 
 The Node API object is `pi`, with Pi's methods such as `pi.on`, `pi.registerTool`, `pi.sendMessage`, `pi.appendEntry`, `pi.getAllTools` and `pi.registerMcpServer`. The Go, Rust and Python SDKs expose the same behavior under their own naming. A capability counts as supported only when every runtime offers it and the conformance suite can detect a broken implementation (see [SDKs](#sdks)). The symbol-by-symbol surface is generated into `docs/extension-sdk-surface.md` in the source tree, and `docs/extension-api-parity.md` lists every upstream interface and its PiG mapping. See also [Custom messages](#custom-messages), [Registration inputs](#registration-inputs) and [User bash operations](#user-bash-operations).
 
+An optional member of a session entry has three states, as in Pi: left out, `null`, or a value. PiG writes each to the session file as the extension set it. The empty value of each SDK leaves the member out: Node `undefined`, Go `nil`, Python `None`, Rust `Value::Null` (`None` in the methods that take an `Option`), Lisp `NIL`. To write the member as `null`, use Node `null`, Go `json.RawMessage("null")`, Python `pig_sdk.NULL`, Rust `Some(Value::Null)` with `append_entry_opt` or `send_message_with_details`, or Lisp `:null`. This applies to the data of `appendEntry`, to the details of `sendMessage`, and to the `data`, `details` and `usage` members of a boundary draft, of a `session_before_compact` result and of a `session_before_tree` result.
+
+`setLabel` has the same three states. A call without a label writes a label entry without a `label` member. A null label writes `"label":null`. An empty string writes `"label":""`. Each clears the label. Use Node `pi.setLabel(id)`, `pi.setLabel(id, null)` or `pi.setLabel(id, "")`; Go `SetLabelValue(id, nil)`, `SetLabelValue(id, json.RawMessage("null"))` or `SetLabel(id, "")`; Python `set_label(id)`, `set_label(id, pig_sdk.NULL)` or `set_label(id, "")`; Rust `set_label_opt(id, None)`, `set_label_opt(id, Some(Value::Null))` or `set_label(id, "")`; Lisp `(ctx-set-label ctx id)`, `(ctx-set-label ctx id :null)` or `(ctx-set-label ctx id "")`.
+
+PiG writes a `usage` object that an extension supplies as the extension wrote it. The member order and any extra member reach the session file. This applies to a compaction draft, to a `session_before_compact` result and to a `session_before_tree` result.
+
+To call another extension, in any language, use the event bus `pi.events`: [Event bus](event-bus.md).
+
 ## State Management
 
-An extension keeps its state in its own process and must rebuild it when PiG starts a fresh process after a reload or Session replacement; module-level state does not carry over (D70). Rebuild from Session history (see [Session context](#session-context)) and from entries it appended with `pi.appendEntry`. Store state that is not part of a Session below `~/.pig/state/<extension-id>/`. See [Extension-owned state](#extension-owned-state) and [Reload behavior](#reload-behavior).
+An extension keeps its state in its own process and must rebuild it when PiG starts a fresh process after a reload or Session replacement; module-level state does not carry over (D70). A reload of an extension whose source did not change keeps its process and calls its factory again: what the factory creates starts again, and a Go package variable or a Python module variable keeps its value. Rebuild from Session history (see [Session context](#session-context)) and from entries it appended with `pi.appendEntry`. Store state that is not part of a Session below `~/.pig/state/<extension-id>/`. See [Extension-owned state](#extension-owned-state) and [Reload behavior](#reload-behavior).
 
 ## Custom Tools
 
@@ -392,6 +402,63 @@ build:
 
 A Standard Binary build fails if any selected extension would use a subprocess.
 
+## Own compaction and continue after an overflow
+
+An extension that writes its own summaries can continue a turn after the provider refuses a request for its size. Look for this in the handler results, not on the context. No context method continues a turn. The `turn_end` and `agent_before_settle` handlers return `entries` and `continue`. `entries` appends session entries. `continue: true` asks for one more provider request from the context as it then is. PiG adds no user message, and it does not send the failed attempt again once an entry omits it or a compaction replaces it.
+
+A failed attempt reaches `turn_end` with `outcome: "error"`, the assistant `message`, and its `messageEntryId`. Classify the message with `isContextOverflow` from `@earendil-works/pi-ai` (`sdk.IsContextOverflow` in Go, `is_context_overflow` in Python and Rust, `context-overflow-p` in Lisp). The handler can make its own summary request before it returns. The Session waits for the handler.
+
+Choose one of three variants:
+
+| Variant | What the handlers return | Next provider request |
+|---|---|---|
+| Replace the history | `turn_end` with `outcome: "error"` returns `entries: [{ type: "compaction", summary, firstKeptEntryId: null, details }]`. `agent_before_settle` returns `{ continue: true }` once. | The system prompt and the summary. The prompt and the failed attempt are absent. |
+| Keep the prompt | `agent_before_settle` with `outcome: "error"` returns `entries: [{ type: "context_edit", targetId, replacement: null }, { type: "compaction", summary, firstKeptEntryId }]` and `continue: true`. `targetId` is the failed attempt's entry. `firstKeptEntryId` is the prompt's entry. | The system prompt, the summary, and the same prompt once. |
+| Answer the built-in recovery | `session_before_compact` with `reason: "overflow"` returns `{ compaction: { summary, firstKeptEntryId, tokensBefore, details } }`. | PiG omits the failed attempt, stores the summary, and continues by itself. |
+
+```typescript
+import { isContextOverflow } from "@earendil-works/pi-ai";
+
+let continueOnce = false;
+pi.on("turn_end", async (event) => {
+  if (event.outcome !== "error" || !isContextOverflow(event.message)) return;
+  const summary = await summarize(event.context.contextMessages); // the extension's own request
+  continueOnce = true;
+  return { entries: [{ type: "compaction", summary, firstKeptEntryId: null, details: { format: "my-checkpoint" } }] };
+});
+pi.on("agent_before_settle", () => {
+  if (!continueOnce) return;
+  continueOnce = false;
+  return { continue: true };
+});
+```
+
+```go
+ext.OnEvent(sdk.EventAgentBeforeSettle, func(ctx sdk.Context, data map[string]any) (any, error) {
+	if data["outcome"] != "error" || failedEntryID == "" {
+		return nil, nil
+	}
+	return map[string]any{
+		"entries": []any{
+			map[string]any{"type": "context_edit", "targetId": failedEntryID, "replacement": nil},
+			map[string]any{"type": "compaction", "summary": summary, "firstKeptEntryId": promptEntryID},
+		},
+		"continue": true,
+	}, nil
+})
+```
+
+These rules apply to every SDK and to isolated, packed, and fused extensions:
+
+- Return the continuation from `agent_before_settle`. A `continue: true` from `turn_end` does not continue a turn that ended with an error.
+- Remove the failed attempt before you continue. PiG refuses `continue: true` while the failed attempt is the last message of the context, and reports `agent_before_settle requested continuation without runnable model context`.
+- Write `replacement: null` to omit an entry. A `context_edit` draft without the `replacement` member is invalid. PiG reports `Invalid boundary entries: Context edit replacement must be null or contain string/array content` and appends nothing. A `compaction` draft without `firstKeptEntryId` keeps nothing, as a null one does.
+- Count your own attempts. Each `agent_before_settle` result continues once. If the extension does not continue, the run settles with the provider's error.
+- No setting gives an extension the ownership of compaction. The handlers do. When `compaction.enabled` is on, the built-in recovery handles an overflow first, unless a compaction entry is newer than the failed response, as in the first variant. Every compaction that PiG starts asks `session_before_compact` first. This includes the check after the continued response when its usage exceeds the context window. Return `compaction` to supply the result, or `cancel: true` to stop the operation.
+- The failed attempt stays in the session file. A resumed session replays the compacted context without it.
+
+`TestExtensionOwnedCompactionContinuesAfterOverflow` and the parity scenario `session/38-overflow-owner-boundaries` compare each variant with the pinned Pi package.
+
 ## Connection and liveness model
 
 PiG cannot guarantee that an extension connection never fails. An extension process can crash, be killed, deadlock, exhaust a resource, or lose its transport.
@@ -455,7 +522,7 @@ PiG:
 1. resolves the requested extension set;
 2. computes content identity and reuses valid build artifacts;
 3. plans runtime cells;
-4. constructs a fresh factory and runtime for every configured, embedded, fused, and built-in extension;
+4. calls the factory of every configured, embedded, fused, and built-in extension again, so what a factory creates is new; an extension whose source did not change keeps its process, and an edited Go extension runs its new build in a new process (D70; [Go hot reload](go-hot-reload.md));
 5. starts and validates replacements;
 6. verifies registration;
 7. publishes the successful set;

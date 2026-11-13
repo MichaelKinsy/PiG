@@ -106,6 +106,7 @@ func BuildSystemPromptSections(o Options) ai.OrderedSections {
 	} else {
 		var tools []string
 		for _, name := range declared {
+			// pig divergence (D645): ToolHints is a Go map with no inherited members, so a selected tool named like an Object.prototype member (constructor, toString) has no snippet and no line; Pi's `toolSnippets[name]` on a plain object finds the inherited function and lists its source text.
 			if hint := o.ToolHints[name]; hint != "" {
 				tools = append(tools, "- "+name+": "+hint)
 			}
@@ -191,6 +192,7 @@ func guidelinesFor(tools []string, toolGuidelines map[string][]string, promptGui
 		}
 	}
 	for _, name := range tools {
+		// pig divergence (D645): toolGuidelines is a Go map with no inherited members, so a selected tool named like an Object.prototype member (constructor, toString, __proto__) has no guideline and the prompt is built; Pi's `toolGuidelines[name] ?? []` on a plain object iterates the inherited member and throws "TypeError: function is not iterable".
 		for _, rule := range toolGuidelines[name] {
 			add(rule)
 		}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"strings"
 	"testing"
 
@@ -74,6 +75,8 @@ func BenchmarkProcessTerminalFullRedrawCJK(b *testing.B) {
 				ui.Add(NewMarkdown(fmt.Sprintf("第%d回の変更です。`pkg/foo` と `pkg/bar` に触れます。\n\n- 変更についての最初の要点\n- より詳しい二番目の要点\n- 三番目のトレードオフ ─── ✓\n\n```go\nfunc handler%d() error { return nil } // 日本語のコメント\n```\n", i, i)))
 			}
 			ui.Render()
+			// The collector is off for the timed loop. A collection empties the pools a redraw takes its buffers from, and the redraw after it allocates them again, so the count followed how many collections fell in the loop (at 5,000 turns 5 or 6 allocations more at GOGC=100, and 9 to 12 more at GOGC=50, than with the collector off). How many fall in the gate's five iterations is decided by the heap that the benchmarks before this one leave.
+			defer debug.SetGCPercent(debug.SetGCPercent(-1))
 			b.ReportAllocs()
 			i := 0
 			for b.Loop() {

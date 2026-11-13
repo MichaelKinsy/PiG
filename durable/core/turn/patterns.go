@@ -48,6 +48,8 @@ var retryablePatterns = []string{
 	`fetch failed`,
 	`request to \S+ failed, reason:`,
 	`getaddrinfo`,
+	`(?<![a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?![a-z0-9_])`,
+	`connection reset by peer`,
 	`ENOTFOUND`,
 	`EAI_AGAIN`,
 	`upstream.?connect`,

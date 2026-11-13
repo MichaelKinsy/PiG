@@ -28,6 +28,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/installchange"
+	"github.com/MichaelKinsy/PiG/internal/viewendpoint"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -180,8 +181,13 @@ type InteractiveMode struct {
 	viewMounts []*viewMount
 	// viewTabRow is the tab row the view client draws above the panel mounts, nil while it draws none; widgetMu guards it.
 	viewTabRow *viewTabs
+	// viewWaitRow is the row that stands for the dialogs while none holds the keyboard, nil while the view client draws
+	// none; widgetMu guards it.
+	viewWaitRow *viewWaiting
 	// viewClient is the terminal's attachment to the bound build's view registry, nil unless a Piglet selected it.
-	viewClient       atomic.Pointer[viewClient]
+	viewClient atomic.Pointer[viewClient]
+	// viewEndpoint is the socket that serves the bound build's view registry to clients outside the process, nil unless a Piglet selected it.
+	viewEndpoint     atomic.Pointer[viewendpoint.Endpoint]
 	inprocessWidgets []inprocessWidget
 	// widgetSeq counts widget sets across both hosts; bridgeWidgetSeqs is the sequence each extension-process widget got when it was set, by its
 	// bridge insertion order, so the layout interleaves the hosts in the order Pi's one Map per side keeps.
@@ -1196,6 +1202,8 @@ type InteractiveModeOptions struct {
 	// DefaultModelPerProvider shares the startup resolver's provider defaults with /login.
 	DefaultModelPerProvider map[string]string
 
+	// ModelBinder gives a model object an extension passed to setModel over the wire the Session runtime's backend (coding.ModelRuntime.BindModelObject).
+	ModelBinder func(*ai.Model) *ai.Model
 	// ModelLookup resolves a provider/model identity through the Session-owned runtime.
 	ModelLookup  func(providerID, modelID string) *ai.Model
 	ModelCatalog func(providerID ...string) []*ai.Model
@@ -1326,6 +1334,13 @@ type InteractiveModeOptions struct {
 	// pig additive (D614).
 	TerminalViewClient bool
 
+	// ViewEndpoint serves the view carrier of SubprocessUIBridge's registry on a Unix socket in AgentDir/view-endpoint,
+	// so a client outside the process attaches to the session beside the terminal. A Piglet's viewEndpoint: socket
+	// sets it.
+	//
+	// pig additive (D614).
+	ViewEndpoint bool
+
 	// SubprocessUIBridge, when non-nil, is the UI bridge for subprocess
 	// extensions. Run() wires it to the TUI after creation via
 	// SetUIContext and SetInvalidate.
@@ -1419,7 +1434,10 @@ func (m *InteractiveMode) rebuildToolSystemPrompt() {
 	if m.structuredSystemPrompt() {
 		text := prompts.BuildDefaultPrompt(prompts.FromExtensionOptions(*opts))
 		m.turnSystemPromptMu.Lock()
-		m.opts.SystemPrompt = text
+		// Init rebuilds the prompt the caller built from the same options: an equal text keeps the caller's string, so the live heap holds one copy of it.
+		if text != m.opts.SystemPrompt {
+			m.opts.SystemPrompt = text
+		}
 		m.turnSystemPromptMu.Unlock()
 	}
 }
@@ -1475,6 +1493,8 @@ func NewInteractiveMode(runtimeHost InteractiveRuntime, options InteractiveModeO
 	// Mirrors the upstream InteractiveMode constructor's
 	// setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides()).
 	tui.SetCapabilityOverrides(opts.Settings.GetTerminalCapabilityOverrides())
+	// pig divergence (D624): terminal.screenWriter is applied here, once, before a renderer exists and so before the alternate screen is entered; a settings change or a reload acts at the next start. The merged settings carry the global file's value, because a project file cannot set the key.
+	tui.SetScreenWriter(opts.Settings.GetTerminalScreenWriter() == TerminalScreenWriterWriter)
 	ensurePngTranscoder(nil)
 	// Pi's constructor uses options.tuiMode ?? settingsManager.getTuiMode().
 	if opts.TuiMode == "" {
@@ -1618,6 +1638,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	defer SetUncaughtGoroutineHandler(m.uncaughtOffLoop)()
 	// Runs first on return, before the handlers above: Stop is upstream's stop(), which run() reaches through shutdown() or handleFatalRuntimeError.
 	defer func() { err = errors.Join(err, m.stopRun()) }()
+	defer m.closeViewEndpoint()
 	if err := m.Init(ctx); err != nil {
 		return err
 	}

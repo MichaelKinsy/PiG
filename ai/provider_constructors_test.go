@@ -27,6 +27,13 @@ func TestProviderConstructorsMatchCatalog(t *testing.T) {
 			t.Errorf("%s is not a catalog provider", id)
 			continue
 		}
+		if slices.Contains(BuiltStrippedProviders(), id) {
+			// A build with the pig_strip tag of this provider's API has nothing to construct: CreateProvider refuses a provider without an implementation.
+			if !panics(func() { construct() }) {
+				t.Errorf("%s: the constructor built a stripped provider", id)
+			}
+			continue
+		}
 		provider := construct()
 		if provider.ID != id {
 			t.Errorf("%s: constructor returned provider %q", id, provider.ID)
@@ -56,10 +63,10 @@ func TestOpenCodeProvidersAddSessionHeaderToStreams(t *testing.T) {
 	}
 }
 
-// providers/all.ts: every catalog provider is built by its own constructor; BuiltinProviders agrees with the constructor table for each id and serves the whole catalog.
+// providers/all.ts: every catalog provider is built by its own constructor; BuiltinProviders agrees with the constructor table for each id and serves the whole catalog (without the provider a pig_strip_<api> build strips).
 func TestBuiltinProvidersAreBuiltByTheirConstructors(t *testing.T) {
 	built := BuiltinProviders()
-	ids := ListProviders()
+	ids := builtCatalogProviders()
 	if len(built) != len(ids) {
 		t.Fatalf("%d providers for %d catalog ids", len(built), len(ids))
 	}

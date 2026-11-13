@@ -159,6 +159,49 @@ fn defaults_match_upstream_constructors() {
 }
 
 #[test]
+fn structural_kinds_carry_an_id() {
+    // Every node kind can carry an id: an a11y, focus or drawing record of a
+    // mounted view names a node by it.
+    let encoded = View::new(
+        Container::new()
+            .id("id-container")
+            .child(
+                Box::new(1, 1)
+                    .id("id-box")
+                    .child(Text::new("t", 0, 0).id("id-text")),
+            )
+            .child(TruncatedText::new("t", 0, 0).id("id-truncated-text"))
+            .child(Markdown::new("m", 0, 0).id("id-markdown"))
+            .child(Spacer::new(1).id("id-spacer"))
+            .child(DynamicBorder::new("border").id("id-dynamic-border"))
+            .child(Image::new(b"png".to_vec(), "image/png").id("id-image"))
+            .child(Loader::new("l").id("id-loader"))
+            .child(HStack::new().id("id-hstack"))
+            .child(VStack::new().id("id-vstack"))
+            .child(Lines::new(vec!["row".to_string()]).id("id-lines"))
+            .child(UserMessage::new("u").id("id-user-message"))
+            .child(Diff::new("d").id("id-diff")),
+    )
+    .encode(false)
+    .unwrap();
+    fn ids(node: &Value, out: &mut Vec<(String, Option<String>)>) {
+        out.push((
+            node["kind"].as_str().unwrap().to_string(),
+            node.get("id").and_then(Value::as_str).map(str::to_string),
+        ));
+        for child in node["children"].as_array().into_iter().flatten() {
+            ids(child, out);
+        }
+    }
+    let mut got = Vec::new();
+    ids(&encoded.body["root"], &mut got);
+    assert_eq!(got.len(), 14);
+    for (kind, id) in got {
+        assert_eq!(id, Some(format!("id-{kind}")), "the {kind} node");
+    }
+}
+
+#[test]
 fn theme_override_replaces_an_earlier_value_for_the_token() {
     let body = View::new(Spacer::new(1))
         .theme("accent", "#000000")

@@ -1479,3 +1479,66 @@ func TestHostReferenceSourceAFailedObjectLetsItsEndedInstanceGoCollectsTheInstan
 	ref.Release()
 	must(t, host.Close(background))
 }
+
+// --- a member its reference has not seen (decision "References share one wire hold") --------------------------------
+
+// msNone is a reference owning a source: a read of a member that never had a value fails `not_ready`.
+type msNone struct{}
+
+func (msNone) none() error { return notReady("none") }
+
+// msUnseen is a source following a replica of `x` failed after 7, its reference not having seen `x` while seen is false.
+func msUnseen(t *testing.T) (batch *state.Batch, source *referenceSource, seen *bool) {
+	t.Helper()
+	batch = state.NewBatch(func(state.BatchError) {}, nil)
+	x := newReplica(batch, memberSnapshot{kind: "value", value: 7.0})
+	replicaCommit(t, batch, func() { x.fail(errors.New("x threw")) })
+	seen = new(bool)
+	source = newReferenceSource(batch, nil, msNone{})
+	source.unseen(func() bool { return *seen })
+	replicaCommit(t, batch, func() { source.bind(x) })
+	return batch, source, seen
+}
+
+// reference-source.test.ts: a member its reference has not seen › starts and opens watches as on a fresh failed snapshot:
+// the failure, no last value from before (Pi main 47e9d74f9)
+func TestReferenceSourceUnseenStartsAndOpensWatchesAsOnAFreshFailedSnapshotTheFailureNoLastValueFromBefore(t *testing.T) {
+	_, source, _ := msUnseen(t)
+	start := source.Start()
+	if start.Kind != state.StartFailed || start.Error == nil || start.Error.Error() != "x threw" || start.HasLast {
+		t.Fatalf("start = %+v, want failed `x threw` with no last value", start)
+	}
+	if _, err := source.OpenWatch(background); err == nil || err.Error() != "x threw" {
+		t.Fatalf("OpenWatch error = %v, want x threw", err)
+	}
+}
+
+// reference-source.test.ts: a member its reference has not seen › held or vanished, keeps no last value from before either
+// (Pi main 47e9d74f9)
+func TestReferenceSourceUnseenHeldOrVanishedKeepsNoLastValueFromBeforeEither(t *testing.T) {
+	heldBatch, held, _ := msUnseen(t)
+	replicaCommit(t, heldBatch, func() { held.hold() })
+	if start := held.Start(); start.Kind != state.StartFailed || start.HasLast {
+		t.Fatalf("held start = %+v, want failed with no last value", start)
+	}
+	vanishedBatch, vanished, _ := msUnseen(t)
+	gone := memberInvalid("no x")
+	replicaCommit(t, vanishedBatch, func() { vanished.vanish(gone, background) })
+	if start := vanished.Start(); start.Kind != state.StartFailed || !errors.Is(start.Error, gone) || start.HasLast {
+		t.Fatalf("vanished start = %+v, want failed `no x` with no last value", start)
+	}
+}
+
+// reference-source.test.ts: a member its reference has not seen › once seen, starts at the member's last value, and stays
+// seen (Pi main 47e9d74f9)
+func TestReferenceSourceUnseenOnceSeenStartsAtTheMembersLastValueAndStaysSeen(t *testing.T) {
+	_, source, seen := msUnseen(t)
+	*seen = true
+	if start := source.Start(); start.Kind != state.StartFailed || !start.HasLast || start.Last != 7.0 {
+		t.Fatalf("start once seen = %+v, want failed with last 7", start)
+	}
+	*seen = false
+	if start := source.Start(); start.Kind != state.StartFailed || !start.HasLast || start.Last != 7.0 {
+		t.Fatalf("start after seen = %+v, want failed with last 7 still", start)
+	}
+}

@@ -30,6 +30,14 @@ func (m *InteractiveMode) attachTerminalViewClient(bridge SubprocessUIBridge) {
 			}
 			m.tuiInst.SetFocus(mount)
 		},
+		float: func(mount *viewMount, title string) viewFloat {
+			handle := m.tuiInst.ShowOverlay(mount, viewDialogOverlay(title))
+			if handle == nil {
+				return nil
+			}
+			return &viewFrame{m: m, handle: handle}
+		},
+		waitRow: m.setViewWaitRow,
 		editorFocused: func() bool {
 			return m.tuiInst.ActiveOverlay() == nil && m.tuiInst.GetFocusedComponent() == tui.Component(m.editor)
 		},
@@ -39,12 +47,29 @@ func (m *InteractiveMode) attachTerminalViewClient(bridge SubprocessUIBridge) {
 		confirms:    func(data string) bool { return m.keybindings.Matches(data, string(tui.KBSelectConfirm)) },
 		listen:      func(listener *tui.TuiInputListener) func() { return m.tuiInst.AddInputListener(listener) },
 		interrupts:  func(data string) bool { return m.keybindings.Matches(data, string(AppInterrupt)) },
+		reserved:    func(data string) string { return viewReservedAction(m.keybindings, data) },
 		notify:      (&ExtUIContext{m: m}).Notify,
 		size: func() viewSize {
 			return viewSize{columns: m.tuiInst.Width(), rows: m.tuiInst.Height(), pointer: m.altScreen != nil}
 		},
 	}))
 }
+
+// viewDialogOverlay is the overlay a dialog is drawn in: the renderer's titled frame, the one the model selector has,
+// centred, viewDialogFraction of the terminal's columns and of its rows.
+func viewDialogOverlay(title string) tui.OverlayOptions {
+	return tui.OverlayOptions{Title: title, WidthFraction: viewDialogFraction, HeightFraction: viewDialogFraction}
+}
+
+// viewFrame is a dialog's frame on the screen: the overlay Pi's ctx.ui.custom draws an extension's component in.
+type viewFrame struct {
+	m      *InteractiveMode
+	handle *tui.OverlayHandle
+}
+
+func (f *viewFrame) Close() { f.handle.Close() }
+
+func (f *viewFrame) Leave() { f.handle.UnfocusWith(tui.OverlayUnfocusOptions{Target: f.m.editor}) }
 
 // detachTerminalViewClient ends the terminal's attachment to the outgoing build's registry and removes its mounts.
 func (m *InteractiveMode) detachTerminalViewClient() {
@@ -59,6 +84,15 @@ func (m *InteractiveMode) viewClientResized() {
 	if client := m.viewClient.Load(); client != nil {
 		client.wake()
 	}
+}
+
+// setViewWaitRow sets the row that stands for the dialogs, directly above the editor, or none with nil, and lays the
+// widgets out.
+func (m *InteractiveMode) setViewWaitRow(row *viewWaiting) {
+	m.widgetMu.Lock()
+	defer m.widgetMu.Unlock()
+	m.viewWaitRow = row
+	m.renderWidgetsLocked()
 }
 
 // setViewTabRow sets the tab row the panel region draws above its mounts, or none with nil, and lays the widgets out.

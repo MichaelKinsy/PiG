@@ -47,6 +47,9 @@ type OpenAIConfig struct {
 	SamplingParams map[string]any
 	// SamplingParamsByThinkingLevel overrides SamplingParams for the effective thinking level.
 	SamplingParamsByThinkingLevel SamplingParamsByThinkingLevel
+	// SamplingParamsOrder and SamplingParamsByThinkingLevelOrder are Model.SamplingParamsOrder and Model.SamplingParamsByThinkingLevelOrder.
+	SamplingParamsOrder                []string
+	SamplingParamsByThinkingLevelOrder map[ModelThinkingLevel][]string
 	// Env holds provider-scoped environment overrides that take precedence over
 	// the process environment when resolving provider configuration such as
 	// PI_CACHE_RETENTION and Cloudflare base-URL placeholders. Mirrors the
@@ -168,6 +171,10 @@ type OpenAICompat struct {
 	// Extra holds the members PiG does not model, as written. Pi's compat schemas allow additional properties and a compat object keeps
 	// them (model-config.ts getProvider, provider-composer.ts mergeCompat), so a custom API can read its own compat settings.
 	Extra map[string]json.RawMessage `json:"-"`
+	// objectOrder is the member order of OpenRouterRouting, ChatTemplateKwargs and ChatTemplateArgs, nested objects included, where the JSON the
+	// compat was decoded from or a merge of two compats lists them in another order than the sorted one encoding/json writes. A compat
+	// built in Go has none.
+	objectOrder schemaObjectOrder
 }
 
 func ptrBool(v bool) *bool { return new(v) }
@@ -231,7 +238,7 @@ func (p *openAIProvider) thinkingModel() *Model {
 
 // samplingModel is the model view resolveSamplingParams reads: reasoning support and the thinking map clamp the level, and the configured defaults and per-level overrides are merged.
 func (p *openAIProvider) samplingModel(reasoning bool) *Model {
-	model := &Model{SamplingParams: p.cfg.SamplingParams, SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel}
+	model := &Model{SamplingParams: p.cfg.SamplingParams, SamplingParamsByThinkingLevel: p.cfg.SamplingParamsByThinkingLevel, SamplingParamsOrder: p.cfg.SamplingParamsOrder, SamplingParamsByThinkingLevelOrder: p.cfg.SamplingParamsByThinkingLevelOrder}
 	if reasoning {
 		model.ProviderMeta.Reasoning = true
 		model.ThinkingLevelMap = p.thinkingModel().ThinkingLevelMap
@@ -295,7 +302,7 @@ func (anchors toolAnchors) anchored(systemIndex int) bool {
 // - requiresToolResultName: adds name field to tool result messages
 // - requiresThinkingAsText: converts thinking blocks to <thinking> text
 // Mirrors upstream openai-completions.ts convertMessages (lines 680-870).
-func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps map[string]string, instructionRole string, anchors toolAnchors, isReasoning bool) ([]oaiMessage, error) {
+func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps map[string]string, instructionRole string, anchors toolAnchors, isReasoning bool, leadingSlots int) ([]oaiMessage, error) {
 	requiresAssistant := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresAssistantAfterToolResult }, false)
 	requiresNonNullContent := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresNonNullAssistantContent }, false)
 	requiresName := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresToolResultName }, false)
@@ -310,6 +317,7 @@ func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps 
 		requiresAssistantAfterToolResult: requiresAssistant,
 		requiresNonNullAssistantContent:  requiresNonNullContent,
 		instructionRole:                  instructionRole,
+		leadingSlots:                     leadingSlots,
 		systemTools: func(systemIndex int, message SystemMessage) ([]oaiTool, error) {
 			if !anchors.anchored(systemIndex) || len(message.ToolsAdded) == 0 {
 				return nil, nil
@@ -738,6 +746,9 @@ type completionsConvertOptions struct {
 	// reasoningContentOnAssistant sets an empty reasoning_content on assistant messages that carry none (compat.requiresReasoningContentOnAssistantMessages with a reasoning model).
 	reasoningContentOnAssistant bool
 	instructionRole             string
+	// leadingSlots is the number of zero messages the conversion leaves at the start of what it returns, for the caller to fill with the
+	// messages that lead the request, so those are not prepended by copying every converted message.
+	leadingSlots int
 	// systemTools converts the tools a later system message loads in place, or returns none when the transcript does not anchor
 	// additions. systemIndex counts the conversation's system messages from 0.
 	systemTools func(systemIndex int, message SystemMessage) ([]oaiTool, error)
@@ -749,7 +760,7 @@ type completionsConvertOptions struct {
 // instruction role.
 func convertCompletionsMessages(messages []Message, options completionsConvertOptions) ([]oaiMessage, error) {
 	supportsImages, grammarProps, thinkingAsText := options.supportsImages, options.grammarProps, options.thinkingAsText
-	out := make([]oaiMessage, 0, len(messages))
+	out := make([]oaiMessage, options.leadingSlots, options.leadingSlots+len(messages))
 	// lastRole is the role of the previous message that reached the end of the loop body; a message skipped as empty leaves it (openai-completions.ts convertMessages).
 	lastRole, skipped := "", false
 	systemIndex := 0
@@ -804,14 +815,16 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 			if options.requiresAssistantAfterToolResult || options.requiresNonNullAssistantContent {
 				converted.Content = ""
 			}
-			var textParts []oaiContentPart
+			// texts holds the sanitized text of each text block that is not blank; the array keeps the usual few off the heap.
+			var textsInline [4]string
+			texts := textsInline[:0]
 			var thinking []ThinkingContent
 			var legacyReasoningDetails []json.RawMessage
 			for _, block := range message.Content {
 				switch block := block.(type) {
 				case TextContent:
 					if trimJSWhitespace(block.Text) != "" {
-						textParts = append(textParts, oaiContentPart{Type: "text", Text: new(sanitizeSurrogates(block.Text))})
+						texts = append(texts, sanitizeSurrogates(block.Text))
 					}
 				case ThinkingContent:
 					thinking = append(thinking, block)
@@ -845,19 +858,22 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 			if converted.ReasoningDetails == nil && len(legacyReasoningDetails) > 0 {
 				converted.ReasoningDetails = legacyReasoningDetails
 			}
-			var assistantText strings.Builder
-			for _, part := range textParts {
-				assistantText.WriteString(*part.Text)
-			}
 			if thinkingAsText && len(thinkingText) > 0 {
 				sanitized := make([]string, len(thinkingText))
 				for i, text := range thinkingText {
 					sanitized[i] = sanitizeSurrogates(text)
 				}
-				converted.Content = append([]oaiContentPart{{Type: "text", Text: new(strings.Join(sanitized, "\n\n"))}}, textParts...)
+				parts := make([]oaiContentPart, 0, 1+len(texts))
+				parts = append(parts, oaiContentPart{Type: "text", Text: new(strings.Join(sanitized, "\n\n"))})
+				for _, text := range texts {
+					parts = append(parts, oaiContentPart{Type: "text", Text: new(text)})
+				}
+				converted.Content = parts
 			} else {
-				if assistantText.Len() > 0 {
-					converted.Content = assistantText.String()
+				// The content is the text parts joined (openai-completions.ts: textParts.map((part) => part.text).join("")). One part, the usual
+				// message, is that part's string itself; several are joined into a string of their exact size.
+				if joined := joinTexts(texts); joined != "" {
+					converted.Content = joined
 				}
 				if len(converted.ReasoningDetails) == 0 && len(thinkingText) > 0 {
 					signature := nonEmptyThinking[0].ThinkingSignature
@@ -944,6 +960,26 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 		}
 	}
 	return out, nil
+}
+
+// joinTexts is strings.Join(texts, "") without a copy for one text.
+func joinTexts(texts []string) string {
+	if len(texts) == 1 {
+		return texts[0]
+	}
+	size := 0
+	for _, text := range texts {
+		size += len(text)
+	}
+	if size == 0 {
+		return ""
+	}
+	var joined strings.Builder
+	joined.Grow(size)
+	for _, text := range texts {
+		joined.WriteString(text)
+	}
+	return joined.String()
 }
 
 type openAIReasoningDetail struct {
@@ -1393,24 +1429,36 @@ func (p *openAIProvider) convertTranscript(transcript TranscriptContext, grammar
 	}
 	// The conversation drops the leading system message, but system messages count from the transcript's start.
 	leadingSystemMessages := len(messages) - len(conversation)
-	msgs, err := p.convertMessagesWithCompat(conversation, grammarProps, p.systemPromptRole(isReasoning), toolAnchors{enabled: true, from: transcriptTools.FoldedSystemMessages - leadingSystemMessages}, isReasoning)
+	// The leading system message becomes up to two messages ahead of the conversation's: its anchored tools, then the system prompt. The
+	// conversion leaves room for them, so they are written in place instead of every converted message being copied behind them.
+	var leadTools []ToolSchema
+	systemPrompt := ""
+	leadingSlots := 0
+	if leadingSystemMessages == 1 {
+		// Only a transcript whose tool changes the request's tool list does not already hold anchors the leading message's tools.
+		if message, ok := messages[0].(SystemMessage); ok && transcriptTools.FoldedSystemMessages == 0 && len(message.ToolsAdded) > 0 {
+			leadTools = message.ToolsAdded
+			leadingSlots++
+		}
+		if systemPrompt = GetCurrentSystemPrompt(messages[:1]); systemPrompt != "" {
+			leadingSlots++
+		}
+	}
+	msgs, err := p.convertMessagesWithCompat(conversation, grammarProps, p.systemPromptRole(isReasoning), toolAnchors{enabled: true, from: transcriptTools.FoldedSystemMessages - leadingSystemMessages}, isReasoning, leadingSlots)
 	if err != nil {
 		return completionsConversion{}, err
 	}
-	if leadingSystemMessages == 1 {
-		var lead []oaiMessage
-		// Only a transcript whose tool changes the request's tool list does not already hold anchors the leading message's tools.
-		if message, ok := messages[0].(SystemMessage); ok && transcriptTools.FoldedSystemMessages == 0 && len(message.ToolsAdded) > 0 {
-			tools, err := p.convertTools(message.ToolsAdded)
-			if err != nil {
-				return completionsConversion{}, err
-			}
-			lead = append(lead, oaiMessage{Role: "system", Tools: tools})
+	slot := 0
+	if leadTools != nil {
+		tools, err := p.convertTools(leadTools)
+		if err != nil {
+			return completionsConversion{}, err
 		}
-		if systemPrompt := GetCurrentSystemPrompt(messages[:1]); systemPrompt != "" {
-			lead = append(lead, oaiMessage{Role: p.systemPromptRole(isReasoning), Content: sanitizeSurrogates(systemPrompt)})
-		}
-		msgs = append(lead, msgs...)
+		msgs[slot] = oaiMessage{Role: "system", Tools: tools}
+		slot++
+	}
+	if systemPrompt != "" {
+		msgs[slot] = oaiMessage{Role: p.systemPromptRole(isReasoning), Content: sanitizeSurrogates(systemPrompt)}
 	}
 	return completionsConversion{messages: messages, tools: transcriptTools, grammarProps: grammarProps, chat: msgs}, nil
 }
@@ -1608,14 +1656,14 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			req.EnableThinking = &reasoningOn
 			req.ReasoningEffort = qwenReasoningEffort(reasoningOn, supportsRE, mappedEffort)
 		case "qwen-chat-template":
-			req.ChatTemplateKwargs = map[string]any{"enable_thinking": reasoningOn, "preserve_thinking": true}
+			req.ChatTemplateKwargs = oaiQwenChatTemplateKwargs{EnableThinking: reasoningOn, PreserveThinking: true}
 		case "chat-template":
 			if resolved := resolveChatTemplateValues(p.compat().ChatTemplateKwargs, reasoningOn, templateEffort, thinkingBudget); resolved != nil {
-				req.ChatTemplateKwargs = resolved
+				req.ChatTemplateKwargs = p.compat().requestObject(resolved, "chatTemplateKwargs")
 			}
 		case "baseten":
 			if resolved := resolveChatTemplateValues(p.compat().ChatTemplateArgs, reasoningOn, templateEffort, thinkingBudget); resolved != nil {
-				req.ChatTemplateArgs = resolved
+				req.ChatTemplateArgs = p.compat().requestObject(resolved, "chatTemplateArgs")
 			}
 			// openai-completions.ts:919-924: the requested level's mapped value, or the off value when reasoning is off; a null entry is unsupported and an absent off entry sends nothing.
 			if value, emit := templateEffort(); supportsRE && emit {
@@ -1687,7 +1735,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	// OpenRouter provider routing preferences. Mirrors openai-completions.ts:613
 	// (no baseURL gate as of 0.79.1: applies whenever compat sets it).
 	if p.compat().OpenRouterRouting != nil {
-		req.Provider = p.compat().OpenRouterRouting
+		req.Provider = p.compat().requestObject(p.compat().OpenRouterRouting, "openRouterRouting")
 	}
 	// Vercel AI Gateway provider routing preferences. Pi applies them to every request whose compat sets them, with no base URL gate (openai-completions.ts:992-1001).
 	if p.compat().VercelGatewayRouting != nil && (p.compat().VercelGatewayRouting.Only != nil || p.compat().VercelGatewayRouting.Order != nil) {
@@ -1727,7 +1775,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 
 	payload := any(req)
 	// Last so model and request sampling parameters override named request fields (openai-completions.ts:1004-1007).
-	if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams); samplingParams != nil {
+	if keys, samplingParams := resolveSamplingParamsInOrder(p.samplingModel(opts.IsReasoning), completionsSamplingLevel(opts), opts.SamplingParams, opts.SamplingParamsOrder); samplingParams != nil {
 		assigned, err := assignSamplingParams(req, oaiRequestLiteralKeys, keys, samplingParams)
 		if err != nil {
 			return nil, fmt.Errorf("openai: %w", err)
@@ -1819,6 +1867,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	requestContext, abort := context.WithCancel(httpReq.Context())
 	builder.abort = abort
 	httpReq = httpReq.WithContext(requestContext)
+	//portlint:allow asyncorder Pi's stream() starts a detached async IIFE and returns the stream (openai-completions.ts:320, :717); the stream owns this goroutine, which sends the request and runs the body pipeline as a turn of the stream's continuation executor (responseTurn in streamResponse), the ordering point with the consumer; coding's TestRPC33ObservationMatrix holds every observation of an immediate, delayed or held consumer of this API to Pi's
 	go builder.runResponse(func() error { return p.streamResponse(ctx, httpReq, opts, builder, grammarProps) })
 	return builder.stream, nil
 }

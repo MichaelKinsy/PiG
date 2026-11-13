@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -86,16 +87,25 @@ func TestReadChecksTheBase64SizeAgainstTheModelsImageLimit(t *testing.T) {
 	}
 }
 
-func TestReadNotesWhenTheModelTakesNoImages(t *testing.T) {
-	executionEnv := createEnv(t)
-	writeText(t, executionEnv, "image.dat", must(base64.StdEncoding.DecodeString(onePixelPNG)))
-	model := &ai.Model{ID: "m", Input: []string{"text"}}
-	api := &fakeAPI{env: executionEnv, agent: durable.Agent{Model: &durable.ModelRef{Provider: "p", ModelId: "m"}}, models: modelsOf(model)}
-	result, err := runWith(CreateReadTool(nil), map[string]any{"path": "image.dat"}, api, background)
-	mustDo(t, err)
-	if result.IsError != nil || len(result.Output) != 1 ||
-		!strings.HasSuffix(result.Diagnostics[0].Message, "The current model does not support images; it sees a placeholder instead.") {
-		t.Fatalf("result = %+v", result.ToolExecutionResult)
+// Pi 4be4cb4f5e9c packages/durable/test/tools-images.test.ts:260: a model without image input is named in details for UIs and
+// in no diagnostic (diagnostics are rendered into what the model sees). read.ts spreads `details` whenever the id is defined, so
+// a model whose id is "" is named too.
+func TestReadNamesAModelThatTakesNoImagesInDetails(t *testing.T) {
+	for _, id := range []string{"m", ""} {
+		executionEnv := createEnv(t)
+		writeText(t, executionEnv, "image.dat", must(base64.StdEncoding.DecodeString(onePixelPNG)))
+		model := &ai.Model{ID: id, Input: []string{"text"}}
+		// anyModel answers the conversation's reference whatever the model's own id is, as the registry of Pi's test does.
+		api := &fakeAPI{env: executionEnv, agent: durable.Agent{Model: &durable.ModelRef{Provider: "p", ModelId: "m"}}, models: anyModel{model: model}}
+		result, err := runWith(CreateReadTool(nil), map[string]any{"path": "image.dat"}, api, background)
+		mustDo(t, err)
+		if result.IsError != nil || len(result.Output) != 1 || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "Read image file [image/png]." {
+			t.Fatalf("id %q: result = %+v", id, result.ToolExecutionResult)
+		}
+		raw, err := json.Marshal(result.Details)
+		if want := `{"imageUnsupportedByModel":"` + id + `"}`; err != nil || !result.HasDetails || string(raw) != want {
+			t.Fatalf("id %q: details = %s (has %v), %v, want %s", id, raw, result.HasDetails, err, want)
+		}
 	}
 }
 

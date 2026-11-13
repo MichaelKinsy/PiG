@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"fmt"
-	"os"
 	"runtime/debug"
 	"slices"
 	"sync"
@@ -249,7 +248,7 @@ func (s *editorSession) run() {
 func (s *editorSession) runTask(task func()) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			fmt.Fprintf(os.Stderr, "extension: recovered from panic in an editor task: %v\n%s\n", recovered, debug.Stack())
+			diagnosticf("extension: recovered from panic in an editor task: %v\n%s\n", recovered, debug.Stack())
 		}
 	}()
 	task()
@@ -261,7 +260,7 @@ func (s *editorSession) runTask(task func()) {
 func (s *editorSession) guard(what string, call func() error) (ok bool) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			fmt.Fprintf(os.Stderr, "extension: recovered from panic in editor %s: %v\n%s\n", what, recovered, debug.Stack())
+			diagnosticf("extension: recovered from panic in editor %s: %v\n%s\n", what, recovered, debug.Stack())
 			s.fail(what, fmt.Errorf("%v", recovered))
 			ok = false
 		}

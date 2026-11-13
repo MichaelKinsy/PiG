@@ -18,7 +18,7 @@ import (
 
 // Device pairing (slice 13 §2, decision "The app kit, point 3" (c)): a command-line or terminal client on another machine asks for
 // a code (`POST /_chord/pair`, public) and polls with a secret it got with it; the owner (the principal the app names) opens
-// `/_chord/pair/<code>` in a signed-in browser and approves; the next poll returns a token of the owner's new device session,
+// `/_chord/pair/<code>` in a signed-in browser and approves; the next poll returns a token of the owner's new device sign-in,
 // once. Codes are short, random, single use and expire after 10 minutes; the poll secret is kept only hashed. Asking is public, so
 // pairings anonymous clients start are capped: MaxPending in all (100 by default) and PerAddress per client address (10). The
 // trade: a party filling the caps locks pairing out for others for up to 10 minutes (behind a tunnel every remote client has the
@@ -56,7 +56,7 @@ type Pairing struct {
 	approved bool
 }
 
-// Approve gives the pairing its device session's token: the device's next poll gets it.
+// Approve gives the pairing its device sign-in's token: the device's next poll gets it.
 func (p *Pairing) Approve(token string) {
 	p.owner.mu.Lock()
 	defer p.owner.mu.Unlock()
@@ -211,7 +211,7 @@ func pairingLetters(count int) string {
 
 // PairingFacet is the kit's facet for device pairing: `POST /_chord/pair` (public: `{ label? }` -> `{ code, poll }`, 429 past a limit
 // unless the owner asks), `POST /_chord/pair/poll` (public: `{ poll }` -> `{ status: "waiting" }`, `{ status: "approved", token }`
-// once, else 404), `GET` and `POST /_chord/pair/:code` (owner's confirm page and approval: a device session of owner).
+// once, else 404), `GET` and `POST /_chord/pair/:code` (owner's confirm page and approval: a device sign-in of owner).
 func PairingFacet(pairings *Pairings, owner data.Principal) host.Facet {
 	notFound := chordhttp.HttpResponse{Kind: chordhttp.KindHTML, Status: 404, Body: "<p>No such pairing (or it expired).</p>"}
 	ownerRoute := func(approve bool) chordhttp.HttpRoute {
@@ -226,7 +226,7 @@ func PairingFacet(pairings *Pairings, owner data.Principal) host.Facet {
 			if !approve {
 				return chordhttp.HttpResponse{Kind: chordhttp.KindHTML, Body: confirmPage(pairing.Code, pairing.Label)}, nil
 			}
-			issued, err := issueSession(ctx, owner, pairing.Label, SessionDevice, false)
+			issued, err := issueSignIn(ctx, owner, pairing.Label, SignInDevice, false)
 			if err != nil {
 				return chordhttp.HttpResponse{}, err
 			}
@@ -302,7 +302,7 @@ func pairingLabel(request chordhttp.HttpRequest) (string, error) {
 // isZeroNumber is whether `Number(text)` is 0: no text (`Number("")`), or a numeral of value zero.
 func isZeroNumber(text string) bool { return jsnumber.Parse(text) == 0 }
 
-// confirmPage is the owner's confirm page for pairing code (a form posting to itself: same origin, the session cookie).
+// confirmPage is the owner's confirm page for pairing code (a form posting to itself: same origin, the sign-in cookie).
 func confirmPage(code, label string) string {
 	return strings.Join([]string{
 		"<!doctype html><title>Pair a device</title>",

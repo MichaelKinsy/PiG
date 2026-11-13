@@ -131,7 +131,7 @@ func (b *UIBridge) handleCustomShowOverlay(ctx context.Context, extName string, 
 	proxy := b.customOverlayProxyFor(extName, owner, request.Key)
 	//portlint:allow ctxmapping the overlay outlives this call, which returns once it is mounted, and Pi's TUI.showOverlay takes no signal (tui.ts:729); it ends with its handle's hide or its connection (the goroutine below calls end)
 	lifetime, end := context.WithCancel(context.Background())
-	host := &customOverlayHost{ctx: lifetime, bridge: b, extName: extName, owner: owner, key: request.Key}
+	host := &customOverlayHost{ctx: lifetime, bridge: b, extName: extName, owner: owner, key: request.Key, ui: ui}
 	handle, ended, ok := remoteTUI.ShowRemoteOverlay(extension.RemoteOverlayOptions{Overlay: true, Layout: request.OverlayOptions}, host)
 	if !ok {
 		end()

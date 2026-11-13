@@ -28,14 +28,24 @@ func (s SetupSessionManager) AppendMessage(message map[string]any) (string, erro
 	return s.write("appendMessage", map[string]any{"message": message})
 }
 
-// AppendCustomEntry appends an extension entry that does not take part in the model context (session-manager.ts:304).
+// AppendCustomEntry appends an extension entry that does not take part in the model context (session-manager.ts:304). A nil data leaves the entry without a
+// data member; json.RawMessage("null") writes the member as null.
 func (s SetupSessionManager) AppendCustomEntry(customType string, data any) (string, error) {
-	return s.write("appendCustomEntry", map[string]any{"customType": customType, "data": data})
+	args := map[string]any{"customType": customType}
+	if !omittedMember(data) {
+		args["data"] = data
+	}
+	return s.write("appendCustomEntry", args)
 }
 
-// AppendCustomMessageEntry appends an extension message that takes part in the model context (session-manager.ts:353).
+// AppendCustomMessageEntry appends an extension message that takes part in the model context (session-manager.ts:353). Nil details leave the entry without a
+// details member; json.RawMessage("null") writes the member as null.
 func (s SetupSessionManager) AppendCustomMessageEntry(customType string, content any, display bool, details any) (string, error) {
-	return s.write("appendCustomMessageEntry", map[string]any{"customType": customType, "content": content, "display": display, "details": details})
+	args := map[string]any{"customType": customType, "content": content, "display": display}
+	if !omittedMember(details) {
+		args["details"] = details
+	}
+	return s.write("appendCustomMessageEntry", args)
 }
 
 // AppendSessionInfo sets the session name (session-manager.ts:318).

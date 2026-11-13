@@ -78,6 +78,10 @@ func TestAPIStreamMissingAuthStopReasonMatchesPi(t *testing.T) {
 	for i, a := range apis {
 		for j, aborted := range []bool{true, false} {
 			w := want[2*i+j]
+			if !BuiltAPI(a.api) {
+				// A build with this API's pig_strip tag reports the strip where Pi reports the missing key: strips are PiG's own (D92), so the comparison keeps Pi's stop reason and events and expects the strip message.
+				w.ErrorMessage = strippedAPIMessage("p", a.api)
+			}
 			model := &Model{ID: "m", DisplayName: "m", Input: []string{"text"}, ProviderMeta: ProviderMetadata{API: a.api, ProviderID: "p", BaseURL: "http://127.0.0.1:1"}, Capabilities: ModelCapabilities{ContextWindow: 1000, MaxOutputTokens: 100}}
 			ctx, cancel := context.WithCancel(t.Context())
 			if aborted {

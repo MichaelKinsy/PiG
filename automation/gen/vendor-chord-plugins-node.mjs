@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { applyPatches } from "./vendor-chord-patches.mjs";
 import { provenance } from "./vendor-chord-provenance.mjs";
 
 const [piTree, commit, telemetryDir, outDir, pin, carriedList = ""] = process.argv.slice(2);
@@ -88,8 +89,16 @@ for (const file of walk(join(telemetryDir, "dist")).sort()) {
 	if (name.endsWith(".js") && !name.startsWith("dist/testing/")) copy(file, join(pi, "node_modules/@earendil-works/pi-telemetry", name));
 }
 
+// PiG's patches over Pi's sources (vendor-chord-patches.mjs), after the copy: the manifest lists them, and its hashes are of the
+// patched files.
+const patches = applyPatches((path) => {
+	const target = path.startsWith("packages/chord/src/") ? join(pi, "chord/src", path.slice("packages/chord/src/".length)) : undefined;
+	return target !== undefined && existsSync(target) ? target : undefined;
+});
+
 const manifest = {
 	...provenance(commit, pin, carriedList),
+	patches,
 	piSchema: JSON.parse(readFileSync(join(schemaDir, "package.json"), "utf8")).version,
 	piTelemetry: JSON.parse(readFileSync(join(telemetryDir, "package.json"), "utf8")).version,
 	files: files.sort().map((path) => ({ path, sha256: createHash("sha256").update(readFileSync(join(outDir, path))).digest("hex") })),

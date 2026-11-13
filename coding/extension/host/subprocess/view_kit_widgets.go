@@ -4,12 +4,15 @@ package subprocess
 // (D107, docs/plan/extension-component-kit.md §2.2): pi-tui's ScrollView,
 // MouseRegion, Input, Editor and CancellableLoader, and coding-agent's
 // BorderedLoader and message components. Each kind registers a validator
-// and a builder in its own file; the registry gives the generic code in
-// view_kit.go one place to ask.
+// in its own file; its builder enters the table of builders when the
+// program enables it (EnableViewWidgets, EnableEditorViews). The registry
+// gives the generic code in view_kit.go one place to ask.
 
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"strings"
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -21,9 +24,6 @@ import (
 type viewWidget struct {
 	// check validates the node's own fields (the generic checks already ran).
 	check func(c *viewChecker, n *ViewNode)
-	// build makes the node's component and fills its frontend node; it
-	// builds the node's children itself, with buildChildren.
-	build func(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error)
 	// children is how many children the kind takes.
 	children int
 	// focusable kinds can be a view's focus and then take every key.
@@ -71,13 +71,75 @@ func (b *viewBuilder) buildChildren(n *ViewNode, out *frontend.ViewNode) ([]tui.
 	return comps, nil
 }
 
-// buildWidget builds a registered kind, or reports the kind unknown.
+// widgetBuildFunc makes a node's component and fills its frontend node; it builds the node's children itself, with
+// buildChildren.
+type widgetBuildFunc func(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error)
+
+// viewWidgetBuilders holds the builders of the kinds this program enabled, by kind. A registered kind reaches its builder
+// only through this table, so a program that enables none links no builder and none of the components behind them: the
+// linker keeps a function only when something refers to it.
+var viewWidgetBuilders atomic.Pointer[map[string]widgetBuildFunc]
+
+// enableViewWidgetBuilders adds builders to the table. A table is never written once it is stored, so a build that loaded
+// one reads it while another goroutine enables more.
+func enableViewWidgetBuilders(builders map[string]widgetBuildFunc) {
+	for {
+		enabled := viewWidgetBuilders.Load()
+		next := maps.Clone(builders)
+		if enabled != nil {
+			maps.Copy(next, *enabled)
+			if len(next) == len(*enabled) {
+				return
+			}
+		}
+		if viewWidgetBuilders.CompareAndSwap(enabled, &next) {
+			return
+		}
+	}
+}
+
+// EnableViewWidgets lets the view kit build every widget kind but `editor`, which EnableEditorViews adds: `grid`, `input`,
+// `scroll-view`, `mouse-region`, the two loaders and the four message components. The `pig` command calls it before it
+// runs a command, so every mode builds them. An embedder that builds no extension view leaves it out and does not link
+// the builders; one that mounts widgets, for a terminal or for a frontend of its own, calls it once before the first view
+// is built. Until then a view that holds one of them fails with a message that names the call; validation needs no
+// builder, so a malformed node is rejected the same way. It is safe to call more than once, in either order with
+// EnableEditorViews, and from any goroutine.
+func EnableViewWidgets() {
+	enableViewWidgetBuilders(map[string]widgetBuildFunc{
+		ViewKindBorderedLoader:    buildBorderedLoader,
+		ViewKindBranchSummary:     buildBranchSummary,
+		ViewKindCancellableLoader: buildCancellableLoader,
+		ViewKindCompactionSummary: buildCompactionSummary,
+		ViewKindCustomMessage:     buildCustomMessage,
+		ViewKindGrid:              buildGrid,
+		ViewKindInput:             buildInput,
+		ViewKindMouseRegion:       buildMouseRegion,
+		ViewKindScrollView:        buildScrollView,
+		ViewKindSkillInvocation:   buildSkillInvocation,
+	})
+}
+
+// buildWidget builds a registered kind with the builder the program enabled. It reports an unknown kind as unknown and a
+// kind whose builder is not enabled with a message that names the call.
 func (b *viewBuilder) buildWidget(n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {
-	w := viewWidgets[n.Kind]
-	if w == nil {
+	if viewWidgets[n.Kind] == nil {
 		return nil, fmt.Errorf("unknown view kind %q", n.Kind)
 	}
-	return w.build(b, n, out)
+	// pig additive (D107): a kind's builder is linked only into a program that enabled it; Pi links every component.
+	if enabled := viewWidgetBuilders.Load(); enabled != nil {
+		if build := (*enabled)[n.Kind]; build != nil {
+			return build(b, n, out)
+		}
+	}
+	call, article := "EnableViewWidgets", "a"
+	if n.Kind == ViewKindEditor {
+		call = "EnableEditorViews"
+	}
+	if strings.ContainsRune("aeiou", rune(n.Kind[0])) {
+		article = "an"
+	}
+	return nil, fmt.Errorf("%s views are not enabled in this program: call subprocess.%s before building a view that holds %s %s", n.Kind, call, article, n.Kind)
 }
 
 // checkWidget validates a registered kind, or fails for an unknown one.
