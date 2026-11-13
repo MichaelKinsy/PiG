@@ -14,7 +14,7 @@ import (
 
 func conformanceClientAbilities() *uiview.ClientAbilities {
 	return &uiview.ClientAbilities{
-		Slots: []uiview.Slot{uiview.SlotPanel, uiview.SlotStatus}, Nodes: []string{"text", "box"}, Markdown: true, ImageFormats: []string{"png"},
+		Slots: []uiview.Slot{uiview.SlotPanel, uiview.SlotStatus}, Nodes: []string{"text", "box", "select-list"}, Markdown: true, ImageFormats: []string{"png"},
 		Limits: uiview.Limits{Nodes: 64, Depth: 16, SnapshotBytes: 65536, TextBytes: 256, Mounts: 7, IntentArgBytes: 123},
 		Input:  uiview.Input{Keyboard: true},
 	}
@@ -88,7 +88,7 @@ func TestConformance_UIViewMounts(t *testing.T) {
 				defer clientMu.Unlock()
 				return slices.Clone(client)
 			}
-			const abilities = "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box,markdown=true"
+			const abilities = "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box+select-list,markdown=true"
 			pollUntilConformance(t, "abilities never replicated", func() bool {
 				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "ui_view_abilities")

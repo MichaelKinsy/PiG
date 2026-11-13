@@ -1307,6 +1307,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9d64980](#bf-9d64980) | fix(coding): provider order and availability of virtual models follow Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-9dc3adc](#bf-9dc3adc) | fix(chord/nextnode/plugins): the proxies' requests to Go and the callbacks' calls have names of their own on… | PiG's own defect | All platforms | Unreleased |
 | [BF-9df8c5c](#bf-9df8c5c) | `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-9e34810](#bf-9e34810) | A plugin view is sent only to a client that draws every node kind it holds: the registry now reads the… | PiG's own defect | All platforms | Unreleased |
 | [BF-9e72f22](#bf-9e72f22) | A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll… | PiG's own defect | All platforms | Unreleased |
 | [BF-9eda512](#bf-9eda512) | The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9ee5c21](#bf-9ee5c21) | Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a… | PiG's own defect | All platforms | Unreleased |
@@ -19893,6 +19894,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9df8c5c8f5` (2026-10-30)
 - **Tests:** `coding/cli/startup_session_exact_id_norace_test.go::TestScalingResolveExactSessionIDWithSessionSize`, `coding/cli/startup_session_exact_id_test.go::TestResolveSessionArgumentRows`
 - **Release note:** `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects. Resolving an exact ID no longer decodes every session first: with 20 sessions of 1000 messages it allocated 21.7 MB, growing with the sessions, and it now allocates a size-independent amount.
+
+### BF-9e34810
+
+**A plugin view is sent only to a client that draws every node kind it holds: the registry now reads the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A plugin view is sent only to a client that draws every node kind it holds: the registry now reads the client's `nodes` list when it decides what a client is sent.
+- **Root cause:** fits and fallbackFits never read ClientAbilities.Nodes, so a view holding a kind the client does not draw was sent to it as is. The registry now measures the kinds a view holds and a client the content does not fit is refused or sent the fallback, as for a limit; an empty nodes list draws no kind, as an empty slots list draws no slot (D614 abilities paragraph, awaiting the owner). Two conformance fixtures declared too few kinds for what they mount and now declare select-list.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9e348106ed` (2026-11-12)
+- **Tests:** `coding/uiview/nodes_test.go::TestAClientIsOnlySentNodeKindsItDraws`, `test/extension-conformance/ui_view_carrier_test.go::TestConformance_UIViewCarrier`, `test/extension-conformance/ui_view_extras_test.go::TestConformance_UIViewExtras`, `test/extension-conformance/ui_view_test.go::TestConformance_UIViewMounts`
+- **Release note:** A plugin view is sent only to a client that draws every node kind it holds: the registry now reads the client's `nodes` list when it decides what a client is sent. A view with a kind outside the list does not fit that client (code `unsupported` when no attached client draws it) and a client the content does not fit is sent the fallback, as for a limit; an empty or absent `nodes` list draws no kind.
 
 ### BF-9e72f22
 

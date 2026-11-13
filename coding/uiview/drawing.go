@@ -169,6 +169,10 @@ func (s *DrawShape) members() int {
 	return m
 }
 
+// ValidColor reports whether c follows the colour rule of a drawing: "#rrggbb", "#rrggbbaa" or a theme color token. A
+// node that takes colours as data (a grid's cells and chips) follows the same rule.
+func ValidColor(c string) bool { return validColor(c) }
+
 // validColor accepts "#rrggbb", "#rrggbbaa" and a theme color token.
 func validColor(c string) bool {
 	if len(c) == 0 || len(c) > 32 {

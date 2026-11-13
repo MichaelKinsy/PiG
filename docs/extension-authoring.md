@@ -706,12 +706,20 @@ check the abilities and keep a fallback such as a widget or a notice.
   an editor and clicking a mouse-region raise it. Declare the argument as an object with a `value` property (the item's value,
   the new setting value or the submitted text) and, for a settings-list, an `item` property (the setting's id), or as a scalar
   that takes the value. The TUI offers no control for an intent without a `nodeKey`; `ViewDiagnostics` says so.
+- A `grid` node is a calendar-style grid of equal columns whose cells are data: `{kind: "grid", id, columns, head?, chipRows?, selected?, cells: [{value?, label?, mark?, dim?, color?, chips: [{text, color?}], more?}]}` (at most 128 cells, 8 chips a cell). Name it in the view's `focus` and bind an intent to it with `nodeKey`: the arrow keys, Home, End, Enter and Space of a focused grid in the TUI, and a click, raise the intent with the chosen cell's `value`; every other key, and a move past an edge, goes to the client. Send the chips you show and the count you left out in `more`; the client adds what it could not draw to its "+K more" line.
+- Build a grid with your SDK's kit: Go `kit.NewGrid(id, columns, cells)` over `kit.GridCell` and `kit.GridChip` (set `Head`,
+  `ChipRows` and `Selected` on the grid), Rust `kit::Grid::new(id, columns, cells)` with `.head`, `.chip_rows` and `.selected`
+  over `kit::GridCell::new().value(..).label(..).chip(kit::GridChip::new(text).color(..))`, Python
+  `kit.Grid(id, columns, cells, head=, chip_rows=, selected=)` over `kit.GridCell` and `kit.GridChip`, Lisp
+  `(kit-grid id columns cells :head :chip-rows :selected)` over `kit-grid-cell` and `kit-grid-chip`. In Node the node is the
+  plain object above; `PiGViewGrid`, `PiGViewGridCell` and `PiGViewGridChip` type it. A member you do not set is not sent, and
+  no SDK checks or changes a value: the host validates the grid and answers a broken rule with code `invalid`.
 - One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
   answer arrived is dropped.
 
 Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `TestConformance_UIViewAnswerRedraw`,
-`TestConformance_UIViewAbilitiesEvent` and `TestConformance_UIViewToolShowsAndFocuses` run the same probes in every SDK against the
-host, and `docs/additive-features.md` D614 lists the records.
+`TestConformance_UIViewAbilitiesEvent`, `TestConformance_UIViewToolShowsAndFocuses` and `TestConformance_UIViewGrid` run the same
+probes in every SDK against the host, and `docs/additive-features.md` D614 lists the records.
 
 ## Adding a new extension API surface
 
