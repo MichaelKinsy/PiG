@@ -170250,7 +170250,7 @@
       "evidence": [
         "test:internal/codingagent/custom_editor_test.go#TestCustomEditorEscapeOverAutocompleteGoesToTheEditor",
         "test:internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
-        "test:internal/codingagent/custom_editor_oracle_test.go#TestCustomEditorMatchesPi"
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientEscapeLeavesThePanelBeforeItInterrupts"
       ]
     },
     {
@@ -312902,14 +312902,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.AddInputListener"
+        "call:internal/codingagent/view_client_wire.go#InteractiveMode.attachTerminalViewClient"
       ],
       "evidence": [
-        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers"
+        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
+        "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi"
       ]
     },
     {
@@ -312922,14 +312923,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.AddInputListener"
+        "call:internal/codingagent/view_client_wire.go#InteractiveMode.attachTerminalViewClient"
       ],
       "evidence": [
-        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers"
+        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
+        "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi"
       ]
     },
     {
@@ -313269,6 +313271,7 @@
         "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientMountThenUnmountLeavesNoTrace",
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
@@ -313289,6 +313292,7 @@
         "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientMountThenUnmountLeavesNoTrace",
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
@@ -318141,14 +318145,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.AddInputListener"
+        "call:internal/codingagent/view_client_wire.go#InteractiveMode.attachTerminalViewClient"
       ],
       "evidence": [
-        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers"
+        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
+        "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi"
       ]
     },
     {
@@ -318161,14 +318166,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.AddInputListener"
+        "call:internal/codingagent/view_client_wire.go#InteractiveMode.attachTerminalViewClient"
       ],
       "evidence": [
-        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers"
+        "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
+        "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi"
       ]
     },
     {
@@ -318510,6 +318516,7 @@
         "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientMountThenUnmountLeavesNoTrace",
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
@@ -318530,6 +318537,7 @@
         "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientMountThenUnmountLeavesNoTrace",
         "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
