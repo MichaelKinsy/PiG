@@ -80,14 +80,22 @@ type connOptions struct {
 	HeartbeatTimeout  time.Duration
 }
 
-// ExtensionUnresponsiveError reports a missed dispatcher heartbeat.
+// ExtensionUnresponsiveError reports a missed dispatcher heartbeat, or a reload's invalidation that the extension's runtime did not acknowledge by the pong deadline (ReloadDeadline).
 type ExtensionUnresponsiveError struct {
 	Extension string
 	RequestID string
 	Operation string
+	// ReloadDeadline is not zero when a reload ended the connection: the extension's runtime had not acknowledged the reload's invalidation after this time, the connection's pong deadline (Host.supersedeGenerations). The reload replaces the extension and reports it (ReloadReport.Unacknowledged); the host records no crash for it.
+	ReloadDeadline time.Duration
 }
 
 func (e *ExtensionUnresponsiveError) Error() string {
+	if e.ReloadDeadline > 0 {
+		if e.RequestID != "" {
+			return fmt.Sprintf("extension_unresponsive: extension %q did not acknowledge a reload within %s; the reload replaced it and ended request %q (%s)", e.Extension, e.ReloadDeadline, e.RequestID, e.Operation)
+		}
+		return fmt.Sprintf("extension_unresponsive: extension %q did not acknowledge a reload within %s; the reload replaced it", e.Extension, e.ReloadDeadline)
+	}
 	if e.RequestID != "" {
 		return fmt.Sprintf("extension_unresponsive: extension %q did not answer heartbeat for request %q (%s)", e.Extension, e.RequestID, e.Operation)
 	}
@@ -148,7 +156,9 @@ type Conn struct {
 	// onTimerDeferAck runs on the read loop for each NotifyTimerDeferAck frame, with its arguments.
 	onTimerDeferAck func(args json.RawMessage)
 	// timerDefer numbers the NotifyTimerDefer frames sent on this connection and records the acks (timer_defer.go).
-	timerDefer timerDeferState
+	timerDefer seqAcks
+	// invalidations numbers the NotifyInvalidate frames sent on this connection that ask for the runtime's acknowledgement, and records the acks (invalidateAcknowledged).
+	invalidations seqAcks
 	// loopTurnsClosed is set under the Host's loopTurns mutex once the read loop ended, so the connection is no recipient a forwarded turn waits for.
 	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
@@ -188,6 +198,8 @@ type Conn struct {
 	// request ID → the sink for that request's tool_update notifications.
 	pendingMu sync.Mutex
 	pending   map[string]chan *Envelope
+	// requestsFailed is the number of pending requests that fail answered; guarded by pendingMu.
+	requestsFailed int
 	// abandoned holds the channel each stalled request closes when its late response or the connection end settles it; guarded by pendingMu.
 	abandoned map[string]chan struct{}
 	// abandonedClosed is set once the reader has exited: no late response can arrive.
@@ -232,6 +244,8 @@ type Conn struct {
 	// provisionalBlocks holds the requests whose runtime reported blocked on a host call that the read loop has not yet seen: the suspension is reported once the call frame names the call, because a waitForIdle that finds the Session idle suspends nothing (settleBlockedCall).
 	provisionalBlocks  map[string]struct{}
 	suspensionsSettled chan struct{}
+	// callerSettlements holds, by request, the work a call's handler left for the settlement of the request that awaits the call (afterCallerSettles).
+	callerSettlements map[string][]func()
 	// eventLoopTurns holds the channel of each RequestEventLoopTurn awaiting its NotifyEventLoopTurned, by turn number; lastEventLoopTurn numbers them.
 	eventLoopTurns    map[uint64]chan struct{}
 	lastEventLoopTurn uint64
@@ -407,6 +421,8 @@ func (c *Conn) Start(ctx context.Context) {
 	go func() {
 		wg.Wait()
 		close(c.done)
+		// After Done: the keys that named the transcript's messages to the peer would hold the connection for as long as the messages are shown.
+		renderKeys.forget(c)
 	}()
 }
 
@@ -876,6 +892,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.requestStates, env.ID)
 		delete(c.suspendedRequests, env.ID)
 		c.stateMu.Unlock()
+		c.settleCallers(env.ID)
 		if hold := ackHoldOf(ctx); hold != nil {
 			hold.release()
 		}
@@ -958,7 +975,12 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 			if resp != nil && resp.Response != nil && resp.Response.Error != nil {
 				switch resp.Response.Error.Code {
 				case "extension_unresponsive":
-					return nil, &ExtensionUnresponsiveError{Extension: c.name, RequestID: env.ID, Operation: operationName()}
+					unresponsive := &ExtensionUnresponsiveError{Extension: c.name, RequestID: env.ID, Operation: operationName()}
+					// A request that a reload ended names the reload, not a heartbeat.
+					if failure, ok := errors.AsType[*ExtensionUnresponsiveError](c.failureError()); ok {
+						unresponsive.ReloadDeadline = failure.ReloadDeadline
+					}
+					return nil, unresponsive
 				case "extension_transport":
 					c.failureMu.Lock()
 					failure := c.failure
@@ -1161,6 +1183,13 @@ func (c *Conn) startProducerTask(run func()) bool {
 	return true
 }
 
+// requestsEndedByFailure returns how many requests were in flight when fail ended the connection; each was answered with the failure.
+func (c *Conn) requestsEndedByFailure() int {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	return c.requestsFailed
+}
+
 // failureError returns the terminal transport or liveness error, if any.
 func (c *Conn) failureError() error {
 	c.failureMu.Lock()
@@ -1311,7 +1340,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 					hold.announce()
 				}
 			case env.RequestState.State == "blocked" || env.RequestState.State == "suspended":
-				c.reportRequestPhase(env.RequestState.RequestID, invocation.Suspended)
+				c.reportSuspended(env.RequestState.RequestID)
 			case env.RequestState.State == "progress":
 				c.stateMu.Lock()
 				delete(c.provisionalBlocks, env.RequestState.RequestID)
@@ -1383,6 +1412,10 @@ func (c *Conn) readLoop(ctx context.Context) {
 			}
 			continue
 		}
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyInvalidateAck {
+			c.invalidations.ack(env.Notify.Args)
+			continue
+		}
 		if env.Type == MsgPong && env.Pong != nil {
 			select {
 			case c.pongCh <- env.Pong.Nonce:
@@ -1446,7 +1479,7 @@ func (c *Conn) reportProvisionalBlocks(call *CallPayload) {
 	}
 	c.stateMu.Unlock()
 	for _, id := range report {
-		c.reportRequestPhase(id, invocation.Suspended)
+		c.reportSuspended(id)
 	}
 }
 
@@ -1457,7 +1490,7 @@ func (c *Conn) settleBlockedCall(requestID string, waits bool) {
 	delete(c.provisionalBlocks, requestID)
 	c.stateMu.Unlock()
 	if provisional && waits {
-		c.reportRequestPhase(requestID, invocation.Suspended)
+		c.reportSuspended(requestID)
 	}
 }
 
@@ -1477,6 +1510,57 @@ func (c *Conn) reportRequestPhase(requestID string, report func(context.Context)
 	c.stateMu.Unlock()
 	if ok && sink.ctx != nil {
 		report(sink.ctx)
+	}
+}
+
+// reportSuspended reports that the request's handler awaits: to the RunPhase bound to its context, and to the work a call left for that handler's settlement.
+func (c *Conn) reportSuspended(requestID string) {
+	c.reportRequestPhase(requestID, invocation.Suspended)
+	c.settleCallers(requestID)
+}
+
+// afterCallerSettles leaves fns to run once the handler of requestID, which awaits a call the host is about to answer, has gone on from the answer to its next await or its end. Pi runs that continuation in the microtasks of the call's settlement. A RunPhase that follows resumptions takes the work, because it knows when the request's result is published; otherwise the work runs at the handler's next suspension report or when the request ends. The work of a request that is no longer in flight is returned, for the caller to run once it has answered the call.
+func (c *Conn) afterCallerSettles(requestID string, fns []func()) (left []func()) {
+	if len(fns) == 0 {
+		return nil
+	}
+	c.stateMu.Lock()
+	sink, ok := c.requestStates[requestID]
+	c.stateMu.Unlock()
+	if !ok {
+		return fns
+	}
+	if sink.ctx != nil {
+		for _, fn := range fns {
+			if !invocation.AfterResumption(sink.ctx, fn) {
+				left = append(left, fn)
+			}
+		}
+		fns, left = left, nil
+	}
+	if len(fns) == 0 {
+		return nil
+	}
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	if _, ok := c.requestStates[requestID]; !ok {
+		return fns
+	}
+	if c.callerSettlements == nil {
+		c.callerSettlements = make(map[string][]func())
+	}
+	c.callerSettlements[requestID] = append(c.callerSettlements[requestID], fns...)
+	return nil
+}
+
+// settleCallers runs the work left for the settlement of requestID's handler.
+func (c *Conn) settleCallers(requestID string) {
+	c.stateMu.Lock()
+	fns := c.callerSettlements[requestID]
+	delete(c.callerSettlements, requestID)
+	c.stateMu.Unlock()
+	for _, fn := range fns {
+		fn()
 	}
 }
 
@@ -2376,6 +2460,7 @@ func (c *Conn) fail(err error) {
 			code = "extension_unresponsive"
 		}
 		c.pendingMu.Lock()
+		c.requestsFailed = len(c.pending)
 		for id, ch := range c.pending {
 			select {
 			case ch <- &Envelope{Type: MsgResponse, ID: id, Response: &ResponsePayload{Error: &ErrorInfo{Code: code, Message: err.Error()}}}:

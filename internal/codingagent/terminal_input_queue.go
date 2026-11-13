@@ -29,6 +29,14 @@ func (m *InteractiveMode) addRemoteTerminalInputHandler(_ string, handler extens
 	return m.addTerminalInputListenerEntry(terminalInputListener{remote: handler})
 }
 
+// clearExtensionTerminalInputListeners removes the raw terminal input listeners extensions registered and keeps the built-in shortcuts
+// (interactive-mode.ts clearExtensionTerminalInputListeners).
+func (m *InteractiveMode) clearExtensionTerminalInputListeners() {
+	m.terminalInputMu.Lock()
+	defer m.terminalInputMu.Unlock()
+	m.terminalInputListeners = slices.DeleteFunc(m.terminalInputListeners, func(listener terminalInputListener) bool { return !listener.builtin })
+}
+
 // inputChunk is one parsed terminal sequence routed to the owner loop. The
 // loop settles ticket once the chunk's terminal-input listeners are done.
 // more reports that the rest of the chunk's terminal read follows on the same

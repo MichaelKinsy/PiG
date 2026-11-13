@@ -213712,7 +213712,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime_replacement.go#Runtime.EmitQuitShutdownContext"
+        "call:coding/extension/host/subprocess/host.go#reloadChainEvent"
       ],
       "evidence": [
         "test:coding/cli/print_mode_upstream_test.go#TestPrintModeShutdownUpstream",
@@ -213821,7 +213821,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/child_sessions.go#createChildSession"
+        "call:coding/extension/host/subprocess/host.go#reloadChainEvent"
       ],
       "evidence": [
         "test:coding/runner_model_registry_upstream_test.go#TestNewExtensionRunnerBindsItsConstructorArguments",
@@ -232400,7 +232400,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_tui_custom_status_upstream_test.go#TestCustomEditorStatusUpdatesAndReplacement",
         "test:internal/codingagent/interactive_frontend_dock_test.go#TestFrontendDockReportsTheWorkingIndicator",
-        "test:internal/codingagent/status_border_test.go#TestSessionReplacementResetsTheWorkingStatus"
+        "test:internal/codingagent/reload_extension_ui_test.go#TestExtensionUIResetRestoresTheWorkingStatus"
       ]
     },
     {

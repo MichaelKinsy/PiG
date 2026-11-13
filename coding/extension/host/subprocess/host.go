@@ -380,6 +380,9 @@ type Host struct {
 	// staleMessage, once set, makes the Host reject every extension→host call with that message.
 	staleMessage atomic.Pointer[string]
 
+	// superseded holds the generations a running Reload replaces, from the point Pi's reload has invalidated the old runner until Reload returns (supersedeGenerations); nil at any other time. The map is not modified once stored. It is the reload's state, not a generation's: a generation that is still registered when the reload has returned is not in it, whatever the reload did.
+	superseded atomic.Pointer[map[*managedExt]struct{}]
+
 	// replacementHost resolves the host of the Session that replaces this host's Session, for withSession callbacks.
 	replacementHost atomic.Pointer[func() *Host]
 
@@ -466,10 +469,12 @@ type Host struct {
 	// detection is independent of and typically faster than the
 	// packed-process-level watcher).
 	packedProcesses map[string]*packedProcessState
-	// watchedPacked holds every started packed process until its watcher
-	// has released its cache usage lease. Reload stops a replaced process
-	// without waiting for it, so Shutdown drains these as well as the
-	// processes of the extensions still registered.
+	// watchedPacked holds every started packed process state until its
+	// watcher ends: when the process has ended and the watcher has released
+	// its cache usage lease, or, for a state a reload released while its
+	// process runs on for the next state, when the state is released. Reload
+	// stops a replaced process without waiting for it, so Shutdown drains
+	// these as well as the processes of the extensions still registered.
 	watchedPacked map[*packedProcessState]struct{}
 
 	lastReload *ReloadReport
@@ -492,6 +497,8 @@ type Host struct {
 
 	// acceptGate is a test seam over an extension's Accept (acceptGateFunc). Production leaves it nil.
 	acceptGate acceptGateFunc
+	// deathGate is a test seam over the two observations of a process's end (deathGateFunc). Production leaves it nil.
+	deathGate deathGateFunc
 
 	runtimeDrainHandler func()
 	// runtimeDrains holds, per Node process and report, the connections that reported it. Guarded by h.mu.
@@ -2378,7 +2385,7 @@ func (h *Host) SetCommandSuspendHandler(fn func(suspended int)) {
 }
 
 // pig additive (D19): Pi has no window count because it exits only after the microtasks of the commands it read; the host counts them for runtimes that are other processes.
-// tailFlight is one in-flight agent_before_settle or agent_settled handler request.
+// tailFlight is one in-flight handler request of a chain Pi awaits without reading stdin: an agent_before_settle or agent_settled handler, or a handler of a reload (reloadChainEvent).
 type tailFlight struct {
 	node      bool
 	suspended bool
@@ -2447,7 +2454,7 @@ func (h *Host) notifySettleTail() {
 }
 
 // pig additive (D19): Pi reads stdin while a settle-tail handler waits on a timer or I/O; only the host sees that wait in a runtime that is another process.
-// SetSettleTailHandler installs the process-owner callback that receives how many in-flight agent_before_settle and agent_settled handlers wait on something during which Pi's event loop reads stdin: a Node handler whose window closed unresponded and, after EndInput, a still-running handler of a runtime with no microtask continuation. The callback runs on host goroutines and must not block.
+// SetSettleTailHandler installs the process-owner callback that receives how many in-flight agent_before_settle and agent_settled handlers, and handlers of a reload (reloadChainEvent), wait on something during which Pi's event loop reads stdin: a Node handler whose window closed unresponded and, after EndInput, a still-running handler of a runtime with no microtask continuation. The callback runs on host goroutines and must not block.
 func (h *Host) SetSettleTailHandler(fn func(suspended int)) {
 	h.commandFlightMu.Lock()
 	h.settleTailHandler = fn
@@ -2908,6 +2915,12 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	// invalidate crash ownership for a process this aborted reload never
 	// actually replaced: a real, later crash of that still-current process
 	// would then be silently discarded as stale instead of quarantined.
+	//
+	// The generations are superseded first, so no call finds a generation armed and not yet superseded, which handleIncoming would drop without an answer.
+	// A reload that failed earlier left every generation stale (Invalidate, called by the reload's mode). Pi's next reload() builds a new runner, whose ctx is live (agent-session.ts:3844), so the staleness ends here: the generations this reload loads are served. A generation a Node runtime hosts stays stale: its runtime has the message, and the supersede point below marks it. A Go, Python, Rust or Lisp generation is served from here to the commit, as in every reload.
+	h.staleMessage.Store(nil)
+	unacknowledged, endSupersede := h.supersedeGenerations(ctx)
+	defer endSupersede()
 	h.armPackedProcessGenerations()
 	h.releaseRetryableQuarantines()
 	// Explicit reload ends inconclusive diagnostic partitions; identified culprits remain quarantined.
@@ -3047,6 +3060,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 			rep.Issues = append(rep.Issues, reloadIssue(item.me.config, err))
 		}
 	}
+	rep.Unacknowledged = h.unacknowledgedNotices(unacknowledged)
 	return h.Extensions(), nil
 }
 
@@ -3387,6 +3401,8 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		me.waitErr = cmd.Wait()
 		stderrLog.closeWriter()
 		_ = processTree.Close()
+		// The log of a process that outlived a connection goes here, once: no connection loop waits for the process (letGo).
+		stderrLog.processExited()
 		if me.cacheLease != nil {
 			_ = me.cacheLease.Release()
 			me.cacheLease = nil
@@ -4520,6 +4536,22 @@ func beforeEventSignal(event any) context.Context {
 	return nil
 }
 
+// reloadChainEvent reports whether args carry an event Pi's reload awaits in its chain: session_shutdown, session_start or resources_discover with reason reload.
+func reloadChainEvent(args []any) bool {
+	if len(args) == 0 {
+		return false
+	}
+	switch event := args[0].(type) {
+	case extension.SessionShutdownEvent:
+		return event.Reason == "reload"
+	case extension.SessionStartEvent:
+		return event.Reason == "reload"
+	case extension.ResourcesDiscoverEvent:
+		return event.Reason == "reload"
+	}
+	return false
+}
+
 // makeEventHandler returns a HandlerFn that dispatches events over the socket.
 //
 //pig:hotpath
@@ -4576,10 +4608,19 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			eventWire.StoreArgs(argsJSON)
 		}
 		// The event and session state are read here, in the handler's synchronous prefix. Only the wait for the extension process is a suspension.
+		// An agent_before_settle or agent_settled handler runs on the tail from agent_end to agent_settled, and a session_shutdown, session_start or resources_discover handler with reason reload runs inside Pi's reload (agent-session.ts:3815-3861): Pi awaits each in a chain of microtasks, so its loop reads stdin there only while such a handler waits on a timer or I/O.
+		var tail *tailFlight
+		if event == "agent_before_settle" || event == "agent_settled" || reloadChainEvent(args) {
+			tail = me.host.beginTailFlight(me)
+			defer me.host.endTailFlight(tail)
+		}
 		if event == "session_shutdown" {
 			dispatch := parent
 			parent = withRequestSuspension(parent, func(suspended bool) {
 				if suspended {
+					if tail != nil {
+						me.host.setTailSuspended(tail)
+					}
 					me.host.setQuitHandlerSuspended()
 					handleryield.Report(dispatch)
 				}
@@ -4593,18 +4634,18 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				})
 			}
 		}
-		if event == "agent_before_settle" || event == "agent_settled" {
-			flight := me.host.beginTailFlight(me)
-			defer me.host.endTailFlight(flight)
-			// The response never waits for the report: the stdin gate only opens on it.
-			parent = withRequestSuspension(parent, func(suspended bool) {
-				if suspended {
-					me.host.setTailSuspended(flight)
-				}
-			}, func() bool { return false })
-			if !flight.node {
+		if tail != nil {
+			if event != "session_shutdown" {
+				// The response never waits for the report: the stdin gate only opens on it.
+				parent = withRequestSuspension(parent, func(suspended bool) {
+					if suspended {
+						me.host.setTailSuspended(tail)
+					}
+				}, func() bool { return false })
+			}
+			if !tail.node {
 				// pig divergence (D86): a handler of a runtime that cannot report its waits is waiting once it outlives the quantum.
-				parent = withRequestQuantum(parent, func() { me.host.setTailSuspended(flight) })
+				parent = withRequestQuantum(parent, func() { me.host.setTailSuspended(tail) })
 			}
 		} else if event == "input" && !me.hostsNodeRuntime() && invocation.Bound(parent) {
 			// pig divergence (D86): an input handler, whose caller waits for its first suspension (rpcAwaitHandler), is suspended once it outlives the quantum. No other event carries the option: the others' callers wait for the handler's completion in Pi too.
@@ -4791,13 +4832,18 @@ func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
 func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	// Capture this generation before an automatic restart replaces the managed extension's process fields.
 	log, exited := me.stderrLog, me.exited()
+	// The log goes when the process has ended and this loop has reported what it has to. A reload keeps the process of an unchanged
+	// extension and runs its factory again over a new connection, so this loop can end long before the process does: it leaves the
+	// removal to the goroutine that reaps the process and does not wait for it.
+	if exited != nil {
+		log.hold()
+	}
 	defer func() {
-		if log != nil {
-			if exited != nil {
-				<-exited
-			}
+		if exited == nil {
 			log.remove()
+			return
 		}
+		log.letGo()
 	}()
 	lanes := newCallLanes()
 	if !me.hostsNodeRuntime() {
@@ -4811,8 +4857,8 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			continue
 		}
 		if !h.acceptsNodeGeneration(me) {
-			// A reload's replaced generation still runs its command; runCall answers each of its calls with Pi's stale error instead of leaving a synchronous call blocked.
-			if env.Type == MsgCall && env.Call != nil && me.replaced.Load() {
+			// A generation a reload replaces still runs its command, and until the commit every handler that was in flight when the reload began; runCall answers each of its calls with Pi's stale error instead of leaving the handler that waits for the call blocked.
+			if env.Type == MsgCall && env.Call != nil && (me.replaced.Load() || h.supersedes(me)) {
 				h.queueCall(me, conn, lanes, env.ID, env.Call)
 				continue
 			}
@@ -4996,6 +5042,9 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	}
 
 	// Connection closed: extension exited.
+	if h.deathGate != nil {
+		defer h.deathGate(deathSeenByConnection, me.config.Name)()
+	}
 	// Only record a crash if this wasn't a graceful shutdown (of this
 	// extension or the whole host).
 	if me.shuttingDown.Load() || h.shuttingDown.Load() {
@@ -5015,6 +5064,16 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	me.withdrawProcessFromRetention()
 
 	if unresponsive, ok := errors.AsType[*ExtensionUnresponsiveError](conn.failureError()); ok {
+		if unresponsive.ReloadDeadline > 0 {
+			// The running reload ended this connection, replaces the generation and reports it (supersedeGenerations, ReloadReport.Unacknowledged): the host records no crash, schedules no restart and detaches no packed member, so no extension of the process is reported as crashed or disabled. An isolated process stops here; a process that several generations share ends when the reload's commit retires them.
+			if me.packedCellKey == "" {
+				if me.cancel != nil {
+					me.cancel()
+				}
+				me.killProcess()
+			}
+			return
+		}
 		h.handleUnresponsiveExtension(me, unresponsive)
 		return
 	}
@@ -5038,20 +5097,15 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 
 	if me.packedCellKey != "" {
 		if me.packedProcess != nil {
-			// A native process that ends is its watcher's to report (watchPackedProcess): it blames the one member its trace names and restarts the others, or stops
-			// the whole cell, and says so once for each member. Detaching the member here first would tell a member that is about to restart to run /reload.
+			// A shared process that ends is its watcher's to report (watchPackedProcess), once for each member and in load order: it restarts the members of a
+			// Node cell, blames the one member a native trace names and restarts the others, or stops the whole cell. The end reaches the host twice, as this
+			// closed connection and as the reaped process, in either order. Detaching the member here first would report one end twice for it, and tell a member
+			// that is about to restart to run /reload; so this loop waits for the process, and reports nothing when it ended.
 			if h.sharedProcessEnded(me.packedProcess) {
 				return
 			}
-			// A closed connection proves only that this one member stopped
-			// talking to us. It does not prove the shared process is still
-			// running: if the process itself exited, watchPackedProcess
-			// independently quarantines the whole cell (with an accurate,
-			// "process exited" reason) whether or not it wins the race
-			// against this handler. Don't assert a liveness state we have
-			// not verified either way; the process is only withdrawn from
-			// retention claims above.
-			// A native packed member is not restarted automatically, and the quarantine notice that names /reload is lost when this handler detaches the member first, so this notice names the recovery too.
+			// The process outlived the heartbeat deadline: this member's connection closed alone. The member is not restarted automatically, so the notice
+			// names the recovery. It does not say that the process is alive, which the deadline does not prove.
 			h.disablePackedMember(me, "packed member connection closed; /reload restarts it")
 			return
 		}
@@ -5113,11 +5167,24 @@ func (h *Host) awaitClosedProcess(me *managedExt) {
 	}
 }
 
-// sharedProcessEnded reports whether the native process a packed member shares ended within the heartbeat deadline that bounds how long a process may outlive a
-// closed connection (D56), after one of its members' connections closed. It never stops the process, which serves the other members: one that is still running
-// after the deadline closed this member's connection alone. A state that spawned no process of its own has nothing to wait for.
+// deathGateFunc lets a test order the two ways the end of a packed process reaches the host, which a loaded machine orders either way: each member's connection
+// loop sees its connection close (deathSeenByConnection, with the member's name) and the process's watcher sees the process reaped (deathSeenByWatcher, with the
+// cell's key). Each calls the gate before it acts on what it saw, and calls the function the gate returned once it has acted. An isolated extension's process is
+// seen by its connection loop alone.
+type deathGateFunc func(seenBy deathObserver, name string) (acted func())
+
+type deathObserver string
+
+const (
+	deathSeenByConnection deathObserver = "connection"
+	deathSeenByWatcher    deathObserver = "watcher"
+)
+
+// sharedProcessEnded reports whether the process a packed member shares, a native cell's or a Node cell's, ended within the heartbeat deadline that bounds how
+// long a process may outlive a closed connection (D56), after one of its members' connections closed. It never stops the process, which serves the other
+// members: one that is still running after the deadline closed this member's connection alone. A state without a process has nothing to wait for.
 func (h *Host) sharedProcessEnded(p *packedProcessState) bool {
-	if p.node || p.spawner().cmd == nil {
+	if p.spawner().cmd == nil {
 		return false
 	}
 	exited := p.startWait()

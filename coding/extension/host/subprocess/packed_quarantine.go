@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -128,6 +129,10 @@ func (h *Host) quarantinePackedCellGeneration(cellKey string, generation int, re
 			members = append(members, me)
 		}
 	}
+	// One end of a process is reported in one order, the load order, as a recovery reports its members (recoverNodeProcess, recoverNativeProcess).
+	slices.SortFunc(members, func(a, b *managedExt) int {
+		return cmp.Or(cmp.Compare(h.loadOrder[a.config.Name], h.loadOrder[b.config.Name]), strings.Compare(a.config.Name, b.config.Name))
+	})
 	h.mu.Unlock()
 	names := make([]string, len(members))
 	for i, me := range members {

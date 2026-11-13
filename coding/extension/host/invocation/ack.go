@@ -68,6 +68,22 @@ type RunPhase interface {
 	Suspended()
 }
 
+// Resumption is a RunPhase that follows its handler past a call the host answers.
+type Resumption interface {
+	// AfterResumption takes fn and runs it once the handler, resumed by the answer of a call it awaited, next awaits or its request's result is published.
+	AfterResumption(fn func())
+}
+
+// AfterResumption hands fn to ctx's RunPhase when it follows resumptions, and reports whether it did.
+func AfterResumption(ctx context.Context, fn func()) bool {
+	phase, _ := ctx.Value(runPhaseKey{}).(Resumption)
+	if phase == nil {
+		return false
+	}
+	phase.AfterResumption(fn)
+	return true
+}
+
 // WithRunPhase binds phase to ctx; the transport serving a request with ctx reports to it.
 func WithRunPhase(ctx context.Context, phase RunPhase) context.Context {
 	return context.WithValue(ctx, runPhaseKey{}, phase)
