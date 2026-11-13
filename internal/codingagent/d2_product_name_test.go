@@ -28,19 +28,6 @@ func d2Text(piText string) string {
 	return pigText
 }
 
-// d2PiText is the mapping read backwards: PiG's text with each mapped fragment replaced by Pi's. A text that holds no mapped
-// fragment is a mistake in the test: it panics.
-func d2PiText(pigText string) string {
-	piText := pigText
-	for _, pair := range d2ProductNameTexts {
-		piText = strings.ReplaceAll(piText, pair[1], pair[0])
-	}
-	if piText == pigText {
-		panic("d2PiText: no mapped product-name fragment in " + pigText)
-	}
-	return piText
-}
-
 // Pi's tmux warning (interactive-mode.ts checkTmuxKeyboardSetup) says "Pi works best with csi-u".
 func TestTmuxFormatWarningNamesPiG(t *testing.T) {
 	got := tmuxKeyboardSetup(func(option string) string {

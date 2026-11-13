@@ -207,15 +207,10 @@ func settingsOracleBase() settingsOracleConfig {
 // settings-selector.ts against pinned Pi: the whole /settings screen (every row, its cycling values, submenus for theme, warnings
 // and per-model thinking, search typing, cancel) driven by seeded key sequences; every callback with its arguments and every frame
 // must agree. Pi has no "Mask secret input" row (D80), so the oracle driver inserts that one row into its own copy of the module, and
-// PiG has no "Session share destination" row (D64; TestSettingsSelectorOmitsShareDestination), so the copy drops Pi's.
+// PiG has no "Session share destination" row (D64; TestSettingsSelectorOmitsShareDestination), so the copy drops Pi's. The hardware
+// cursor row's description names PiG (D2, "Product name in messages"), one cell longer than Pi's: the copy states PiG's sentence, the
+// d2ProductNameTexts pair, so Pi lays out and wraps the sentence PiG ships.
 func TestSettingsSelectorMatchesPi(t *testing.T) {
-	// D2 ("Product name in messages"): the hardware cursor row's description names PiG, one cell longer than Pi's sentence, so
-	// it wraps at other widths. This oracle is about the selector's layout, keys and events: it lays the row out with Pi's
-	// sentence, the d2ProductNameTexts pair read backwards, and compares every frame as before.
-	// TestShowHardwareCursorDescriptionNamesPiG holds PiG's sentence.
-	pigDescription := showHardwareCursorDescription
-	showHardwareCursorDescription = d2PiText(pigDescription)
-	t.Cleanup(func() { showHardwareCursorDescription = pigDescription })
 	base := settingsOracleBase()
 	variants := []settingsOracleConfig{base}
 	{
@@ -300,7 +295,8 @@ func TestSettingsSelectorMatchesPi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/settings_selector.mjs", pigversion.UpstreamPackageVersion)
+	piCursorDescription := "Use the terminal cursor instead of Pi's drawn cursor"
+	cmd := exec.CommandContext(t.Context(), "node", "testdata/settings_selector.mjs", pigversion.UpstreamPackageVersion, piCursorDescription, d2Text(piCursorDescription))
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
