@@ -121,10 +121,10 @@ func TestEditRenderCallPreviewIsStartedOnceAndStalePreviewIsDiscarded(t *testing
 				if a, b := g.callsFor(stale), g.callsFor(current); a != 1 || b != 1 {
 					t.Fatalf("computes: a.txt %d, b.txt %d; want one each (a pending preview starts no second compute)", a, b)
 				}
-				for i, path := range tc.starts {
+				for _, path := range tc.starts {
 					close(g.enter[path])
-					if got := <-g.started; i == 0 && got != "a.txt" {
-						t.Fatalf("first compute is for %q, want a.txt", got)
+					if got := <-g.started; got != path {
+						t.Fatalf("the compute of %q started, want the one whose enter gate opened: %q", got, path)
 					}
 				}
 				var want tools.EditDiffOutcome
