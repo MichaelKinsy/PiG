@@ -958,6 +958,11 @@ const (
 	// another custom component, dialog or overlay opened over it, or the one over it closed. The extension sets the component's
 	// focused flag and the handle's isFocused as Pi's TUI.setFocus does, and renders again.
 	NotifyUICustomFocus = "ui.custom.focus"
+	// NotifyUICustomInvalidate (host→ext) tells a mounted ui.custom component that the host's TUI was invalidated, as Pi's
+	// TUI.invalidate calls invalidate() on every mounted root and every overlay's component (tui.ts:951-954) after a theme change, a
+	// cell-size report or a change of image support. The extension calls the component's invalidate and renders it again. A
+	// theme_change with the active palette precedes it on the connection when the palette changed. Nobody waits for it.
+	NotifyUICustomInvalidate = "ui.custom.invalidate"
 	// CallUICustomShowOverlay, CallUICustomHideOverlay and CallUICustomSetFocus (ext→host, synchronous) are Pi's TUI.showOverlay,
 	// hideOverlay and setFocus (tui.ts:598-842) on the tui a ui.custom factory receives. showOverlay mounts a raw overlay for a
 	// component of the extension under its own key, with no ui.custom call behind it: its frames, input, focus and controls use
@@ -1029,6 +1034,11 @@ type RemoteOverlayInputPayload struct {
 type RemoteOverlayMousePayload struct {
 	Key   string                     `json:"key"`
 	Event extension.RemoteMouseEvent `json:"event"`
+}
+
+// RemoteOverlayInvalidatePayload is a NotifyUICustomInvalidate argument.
+type RemoteOverlayInvalidatePayload struct {
+	Key string `json:"key"`
 }
 
 // RemoteOverlayFocusPayload is a NotifyUICustomFocus argument.

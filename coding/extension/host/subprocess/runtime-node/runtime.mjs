@@ -4949,6 +4949,17 @@ export class Runtime {
         this.customOverlays.get(args?.key)?.onMounted?.(args);
         return;
       }
+      case "ui.custom.invalidate": {
+        // The host's TUI was invalidated: Pi's TUI.invalidate calls invalidate() on every mounted root and every overlay's component
+        // (tui.ts:951-954), and the next frame draws what the component builds then. A theme_change with the new palette precedes
+        // this on the connection when the palette changed.
+        const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
+        const overlay = this.customOverlays.get(args?.key);
+        if (!overlay?.active || !overlay.component) return;
+        overlay.component.invalidate?.();
+        overlay.renderFrame();
+        return;
+      }
       case "ui.custom.focus": {
         const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
         const overlay = this.customOverlays.get(args?.key);

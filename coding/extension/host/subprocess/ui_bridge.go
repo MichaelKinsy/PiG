@@ -2949,7 +2949,7 @@ func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn
 	stopCancel := context.AfterFunc(ctx, func() { proxy.Close(nil) })
 	defer stopCancel()
 
-	host := &customOverlayHost{ctx: ctx, bridge: b, extName: extName, owner: owner, key: p.Key}
+	host := &customOverlayHost{ctx: ctx, bridge: b, extName: extName, owner: owner, key: p.Key, ui: ui}
 	value, ok := ui.RunRemoteOverlay(
 		extension.RemoteOverlayOptions{
 			Title:          p.Title,
@@ -2993,6 +2993,10 @@ type customOverlayHost struct {
 	extName string
 	owner   *Conn
 	key     string
+	// ui is the context whose theme OnInvalidate reads; sentPalette is the palette it last sent, read and written only by the
+	// goroutine that delivers the component's input.
+	ui          extension.UIContext
+	sentPalette string
 }
 
 func (h *customOverlayHost) OnInput(data string) {
@@ -3019,6 +3023,25 @@ func (h *customOverlayHost) CapturesViewportInput() bool {
 // OnFocus publishes a change of the component's focus; see [extension.RemoteOverlayFocusHost].
 func (h *customOverlayHost) OnFocus(focused bool) {
 	h.bridge.sendCustomFocus(h.extName, h.owner, h.key, focused)
+}
+
+// OnInvalidate publishes one invalidation of the host's TUI ([NotifyUICustomInvalidate]); see
+// [extension.RemoteOverlayInvalidateHost]. A theme_change with the active palette goes first when it differs from the one this
+// component was last sent, so the component builds its rows from the new colors. Both are notifies on the owner's own connection.
+func (h *customOverlayHost) OnInvalidate() {
+	if h.owner == nil {
+		return
+	}
+	if h.ui != nil {
+		if theme := h.ui.Theme(); theme != nil {
+			if palette, err := json.Marshal(theme); err == nil && string(palette) != h.sentPalette {
+				h.sentPalette = string(palette)
+				_ = h.owner.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "theme_change", Args: palette}})
+			}
+		}
+	}
+	args, _ := json.Marshal(RemoteOverlayInvalidatePayload{Key: h.key})
+	_ = h.owner.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyUICustomInvalidate, Args: args}})
 }
 
 // overlayProxy is the buffering RemoteOverlayHandle registered
