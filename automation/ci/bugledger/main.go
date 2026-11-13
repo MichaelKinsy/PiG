@@ -2,13 +2,15 @@
 
 // Command bugledger generates the public bug fix ledger from the project's ground truth: the commit history since the previous release, the "Fixed" sections of CHANGELOG.md and changelog.d, and the divergence records that mark a Pi defect fixed ahead of Pi.
 //
-// `make bug-ledger` writes docs/bug-ledger.json and docs/site/docs/bug-ledger.md. `make bug-ledger-check` (-check) fails when they are out of date, when a recorded test no longer exists, or when a fix-titled commit that changes shipped code has no entry. The ledger needs the full history; a shallow clone fails with a message that says so.
+// `make bug-ledger` writes docs/bug-ledger.json and docs/site/docs/bug-ledger.md. `make bug-ledger-check` (-check) fails when they are out of date, when a recorded test no longer exists, when a fix-titled commit that changes shipped code has no entry, or when a new fix has no root cause. The ledger needs the full history; a shallow clone fails with a message that says so.
+//
+// The ledger is a function of the tree and of the history of HEAD alone. It never reads a commit HEAD does not reach, a file git ignores, or the clock, so two clones of one commit write the same files whatever else they hold.
 //
 // -notes <version> prints the draft release notes for a version from the same sources.
 //
 // A fix-titled commit that is not a product bug is listed with a category and a reason in automation/ci/bugledger/exempt.txt, or carries a "Bug-Ledger: exempt <category>: <reason>" trailer. A follow-up commit of an existing fix carries "Bug-Ledger: see <commit>".
 //
-// A fix commit's tests are the Go tests its diff adds or edits and the tests its message names, resolved against the tree. A test a later commit moved keeps its fix when it kept its name (the one file that declares it); a renamed test needs a line in automation/ci/bugledger/moved-tests.txt.
+// A fix states its root cause and its regression tests outright in its changelog bullet ("<!-- cause: ... -->", "<!-- tests: ... -->") or in its commit message ("Root-Cause:" and "Regression-Test:" trailers); see message.go. Without them the cause is read from the prose of the fix commits and of the bullet, never from a paragraph that reports how the fix was checked, and the tests are the Go tests the fix commit's diff adds or edits and the tests its message names in a file it touches, resolved against the tree. A test a later commit moved keeps its fix when it kept its name (the one file that declares it); a renamed test needs a line in automation/ci/bugledger/moved-tests.txt.
 package main
 
 import (
@@ -104,6 +106,11 @@ func runWith(root, since string, check, strict, refresh bool) error {
 			return err
 		}
 		fmt.Printf("bug-ledger: %d entries written to %s and %s\n", len(l.Entries), jsonPath, pagePath)
+		for _, e := range l.Entries {
+			if needsCause(e) {
+				fmt.Fprintln(os.Stderr, "bug-ledger: `make bug-ledger-check` will fail:", askForCause(e))
+			}
+		}
 		return nil
 	}
 	return verify(root, l, data, page, strict)

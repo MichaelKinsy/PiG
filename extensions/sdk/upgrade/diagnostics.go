@@ -195,6 +195,8 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		return RuleHostHighlightCode, "HostHelpers.HighlightCode", true
 	case strings.Contains(message, "MarkdownTransformer") && strings.Contains(message, "MarkdownTransformerOptions") && importsSDK(diagnostic, source, files):
 		return RuleMarkdownTransformer, markdownTransformerSymbol, true
+	case setModelNameArgument().MatchString(message) && importsSDK(diagnostic, source, files):
+		return RuleSetModelObject, setModelSymbol, true
 	case strings.Contains(message, "TransformHeaders") && strings.Contains(message, "ProviderStreamOptions"):
 		return RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders", true
 	case credentialType().MatchString(message) && importsSDK(diagnostic, source, files):

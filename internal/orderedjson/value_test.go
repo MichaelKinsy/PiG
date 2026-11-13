@@ -62,8 +62,8 @@ func TestUnmarshalFieldsKeepsNamedMembersInWrittenOrder(t *testing.T) {
 	if string(encoded) != want {
 		t.Fatalf("decoded and encoded = %s, want %s", encoded, want)
 	}
-	if err := UnmarshalFields([]byte(`{"name":"n","details":null}`), &target, "details"); err != nil || target.Details != nil {
-		t.Fatalf("null member = %#v, %v, want nil", target.Details, err)
+	if err := UnmarshalFields([]byte(`{"name":"n","details":null}`), &target, "details"); err != nil || !IsNull(target.Details) {
+		t.Fatalf("null member = %#v, %v, want Null", target.Details, err)
 	}
 	if err := UnmarshalFields([]byte(`{"name":1}`), &target, "details"); err == nil {
 		t.Fatal("a member of the wrong type decoded without an error")

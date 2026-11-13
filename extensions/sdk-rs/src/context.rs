@@ -72,6 +72,12 @@ pub trait RemoteComponent: Send {
     /// Raw input preserves lone UTF-16 units just like terminal listeners.
     fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String>;
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
+    /// Pi's optional `Component.invalidate()`: the host's TUI was invalidated (a theme change, a cell-size report, a change
+    /// of image support; Pi's `TUI.invalidate`, tui.ts:951-954), so the component drops what it kept from the state before.
+    /// A theme change is applied first, and a frame is rendered after it. It runs on the worker
+    /// [`Self::handle_input`] runs on, in order with the input. The default does nothing, and the component is rendered again
+    /// all the same.
+    fn invalidate(&mut self) {}
     fn dispose(&mut self) {}
     /// Whether the component captures viewport input, as an upstream component with
     /// `capturesViewportInput` does: the host's fullscreen viewport keys (scroll, page) go to it instead
@@ -121,6 +127,12 @@ pub trait ViewComponent: Send {
         Ok(RemoteComponentResult::pending())
     }
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
+    /// Pi's optional `Component.invalidate()`: the host's TUI was invalidated (a theme change, a cell-size report, a change
+    /// of image support; Pi's `TUI.invalidate`, tui.ts:951-954), so the component drops what it kept from the state before.
+    /// A theme change is applied first, and a frame is rendered after it. It runs on the worker
+    /// [`Self::handle_input`] runs on, in order with the input. The default does nothing, and the component is rendered again
+    /// all the same.
+    fn invalidate(&mut self) {}
     fn dispose(&mut self) {}
     /// Whether the component captures viewport input; see
     /// [`RemoteComponent::captures_viewport_input`]. The default is false.
@@ -148,6 +160,12 @@ pub(crate) enum OverlayComponent {
 }
 
 impl OverlayComponent {
+    fn invalidate(&mut self) {
+        match self {
+            OverlayComponent::Lines(component) => component.invalidate(),
+            OverlayComponent::View(component) => component.invalidate(),
+        }
+    }
     fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String> {
         match self {
             OverlayComponent::Lines(component) => component.handle_input(data),
@@ -291,6 +309,8 @@ enum RemoteComponentEvent {
     Opened(OverlayState),
     /// The host's `ui.custom.focus`: the component lost (false) or regained (true) TUI focus.
     Focus(bool),
+    /// The host's `ui.custom.invalidate`: its TUI was invalidated this many times.
+    Invalidate(u64),
     Stop,
 }
 
@@ -490,6 +510,11 @@ impl RemoteOverlay {
     /// Queues the host's `ui.custom.focus` behind the input already queued.
     pub(crate) fn send_focus(&self, focused: bool) -> Result<(), String> {
         self.send(RemoteComponentEvent::Focus(focused))
+    }
+
+    /// Queues the host's `ui.custom.invalidate` behind the input already queued.
+    pub(crate) fn send_invalidate(&self, count: u64) -> Result<(), String> {
+        self.send(RemoteComponentEvent::Invalidate(count))
     }
 
     /// Queues a `ui.view.event` behind the input already queued.
@@ -719,6 +744,27 @@ fn run_remote_component_worker(worker: RemoteComponentWorker) {
                 // handle's is_focused reads, and the component renders again.
                 overlay.handle_state.lock().unwrap().focused = focused;
                 render_remote_component_frame(&conn, &key, &overlay, width.load(Ordering::Relaxed))
+            }
+            RemoteComponentEvent::Invalidate(count) => {
+                // Pi's TUI.invalidate reached the component (tui.ts:951-954): the theme_change that preceded this on the connection
+                // is applied, the component drops what it kept, and the frame it builds now goes out.
+                let outcome = {
+                    let mut state = overlay.state.lock().unwrap();
+                    crate::diagnostic::recover(|| {
+                        for _ in 0..count {
+                            state.component.invalidate();
+                        }
+                    })
+                };
+                match outcome {
+                    Ok(()) => render_remote_component_frame(
+                        &conn,
+                        &key,
+                        &overlay,
+                        width.load(Ordering::Relaxed),
+                    ),
+                    Err(_) => Err(io::Error::other("focused invalidate panicked")),
+                }
             }
             RemoteComponentEvent::Stop => break,
         };
@@ -2182,6 +2228,9 @@ pub(crate) fn model_identity(model: &serde_json::Value) -> (String, String) {
 }
 
 /// Context provides access to the host's UI and session state.
+/// It has no method that continues a turn or appends a compaction at a turn's end: a `turn_end` or `agent_before_settle` handler does both with its result,
+/// `entries` (custom, custom_message, context_edit and compaction drafts) and `continue` (one more provider request, no new user message). See "Own compaction
+/// and continue after an overflow" in the extensions guide.
 /// Passed to every handler function. Clones share the connection, cancellation and live session state, so retained callbacks can own a context without copying that state.
 #[derive(Clone)]
 pub struct Context {
@@ -2571,6 +2620,46 @@ const RPC_SYNCHRONOUS_UI_EFFECTS: &[&str] = &[
     "ui.setFooter",
     "ui.setHeader",
 ];
+
+/// The model [`Context::set_model`] takes: a Pi model object, or the `provider/id` name of one. Both convert into it, so
+/// `ctx.set_model(&object)` and `ctx.set_model("provider/id")` compile.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SetModelArg {
+    /// A Pi model object.
+    Object(serde_json::Value),
+    /// A `provider/id` name.
+    Named(String),
+}
+
+impl From<serde_json::Value> for SetModelArg {
+    fn from(object: serde_json::Value) -> Self {
+        SetModelArg::Object(object)
+    }
+}
+
+impl From<&serde_json::Value> for SetModelArg {
+    fn from(object: &serde_json::Value) -> Self {
+        SetModelArg::Object(object.clone())
+    }
+}
+
+impl From<&str> for SetModelArg {
+    fn from(spec: &str) -> Self {
+        SetModelArg::Named(spec.to_string())
+    }
+}
+
+impl From<String> for SetModelArg {
+    fn from(spec: String) -> Self {
+        SetModelArg::Named(spec)
+    }
+}
+
+impl From<&String> for SetModelArg {
+    fn from(spec: &String) -> Self {
+        SetModelArg::Named(spec.clone())
+    }
+}
 
 impl Context {
     pub fn model_registry(&self) -> ModelRegistry {
@@ -3272,6 +3361,28 @@ impl Context {
         trigger_turn: Option<bool>,
         deliver_as: Option<&str>,
     ) -> io::Result<()> {
+        self.send_message_with_details(
+            custom_type,
+            content,
+            display,
+            trigger_turn,
+            deliver_as,
+            None,
+        )
+    }
+
+    /// [`Context::send_message`] with upstream's message `details`, extension data kept with the
+    /// message and not sent to the model: `None` leaves the member out and `Some(Value::Null)`
+    /// writes it as null.
+    pub fn send_message_with_details(
+        &self,
+        custom_type: &str,
+        content: &str,
+        display: bool,
+        trigger_turn: Option<bool>,
+        deliver_as: Option<&str>,
+        details: Option<serde_json::Value>,
+    ) -> io::Result<()> {
         // Both options are optional upstream: None is sent as unset and the
         // host applies upstream's default for the session's state.
         let mut options = serde_json::Map::new();
@@ -3284,16 +3395,17 @@ impl Context {
                 serde_json::Value::String(deliver_as.to_string()),
             );
         }
+        let mut message = serde_json::json!({
+            "customType": custom_type,
+            "content": content,
+            "display": display,
+        });
+        if let Some(details) = details {
+            message["details"] = details;
+        }
         call_result_to_io(self.call_wire(
             "sendMessage",
-            Some(serde_json::json!({
-                "message": {
-                    "customType": custom_type,
-                    "content": content,
-                    "display": display,
-                },
-                "options": options,
-            })),
+            Some(serde_json::json!({"message": message, "options": options})),
         )?)
     }
 
@@ -3337,12 +3449,30 @@ impl Context {
             .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
     }
 
-    /// Append a custom persistent entry to the session.
+    /// Append a custom persistent entry to the session. `Value::Null` leaves the entry without a
+    /// `data` member, as Pi's `appendEntry(customType)` does; [`Context::append_entry_opt`] writes
+    /// an explicit null.
     pub fn append_entry(&self, custom_type: &str, data: serde_json::Value) -> io::Result<()> {
-        call_result_to_io(self.call_wire(
-            "appendEntry",
-            Some(serde_json::json!({"customType": custom_type, "data": data})),
-        )?)
+        self.append_entry_opt(custom_type, if data.is_null() { None } else { Some(data) })
+    }
+
+    /// Append a custom persistent entry whose `data` member is left out (`None`, Pi's
+    /// `appendEntry(customType)`), written as null (`Some(Value::Null)`, Pi's
+    /// `appendEntry(customType, null)`) or a value.
+    pub fn append_entry_opt(
+        &self,
+        custom_type: &str,
+        data: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        let mut args = serde_json::Map::new();
+        args.insert(
+            "customType".into(),
+            serde_json::Value::String(custom_type.to_string()),
+        );
+        if let Some(data) = data {
+            args.insert("data".into(), data);
+        }
+        call_result_to_io(self.call_wire("appendEntry", Some(serde_json::Value::Object(args)))?)
     }
 
     // ─── Editor access ───────────────────────────────────────────────────
@@ -3400,14 +3530,31 @@ impl Context {
         )
     }
 
-    /// Set or clear a label for a session entry.
-    /// Sets or clears an entry label. The host's failure is returned, as
-    /// upstream's setLabel throws when the session cannot record the label.
+    /// Sets or clears an entry label. The label is written as given: an empty one clears the label
+    /// and its entry holds `"label":""`, as Pi's `setLabel(entryId, "")` writes it. The host's
+    /// failure is returned, as upstream's setLabel throws when the session cannot record the label.
     pub fn set_label(&self, entry_id: &str, label: &str) -> io::Result<()> {
-        call_result_to_io(self.call_wire(
-            "setLabel",
-            Some(serde_json::json!({"entryId": entry_id, "label": label})),
-        )?)
+        self.set_label_opt(entry_id, Some(serde_json::Value::String(label.to_string())))
+    }
+
+    /// Sets or clears an entry label in every form Pi's `setLabel(entryId, label?)` takes: `None`
+    /// is the call without a label, whose entry has no `label` member; `Some(Value::Null)` is a
+    /// null label, written as null; a string is written as given. All but a string that is not
+    /// empty clear the label.
+    pub fn set_label_opt(
+        &self,
+        entry_id: &str,
+        label: Option<serde_json::Value>,
+    ) -> io::Result<()> {
+        let mut args = serde_json::Map::new();
+        args.insert(
+            "entryId".into(),
+            serde_json::Value::String(entry_id.to_string()),
+        );
+        if let Some(label) = label {
+            args.insert("label".into(), label);
+        }
+        call_result_to_io(self.call_wire("setLabel", Some(serde_json::Value::Object(args)))?)
     }
 
     /// Return the host flag value or its first registered default; false and empty strings remain values. `None` is Pi's undefined; a host failure is an error, not the default.
@@ -3432,10 +3579,44 @@ impl Context {
         );
     }
 
-    /// Set the model. Returns (success, error_message).
-    pub fn set_model(&self, model: &str) -> (bool, String) {
+    /// Pi's `pi.setModel(model)`: make `model`, a Pi model object, the Session's model. Returns (switched, error_message).
+    ///
+    /// `switched` is false, and nothing changes, when the model's provider has no configured auth. The Session uses the object as given, with
+    /// the members the caller left on it (its context window, limits, base URL, compat): a model taken from the model registry and edited, or
+    /// one built by hand for a provider the host knows. The `model_select` handlers have run when it returns.
+    ///
+    /// A `provider/id` string stands for the registry's model of that name, or for an id the registry does not list a model the host builds
+    /// from the provider; a name with no slash is an openai model. The string form asks the host for the model object and then sets it, two
+    /// calls: the object the first call returned is the one set, whatever the registry became in between, and an error of the first call is
+    /// returned without setting.
+    pub fn set_model(&self, model: impl Into<SetModelArg>) -> (bool, String) {
+        let model = match model.into() {
+            SetModelArg::Object(object) => object,
+            SetModelArg::Named(spec) => {
+                match self.call_wire("resolveModel", Some(serde_json::json!({"spec": spec}))) {
+                    Ok(result) => {
+                        if let Some(error) = result.error {
+                            return (false, error.message);
+                        }
+                        let mut v = result.result.unwrap_or_default();
+                        let err = v.get("error").and_then(|s| s.as_str()).unwrap_or("");
+                        if !err.is_empty() {
+                            return (false, err.to_string());
+                        }
+                        v.get_mut("model")
+                            .map(serde_json::Value::take)
+                            .unwrap_or(serde_json::Value::Null)
+                    }
+                    Err(e) => return (false, e.to_string()),
+                }
+            }
+        };
         match self.call_wire("setModel", Some(serde_json::json!({"model": model}))) {
             Ok(result) => {
+                // The host rejects a value that is not a chat model object; Pi's Promise rejects.
+                if let Some(error) = result.error {
+                    return (false, error.message);
+                }
                 let v = result.result.unwrap_or_default();
                 let ok = v
                     .get("success")
@@ -8277,5 +8458,98 @@ mod dialog_value_tests {
             (Value::Null, false)
         );
         assert_eq!(dialog_value(&json!({}), "text"), (Value::Null, false));
+    }
+}
+
+#[cfg(test)]
+mod overlay_invalidate_tests {
+    use super::*;
+    use std::io::Read;
+    use std::os::unix::net::UnixStream;
+    use std::sync::atomic::AtomicUsize;
+
+    struct Probe {
+        invalidations: Arc<AtomicUsize>,
+        renders: Arc<AtomicUsize>,
+    }
+
+    impl RemoteComponent for Probe {
+        fn render(&self, _width: u32) -> Vec<String> {
+            self.renders.fetch_add(1, Ordering::SeqCst);
+            vec!["row".to_string()]
+        }
+        fn handle_input(
+            &mut self,
+            _data: &crate::JsString,
+        ) -> Result<RemoteComponentResult, String> {
+            Ok(RemoteComponentResult::pending())
+        }
+        fn invalidate(&mut self) {
+            self.invalidations.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    /// The host's `ui.custom.invalidate` is one event of the component's serial queue. A component that closed while the event
+    /// was queued is not invalidated and not rendered, and nothing is sent: the event is dropped without an error.
+    #[test]
+    fn an_invalidate_queued_for_a_closed_component_is_dropped() {
+        let invalidations = Arc::new(AtomicUsize::new(0));
+        let renders = Arc::new(AtomicUsize::new(0));
+        let (events_tx, events_rx) = sync_channel(64);
+        let overlay: RemoteComponentRef = Arc::new(RemoteOverlay {
+            state: Mutex::new(RemoteComponentState {
+                component: OverlayComponent::Lines(Box::new(Probe {
+                    invalidations: invalidations.clone(),
+                    renders: renders.clone(),
+                })),
+                last_lines: Vec::new(),
+                last_captures: false,
+                last_view: None,
+                seq: 0,
+                last_render: None,
+                layout: None,
+            }),
+            events: events_tx,
+            active: AtomicBool::new(true),
+            render_pending: AtomicBool::new(false),
+            view_refs: Mutex::new(Vec::new()),
+            force_view: AtomicBool::new(false),
+            on_handle: Mutex::new(None),
+            handle_state: Mutex::new(OverlayState::default()),
+        });
+        overlay
+            .send_invalidate(2)
+            .expect("queued while the component is mounted");
+        // The component closed before its worker took the event.
+        overlay.stop();
+        let (stream, mut peer) = UnixStream::pair().unwrap();
+        peer.set_nonblocking(true).unwrap();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        run_remote_component_worker(RemoteComponentWorker {
+            conn: Arc::new(Connection::new(stream)),
+            key: "custom-1".to_string(),
+            overlay: overlay.clone(),
+            width: Arc::new(AtomicU32::new(80)),
+            events: events_rx,
+            done: done_tx,
+            request_parent: None,
+            request_id: String::new(),
+        });
+        done_rx.recv().expect("the worker ended");
+        assert_eq!(
+            invalidations.load(Ordering::SeqCst),
+            0,
+            "no invalidate after the close"
+        );
+        assert_eq!(
+            renders.load(Ordering::SeqCst),
+            0,
+            "no render after the close"
+        );
+        let mut byte = [0u8; 1];
+        assert!(
+            !matches!(peer.read(&mut byte), Ok(read) if read > 0),
+            "nothing is sent for the dropped event"
+        );
     }
 }

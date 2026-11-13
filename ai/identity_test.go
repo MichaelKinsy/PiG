@@ -433,6 +433,10 @@ func TestModelsSendTheOpenCodeSessionHeaderToCustomProvidersPointingAtOpenCode(t
 func TestProviderIdentityUserAgents(t *testing.T) {
 	custom := &ClientIdentity{UserAgent: new(UserAgentCustom("acme/1.0"))}
 	for _, tc := range userAgentProviderCases(t) {
+		if !BuiltAPI(API(tc.name)) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			var header http.Header
 			provider := tc.build(sseClient(&header, tc.sse))

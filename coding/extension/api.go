@@ -31,13 +31,22 @@ type SendMessagePayload struct {
 	// extension boundary.
 	Content any  `json:"content,omitempty"`
 	Display bool `json:"display"`
-	Details any  `json:"details,omitempty"`
+	// DisplayAbsent marks a message whose writer left display out, as on CustomMessageRef.
+	DisplayAbsent bool `json:"-"`
+	// DisplayNull marks a message whose writer set display to null, as on CustomMessageRef.
+	DisplayNull bool `json:"-"`
+	Details     any  `json:"details,omitempty"`
 }
 
 // UnmarshalJSON keeps the member order of the `details` object the extension wrote.
 func (p *SendMessagePayload) UnmarshalJSON(data []byte) error {
 	type plain SendMessagePayload
-	return orderedjson.UnmarshalFields(data, (*plain)(p), "details")
+	if err := orderedjson.UnmarshalFields(data, (*plain)(p), "details"); err != nil {
+		return err
+	}
+	p.DisplayAbsent = !p.Display && !orderedjson.HasMember(data, "display")
+	p.DisplayNull = !p.Display && orderedjson.IsNullMember(data, "display")
+	return nil
 }
 
 // SendMessageOptions mirrors the inline options object on sendMessage.
@@ -359,7 +368,7 @@ type API interface {
 	// upstream: types.ts:1184
 	GetSessionName() string
 
-	// SetLabel sets or clears a label on an entry. Pass empty string to clear.
+	// SetLabel sets or clears a label on an entry. Pass empty string to clear: the entry then holds `"label":""`, as Pi's setLabel(entryId, "") writes it.
 	// upstream: types.ts:1187
 	SetLabel(entryID string, label string)
 

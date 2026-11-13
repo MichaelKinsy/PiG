@@ -2,34 +2,38 @@ package ai
 
 // pi: packages/ai/src/providers/qwen-token-plan-individual.ts
 
-// Ports packages/ai/test/qwen-token-plan-models.test.ts.
-// The environment-variable case (:130) is TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable in auth_env_keys_test.go.
+// pi: packages/ai/src/providers/qwen-token-plan.ts
+// pi: packages/ai/src/providers/qwen-token-plan-cn.ts
+// pi: packages/ai/src/providers/qwen-token-plan-individual-cn.ts
+
+// Ports packages/ai/test/qwen-token-plan-models.test.ts (Pi 1397070024).
 
 import (
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
 )
 
 var qwenTextModels = []string{
-	"MiniMax-M2.5", "deepseek-v3.2", "deepseek-v4-flash", "deepseek-v4-pro", "glm-5", "glm-5.1", "glm-5.2",
+	"MiniMax-M2.5", "deepseek-v4-pro", "glm-5", "glm-5.1", "glm-5.2",
 	"kimi-k2.5", "kimi-k2.6", "kimi-k2.7-code", "qwen3.6-flash", "qwen3.6-plus", "qwen3.7-max", "qwen3.7-plus",
 	"qwen3.8-flash", "qwen3.8-max",
 }
 
 var qwenIndividualTextModels = []string{
-	"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "glm-5.3",
+	"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "deepseek-v4.1-flash", "deepseek-v4.1-flash-1017", "glm-5.2", "glm-5.3",
 	"qwen3.6-flash", "qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.8-max",
 }
 
 var qwenImageModels = []string{"qwen-image-2.0", "qwen-image-2.0-pro", "wan2.7-image", "wan2.7-image-pro"}
 
 var qwenThinkingModels = []string{
-	"deepseek-v3.2", "deepseek-v4-flash", "deepseek-v4-pro", "glm-5", "glm-5.1", "glm-5.2",
+	"deepseek-v4-pro", "glm-5", "glm-5.1", "glm-5.2",
 	"kimi-k2.5", "kimi-k2.6", "kimi-k2.7-code", "qwen3.6-flash", "qwen3.6-plus", "qwen3.7-max", "qwen3.7-plus",
 	"qwen3.8-flash", "qwen3.8-max",
 }
@@ -54,7 +58,7 @@ func qwenThinkingCases() []qwenModelCase {
 
 func qwenReasoningEffortCases() []qwenModelCase {
 	return append(
-		qwenCases(qwenTokenPlanProviders[:2], []string{"deepseek-v4-flash", "deepseek-v4-pro", "glm-5", "glm-5.1", "glm-5.2"}),
+		qwenCases(qwenTokenPlanProviders[:2], []string{"deepseek-v4-pro", "glm-5", "glm-5.1", "glm-5.2"}),
 		qwenCases(qwenTokenPlanProviders[2:], []string{"deepseek-v4-flash-0731", "deepseek-v4-pro", "deepseek-v4-pro-0813", "glm-5.2", "glm-5.3"})...,
 	)
 }
@@ -134,7 +138,94 @@ func TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels(t *testing.
 			t.Fatalf("qwen-token-plan-individual-cn models = %v, want %v", got, want)
 		}
 	})
-	// The China-endpoint environment-variable case is TestEnvAPIKeysQwenIndividualCnUsesChinaTokenPlanVariable in auth_env_keys_test.go.
+}
+
+// #11773
+func TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:159
+	for _, test := range []struct{ provider, planVar, sharedVar string }{
+		{"qwen-token-plan", "QWEN_TOKEN_PLAN_TEAM_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"},
+		{"qwen-token-plan-cn", "QWEN_TOKEN_PLAN_TEAM_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"},
+		{"qwen-token-plan-individual", "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"},
+		{"qwen-token-plan-individual-cn", "QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"},
+	} {
+		t.Run("prefers the per-plan key on "+test.provider+" and falls back to the shared one", func(t *testing.T) {
+			clearEnvKeyVars(t)
+			resolve := func(env map[string]string) string {
+				t.Helper()
+				models := CreateModels(CreateModelsOptions{AuthContext: &AuthContext{
+					Env:        func(name string) (string, bool) { value, ok := env[name]; return value, ok },
+					FileExists: func(string) bool { return false },
+				}})
+				models.SetProvider(builtinProviderConstructors[test.provider]())
+				result, err := models.GetAuth(t.Context(), test.provider)
+				if err != nil {
+					t.Fatalf("GetAuth: %v", err)
+				}
+				if result == nil {
+					return ""
+				}
+				return result.Auth.APIKey
+			}
+			both, shared := map[string]string{test.planVar: "plan", test.sharedVar: "shared"}, map[string]string{test.sharedVar: "shared"}
+			if got := resolve(both); got != "plan" {
+				t.Errorf("provider auth with %s and %s = %q, want plan", test.planVar, test.sharedVar, got)
+			}
+			if got := resolve(shared); got != "shared" {
+				t.Errorf("provider auth with %s only = %q, want shared", test.sharedVar, got)
+			}
+			if got := GetEnvAPIKey(test.provider, both); got != "plan" {
+				t.Errorf("GetEnvAPIKey with %s and %s = %q, want plan", test.planVar, test.sharedVar, got)
+			}
+			if got := GetEnvAPIKey(test.provider, shared); got != "shared" {
+				t.Errorf("GetEnvAPIKey with %s only = %q, want shared", test.sharedVar, got)
+			}
+		})
+	}
+}
+
+func TestQwenTokenPlanKeepsAPerPlanKeyAwayFromTheOtherPlan(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:182
+	t.Run("keeps a per-plan key away from the other plan", func(t *testing.T) {
+		clearEnvKeyVars(t)
+		if got := FindEnvKeys("qwen-token-plan", map[string]string{"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY": "test"}); got != nil {
+			t.Errorf("FindEnvKeys(qwen-token-plan) = %v, want none", got)
+		}
+		if got := FindEnvKeys("qwen-token-plan-individual-cn", map[string]string{"QWEN_TOKEN_PLAN_TEAM_CN_API_KEY": "test"}); got != nil {
+			t.Errorf("FindEnvKeys(qwen-token-plan-individual-cn) = %v, want none", got)
+		}
+	})
+}
+
+// The four providers are one catalog function over a models.dev source, a gateway and an optional allowlist (catalog/providers/qwen-token-plan.ts
+// qwenTokenPlanModels), so every record sits on its provider's gateway and an Individual record is its region's Team record under another provider id.
+func TestQwenTokenPlanProvidersShareOneCatalogPerRegion(t *testing.T) {
+	for _, pair := range []struct{ team, individual string }{{"qwen-token-plan", "qwen-token-plan-individual"}, {"qwen-token-plan-cn", "qwen-token-plan-individual-cn"}} {
+		gateway := builtinProviderConstructors[pair.team]().BaseURL
+		if individual := builtinProviderConstructors[pair.individual]().BaseURL; gateway == "" || individual != gateway {
+			t.Errorf("%s gateway = %q, %s gateway = %q, want one gateway per region", pair.team, gateway, pair.individual, individual)
+		}
+		for _, provider := range []string{pair.team, pair.individual} {
+			for _, id := range generatedModelIDs(provider) {
+				if model := mustGeneratedModel(t, provider, id); model.BaseURL != gateway {
+					t.Errorf("%s/%s baseUrl = %q, want the provider's gateway %q", provider, id, model.BaseURL, gateway)
+				}
+			}
+		}
+		for _, id := range generatedModelIDs(pair.individual) {
+			team, ok := LookupModelExact(pair.team + "/" + id)
+			if !ok {
+				t.Errorf("%s/%s has no %s record", pair.individual, id, pair.team)
+				continue
+			}
+			// Record names the row's own stored JSON, which carries the provider id.
+			got, want := *mustGeneratedModel(t, pair.individual, id), *team
+			want.Provider, want.Record, got.Record = pair.individual, "", ""
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("%s/%s = %+v, want the %s record %+v", pair.individual, id, got, pair.team, want)
+			}
+		}
+	}
 }
 
 func TestQwenTokenPlanExposesTextModelsAndOmitsImageModels(t *testing.T) {
@@ -160,12 +251,16 @@ func TestQwenTokenPlanExposesTextModelsAndOmitsImageModels(t *testing.T) {
 	}
 }
 
-func TestQwenTokenPlanOmitsRetiredQwen38MaxPreview(t *testing.T) {
-	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:220
+func TestQwenTokenPlanOmitsRetiredModels(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:286
 	for _, provider := range qwenTokenPlanProviders {
-		t.Run("omits retired qwen3.8-max-preview on "+provider, func(t *testing.T) {
-			if slices.Contains(generatedModelIDs(provider), "qwen3.8-max-preview") {
-				t.Errorf("%s still lists qwen3.8-max-preview", provider)
+		t.Run("omits retired models on "+provider, func(t *testing.T) {
+			ids := generatedModelIDs(provider)
+			// #11773: deepseek-v3.2 and deepseek-v4-flash left the Token Plan model lists.
+			for _, retired := range []string{"qwen3.8-max-preview", "deepseek-v3.2", "deepseek-v4-flash"} {
+				if slices.Contains(ids, retired) {
+					t.Errorf("%s still lists %s", provider, retired)
+				}
 			}
 		})
 	}
@@ -205,9 +300,6 @@ func TestQwenTokenPlanExposesReasoningEffortLevels(t *testing.T) {
 	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:203 (d53980fe)
 	t.Run("exposes glm-5.3 reasoning_effort levels for qwen-token-plan-individual", func(t *testing.T) {
 		model := mustGeneratedModel(t, "qwen-token-plan-individual", "glm-5.3")
-		if model.BaseURL != "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1" {
-			t.Errorf("baseUrl = %q", model.BaseURL)
-		}
 		assertThinkingLevelPresence(t, model, map[ModelThinkingLevel]*string{
 			ThinkingMinimal: nil, ThinkingLow: ptrString("low"), ThinkingMedium: nil, ThinkingHigh: ptrString("high"), ThinkingXHigh: nil, ThinkingMax: ptrString("max"),
 		})

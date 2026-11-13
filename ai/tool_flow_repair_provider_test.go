@@ -21,6 +21,10 @@ func TestRepairToolFlowReachesEveryProviderPayload(t *testing.T) {
 		UserMessage{Content: UserText("go"), Timestamp: 4},
 	}})
 	for _, api := range []API{APIAnthropicMessages, APIAzureOpenAIResponses, APIBedrockConverseStream, APIGoogleGenerativeAI, APIGoogleVertex, APIMistralConversations, APIOpenAICodexResponses, APIOpenAICompletions, APIOpenAIResponses} {
+		if !BuiltAPI(api) {
+			// A build with this API's pig_strip tag has no provider for the row.
+			continue
+		}
 		for _, repair := range []bool{false, true} {
 			name := string(api) + map[bool]string{false: "/as Pi", true: "/repaired"}[repair]
 			t.Run(name, func(t *testing.T) {

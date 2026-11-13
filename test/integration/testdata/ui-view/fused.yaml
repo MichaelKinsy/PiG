@@ -1,0 +1,13 @@
+name: ui-view-fused
+description: "The view fixture's factory form as a member that must fuse into a Piglet Binary, with the terminal view client and the view endpoint."
+viewClient: terminal
+viewEndpoint: socket
+build:
+  extensionRealization: fused
+extensions:
+  - name: viewfx
+    origins:
+      - local:viewfx
+discovery:
+  extensions: []
+  skills: []

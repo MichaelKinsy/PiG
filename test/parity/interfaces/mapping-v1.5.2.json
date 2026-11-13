@@ -40,8 +40,9 @@
         "call:agent/tool_call_hook_funcs.go#AfterToolCallFunc.hook"
       ],
       "evidence": [
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages",
-        "test:agent/tool_call_hook_funcs_test.go#TestAfterToolCallFunc_SeesTheResultAndOverridesIt"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime",
+        "test:agent/parallel_shared_context_test.go#TestAToolOfAParallelBatchThatReplacesAMessageInPlaceChangesTheRun",
+        "test:agent/parallel_shared_context_test.go#TestAToolThatWritesTheMessagesKeptFromItsBeforeHook"
       ]
     },
     {
@@ -84,7 +85,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
         "test:agent/hook_context_view_test.go#TestAHookOfASequentialToolCallThatReplacesAMessageInPlaceChangesTheRun",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ]
     },
     {
@@ -2785,7 +2786,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
         "test:agent/hook_context_view_test.go#TestAHookOfASequentialToolCallThatReplacesAMessageInPlaceChangesTheRun",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -4243,7 +4244,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMixedBatchWithOneTerminatingBlockedCallContinues",
         "test:agent/tool_call_hook_func_upstream_test.go#TestRunToolCallFuncHooksValidateRunAndReportFailures",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ]
     },
     {
@@ -4286,7 +4287,7 @@
       ],
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages",
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime",
         "test:agent/hook_context_view_test.go#TestTheBeforeHooksOfParallelToolCallsShareTheRunsMessages"
       ]
     },
@@ -11410,8 +11411,8 @@
       ],
       "evidence": [
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned",
-        "test:ai/function_types_exercise_test.go#TestBuiltInClassifiersAreClassifierFunctionsAndReportFailuresInTheResult"
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
+        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -11433,8 +11434,8 @@
       ],
       "evidence": [
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned",
-        "test:ai/function_types_exercise_test.go#TestBuiltInClassifiersAreClassifierFunctionsAndReportFailuresInTheResult"
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
+        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -11916,6 +11917,7 @@
       ],
       "evidence": [
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
         "test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -11938,6 +11940,7 @@
       ],
       "evidence": [
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
         "test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -15036,7 +15039,7 @@
         "public-api:ai/faux.go#FauxModelDefinition.Input"
       ],
       "evidence": [
-        "test:ai/faux_model_definitions_test.go#TestFauxModelDefinitionsApplyPiDefaultsAndOverrides"
+        "test:test/extension-conformance/set_model_object_before_agent_start_test.go#TestSetModelObjectFromBeforeAgentStartAcrossSDKs"
       ]
     },
     {
@@ -18414,7 +18417,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/model_types.go#imageErrorResult"
+        "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
@@ -19656,42 +19659,44 @@
       "id": "pkg:ai/.#isRetryableAssistantError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
       "id": "pkg:ai/.#isRetryableAssistantError::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:99b171668f56dfaa6264fe8caef6d9d43dcdd9932da32ede5971bbd864d9a634",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError::call:0 is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
@@ -21901,8 +21906,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -21924,8 +21929,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -24081,8 +24086,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -24104,8 +24109,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -46156,7 +46161,8 @@
       ],
       "evidence": [
         "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi",
-        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"
+        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -46178,7 +46184,8 @@
       ],
       "evidence": [
         "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi",
-        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"
+        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -51590,8 +51597,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
+        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ]
     },
     {
@@ -51612,8 +51619,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
+        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ]
     },
     {
@@ -51633,9 +51640,9 @@
         "call:ai/compat.go#compatStream"
       ],
       "evidence": [
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
       ]
     },
     {
@@ -51655,9 +51662,9 @@
         "call:ai/compat.go#compatStream"
       ],
       "evidence": [
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
       ]
     },
     {
@@ -51677,9 +51684,9 @@
         "call:ai/compat.go#compatStream"
       ],
       "evidence": [
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
       ]
     },
     {
@@ -51699,9 +51706,9 @@
         "call:ai/compat.go#compatStream"
       ],
       "evidence": [
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
       ]
     },
     {
@@ -56067,8 +56074,8 @@
       ],
       "evidence": [
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned",
-        "test:ai/function_types_exercise_test.go#TestBuiltInClassifiersAreClassifierFunctionsAndReportFailuresInTheResult"
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
+        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -56090,8 +56097,8 @@
       ],
       "evidence": [
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned",
-        "test:ai/function_types_exercise_test.go#TestBuiltInClassifiersAreClassifierFunctionsAndReportFailuresInTheResult"
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
+        "test:ai/classifier_shared_exports_test.go#TestClassifierFunctionReceivesTheCallersArgumentsAndItsResultIsReturned"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -56573,6 +56580,7 @@
       ],
       "evidence": [
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
         "test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -56595,6 +56603,7 @@
       ],
       "evidence": [
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_request_lifecycle_test.go#TestClassifiersEndWithTheOutcomeOfTheRequestLifecycle",
         "test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -57442,8 +57451,8 @@
       ],
       "evidence": [
         "test:ai/faux_registration_queue_upstream_test.go#TestFauxProviderRegistrationQueueMethodsUpstream",
-        "test:ai/compat_registry_test.go#TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestFirstRegisterAPIProviderOverridesTheBuiltInForCatalogModels"
+        "test:ai/builtin_providers_strip_test.go#TestStrippedProvidersAreNotBuilt",
+        "test:ai/compat_registry_test.go#TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -57465,8 +57474,8 @@
       ],
       "evidence": [
         "test:ai/faux_registration_queue_upstream_test.go#TestFauxProviderRegistrationQueueMethodsUpstream",
-        "test:ai/compat_registry_test.go#TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestFirstRegisterAPIProviderOverridesTheBuiltInForCatalogModels"
+        "test:ai/builtin_providers_strip_test.go#TestStrippedProvidersAreNotBuilt",
+        "test:ai/compat_registry_test.go#TestCompatStreamUsesTheBuiltInProviderWithTheEnvironmentKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -57488,6 +57497,7 @@
       ],
       "evidence": [
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -57510,6 +57520,7 @@
       ],
       "evidence": [
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
         "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -59783,7 +59794,7 @@
         "public-api:ai/faux.go#FauxModelDefinition.Input"
       ],
       "evidence": [
-        "test:ai/faux_model_definitions_test.go#TestFauxModelDefinitionsApplyPiDefaultsAndOverrides"
+        "test:test/extension-conformance/set_model_object_before_agent_start_test.go#TestSetModelObjectFromBeforeAgentStartAcrossSDKs"
       ]
     },
     {
@@ -61764,7 +61775,7 @@
       "evidence": [
         "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI",
         "test:ai/function_types_exercise_test.go#TestRegisterImagesAPIProviderStoresTheSourceID",
-        "test:ai/images_register_builtins_test.go#TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ]
     },
     {
@@ -61786,7 +61797,7 @@
       "evidence": [
         "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI",
         "test:ai/function_types_exercise_test.go#TestRegisterImagesAPIProviderStoresTheSourceID",
-        "test:ai/images_register_builtins_test.go#TestImagesAPIProviderRegistryReturnsTheLatestRegistrationForAnAPI"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ]
     },
     {
@@ -61852,7 +61863,7 @@
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPISetModel",
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIThinkingLevel",
-        "test:test/extension-conformance/state_model_switch_test.go#TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs"
+        "test:test/extension-conformance/set_model_object_node_test.go#TestSetModelKeepsTheObjectNode"
       ]
     },
     {
@@ -61874,7 +61885,7 @@
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPISetModel",
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIThinkingLevel",
-        "test:test/extension-conformance/state_model_switch_test.go#TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs"
+        "test:test/extension-conformance/set_model_object_node_test.go#TestSetModelKeepsTheObjectNode"
       ]
     },
     {
@@ -63853,7 +63864,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/model_types.go#imageErrorResult"
+        "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
@@ -64186,7 +64197,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openrouter_images.go#RegisterBuiltInImagesAPIProviders"
+        "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
         "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI",
@@ -64209,7 +64220,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openrouter_images.go#RegisterBuiltInImagesAPIProviders"
+        "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
         "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI",
@@ -65232,42 +65243,44 @@
       "id": "pkg:ai/compat#isRetryableAssistantError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
       "id": "pkg:ai/compat#isRetryableAssistantError::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:99b171668f56dfaa6264fe8caef6d9d43dcdd9932da32ede5971bbd864d9a634",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError::call:0 is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
@@ -67482,7 +67495,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -67505,7 +67518,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -67527,8 +67540,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -67550,8 +67563,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69679,7 +69692,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69702,7 +69715,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69724,8 +69737,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69747,8 +69760,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -77712,8 +77725,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
+        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ]
     },
     {
@@ -77734,8 +77747,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey",
-        "test:ai/compat_registry_test.go#TestCompatDispatchErrors"
+        "test:ai/compat_radius_cancellation_test.go#TestCompleteHandsTheCallersCancellationToTheProviderAndReturnsItsAbortedMessage",
+        "test:ai/compat_registry_test.go#TestCompatCompleteDispatchesThroughTheRegistryAndFillsTheEnvironmentKey"
       ]
     },
     {
@@ -84106,7 +84119,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -84129,7 +84142,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -84151,8 +84164,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -84174,8 +84187,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85891,7 +85904,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85914,7 +85927,7 @@
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
         "test:ai/telemetry_options_upstream_test.go#TestTelemetryOptionsSurviveImageDispatchUpstream",
-        "test:ai/images_models_wire_test.go#TestModelsGenerateImagesAuthThroughOpenRouter"
+        "test:ai/images_models_mismatch_test.go#TestModelsGenerateImagesTurnsTheRegistrysMismatchedAPIThrowIntoAnErrorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85936,8 +85949,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85959,8 +85972,8 @@
       ],
       "evidence": [
         "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream",
-        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered",
-        "test:ai/models_typed_regression_test.go#TestGetAllAvailableAppliesTheProviderFilters"
+        "test:ai/models_async_contract_test.go#TestModelsGetAllAvailableAbortSettlesWhileAnAuthCheckIsPending",
+        "test:ai/models_strip_test.go#TestStrippedAPIModelsAreNotOffered"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -88449,7 +88462,7 @@
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPISetModel",
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIThinkingLevel",
-        "test:test/extension-conformance/state_model_switch_test.go#TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs"
+        "test:test/extension-conformance/set_model_object_node_test.go#TestSetModelKeepsTheObjectNode"
       ]
     },
     {
@@ -88471,7 +88484,7 @@
       "evidence": [
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPISetModel",
         "test:test/extension-conformance/api_session_state_test.go#TestConformance_ExtensionAPIThinkingLevel",
-        "test:test/extension-conformance/state_model_switch_test.go#TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs"
+        "test:test/extension-conformance/set_model_object_node_test.go#TestSetModelKeepsTheObjectNode"
       ]
     },
     {
@@ -92285,7 +92298,7 @@
         "public-api:ai/faux.go#FauxModelDefinition.Input"
       ],
       "evidence": [
-        "test:ai/faux_model_definitions_test.go#TestFauxModelDefinitionsApplyPiDefaultsAndOverrides"
+        "test:test/extension-conformance/set_model_object_before_agent_start_test.go#TestSetModelObjectFromBeforeAgentStartAcrossSDKs"
       ]
     },
     {
@@ -99560,9 +99573,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
+        "test:ai/assistant_retry_socket_codes_upstream_test.go#TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm",
         "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
-        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
-        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError"
       ]
     },
     {
@@ -99582,9 +99595,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
+        "test:ai/assistant_retry_socket_codes_upstream_test.go#TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm",
         "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
-        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
-        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError"
       ]
     },
     {
@@ -102316,42 +102329,44 @@
       "id": "pkg:ai/utils/retry#isRetryableAssistantError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
       "id": "pkg:ai/utils/retry#isRetryableAssistantError::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:99b171668f56dfaa6264fe8caef6d9d43dcdd9932da32ede5971bbd864d9a634",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError::call:0 is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
@@ -108563,9 +108578,9 @@
         "call:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
-        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108586,9 +108601,9 @@
         "call:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
-        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108609,9 +108624,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108632,9 +108647,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -112040,9 +112055,9 @@
         "call:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
-        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
       ]
     },
     {
@@ -112130,7 +112145,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce"
       ]
     },
     {
@@ -112152,7 +112167,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce"
       ]
     },
     {
@@ -112218,7 +112233,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -112240,7 +112255,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -112615,8 +112630,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/proof_chord_test.go#TestLocaleChoiceTakesATagOf35CharactersAndRefusesOneOf36",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
       ]
     },
     {
@@ -112638,7 +112653,7 @@
       "evidence": [
         "test:chord/next/surfaces/proof_chord_test.go#TestLocaleChoiceTakesATagOf35CharactersAndRefusesOneOf36",
         "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted"
       ]
     },
     {
@@ -112660,7 +112675,7 @@
       "evidence": [
         "test:chord/next/surfaces/proof_chord_test.go#TestLocaleChoiceTakesATagOf35CharactersAndRefusesOneOf36",
         "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted"
       ]
     },
     {
@@ -113373,9 +113388,9 @@
         "call:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
-        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
       ]
     },
     {
@@ -121149,9 +121164,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ]
     },
     {
@@ -121171,9 +121186,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal"
       ]
     },
     {
@@ -121193,9 +121208,9 @@
         "call:chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal"
       ]
     },
     {
@@ -121215,9 +121230,9 @@
         "call:chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
-        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal"
       ]
     },
     {
@@ -121237,9 +121252,9 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ]
     },
     {
@@ -121279,6 +121294,7 @@
         "call:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode"
       ]
     },
@@ -121299,9 +121315,9 @@
         "call:chord/next/surfaces/surfaces_themes.go#ThemesFacet"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ]
     },
     {
@@ -121321,9 +121337,9 @@
         "call:chord/next/surfaces/surfaces_themes.go#ThemesFacet"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted",
         "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
-        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"
       ]
     },
     {
@@ -121428,8 +121444,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
       ]
     },
     {
@@ -121450,8 +121466,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
       ]
     },
     {
@@ -121472,8 +121488,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
       ]
     },
     {
@@ -122448,7 +122464,7 @@
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
         "test:chord/next/host/remote_websocket_test.go#TestWebSocketLinksOverALoopbackServer",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -122470,7 +122486,7 @@
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
         "test:chord/next/host/remote_websocket_test.go#TestWebSocketLinksOverALoopbackServer",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+        "test:chord/next/link/link_end_transports_test.go#TestALinkToldOfItsCloseHasLeftItsTransport"
       ]
     },
     {
@@ -133678,9 +133694,9 @@
         "call:chord/sync/batch.go#EncodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
-        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource",
+        "test:chord/sync/batch_source_test.go#TestClosingABatchBodyClosesTheSourceItWraps"
       ]
     },
     {
@@ -133700,9 +133716,9 @@
         "call:chord/sync/batch.go#EncodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
-        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource",
+        "test:chord/sync/batch_source_test.go#TestClosingABatchBodyClosesTheSourceItWraps"
       ]
     },
     {
@@ -133952,7 +133968,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -133975,7 +133991,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -135261,7 +135277,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ]
     },
     {
@@ -136132,8 +136148,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
-        "test:chord/sync/limits_test.go#TestLineLimit"
+        "test:chord/sync/batch_source_test.go#TestABatchBodyEndsWithTheErrorOfItsSourceAndGivesTheSourceBack",
+        "test:chord/sync/batch_source_test.go#TestABatchBodyPassesTheContextOfNextToItsSource"
       ]
     },
     {
@@ -136721,7 +136737,7 @@
       "evidence": [
         "test:chord/sync/files_contract_test.go#TestFileSyncStateStoreReadsATextFileAndWritesAThroughATemporaryOne",
         "test:chord/sync/proof_chord_test.go#TestFileSyncStateStoreKeepsEachSessionsStateUntilDeleted",
-        "test:chord/sync/sync_test.go#TestHostPieces"
+        "test:chord/sync/state_error_test.go#TestSetOfASyncStateReturnsTheErrorOfAFailedRenameAndKeepsTheEarlierState"
       ]
     },
     {
@@ -153700,8 +153716,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -160976,8 +160992,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -162153,9 +162169,9 @@
         "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs",
-        "test:coding/extension/host/subprocess/packed_go_test.go#TestHost_MixedFusedPackedAndIsolatedExtensions"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -162176,8 +162192,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -162533,12 +162549,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.BranchWithSummary"
+        "call:internal/sessionentry/union.go#BranchSummaryEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_tree_test.go#TestNavigateTreeExtensionSummary",
-        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder",
-        "test:internal/sessionentry/entry_test.go#TestBranchSummaryEntryWritesFromHookFalseInPiMemberOrder"
+        "test:internal/codingagent/session_null_members_rewrite_test.go#TestRewritersKeepNullMembers",
+        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder"
       ]
     },
     {
@@ -162555,7 +162571,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.BranchWithSummary"
+        "call:internal/sessionentry/union.go#BranchSummaryEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_tree_test.go#TestNavigateTreeExtensionSummary"
@@ -162575,7 +162591,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+        "call:internal/sessionentry/union.go#BranchSummaryEntry.MarshalJSON"
       ],
       "evidence": [
         "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream",
@@ -162641,7 +162657,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+        "call:internal/sessionentry/union.go#BranchSummaryEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -162707,7 +162723,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryListWithLive"
+        "call:internal/sessionentry/entry.go#BranchSummaryEntry.UnmarshalJSON"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -163056,8 +163072,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -163077,8 +163094,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -163185,8 +163203,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -163207,8 +163225,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -164710,11 +164728,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.appendCompaction"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
-        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder",
-        "test:internal/sessionentry/entry_test.go#TestCompactionEntryDecodesWithDetailsOrder"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:internal/codingagent/session_null_members_rewrite_test.go#TestRewritersKeepNullMembers",
+        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder"
       ]
     },
     {
@@ -164731,7 +164750,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_transcript.go#compactionTrimIndex"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream",
@@ -164753,12 +164772,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.appendCompaction"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder",
-        "test:internal/sessionentry/entry_test.go#TestCompactionEntryDecodesWithDetailsOrder"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder"
       ]
     },
     {
@@ -164819,7 +164838,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream",
@@ -164841,7 +164860,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.appendCompaction"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream"
@@ -164883,7 +164902,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/compaction/branch_summarization.go#getMessageFromEntryForBranch"
+        "call:internal/sessionentry/union.go#CompactionEntry.MarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream",
@@ -164927,12 +164946,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_transcript.go#InteractiveMode.renderSessionEntryListWithLive"
+        "call:internal/sessionentry/entry.go#CompactionEntry.UnmarshalJSON"
       ],
       "evidence": [
         "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream",
         "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream",
-        "test:internal/codingagent/session_test.go#TestAppendCompaction"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -164975,7 +164994,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/session_boundary_publication_test.go#TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:coding/extension/null_members_test.go#TestBoundaryDraftKeepsNullMembersApartFromAbsent"
       ]
     },
     {
@@ -164997,7 +165017,7 @@
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/session_boundary_projection_test.go#TestBoundaryProjectionWithDraftsLeavesTheSessionAlone"
+        "test:coding/session_overflow_owner_test.go#TestExtensionOwnedCompactionContinuesAfterOverflow"
       ]
     },
     {
@@ -165019,7 +165039,7 @@
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/extension/session_boundary_draft_type_test.go#TestSessionBoundaryDraftTypeSelectsTheUpstreamMember"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -165048,7 +165068,7 @@
       "id": "pkg:coding-agent/.#CompactionEntryDraft::property:usage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:68962e1f2cc1a23b50b8214f3dd8cebcf889a046bb37b37cac2caefab4d5ec79",
-      "rationale": "Derived by the interface gap detector: CompactionEntryDraft::property:usage is Go coding/extension/events.go#SessionBoundaryDraft.Usage (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CompactionEntryDraft::property:usage is Go coding/extension/events.go#SessionBoundaryDraft.Usage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/extension/events.go#SessionBoundaryDraft.Usage"
       ],
@@ -165061,7 +165081,9 @@
         "call:coding/extension/events.go#SessionBoundaryDraft.MarshalJSON"
       ],
       "evidence": [
-        "reach:coding/extension/events.go#SessionBoundaryDraft.MarshalJSON"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:coding/extension/null_members_test.go#TestBoundaryDraftKeepsNullMembersApartFromAbsent",
+        "test:coding/extension/null_members_test.go#TestExtensionUsageKeepsTheAuthorsObject"
       ]
     },
     {
@@ -165728,8 +165750,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165749,8 +165772,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165857,8 +165881,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165879,8 +165903,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -171357,6 +171381,8 @@
         "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
       ],
       "evidence": [
+        "test:internal/codingagent/live_message_meta_test.go#TestEntryAppendedCustomMessageHandsTheTransformersNoIdentity",
+        "test:internal/codingagent/live_message_meta_test.go#TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
         "test:internal/codingagent/session_member_order_test.go#TestSessionKeepsExtensionObjectsInWrittenMemberOrder"
       ]
     },
@@ -171374,7 +171400,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
+        "call:internal/sessionentry/entry.go#CustomMessageEntry.UnmarshalJSON"
       ],
       "evidence": [
         "test:internal/codingagent/custom_message_click_test.go#TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
@@ -171511,7 +171537,7 @@
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesRequestsAfterExtensionMessagesAsContinuations",
-        "test:coding/extension/session_boundary_draft_type_test.go#TestSessionBoundaryDraftTypeSelectsTheUpstreamMember"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -171554,7 +171580,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/session_boundary_publication_test.go#TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:coding/extension/null_members_test.go#TestBoundaryDraftKeepsNullMembersApartFromAbsent"
       ]
     },
     {
@@ -171571,12 +171598,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/events.go#SessionBoundaryDraft.MarshalJSON"
+        "call:coding/extension/events.go#SessionBoundaryDraft.DisplayMember"
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesRequestsAfterExtensionMessagesAsContinuations",
-        "test:coding/extension/session_boundary_draft_type_test.go#TestSessionBoundaryDraftTypeSelectsTheUpstreamMember"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -173230,7 +173257,7 @@
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
         "test:tui/show_images_selector_component_upstream_test.go#TestShowImagesSelectorComponentStructureAndSelectionUpstream",
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange"
       ]
     },
     {
@@ -173954,8 +173981,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -173976,8 +174003,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -173998,8 +174025,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -174020,8 +174047,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -182379,7 +182406,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182402,7 +182429,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -186626,7 +186653,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -186648,7 +186675,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -186670,7 +186697,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -186692,7 +186719,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -187176,7 +187203,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -187198,7 +187225,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -191314,7 +191341,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.drawsOnProcessTerminal"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption"
+        "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption",
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame",
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterSettingChangeWaitsForTheNextStart"
       ]
     },
     {
@@ -191985,8 +192014,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -192007,8 +192036,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -192029,8 +192058,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -192051,8 +192080,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -195329,8 +195358,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -195351,8 +195380,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -195373,8 +195402,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -195395,8 +195424,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -211512,8 +211541,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
-        "test:coding/cli/rpc_append_entry_cost_test.go#TestRPCNodeAppendEntryCostIsLinearInTheAppends"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -211534,8 +211563,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
-        "test:coding/cli/rpc_append_entry_cost_test.go#TestRPCNodeAppendEntryCostIsLinearInTheAppends"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -211556,8 +211585,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
-        "test:coding/extension/host/subprocess/boundary_kept_encoding_test.go#TestKeptProjectionEncodesAsTheWholePreview"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -211578,8 +211607,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/cli/plan_mode_example_test.go#TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers",
-        "test:coding/extension/host/subprocess/boundary_kept_encoding_test.go#TestKeptProjectionEncodesAsTheWholePreview"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetupSessionNullMembersAcrossSDKs"
       ]
     },
     {
@@ -211733,7 +211762,7 @@
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
         "test:test/extension-conformance/session_identity_test.go#TestContextSessionIdentityAcrossSDKs",
-        "test:coding/session_readonly_manager_test.go#TestExtensionContextSessionManagerReadsTheSessionsOwnLog"
+        "test:coding/session_entry_null_members_test.go#TestSessionEntryNullMembersMatchPi"
       ]
     },
     {
@@ -211755,7 +211784,7 @@
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
         "test:test/extension-conformance/session_identity_test.go#TestContextSessionIdentityAcrossSDKs",
-        "test:coding/session_readonly_manager_test.go#TestExtensionContextSessionManagerReadsTheSessionsOwnLog"
+        "test:coding/session_entry_null_members_test.go#TestSessionEntryNullMembersMatchPi"
       ]
     },
     {
@@ -212434,8 +212463,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_session_writes_test.go#TestConformance_ExtensionAPISessionWrites",
-        "test:coding/cli/session_extension_actions_label_test.go#TestSessionExtensionActionsBindSetLabel",
-        "test:internal/codingagent/session_manager_lookup_test.go#TestGetLabelReturnsTheLatestLabelAndClears"
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetLabelOmittedNullAndEmptyAcrossSDKs",
+        "test:coding/cli/session_extension_actions_label_test.go#TestSessionExtensionActionsBindSetLabel"
       ]
     },
     {
@@ -212456,8 +212485,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_session_writes_test.go#TestConformance_ExtensionAPISessionWrites",
-        "test:coding/cli/session_extension_actions_label_test.go#TestSessionExtensionActionsBindSetLabel",
-        "test:internal/codingagent/session_manager_lookup_test.go#TestGetLabelReturnsTheLatestLabelAndClears"
+        "test:test/extension-conformance/entry_null_members_test.go#TestSetLabelOmittedNullAndEmptyAcrossSDKs",
+        "test:coding/cli/session_extension_actions_label_test.go#TestSessionExtensionActionsBindSetLabel"
       ]
     },
     {
@@ -224075,8 +224104,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -224096,8 +224126,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -224204,8 +224235,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -224226,8 +224257,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -236270,7 +236301,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/session/cached_storage_test.go#TestCachedStoragePassesEveryOtherCallThroughWithItsArguments",
-        "test:durable/session/keys_test.go#TestGatedStorageAFailedTouchSkipsEveryRead"
+        "test:durable/session/forks_contract_test.go#TestPrepareForkDocumentCopiesAwaitsItsReadsInOrderWithTheCallersContext"
       ]
     },
     {
@@ -258904,8 +258935,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/upgrade_in_place_core_test.go#TestOpenHarnessUpgradesAVersionOneStoreInPlace",
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
-        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace"
+        "test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258927,8 +258958,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/upgrade_in_place_core_test.go#TestOpenHarnessUpgradesAVersionOneStoreInPlace",
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
-        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace"
+        "test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258950,6 +258981,7 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace",
+        "test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ]
     },
@@ -259587,6 +259619,7 @@
       ],
       "evidence": [
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
+        "test:durable/storage/sqlite/sqlite_migrations_contract_test.go#TestSqliteMigrationEntryPointsApplyTheListTheyAreGiven",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ]
     },
@@ -261839,7 +261872,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -261862,7 +261895,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -261931,7 +261964,7 @@
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
         "test:durable/storage/storage_benchmark_scenarios_test.go#TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder"
       ]
     },
     {
@@ -261996,8 +262029,8 @@
       ],
       "evidence": [
         "test:durable/storage/storage_benchmark_fork_depth_pi_test.go#TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation",
-        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount",
-        "test:durable/storage/storage_bench_test.go#TestStorageBenchmarkExpectations"
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
+        "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
     {
@@ -262017,6 +262050,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkPrimaryRecordCount"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -262037,6 +262071,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkPrimaryRecordCount"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -262057,6 +262092,7 @@
         "public-api:durable/durabletest/storage_benchmark.go#StorageBenchmarkScale"
       ],
       "evidence": [
+        "test:durable/storage/storage_benchmark_seed_order_test.go#TestSeedStorageBenchmarkMintsConsecutiveIdsInSeedingOrder",
         "test:durable/storage/storage_read_contract_test.go#TestStorageBenchmarkScalesAndPrimaryRecordCount"
       ]
     },
@@ -267520,7 +267556,7 @@
       "evidence": [
         "test:env/connection_request_test.go#TestRemoteWatchOptionsModeForcesTheWatcherMode",
         "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt",
-        "test:env/watch_semantics_test.go#TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished"
+        "test:env/remote_watch_abort_test.go#TestRemoteExecutionEnvWatchWithAnAbortedContextFailsAbortedBeforeTouchingTheConnection"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -267543,7 +267579,7 @@
       "evidence": [
         "test:env/connection_request_test.go#TestRemoteWatchOptionsModeForcesTheWatcherMode",
         "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt",
-        "test:env/watch_semantics_test.go#TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished"
+        "test:env/remote_watch_abort_test.go#TestRemoteExecutionEnvWatchWithAnAbortedContextFailsAbortedBeforeTouchingTheConnection"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -293793,8 +293829,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -293815,8 +293851,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -293905,7 +293941,7 @@
       "evidence": [
         "test:tui/loader_constructor_oracle_test.go#TestLoaderConstructorIndicatorMatchesPi",
         "test:tui/output_pad_upstream_test.go#TestLoaderSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestCancellableLoaderSignalAndDispose"
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns"
       ]
     },
     {
@@ -293927,7 +293963,7 @@
       "evidence": [
         "test:tui/bordered_loader_input_oracle_test.go#TestBorderedLoaderHandleInputMatchesPi",
         "test:tui/bordered_loader_oracle_test.go#TestBorderedLoaderMatchesPi",
-        "test:tui/bordered_loader_test.go#TestBorderedLoader_HandleInput"
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns"
       ]
     },
     {
@@ -293991,9 +294027,9 @@
         "call:tui/cancellable_loader.go#CancellableLoader.HandleInput"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns",
         "test:tui/box_slice_style_gaps_test.go#TestCancellableLoaderSignalAndDispose",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelWithoutOnAbortOnlyAborts"
+        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress"
       ],
       "behaviorContracts": [
         "tui/cancellable-loader/cancel-input"
@@ -294016,9 +294052,9 @@
         "call:tui/cancellable_loader.go#CancellableLoader.HandleInput"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns",
         "test:tui/box_slice_style_gaps_test.go#TestCancellableLoaderSignalAndDispose",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelWithoutOnAbortOnlyAborts"
+        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress"
       ],
       "behaviorContracts": [
         "tui/cancellable-loader/cancel-input"
@@ -294085,9 +294121,9 @@
         "call:tui/bordered_loader.go#NewBorderedLoader"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestCancellableLoaderAbortsTheSignalBeforeOnAbortRuns",
         "test:tui/bordered_loader_test.go#TestBorderedLoader_HandleInput",
-        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
-        "test:tui/loader_image_parity_test.go#TestCancellableLoaderDisposeStopsWithoutAborting"
+        "test:tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress"
       ]
     },
     {
@@ -304584,9 +304620,9 @@
         "call:tui/overlay_spec.go#OverlaySpec.Options"
       ],
       "evidence": [
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
         "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
-        "test:tui/tui_surface_mouse_test.go#TestTuiSurfaceClickMatchesTheTerminalOnOverlays"
+        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
       ]
     },
     {
@@ -304736,9 +304772,9 @@
         "call:tui/overlay_spec.go#OverlaySpec.Options"
       ],
       "evidence": [
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
         "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
-        "test:tui/tui_surface_mouse_test.go#TestTuiSurfaceClickMatchesTheTerminalOnOverlays"
+        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
       ]
     },
     {
@@ -304781,8 +304817,8 @@
       ],
       "evidence": [
         "test:tui/overlay_options_upstream_test.go#TestOverlaySpecMarginUnionMatchesPi",
-        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
+        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ]
     },
     {
@@ -305323,6 +305359,7 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
         "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
         "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
       ]
@@ -305344,6 +305381,7 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
         "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
         "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
       ]
@@ -305553,8 +305591,8 @@
       ],
       "evidence": [
         "test:tui/terminal_pty_test.go#TestProcessTerminalOnPseudoTerminal",
-        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop",
-        "test:tui/terminal_interface_pty_test.go#TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterSuspendAndResume"
       ]
     },
     {
@@ -305575,8 +305613,8 @@
       ],
       "evidence": [
         "test:tui/terminal_pty_test.go#TestProcessTerminalOnPseudoTerminal",
-        "test:tui/terminal_test.go#TestProcessTerminal_StartStop_DoubleStartStopIsNoop",
-        "test:tui/terminal_interface_pty_test.go#TestTerminalInterfaceStartForwardsInputAndStopEndsIt"
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
+        "test:tui/terminal_screen_writer_test.go#TestScreenWriterSuspendAndResume"
       ]
     },
     {
@@ -305638,9 +305676,9 @@
         "call:tui/terminal.go#ProcessTerminal.Write"
       ],
       "evidence": [
+        "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes"
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -305660,9 +305698,9 @@
         "call:tui/terminal.go#ProcessTerminal.Write"
       ],
       "evidence": [
+        "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes"
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -309432,8 +309470,8 @@
       ],
       "evidence": [
         "test:tui/overlay_options_upstream_test.go#TestOverlaySpecMarginUnionMatchesPi",
-        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt",
-        "test:tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent"
+        "test:tui/screen_writer_oracle_test.go#TestScreenWriterImageRowsUnderAnOverlay",
+        "test:tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ]
     },
     {
@@ -313983,7 +314021,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/alt_screen_search.go#AltScreenSearchComponent.Invalidate"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
@@ -314194,9 +314232,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.CopyActiveSelectionToClipboard"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
         "test:tui/tui_alt_screen_test.go#TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenCopyOnSelectAndManualCopy",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenCopySelectionOsc52Payload"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenCopyOnSelectAndManualCopy"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -314217,9 +314255,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.CopyActiveSelectionToClipboard"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
         "test:tui/tui_alt_screen_test.go#TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenCopyOnSelectAndManualCopy",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenCopySelectionOsc52Payload"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenCopyOnSelectAndManualCopy"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -314705,9 +314743,9 @@
       "id": "pkg:tui/.#TuiAltScreen::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -314715,21 +314753,21 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
       "id": "pkg:tui/.#TuiAltScreen::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate::call:0 is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate::call:0 is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -314737,12 +314775,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
@@ -315806,8 +315844,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_transcript_selection_test.go#TestRenderSessionEntriesDropsFullscreenSelection",
-        "test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenDoesNotLeakCursorMarkersWhileSelectingAfterTheCaret",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
+        "test:tui/terminal_screen_writer_autowrap_test.go#TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap"
       ]
     },
     {
@@ -315827,9 +315865,9 @@
         "call:tui/tui_alt_screen.go#newTuiAltScreen"
       ],
       "evidence": [
+        "test:tui/async_contract_closure_test.go#TestAltScreenCopySelectionCallbackRunsWithoutTheScreenLockAndFlashesAfterItSettles",
         "test:tui/mouse_components_test.go#TestMouseSelectsAndCopiesEditorTextOnDrag",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenSelectionCopyAndShutdownDoNotRace"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenClipboardFailureDoesNotFlashSuccessOrHoldRendererLock"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -315852,7 +315890,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/tui_alt_screen_keyboard_protocol_test.go#TestTuiAltScreenMovesOutstandingKeyboardPushAcrossScreens"
+        "test:tui/terminal_screen_writer_autowrap_test.go#TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap"
       ]
     },
     {
@@ -316084,7 +316122,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/alt_screen_search.go#AltScreenSearchComponent.Invalidate"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
@@ -316621,9 +316659,9 @@
       "id": "pkg:tui/.#TuiMainScreen::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -316631,21 +316669,21 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
       "id": "pkg:tui/.#TuiMainScreen::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate::call:0 is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate::call:0 is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -316653,12 +316691,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {

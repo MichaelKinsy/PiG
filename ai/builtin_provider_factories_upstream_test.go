@@ -1,7 +1,6 @@
 package ai
 
 import (
-	"os"
 	"regexp"
 	"slices"
 	"testing"
@@ -23,10 +22,7 @@ func TestBuiltinProviderFactoriesMatchPinnedModules(t *testing.T) {
 		{"xiaomi", XiaomiProvider, XiaomiModels},
 	} {
 		t.Run(tc.module, func(t *testing.T) {
-			source, err := os.ReadFile("../.upstream/current/packages/ai/src/providers/" + tc.module + ".ts")
-			if err != nil {
-				t.Fatal(err)
-			}
+			source := readPinnedMirror(t, "../.upstream/current/packages/ai/src/providers/"+tc.module+".ts")
 			id, name, auth := idRe.FindSubmatch(source), nameRe.FindSubmatch(source), authRe.FindSubmatch(source)
 			if id == nil || name == nil || auth == nil {
 				t.Fatalf("%s.ts: id/name/auth not found", tc.module)

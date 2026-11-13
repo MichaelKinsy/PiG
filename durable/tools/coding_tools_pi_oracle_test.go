@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -26,6 +27,9 @@ type piReadCase struct {
 	// processor is whether read gets an image processor.
 	processor bool
 	model     *ai.Model
+	// pinStillAppends is text the pinned Pi's image diagnostic ends with and a later Pi commit, which PiG carries, removed
+	// (pi4be4cb4f5e9cRemoved); "" for a case PiG and the pin answer alike.
+	pinStillAppends string
 }
 
 func piOracle(t *testing.T, cases []map[string]any) []json.RawMessage {
@@ -91,6 +95,13 @@ func TestCodingToolsMatchPi(t *testing.T) {
 	}
 }
 
+// pi4be4cb4f5e9cRemoved is the sentence the pinned Pi's read still appends to the image diagnostic for a model without image input.
+// Pi 4be4cb4f5e9c (#12139, after the pin) removed it and names the model in details instead; PiG carries that commit. The mirror
+// TestReadOfImagesMatchesPi runs is the pinned build (pi-durable is outside the files pi-post-release-backports.mjs patches), so the
+// two cases that name it in piReadCase.pinStillAppends require the pin's message to end with exactly this sentence and PiG's to be
+// the pin's without it. When the pin carries the commit those cases fail: delete the constant, the member and its two uses.
+const pi4be4cb4f5e9cRemoved = " The current model does not support images; it sees a placeholder instead."
+
 func TestReadOfImagesMatchesPi(t *testing.T) {
 	visionless := &ai.Model{ID: "test", Input: []string{"text"}}
 	narrow := &ai.Model{ID: "test", Input: []string{"text", "image"}, InputLimits: &ai.ModelInputLimits{Images: &ai.ModelImageInputLimits{Resize: &ai.ModelImageResizeOptions{MaxWidth: 4, MaxBytes: 1000}}}}
@@ -102,7 +113,7 @@ func TestReadOfImagesMatchesPi(t *testing.T) {
 		{name: "no processor, png too many bytes", path: "big.png", file: append(png(10, 10), make([]byte, 4*1024*1024)...)},
 		{name: "no processor, png whose size cannot be read", path: "cut.png", file: png(8, 6)[:20]},
 		{name: "no processor, bmp", path: "a.bmp", file: emptyBMP()},
-		{name: "no processor, model without image input", path: "a.png", file: must(base64.StdEncoding.DecodeString(onePixelPNG)), model: visionless},
+		{name: "no processor, model without image input", path: "a.png", file: must(base64.StdEncoding.DecodeString(onePixelPNG)), model: visionless, pinStillAppends: pi4be4cb4f5e9cRemoved},
 		{name: "no processor, model limits", path: "a.png", file: png(8, 6), model: narrow},
 		{name: "processor converted and resized", path: "wide.png", file: png(4000, 1000), processor: true, prepared: &PreparedImage{Data: "AAAA", MimeType: "image/jpeg", ConvertedFrom: "image/png", Resized: &ImageResize{From: ImageSize{4000, 1000}, To: ImageSize{2000, 500}}}},
 		{name: "processor resized, scale rounds", path: "p.png", file: png(1920, 1080), processor: true, prepared: &PreparedImage{Data: "AAAA", MimeType: "image/png", Resized: &ImageResize{From: ImageSize{1920, 1080}, To: ImageSize{1000, 562}}}},
@@ -112,7 +123,7 @@ func TestReadOfImagesMatchesPi(t *testing.T) {
 		{name: "processor converted only", path: "a.bmp", file: emptyBMP(), processor: true, prepared: &PreparedImage{Data: "QQ==", MimeType: "image/png", ConvertedFrom: "image/bmp"}},
 		{name: "processor unchanged", path: "a.png", file: png(8, 6), processor: true, prepared: &PreparedImage{Data: "QQ==", MimeType: "image/png"}},
 		{name: "processor cannot prepare", path: "broken.png", file: png(4, 4), processor: true},
-		{name: "processor, model without image input", path: "a.png", file: png(4, 4), processor: true, prepared: &PreparedImage{Data: "QQ==", MimeType: "image/png"}, model: visionless},
+		{name: "processor, model without image input", path: "a.png", file: png(4, 4), processor: true, prepared: &PreparedImage{Data: "QQ==", MimeType: "image/png"}, model: visionless, pinStillAppends: pi4be4cb4f5e9cRemoved},
 		{name: "processor sees the model's limits", path: "a.png", file: png(8, 6), processor: true, prepared: &PreparedImage{Data: "QQ==", MimeType: "image/png"}, model: narrow},
 	}
 	var wire []map[string]any
@@ -192,12 +203,28 @@ func TestReadOfImagesMatchesPi(t *testing.T) {
 		if gotOut, wantOut := normalized(t, got.Output), normalized(t, rawList(pi.Output)); !reflect.DeepEqual(gotOut, wantOut) && (len(got.Output) != 0 || len(pi.Output) != 0) {
 			t.Errorf("%s: PiG output %v, Pi %v", c.name, gotOut, wantOut)
 		}
+		// Pi 4be4cb4f5e9c: details name a model without image input, and nothing else of an image read (the oracle script reports no details).
+		wantDetails := "null"
+		if c.model == visionless && !pi.IsError {
+			wantDetails = `{"imageUnsupportedByModel":"test"}`
+		}
+		if raw, err := json.Marshal(got.Details); err != nil || string(raw) != wantDetails || got.HasDetails != (wantDetails != "null") {
+			t.Errorf("%s: PiG details %s (has %v), %v, want %s", c.name, raw, got.HasDetails, err, wantDetails)
+		}
 		if len(got.Diagnostics) != len(pi.Diagnostics) {
 			t.Errorf("%s: PiG diagnostics %+v, Pi %+v", c.name, got.Diagnostics, pi.Diagnostics)
 			continue
 		}
 		for j, d := range got.Diagnostics {
-			if want := pi.Diagnostics[j]; string(d.Severity) != want.Severity || d.Code != want.Code || d.Message != want.Message {
+			want := pi.Diagnostics[j]
+			if c.pinStillAppends != "" && want.Code == "image" {
+				message, found := strings.CutSuffix(want.Message, c.pinStillAppends)
+				if !found {
+					t.Errorf("%s: the pinned Pi's message %q no longer ends with %q: the pin carries Pi 4be4cb4f5e9c, delete pi4be4cb4f5e9cRemoved", c.name, want.Message, c.pinStillAppends)
+				}
+				want.Message = message
+			}
+			if string(d.Severity) != want.Severity || d.Code != want.Code || d.Message != want.Message {
 				t.Errorf("%s: diagnostic %d: PiG %+v, Pi %+v", c.name, j, d, want)
 			}
 		}

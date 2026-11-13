@@ -320,7 +320,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 			operationErr = err
 		} else {
 			for _, spec := range finalFrameSpecs {
-				finalFrame = finalFrame.merge(observeFinalFrame(transcriptPath, spec))
+				finalFrame = finalFrame.merge(observeFinalFrame(finalFrameSource(transcriptPath, spec, tc.expand), spec))
 			}
 		}
 	}

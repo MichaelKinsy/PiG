@@ -72,6 +72,19 @@
     (check (not (pig:retryable-assistant-error-p (message "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Connection closed. insufficient_quota\"}}"))))
     (check (not (pig:retryable-assistant-error-p (message "The connection was closed by the user"))))))
 
+;; Pi 4699b5b26 packages/ai/test/retry.test.ts:65,77 (#12128): a provider error that reports only a Node socket error code is retried; a code inside a longer identifier is not.
+(deftest node-socket-error-codes-are-retryable
+  (flet ((message (text) (pig:from-json (format nil "{\"role\":\"assistant\",\"stopReason\":\"error\",\"errorMessage\":~A}" (pig:to-json text)))))
+    (check (pig:retryable-assistant-error-p (message "read ECONNRESET")))
+    (check (pig:retryable-assistant-error-p (message "connect ETIMEDOUT 140.82.113.3:443")))
+    (check (pig:retryable-assistant-error-p (message "write EPIPE")))
+    (check (pig:retryable-assistant-error-p (message "connect ECONNREFUSED 127.0.0.1:443")))
+    (check (pig:retryable-assistant-error-p (message "ECONNABORTED")))
+    (check (pig:retryable-assistant-error-p (message "Connection reset by peer")))
+    (check (not (pig:retryable-assistant-error-p (message "Invalid value EXECONNRESET"))))
+    (check (not (pig:retryable-assistant-error-p (message "Unknown field ETIMEDOUTX"))))
+    (check (not (pig:retryable-assistant-error-p (message "Invalid key ERR_EPIPE_ID"))))))
+
 (deftest the-default-retry-delay-cap-is-pis
   (check-equal 60000 pig:+default-max-agent-retry-delay-ms+))
 

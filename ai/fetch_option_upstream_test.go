@@ -115,14 +115,21 @@ func TestFetchOptionUpstream(t *testing.T) {
 				customURLs.add(request.URL.String())
 				return &http.Response{StatusCode: http.StatusUnauthorized, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"upstream rejected request"}}`)), Request: request}, nil
 			})}
+			// built counts the APIs of the row this build links: all of tc.apis in the default build.
+			built := int32(0)
 			for _, api := range tc.apis {
+				if !BuiltAPI(api) {
+					// A build with this API's pig_strip tag has no provider to hand the client to.
+					continue
+				}
+				built++
 				message := fetchOptionResult(t, fetchOptionProvider(api, fallback.URL), custom)
 				if tc.googleSDKs && !strings.Contains(message, "upstream rejected request") {
 					t.Errorf("%s error = %q", api, message)
 				}
 			}
-			if customCalls.Load() != int32(len(tc.apis)) || fallbackCalls.Load() != 0 {
-				t.Fatalf("custom/fallback calls = %d/%d, want %d/0", customCalls.Load(), fallbackCalls.Load(), len(tc.apis))
+			if customCalls.Load() != built || fallbackCalls.Load() != 0 {
+				t.Fatalf("custom/fallback calls = %d/%d, want %d/0", customCalls.Load(), fallbackCalls.Load(), built)
 			}
 			if tc.googleSDKs {
 				for _, url := range customURLs.snapshot() {

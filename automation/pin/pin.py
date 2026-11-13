@@ -19,6 +19,8 @@
   pin.py check-oracle         verify the installed oracle is the effective pin's Pi
   pin.py link-mirror          point the effective pin's mirror (.upstream/<mirror>/node_modules) at its source build's
                               dependencies, so oracle scripts that import the mirrored source resolve its imports
+  pin.py mirror-data --commit C --target DIR  make DIR (a source mirror's packages/ai/src/providers/data) the provider data
+                              frozen for Pi commit C, checked against its recorded digest; fails when none is frozen
   pin.py ledgers [--from REF] generate the effective pin's ledgers that one file holds (async-contracts, behavior-contracts,
                               known-gaps, under test/parity/pin-ledgers/) from the earlier pin REF (default: the committed pin),
                               plus the interface delta manifest and the custom-factory draft; skips what exists
@@ -549,6 +551,12 @@ def cmd_link_mirror(_: argparse.Namespace) -> None:
         print(f"link-mirror: .upstream/{pin.mirror_dir}/node_modules -> {modules}")
 
 
+def cmd_mirror_data(args: argparse.Namespace) -> None:
+    import oracle
+
+    oracle.mirror_data(args.commit, Path(args.target))
+
+
 def cmd_vendor(args: argparse.Namespace) -> None:
     import vendor
 
@@ -667,6 +675,10 @@ def main() -> None:
     vendored.add_argument("--installed", action="append", default=[], metavar="CONSUMER", help="also require the node_modules of this consumer (durable/interop) to be an install of the vendored packs")
     vendored.set_defaults(fn=cmd_check_vendored)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
+    data = sub_.add_parser("mirror-data")
+    data.add_argument("--commit", required=True)
+    data.add_argument("--target", required=True)
+    data.set_defaults(fn=cmd_mirror_data)
     sub_.add_parser("oracle-node").set_defaults(fn=cmd_oracle_node)
     retire = sub_.add_parser("retire")
     retire.add_argument("ref")

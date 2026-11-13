@@ -430,6 +430,18 @@ type overlayMessage struct {
 	opened *overlayHandleState
 	// focus is the host's ui.custom.focus: the component lost (false) or regained (true) TUI focus.
 	focus *bool
+	// invalidate is the host's ui.custom.invalidate: how many times its TUI was invalidated since the last one it sent.
+	invalidate int
+}
+
+// RemoteComponentInvalidateHandler is the optional Invalidate method of a [Context.Custom] component: Pi's Component.invalidate().
+// The host's TUI invalidates every mounted component after a theme change, a cell-size report or a change of image support (Pi's
+// TUI.invalidate, tui.ts:951-954); the component drops what it kept from the state before, and is rendered again. A theme
+// change is applied before Invalidate runs, so [Context.UITheme] already answers with the new theme. Invalidate runs on the
+// component's own worker, in order with its input, never while Render or HandleInput runs. A component without the method is
+// rendered again all the same.
+type RemoteComponentInvalidateHandler interface {
+	Invalidate()
 }
 
 func newRemoteOverlay(component overlayComponent) *remoteOverlay {
@@ -588,6 +600,8 @@ func (o *remoteOverlay) handleMessage(conn *conn, key string, message overlayMes
 		what = "view event"
 	case message.mouse != nil:
 		what = "mouse"
+	case message.invalidate > 0:
+		what = "invalidate"
 	}
 	defer func() {
 		if recovered := recover(); recovered != nil && !o.closed {
@@ -607,6 +621,15 @@ func (o *remoteOverlay) handleMessage(conn *conn, key string, message overlayMes
 	}
 	if message.focus != nil {
 		o.applyFocus(*message.focus)
+		_ = o.renderLocked(conn, key, width)
+		return
+	}
+	if message.invalidate > 0 {
+		if handler, ok := o.component.(RemoteComponentInvalidateHandler); ok {
+			for range message.invalidate {
+				handler.Invalidate()
+			}
+		}
 		_ = o.renderLocked(conn, key, width)
 		return
 	}
@@ -2137,6 +2160,21 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		e.overlaysMu.RUnlock()
 		if overlay != nil {
 			overlay.enqueue(e.conn, payload.Key, overlayMessage{focus: &payload.Focused})
+		}
+	case "ui.custom.invalidate":
+		// The theme_change that precedes it on the connection is applied by now; the component's worker runs Invalidate and renders.
+		var payload struct {
+			Key   string `json:"key"`
+			Count int    `json:"count"`
+		}
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil || payload.Key == "" || payload.Count < 1 {
+			return
+		}
+		e.overlaysMu.RLock()
+		overlay := e.overlays[payload.Key]
+		e.overlaysMu.RUnlock()
+		if overlay != nil {
+			overlay.enqueue(e.conn, payload.Key, overlayMessage{invalidate: payload.Count})
 		}
 	case "ui.custom.input":
 		var payload struct {

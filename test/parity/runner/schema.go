@@ -27,9 +27,13 @@ type Scenario struct {
 	Driver string `toml:"driver"`
 	// OpenAIFixture selects the hermetic HTTP/SSE endpoint and isolated model configuration.
 	OpenAIFixture bool `toml:"openai_fixture"`
-	// ProviderFixture selects the same hermetic endpoint for another provider API (anthropic-messages, google-generative-ai, mistral-conversations, or openai-completions). It excludes openai_fixture.
+	// ProviderFixture selects the same hermetic endpoint for another provider API (anthropic-messages, google-generative-ai, mistral-conversations, openai-completions, or openai-responses). It excludes openai_fixture.
 	ProviderFixture string `toml:"provider_fixture"`
-	Model           string `toml:"model"`
+	// ProviderFixtureBasePath stands between the fixture server's address and the API's own base path in the model's baseUrl ("/api.anthropic.com"), for behavior a provider derives from its base URL. Empty keeps the plain address.
+	ProviderFixtureBasePath string `toml:"provider_fixture_base_path"`
+	// ProviderFixtureCompat is written as the compat object of the fixture's model ({ supportsStrictMode = true }). Empty writes no compat member.
+	ProviderFixtureCompat map[string]any `toml:"provider_fixture_compat"`
+	Model                 string         `toml:"model"`
 	// ChangelogFixture replaces only the bundled changelog input in isolated PiG/Pi builds.
 	ChangelogFixture string `toml:"changelog_fixture"`
 
@@ -197,6 +201,11 @@ type TmuxFinalFrame struct {
 	Text string `toml:"text"`
 	// QuietMilliseconds is how long to wait for a late frame before reading the transcript (default 300).
 	QuietMilliseconds int `toml:"quiet_milliseconds"`
+	// WriteLog names the file that holds the bytes each binary's renderers wrote: the scenario sets PI_TUI_WRITE_LOG to the same value for both
+	// binaries (tokens such as {{TEMP}} are expanded per binary). The frames are then read from that file and not from the terminal transcript.
+	// It is for a count the terminal does not get from PiG in both of its modes: PiG's screen writer (D624) sits under that log and does not
+	// send the terminal a frame that changes nothing. What is asserted is then what the renderers wrote, not what reached the terminal.
+	WriteLog string `toml:"write_log"`
 }
 
 // TmuxFrameWatch names a frame a step must never put on screen. The terminal keeps what the program last drew, so a frame the program

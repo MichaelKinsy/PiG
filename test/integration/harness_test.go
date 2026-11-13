@@ -87,6 +87,13 @@ func (h *harness) startArgsAt(args []string, cwd string, extraEnv ...string) {
 	h.startArgsWithProjectTrustAt(args, cwd, true, extraEnv...)
 }
 
+// startBinaryArgsAt is startArgsAt for another executable than the pig the tests built: a Piglet Binary runs in its place.
+func (h *harness) startBinaryArgsAt(bin string, args []string, cwd string, extraEnv ...string) {
+	h.t.Helper()
+	h.bin = bin
+	h.startArgsAt(args, cwd, extraEnv...)
+}
+
 func (h *harness) startArgsWithProjectTrust(args []string, trusted bool, extraEnv ...string) {
 	h.t.Helper()
 	h.startArgsWithProjectTrustAt(args, "", trusted, extraEnv...)

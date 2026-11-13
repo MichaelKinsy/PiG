@@ -36,7 +36,6 @@ package ai
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -77,11 +76,7 @@ func readProviderModules(t *testing.T) []providerModule {
 	}
 	var modules []providerModule
 	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		source := string(data)
+		source := string(readPinnedMirror(t, filepath.ToSlash(file)))
 		if !createProviderCallRe.MatchString(source) {
 			continue
 		}
@@ -131,6 +126,13 @@ func TestBuiltinProvidersMatchPinnedProviderModules(t *testing.T) {
 	}
 	for _, module := range modules {
 		t.Run(module.id, func(t *testing.T) {
+			if slices.Contains(BuiltStrippedProviders(), module.id) {
+				// A build with the pig_strip tag of this provider's API has no provider to compare with the module: BuiltinProviders leaves it out.
+				if slices.ContainsFunc(BuiltinProviders(), func(provider *ModelsProvider) bool { return provider.ID == module.id }) {
+					t.Errorf("BuiltinProviders() built the stripped provider %s", module.id)
+				}
+				return
+			}
 			provider := builtinProvider(module.id)
 			if provider.ID != module.id || (module.name != "" && provider.Name != module.name) {
 				t.Errorf("id/name = %q/%q, upstream %q/%q (%s)", provider.ID, provider.Name, module.id, module.name, module.file)

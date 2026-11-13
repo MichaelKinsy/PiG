@@ -1,0 +1,37 @@
+from = "1.5.2+bacd45b9"
+to = "1.5.2+282b01c8"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/find.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_ancestor_glob_upstream_test.go#TestFindPathGlobsDoNotMatchAboveTheSearchPath", "test:internal/codingagent/tools/find_ancestor_glob_windows_branch_test.go#TestFindWindowsPathPatternDoesNotMatchAboveTheSearchPath", "test:internal/codingagent/tools/find_pi151_test.go#TestFindFdInvocationFdGlobArguments", "test:internal/codingagent/tools/find_pi151_test.go#TestFindFdInvocationWindowsPathPattern", "test:coding/tool_definitions_pi_wire_test.go"]
+rationale = "282b01c80 (#12116, #12066): a relative path pattern is anchored at the search path, like grep's glob, where a leading \"**/\" let it match through the folders above the search path (with the project in ~/src/app, src/**/*.ts returned every .ts file). On POSIX the pattern is prefixed with the search path without its trailing slashes and with \\ * ? [ ] { } escaped, and --ignore-case is passed when the user's pattern is all lowercase (fd's smart case would read the search path's letters); on Windows the minimatch matcher matches the path relative to the search path, and the absolute path for an absolute pattern. The pattern description is the shorter wording grep's glob shares. newFindFdInvocation and findPathFilter (internal/codingagent/tools/find.go) do the same with the platform injected, and the schema carries the description. The vendored find.js and the oracle carry the change through automation/gen/pi-post-release-backports.mjs."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/grep.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/tool_definitions_pi_wire_test.go"]
+rationale = "282b01c80: the glob parameter's description reads \"Filter files by glob pattern relative to path, e.g. 'src/**/*.ts'. Without '/', e.g. '*.ts', it matches file names at any depth\". internal/codingagent/tools/grep.go carries it; the wire test compares both tools' definitions with Pi's (coding/testdata/pi_tool_definitions.json)."
+
+[[files]]
+path = "packages/coding-agent/examples/extensions/gondolin/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = []
+rationale = "282b01c80: the example's matchesToolGlob, used for its find and grep, no longer tries \"**/\" + pattern: a pattern with '/' is relative to the search root, and a leading \"./\" is dropped. PiG ships Pi's example as vendored (shims/pi-dist/pi-coding-agent/examples), and the backports table applies the change to it and to the oracle's package; there is no Go copy of the example."
+
+[[files]]
+path = "packages/coding-agent/test/suite/regressions/12066-find-ancestor-glob.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_ancestor_glob_upstream_test.go#TestFindPathGlobsDoNotMatchAboveTheSearchPath"]
+rationale = "282b01c80 adds five cases: a parent folder named src, anchored patterns against a leading **/ (with ./, basename and absolute patterns), glob characters in the search path, smart case under an upper-case search path, and a symlinked search path (a junction on Windows). The Go test runs the same trees and patterns through the find tool with real fd and expects the same lists."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "282b01c80: Pi's changelog entries. PiG's user-visible change is its own changelog.d fragment."

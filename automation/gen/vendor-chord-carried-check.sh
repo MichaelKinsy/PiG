@@ -4,7 +4,7 @@
 # makes that tree in a scratch worktree of a Pi clone (automation/gen/vendor-chord-derive.sh: a carried commit's conflict
 # outside the roots the copies read leaves that path as it was and is printed; one inside them fails), runs each tree's
 # vendoring script into a scratch directory, and
-# compares the manifest it writes (commit, pin, carried, versions, every file's hash) with the committed one, byte for
+# compares the manifest it writes (commit, pin, carried, patches, versions, every file's hash) with the committed one, byte for
 # byte. The Go tests TestNodeVendoredFilesAreExactlyTheManifests and TestClientVendoredFilesAreExactlyTheManifests prove
 # the other half: the committed files are the ones the committed manifests hash.
 #   PI_REPO        a clone of Pi that has every manifest's commit and carried commits (required)

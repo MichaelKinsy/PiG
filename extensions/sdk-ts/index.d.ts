@@ -116,6 +116,12 @@ export interface PiGViewIntent {
    * handler shows the mount. At most one intent of a mount has it; it names no node and its `arg` accepts `{}`.
    */
   whenHidden?: boolean;
+  /**
+   * Names the intent a client raises, with `{}`, when the user dismisses a dialog or overlay mount: the handler closes
+   * the mount. At most one intent of a mount has it; it names no node and its `arg` accepts `{}`. Without one, Escape
+   * leaves the mount and it stays open until the extension closes it.
+   */
+  dismiss?: boolean;
 }
 export interface PiGViewAsset {
   id: string;
@@ -124,7 +130,11 @@ export interface PiGViewAsset {
   sha256: string;
   delivery: "inline" | "managed";
 }
-/** The D107 wire view, `{ root: { kind: "text", text: "..." } }`. */
+/**
+ * The D107 wire view, `{ root: { kind: "text", text: "..." } }`. A node of any kind may carry `id`, a string unique in the view: an
+ * a11y, focus or drawing record names a node by it. The colour of a `text` or a `box` node is `bg`, a background token; neither has a
+ * `color` member, and the host draws none it is sent.
+ */
 export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
 /** D614: one event of a grid cell: its text (at most 256 bytes) and its colour (a theme token, "#rrggbb" or "#rrggbbaa"). */
 export type PiGViewGridChip = { text: string; color?: string };
@@ -245,6 +255,19 @@ export interface PiGViewFocus {
   request?: "mount" | "update";
   restore?: "previous" | "self";
 }
+/** A gesture a binding may name. */
+export type PiGViewGesture = "swipe-left" | "swipe-right" | "swipe-up" | "swipe-down";
+/**
+ * Ties a key or a gesture to an intent of the same content that names no node. A client fires it only while the mount holds
+ * the focus and the focused node did not take the key. `key` is a key id as `registerShortcut` writes it (`"d"`,
+ * `"shift+left"`, `"ctrl+shift+p"`); `arg` is the constant argument the intent is raised with (`{}` when absent) and `name`
+ * what a client shows for the binding.
+ */
+export type PiGViewBinding = ({ key: string; gesture?: never } | { gesture: PiGViewGesture; key?: never }) & {
+  intent: string;
+  arg?: unknown;
+  name?: string;
+};
 /** One diagnostic of a mount; `count` is how often it happened. */
 export interface PiGViewNotice {
   code: "invalid" | "unsupported" | "limit" | "stale" | "terminal" | "refused" | "failed" | "timeout" | "undrawn" | "unfocused";
@@ -273,6 +296,8 @@ export interface PiGViewContent {
   a11y?: PiGViewA11y[];
   /** At most 256 entries; at most one requests the focus. */
   focus?: PiGViewFocus[];
+  /** At most 32 entries; a key or a gesture is bound once. */
+  bindings?: PiGViewBinding[];
 }
 export interface PiGViewMount extends PiGViewContent {
   key: string;

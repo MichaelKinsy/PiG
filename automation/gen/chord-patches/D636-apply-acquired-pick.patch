@@ -1,0 +1,41 @@
+D636: the followers apply the pick their watch was acquired with before start (docs/parity/DIVERGENCES.md, D636)
+--- a/packages/chord/src/surfaces/active-language.ts
++++ b/packages/chord/src/surfaces/active-language.ts
+@@ -58,7 +58,12 @@
+ 	choice.pick.watch(ctx).then(
+-		(watch) =>
+-			watch.start(async (call) => {
+-				if (call.kind === "value") pick = call.value;
+-				update();
+-			}),
++		(watch) => {
++			// pig divergence (D636): the pick the watch was acquired with is applied before `start`. Pi sets `pick` only in a
++			// listener call, so a language stored before this client's hold had its first values was never applied.
++			pick = watch.value;
++			update();
++			watch.start(async (call) => {
++				if (call.kind === "value") pick = call.value;
++				update();
++			});
++		},
+ 		// The hold ended (the follower stopped) before its first value.
+--- a/packages/chord/src/surfaces/active-theme.ts
++++ b/packages/chord/src/surfaces/active-theme.ts
+@@ -44,7 +44,12 @@
+ 	choice.pick.watch(ctx).then(
+-		(watch) =>
+-			watch.start(async (call) => {
+-				if (call.kind === "value") pick = call.value as ThemePick;
+-				update();
+-			}),
++		(watch) => {
++			// pig divergence (D636): the pick the watch was acquired with is applied before `start`. Pi sets `pick` only in a
++			// listener call, so a theme stored before this client's hold had its first values was never applied.
++			pick = watch.value as ThemePick;
++			update();
++			watch.start(async (call) => {
++				if (call.kind === "value") pick = call.value as ThemePick;
++				update();
++			});
++		},
+ 		// The hold ended (the follower stopped) before its first value.

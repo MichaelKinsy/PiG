@@ -25,6 +25,18 @@
 # the first frame, one 4.7 kB frame, then the cursor-only frame. The cursor-only frame is the render coding-agent loadAllHighlightLanguages() requests when the grammar
 # import resolves (interactive-mode.ts), and Pi writes it for every request, so the count is exact unless a later frame rewrites the footer; none was seen.
 
+# Read above PiG's screen writer since 2026-11-12 (container tern-ci:v10, tmux 3.4, this scenario alone, 10 runs in each of PiG's modes). With the screen
+# writer on (D624) the terminal got no cursor-only frame from PiG after the text, 10 runs of 10: the writer does not send a frame that changes nothing. Its
+# record log of the same runs (PIG_TUI_SCREEN_WRITER_LOG) shows that the renderer wrote exactly one such frame after the text (29 bytes in, none out) in 10
+# of 10. With PIG_TUI_SCREEN_WRITER=pi the transcript held one, 10 of 10. D618 is about the frame the renderer is asked for, so the frames of both binaries
+# are read from PI_TUI_WRITE_LOG, the log of what the renderers wrote (Pi's ProcessTerminal.write and PiG's port of it; PiG's screen writer sits under it):
+# read that way, this scenario alone, Pi wrote one cursor-only frame after the text and PiG one in 30 pairs of 30 with the screen writer and in 30 of 30 with
+# PIG_TUI_SCREEN_WRITER=pi. A write log that is missing or lacks the text fails the run ("the text is not in the raw transcript").
+# What the counts assert now: what each binary's renderer WROTE, read from PI_TUI_WRITE_LOG on both sides: exactly one cursor-only frame after the footer's
+# text. For Pi, and for PiG with PIG_TUI_SCREEN_WRITER=pi, those are the bytes on the wire; for PiG with the screen writer they are the bytes above the
+# writer. What they no longer assert: that the frame reaches the terminal; from PiG with the screen writer it does not. What the terminal keeps of the
+# writer's bytes is compared by fullscreen/19-alt-screen-row-grows-in-place.
+
 # lint-known-gap: no equality comparator. The start screen carries each product's own banner (PiG's logo and "PiG can explain..." hint against Pi's
 # name), which no recorded normalization covers; this scenario asserts the byte stream after the footer's text, and the settled screens are compared
 # by the family's scenarios that follow a start with a prompt (68-no-frame-after-reply and the others).
@@ -40,8 +52,8 @@ driver = "interactive-tmux"
 model = "test-faux/faux-1"
 
 [env]
-pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
-pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "PI_TUI_WRITE_LOG={{TEMP}}/renderer-writes.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "PI_TUI_WRITE_LOG={{TEMP}}/renderer-writes.log"]
 pi_extensions = ["../../testdata/test-faux-provider.ts"]
 pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 pi_args = ["--session-dir", "{{TEMP}}/sessions"]
@@ -61,6 +73,7 @@ wait_timeout_seconds = 10
 [tmux.steps.final_frame]
 text = "(auto)"
 quiet_milliseconds = 2000
+write_log = "{{TEMP}}/renderer-writes.log"
 
 [assert]
 both_reach_ready = true

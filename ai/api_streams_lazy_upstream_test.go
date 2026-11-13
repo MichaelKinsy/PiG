@@ -4,9 +4,11 @@ package ai
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -67,6 +69,10 @@ func TestLazyAPIEntryPointsRouteToTheirOwnAPIUpstream(t *testing.T) {
 		{name: "openai-responses", api: OpenAIResponsesAPI, model: "gpt-5.1", apiKey: "k", path: "/responses", bodyKey: "input"},
 	}
 	for _, tc := range cases {
+		if slices.Contains(BuiltStrippedAPIs(), tc.name) {
+			// A build with this API's pig_strip tag sends no request; TestLazyAPIEntryPointsReportSetupFailuresOnTheStreamUpstream holds what its entry point reports.
+			continue
+		}
 		for _, simple := range []bool{false, true} {
 			name := tc.name + "/stream"
 			if simple {
@@ -129,6 +135,10 @@ func TestLazyAPIEntryPointsReportSetupFailuresOnTheStreamUpstream(t *testing.T) 
 		{"google-vertex", GoogleVertexAPI, "Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass project in options."},
 	}
 	for _, tc := range cases {
+		if slices.Contains(BuiltStrippedAPIs(), tc.name) {
+			// A build with this API's pig_strip tag reports the strip as the setup failure.
+			tc.want = fmt.Sprintf("Provider p: API %s is stripped from this Piglet (strip.apis: %s)", tc.name, tc.name)
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			srv, seen := recordingEndpoint(t)
 			model := &Model{ID: "model-x", DisplayName: "model-x", Input: []string{"text"}, ProviderMeta: ProviderMetadata{API: APIAnthropicMessages, ProviderID: "p", BaseURL: srv.URL}}
