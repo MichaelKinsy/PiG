@@ -23,6 +23,7 @@ export const RUNTIME_REQUIRES = Object.freeze([
   "./shims/pi-dist/pi-tui/sdk-bundle/index.js",
   "./shims/pi-dist/pi-tui/terminal-image.js",
   "./shims/pi-dist/pi-tui/tui.js",
+  "./shims/pi-dist/pi-tui/utils.js",
   "./shims/pi-tui-emoji.mjs",
   "./shims/typebox-compile.mjs",
   "./shims/typebox-value.mjs",

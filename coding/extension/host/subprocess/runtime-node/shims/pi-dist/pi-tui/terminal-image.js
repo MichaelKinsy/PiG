@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { isAbsolute } from "node:path";
 import { pathToFileURL } from "node:url";
 // Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
-import { visibleWidth } from "./utils.js";
+import { visibleWidth } from "../../pi-tui-utils-lazy.mjs";
 let cachedCapabilities = null;
 let capabilityOverrides = {};
 // Default cell dimensions - updated by TUI when terminal responds to query

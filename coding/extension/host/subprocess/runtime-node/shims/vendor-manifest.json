@@ -16645,7 +16645,8 @@
       },
       "source": "dist/terminal-image.js",
       "sourceSha256": "07b2fd9443ddfbf13fd65ddb0d7d55898be7805c6c53ba3fd36dc0918d32d732",
-      "sha256": "07b2fd9443ddfbf13fd65ddb0d7d55898be7805c6c53ba3fd36dc0918d32d732"
+      "sha256": "33c878a14868ca3e9912c8776e38ab077603976a0450a7079924412a7cc51da1",
+      "rewrite": "module specifiers"
     },
     {
       "path": "pi-dist/pi-tui/terminal.js",
