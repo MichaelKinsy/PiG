@@ -123,7 +123,7 @@ func TestLexemeScannerFindsWhatTheKeywordPatternFinds(t *testing.T) {
 			}
 			// A unit of the first class, for the text that puts every unit after one.
 			first := rune(-1)
-			for u := rune(0); u < 128; u++ {
+			for u := range rune(128) {
 				if scanner.has(&scanner.first, u) {
 					first = u
 					break
