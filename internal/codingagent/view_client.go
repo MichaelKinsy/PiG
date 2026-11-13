@@ -17,8 +17,8 @@ import (
 // pig additive (D614): the terminal as a client of the plugin view registry. A Piglet selects it (viewClient: terminal);
 // Stock PiG attaches none. The client attaches to the registry of the session's extension bridge, draws the mounts it is
 // sent in the regions of viewSlots with the D107 view kit, and raises their intents from the keys and clicks of the
-// user. Until a mount arrives it adds no component to the tree, runs no goroutine and no timer, and no frame runs its
-// code.
+// user and, for a mount that holds the focus, from the keys the mount binds (view_client_bindings.go). Until a mount
+// arrives it adds no component to the tree, runs no goroutine and no timer, and no frame runs its code.
 //
 // Every field below the mutex is owned by the interactive loop. The registry's sink and the goroutine of an intent in
 // flight only append to the queue and post one drain task.
@@ -383,9 +383,11 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 	}
 	m.ref, m.intents, m.digest, m.title = s.Mount, s.Intents, s.Digest, s.Title
 	if redraw {
+		m.bind(s.Bindings)
 		for i := range s.Intents {
-			// The intent a hidden mount takes is offered on the tab row while the mount is hidden.
-			if d := &s.Intents[i]; d.NodeKey == "" && (!d.WhenHidden || !slot.tabs) {
+			// The intent a hidden mount takes is offered on the tab row while the mount is hidden, and one a key of the
+			// mount is bound to is offered by that key.
+			if d := &s.Intents[i]; d.NodeKey == "" && (!d.WhenHidden || !slot.tabs) && !m.binds(d.Name) {
 				m.reportNotOffered(d.Name, "the terminal offers no control for intent "+d.Name+", which names no node")
 			}
 		}
@@ -538,8 +540,32 @@ func (c *viewClient) focusKey(data string) *tui.TuiInputResult {
 	return &tui.TuiInputResult{Consume: true}
 }
 
-// unhandledKey takes a key the focused node of a panel did not consume. The terminal drops it.
-func (c *viewClient) unhandledKey(*viewMount, string) {}
+// unhandledKey takes a key the focused node of a panel did not consume. It is the one place a key reaches the mount's
+// bindings: the mount holds the focus and its node declined the key. The key the terminal reported is compared with the
+// parsed key of each binding (tui.MatchesKeyID), never with its text, so the order the plugin wrote the modifiers in
+// changes nothing. The first match raises the binding's intent, with no node, and its argument; a key no binding names
+// is dropped. At most 32 bindings are compared.
+func (c *viewClient) unhandledKey(m *viewMount, data string) {
+	if !m.focused || !m.keys {
+		return
+	}
+	for i := range m.bindings {
+		b := &m.bindings[i]
+		if b.Key == "" || !tui.MatchesKeyID(data, b.Key) {
+			continue
+		}
+		at := slices.IndexFunc(m.intents, func(d uiview.IntentDecl) bool { return d.Name == b.Intent && d.NodeKey == "" })
+		if at < 0 {
+			return
+		}
+		arg := b.Arg
+		if len(arg) == 0 {
+			arg = json.RawMessage(`{}`)
+		}
+		c.raise(m, &m.intents[at], arg)
+		return
+	}
+}
 
 // raise raises one intent of m off the loop. A mount has at most one intent in flight: an activation made before the
 // last one settled was made on a view whose answer the user has not seen (the registry would settle it stale once the

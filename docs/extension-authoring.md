@@ -626,6 +626,9 @@ there are any.
    answers `invalid` for a key bound twice and for a reserved key (`escape`, `tab`, `f6`, and `ctrl` with `c`, `d` or `z`). A
    client that cannot honour a binding leaves an `unsupported` notice with the path `bindings[i]`; a client may also state the
    claim `input.bindings`, which an alternative can test.
+   In the terminal a panel that binds a key can be entered with F6 even when nothing in it takes keys, the named bindings
+   are listed on one row under the focused view, and gestures are not offered (you read the notice). While an `input` or
+   `editor` node holds the keys of the view it takes every key, so give such a view another way to its actions.
 9. Leave a result when you finish: `FinishViewWith(ref, result)`, `finish_view(mount, result=...)`, `finish_view_with`,
    `(ctx-finish-view ctx mount :result value)`, `ctx.ui.finishView(mount, result)`. The reply and the state carry it back.
 10. Read what went wrong with `ViewDiagnostics(key)`, `view_diagnostics`, `view_diagnostics`, `ctx-view-diagnostics` or
