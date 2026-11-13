@@ -18323,7 +18323,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthConvertMessagesDetailed"
+        "call:ai/anthropic.go#anthImageBlock"
       ],
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
@@ -18345,7 +18345,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthConvertMessagesDetailed"
+        "call:ai/anthropic.go#anthImageBlock"
       ],
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
@@ -63762,7 +63762,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthConvertMessagesDetailed"
+        "call:ai/anthropic.go#anthImageBlock"
       ],
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
@@ -63784,7 +63784,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthConvertMessagesDetailed"
+        "call:ai/anthropic.go#anthImageBlock"
       ],
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",

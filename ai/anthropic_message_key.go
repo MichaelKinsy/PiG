@@ -47,8 +47,11 @@ func (k *messageKey) anthBlock(b *anthContentBlock) bool {
 		return false
 	}
 	k.optionalBool(b.IsError)
-	if !k.anthValue(b.Source) {
-		return false
+	k.present(b.Source != nil)
+	if b.Source != nil {
+		k.text(b.Source.Type)
+		k.text(b.Source.MediaType)
+		k.text(b.Source.Data)
 	}
 	k.text(b.Thinking)
 	k.text(b.Signature)
