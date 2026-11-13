@@ -833,3 +833,20 @@
         (check-equal "viewport=done" (pig:jget (kth-args h :notify "ui.custom.close") "result"))
         (hsend (kth-host h) "type" "call_result" "id" (pig:jget (fourth call) "id") "call_result" (pig:obj "result" (pig:obj "ok" t "result" "viewport=done")))
         (kth-next h :response "response")))))
+
+;;; ---------------------------------------------------------------- the host's invalidation of a mounted component
+
+(deftest an-invalidate-queued-for-a-closed-overlay-is-dropped
+  ;; ui.custom.invalidate is one event of the component's serial queue: a component that closed while it was queued is not
+  ;; invalidated, not rendered, and no error is raised or sent
+  (let* ((invalidations 0) (renders 0)
+         (ov (pig::uc-make-ov (pig:make-custom-component :render (lambda (width) (declare (ignore width)) (incf renders) (list "row"))
+                                                         :invalidate (lambda () (incf invalidations)))
+                              #'identity)))
+    (check (pig::uc-enqueue ov :invalidate 2) "queued while the component is mounted")
+    (pig::uc-stop ov)
+    (pig::uc-worker (pig:make-extension "kit-invalidate") "custom-1" ov)
+    (check-equal '(0 0) (list invalidations renders) "no invalidate and no render after the close")
+    (let ((queued (length (pig::uc-ov-events ov))))
+      (check (pig::uc-enqueue ov :invalidate 1) "an invalidate for a closed component is not an error")
+      (check-equal queued (length (pig::uc-ov-events ov)) "and it is not queued"))))

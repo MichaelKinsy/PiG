@@ -1184,6 +1184,10 @@ class _RemoteOverlayState:
         """Queue the host's ui.custom.focus behind the input already queued."""
         return self._enqueue("focus", focused)
 
+    def enqueue_invalidate(self, count: int) -> bool:
+        """Queue the host's ui.custom.invalidate (its TUI was invalidated ``count`` times) behind the input already queued."""
+        return self._enqueue("invalidate", count)
+
     @property
     def is_view(self) -> bool:
         """Whether the component describes its frames as kit views."""
@@ -5998,6 +6002,17 @@ class Extension:
             if overlay is not None and not overlay.enqueue_focus(bool(args.get("focused"))):
                 self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
             return
+        if method == "ui.custom.invalidate":
+            # The theme_change that precedes it on the connection is applied by now; the component's worker runs invalidate() and renders.
+            key = str(args.get("key") or "")
+            count = args.get("count")
+            if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+                return
+            with self._overlay_lock:
+                overlay = self._overlays.get(key)
+            if overlay is not None and not overlay.enqueue_invalidate(count):
+                self._notify("ui.custom.close", {"key": key, "error": "focused input queue is full"})
+            return
         if method == "ui.custom.input":
             key = str(args.get("key") or "")
             with self._overlay_lock:
@@ -6833,6 +6848,13 @@ class Extension:
                     continue
                 if kind == "focus":
                     overlay.apply_focus(bool(data))
+                elif kind == "invalidate":
+                    # Pi's optional Component.invalidate(): the host's TUI was invalidated (a theme change, a cell-size report, a change
+                    # of image support). A component without it is rendered again all the same.
+                    invalidate = getattr(overlay.component, "invalidate", None)
+                    if callable(invalidate):
+                        for _ in range(data):
+                            invalidate()
                 elif kind in ("input", "view_event", "mouse"):
                     if kind == "input":
                         result = overlay.component.handle_input(data or "")
