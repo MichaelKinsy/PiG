@@ -169,6 +169,33 @@ from .provider import (
 # MaxFrameSize constants.
 MAX_FRAME_SIZE = 128 * 1024 * 1024
 
+
+class _Null:
+    """The type of :data:`NULL`."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "pig_sdk.NULL"
+
+    def __bool__(self) -> bool:
+        return False
+
+
+NULL: Any = _Null()
+"""An optional session entry member written as JSON null.
+
+``None`` leaves such a member out, as Pi leaves out an argument that is not given (``appendEntry(customType)``). ``NULL`` writes it as null, as
+``appendEntry(customType, null)`` does. It is accepted for the data of ``append_entry``, for the details of ``send_message`` and anywhere in a handler's
+result (a draft's ``data``, ``details`` or ``usage``, a compaction's ``details`` or ``usage``), where ``None`` under a key is also null."""
+
+
+def _json_default(value: Any) -> Any:
+    """The hook json.dumps calls for a value it cannot encode: NULL is JSON null."""
+    if value is NULL:
+        return None
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
 # Winsock's AF_UNIX family and sockaddr_un path capacity (afunix.h).
 _WINSOCK_AF_UNIX = 1
 _WINSOCK_UNIX_PATH_MAX = 108
@@ -1345,7 +1372,7 @@ def _dispose_remote_component(component: RemoteComponent) -> None:
 def _json_text(value: Any) -> str:
     """json.dumps of ``value``, written with a stack of its own when the value is nested past the interpreter's recursion limit."""
     try:
-        return json.dumps(value)
+        return json.dumps(value, default=_json_default)
     except RecursionError:
         return _dumps_deep(value)
 
@@ -3107,7 +3134,7 @@ class Context:
         optional, as upstream's are: None is sent as unset and the host applies
         upstream's default for the session's state. ``details`` is upstream's
         message ``details``, extension data kept with the message and not sent
-        to the model; None leaves it unset.
+        to the model; None leaves it unset and ``NULL`` writes it as null.
 
         ``trigger_turn=True`` marks the session busy, and ``is_idle`` stays
         busy until the code that sent it yields, as in Pi until its first
@@ -3138,7 +3165,11 @@ class Context:
         return self._call("getScopedModels", {}).get("result") or []
 
     def append_entry(self, custom_type: str, data: Any) -> None:
-        self._call("appendEntry", {"customType": custom_type, "data": data})
+        """Append a custom entry. ``None`` leaves the entry without a ``data`` member, as Pi's ``appendEntry(customType)`` does; ``NULL`` writes the member as null, as ``appendEntry(customType, null)`` does."""
+        args: dict[str, Any] = {"customType": custom_type}
+        if data is not None:
+            args["data"] = data
+        self._call("appendEntry", args)
 
     # Editor/session/model state -------------------------------------------
 
@@ -7145,12 +7176,12 @@ class Extension:
         if self._sock is None:
             raise RuntimeError("extension socket is not connected")
         try:
-            data = json.dumps(env, separators=(",", ":"), allow_nan=False).encode()
+            data = json.dumps(env, separators=(",", ":"), allow_nan=False, default=_json_default).encode()
         except ValueError:
             # Python writes NaN and Infinity as bare words, which is not JSON: the host refused the frame and the extension's connection ended.
             # JSON.stringify writes them as null, so each SDK sends null.
             try:
-                data = json.dumps(_non_finite_to_null(env), separators=(",", ":"), allow_nan=False).encode()
+                data = json.dumps(_non_finite_to_null(env), separators=(",", ":"), allow_nan=False, default=_json_default).encode()
             except RecursionError:
                 data = _dumps_deep(env).encode()
         except RecursionError:

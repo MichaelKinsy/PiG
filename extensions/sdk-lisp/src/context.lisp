@@ -461,7 +461,8 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   nil)
 
 (defun ctx-append-entry (ctx custom-type data)
-  (ctx-call-host ctx "appendEntry" (obj "customType" custom-type "data" data)) nil)
+  "DATA NIL leaves the entry without a data member, as Pi's appendEntry(customType) does; :NULL writes the member as null, as appendEntry(customType, null) does."
+  (ctx-call-host ctx "appendEntry" (if (null data) (obj "customType" custom-type) (obj "customType" custom-type "data" data))) nil)
 
 (defun ctx-set-session-name (ctx name)
   (ctx-call-host ctx "setSessionName" (obj "name" name)) nil)

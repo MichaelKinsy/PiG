@@ -1137,15 +1137,18 @@ func (s *Session) AppendUsage(kind, provider, model string, usage ai.Usage, note
 // compaction retains no preceding entries. The entry also records the current
 // projected system state, when there is one, stamped with the entry time.
 func (s *Session) AppendCompaction(summary, firstKeptEntryID string, tokensBefore int, details any, fromHook bool, usage *ai.Usage) (string, error) {
-	return s.appendCompaction(summary, firstKeptEntryID, tokensBefore, details, fromHook, false, usage)
+	return s.AppendCompactionEntry(CompactionEntry{Summary: summary, FirstKeptEntryID: firstKeptEntryID, TokensBefore: tokensBefore, Details: details, Usage: usage, FromHook: fromHook})
 }
 
 // AppendCompactionHookUndefined is AppendCompaction for a caller that leaves fromHook undefined, as an extension's SessionManager.appendCompaction may: the entry then has no fromHook member.
 func (s *Session) AppendCompactionHookUndefined(summary, firstKeptEntryID string, tokensBefore int, details any, usage *ai.Usage) (string, error) {
-	return s.appendCompaction(summary, firstKeptEntryID, tokensBefore, details, false, true, usage)
+	return s.AppendCompactionEntry(CompactionEntry{Summary: summary, FirstKeptEntryID: firstKeptEntryID, TokensBefore: tokensBefore, Details: details, Usage: usage, FromHookAbsent: true})
 }
 
-func (s *Session) appendCompaction(summary, firstKeptEntryID string, tokensBefore int, details any, fromHook, fromHookUndefined bool, usage *ai.Usage) (string, error) {
+// AppendCompactionEntry is AppendCompaction with the members as members holds them: its summary, firstKeptEntryId, tokensBefore, details, usage and fromHook, so a
+// caller that read them from an extension's JSON keeps a usage written as null (UsageNull) and an absent fromHook (FromHookAbsent). The session sets the type,
+// the identity, the time and the system message.
+func (s *Session) AppendCompactionEntry(members CompactionEntry) (string, error) {
 	now := time.Now().UTC()
 	// compactionSystemMessage only reads the context's latest system message, so it reads the kept projection rather than a copy of the
 	// whole context projected again.
@@ -1159,23 +1162,12 @@ func (s *Session) appendCompaction(summary, firstKeptEntryID string, tokensBefor
 	if err != nil {
 		return "", err
 	}
-	if firstKeptEntryID == "" {
-		firstKeptEntryID = id
+	entry := members
+	entry.SessionEntryBase = SessionEntryBase{Type: "compaction", ID: id, ParentID: s.GetLeafID(), Timestamp: now.Format("2006-01-02T15:04:05.000Z")}
+	if entry.FirstKeptEntryID == "" {
+		entry.FirstKeptEntryID = id
 	}
-	entry := CompactionEntry{
-		Type:             "compaction",
-		ID:               id,
-		ParentID:         s.GetLeafID(),
-		Timestamp:        now.Format("2006-01-02T15:04:05.000Z"),
-		Summary:          summary,
-		FirstKeptEntryID: firstKeptEntryID,
-		TokensBefore:     tokensBefore,
-		Details:          details,
-		Usage:            usage,
-		FromHook:         fromHook,
-		FromHookAbsent:   fromHookUndefined,
-		SystemMessage:    systemMessage,
-	}
+	entry.SystemMessage = systemMessage
 	if err := s.AppendEntry(entry); err != nil {
 		return "", err
 	}
@@ -1190,6 +1182,12 @@ func (s *Session) appendCompaction(summary, firstKeptEntryID string, tokensBefor
 // Mirrors upstream branchWithSummary(branchFromId: string | null, ...) in
 // session-manager.ts.
 func (s *Session) BranchWithSummary(parentID *string, summary string, details any, fromHook bool, usage *ai.Usage) (string, error) {
+	return s.BranchWithSummaryEntry(parentID, BranchSummaryEntry{Summary: summary, Details: details, Usage: usage, FromHook: fromHook})
+}
+
+// BranchWithSummaryEntry is BranchWithSummary with the members as members holds them: its summary, details, usage and fromHook, so a caller that read them from
+// an extension's JSON keeps a usage written as null (UsageNull). The session sets the type, the identity, the time, the parent and fromId.
+func (s *Session) BranchWithSummaryEntry(parentID *string, members BranchSummaryEntry) (string, error) {
 	s.leafAppendMu.Lock()
 	defer s.leafAppendMu.Unlock()
 	s.mu.RLock()
@@ -1209,17 +1207,10 @@ func (s *Session) BranchWithSummary(parentID *string, summary string, details an
 	if err != nil {
 		return "", err
 	}
-	entry := BranchSummaryEntry{
-		Type:      "branch_summary",
-		ID:        id,
-		ParentID:  parentID, // nil = root-level entry
-		Timestamp: RFC3339NowNano(),
-		FromID:    fromID,
-		Summary:   summary,
-		Details:   details,
-		FromHook:  fromHook,
-		Usage:     usage,
-	}
+	entry := members
+	// A nil parent is a root-level entry.
+	entry.SessionEntryBase = SessionEntryBase{Type: "branch_summary", ID: id, ParentID: parentID, Timestamp: RFC3339NowNano()}
+	entry.FromID = fromID
 	if err := s.AppendEntry(entry); err != nil {
 		return "", err
 	}
@@ -1229,6 +1220,13 @@ func (s *Session) BranchWithSummary(parentID *string, summary string, details an
 // AppendLabelChange writes a label entry for targetID and returns its id. label=nil clears
 // any existing label. Mirrors upstream appendLabelChange in session-manager.ts.
 func (s *Session) AppendLabelChange(targetID string, label *string) (string, error) {
+	return s.AppendLabelEntry(LabelEntry{TargetID: targetID, Label: label})
+}
+
+// AppendLabelEntry is AppendLabelChange with the members as members holds them: its targetId and label, so a caller keeps a label written as null (LabelNull),
+// which clears the label as an absent one does. The session sets the type, the identity and the time.
+func (s *Session) AppendLabelEntry(members LabelEntry) (string, error) {
+	targetID := members.TargetID
 	s.mu.RLock()
 	_, ok := s.slotOf(targetID)
 	s.mu.RUnlock()
@@ -1241,14 +1239,8 @@ func (s *Session) AppendLabelChange(targetID string, label *string) (string, err
 	if err != nil {
 		return "", err
 	}
-	entry := LabelEntry{
-		Type:      "label",
-		ID:        id,
-		ParentID:  s.GetLeafID(),
-		Timestamp: RFC3339NowNano(),
-		TargetID:  targetID,
-		Label:     label,
-	}
+	entry := members
+	entry.SessionEntryBase = SessionEntryBase{Type: "label", ID: id, ParentID: s.GetLeafID(), Timestamp: RFC3339NowNano()}
 	return id, s.AppendEntry(entry)
 }
 

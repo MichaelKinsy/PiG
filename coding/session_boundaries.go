@@ -283,7 +283,7 @@ func applyBoundaryDrafts(manager *icodingagent.Session, drafts []extension.Sessi
 				firstKept = *draft.FirstKeptEntryID
 			}
 			tokensBefore := compaction.EstimateProjectedContextTokens(manager.BuildSessionProjection(), manager.GetContextBranch()).Tokens
-			id, err = manager.AppendCompaction(draft.Summary, firstKept, tokensBefore, draft.Details, true, draft.Usage)
+			id, err = manager.AppendCompactionEntry(icodingagent.CompactionEntry{Summary: draft.Summary, FirstKeptEntryID: firstKept, TokensBefore: tokensBefore, Details: draft.Details, Usage: draft.Usage, UsageNull: draft.UsageNull, FromHook: true})
 		default:
 			return nil, fmt.Errorf("unsupported session boundary draft type %q", draft.Type)
 		}

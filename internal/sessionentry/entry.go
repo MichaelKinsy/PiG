@@ -74,12 +74,15 @@ type UsageEntry struct {
 // Pig-written entries serialize with the same key order.
 type CompactionEntry struct {
 	SessionEntryBase
-	Summary          string    `json:"summary"`
-	FirstKeptEntryID string    `json:"firstKeptEntryId"`
-	TokensBefore     int       `json:"tokensBefore"`
-	Details          any       `json:"details,omitempty"`
-	Usage            *ai.Usage `json:"usage,omitempty"`
-	FromHook         bool      `json:"fromHook"`
+	Summary          string `json:"summary"`
+	FirstKeptEntryID string `json:"firstKeptEntryId"`
+	TokensBefore     int    `json:"tokensBefore"`
+	// Details is the value an extension or the summarizer supplied. Nil is no details member; orderedjson.Null is a member written as null.
+	Details any       `json:"details,omitempty"`
+	Usage   *ai.Usage `json:"usage,omitempty"`
+	// UsageNull marks a nil Usage as an explicit null: an extension wrote usage: null, which JSON.stringify writes as `"usage":null`. Without it a nil Usage is left out.
+	UsageNull bool `json:"-"`
+	FromHook  bool `json:"fromHook"`
 	// FromHookAbsent leaves the fromHook member out when the entry is written: Pi's `fromHook?: boolean` left undefined by an extension's appendCompaction.
 	FromHookAbsent bool `json:"-"`
 	// SystemMessage is the complete prompt and tool state at this compaction
@@ -87,21 +90,29 @@ type CompactionEntry struct {
 	SystemMessage json.RawMessage `json:"systemMessage,omitempty"`
 }
 
-// UnmarshalJSON keeps the member order of `details`, the object an extension wrote (session-manager.ts appendCompaction).
+// UnmarshalJSON keeps the member order of `details`, the object an extension wrote (session-manager.ts appendCompaction), and a null `details` or `usage`
+// apart from an absent one.
 func (e *CompactionEntry) UnmarshalJSON(data []byte) error {
 	type plain CompactionEntry
-	return orderedjson.UnmarshalFields(data, (*plain)(e), "details")
+	if err := orderedjson.UnmarshalFields(data, (*plain)(e), "details"); err != nil {
+		return err
+	}
+	e.UsageNull = e.Usage == nil && orderedjson.IsNullMember(data, "usage")
+	return nil
 }
 
 // BranchSummaryEntry member order matches Pi's branchWithSummary object literal (session-manager.ts:1612-1622); fromHook is always written
 // because navigateTree passes fromExtension as a boolean (agent-session.ts:4110-4114).
 type BranchSummaryEntry struct {
 	SessionEntryBase
-	FromID   string    `json:"fromId"`
-	Summary  string    `json:"summary"`
-	Details  any       `json:"details,omitempty"`
-	Usage    *ai.Usage `json:"usage,omitempty"`
-	FromHook bool      `json:"fromHook"`
+	FromID  string `json:"fromId"`
+	Summary string `json:"summary"`
+	// Details is the value an extension or the summarizer supplied. Nil is no details member; orderedjson.Null is a member written as null.
+	Details any       `json:"details,omitempty"`
+	Usage   *ai.Usage `json:"usage,omitempty"`
+	// UsageNull marks a nil Usage as an explicit null, which JSON.stringify writes as `"usage":null`. Without it a nil Usage is left out.
+	UsageNull bool `json:"-"`
+	FromHook  bool `json:"fromHook"`
 
 	// fromHookAbsent records that the record this entry was decoded from had no fromHook member (Pi's `fromHook?: boolean` left undefined, session-manager.ts:1604), so
 	// writing it back leaves the member out as Pi's parsed object does. An entry built in memory always writes it: PiG's callers pass a boolean, as navigateTree does.
@@ -119,13 +130,15 @@ func (e *BranchSummaryEntry) UnmarshalJSON(data []byte) error {
 		FromHook *bool `json:"fromHook"`
 	}
 	e.fromHookAbsent = json.Unmarshal(data, &probe) == nil && probe.FromHook == nil
+	e.UsageNull = e.Usage == nil && orderedjson.IsNullMember(data, "usage")
 	return nil
 }
 
 type CustomEntry struct {
 	SessionEntryBase
 	CustomType string `json:"customType"`
-	Data       any    `json:"data,omitempty"`
+	// Data is the value an extension supplied. Nil is no data member (Pi's undefined); orderedjson.Null is a member written as null.
+	Data any `json:"data,omitempty"`
 }
 
 type CustomMessageEntry struct {
@@ -133,7 +146,8 @@ type CustomMessageEntry struct {
 	CustomType string `json:"customType"`
 	Content    any    `json:"content"` // string | []ContentBlock
 	Display    bool   `json:"display"`
-	Details    any    `json:"details,omitempty"`
+	// Details is the value an extension supplied. Nil is no details member; orderedjson.Null is a member written as null.
+	Details any `json:"details,omitempty"`
 }
 
 // UnmarshalJSON keeps the member order of `data`, the object an extension wrote (session-manager.ts appendCustomEntry).
@@ -154,6 +168,18 @@ type LabelEntry struct {
 	SessionEntryBase
 	TargetID string  `json:"targetId"`
 	Label    *string `json:"label,omitempty"`
+	// LabelNull marks a nil Label as an explicit null, which JSON.stringify writes as `"label":null`. Without it a nil Label is left out. Both clear the label.
+	LabelNull bool `json:"-"`
+}
+
+// UnmarshalJSON keeps a null `label` apart from an absent one.
+func (e *LabelEntry) UnmarshalJSON(data []byte) error {
+	type plain LabelEntry
+	if err := json.Unmarshal(data, (*plain)(e)); err != nil {
+		return err
+	}
+	e.LabelNull = e.Label == nil && orderedjson.IsNullMember(data, "label")
+	return nil
 }
 
 // SessionInfoEntry stores a session-level name (set via `/name`).

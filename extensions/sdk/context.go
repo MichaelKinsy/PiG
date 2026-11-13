@@ -606,12 +606,15 @@ func (c Context) EditorWithoutPrefill(title string) (any, bool, error) {
 
 // SendMessageOptions configures how the message is delivered.
 //
-// Both fields are optional, as upstream's are: a nil TriggerTurn or empty
+// TriggerTurn and DeliverAs are optional, as upstream's are: a nil TriggerTurn or empty
 // DeliverAs is sent as unset, and the host applies upstream's default for the
 // session's state (while a turn streams, an unset triggerTurn steers).
 type SendMessageOptions struct {
 	TriggerTurn *bool  // nil: host default; true starts or joins a turn; false never does
 	DeliverAs   string // "steer", "followUp", or "nextTurn"; empty: host default
+	// Details is upstream's message `details`: extension data kept with the message and not sent to the model. Nil leaves the member out;
+	// json.RawMessage("null") writes it as null.
+	Details any
 }
 
 // SendMessage injects a custom message into the conversation. With TriggerTurn the run it starts keeps [Context.IsIdle] busy until the handler yields ([Context.Yield], [Context.Sleep]) or returns; a handler that polls for that run with a raw time.Sleep stays busy.
@@ -623,14 +626,11 @@ func (c Context) SendMessage(customType, content string, display bool, opts Send
 	if opts.DeliverAs != "" {
 		options["deliverAs"] = opts.DeliverAs
 	}
-	result, err := c.callHost("sendMessage", map[string]any{
-		"message": map[string]any{
-			"customType": customType,
-			"content":    content,
-			"display":    display,
-		},
-		"options": options,
-	})
+	message := map[string]any{"customType": customType, "content": content, "display": display}
+	if !omittedMember(opts.Details) {
+		message["details"] = opts.Details
+	}
+	result, err := c.callHost("sendMessage", map[string]any{"message": message, "options": options})
 	if err != nil {
 		return err
 	}
@@ -708,12 +708,14 @@ func (c Context) SendUserMessageWith(content any, options SendUserMessageOptions
 	return nil
 }
 
-// AppendEntry appends a custom entry to the session for persistence.
+// AppendEntry appends a custom entry to the session for persistence. A nil data leaves the entry without a data member, as Pi's appendEntry(customType)
+// does; json.RawMessage("null") writes the member as null, as appendEntry(customType, null) does.
 func (c Context) AppendEntry(customType string, data any) error {
-	result, err := c.callHost("appendEntry", map[string]any{
-		"customType": customType,
-		"data":       data,
-	})
+	args := map[string]any{"customType": customType}
+	if !omittedMember(data) {
+		args["data"] = data
+	}
+	result, err := c.callHost("appendEntry", args)
 	if err != nil {
 		return err
 	}

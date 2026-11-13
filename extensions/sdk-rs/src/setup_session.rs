@@ -41,10 +41,12 @@ impl SetupSessionManager<'_> {
 
     /// session-manager.ts:304: an extension entry that does not take part in the model context.
     pub fn append_custom_entry(&self, custom_type: &str, data: Value) -> io::Result<Value> {
-        self.write(
-            "appendCustomEntry",
-            json!({"customType": custom_type, "data": data}),
-        )
+        // Value::Null leaves the entry without a data member, as Pi's appendCustomEntry(customType) does.
+        let mut args = json!({"customType": custom_type});
+        if !data.is_null() {
+            args["data"] = data;
+        }
+        self.write("appendCustomEntry", args)
     }
 
     /// session-manager.ts:353: an extension message that takes part in the model context.
@@ -87,7 +89,12 @@ impl SetupSessionManager<'_> {
 
 /// The sessionWrite arguments of appendCustomMessageEntry; the host reads `customType`, `content`, `display` and `details`.
 fn custom_message_args(custom_type: &str, content: Value, display: bool, details: Value) -> Value {
-    json!({"customType": custom_type, "content": content, "display": display, "details": details})
+    // Value::Null leaves the entry without a details member, as Pi's appendCustomMessageEntry without the argument does.
+    let mut args = json!({"customType": custom_type, "content": content, "display": display});
+    if !details.is_null() {
+        args["details"] = details;
+    }
+    args
 }
 
 /// The sessionWrite arguments of appendModelChange; the host reads `provider` and `modelId`.

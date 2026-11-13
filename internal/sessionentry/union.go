@@ -153,17 +153,17 @@ func (e CompactionEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
 	}
-	type fields CompactionEntry
-	out, err := encodeFields(e.ParentID, fields(e))
-	if err != nil || !e.FromHookAbsent {
-		return out, err
-	}
-	object, err := orderedjson.Parse(out)
-	if err != nil {
-		return nil, err
-	}
-	object.Delete("fromHook")
-	return object.MarshalJSON() //perf:ok once per compaction entry written, and only when the entry carries no fromHook
+	// session-manager.ts appendCompaction builds { type, id, parentId, timestamp, summary, firstKeptEntryId, tokensBefore, details, usage, fromHook, systemMessage }.
+	return encodeFields(e.ParentID, struct {
+		SessionEntryBase
+		Summary          string          `json:"summary"`
+		FirstKeptEntryID string          `json:"firstKeptEntryId"`
+		TokensBefore     int             `json:"tokensBefore"`
+		Details          any             `json:"details,omitempty"`
+		Usage            any             `json:"usage,omitempty"`
+		FromHook         any             `json:"fromHook,omitempty"`
+		SystemMessage    json.RawMessage `json:"systemMessage,omitempty"`
+	}{e.SessionEntryBase, e.Summary, e.FirstKeptEntryID, e.TokensBefore, e.Details, optionalMember(e.Usage, e.UsageNull), presentMember(e.FromHook, e.FromHookAbsent), e.SystemMessage})
 }
 
 func (e BranchSummaryEntry) Base() SessionEntryBase { return e.withoutRecord() }
@@ -176,14 +176,15 @@ func (e BranchSummaryEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
 	}
-	type fields BranchSummaryEntry
-	out, err := encodeFields(e.ParentID, fields(e))
-	// fromHook is the last member of the record.
-	if trimmed, found := bytes.CutSuffix(out, []byte(`,"fromHook":false}`)); err == nil && e.fromHookAbsent && found {
-		out = trimmed[:len(trimmed)+1]
-		out[len(out)-1] = '}'
-	}
-	return out, err
+	// session-manager.ts branchWithSummary builds { type, id, parentId, timestamp, fromId, summary, details, usage, fromHook }.
+	return encodeFields(e.ParentID, struct {
+		SessionEntryBase
+		FromID   string `json:"fromId"`
+		Summary  string `json:"summary"`
+		Details  any    `json:"details,omitempty"`
+		Usage    any    `json:"usage,omitempty"`
+		FromHook any    `json:"fromHook,omitempty"`
+	}{e.SessionEntryBase, e.FromID, e.Summary, e.Details, optionalMember(e.Usage, e.UsageNull), presentMember(e.FromHook, e.fromHookAbsent)})
 }
 
 func (e CustomEntry) Base() SessionEntryBase { return e.withoutRecord() }
@@ -254,8 +255,12 @@ func (e LabelEntry) MarshalJSON() ([]byte, error) {
 	if e.raw != nil {
 		return e.raw, nil
 	}
-	type fields LabelEntry
-	return encodeFields(e.ParentID, fields(e))
+	// session-manager.ts appendLabelChange builds { type, id, parentId, timestamp, targetId, label }.
+	return encodeFields(e.ParentID, struct {
+		SessionEntryBase
+		TargetID string `json:"targetId"`
+		Label    any    `json:"label,omitempty"`
+	}{e.SessionEntryBase, e.TargetID, optionalMember(e.Label, e.LabelNull)})
 }
 
 func (e SessionInfoEntry) Base() SessionEntryBase { return e.withoutRecord() }
@@ -285,6 +290,26 @@ func (e SessionHeader) MarshalJSON() ([]byte, error) {
 	}
 	type fields SessionHeader
 	return encodeFields(nil, fields(e))
+}
+
+// optionalMember is what the field of an optional member encodes, as JSON.stringify writes the member: the value when the pointer holds one, null when null
+// marks a member its writer set to null, and no member otherwise (`omitempty` drops a nil `any`).
+func optionalMember[T any](value *T, null bool) any {
+	switch {
+	case value != nil:
+		return value
+	case null:
+		return orderedjson.Null()
+	}
+	return nil
+}
+
+// presentMember is what the field of a member encodes that its writer may have left undefined: the value, or no member when absent is set.
+func presentMember(value, absent bool) any {
+	if absent {
+		return nil
+	}
+	return value
 }
 
 // rawOf is the record a member writes. An encoding error leaves no record.

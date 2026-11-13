@@ -16,7 +16,9 @@ type sessionCompactionData struct {
 	FirstKeptEntryID string
 	TokensBefore     int
 	Usage            *ai.Usage
-	Details          any
+	// UsageNull marks a nil Usage the extension wrote as null (agent-session.ts compact: `usage = extensionCompaction.usage`).
+	UsageNull bool
+	Details   any
 }
 
 func (s *Session) extensionCompaction(
@@ -75,13 +77,14 @@ func (s *Session) extensionCompaction(
 	if err := json.Unmarshal(envelope.Compaction, &wire); err != nil {
 		return nil, false, err
 	}
-	// The details are the value the extension wrote; keep its member order.
-	details := orderedjson.Value(wire.Details)
+	// The details are the value the extension wrote; keep its member order, and a null apart from no member.
+	details := orderedjson.Member(wire.Details)
 	return &sessionCompactionData{
 		Summary:          wire.Summary,
 		FirstKeptEntryID: wire.FirstKeptEntryID,
 		TokensBefore:     wire.TokensBefore,
 		Usage:            wire.Usage,
+		UsageNull:        wire.Usage == nil && orderedjson.IsNullMember(envelope.Compaction, "usage"),
 		Details:          details,
 	}, true, nil
 }

@@ -196,12 +196,19 @@ type SessionBeforeTreeResultSummary struct {
 	Details any    `json:"details,omitempty"`
 	// Usage is the pi-ai Usage of the extension's summarization call.
 	Usage *ai.Usage `json:"usage,omitempty"`
+	// UsageNull marks a nil Usage as an explicit null: Pi's branchWithSummary stores the null and the entry holds `"usage":null`
+	// (session-manager.ts:1611-1630). `details` holds a null in the value itself: json.RawMessage("null").
+	UsageNull bool `json:"-"`
 }
 
-// UnmarshalJSON keeps the member order of the `details` object the extension wrote.
+// UnmarshalJSON keeps the member order of the `details` object the extension wrote, and a null `details` or `usage` apart from an absent one.
 func (s *SessionBeforeTreeResultSummary) UnmarshalJSON(data []byte) error {
 	type plain SessionBeforeTreeResultSummary
-	return orderedjson.UnmarshalFields(data, (*plain)(s), "details")
+	if err := orderedjson.UnmarshalFields(data, (*plain)(s), "details"); err != nil {
+		return err
+	}
+	s.UsageNull = s.Usage == nil && orderedjson.IsNullMember(data, "usage")
+	return nil
 }
 
 // SessionTreeEvent: upstream types.ts SessionTreeEvent.
@@ -535,6 +542,9 @@ type SessionBoundaryDraft struct {
 	Summary              string    `json:"summary,omitempty"`
 	FirstKeptEntryID     *string   `json:"firstKeptEntryId,omitempty"`
 	Usage                *ai.Usage `json:"usage,omitempty"`
+	// UsageNull marks a compaction draft's nil Usage as an explicit null: Pi's appendCompaction stores the null and the entry holds `"usage":null`
+	// (session-manager.ts:1283-1295). `data` and `details` hold a null in the value itself: json.RawMessage("null").
+	UsageNull bool `json:"-"`
 }
 
 // MarshalJSON preserves each upstream union member's required fields,
@@ -578,22 +588,35 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 			Summary          string                   `json:"summary"`
 			FirstKeptEntryID *string                  `json:"firstKeptEntryId"`
 			Details          any                      `json:"details,omitempty"`
-			Usage            *ai.Usage                `json:"usage,omitempty"`
-		}{d.Type, d.Summary, d.FirstKeptEntryID, d.Details, d.Usage})
+			Usage            any                      `json:"usage,omitempty"`
+		}{d.Type, d.Summary, d.FirstKeptEntryID, d.Details, draftUsage(d.Usage, d.UsageNull)})
 	default:
 		type plain SessionBoundaryDraft
 		return json.Marshal(plain(d))
 	}
 }
 
+// draftUsage is what a compaction draft's usage member encodes: the usage, null for one written as null, and no member otherwise.
+func draftUsage(usage *ai.Usage, null bool) any {
+	switch {
+	case usage != nil:
+		return usage
+	case null:
+		return orderedjson.Null()
+	}
+	return nil
+}
+
 // UnmarshalJSON keeps the member order of the `data` and `details` objects and of the `content` blocks the extension wrote: Pi appends the objects themselves and
-// writes their members in insertion order. It also keeps a context_edit's absent `replacement` apart from a null one (ReplacementUndefined).
+// writes their members in insertion order. It also keeps a null `data`, `details` or `usage` apart from an absent one (orderedjson.Null, UsageNull), and a
+// context_edit's absent `replacement` apart from a null one (ReplacementUndefined).
 func (d *SessionBoundaryDraft) UnmarshalJSON(data []byte) error {
 	type plain SessionBoundaryDraft
 	d.ReplacementUndefined = false
 	if err := orderedjson.UnmarshalFields(data, (*plain)(d), "data", "details", "content"); err != nil {
 		return err
 	}
+	d.UsageNull = d.Usage == nil && orderedjson.IsNullMember(data, "usage")
 	if d.Type != SessionBoundaryDraftContextEdit || len(d.Replacement) > 0 {
 		return nil
 	}
