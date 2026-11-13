@@ -3,7 +3,9 @@ package llama
 // pi: packages/coding-agent/src/extensions/llama/index.ts
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -197,5 +199,104 @@ func TestLlamaCommandSyncCatalogEndsAtTheSharedFifteenSecondTimeout(t *testing.T
 				}
 			})
 		})
+	}
+}
+
+// pendingDeadline is a caller's signal whose timeout is due at a known instant and has not fired: it reports the deadline, and only the test aborts it. That is the state
+// in which two timers are due together, held still, so the test sees which of the two signals ends a request.
+type pendingDeadline struct {
+	context.Context
+	due time.Time
+}
+
+func (c pendingDeadline) Deadline() (time.Time, bool) { return c.due, true }
+
+// client.ts:193-194 and huggingface.ts:75-76 join the caller's signal with a 15 s timeout of the request's own. syncCatalog's 15 s timeout (index.ts:51) is created before
+// every request it bounds, and Node fires the timers of one delay in creation order, so in Pi the caller's signal is aborted before such a request's own timer can fire: a
+// refresh that hangs is an aborted refresh ("Model catalog refresh timed out.", index.ts:60), never a refresh that failed with a request's timeout (models.ts:575, :639 and
+// model-runtime.ts:925 read only the caller's signal). Both callers of fetchJSON, LlamaClient.request and HuggingFaceClient.request, therefore start a timer of their own
+// only without a caller's deadline or under one that is due later, and the request then ends at 15 s with the timeout error. Under a caller's deadline due at the same
+// instant or earlier the request is still pending at 15 s and ends with the caller's reason when the caller's signal fires.
+func TestLlamaRequestLeavesTheTimeoutToACallerWhoseDeadlineIsDueNoLater(t *testing.T) {
+	callers := []struct {
+		name string
+		call func(ctx context.Context) error
+	}{
+		{"LlamaClient.request", func(ctx context.Context) error {
+			client, err := NewLlamaClient("http://llama.invalid", "")
+			if err != nil {
+				return err
+			}
+			_, err = client.List(ctx, false)
+			return err
+		}},
+		{"HuggingFaceClient.request", func(ctx context.Context) error {
+			_, err := NewHuggingFaceClient("", "http://hf.invalid").Search(ctx, "qwen")
+			return err
+		}},
+	}
+	deadlines := []struct {
+		name        string
+		hasDeadline bool
+		later       time.Duration
+		endedBy     string
+	}{
+		{"no caller deadline", false, 0, "the request's own timeout"},
+		{"a caller deadline due a nanosecond later", true, time.Nanosecond, "the request's own timeout"},
+		{"a caller deadline due at the same instant", true, 0, "the caller's signal"},
+		{"a caller deadline due a nanosecond earlier", true, -time.Nanosecond, "the caller's signal"},
+	}
+	transport := http.DefaultClient.Transport
+	http.DefaultClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		<-r.Context().Done()
+		return nil, r.Context().Err()
+	})
+	t.Cleanup(func() { http.DefaultClient.Transport = transport })
+	for _, caller := range callers {
+		for _, deadline := range deadlines {
+			t.Run(caller.name+"/"+deadline.name, func(t *testing.T) {
+				synctest.Test(t, func(t *testing.T) {
+					signal, abort := context.WithCancelCause(context.Background())
+					defer abort(nil)
+					ctx := context.Context(signal)
+					if deadline.hasDeadline {
+						ctx = pendingDeadline{Context: signal, due: time.Now().Add(requestTimeout + deadline.later)}
+					}
+					result := make(chan error, 1)
+					go func() { result <- caller.call(ctx) }()
+					time.Sleep(requestTimeout - time.Nanosecond)
+					synctest.Wait()
+					select {
+					case err := <-result:
+						t.Fatalf("the request ended before 15 s: %v", err)
+					default:
+					}
+					time.Sleep(time.Nanosecond)
+					synctest.Wait()
+					endedBy, text := "the caller's signal", "the caller's signal fired"
+					select {
+					case err := <-result:
+						endedBy = "the request's own timeout"
+						if !errors.Is(err, timeoutError{}) || err.Error() != "The operation was aborted due to timeout" {
+							t.Fatalf("the request ended at 15 s with %v, want the timeout error", err)
+						}
+					default:
+						abort(errors.New(text))
+						synctest.Wait()
+						select {
+						case err := <-result:
+							if err == nil || err.Error() != text {
+								t.Fatalf("request error = %v, want the caller's reason %q", err, text)
+							}
+						default:
+							t.Fatal("the request did not end when the caller's signal fired")
+						}
+					}
+					if endedBy != deadline.endedBy {
+						t.Fatalf("the request was ended by %s, want %s", endedBy, deadline.endedBy)
+					}
+				})
+			})
+		}
 	}
 }
