@@ -3251,7 +3251,17 @@ allocs = 80
 [[benchmark]]
 package = "./internal/sessionentry"
 benchmark = "BenchmarkDecodeFileEntryPiFixture"
-allocs = 260917
+allocs = 203121
+
+[[benchmark]]
+package = "./internal/sessionentry"
+benchmark = "BenchmarkDecodeSessionEntryHarnessShape/compact"
+allocs = 197867
+
+[[benchmark]]
+package = "./internal/sessionentry"
+benchmark = "BenchmarkDecodeSessionEntryHarnessShape/spaced"
+allocs = 224014
 
 [[benchmark]]
 package = "./tui"
