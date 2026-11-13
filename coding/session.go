@@ -1652,8 +1652,10 @@ func (s *Session) SetSessionName(name string) error {
 
 // ─── Message helpers ─────────────────────────────────────────────────────────
 
-// LastAssistantText returns the trimmed text of the most recent assistant message, or nil when there is none or its text is empty. An aborted
-// message without content is skipped; the text joins every text block, and trimming follows JavaScript's String.prototype.trim.
+// LastAssistantText returns the trimmed text of the last assistant reply, or nil when there is none or the last reply has no text. An
+// assistant message without text from a turn that did not end normally (a stop reason other than "stop": aborted, failed, only calling
+// tools, cut at the length limit, or none) is skipped (Pi #12119); a reply that ended normally stays the last reply even without text.
+// The text joins every text block, and trimming follows JavaScript's String.prototype.trim.
 // Ports packages/coding-agent/src/core/agent-session.ts getLastAssistantText.
 func (s *Session) LastAssistantText() *string {
 	msgs := s.Messages()
@@ -1662,7 +1664,10 @@ func (s *Session) LastAssistantText() *string {
 			continue
 		}
 		a := msg.Assistant
-		if a.StopReason == "aborted" && len(a.Content) == 0 {
+		if a.StopReason != ai.StopReasonStop && !slices.ContainsFunc(a.Content, func(b ai.AssistantContentBlock) bool {
+			tc, ok := b.(ai.TextContent)
+			return ok && jsstring.Trim(tc.Text) != ""
+		}) {
 			continue
 		}
 		var sb strings.Builder
