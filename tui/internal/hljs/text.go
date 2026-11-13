@@ -41,6 +41,15 @@ func (t *Text) Grow(code string) *Text {
 	return t
 }
 
+// Reset makes t the text of code, converted whole into the array t's units have: a Text that serves one run after another (a pool's) takes each run's code this way. Reset("") leaves t without a code to hold.
+func (t *Text) Reset(code string) *Text {
+	*t = Text{units: t.units[:0]}
+	return t.Grow(code)
+}
+
+// Cap is the units t has room for.
+func (t *Text) Cap() int { return cap(t.units) }
+
 // settledLen is the length of the code without a trailing sequence that more bytes would complete: a lead byte followed by
 // fewer continuation bytes than it needs. The code before it converts the same whatever follows.
 func settledLen(code string) int {

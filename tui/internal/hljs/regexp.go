@@ -19,10 +19,26 @@ type jsRegExp struct {
 	anchored *regexp2.Regexp
 }
 
-// jsMatch is a RegExp exec result: group spans in code units, start -1 for a group that did not participate (undefined).
+// jsMatch is a RegExp exec result. index and end bound the whole match in code units. A group is read from the regexp2 match when it is asked for (span): the expression of a matcher holds the groups of every rule it joins, and its caller reads which rule matched. A match made without running an expression (emptyMatch) has no regexp2 match and no group but the whole.
 type jsMatch struct {
-	index int
-	spans []int
+	index, end int
+	groups     int
+	raw        *regexp2.Match
+}
+
+// span is the code units of group g; ok is false for a group that did not participate (undefined).
+func (m jsMatch) span(g int) (start, end int, ok bool) {
+	if g == 0 {
+		return m.index, m.end, true
+	}
+	if g < 0 || g > m.groups || m.raw == nil {
+		return 0, 0, false
+	}
+	group := m.raw.GroupByNumber(g)
+	if group == nil || len(group.Captures) == 0 {
+		return 0, 0, false
+	}
+	return group.Index, group.Index + group.Length, true
 }
 
 type regexpKey struct {
@@ -92,39 +108,31 @@ func newAnchoredJSRegExp(source string, ignoreCase bool) (*jsRegExp, error) {
 	return compiled, nil
 }
 
-// execAt is the match that starts at index start, or nil. Lookbehind and ^ still see the units before start.
-func (r *jsRegExp) execAt(input []rune, start int) *jsMatch {
+// execAt is the match that starts at index start, ok false when there is none. Lookbehind and ^ still see the units before start.
+func (r *jsRegExp) execAt(input []rune, start int) (match jsMatch, ok bool) {
 	return r.result(r.anchored.FindRunesMatchStartingAt(input, start))
 }
 
-// exec is RegExp.prototype.exec with lastIndex = start: the leftmost match at or after start. Lookbehind and ^ still see the units before start.
-func (r *jsRegExp) exec(input []rune, start int) *jsMatch {
+// exec is RegExp.prototype.exec with lastIndex = start: the leftmost match at or after start, ok false for null. Lookbehind and ^ still see the units before start.
+func (r *jsRegExp) exec(input []rune, start int) (match jsMatch, ok bool) {
 	if start > len(input) {
-		return nil
+		return jsMatch{}, false
 	}
 	return r.result(r.re.FindRunesMatchStartingAt(input, start))
 }
 
 // matchesAtStart is highlight.js startsWith: re.exec(input) finds a match at index 0. The leftmost match has index 0 exactly when some match starts at 0.
 func (r *jsRegExp) matchesAtStart(input []rune) bool {
-	m, err := r.anchored.FindRunesMatchStartingAt(input, 0)
-	return err == nil && m != nil
+	// MatchRunes answers without a match object of its own to hand out.
+	matched, err := r.anchored.MatchRunes(input)
+	return err == nil && matched
 }
 
-func (r *jsRegExp) result(m *regexp2.Match, err error) *jsMatch {
+func (r *jsRegExp) result(m *regexp2.Match, err error) (jsMatch, bool) {
 	if err != nil || m == nil {
-		return nil
+		return jsMatch{}, false
 	}
-	spans := make([]int, 2*(r.groups+1))
-	for i := 0; i <= r.groups; i++ {
-		g := m.GroupByNumber(i)
-		if g == nil || len(g.Captures) == 0 {
-			spans[2*i], spans[2*i+1] = -1, -1
-			continue
-		}
-		spans[2*i], spans[2*i+1] = g.Index, g.Index+g.Length
-	}
-	return &jsMatch{index: m.Index, spans: spans}
+	return jsMatch{index: m.Index, end: m.Index + m.Length, groups: r.groups, raw: m}, true
 }
 
 // translateJSRegExp rewrites a JavaScript pattern (Annex B grammar, m flag, optional i flag) into an equivalent regexp2 ECMAScript-mode pattern over UTF-16 code units.

@@ -584,9 +584,9 @@ func readSelectionResult(p readParams, startLine, userLimitedLines float64, tota
 	default:
 		output = tr.Content
 	}
+	output = sharedOutput(truncation, output)
 	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: output}}}
 	if truncation != nil {
-		shareTruncatedContent(truncation, output)
 		result.Details = &ReadDetails{Truncation: truncation}
 	}
 	return result

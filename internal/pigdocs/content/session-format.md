@@ -244,6 +244,8 @@ Set an explicit scanner limit. A Session line can contain a large tool result or
 - Preserve the header schema version.
 - Preserve unknown fields and unknown entry types.
 - Preserve `null` versus a missing `parentId`.
+- Preserve `null` versus a missing optional member. An entry member that its writer set to `null` (`data`, `details`, `usage`, `label`) is stored as `null`. A member that its writer left out is absent.
+- Preserve a `usage` object as its writer wrote it. An extension can supply a `usage` with its own member order and with extra members. Readers use `input`, `output`, `cacheRead`, `cacheWrite` and `cost.total`.
 - Do not reorder entries.
 - Do not rewrite timestamps or IDs.
 - Do not edit a Session while PiG is writing it.

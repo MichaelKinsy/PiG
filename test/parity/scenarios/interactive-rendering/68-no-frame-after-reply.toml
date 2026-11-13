@@ -24,6 +24,21 @@
 # Measured frames with a complete transcript: Pi writes the typed prompt, clears the editor 1 ms after Enter, and 35 ms after Enter writes ONE frame that holds the user
 # message, the reply and the footer, then nothing (the fake provider answers in one chain of microtasks, so the 16 ms render throttle of tui.ts coalesces the turn's
 # requests); PiG writes the typed prompt, the clear, a frame with the user message and the working indicator and, 5 ms later, the frame with the reply, which is its last.
+#
+# Read above PiG's screen writer since 2026-11-12 (container tern-ci:v10, tmux 3.4, this scenario alone). With the screen writer on (D624) the terminal's
+# transcript does not show what this scenario guards. The writer's record log of a passing run (PIG_TUI_SCREEN_WRITER_LOG): the frame that holds the reply
+# writes the reply's row in place, and 250 ms after the last frame the settle write (1,052 bytes) writes that row whole again with six other rows. The last
+# occurrence of the reply text in the transcript therefore lies inside the settle write and nothing begins after it: the run passed for that reason, not
+# because no frame followed the reply's frame, and a frame that changes nothing is not sent to the terminal at all. Shown with a mutant that asks for one
+# more render when the run settles (handleAgentEvent, AgentSettledEvent: tuiInst.RequestRender()): read from the transcript the scenario passed 3 runs of 3
+# with the screen writer and failed 3 of 3 with PIG_TUI_SCREEN_WRITER=pi; read from PI_TUI_WRITE_LOG, the log of what the renderers wrote (Pi's
+# ProcessTerminal.write and PiG's port of it; PiG's screen writer sits under it), it failed 3 of 3 in both modes ("1 frame(s) began after the reply text")
+# and without the mutant passed 10 runs of 10 in both. So the frames of both binaries are read from that log (final_frame write_log).
+# What this scenario asserts now: what each binary's renderer WROTE, read from PI_TUI_WRITE_LOG on both sides: no frame after the one that holds the
+# reply's text. For Pi, and for PiG with PIG_TUI_SCREEN_WRITER=pi, those are the bytes on the wire; for PiG with the screen writer they are the bytes
+# above the writer. What it no longer asserts: what reaches the terminal from PiG with the screen writer, where one settle write follows the reply's
+# frame. That write is counted by internal/screenwriter TestSettleTimer (one settle write for a settled frame, not before the settle time, one record of
+# its kind), and what the terminal keeps of the writer's bytes is compared by fullscreen/19-alt-screen-row-grows-in-place.
 
 name = "68-no-frame-after-reply"
 description = "No frame begins after the frame that carries the end of a reply, in the raw terminal stream."
@@ -37,8 +52,8 @@ driver = "interactive-tmux"
 model = "test-faux/faux-1"
 
 [env]
-pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
-pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "PI_TUI_WRITE_LOG={{TEMP}}/renderer-writes.log"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "PI_TUI_WRITE_LOG={{TEMP}}/renderer-writes.log"]
 pi_extensions = ["../../testdata/test-faux-provider.ts"]
 pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 pi_args = ["--session-dir", "{{TEMP}}/sessions"]
@@ -60,6 +75,7 @@ wait_timeout_seconds = 10
 [tmux.steps.final_frame]
 text = "queued-after-compaction-ok"
 quiet_milliseconds = 400
+write_log = "{{TEMP}}/renderer-writes.log"
 
 [assert]
 both_reach_ready = true

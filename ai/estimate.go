@@ -45,6 +45,10 @@ func ceilDiv(chars int) int {
 // encoded (estimate.ts safeJsonStringify). It counts the text JSON.stringify
 // writes: no HTML escaping, negative zero as 0, line separators literally.
 func JSONStringifyLength(value any) int {
+	if object, ok := value.(JsonObject); ok {
+		// The arguments of a tool call: the counter reads the map type the object is defined as.
+		value = map[string]any(object)
+	}
 	length, err := jsstring.StringifyLength(value)
 	if err != nil {
 		return len("[unserializable]")

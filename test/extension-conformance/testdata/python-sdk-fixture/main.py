@@ -2865,7 +2865,58 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"setModel={'true' if ok else 'false'}", "info")
 
     ext.command("set_model", "Switch to the model in the arguments", set_model)
+
+    def set_model_object(ctx: pig_sdk.Context, args: str) -> None:
+        try:
+            ok, error = ctx.set_model(json.loads(args))
+        except Exception as exc:  # the host's rejection of the call
+            ok, error = False, str(exc)
+        ctx.notify(f"setModelObject=error:{error}" if error else f"setModelObject={'true' if ok else 'false'}", "info")
+
+    ext.command("set_model_object", "Switch to the model object in the arguments", set_model_object)
+
+    def set_model_object_before_agent_start(ctx: pig_sdk.Context, args: str) -> None:
+        model = json.loads(args)
+
+        def before_agent_start(hctx, _data):
+            ok, error = hctx.set_model(model)
+            if error:
+                raise RuntimeError(error)
+            hctx.notify(f"beforeAgentSetModel={'true' if ok else 'false'}", "info")
+
+        ext.on_event("before_agent_start", before_agent_start)
+
+    ext.command("set_model_object_before_agent_start", "Switch to the model object in the arguments before each agent start", set_model_object_before_agent_start)
     ext.command("append_entry", "Append a custom entry", lambda ctx, args: ctx.append_entry("conformance-entry", "hello-entry"))
+
+    def entry_null_members(ctx: pig_sdk.Context, args: str) -> None:
+        # An entry and a message with the optional member left out, then with it written as null: None is Pi's omitted argument and pig_sdk.NULL is its null.
+        ctx.append_entry("conformance-null-omitted", None)
+        ctx.append_entry("conformance-null-explicit", pig_sdk.NULL)
+        ctx.send_message("conformance-null-omitted", "x", False)
+        ctx.send_message("conformance-null-explicit", "x", False, details=pig_sdk.NULL)
+
+    ext.command("entry_null_members", "Append entries and send messages with an omitted and a null member", entry_null_members)
+
+    def label_members(ctx: pig_sdk.Context, args: str) -> None:
+        # setLabel on the entry in the arguments without a label, with a null one and with an empty one: Pi writes a different entry for each.
+        ctx.set_label(args)
+        ctx.set_label(args, pig_sdk.NULL)
+        ctx.set_label(args, "")
+
+    def setup_null_members(ctx: pig_sdk.Context, args: str) -> None:
+        # The setup callback's SessionManager: an entry and a message with the optional member left out, then with it written as null.
+        def setup(manager: pig_sdk.SetupSessionManager) -> None:
+            manager.append_custom_entry("api-custom")
+            manager.append_custom_entry("api-custom", pig_sdk.NULL)
+            manager.append_custom_message_entry("api-message", "x", False)
+            manager.append_custom_message_entry("api-message", "x", True, pig_sdk.NULL)
+
+        ctx.new_session({"setup": setup})
+
+    ext.command("setup_null_members", "Seed a new session with an omitted and a null member", setup_null_members)
+
+    ext.command("label_members", "Set a label that is omitted, null and empty", label_members)
 
     def append_entries_probe(ctx: pig_sdk.Context, args: str) -> None:
         # Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
@@ -3716,11 +3767,61 @@ def new_extension() -> pig_sdk.Extension:
     def boundary_result(_ctx: pig_sdk.Context, data: dict[str, Any]) -> dict[str, Any]:
         assert [entry["customType"] for entry in data["entries"]] == ["kept", "before-error"]
         assert len(data["context"]["contextEntries"]) == 2
-        return {"entries": [{"type": "custom", "customType": "conformance-boundary"}], "continue": True}
+        # One draft with a null replacement, one without the member, and a compaction that keeps nothing.
+        return {
+            "entries": [
+                {"type": "custom", "customType": "conformance-boundary"},
+                {"type": "context_edit", "targetId": "conformance-failed-attempt", "replacement": None},
+                {"type": "context_edit", "targetId": "conformance-omitted-member"},
+                {
+                    "type": "compaction",
+                    "summary": "conformance-summary",
+                    "firstKeptEntryId": None,
+                    "details": {"format": "conformance-checkpoint"},
+                    "usage": None,
+                },
+                # A data, a details and (above) a usage member written as null: Pi's file holds each as null.
+                {"type": "custom", "customType": "conformance-null-data", "data": None},
+                {
+                    "type": "custom_message",
+                    "customType": "conformance-null-details",
+                    "content": "x",
+                    "display": False,
+                    "details": pig_sdk.NULL,
+                },
+            ],
+            "continue": True,
+        }
+
+    def boundary_drafts(ctx: pig_sdk.Context, data: dict[str, Any]) -> None:
+        entries = data["entries"]
+        assert len(entries) == 6, "boundary result reached the next handler as %d entries" % len(entries)
+
+        def member(index: int, key: str) -> str:
+            if key not in entries[index]:
+                return "absent"
+            return "null" if entries[index][key] is None else "value"
+
+        ctx.notify(
+            "agent_before_settle_drafts:%d:%s:%s:%s:%s:%s:%s:%s:%s"
+            % (
+                len(entries),
+                member(1, "replacement"),
+                member(2, "replacement"),
+                member(3, "firstKeptEntryId"),
+                (entries[3].get("details") or {}).get("format"),
+                member(0, "data"),
+                member(3, "usage"),
+                member(4, "data"),
+                member(5, "details"),
+            ),
+            "info",
+        )
 
     ext.on_event("agent_before_settle", agent_before_settle)
     ext.on_event("agent_before_settle", boundary_error)
     ext.on_event("agent_before_settle", boundary_result)
+    ext.on_event("agent_before_settle", boundary_drafts)
     def session_start(ctx, data):
         ctx.notify("session_start:" + str(data.get("reason", "")), "info")
         if data.get("previousSessionFile"):

@@ -41,11 +41,11 @@ func TestPrintModelList_OpenCodeEnvKey_ListsOpenCodeGo(t *testing.T) {
 	dir := t.TempDir()
 	reg := codingagent.NewModelRegistry(dir)
 
-	out := captureStdout(func() { printModelList(reg, "") })
+	out := captureStdout(func() { printModelTable(reg, "") })
 
 	for _, want := range []string{"opencode", "opencode-go"} {
 		if !strings.Contains(out, want) {
-			t.Fatalf("printModelList with OPENCODE_API_KEY missing %q:\n%s", want, out)
+			t.Fatalf("printModelTable with OPENCODE_API_KEY missing %q:\n%s", want, out)
 		}
 	}
 }

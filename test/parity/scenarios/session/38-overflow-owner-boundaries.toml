@@ -1,0 +1,26 @@
+# An extension that owns compaction continues a turn after a provider overflow with the results of turn_end and agent_before_settle (BoundaryResult entries and
+# continue) or with a session_before_compact result. Each adapter writes one record per case: the provider requests, the session entries, the outcomes the
+# handlers saw, the compaction events, the extension errors and the replayed context.
+# The Pi adapter runs the pinned Pi package (its dist through the upstream suite harness), not the command line. The Go adapter runs the same cases in ./coding.
+name = "38-overflow-owner-boundaries"
+description = "Extension-owned compaction continues a turn after a provider overflow without a second prompt"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-overflow-owner-pig.sh"]
+pig_go_tests = ["./coding"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-overflow-owner-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

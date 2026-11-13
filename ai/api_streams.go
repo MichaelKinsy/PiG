@@ -79,6 +79,9 @@ func apiStreamProvider(api API, model *Model, options StreamOptions) (Provider, 
 		return NewPiMessagesProvider(PiMessagesConfig{ModelMetadata: model, APIKey: options.APIKey, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers}), nil
 	}
 	meta.API = api
+	if err := strippedDirectAPIError(api, model, options.Env); err != nil {
+		return nil, err
+	}
 	key, err := directSimpleAPIKey(meta, options)
 	if err != nil {
 		if api != APIAnthropicMessages {

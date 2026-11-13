@@ -135,8 +135,10 @@ func TestMessageUpdatePayloadIsSharedPerPublication(t *testing.T) {
 }
 
 // BenchmarkMessageUpdateExtensions prepares the message_update frames of a streamed response for n extensions, with the host's share and without it (each extension preparing its own payload, as before the share). The events are retained live views of a finished stream, so each is prepared at one publication.
+//
+// The response streams in chunks of four tokens. The faux provider draws the size of each chunk between tokenSize.min and tokenSize.max (3 and 5 unless set), so with the default the number of events, and every count with it, differed from run to run (14,842 to 15,880 allocations for one extension in five runs).
 func BenchmarkMessageUpdateExtensions(b *testing.B) {
-	provider := ai.NewFauxProvider(ai.FauxConfig{})
+	provider := ai.NewFauxProvider(ai.FauxConfig{TokenSize: &ai.FauxTokenSize{Min: new(4), Max: new(4)}})
 	provider.SetResponses([]ai.FauxResponseStep{ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{
 		ai.FauxText(strings.Repeat("a response streamed in many chunks, ", 40)),
 		ai.FauxToolCall("write", map[string]any{"path": "a.txt", "content": strings.Repeat("content streamed as arguments ", 40)}, nil),

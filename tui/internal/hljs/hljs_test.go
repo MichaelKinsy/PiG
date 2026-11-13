@@ -33,13 +33,13 @@ func TestJSRegExpMatchesNode(t *testing.T) {
 			t.Errorf("/%s/: %v", c.Source, err)
 			continue
 		}
-		got := re.exec(c.Input, 0)
+		got, matched := re.exec(c.Input, 0)
 		switch {
-		case got == nil && c.Match == nil:
-		case got == nil || c.Match == nil:
-			t.Errorf("/%s/ i=%v on %q: match %v, JavaScript %v", c.Source, c.IgnoreCase, c.Input, got != nil, c.Match != nil)
-		case got.index != c.Match.Index || got.spans[1]-got.spans[0] != c.Match.Length:
-			t.Errorf("/%s/ i=%v on %q: [%d,+%d], JavaScript [%d,+%d]", c.Source, c.IgnoreCase, c.Input, got.index, got.spans[1]-got.spans[0], c.Match.Index, c.Match.Length)
+		case !matched && c.Match == nil:
+		case !matched || c.Match == nil:
+			t.Errorf("/%s/ i=%v on %q: match %v, JavaScript %v", c.Source, c.IgnoreCase, c.Input, matched, c.Match != nil)
+		case got.index != c.Match.Index || got.end-got.index != c.Match.Length:
+			t.Errorf("/%s/ i=%v on %q: [%d,+%d], JavaScript [%d,+%d]", c.Source, c.IgnoreCase, c.Input, got.index, got.end-got.index, c.Match.Index, c.Match.Length)
 		}
 	}
 }

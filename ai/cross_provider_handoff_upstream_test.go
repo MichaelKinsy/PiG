@@ -53,6 +53,10 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 		if pair.api != "" {
 			model.API = pair.api
 		}
+		if !ai.BuiltAPI(model.API) {
+			// A build with this API's pig_strip tag has no provider to hand a transcript to or from: the handoffs run among the kept providers.
+			continue
+		}
 		models[index] = model
 		provider := ai.NewFauxProvider(ai.FauxConfig{ProviderID: pair.provider, Model: pair.model})
 		id := fmt.Sprintf("call_%d", index)

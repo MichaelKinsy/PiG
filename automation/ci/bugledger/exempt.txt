@@ -44,3 +44,4 @@ a95098aa83 Follow-up to unreleased work: the --listen socket is bound in a priva
 b18fc1ee00 Follow-up to unreleased work: comment-only D238 and D257 markers on two existing constants, no product behaviour
 c6ab561d18 Follow-up to unreleased work: the --listen server's isolated Node launcher gets its Host's group from connectExt only, and a user's PIG_EXT_GROUP never reaches it (D232), found in review before any release
 2a4c3c0bd7 Follow-up to unreleased work: the --listen server's exit removes the socket path only if it still names the socket it created, pinned by file ID on Windows (D232), found in CI before any release
+360170d195 Fix reverted before release: the tool declaration decode that keeps a lone surrogate was reverted by cad47e1edb in the same branch, because the decode alone did not make the request equal to Pi (the difference is recorded in ai/anthropic_wire_body_oracle_test.go)

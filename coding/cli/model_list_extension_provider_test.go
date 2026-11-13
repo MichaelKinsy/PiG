@@ -9,10 +9,10 @@ import (
 )
 
 // TestPrintModelList_ShowsRegisteredExtensionProvider guards the --list-models
-// production path: printModelList must enumerate providers registered in the
+// production path: printModelTable must enumerate providers registered in the
 // supplied registry (e.g. by an extension), not just built-ins. Combined with
 // the load-before-list ordering in main(), this is what makes an extension's
-// model provider appear in `pig --list-models`. If printModelList stopped
+// model provider appear in `pig --list-models`. If printModelTable stopped
 // reading the registry, this fails.
 func TestPrintModelList_ShowsRegisteredExtensionProvider(t *testing.T) {
 	dir := t.TempDir()
@@ -29,9 +29,9 @@ func TestPrintModelList_ShowsRegisteredExtensionProvider(t *testing.T) {
 		t.Error(err)
 	}
 
-	out := captureStdout(func() { printModelList(reg, "") })
+	out := captureStdout(func() { printModelTable(reg, "") })
 
 	if !strings.Contains(out, "parity-prov") || !strings.Contains(out, "parity-model") {
-		t.Fatalf("printModelList did not list the registered extension provider:\n%s", out)
+		t.Fatalf("printModelTable did not list the registered extension provider:\n%s", out)
 	}
 }

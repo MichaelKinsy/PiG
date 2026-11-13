@@ -197,6 +197,11 @@ type TmuxFinalFrame struct {
 	Text string `toml:"text"`
 	// QuietMilliseconds is how long to wait for a late frame before reading the transcript (default 300).
 	QuietMilliseconds int `toml:"quiet_milliseconds"`
+	// WriteLog names the file that holds the bytes each binary's renderers wrote: the scenario sets PI_TUI_WRITE_LOG to the same value for both
+	// binaries (tokens such as {{TEMP}} are expanded per binary). The frames are then read from that file and not from the terminal transcript.
+	// It is for a count the terminal does not get from PiG in both of its modes: PiG's screen writer (D624) sits under that log and does not
+	// send the terminal a frame that changes nothing. What is asserted is then what the renderers wrote, not what reached the terminal.
+	WriteLog string `toml:"write_log"`
 }
 
 // TmuxFrameWatch names a frame a step must never put on screen. The terminal keeps what the program last drew, so a frame the program

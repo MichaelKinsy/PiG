@@ -48,7 +48,12 @@ func TestProviderResponseBoundaries(t *testing.T) {
 		}},
 		{"bedrock", false, func(url string) Provider { return NewBedrockTestProvider("probe", "", url) }},
 	}
+	// A build with a pig_strip_<api> tag has no provider for that API's row.
+	strippable := map[string]API{"mistral": APIMistralConversations, "bedrock": APIBedrockConverseStream}
 	for _, test := range cases {
+		if api, ok := strippable[test.name]; ok && !BuiltAPI(api) {
+			continue
+		}
 		for _, status := range []int{200, 403} {
 			t.Run(fmt.Sprintf("%s/%d", test.name, status), func(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

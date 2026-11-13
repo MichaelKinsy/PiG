@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -135,51 +136,98 @@ func recordedTests(root string, moved movedTests, recorded []string) []string {
 	return out
 }
 
-// movedByName returns where moved-tests.txt sends a test a commit message names that no file declares any more.
+// movedByName returns where moved-tests.txt sends a test a commit message names that no file declares any more. Of several lines for one name the first in the order of their old references counts, on every run.
 func movedByName(root string, moved movedTests, name string) (string, bool) {
-	for from, to := range moved {
-		if strings.HasSuffix(from, "::"+name) && testExists(root, to) {
-			return to, true
+	for _, from := range slices.Sorted(maps.Keys(moved)) {
+		if strings.HasSuffix(from, "::"+name) && testExists(root, moved[from]) {
+			return moved[from], true
 		}
 	}
 	return "", false
 }
 
+// buildTestIndex lists the Go tests of the tree under root: of the test files git tracks, and of those it would add (untracked and not ignored). A file git ignores is not part of the tree. A build directory or a scratch clone under tmp/ holds copies of the test files, and when the index walked the directory those copies made a test's name ambiguous or took its place, so the tests of an entry depended on what the checkout had lying around.
 func buildTestIndex(root string) (testIndex, error) {
 	idx := testIndex{}
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	listed, err := repo{root: root}.git("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*_test.go")
+	if err != nil {
+		return nil, err
+	}
+	for rel := range strings.SplitSeq(listed, "\x00") {
+		if rel == "" || vendoredPath(rel) {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if errors.Is(err, fs.ErrNotExist) {
+			continue // tracked, and deleted in the working tree
+		}
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if d.IsDir() {
-			switch d.Name() {
-			case ".git", "node_modules", "target", ".upstream":
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(root, path)
-		rel = filepath.ToSlash(rel)
 		for _, m := range goTestDecl.FindAllSubmatch(data, -1) {
 			name := string(m[1])
 			idx[name] = append(idx[name], rel)
 		}
-		return nil
-	})
-	for _, files := range idx {
-		slices.Sort(files)
 	}
-	return idx, err
+	for name, files := range idx {
+		slices.Sort(files)
+		idx[name] = slices.Compact(files)
+	}
+	return idx, nil
 }
 
-// testsOfCommit returns the tests a fix commit adds or names, resolved against the current tree: Go tests the diff adds, Go tests and parity scenarios the message names, and test files the commit adds.
+// vendoredPath reports whether a path lies in a directory of code the repository does not own.
+func vendoredPath(rel string) bool {
+	for dir := range strings.SplitSeq(rel, "/") {
+		switch dir {
+		case "node_modules", "target", ".upstream":
+			return true
+		}
+	}
+	return false
+}
+
+var (
+	goTestName   = regexp.MustCompile(`^(?:Test|Fuzz)[A-Z][A-Za-z0-9_]*$`)
+	scenarioName = regexp.MustCompile(`^[a-z][a-z0-9-]*/\d\d+-[a-z0-9-]+$`)
+)
+
+// statedTest resolves a test as a Regression-Test trailer or a tests marker writes it: "<file>::<Name>", a Go test name, a parity scenario "<area>/<nn-name>", or the path of a test file. A name that several files declare is the test of the file the fix touches, and names nothing otherwise: write "<file>::<Name>". A test the tree no longer has follows moved-tests.txt.
+func statedTest(root string, idx testIndex, moved movedTests, touched map[string]bool, name string) (string, bool) {
+	switch {
+	case strings.Contains(name, "::"):
+		if testExists(root, name) {
+			return name, true
+		}
+		if to, ok := moved[name]; ok && testExists(root, to) {
+			return to, true
+		}
+	case goTestName.MatchString(name):
+		files := idx[name]
+		if len(files) == 1 {
+			return files[0] + "::" + name, true
+		}
+		if i := slices.IndexFunc(files, func(f string) bool { return touched[f] }); i >= 0 {
+			return files[i] + "::" + name, true
+		}
+		if len(files) == 0 {
+			return movedByName(root, moved, name)
+		}
+	case scenarioName.MatchString(name):
+		if p := "test/parity/scenarios/" + name + ".toml"; exists(root, p) {
+			return p, true
+		}
+	case strings.HasSuffix(name, "_test.go") || scenarioFile.MatchString(name) || otherTest.MatchString(name):
+		if exists(root, name) {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// testsOfCommit returns the regression tests of a fix commit, resolved against the current tree.
+//
+// A message that names them outright with "Regression-Test:" trailers has exactly those. Otherwise they are what the commit itself changes: the Go tests its diff adds, the tests it edits in place, the test files it adds, and the tests its message names in a file the commit touches. A test the message only mentions, in a file the commit leaves alone, is not one of them: a message names tests for many reasons (where the bug was seen, another failure seen on the way, a test that stayed green), and listing each credited a fix with tests that do not cover it.
 func testsOfCommit(r repo, idx testIndex, moved movedTests, hash, message string) ([]string, error) {
 	var out []string
 	add := func(s string) {
@@ -241,26 +289,34 @@ func testsOfCommit(r repo, idx testIndex, moved movedTests, hash, message string
 			add(f)
 		}
 	}
-	for _, m := range goTestMention.FindAllStringSubmatch(message, -1) {
-		files := idx[m[1]]
-		if len(files) == 0 {
-			if to, ok := movedByName(r.root, moved, m[1]); ok {
-				add(to)
+	if named := readMessage(message).tests; len(named) > 0 {
+		// The message cannot change once it is committed, so a test it names that the tree no longer has is dropped, as a recorded test is.
+		out = nil
+		for _, name := range named {
+			if ref, ok := statedTest(r.root, idx, moved, touched, name); ok {
+				add(ref)
 			}
+		}
+		slices.Sort(out)
+		return out, nil
+	}
+	touchedFiles := sortedKeys(touched)
+	for _, m := range goTestMention.FindAllStringSubmatch(message, -1) {
+		name := m[1]
+		if i := slices.IndexFunc(idx[name], func(f string) bool { return touched[f] }); i >= 0 {
+			add(idx[name][i] + "::" + name)
 			continue
 		}
-		pick := files[0]
-		for _, f := range files {
-			if touched[f] {
-				pick = f
+		// The commit touched the file that declared the test then; moved-tests.txt says where a later commit moved it.
+		for _, f := range touchedFiles {
+			if to, ok := moved[f+"::"+name]; ok && testExists(r.root, to) {
+				add(to)
 				break
 			}
 		}
-		add(pick + "::" + m[1])
 	}
 	for _, m := range scenarioRef.FindAllStringSubmatch(message, -1) {
-		p := "test/parity/scenarios/" + m[1] + "/" + m[2] + ".toml"
-		if exists(r.root, p) {
+		if p := "test/parity/scenarios/" + m[1] + "/" + m[2] + ".toml"; touched[p] && exists(r.root, p) {
 			add(p)
 		}
 	}

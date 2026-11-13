@@ -42,7 +42,7 @@ func replicatedAccessorsProbe(ctx sdk.Context, _ string) error {
 		return err
 	}
 	out["entryAfterMessage"] = afterMessage
-	if _, err := ctx.SetModel("prov-after/id-after"); err != nil {
+	if _, err := ctx.SetModelNamed("prov-after/id-after"); err != nil {
 		return err
 	}
 	out["model1"], out["provider1"], out["qualified1"] = ctx.Model(), ctx.ModelProvider(), ctx.ModelQualified()

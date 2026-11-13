@@ -147,7 +147,7 @@ func (r *route) path(params any, principal data.Principal, ctx context.Context) 
 	existing := r.addresses[address.Key]
 	if existing == nil {
 		made := &routed{address: address}
-		made.path = newPath(func(event pathEvent) { r.changed(made, event) })
+		made.path = newPath(func(event pathEvent) { r.changed(made, event) }, func() bool { return made.suspended })
 		existing = made
 		r.keys = append(r.keys, address.Key)
 		r.addresses[address.Key] = made

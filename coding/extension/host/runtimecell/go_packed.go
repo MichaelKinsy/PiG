@@ -154,7 +154,7 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 	if err != nil {
 		return nil, err
 	}
-	if cell, ok := reuseGoPackedCell(cacheRoot, key, normalized, preferredSDKRoot); ok {
+	if cell, ok := reuseGoPackedCell(ctx, cacheRoot, key, normalized, preferredSDKRoot); ok {
 		return cell, nil
 	}
 	lockCandidates := []string{preferredSDKRoot, os.Getenv("PIG_SDK_GO_ROOT")}
@@ -240,12 +240,14 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 // process restages the SDK names no published entry and the caller falls back
 // to the leased path. A hit therefore proves the entry was built from exactly
 // the SDK content just read, which is what the leased lookup would return.
-func reuseGoPackedCell(cacheRoot, key string, normalized []GoExtension, preferredSDKRoot string) (*GoPackedCell, bool) {
+// The cells of one load read the SDK tree once between them (WithLoadTreeHashes),
+// so for them the content just read is the content the load's first cell read.
+func reuseGoPackedCell(ctx context.Context, cacheRoot, key string, normalized []GoExtension, preferredSDKRoot string) (*GoPackedCell, bool) {
 	sdkRoot, err := findSDKRootWithPreferred(normalized, preferredSDKRoot)
 	if err != nil {
 		return nil, false
 	}
-	hash := goPackedCellHash(cacheRoot, key, normalized, sdkRoot)
+	hash := goPackedCellHashOfSDK(cacheRoot, key, normalized, loadTreeHash(ctx, sdkRoot))
 	if strings.HasPrefix(hash, "error:") {
 		return nil, false
 	}
@@ -305,7 +307,11 @@ func normalizeGoExtensions(extensions []GoExtension, requireFactory bool) ([]GoE
 }
 
 func goPackedCellHash(cacheRoot, key string, extensions []GoExtension, sdkRoot string) string {
-	sdkHash := hashTree(sdkRoot)
+	return goPackedCellHashOfSDK(cacheRoot, key, extensions, hashTree(sdkRoot))
+}
+
+// goPackedCellHashOfSDK is goPackedCellHash for an SDK tree whose hashTree the caller holds.
+func goPackedCellHashOfSDK(cacheRoot, key string, extensions []GoExtension, sdkHash string) string {
 	if strings.HasPrefix(sdkHash, "error:") {
 		return sdkHash
 	}

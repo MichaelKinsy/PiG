@@ -348,6 +348,7 @@ func toolPatternRegExp(pattern string) *regexp.Regexp {
 // GetMcpToolExposure is the exposure of one tool of a server: its
 // `toolExposure` entry, else the server's `exposure`.
 func GetMcpToolExposure(config McpServerConfig, toolName string) McpExposure {
+	// pig divergence (D645): the overrides hold own entries only, so a tool named like an Object.prototype member (constructor, toString, __proto__) gets the server's exposure; Pi's `overrides[toolName]` on a plain object returns the inherited function or object as the exposure.
 	if exact, ok := config.ToolExposure.Get(toolName); ok {
 		return exact
 	}

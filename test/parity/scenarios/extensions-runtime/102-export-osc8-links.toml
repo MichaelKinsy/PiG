@@ -1,0 +1,106 @@
+# Behavior family: extensions-runtime
+# Surface: HTML export turns OSC 8 hyperlinks in an extension tool's rendered output into links and drops the other escape sequences.
+#
+# Upstream evidence (Pi 0e1e3fc81, #12052; packages/coding-agent/src/core/export-html/ansi-to-html.ts, tool-renderer.ts): ansiToHtml
+# matched only SGR sequences, so an OSC 8 hyperlink reached the page as its raw bytes. The fix converts OSC 8 with an http, https or mailto
+# URL to <a href>, keeps the styled spans nested in the link, closes a link left open at the end of its line, and drops every other CSI, OSC
+# and APC sequence and stray ESC; tool-renderer.ts counts a line of such sequences only as blank, so the result trim drops it at either end.
+# The oracle is the pinned Pi 1.5.2 plus the post-release backports (automation/gen/pi-post-release-backports.mjs), 0e1e3fc81 among them.
+#
+# What this pair proves and what it cannot:
+#   - Proved: the ansi-to-html.ts and tool-renderer.ts halves, through AgentSession.exportToHtml (RPC export_html), which is the only CLI path
+#     that runs them. `pi --export <session.jsonl>` is exportFromFile (main.ts): it has no tool renderer, and bash, read, write, edit and ls
+#     are drawn by the page's template.js (index.ts TEMPLATE_RENDERED_TOOLS), so a session file with an OSC 8 link in a bash result never
+#     reaches the converter. The tool here is an extension tool with renderResult.
+#   - Not proved: the template.js half ("a click on a link does not toggle the tool output"). That line runs in a browser; no CLI output
+#     shows it. The export-html scenarios 01-04 compare the embedded template text byte for byte, which pins the changed line, not its effect.
+#
+# Pi probe, the oracle alone (2026-11-13; check-oracle: backports 569928a7cdd3, pi bundle dffb7fef14a9), in a copy of testdata/export-cwd:
+#   pi --no-extensions -e test-faux-provider.ts -e testdata/ext/export-osc8-links.mjs --mode rpc --model test-faux/faux-1 \
+#     --system-prompt "Export links probe." --no-context-files --no-skills --session-dir <tmp>
+#   stdin: the three lines of [[rpc.steps]] below. render_card#0 of the dump:
+#     resultHtmlCollapsed:
+#       <div class="ansi-line">docs: <a href="https://example.com/docs?a=1&amp;b=2">the docs</a> (BEL)</div>
+#       <div class="ansi-line"><span style="font-weight:bold">bold </span><a href="http://example.com/a"><span style="font-weight:bold"></span>
+#         <span style="color:#800000;font-weight:bold">red link</span><span style="font-weight:bold"></span></a>
+#         <span style="font-weight:bold"> tail</span> (ST)</div>
+#     resultHtmlExpanded: those two lines, then
+#       <div class="ansi-line">&nbsp;</div>
+#       <div class="ansi-line">mail: <a href="mailto:dev@example.com">dev@example.com</a> upper: <a href="HTTPS://EXAMPLE.COM/Up">upper</a></div>
+#       <div class="ansi-line">unsafe: no anchor &lt;b&gt;&amp;amp;&lt;/b&gt;</div>
+#       <div class="ansi-line">cursor moved hidden 7stray</div>
+#       <div class="ansi-line">open: <a href="https://example.com/open">never closed</a></div>
+#   (each value is one string without the line breaks added here). The escape-only first and last lines of the renderer are gone, the
+#   escape-only middle line is &nbsp;, and no ESC or BEL byte is left.
+#
+# Form: 29-export-tool-renderers (same faux prompt "Run: extension render cards", same dump script). testdata/ext/export-osc8-links.mjs
+# registers the same four tools and replaces render_card's renderResult with a plain component whose lines hold the sequences. The runner
+# copies testdata/export-cwd for every run (snapshotCWD), so this scenario and 29 share only the read-only dump script; the export goes to
+# the copy.
+
+name = "102-export-osc8-links"
+description = "HTML export converts OSC 8 hyperlinks of an extension tool's rendered result to links, as pi does"
+covers = [
+  "packages/coding-agent/src/core/export-html/ansi-to-html.ts",
+  "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/export-cwd"
+timeout_seconds = 40
+
+[[rpc.steps]]
+line = '{"id":"run","type":"prompt","message":"Run: extension render cards"}'
+wait_contains = ['"type":"agent_end"']
+wait_timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"export","type":"export_html","outputPath":"links.html"}'
+wait_contains = ['"id":"export","type":"response","command":"export_html"']
+wait_timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"dump","type":"bash","command":"node export-rendered-tools.mjs links.html"}'
+wait_contains = ['"id":"dump","type":"response","command":"bash"']
+wait_timeout_seconds = 20
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "Export links probe.", "--no-context-files", "--no-skills", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/export-osc8-links.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/export-osc8-links.mjs",
+]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "Export links probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+# The dump is a JSON string inside the bash response, so each quote of the HTML is written \\\" in the stream.
+both_contain = [
+  'RENDERED {',
+  'docs: <a href=\\\"https://example.com/docs?a=1&amp;b=2\\\">the docs</a> (BEL)</div>',
+  '<div class=\\\"ansi-line\\\">&nbsp;</div><div class=\\\"ansi-line\\\">mail: <a href=\\\"mailto:dev@example.com\\\">dev@example.com</a>',
+  'unsafe: no anchor &lt;b&gt;',
+  'open: <a href=\\\"https://example.com/open\\\">never closed</a></div>',
+]
+
+# normalize-rationale: json_output_equal compares every record whole; the aliases below cover only the isolated cwd, wall clocks and measured
+# durations, which two independent processes cannot share. No field of the rendered HTML is aliased.
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd", "/*/data/path"]
+kind = "path"
+reason = "D2: substitute only exact isolated cwd roots in the system section and export destination; retain all surrounding text and suffixes."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message wall clocks vary; no event, tool result or rendered HTML field is removed."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

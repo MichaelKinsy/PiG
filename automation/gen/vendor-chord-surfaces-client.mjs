@@ -18,6 +18,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { applyPatches } from "./vendor-chord-patches.mjs";
 import { provenance } from "./vendor-chord-provenance.mjs";
 
 const [piTree, commit, telemetryDir, outDir, pin, carriedList = ""] = process.argv.slice(2);
@@ -176,8 +177,16 @@ const reactVersions = {};
 	files.push("tui/bootstrap.cjs.in");
 }
 
+// PiG's patches over Pi's sources (vendor-chord-patches.mjs), after the copy: the manifest lists them, and its hashes are of the
+// patched files.
+const patches = applyPatches((path) => {
+	const target = path.startsWith("packages/chord/src/") ? join(pi, "chord/src", path.slice("packages/chord/src/".length)) : undefined;
+	return target !== undefined && existsSync(target) ? target : undefined;
+});
+
 const manifest = {
 	...provenance(commit, pin, carriedList),
+	patches,
 	piSchema: JSON.parse(readFileSync(join(schemaDir, "package.json"), "utf8")).version,
 	piTelemetry: JSON.parse(readFileSync(join(telemetryDir, "package.json"), "utf8")).version,
 	react: reactVersions,

@@ -48,6 +48,8 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{".github/workflows/bolt-bench.yml", "0.7.0", "default of the pig_tag input: the released PiG this workflow compares against, not a pin of this tree"},
 	{".github/workflows/ci.yml", "26.5.1", "the oldest Node whose sandbox the terminal surface tests need; a requirement of that test, not a Node pin"},
 	{"automation/make/ci.mk", "26.5.1", "the oldest Node whose sandbox the terminal surface tests need; a requirement of that test, not a Node pin"},
+	// Pins that live in a script of their own.
+	{"automation/ci/build-libxcb.sh", "1.16.1", "the libxcb release the script builds for the X11 display oracle; the sha256 beside it fixes the bytes"},
 
 	// Checked copies. make compliance compares each with its source and fails on drift.
 	{"automation/images/ci-go/Dockerfile", "1.27.4", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},

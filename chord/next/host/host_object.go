@@ -514,7 +514,7 @@ func (o *chordObject) attempt() *attempt {
 // retry is `ref.retry()` and a `retry` message, as a step of walk (handled once per walk: a diamond reaches it twice): an
 // attempt now when failed (a broken one too) or waiting, its backoff window skipped; passed on to the failed dependencies
 // while parked `failed { waiting }`; ignored otherwise (an attempt runs, or it is live).
-func (o *chordObject) retry(walk *retryWalk) {
+func (o *chordObject) retry(walk *retryWalk, _ *binding) {
 	if _, seen := walk.visited[o]; seen {
 		return
 	}
@@ -546,10 +546,18 @@ func (o *chordObject) retryOn(sources []retrySourceType) {
 	o.wakes.replace(sources, o.wake)
 }
 
-// call calls a method of the live object for from, bound at version (an older one maps its arguments and result, Q10). While
+// call calls a method of the live object for a reference's binding: as its caller, at its version (callAs).
+func (o *chordObject) call(method string, args any, b *binding, ctx context.Context, parent telemetry.TelemetrySpan) *parkedCallResult {
+	return o.callAs(method, args, ctx, parent, b.from, b.consumer.Version)
+}
+
+// generationOf: members on this host are no replicas.
+func (*chordObject) generationOf(string) (int, bool) { return 0, false }
+
+// callAs calls a method of the live object for from, bound at version (an older one maps its arguments and result, Q10). While
 // an attempt activates (a reload's restart, a retry), new work waits for its outcome (the gate); old work runs on a restart's
 // open old attempt. A refusal (not live, ended, failed) rejects the result.
-func (o *chordObject) call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult {
+func (o *chordObject) callAs(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult {
 	if o.phase.kind == objectActivating {
 		// Old work runs on the open old attempt (rule 2): work begun before the reload finishes on old code, and a restart's
 		// drain never waits on itself. The old attempt checks the call's version against its own contract.
@@ -1546,7 +1554,7 @@ func (o *chordObject) failedAttempt(a *attempt, cause data.FailureCause) {
 	o.idle()
 	// A wake signal arrived while it activated: it retries it now.
 	if wokenBy {
-		o.retry(newRetryWalk(link.RETRY_HOPS))
+		o.retry(newRetryWalk(link.RETRY_HOPS), nil)
 	}
 }
 
@@ -1566,7 +1574,7 @@ func (o *chordObject) wake() {
 	if st.kind != objectFailed || wakes.leaving {
 		return
 	}
-	o.host.loop().Queue(func() { o.retry(newRetryWalk(link.RETRY_HOPS)) })
+	o.host.loop().Queue(func() { o.retry(newRetryWalk(link.RETRY_HOPS), nil) })
 }
 
 // withdraw: the live attempt a leaves the registries' tables (it fails or ends), inside a batch; a composition this

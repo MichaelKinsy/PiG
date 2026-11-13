@@ -242,6 +242,7 @@ type tmuxStepBlock struct {
 type finalFrameBlock struct {
 	Text              string `toml:"text"`
 	QuietMilliseconds int    `toml:"quiet_milliseconds"`
+	WriteLog          string `toml:"write_log"`
 }
 
 type frameWatchBlock struct {
@@ -452,6 +453,15 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 	}
 	if len(sc.RPC.InputLines) > 0 && len(sc.RPC.Steps) > 0 {
 		out = append(out, violation{path, "rpc-input-conflict", "rpc input_lines and steps are mutually exclusive"})
+	}
+	for i, step := range sc.Tmux.Steps {
+		// A final_frame that reads a write log reads the file both binaries were told to write: a log one side does not write would fail every run.
+		if step.FinalFrame == nil || step.FinalFrame.WriteLog == "" {
+			continue
+		}
+		if want := "PI_TUI_WRITE_LOG=" + step.FinalFrame.WriteLog; !slices.Contains(sc.Env.Pig, want) || !slices.Contains(sc.Env.Pi, want) {
+			out = append(out, violation{path, "final-frame-write-log", fmt.Sprintf("tmux step %d final_frame write_log requires %s in env.pig and env.pi", i+1, want)})
+		}
 	}
 	for i, step := range sc.RPC.Steps {
 		if strings.TrimSpace(step.Line) == "" {

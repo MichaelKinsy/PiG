@@ -17,6 +17,10 @@ import (
 //   - no aggregate: no committed line is a function of all entries (the page used to open with the entry counts).
 //   - incremental regeneration: `make bug-ledger` keeps every committed entry whose fix is already recorded and changes only the entries the
 //     fragments and commits of the branch add or remove. `make bug-ledger-refresh` recomputes all of them from the history, as a release does.
+//
+// What a kept entry keeps is what the history chose for it: its commits, its tests and the cause read from their messages. What is read from
+// the tree alone is read again on every run, so that it cannot outlive its source: the impact and platform classes, which are functions of
+// the entry's own text (see classify), and the cause and tests its changelog bullet states with a marker (see applyStated).
 
 // canonical returns the entries in the order the committed files list them.
 func canonical(l *Ledger) {
@@ -35,6 +39,10 @@ func canonical(l *Ledger) {
 // a bug the history no longer has and is dropped; a generated entry that no committed entry claims is new and keeps its generated form.
 // Only an entry whose identity is the bug itself (a release note or a divergence, whose commit list legitimately differs between clones) also
 // takes the committed entry of its identity that no other generated entry claimed when they share no commit.
+//
+// A committed entry that names a commit HEAD does not reach is kept only for a generated entry that names that commit too: the entry that
+// build inherited because this history lacks its fix (see inherit). For any other generated entry it is the entry of a branch as it was before
+// a rebase or a re-pick, and keeping it kept hashes that no reader of this history can find in place of the commits the fix marker names.
 func keepPrior(l *Ledger, prior []Entry, root string, moved movedTests) {
 	type committed struct {
 		entry Entry
@@ -55,13 +63,27 @@ func keepPrior(l *Ledger, prior []Entry, root string, moved movedTests) {
 	kept := make([]bool, len(l.Entries))
 	used := map[string]bool{}
 	keep := func(i int, c *committed) {
-		l.Entries[i], c.taken, kept[i] = c.entry, true, true
-		used[c.entry.ID] = true
+		fresh, e := l.Entries[i], c.entry
+		e.Impact, e.Platform, e.stated = fresh.Impact, fresh.Platform, fresh.stated
+		// A committed entry with no cause takes the one the sources now give, and a cause that is a paragraph about how the fix was checked was never one (see readMessage).
+		if fresh.stated.cause || e.RootCause == "" || (e.CauseFrom == "commit" && evidenceHead.MatchString(e.RootCause)) {
+			e.RootCause, e.CauseFrom = fresh.RootCause, fresh.CauseFrom
+		}
+		if fresh.stated.tests {
+			e.Tests = fresh.Tests
+		}
+		l.Entries[i], c.taken, kept[i] = e, true, true
+		used[e.ID] = true
+	}
+	stale := func(c *committed, e Entry) bool {
+		return slices.ContainsFunc(c.entry.Commits, func(x Commit) bool {
+			return !l.reach.has(x.Hash) && !slices.ContainsFunc(e.Commits, func(y Commit) bool { return y.Hash == x.Hash })
+		})
 	}
 	for i, e := range l.Entries {
 		var first, same *committed
 		for _, c := range have[identity(e)] {
-			if c.taken || !sharesCommit(c.entry, e) {
+			if c.taken || !sharesCommit(c.entry, e) || stale(c, e) {
 				continue
 			}
 			if first == nil {
@@ -83,7 +105,7 @@ func keepPrior(l *Ledger, prior []Entry, root string, moved movedTests) {
 			continue
 		}
 		for _, c := range have[identity(e)] {
-			if !c.taken {
+			if !c.taken && !stale(c, e) {
 				keep(i, c)
 				break
 			}

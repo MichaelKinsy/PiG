@@ -250,6 +250,10 @@ func hostOptionalString(c Context, method, field string) (*string, error) {
 // Context provides the extension handler with access to host UI methods,
 // session state, and message injection. It is passed to every tool, command,
 // and event handler.
+//
+// Context has no method that continues a turn or appends a compaction at a turn's end. A turn_end or agent_before_settle handler does both with its result:
+// "entries" (custom, custom_message, context_edit and compaction drafts) and "continue" (one more provider request, no new user message). An extension that owns
+// compaction continues a turn after a provider overflow this way; see "Own compaction and continue after an overflow" in the extensions guide.
 type Context struct {
 	ext        *Extension
 	toolCallID string // set for tool handlers
@@ -602,12 +606,15 @@ func (c Context) EditorWithoutPrefill(title string) (any, bool, error) {
 
 // SendMessageOptions configures how the message is delivered.
 //
-// Both fields are optional, as upstream's are: a nil TriggerTurn or empty
+// TriggerTurn and DeliverAs are optional, as upstream's are: a nil TriggerTurn or empty
 // DeliverAs is sent as unset, and the host applies upstream's default for the
 // session's state (while a turn streams, an unset triggerTurn steers).
 type SendMessageOptions struct {
 	TriggerTurn *bool  // nil: host default; true starts or joins a turn; false never does
 	DeliverAs   string // "steer", "followUp", or "nextTurn"; empty: host default
+	// Details is upstream's message `details`: extension data kept with the message and not sent to the model. Nil leaves the member out;
+	// json.RawMessage("null") writes it as null.
+	Details any
 }
 
 // SendMessage injects a custom message into the conversation. With TriggerTurn the run it starts keeps [Context.IsIdle] busy until the handler yields ([Context.Yield], [Context.Sleep]) or returns; a handler that polls for that run with a raw time.Sleep stays busy.
@@ -619,14 +626,11 @@ func (c Context) SendMessage(customType, content string, display bool, opts Send
 	if opts.DeliverAs != "" {
 		options["deliverAs"] = opts.DeliverAs
 	}
-	result, err := c.callHost("sendMessage", map[string]any{
-		"message": map[string]any{
-			"customType": customType,
-			"content":    content,
-			"display":    display,
-		},
-		"options": options,
-	})
+	message := map[string]any{"customType": customType, "content": content, "display": display}
+	if !omittedMember(opts.Details) {
+		message["details"] = opts.Details
+	}
+	result, err := c.callHost("sendMessage", map[string]any{"message": message, "options": options})
 	if err != nil {
 		return err
 	}
@@ -704,12 +708,14 @@ func (c Context) SendUserMessageWith(content any, options SendUserMessageOptions
 	return nil
 }
 
-// AppendEntry appends a custom entry to the session for persistence.
+// AppendEntry appends a custom entry to the session for persistence. A nil data leaves the entry without a data member, as Pi's appendEntry(customType)
+// does; json.RawMessage("null") writes the member as null, as appendEntry(customType, null) does.
 func (c Context) AppendEntry(customType string, data any) error {
-	result, err := c.callHost("appendEntry", map[string]any{
-		"customType": customType,
-		"data":       data,
-	})
+	args := map[string]any{"customType": customType}
+	if !omittedMember(data) {
+		args["data"] = data
+	}
+	result, err := c.callHost("appendEntry", args)
 	if err != nil {
 		return err
 	}
@@ -756,10 +762,20 @@ func (c Context) SetSessionName(name string) error {
 	return nil
 }
 
-// SetLabel sets or clears an entry label. The host's failure is returned, as
-// upstream's setLabel throws when the session cannot record the label.
+// SetLabel sets or clears an entry label. The label is written as given: an empty one clears the label and its entry holds `"label":""`, as Pi's
+// setLabel(entryId, "") writes it. The host's failure is returned, as upstream's setLabel throws when the session cannot record the label.
 func (c Context) SetLabel(entryID, label string) error {
-	result, err := c.callHost("setLabel", map[string]string{"entryId": entryID, "label": label})
+	return c.SetLabelValue(entryID, label)
+}
+
+// SetLabelValue is SetLabel for every form Pi's setLabel(entryId, label?) takes. A nil label is the call without a label, whose entry has no label
+// member; json.RawMessage("null") is a null label, written as null; a string is written as given. All but a string that is not empty clear the label.
+func (c Context) SetLabelValue(entryID string, label any) error {
+	args := map[string]any{"entryId": entryID}
+	if label != nil {
+		args["label"] = label
+	}
+	result, err := c.callHost("setLabel", args)
 	if err != nil {
 		return err
 	}
@@ -793,10 +809,42 @@ func (c Context) SetThinkingLevel(level string) {
 	_, _ = c.callHost("setThinkingLevel", map[string]string{"level": level})
 }
 
-// SetModel changes the active model.
-func (c Context) SetModel(model string) (bool, error) {
-	result, err := c.callHost("setModel", map[string]string{"model": model})
-	if err != nil {
+// SetModel is Pi's pi.setModel(model): it makes model, a Pi model object, the Session's model and reports whether it did. It reports false, and changes
+// nothing, when the model's provider has no configured auth. The Session uses the object as given, with the members the caller left on it (its context
+// window, limits, base URL, compat): a model taken from ModelRegistry and edited, or one built by hand for a provider the host knows. The model_select
+// handlers have run when it returns. A Go map has no member order, so an edited or hand-built object reaches model_select with its members sorted.
+//
+// SetModelNamed takes a `provider/id` name instead.
+func (c Context) SetModel(model map[string]any) (bool, error) {
+	return c.setModel(model)
+}
+
+// SetModelNamed is SetModel for the model a `provider/id` name stands for: the registry's model of that name, or for an id the registry does not list a
+// model the host builds from the provider. A name with no slash is an openai model. It asks the host for the model object and then sets it, two calls: the
+// object the first call returned is the one set, whatever the registry became in between, and an error of the first call is returned without setting.
+func (c Context) SetModelNamed(spec string) (bool, error) {
+	result, err := c.callHost("resolveModel", map[string]string{"spec": spec})
+	if err := callResultError(result, err); err != nil {
+		return false, err
+	}
+	if result == nil {
+		return false, nil
+	}
+	var resolved struct {
+		Model json.RawMessage `json:"model"`
+		Error string          `json:"error,omitempty"`
+	}
+	_ = json.Unmarshal(result.Result, &resolved)
+	if resolved.Error != "" {
+		return false, fmt.Errorf("%s", resolved.Error)
+	}
+	return c.setModel(resolved.Model)
+}
+
+func (c Context) setModel(model any) (bool, error) {
+	result, err := c.callHost("setModel", map[string]any{"model": model})
+	// The host rejects a value that is not a chat model object; Pi's Promise rejects.
+	if err := callResultError(result, err); err != nil {
 		return false, err
 	}
 	if result == nil {

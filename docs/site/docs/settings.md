@@ -15,7 +15,7 @@ Set `PIG_HOME` to move the whole configuration root. Set `PIG_CODING_AGENT_DIR` 
 
 Add `"$schema": "https://pi.dev/schemas/settings.schema.json"` to `settings.json` for editor validation and completion. PiG keeps the key when it writes the file. The schema is the one Pi 1.5.2 publishes. It does not list the PiG-only keys, but it accepts them.
 
-Use `/settings` to change a setting from inside a session. PiG writes the file for you and applies the change without a restart.
+Use `/settings` to change a setting from inside a session. PiG writes the file for you and applies the change without a restart. When the file cannot be written, PiG prints `Failed to save settings: <error>`, so you know the change will not survive a restart; Pi 1.5.2 reports the failed write only in the settings warnings of a later start (D633).
 
 [Settings by example](/docs/latest/settings-examples) shows the common keys at work, with the output to expect.
 
@@ -130,6 +130,7 @@ To turn cache warming off, choose `off` for **Cache warming** in `/settings`, or
 | `terminal.imageWidthCells` | number | `60` | Width of a rendered image, in terminal cells. |
 | `terminal.clearOnShrink` | boolean | `false` | Repaint the screen when content shrinks. |
 | `terminal.showTerminalProgress` | boolean | `false` | Show OSC 9;4 progress in the terminal tab. |
+| `terminal.screenWriter` | `"writer" \| "pi"` | `"pi"` | PiG-only (D624). What a fullscreen terminal is sent: `"pi"`, the default in 0.8.0, sends the bytes Pi sends; `"writer"` selects the screen writer, which sends only what a frame changes on the screen. Read from the global settings file only, when PiG starts; `PIG_TUI_SCREEN_WRITER` overrides it. |
 | `images.autoResize` | boolean | `true` | Resize an image to at most 2000 by 2000 pixels before PiG sends it to a model. |
 | `images.blockImages` | boolean | `false` | Keep images away from the model. Each image in a message or tool result is replaced by the text `Image reading is disabled.` before the request is sent, as in Pi (`sdk.ts:312`; PiG `coding/block_images.go`). |
 

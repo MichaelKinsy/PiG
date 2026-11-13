@@ -30,12 +30,17 @@ type response struct {
 func (r *response) ignoreMatch() { r.isMatchIgnored = true }
 
 func newRuleResponse(mode *Mode) *response {
+	return &response{data: ruleData(mode)}
+}
+
+// ruleData is mode.data as new Response(mode) leaves it: an object the mode gets when it has none.
+func ruleData(mode *Mode) *responseData {
 	compiled := mode.setComp()
 	if compiled.data == nil {
 		compiled.data = &responseData{}
 		mode.present |= keyData
 	}
-	return &response{data: compiled.data}
+	return compiled.data
 }
 
 // frame is `Object.create(mode, { parent: { value: top } })`: a stack entry that reads through to its mode. The language itself is the bottom of the stack, so its frame is unique per language and writes reach the language object.
@@ -59,23 +64,29 @@ func (f *frame) response() *response {
 	return &response{data: f.data}
 }
 
-// enhancedMatch is a MultiRegex exec result after match.splice(0, i) and Object.assign(match, matchData).
+// enhancedMatch is a MultiRegex exec result after match.splice(0, i) and Object.assign(match, matchData). offset is the number, in the expression that matched, of the group that wraps the matched rule; the rule's own groups follow it.
 type enhancedMatch struct {
 	input    []rune
 	index    int
-	spans    []int
+	match    jsMatch
 	offset   int
 	opts     *matchOptions
 	position int
 }
 
-// group is match[k]: the code units of a participating group, ok false for undefined.
+// group is match[k]: the code units of a participating group, ok false for undefined. match[0] is the text of the rule that matched, which is the whole match. A later group is one of the rule's own, which the matcher's expression holds only for a rule whose callbacks read them (matchOptions.groups).
 func (m *enhancedMatch) group(k int) ([]rune, bool) {
-	g := m.offset + k
-	if 2*g+1 >= len(m.spans) || m.spans[2*g] < 0 {
+	if k == 0 {
+		return m.input[m.match.index:m.match.end], true
+	}
+	if m.opts != nil && !m.opts.groups {
+		panic("hljs: a group of a rule whose groups its matcher leaves out")
+	}
+	start, end, ok := m.match.span(m.offset + k)
+	if !ok {
 		return nil, false
 	}
-	return m.input[m.spans[2*g]:m.spans[2*g+1]], true
+	return m.input[start:end], true
 }
 
 func (m *enhancedMatch) lexeme() []rune {
@@ -97,84 +108,106 @@ func (m *enhancedMatch) matchType() string {
 	return m.opts.typ
 }
 
-// matchOptions is the opts object a rule is registered with. It is shared by every MultiRegex built from the same rules, and each addRule renumbers its position.
+// matchOptions is the opts object a rule is registered with. It is shared by every MultiRegex built from the same rules, and each addRule renumbers its position. groups is set for a rule whose match a callback of its mode reads (on:begin, on:end, beforeBegin): a matcher's expression then holds the rule's own groups.
 type matchOptions struct {
 	rule     *Mode
 	typ      string
 	position int
+	groups   bool
 }
 
+// multiRegexRule is a rule of a MultiRegex. group is the number of the group that wraps it in the matcher's expression, where highlight.js keeps matchIndexes: the groups before it are those of the rules before it that the expression holds.
 type multiRegexRule struct {
-	re   pattern
-	opts *matchOptions
+	re    pattern
+	opts  *matchOptions
+	group int
 }
 
 type multiRegex struct {
-	matchIndexes map[int]*matchOptions
-	regexes      []multiRegexRule
-	matchAt      int
-	position     int
-	matcherRe    *jsRegExp
-	empty        bool
-	lastIndex    int
-	dispatch     *branchDispatch
+	regexes   []multiRegexRule
+	position  int
+	matcherRe *jsRegExp
+	empty     bool
+	lastIndex int
+	dispatch  *branchDispatch
+	// emptyRule is set for a matcher of one rule that matches the empty string everywhere (matchesEmptyEverywhere): the end of a mode that has none and contains nothing.
+	emptyRule bool
 }
 
-func newMultiRegex() *multiRegex {
-	return &multiRegex{matchIndexes: map[int]*matchOptions{}, matchAt: 1}
-}
+// matchesEmptyEverywhere is the pattern highlight.js gives a mode without a begin or without an end. One of \B and \b holds at every position, the end of the text included, so it matches the empty string wherever a search for it starts.
+const matchesEmptyEverywhere = `\B|\b`
+
+// emptyMatch is the match of matchesEmptyEverywhere at index.
+func emptyMatch(index int) jsMatch { return jsMatch{index: index, end: index} }
+
+func newMultiRegex() *multiRegex { return &multiRegex{} }
 
 func (m *multiRegex) addRule(re pattern, opts *matchOptions) {
 	opts.position = m.position
 	m.position++
-	m.matchIndexes[m.matchAt] = opts
-	m.regexes = append(m.regexes, multiRegexRule{re, opts})
-	m.matchAt += countMatchGroups(re) + 1
+	m.regexes = append(m.regexes, multiRegexRule{re: re, opts: opts})
 }
 
 func (m *multiRegex) compile(language *Mode) {
 	if len(m.regexes) == 0 {
 		m.empty = true
 	}
-	terminators := make([]pattern, len(m.regexes))
-	for i, r := range m.regexes {
-		terminators[i] = r.re
+	source, groups := joinRules(m.regexes)
+	for i := range m.regexes {
+		m.regexes[i].group = groups[i]
 	}
 	// The joined terminators are alternatives of patterns compileMode recorded, so they add no reach, and recording them would make a language's reach depend on the matchers its first texts happened to compile.
-	m.matcherRe = compileLangRe(language, stringPattern(join(terminators)))
+	m.matcherRe = compileLangRe(language, stringPattern(source))
+	if len(m.regexes) == 1 {
+		only, _ := m.regexes[0].re.source()
+		m.emptyRule = dispatchEnabled && only == matchesEmptyEverywhere
+	}
 	if dispatchEnabled {
 		m.dispatch = newBranchDispatch(m.regexes, language.caseInsensitive)
 	}
 }
 
-func (m *multiRegex) exec(s []rune) *enhancedMatch {
+// exec is MultiRegex.exec. The match is written to result, which the caller owns, and returned; nil is no match.
+func (m *multiRegex) exec(s []rune, result *enhancedMatch) *enhancedMatch {
 	if m.empty {
 		return nil
 	}
-	var match *jsMatch
-	if m.dispatch != nil {
-		match = m.dispatch.exec(m.matcherRe, s, m.lastIndex, m.matchAt-1)
-	} else {
-		match = m.matcherRe.exec(s, m.lastIndex)
+	var match jsMatch
+	rule, group, ok := -1, 0, false
+	switch {
+	case m.dispatch != nil:
+		match, rule, group, ok = m.dispatch.exec(m.matcherRe, s, m.lastIndex)
+	case m.emptyRule:
+		if m.lastIndex <= len(s) {
+			match, rule, group, ok = emptyMatch(m.lastIndex), 0, m.regexes[0].group, true
+		}
+	default:
+		if match, ok = m.matcherRe.exec(s, m.lastIndex); ok {
+			rule, group = matchedRule(match, m.regexes)
+		}
 	}
-	if match == nil {
+	if !ok {
 		return nil
 	}
-	i := -1
-	for g := 1; 2*g+1 < len(match.spans); g++ {
-		if match.spans[2*g] >= 0 {
-			i = g
-			break
-		}
-	}
-	result := &enhancedMatch{input: s, index: match.index, spans: match.spans, offset: max(i, 0)}
-	if i >= 0 {
-		if opts := m.matchIndexes[i]; opts != nil {
-			result.opts = opts
-			result.position = opts.position
-		}
+	*result = enhancedMatch{input: s, index: match.index, match: match, offset: group}
+	if rule >= 0 {
+		result.opts = m.regexes[rule].opts
+		result.position = result.opts.position
 	}
 	return result
+}
+
+// matchedRule is the rule of a matcher's expression that a match of it matched, and the number of the rule's group: the first rule whose group took part, as highlight.js finds the first defined group. A match of an expression of one rule is that rule's.
+func matchedRule(match jsMatch, rules []multiRegexRule) (rule, group int) {
+	if len(rules) == 1 {
+		return 0, rules[0].group
+	}
+	for i := range rules {
+		if _, _, ok := match.span(rules[i].group); ok {
+			return i, rules[i].group
+		}
+	}
+	return -1, 0
 }
 
 // resumableMultiRegex is highlight.js ResumableMultiRegex: it resumes after an ignored rule at the same position.
@@ -207,21 +240,22 @@ func (r *resumableMultiRegex) resumingScanAtSamePosition() bool { return r.regex
 func (r *resumableMultiRegex) considerAll() { r.regexIndex = 0 }
 
 func (r *resumableMultiRegex) addRule(re pattern, opts *matchOptions) {
-	r.rules = append(r.rules, multiRegexRule{re, opts})
+	r.rules = append(r.rules, multiRegexRule{re: re, opts: opts})
 	if opts.typ == "begin" {
 		r.count++
 	}
 }
 
-func (r *resumableMultiRegex) exec(s []rune) *enhancedMatch {
+// exec is ResumableMultiRegex.exec, into a match the caller owns (multiRegex.exec).
+func (r *resumableMultiRegex) exec(s []rune, into *enhancedMatch) *enhancedMatch {
 	m := r.getMatcher(r.regexIndex)
 	m.lastIndex = r.lastIndex
-	result := m.exec(s)
+	result := m.exec(s, into)
 	if r.resumingScanAtSamePosition() {
 		if result == nil || result.index != r.lastIndex {
 			m2 := r.getMatcher(0)
 			m2.lastIndex = r.lastIndex + 1
-			result = m2.exec(s)
+			result = m2.exec(s, into)
 		}
 	}
 	if result != nil {
@@ -244,37 +278,62 @@ func countMatchGroups(re pattern) int {
 // backrefRE is highlight.js BACKREF_RE. JavaScript's . excludes the line terminators.
 var backrefRE = lazyregexp.New(`\[(?:[^\\\]]|\\[^\n\r\x{2028}\x{2029}])*\]|\(\??|\\([1-9][0-9]*)|\\[^\n\r\x{2028}\x{2029}]`)
 
-// join is highlight.js join(regexps, "|"): each pattern in its own group, with backreferences renumbered.
-func join(regexps []pattern) string {
+// ruleGroupsLeftOut is false only in tests that compare a matcher with the expression that holds every group; it is read when a matcher compiles.
+var ruleGroupsLeftOut = true
+
+// joinRules is highlight.js join(regexps, "|") over the rules of a matcher: each pattern in its own group, with backreferences renumbered. groups is the number of each rule's group. The groups inside a pattern are left out of the expression (written as non-capturing) unless the pattern refers to a group (a backreference, a named group) or a callback reads the rule's match (matchOptions.groups): the highlighter reads which rule matched and the text it matched, and an expression of dozens of rules otherwise records the groups of all of them for every match. What matches is the same: a group that nothing refers to changes no match.
+func joinRules(rules []multiRegexRule) (source string, groups []int) {
 	numCaptures := 0
-	parts := make([]string, len(regexps))
-	for i, regex := range regexps {
+	parts := make([]string, len(rules))
+	groups = make([]int, len(rules))
+	for i, rule := range rules {
 		numCaptures++
-		offset := numCaptures
-		re, _ := regex.source()
-		var out strings.Builder
-		for re != "" {
-			loc := backrefRE.FindStringSubmatchIndex(re)
-			if loc == nil {
-				out.WriteString(re)
-				break
-			}
-			out.WriteString(re[:loc[0]])
-			match := re[loc[0]:loc[1]]
-			re = re[loc[1]:]
-			if match[0] == '\\' && loc[2] >= 0 {
-				n, _ := strconv.Atoi(match[1:])
-				out.WriteString(`\` + strconv.Itoa(n+offset))
-			} else {
-				out.WriteString(match)
-				if match == "(" {
-					numCaptures++
-				}
-			}
+		groups[i] = numCaptures
+		re, _ := rule.re.source()
+		keep := !ruleGroupsLeftOut || rule.opts.groups
+		part, refers := joinedRule(re, numCaptures, keep)
+		if refers && !keep {
+			keep = true
+			part, _ = joinedRule(re, numCaptures, keep)
 		}
-		parts[i] = "(" + out.String() + ")"
+		if keep {
+			// Named groups take a number too, which BACKREF_RE does not count.
+			numCaptures += countMatchGroups(rule.re)
+		}
+		parts[i] = part
 	}
-	return strings.Join(parts, "|")
+	return strings.Join(parts, "|"), groups
+}
+
+// joinedRule is one pattern of a joined expression in its group, the group that has the number offset: its backreferences are renumbered, and its own groups are written as they are (keep) or as non-capturing. refers reports that the pattern refers to a group, read as BACKREF_RE reads it: a backreference or a named group.
+func joinedRule(re string, offset int, keep bool) (part string, refers bool) {
+	var out strings.Builder
+	out.WriteByte('(')
+	for re != "" {
+		loc := backrefRE.FindStringSubmatchIndex(re)
+		if loc == nil {
+			out.WriteString(re)
+			break
+		}
+		out.WriteString(re[:loc[0]])
+		match := re[loc[0]:loc[1]]
+		re = re[loc[1]:]
+		switch {
+		case match[0] == '\\' && loc[2] >= 0:
+			refers = true
+			n, _ := strconv.Atoi(match[1:])
+			out.WriteString(`\` + strconv.Itoa(n+offset))
+		case match == "(" && !keep:
+			out.WriteString("(?:")
+		default:
+			if match == `\k` || match == "(?" && strings.HasPrefix(re, "<") && !strings.HasPrefix(re, "<=") && !strings.HasPrefix(re, "<!") {
+				refers = true
+			}
+			out.WriteString(match)
+		}
+	}
+	out.WriteByte(')')
+	return out.String(), refers
 }
 
 // either is highlight.js either(...args).
@@ -480,6 +539,7 @@ func compileMode(language, mode, parent *Mode) *Mode {
 		keywordPattern = regExpPattern(`\w+`)
 	}
 	mode.setComp().keywordPatternRe = langRe(language, keywordPattern)
+	mode.setComp().lexemes = newLexemeScanner(mode.comp().keywordPatternRe.source, language.caseInsensitive)
 	mode.present |= keyKeywordPatternRe
 
 	if parent != nil {
@@ -542,10 +602,11 @@ func compileMode(language, mode, parent *Mode) *Mode {
 func buildModeRegex(language, mode *Mode) *resumableMultiRegex {
 	mm := &resumableMultiRegex{multiRegexes: map[int]*multiRegex{}, language: language}
 	for _, term := range mode.contains {
-		mm.addRule(term.mode.begin, &matchOptions{rule: term.mode, typ: "begin"})
+		mm.addRule(term.mode.begin, &matchOptions{rule: term.mode, typ: "begin", groups: term.mode.rare().onBegin != nil || term.mode.comp().beforeBegin != nil})
 	}
 	if terminatorEnd := mode.comp().terminatorEnd; terminatorEnd != "" {
-		mm.addRule(stringPattern(terminatorEnd), &matchOptions{typ: "end"})
+		// The end is read by on:end of the mode, and of the modes it ends with.
+		mm.addRule(stringPattern(terminatorEnd), &matchOptions{typ: "end", groups: mode.rare().onEnd != nil || mode.endsWithParent})
 	}
 	if mode.rare().illegal.truthy() {
 		mm.addRule(mode.rare().illegal, &matchOptions{typ: "illegal"})
@@ -603,12 +664,25 @@ type Result struct {
 	iterations int
 }
 
-// checkpoint is a state at the start of a scan iteration from which a run over the same code, with more text after it, continues identically: the root mode is on top, nothing is buffered or open, and the emitter holds the finished children before it. iterations is the count of the iterations before it, which a resumed run starts from, so highlight.js's iteration limit throws at the same match as in a whole run.
+// checkpoint is a state at the start of a scan iteration from which a run over the same code, with more text after it, continues identically: nothing is buffered, and it holds what the run keeps besides. unit is where the scan stands, and iterations the count of the iterations before it, which a resumed run starts from, so highlight.js's iteration limit throws at the same match as in a whole run. top is the mode stack, nil for the language alone. appends and depth place it in the emitter's output: the children added before it and the nodes open at it. The counts are held in 32 bits, since a run records a checkpoint for every few units of its code; a run past them records no more.
 type checkpoint struct {
-	unit       int
-	children   int
-	iterations int
+	unit       int32
+	iterations int32
+	appends    int32
+	depth      int32
+	top        *frame
 }
+
+// recording is the checkpoints a run records.
+type recording uint8
+
+const (
+	recordNone recording = iota
+	// recordRoot records the checkpoints between finished top-level nodes.
+	recordRoot
+	// recordStack records the checkpoints inside open modes as well.
+	recordStack
+)
 
 type highlightRun struct {
 	registry       *Registry
@@ -624,9 +698,16 @@ type highlightRun struct {
 	index          int
 	iterations     int
 	resume         bool
-	lastMatch      *enhancedMatch
-	record         bool
+	// lastMatchType and lastMatchIndex are what the highlighter reads of lastMatch: the type ("" before the first match) and the index of the match processed last. match is the match of the iteration that is running: nothing keeps one past its iteration.
+	lastMatchType  string
+	lastMatchIndex int
+	match          enhancedMatch
+	record         recording
 	checkpoints    []checkpoint
+	// keyBuffer is the bytes of the lexeme keywordData looks up.
+	keyBuffer []byte
+	// beginResponse is the Response of the begin match being processed.
+	beginResponse response
 }
 
 // highlightJSIterationLimit is the iterations after which highlight.js throws, when they also exceed three times the match index.
@@ -635,11 +716,11 @@ const highlightJSIterationLimit = 100000
 
 // highlight is highlight.js _highlight(languageName, codeToHighlight, ignoreIllegals, continuation).
 func (r *Registry) highlight(languageName string, code []rune, ignoreIllegals bool, continuation *frame) Result {
-	return r.highlightFrom(languageName, code, ignoreIllegals, continuation, checkpoint{}, false)
+	return r.highlightFrom(languageName, code, ignoreIllegals, continuation, checkpoint{}, recordNone)
 }
 
-// highlightFrom is highlight starting the scan at the unit and iteration count of from, which must be a checkpoint of an earlier run over a prefix of code (the zero checkpoint for the whole code), and optionally recording this run's checkpoints.
-func (r *Registry) highlightFrom(languageName string, code []rune, ignoreIllegals bool, continuation *frame, from checkpoint, record bool) Result {
+// highlightFrom is highlight starting at from, a checkpoint of an earlier run over a prefix of code (the zero checkpoint for the whole code): at its unit, with its iteration count, on its mode stack. record is the checkpoints this run records. A stack that does not stand on the root frame this Registry has for the language is not continued: the run fails.
+func (r *Registry) highlightFrom(languageName string, code []rune, ignoreIllegals bool, continuation *frame, from checkpoint, record recording) Result {
 	language := r.getLanguage(languageName)
 	if language == nil {
 		throw(`Unknown language: "` + languageName + `"`)
@@ -653,15 +734,28 @@ func (r *Registry) highlightFrom(languageName string, code []rune, ignoreIllegal
 		language:       md,
 		continuations:  map[string]*frame{},
 		emitter:        newTokenTreeEmitter(),
-		index:          from.unit,
-		iterations:     from.iterations,
+		index:          int(from.unit),
+		iterations:     int(from.iterations),
 		record:         record,
 	}
 	run.top = continuation
 	if run.top == nil {
 		run.top = languageFrame(md)
 	}
-	run.processContinuations()
+	if from.top == nil {
+		run.processContinuations()
+		return run.run()
+	}
+	// The root frame of a language is unique in its Registry, so a stack of another language, of another Registry, or of a language registered again does not stand on it.
+	bottom := from.top
+	for bottom.parent != nil {
+		bottom = bottom.parent
+	}
+	if continuation != nil || bottom != run.top || int(from.unit) > len(code) {
+		return Result{Language: languageName, HasLanguage: true, emitter: run.emitter, top: run.top, failed: true}
+	}
+	run.top = from.top
+	run.reopenNodes()
 	return run.run()
 }
 
@@ -692,7 +786,7 @@ func (h *highlightRun) run() (result Result) {
 	h.top.mode.comp().matcher.considerAll()
 	for {
 		h.iterations++
-		if h.record {
+		if h.record != recordNone {
 			h.recordCheckpoint()
 		}
 		if h.resume {
@@ -701,7 +795,7 @@ func (h *highlightRun) run() (result Result) {
 			h.top.mode.comp().matcher.considerAll()
 		}
 		h.top.mode.comp().matcher.lastIndex = h.index
-		match := h.top.mode.comp().matcher.exec(h.code)
+		match := h.top.mode.comp().matcher.exec(h.code, &h.match)
 		if match == nil {
 			break
 		}
@@ -748,33 +842,110 @@ func languageReach(language *Mode) reach {
 	return props.reach
 }
 
-// recordCheckpoint records the state at the start of this iteration when a run over more text would reach it unchanged.
+// recordCheckpoint records the state at the start of this iteration when a run over more text would reach it unchanged and a run that starts from it can be given all of it. A state is not recorded for what a run keeps outside a checkpoint: text the mode on top has not emitted, a match being retried (resume), the stack of a sublanguage that did not end on its root (continuations), a begin match at the position of the next match (lastMatch), and what a mode on the stack was given when it began (stackResumes).
 func (h *highlightRun) recordCheckpoint() {
-	if h.resume || !h.top.language || len(h.modeBuffer) != 0 || len(h.continuations) != 0 || len(h.emitter.stack) != 1 || h.index == 0 || h.index >= len(h.code) {
+	if h.resume || len(h.modeBuffer) != 0 || h.index == 0 || h.index >= len(h.code) {
 		return
 	}
+	if !h.top.language && (h.record != recordStack || !stackResumes(h.top)) {
+		return
+	}
+	for _, continuation := range h.continuations {
+		// A sublanguage run that ended on its root continues as a new run does.
+		if continuation != nil && !continuation.language {
+			return
+		}
+	}
 	// Only a begin match at the position of the next match changes how that match is read, and a resumed run has no last match.
-	if h.lastMatch != nil && h.lastMatch.matchType() == "begin" && h.lastMatch.index >= h.index {
+	if h.lastMatchType == "begin" && h.lastMatchIndex >= h.index {
 		return
 	}
 	if isLowSurrogate(h.code[h.index]) || isHighSurrogate(h.code[h.index-1]) {
 		return
 	}
-	if n := len(h.checkpoints); n > 0 && h.checkpoints[n-1].unit == h.index {
+	if h.index > math.MaxInt32 || h.iterations > math.MaxInt32 || h.emitter.appends > math.MaxInt32 {
 		return
 	}
-	h.checkpoints = append(h.checkpoints, checkpoint{unit: h.index, children: len(h.emitter.root.children), iterations: h.iterations - 1})
+	n := len(h.checkpoints)
+	if n > 0 && int(h.checkpoints[n-1].unit) == h.index {
+		return
+	}
+	point := checkpoint{unit: int32(h.index), iterations: int32(h.iterations - 1), appends: int32(h.emitter.appends), depth: int32(len(h.emitter.stack) - 1)}
+	if !h.top.language {
+		point.top = h.top
+		// A point is valid by the lines that follow it (resumeLimit), so the last point of a line inside open modes stands for the line.
+		if n > 0 && h.checkpoints[n-1].top != nil && !slices.Contains(h.code[h.checkpoints[n-1].unit:h.index], '\n') {
+			h.checkpoints[n-1] = point
+			return
+		}
+	}
+	h.checkpoints = append(h.checkpoints, point)
+}
+
+// ResumeStackMax bounds the modes of a stack a checkpoint holds, and so the frames a caller keeps with a ResumePoint, and the spans open at one.
+const ResumeStackMax = 64
+
+// stackResumes reports whether a run can start on the stack: it has at most ResumeStackMax modes, and none of them holds what a run gave it when the mode began, or buffers text for another language. The callbacks of a mode (on:begin, on:end) keep what they share on the mode object (END_SAME_AS_BEGIN's first group), endSameAsBegin and the mode it starts keep the end pattern of their begin there, and a sublanguage mode buffers its text for a run of the other language.
+func stackResumes(top *frame) bool {
+	depth := 0
+	for f := top; !f.language; f = f.parent {
+		depth++
+		mode := f.mode
+		if depth > ResumeStackMax || mode.endSameAsBegin || mode.comp().endFromBegin || f.data != nil || mode.rare().onBegin != nil || mode.rare().onEnd != nil || mode.rare().subLanguage.set {
+			return false
+		}
+	}
+	return true
+}
+
+// nodeClass is the class of the node a mode opens in the output, "" for a mode that opens none.
+func (h *highlightRun) nodeClass(mode *Mode) string {
+	if mode.className == "" {
+		return ""
+	}
+	if className := h.language.lang().classNameAliases[mode.className]; className != "" {
+		return className
+	}
+	return mode.className
+}
+
+// reopenNodes opens the nodes of the modes on the stack a run continues from a checkpoint, outermost first, as startNewMode opened them in the run that recorded it: with the language's aliases, which highlight.js processContinuations, for the stack of a sublanguage, does not apply.
+func (h *highlightRun) reopenNodes() {
+	var classes []string
+	for f := h.top; !f.language; f = f.parent {
+		if className := h.nodeClass(f.mode); className != "" {
+			classes = append(classes, className)
+		}
+	}
+	for _, className := range slices.Backward(classes) {
+		h.emitter.openNode(className)
+	}
+	h.emitter.continued = len(classes)
 }
 
 func isHighSurrogate(u rune) bool { return u >= 0xd800 && u <= 0xdbff }
 func isLowSurrogate(u rune) bool  { return u >= 0xdc00 && u <= 0xdfff }
 
 func (h *highlightRun) keywordData(mode *Mode, lexeme []rune) (keywordData, bool) {
-	matchText := unitsToString(lexeme)
-	if h.language.caseInsensitive {
-		matchText = toLowerCase(matchText)
+	compiled := mode.rare().keywords.compiled
+	// An ASCII lexeme is looked up from the run's buffer, with no string of its own.
+	key := h.keyBuffer[:0]
+	for _, u := range lexeme {
+		if u >= utf8.RuneSelf {
+			matchText := unitsToString(lexeme)
+			if h.language.caseInsensitive {
+				matchText = toLowerCase(matchText)
+			}
+			data, ok := compiled[matchText]
+			return data, ok
+		}
+		if h.language.caseInsensitive && u >= 'A' && u <= 'Z' {
+			u += 'a' - 'A'
+		}
+		key = append(key, byte(u))
 	}
-	data, ok := mode.rare().keywords.compiled[matchText]
+	h.keyBuffer = key
+	data, ok := compiled[string(key)]
 	return data, ok
 }
 
@@ -784,33 +955,31 @@ func (h *highlightRun) processKeywords() {
 		h.emitter.addText(unitsToString(h.modeBuffer))
 		return
 	}
-	lastIndex := 0
-	match := top.comp().keywordPatternRe.exec(h.modeBuffer, 0)
-	var buf []rune
-	for match != nil {
-		buf = append(buf, substring(h.modeBuffer, lastIndex, match.index)...)
-		text := h.modeBuffer[match.spans[0]:match.spans[1]]
+	// The text from pending is not emitted yet: it runs through the lexemes that are no keyword, and those a keyword kind that starts with _ leaves as text.
+	pending, lastIndex := 0, 0
+	for {
+		start, end, ok := top.comp().nextLexeme(h.modeBuffer, lastIndex)
+		if !ok {
+			break
+		}
+		text := h.modeBuffer[start:end]
 		if data, ok := h.keywordData(top, text); ok {
-			h.emitter.addText(unitsToString(buf))
-			buf = nil
+			h.emitter.addText(unitsToString(h.modeBuffer[pending:start]))
 			h.relevance += data.relevance
 			if strings.HasPrefix(data.kind, "_") {
-				buf = append(buf, text...)
+				pending = start
 			} else {
 				cssClass := h.language.lang().classNameAliases[data.kind]
 				if cssClass == "" {
 					cssClass = data.kind
 				}
 				h.emitter.addKeyword(unitsToString(text), cssClass)
+				pending = end
 			}
-		} else {
-			buf = append(buf, text...)
 		}
-		lastIndex = match.spans[1]
-		match = top.comp().keywordPatternRe.exec(h.modeBuffer, lastIndex)
+		lastIndex = end
 	}
-	buf = append(buf, substr(h.modeBuffer, lastIndex)...)
-	h.emitter.addText(unitsToString(buf))
+	h.emitter.addText(unitsToString(h.modeBuffer[pending:]))
 }
 
 func (h *highlightRun) processSubLanguage() {
@@ -845,15 +1014,12 @@ func (h *highlightRun) processBuffer() {
 	} else {
 		h.processKeywords()
 	}
-	h.modeBuffer = nil
+	// The buffer's array is used again: what was in it is emitted, and a sublanguage run that read it has ended.
+	h.modeBuffer = h.modeBuffer[:0]
 }
 
 func (h *highlightRun) startNewMode(mode *Mode) *frame {
-	if mode.className != "" {
-		className := h.language.lang().classNameAliases[mode.className]
-		if className == "" {
-			className = mode.className
-		}
+	if className := h.nodeClass(mode); className != "" {
 		h.emitter.openNode(className)
 	}
 	h.top = &frame{mode: mode, parent: h.top}
@@ -902,7 +1068,9 @@ func (h *highlightRun) doIgnore(lexeme []rune) int {
 func (h *highlightRun) doBeginMatch(match *enhancedMatch) int {
 	lexeme := match.lexeme()
 	newMode := match.rule()
-	resp := newRuleResponse(newMode)
+	// The callbacks of a begin run one after the other and keep no response: the run has one for them.
+	h.beginResponse = response{data: ruleData(newMode)}
+	resp := &h.beginResponse
 	for _, cb := range []callback{newMode.comp().beforeBegin, newMode.rare().onBegin} {
 		if cb == nil {
 			continue
@@ -924,7 +1092,7 @@ func (h *highlightRun) doBeginMatch(match *enhancedMatch) int {
 		}
 		h.processBuffer()
 		if !newMode.returnBegin && !newMode.excludeBegin {
-			h.modeBuffer = append([]rune(nil), lexeme...)
+			h.modeBuffer = append(h.modeBuffer[:0], lexeme...)
 		}
 	}
 	h.startNewMode(newMode)
@@ -952,7 +1120,7 @@ func (h *highlightRun) doEndMatch(match *enhancedMatch) int {
 		}
 		h.processBuffer()
 		if origin.mode.excludeEnd {
-			h.modeBuffer = append([]rune(nil), lexeme...)
+			h.modeBuffer = append(h.modeBuffer[:0], lexeme...)
 		}
 	}
 	for {
@@ -970,6 +1138,7 @@ func (h *highlightRun) doEndMatch(match *enhancedMatch) int {
 	if endMode.mode.starts != nil {
 		if endMode.mode.endSameAsBegin {
 			endMode.mode.starts.setComp().endRe = endMode.mode.comp().endRe
+			endMode.mode.starts.setComp().endFromBegin = true
 			endMode.mode.starts.present |= keyEndRe
 		}
 		h.startNewMode(endMode.mode.starts)
@@ -999,11 +1168,11 @@ func (h *highlightRun) processLexeme(textBeforeMatch []rune, match *enhancedMatc
 		return 0
 	}
 	lexeme := match.lexeme()
-	if h.lastMatch != nil && h.lastMatch.matchType() == "begin" && match.matchType() == "end" && h.lastMatch.index == match.index && len(lexeme) == 0 {
+	if h.lastMatchType == "begin" && match.matchType() == "end" && h.lastMatchIndex == match.index && len(lexeme) == 0 {
 		h.modeBuffer = append(h.modeBuffer, slice(h.code, match.index, match.index+1)...)
 		return 1
 	}
-	h.lastMatch = match
+	h.lastMatchType, h.lastMatchIndex = match.matchType(), match.index
 	switch {
 	case match.matchType() == "begin":
 		return h.doBeginMatch(match)

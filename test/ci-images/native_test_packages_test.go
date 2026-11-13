@@ -20,7 +20,7 @@ func TestEveryJobThatRunsNativeTestsInstallsThePackagesThroughTheSharedScript(t 
 		t.Fatal(err)
 	}
 	script := string(data)
-	for _, pkg := range []string{"tmux", "fd-find", "ripgrep", "build-essential", "xvfb", "xclip", "pkg-config", "libxcb1-dev"} {
+	for _, pkg := range []string{"tmux", "fd-find", "ripgrep", "libc6-dev", "gcc", "g++", "make", "dpkg-dev", "xvfb", "xclip", "pkg-config", "libxcb1-dev"} {
 		if !regexp.MustCompile(`\s` + regexp.QuoteMeta(pkg) + `(\s|$)`).MatchString(script) {
 			t.Errorf("install-native-test-packages.sh does not install %s", pkg)
 		}
