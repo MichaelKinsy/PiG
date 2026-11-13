@@ -1542,10 +1542,12 @@ func Extension() *sdk.Extension {
 		frame.ID, frame.Bg = tok+"-frame", "toolPendingBg"
 		root := kit.NewContainer(label, frame)
 		root.ID = tok + "-root"
-		st, err := ctx.MountView(sdk.ViewMount{Key: "ids", Slot: sdk.ViewSlotPanel, ViewContent: sdk.ViewContent{
+		st, err := ctx.MountView(sdk.ViewMount{
+			Key:  "ids",
+			Slot: sdk.ViewSlotPanel,
 			View: kit.View{Root: root},
 			A11y: []sdk.ViewA11y{{Node: tok + "-label", Name: "Label " + tok}},
-		}})
+		})
 		if err != nil {
 			return err
 		}
