@@ -183,6 +183,37 @@ func TestShapeValidate(t *testing.T) {
 	}
 }
 
+// TestShapeValidateErrorPaths pins the text of a validation error: the path names the member and the item, at every depth.
+func TestShapeValidateErrorPaths(t *testing.T) {
+	row := Shape{Type: "object", Properties: map[string]Shape{"n": {Type: "integer"}, "l": {Type: "array", MaxItems: 2, Items: &Shape{Type: "string"}}}, Required: []string{"n"}}
+	rows := Shape{Type: "array", MaxItems: 3, Items: &row}
+	grid := Shape{Type: "array", MaxItems: 2, Items: &Shape{Type: "array", MaxItems: 2, Items: &Shape{Type: "number"}}}
+	flags := Shape{Type: "array", MaxItems: 12, Items: &Shape{Type: "boolean"}}
+	for _, c := range []struct {
+		shape     Shape
+		raw, want string
+	}{
+		{row, `7`, `value is not an object`},
+		{row, `{"n":"x"}`, `value.n is not a number`},
+		{row, `{"n":1,"l":["a",5]}`, `value.l[1] is not a string`},
+		{row, `{"n":1,"l":["a","b","c"]}`, `value.l has 3 items, at most 2`},
+		{rows, `[{"n":1},{"n":1.5}]`, `value[1].n is not a safe integer`},
+		{rows, `[{"n":1},{"n":1},{"n":1,"l":[ "a" , true ]}]`, `value[2].l[1] is not a string`},
+		{rows, `[{"n":1},{"n":1,"z":0}]`, `value[1] has unknown member "z"`},
+		{rows, `[{"n":1},{}]`, `value[1] lacks required member "n"`},
+		{grid, `[[1],[2,"x"]]`, `value[1][1] is not a number`},
+		{grid, `[[1],5]`, `value[1] is not an array`},
+		{flags, `[true,true,true,true,true,true,true,true,true,true,0]`, `value[10] is not a boolean`},
+	} {
+		if err := c.shape.check(); err != nil {
+			t.Fatalf("%s: shape: %v", c.raw, err)
+		}
+		if err := c.shape.Validate(json.RawMessage(c.raw)); err == nil || err.Error() != c.want {
+			t.Errorf("%s: err = %v, want %q", c.raw, err, c.want)
+		}
+	}
+}
+
 type fakeInvoker struct {
 	mu        sync.Mutex
 	cancelled []string
