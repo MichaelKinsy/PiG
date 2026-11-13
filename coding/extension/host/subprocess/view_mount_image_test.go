@@ -23,10 +23,21 @@ import (
 // 512x512 pixels and 70,657 bytes) and a second text row. members is added to the image node as written.
 func mountPhoto(t *testing.T, text, members string) json.RawMessage {
 	t.Helper()
+	return mountImageView(text, members, photoBytes(t))
+}
+
+// photoBytes are the bytes of the photograph.
+func photoBytes(t *testing.T) []byte {
+	t.Helper()
 	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "internal", "photonimage", "testdata", "photon-jpegdecode-tower.jpg"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	return data
+}
+
+// mountImageView is mountPhoto's view with data as the bytes of its image node, named a JPEG.
+func mountImageView(text, members string, data []byte) json.RawMessage {
 	sum := sha256.Sum256(data)
 	ref := hex.EncodeToString(sum[:])
 	return json.RawMessage(`{"root":{"kind":"vstack","children":[{"kind":"text","text":` + strconv.Quote(text) + `},` +
@@ -285,8 +296,8 @@ func TestMountImageIsNoTallerThanItsSlot(t *testing.T) {
 
 // pig additive (D614): what the image node draws per terminal. With the iTerm2 protocol one row carries the inline
 // image with the JPEG as it was sent, and nothing is converted. With the Kitty protocol and no placeholders the row
-// carries the image as Pi's component sends it, as a PNG, with an id that an update keeps. Without a protocol the row
-// is Pi's text fallback. None of them writes outside the rows.
+// carries the image as Pi's component sends it, as a PNG, with an id that an update keeps. Without a protocol the rows
+// are half-block cells, 10 of them for the square photograph in 20 columns. None of them writes outside the rows.
 func TestMountImageRowsPerTerminal(t *testing.T) {
 	render := func(t *testing.T, protocol tui.ImageProtocol) (*imageProbe, *MountSurface, []string) {
 		imageTerminal(t, protocol)
@@ -328,10 +339,92 @@ func TestMountImageRowsPerTerminal(t *testing.T) {
 	})
 	t.Run("no protocol", func(t *testing.T) {
 		p, _, rows := render(t, "")
-		drawn := drawnRows(rows)
-		want := tui.ImageFallback("image/jpeg", &tui.ImageDimensions{WidthPx: 512, HeightPx: 512}, "tower.jpg")
-		if len(drawn) != 3 || drawn[1] != want || p.conversions != 0 || len(p.written) != 0 {
-			t.Fatalf("the mount draws %q, %d conversions, %d writes; want the text fallback %q between its texts, 0 and 0", drawn, p.conversions, len(p.written), want)
+		if n, _ := count(rows, halfBlockGlyph); n != 10 || p.conversions != 1 || len(p.written) != 0 {
+			t.Fatalf("%d rows carry half-block cells, %d conversions, %d writes; want 10, 1 and 0", n, p.conversions, len(p.written))
 		}
 	})
+}
+
+// halfBlockCellRows are the rows of got that hold half-block cells.
+func halfBlockCellRows(got []string) []string {
+	var rows []string
+	for _, row := range got {
+		if strings.Contains(row, halfBlockGlyph) {
+			rows = append(rows, row)
+		}
+	}
+	return rows
+}
+
+// pig additive (D614): in a terminal without an image protocol (tmux, a plain terminal) the image node of a mount is
+// drawn as half-block cells. The first render draws one empty row and asks for work off the loop; the work decodes the
+// photograph and draws it for the node's box; the surface then asks for a frame, whose rows are those of halfBlockRows
+// for the decoded photograph in the cells halfBlockSize gives it (20 by 10 for the square photograph in a box of 20 by
+// 12 cells), in the colour form of the terminal. Nothing is written outside the rows. An update that changes a text
+// draws the same rows and asks for no work.
+func TestMountImageIsHalfBlockCellsWithoutAProtocol(t *testing.T) {
+	for name, tc := range map[string]struct {
+		trueColor bool
+		depth     halfBlockDepth
+	}{"true colour": {true, halfBlockTrueColor}, "256 colours": {false, halfBlock256}} {
+		t.Run(name, func(t *testing.T) {
+			imageTerminal(t, "")
+			tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: tc.trueColor})
+			p := newImageProbe(false)
+			s := p.surface()
+			defer s.Close()
+			acceptMountView(t, s, mountPhoto(t, "round 1", `,"maxWidthCells":20`))
+			first := s.Render(40)
+			if drawn := drawnRows(first); len(drawn) != 2 || len(p.work) != 1 || p.conversions != 0 {
+				t.Fatalf("before the photograph is drawn the mount draws %q, asked for %d pieces of work and converted %d times; want its two texts, 1 and 0", first, len(p.work), p.conversions)
+			}
+			p.run()
+			if p.repaints != 1 || p.conversions != 1 {
+				t.Fatalf("after the work: %d frames asked for, %d conversions, want 1 and 1", p.repaints, p.conversions)
+			}
+			decoded, err := png.Decode(bytes.NewReader(p.images.ToPNG(photoBytes(t))))
+			if err != nil {
+				t.Fatal(err)
+			}
+			cols, rows := halfBlockSize(512, 512, 20, 12)
+			if cols != 20 || rows != 10 {
+				t.Fatalf("the photograph takes %d by %d cells of a box of 20 by 12, want 20 by 10", cols, rows)
+			}
+			want := strings.Join(halfBlockRows(decoded, cols, rows, tc.depth, nil), "\n")
+			got := s.Render(40)
+			if cells := halfBlockCellRows(got); strings.Join(cells, "\n") != want {
+				t.Fatalf("the mount draws %d rows of half-block cells in %.200q, want the %d rows of halfBlockRows", len(cells), got, rows)
+			}
+			if len(got) != len(first)-1+rows || len(p.written) != 0 {
+				t.Fatalf("the mount draws %d rows (%d before) and wrote %d times outside them, want %d rows more and 0", len(got), len(first), len(p.written), rows-1)
+			}
+			acceptMountView(t, s, mountPhoto(t, "round 2", `,"maxWidthCells":20`))
+			again := s.Render(40)
+			if !strings.Contains(drawnRows(again)[0], "round 2") || strings.Join(halfBlockCellRows(again), "\n") != want {
+				t.Fatalf("after the update the mount draws %.200q, want the new text and the same rows of cells", again)
+			}
+			if len(p.work) != 0 || p.conversions != 2 || p.repaints != 1 {
+				t.Fatalf("the update asked for %d pieces of work, converted %d times and asked for %d frames, want none", len(p.work), p.conversions-2, p.repaints-1)
+			}
+		})
+	}
+}
+
+// pig additive (D614): bytes that cannot be decoded are Pi's text fallback where the terminal has no image protocol,
+// here the first half of the photograph's file.
+func TestMountImageThatCannotBeDecodedIsTheTextFallback(t *testing.T) {
+	imageTerminal(t, "")
+	p := newImageProbe(false)
+	s := p.surface()
+	defer s.Close()
+	data := photoBytes(t)
+	data = data[:len(data)/2]
+	acceptMountView(t, s, mountImageView("round 1", `,"maxWidthCells":20`, data))
+	s.Render(40)
+	p.run()
+	got := s.Render(40)
+	want := tui.ImageFallback("image/jpeg", tui.GetImageDimensions(base64.StdEncoding.EncodeToString(data), "image/jpeg"), "tower.jpg")
+	if drawn := drawnRows(got); len(drawn) != 3 || drawn[1] != want || len(halfBlockCellRows(got)) != 0 || len(p.written) != 0 {
+		t.Fatalf("the mount draws %q and wrote %d times, want the text fallback %q between its texts and 0", drawn, len(p.written), want)
+	}
 }
