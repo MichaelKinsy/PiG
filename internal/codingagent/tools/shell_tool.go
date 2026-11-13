@@ -63,7 +63,7 @@ type PowerShellSpawnHook = BashSpawnHook
 
 // shellToolSchema mirrors createShellToolDefinition's name, description,
 // parameters, guidelines, and constrained sampling request.
-func shellToolSchema(name, shellName string, exposeSessionEnvironment bool) ai.ToolSchema {
+func shellToolSchema(name, shellName string, exposeSessionEnvironment, borrow bool) ai.ToolSchema {
 	var guidelines []string
 	if exposeSessionEnvironment {
 		guidelines = []string{sessionGuideline}
@@ -79,7 +79,7 @@ func shellToolSchema(name, shellName string, exposeSessionEnvironment bool) ai.T
 	}, `{"type":"object","required":["command"],"properties":{
 		"command":{"type":"string","description":"Shell command to execute"},
 		"timeout":{"type":"number","description":"Timeout in seconds (optional, no default timeout)"}
-	}}`)
+	}}`, borrow)
 }
 
 // shellOutputSchema mirrors upstream bashOutputSchema (bash.ts:56-62): the result
