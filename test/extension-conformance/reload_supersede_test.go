@@ -383,8 +383,8 @@ func TestConformance_CallsOfAGenerationAReloadReplacesAgreeAcrossSDKs(t *testing
 	}
 }
 
-// reloadHeldHost returns a host for a Node extension, isolated, whose "held" command marks that it runs, waits for the go file and then makes a call it does not await, and whose "hang" command marks that it runs and blocks its thread for good. observe sees every frame the host writes to it; load reloads the host and returns the named command of the generation it loaded; recorded returns the notifications the host UI showed.
-func reloadHeldHost(t *testing.T, observe func(frame []byte)) (host *subprocess.Host, recorded func() []string, dir string, load func(name string) extension.RegisteredCommand) {
+// reloadHeldHost returns a host for the Node extension "held", whose "held" command marks that it runs, waits for the go file and then makes a call it does not await, whose "hang" command marks that it runs and blocks its thread for good, and whose "ping" command notifies. Not packed, the extension has its process to itself. Packed, it shares a Node process, and so that process's one thread, with the extension "neighbour": its "neighbour-wait" command marks that it runs and awaits a file that never comes, and its "neighbour-ping" command notifies. observe sees every frame the host writes to "held"; load reloads the host and returns the lookup of the commands of the generation it loaded; recorded returns the notifications the host UI showed.
+func reloadHeldHost(t *testing.T, packed bool, observe func(frame []byte)) (host *subprocess.Host, recorded func() []string, dir string, load func() func(name string) extension.RegisteredCommand) {
 	t.Helper()
 	requireConformanceTool(t, "node")
 	dir = t.TempDir()
@@ -407,6 +407,24 @@ export default function (pi) {
 	if err := os.WriteFile(source, []byte(code), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	configs := []subprocess.ExtConfig{{Name: "held", Source: source, Enabled: true, Isolation: "strict"}}
+	if packed {
+		neighbour := filepath.Join(dir, "neighbour.mjs")
+		code := fmt.Sprintf(`import { existsSync, writeFileSync } from "node:fs";
+const dir = %q;
+export default function (pi) {
+  pi.registerCommand("neighbour-wait", { description: "wait", handler: async () => {
+    writeFileSync(dir + "/neighbour-running", "");
+    while (!existsSync(dir + "/never")) await new Promise((resolve) => setTimeout(resolve, 2));
+  } });
+  pi.registerCommand("neighbour-ping", { description: "ping", handler: async (_args, ctx) => { ctx.ui.notify("neighbour pong", "info"); } });
+}
+`, dir)
+		if err := os.WriteFile(neighbour, []byte(code), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		configs = []subprocess.ExtConfig{{Name: "held", Source: source, Enabled: true}, {Name: "neighbour", Source: neighbour, Enabled: true}}
+	}
 	notify, status, actions := &[]string{}, &[]string{}, &[]string{}
 	ui := newRecordingUI(notify, status)
 	bridge := subprocess.NewUIBridge(func() {})
@@ -422,22 +440,23 @@ export default function (pi) {
 			}
 		})
 	}
-	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) {
-		return []subprocess.ExtConfig{{Name: "held", Source: source, Enabled: true, Isolation: "strict"}}, nil
-	})
-	load = func(name string) extension.RegisteredCommand {
+	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return slices.Clone(configs), nil })
+	load = func() func(name string) extension.RegisteredCommand {
 		t.Helper()
 		loaded, err := host.Reload(context.Background())
-		if err != nil || len(loaded) != 1 {
+		if err != nil || len(loaded) != len(configs) {
 			t.Fatalf("load: %d extensions, %v (%+v)", len(loaded), err, host.LastReloadReport())
 		}
 		runner := inproc.NewRunner(loaded, t.TempDir())
 		bridge.SetUIPromptScope(runner)
-		registered, ok := findCommand(runner, name)
-		if !ok {
-			t.Fatalf("%s is not registered", name)
+		return func(name string) extension.RegisteredCommand {
+			t.Helper()
+			registered, ok := findCommand(runner, name)
+			if !ok {
+				t.Fatalf("%s is not registered", name)
+			}
+			return registered
 		}
-		return registered
 	}
 	return host, ui.Recorded, dir, load
 }
@@ -452,7 +471,7 @@ func TestConformance_ACallMadeBeforeTheRuntimeReadsAReloadsInvalidationIsServed(
 	held, release := make(chan struct{}), make(chan struct{})
 	var holdOnce, releaseOnce sync.Once
 	releaseFrame := func() { releaseOnce.Do(func() { close(release) }) }
-	host, recorded, dir, load := reloadHeldHost(t, func(frame []byte) {
+	host, recorded, dir, load := reloadHeldHost(t, false, func(frame []byte) {
 		var env subprocess.Envelope
 		if !bytes.Contains(frame, []byte(subprocess.NotifyInvalidate)) || json.Unmarshal(frame, &env) != nil || env.Type != subprocess.MsgNotify || env.Notify == nil || env.Notify.Method != subprocess.NotifyInvalidate {
 			return
@@ -461,7 +480,7 @@ func TestConformance_ACallMadeBeforeTheRuntimeReadsAReloadsInvalidationIsServed(
 		<-release
 	})
 	t.Cleanup(func() { releaseFrame(); host.Shutdown("test done") })
-	handler := load("held").Handler
+	handler := load()("held").Handler
 	returned := make(chan error, 1)
 	go func() { returned <- handler(context.Background(), "") }()
 	exists := func(name string) bool { _, err := os.Stat(filepath.Join(dir, name)); return err == nil }
@@ -499,38 +518,94 @@ func TestConformance_ACallMadeBeforeTheRuntimeReadsAReloadsInvalidationIsServed(
 	}
 }
 
-// A hung extension must still be replaceable by a reload: its runtime never reads the invalidation, and it still answers its heartbeat. The acknowledgement has the deadline of a pong: the host fails the runtime as it fails one that misses a pong and reports the extension unresponsive, and the reload loads its replacement.
+// A hung extension must still be replaceable by a reload: its handler holds its thread, so its runtime never reads the invalidation, and it still answers its heartbeat. Pi is never in this state: its extensions run on the thread that runs reload(). The acknowledgement has the deadline of a pong. At the deadline:
+//   - every request in flight on the extension has its one answer, an error that names the reload;
+//   - the reload's report says in one line that the extension did not acknowledge the reload and was restarted, and the host reports no crash and disables nothing beside it;
+//   - the reload loads the replacement, in a new process, and the replacement is served.
+//
+// The extensions of a packed Node cell share one thread, so while one of them holds it none acknowledges. Each is ended and loaded again the same way. One that lost no request has no line: the reload replaced it as it replaces every extension. One whose own handler was in flight lost it, has the same answer, and has its line.
+// mutation-checked: with the ReloadDeadline branch of handleIncoming off, the host reports `extension "held" crashed, restart in 2s: extension_unresponsive: ...` for the isolated extension and `extension "held" disabled: ...` and `extension "neighbour" disabled: ...` for the packed ones; with the request's error built without the connection's ReloadDeadline (Conn.Request) the hang command is answered "did not answer heartbeat for request".
 func TestConformance_AReloadReplacesAnExtensionWhoseRuntimeStoppedAnswering(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (runs a Node extension)")
 	}
 	t.Parallel()
-	host, recorded, dir, load := reloadHeldHost(t, nil)
-	reports := make(chan string, 8)
-	host.SetCrashHandler(func(_ string, _ time.Duration, _ bool, reason string) {
-		select {
-		case reports <- reason:
-		default:
-		}
-	})
-	t.Cleanup(func() { host.Shutdown("test done") })
-	handler := load("hang").Handler
-	go func() { _ = handler(context.Background(), "") }()
-	exists := func(name string) bool { _, err := os.Stat(filepath.Join(dir, name)); return err == nil }
-	if !awaitCondition(testbudget.Context(t), func() bool { return exists("running") }) {
-		t.Fatal("the hang command never ran")
-	}
-	// The reload: the old generation's runtime holds its thread and never acknowledges.
-	ping := load("ping")
-	select {
-	case reason := <-reports:
-		if !strings.Contains(reason, "extension_unresponsive") {
-			t.Fatalf("the host reported %q, want extension_unresponsive", reason)
-		}
-	case <-testbudget.Context(t).Done():
-		t.Fatal("the host never reported the extension whose runtime stopped answering")
-	}
-	if err := ping.Handler(context.Background(), ""); err != nil || !slices.Contains(recorded(), "pong:info") {
-		t.Fatalf("the reloaded generation's call was not served: %v, notifications %q", err, recorded())
+	// The deadline in both texts is the host's pong deadline.
+	const answer, line = "did not acknowledge a reload within 5s", "did not acknowledge the reload within 5s and was restarted"
+	for _, tc := range []struct {
+		name           string
+		packed         bool
+		neighbourWaits bool
+		want           []string
+	}{
+		{name: "node-isolated", want: []string{`extension "held" ` + line}},
+		{name: "node-packed, the neighbour idle", packed: true, want: []string{`extension "held" ` + line}},
+		{name: "node-packed, the neighbour's handler in flight", packed: true, neighbourWaits: true, want: []string{`extension "held" ` + line, `extension "neighbour" ` + line}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			host, recorded, dir, load := reloadHeldHost(t, tc.packed, nil)
+			var reportsMu sync.Mutex
+			var reports []string
+			host.SetCrashHandler(func(name string, delay time.Duration, disabled bool, reason string) {
+				reportsMu.Lock()
+				defer reportsMu.Unlock()
+				reports = append(reports, subprocess.FormatCrashNotice(name, delay, disabled, reason))
+			})
+			t.Cleanup(func() { host.Shutdown("test done") })
+			command := load()
+			exists := func(name string) bool { _, err := os.Stat(filepath.Join(dir, name)); return err == nil }
+			inFlight := map[string]chan error{}
+			run := func(name, marker string) {
+				t.Helper()
+				answers := make(chan error, 2)
+				inFlight[name] = answers
+				handler := command(name).Handler
+				go func() { answers <- handler(context.Background(), "") }()
+				if !awaitCondition(testbudget.Context(t), func() bool { return exists(marker) }) {
+					t.Fatalf("the %s command never ran", name)
+				}
+			}
+			if tc.neighbourWaits {
+				run("neighbour-wait", "neighbour-running")
+			}
+			run("hang", "running")
+			// The reload: the hang command holds the thread of its process, and no runtime in that process acknowledges.
+			command = load()
+			for name, answers := range inFlight {
+				select {
+				case err := <-answers:
+					if err == nil || !strings.Contains(err.Error(), answer) {
+						t.Fatalf("the %s command in flight at the reload was answered %v, want an error that says the extension %s", name, err, answer)
+					}
+				case <-testbudget.Context(t).Done():
+					t.Fatalf("the %s command in flight at the reload was never answered", name)
+				}
+			}
+			if got := host.LastReloadReport().Unacknowledged; !slices.Equal(got, tc.want) {
+				t.Fatalf("the reload's report has the lines %q, want %q", got, tc.want)
+			}
+			served := map[string]string{"ping": "pong:info"}
+			if tc.packed {
+				served["neighbour-ping"] = "neighbour pong:info"
+			}
+			for name, shown := range served {
+				if err := command(name).Handler(context.Background(), ""); err != nil || !slices.Contains(recorded(), shown) {
+					t.Fatalf("the reloaded generation's %s was not served: %v, notifications %q", name, err, recorded())
+				}
+			}
+			for name, answers := range inFlight {
+				select {
+				case err := <-answers:
+					t.Fatalf("the %s command has a second answer: %v", name, err)
+				default:
+				}
+			}
+			reportsMu.Lock()
+			defer reportsMu.Unlock()
+			if len(reports) != 0 {
+				t.Fatalf("the host reported %q for extensions the reload replaced: the reload's line is the only report", reports)
+			}
+		})
 	}
 }

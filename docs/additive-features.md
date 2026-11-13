@@ -176,6 +176,8 @@ one request per call in call order, as `rpc-mode.ts` does.
 The wire has no independent version or compatibility
 negotiation; it changes atomically with the running Pig binary and staged SDKs.
 
+Reload acknowledgement: Pi's `runner.invalidate()` is synchronous, so at a reload the old `ctx` is stale before `reload()` goes on (`agent-session.ts:3825-3826`). A Node runtime is another process and applies the `invalidate` notification when its event loop reads it. At that point of a reload the host therefore sends the notification with a number and waits until each Node runtime has answered with `invalidate_ack` (`NotifyInvalidateAck`). The wait has the deadline of a heartbeat pong (5 s, D56) and no other bound. A runtime whose thread a handler holds for longer than that across a reload, such as a command handler in a synchronous loop, cannot acknowledge. The host then ends that extension instance: each request in flight on it is answered once, with an `extension_unresponsive` error that says the extension did not acknowledge a reload, its process is stopped, and the reload loads the extension again in a new process. The reload says so in one line, `extension "<name>" did not acknowledge the reload within 5s and was restarted` (`ReloadReport.Unacknowledged`): under Extension issues in the interactive `/reload` status, and on stderr in print, JSON and RPC mode. The host records no crash and shows no crash notice for it. The extensions of one Node process share its thread, so while one of them holds it none acknowledges: each is ended and loaded again the same way. A line names an extension that lost a request in flight or that has its process to itself; an extension that only shared the process and lost nothing has no line; when none of them lost a request, a callback outside any request holds the thread, and one line names the runtime and the extensions that share it. Pi has no such state: its extensions run on the thread that runs `reload()`, so while a handler holds that thread the reload does not run. A Go, Python, Rust or Lisp extension is not asked to acknowledge; its calls are served until the reload's commit, and a handler that holds its thread is not ended by a reload. `TestConformance_AReloadReplacesAnExtensionWhoseRuntimeStoppedAnswering`, `TestSupersedeOfANodeRuntimeThatNeverAcknowledgesIsBoundedByThePongDeadline`, `TestRequestInFlightWhenAReloadEndsItsConnectionIsAnsweredWithTheReload`, `TestUnacknowledgedNoticesNameTheExtensionsThatLostARequest`, `TestRPCReloadReplacesANodeExtensionThatDoesNotAcknowledgeIt` and `TestReloadSaysWhichExtensionDidNotAcknowledgeIt` cover it.
+
 The Common Lisp SDK (`extensions/sdk-lisp`, package `pig`) is an inert capability: Stock PiG ships its source, stages it like the
 Python SDK (`pig_strip_extension_sdk_lisp` removes it), and runs it only when an extension resolves to `language == "lisp"`. Pig builds a
 Lisp factory (an ASDF system or one file defining `new-extension`) into a cached executable SBCL image through the runtime-cell build
@@ -441,7 +443,8 @@ Audience: runtime
 Stock disposition: product-neutral diagnostics. Keep this in Stock PiG because it explains the generic host's placement decisions without activating a product workflow.
 
 What: Pig records the latest subprocess reload decision for `/reload --explain`.
-The report contains placement, cache, build, replacement, and quarantine facts.
+The report contains placement, cache, build, replacement, and quarantine facts,
+and one line for each extension that did not acknowledge the reload (D19).
 A member that runs in its own process because the packed cell it was planned
 into failed to build or start carries that error in its reason, so a retry that
 succeeds does not hide why the plan was not kept.

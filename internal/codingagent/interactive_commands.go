@@ -1009,6 +1009,10 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					if rep.Error != "" {
 						diag.Diagnostics = append(diag.Diagnostics, "[extension] "+rep.Error)
 					}
+					// pig additive (D19): an extension whose runtime did not acknowledge the reload was ended and loaded again; the reload says so in one line (subprocess.ReloadReport.Unacknowledged).
+					for _, line := range rep.Unacknowledged {
+						diag.Diagnostics = append(diag.Diagnostics, "[extension] "+line)
+					}
 					diag.ReloadDuration = rep.Duration
 					for _, c := range rep.Cells {
 						if c.Quarantined {

@@ -31,10 +31,9 @@ type reloadRPC struct {
 	dir string
 }
 
-// startReloadRPC starts RPC mode with the Node or Go reload fixture; env adds the fixture's switches.
-func startReloadRPC(t *testing.T, sdk string, env ...string) *reloadRPC {
+// reloadFixture returns the Node or Go reload fixture as RPC mode's -e takes it.
+func reloadFixture(t *testing.T, sdk string) string {
 	t.Helper()
-	home, dir := t.TempDir(), t.TempDir()
 	var fixture string
 	switch sdk {
 	case "node":
@@ -58,10 +57,27 @@ func startReloadRPC(t *testing.T, sdk string, env ...string) *reloadRPC {
 			}
 		}
 	}
+	return fixture
+}
+
+// startReloadRPC starts RPC mode with the Node or Go reload fixture; env adds the fixture's switches.
+func startReloadRPC(t *testing.T, sdk string, env ...string) *reloadRPC {
+	t.Helper()
+	return startReloadRPCWith(t, env, reloadFixture(t, sdk))
+}
+
+// startReloadRPCWith starts RPC mode with the given extensions, in their order; RL_DIR names the directory their gates live in.
+func startReloadRPCWith(t *testing.T, env []string, extensions ...string) *reloadRPC {
+	t.Helper()
+	home, dir := t.TempDir(), t.TempDir()
+	args := []string{"--no-session", "--model", "test-faux/faux-1"}
+	for _, extension := range extensions {
+		args = append(args, "-e", extension)
+	}
 	p := startRPCProcessAt(t, t.TempDir(), append([]string{
 		"HOME=" + home, "USERPROFILE=" + home, "PIG_HOME=" + home, "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PI_CODING_AGENT_DIR=",
 		"PIG_TEST_FAUX=1", "PIG_OFFLINE=1", "RL_DIR=" + dir,
-	}, env...), "--no-session", "--model", "test-faux/faux-1", "-e", fixture)
+	}, env...), args...)
 	return &reloadRPC{p: p, dir: dir}
 }
 

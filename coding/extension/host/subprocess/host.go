@@ -2912,7 +2912,8 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	// would then be silently discarded as stale instead of quarantined.
 	//
 	// The generations are superseded first, so no call finds a generation armed and not yet superseded, which handleIncoming would drop without an answer.
-	defer h.supersedeGenerations(ctx)()
+	unacknowledged, endSupersede := h.supersedeGenerations(ctx)
+	defer endSupersede()
 	h.armPackedProcessGenerations()
 	h.releaseRetryableQuarantines()
 	// Explicit reload ends inconclusive diagnostic partitions; identified culprits remain quarantined.
@@ -3052,6 +3053,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 			rep.Issues = append(rep.Issues, reloadIssue(item.me.config, err))
 		}
 	}
+	rep.Unacknowledged = h.unacknowledgedNotices(unacknowledged)
 	return h.Extensions(), nil
 }
 
@@ -5045,6 +5047,16 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	me.withdrawProcessFromRetention()
 
 	if unresponsive, ok := errors.AsType[*ExtensionUnresponsiveError](conn.failureError()); ok {
+		if unresponsive.ReloadDeadline > 0 {
+			// The running reload ended this connection, replaces the generation and reports it (supersedeGenerations, ReloadReport.Unacknowledged): the host records no crash, schedules no restart and detaches no packed member, so no extension of the process is reported as crashed or disabled. An isolated process stops here; a process that several generations share ends when the reload's commit retires them.
+			if me.packedCellKey == "" {
+				if me.cancel != nil {
+					me.cancel()
+				}
+				me.killProcess()
+			}
+			return
+		}
 		h.handleUnresponsiveExtension(me, unresponsive)
 		return
 	}

@@ -80,14 +80,22 @@ type connOptions struct {
 	HeartbeatTimeout  time.Duration
 }
 
-// ExtensionUnresponsiveError reports a missed dispatcher heartbeat.
+// ExtensionUnresponsiveError reports a missed dispatcher heartbeat, or a reload's invalidation that the extension's runtime did not acknowledge by the pong deadline (ReloadDeadline).
 type ExtensionUnresponsiveError struct {
 	Extension string
 	RequestID string
 	Operation string
+	// ReloadDeadline is not zero when a reload ended the connection: the extension's runtime had not acknowledged the reload's invalidation after this time, the connection's pong deadline (Host.supersedeGenerations). The reload replaces the extension and reports it (ReloadReport.Unacknowledged); the host records no crash for it.
+	ReloadDeadline time.Duration
 }
 
 func (e *ExtensionUnresponsiveError) Error() string {
+	if e.ReloadDeadline > 0 {
+		if e.RequestID != "" {
+			return fmt.Sprintf("extension_unresponsive: extension %q did not acknowledge a reload within %s; the reload replaced it and ended request %q (%s)", e.Extension, e.ReloadDeadline, e.RequestID, e.Operation)
+		}
+		return fmt.Sprintf("extension_unresponsive: extension %q did not acknowledge a reload within %s; the reload replaced it", e.Extension, e.ReloadDeadline)
+	}
 	if e.RequestID != "" {
 		return fmt.Sprintf("extension_unresponsive: extension %q did not answer heartbeat for request %q (%s)", e.Extension, e.RequestID, e.Operation)
 	}
@@ -190,6 +198,8 @@ type Conn struct {
 	// request ID → the sink for that request's tool_update notifications.
 	pendingMu sync.Mutex
 	pending   map[string]chan *Envelope
+	// requestsFailed is the number of pending requests that fail answered; guarded by pendingMu.
+	requestsFailed int
 	// abandoned holds the channel each stalled request closes when its late response or the connection end settles it; guarded by pendingMu.
 	abandoned map[string]chan struct{}
 	// abandonedClosed is set once the reader has exited: no late response can arrive.
@@ -963,7 +973,12 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 			if resp != nil && resp.Response != nil && resp.Response.Error != nil {
 				switch resp.Response.Error.Code {
 				case "extension_unresponsive":
-					return nil, &ExtensionUnresponsiveError{Extension: c.name, RequestID: env.ID, Operation: operationName()}
+					unresponsive := &ExtensionUnresponsiveError{Extension: c.name, RequestID: env.ID, Operation: operationName()}
+					// A request that a reload ended names the reload, not a heartbeat.
+					if failure, ok := errors.AsType[*ExtensionUnresponsiveError](c.failureError()); ok {
+						unresponsive.ReloadDeadline = failure.ReloadDeadline
+					}
+					return nil, unresponsive
 				case "extension_transport":
 					c.failureMu.Lock()
 					failure := c.failure
@@ -1164,6 +1179,13 @@ func (c *Conn) startProducerTask(run func()) bool {
 	}
 	c.producerTasks.Go(run)
 	return true
+}
+
+// requestsEndedByFailure returns how many requests were in flight when fail ended the connection; each was answered with the failure.
+func (c *Conn) requestsEndedByFailure() int {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	return c.requestsFailed
 }
 
 // failureError returns the terminal transport or liveness error, if any.
@@ -2436,6 +2458,7 @@ func (c *Conn) fail(err error) {
 			code = "extension_unresponsive"
 		}
 		c.pendingMu.Lock()
+		c.requestsFailed = len(c.pending)
 		for id, ch := range c.pending {
 			select {
 			case ch <- &Envelope{Type: MsgResponse, ID: id, Response: &ResponsePayload{Error: &ErrorInfo{Code: code, Message: err.Error()}}}:
