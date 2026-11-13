@@ -7260,6 +7260,30 @@
       ]
     },
     {
+      "id": "BF-2a1edc2",
+      "title": "RPC mode: a dialog answer read in the same stdin chunk as a prompt, while a reload runs, is delivered after…",
+      "symptom": "RPC mode: a dialog answer read in the same stdin chunk as a prompt, while a reload runs, is delivered after the lines of its chunk, as Pi delivers it, so the notifications and responses of the two commands come in Pi's order.",
+      "rootCause": "Pi resolves a dialog's promise on the answer's line and the handler that asked goes on in a microtask (rpc-mode.ts:784-797), behind every line of the stdin chunk: the reader emits the lines of a chunk in one synchronous loop (jsonl.ts:29-40, rpc-mode.ts:832-834). A prompt of the chunk that names an extension command has run its handler by then, on the runner that was current, and one that awaits nothing has answered (agent-session.ts:2171-2176, 2279).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: a dialog answer read in the same stdin chunk as a prompt, while a reload runs, is delivered after the lines of its chunk, as Pi delivers it, so the notifications and responses of the two commands come in Pi's order. PiG delivered the answer at once and the order was a race: the reloading command could answer before the prompt of its chunk, or the prompt could answer without its notification.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2a1edc2dc0",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_gate_test.go::TestRPCDialogAnswerReadDuringAReloadIsDeliveredBehindItsBatch",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload"
+      ]
+    },
+    {
       "id": "BF-2a83c43",
       "title": "The ordered-object JSON readers keep two object names apart when `JSON.parse` does",
       "symptom": "The ordered-object JSON readers keep two object names apart when `JSON.parse` does.",
@@ -28805,6 +28829,30 @@
       ]
     },
     {
+      "id": "BF-83d0c73",
+      "title": "Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured…",
+      "symptom": "Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured `pi` and `ctx` throw the stale-context error, and a later `/reload` that succeeds loads live instances.",
+      "rootCause": "The runner's ExtensionRuntime stays active after a failed interactive reload, because the next reload's runner is built over it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured `pi` and `ctx` throw the stale-context error, and a later `/reload` that succeeds loads live instances. PiG left the old instances in service after the failure.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "83d0c73705",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_reload_interactive_failed_test.go::TestFailedInteractiveReloadLeavesTheOldInstanceStale",
+        "coding/cli/headless_reload_test.go::TestFailedExtensionReloadLeavesTheOldInstanceStale",
+        "internal/codingagent/reload_default_tools_failure_test.go::TestFailedExtensionReloadDropsTheStagedDefaultTools"
+      ]
+    },
+    {
       "id": "BF-83d5488",
       "title": "`pig install \u003cdir\u003e` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`…",
       "symptom": "Previously Pig recorded the Package and loaded nothing from it.",
@@ -37140,6 +37188,34 @@
       ],
       "tests": [
         "ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatDefaultsUpstream"
+      ]
+    },
+    {
+      "id": "BF-a31c30a",
+      "title": "Extensions: a call that a handler of a TypeScript extension makes just before a reload invalidates the…",
+      "symptom": "Extensions: a call that a handler of a TypeScript extension makes just before a reload invalidates the extension is served, as a call made before Pi's `invalidate()` is.",
+      "rootCause": "That is the output of the one failing run this fix answers: `response c` with no `extension_error` in TestRPCCommandInFlightAtAReloadIsAnswered/node, 1 of 50 runs of the eleven RPC reload tests on. That run was not instrumented, so the late read is inferred for it, not observed. It did not recur in 50 runs of the same set on, nor in 200 runs of the test alone.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: a call that a handler of a TypeScript extension makes just before a reload invalidates the extension is served, as a call made before Pi's `invalidate()` is. The host marked the extension stale when it sent the notification, before the extension's runtime had read it, so the call was refused; a call the handler does not await, such as `ctx.ui.notify`, was dropped with a diagnostic where Pi throws, and in RPC mode the command's prompt answered with no `extension_error`. The reload now waits until the runtime has acknowledged the invalidation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a31c30a42a",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCCommandInFlightAtAReloadIsAnswered",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload",
+        "coding/extension/host/subprocess/generation_retirement_test.go::TestReplacedGenerationCallsFailWithThePiStaleMessage",
+        "coding/extension/host/subprocess/generation_supersede_test.go::TestSupersedeOfANodeRuntimeThatNeverAcknowledgesIsBoundedByThePongDeadline",
+        "coding/extension/host/subprocess/generation_supersede_test.go::TestSupersedeWaitsForTheNodeRuntimeToAcknowledgeTheInvalidation",
+        "test/extension-conformance/reload_supersede_test.go::TestConformance_ACallMadeBeforeTheRuntimeReadsAReloadsInvalidationIsServed",
+        "test/extension-conformance/reload_supersede_test.go::TestConformance_AReloadReplacesAnExtensionWhoseRuntimeStoppedAnswering"
       ]
     },
     {
@@ -59039,6 +59115,10 @@
       "id": "D619",
       "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
       "entry": "BF-D619"
+    },
+    {
+      "id": "D630",
+      "title": "RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads"
     }
   ],
   "exemptCommits": {

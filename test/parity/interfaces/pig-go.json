@@ -93112,6 +93112,17 @@
       "shapeHash": "sha256:150147b904a410e54ffd985d2fea373db85cb9d80812753a3d0e8bb6aabda08a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#deliverRPCDialogAnswer",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "deliverRPCDialogAnswer",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(turn *rpcResponseTurn, reloading bool, deliver func())"
+      },
+      "shapeHash": "sha256:387f2027b7dee4d63c832aaf0e9a84b1b4b5ad46ffb4d5cdbd880d8812a6dde2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#detailedVersionString",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "detailedVersionString",
@@ -101140,6 +101151,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcSettleGate.reloading",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcSettleGate.reloading",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcSettleGate.reset",
@@ -131744,6 +131766,17 @@
       "shapeHash": "sha256:5d1cab5ebd1cf7a5fc0c6cfc5e4ffce1d77da87d628a0094a7469fdaee04ed0f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.invalidateAcknowledged",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.invalidateAcknowledged",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(message string) (acknowledged func(ctx context.Context) bool)"
+      },
+      "shapeHash": "sha256:51e932dea46a8c97ea2b5abd33762ffbbc15d661047e9cbf4ea477a5e7aa1a95"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.markNestedCall",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.markNestedCall",
@@ -131973,6 +132006,17 @@
         "type": "func(report *Envelope)"
       },
       "shapeHash": "sha256:776b43f6586b83eebad679089383bf20702277be019b4a6e5fe93425c3d05a5a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.requestsEndedByFailure",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.requestsEndedByFailure",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.requestsInFlight",
@@ -136953,9 +136997,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() (end func())"
+        "type": "func(ctx context.Context) (unacknowledged []unacknowledgedGeneration, end func())"
       },
-      "shapeHash": "sha256:dafb9e0ae8fbabbb29f8d72d8afd37c4002df05a6eb53d1a0eb1ba45bd77a666"
+      "shapeHash": "sha256:d312fd21df2533a9cc3fb38b5de9f9164b6b40d4f47302e063eb9a7ba703eb9f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.supersedes",
@@ -137121,6 +137165,17 @@
         "type": "func() *github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Resolver"
       },
       "shapeHash": "sha256:718f2adad92664308cee90bc3f3f96c2b3d9508b956c7f224793c69bbe69abb9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.unacknowledgedNotices",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.unacknowledgedNotices",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(unacknowledged []unacknowledgedGeneration) []string"
+      },
+      "shapeHash": "sha256:a618d8d89e78f42c0ba5f39c247dac12fc9db427fe8c2c944e83d284c628cbbb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.unansweredAtInputEnd",
@@ -137308,6 +137363,17 @@
         "type": "ImageResult"
       },
       "shapeHash": "sha256:eeaa59502b4239b33e2903ad726b8066af9c77730c09ca8500630a6de56ddd1c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#InvalidateAckArgs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "InvalidateAckArgs",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "InvalidateAckArgs"
+      },
+      "shapeHash": "sha256:27b7c3b730721f71ab26cff043a3a7955c4313b3fc7bb88bde1c09baa9d5567a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#InvalidateArgs",
@@ -138226,6 +138292,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyInvalidate",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "NotifyInvalidate",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyInvalidateAck",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "NotifyInvalidateAck",
       "kind": "constant",
       "exported": true,
       "shape": {
@@ -150829,6 +150906,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.runtimeProcess",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "managedExt.runtimeProcess",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() any"
+      },
+      "shapeHash": "sha256:6b40cbb40507b7efce1d433d06fed509e653a5671897ef0381b72bf3dce3329e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.setConnLocked",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "managedExt.setConnLocked",
@@ -157110,6 +157198,61 @@
       "shapeHash": "sha256:bdf3cdd017a9dbd8484424701a4febcd683ff212e36d841464dc254c8c268e32"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#seqAcks",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "seqAcks",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "seqAcks"
+      },
+      "shapeHash": "sha256:c95ecd45f90dbb44b3fb04f0f5d4a3a906d1099d4deb83f0644a01ca2e026bc1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#seqAcks.ack",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "seqAcks.ack",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage)"
+      },
+      "shapeHash": "sha256:58921bf8f132f9ca7b9ff0799072bdae79fea971981de215bae1449fc5914a38"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#seqAcks.await",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "seqAcks.await",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, done \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:1937b8842c8cc1dfcbeef1958f84955af636dbda7caba6f6f1fa06a9a97b4e7c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#seqAcks.awaitBy",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "seqAcks.awaitBy",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, done \u003c-chan struct{}, expired \u003c-chan time.Time) bool"
+      },
+      "shapeHash": "sha256:6bb77594be91141ec2bb8ecf313e34cd5db318d1dacb782e80a6b138322477e2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#seqAcks.next",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "seqAcks.next",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() uint64"
+      },
+      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "sessionGraphTable",
@@ -158175,50 +158318,6 @@
         "type": "func(sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection) string"
       },
       "shapeHash": "sha256:e9eb074711f3935060298df95265c54f312fe74553606208aae7d4474196e56a"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#timerDeferState",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "timerDeferState",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "timerDeferState"
-      },
-      "shapeHash": "sha256:6bf8f8d9284bd50515bd196dda8d823f73b8d485f99e43391bbf3fd85fdc3f66"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#timerDeferState.ack",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "timerDeferState.ack",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage)"
-      },
-      "shapeHash": "sha256:58921bf8f132f9ca7b9ff0799072bdae79fea971981de215bae1449fc5914a38"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#timerDeferState.await",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "timerDeferState.await",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, done \u003c-chan struct{})"
-      },
-      "shapeHash": "sha256:1937b8842c8cc1dfcbeef1958f84955af636dbda7caba6f6f1fa06a9a97b4e7c"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#timerDeferState.next",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "timerDeferState.next",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() uint64"
-      },
-      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolCallIndexOf",
@@ -159594,6 +159693,17 @@
         "type": "map[string]github.com/MichaelKinsy/PiG/coding/extension.UIPromptKind"
       },
       "shapeHash": "sha256:229e6e1b6507d653ca214b7b1bcd915390430988c137e19635138c866d017d1f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#unacknowledgedGeneration",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "unacknowledgedGeneration",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "unacknowledgedGeneration"
+      },
+      "shapeHash": "sha256:1715bff60f19df4122b1696376b72989294054eea2541c249103bfd9d465bc8d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#unixSocketPathLimit",
