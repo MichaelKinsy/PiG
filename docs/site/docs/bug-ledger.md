@@ -1766,6 +1766,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d53cd09](#bf-d53cd09) | A tool call whose arguments are not an object is written back to each provider as Pi writes it: Anthropic and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d5e4cbc](#bf-d5e4cbc) | An extension's `setModel` of a model id that a registered provider object does not list answered `model not… | PiG's own defect | All platforms | Unreleased |
 | [BF-d60d422](#bf-d60d422) | `pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d636592](#bf-d636592) | Interactive mode: the terminal stays live after `/name <name>` while an extension's `session_info_changed`… | PiG's own defect | All platforms | Unreleased |
 | [BF-d6464d3](#bf-d6464d3) | Chord: a plugin update's retry that a newer set replaced is cancelled even when the newer set arrives while… | PiG's own defect | All platforms | Unreleased |
 | [BF-d64f8ed](#bf-d64f8ed) | `durable.StorageRequestError` and `durable.SessionFailed` are Pi's error classes of the same names… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d6613f8](#bf-d6613f8) | A tool call whose arguments were cut inside a surrogate pair (the codemode card cuts a call's arguments at 77… | PiG's own defect | All platforms | Unreleased |
@@ -26391,6 +26392,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `d60d422e2e` (2026-10-13)
 - **Tests:** `coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseEndsThePhase`, `internal/nodespawn/start_other_test.go::TestStartWithoutEnvPassesPiGsEnvironmentAsNodeDoes`, `test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml`, `test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml` and 1 more in docs/bug-ledger.json
 - **Release note:** `pi.exec` gives the command PiG's environment unchanged, as Pi does, so a command started in a symlinked directory no longer gets that directory as its `PWD`; `pwd` there now prints the physical directory, as in Pi.
+
+### BF-d636592
+
+**Interactive mode: the terminal stays live after `/name <name>` while an extension's `session_info_changed`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Interactive mode: the terminal stays live after `/name <name>` while an extension's `session_info_changed` handler runs.
+- **Root cause:** Session.dispatchUnawaitedEvent is the tree's form of Pi's `void this._extensionRunner.emit(...)` (agent-session.ts setSessionName, setThinkingLevel): the caller waits for the first handler's acknowledgment, so that the handler's synchronous part runs before the caller's next step.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d63659241b` (2026-11-13)
+- **Tests:** `coding/session_owner_loop_wait_test.go::TestUnawaitedEventDoesNotHoldTheOwnerLoop`, `coding/session_owner_loop_wait_test.go::TestUnawaitedEventKeepsTheFirstPrefixOffTheOwnerLoop`, `internal/codingagent/name_handler_sleep_tmux_test.go::TestTypingEchoesWhileASessionNameHandlerSleeps`
+- **Release note:** Interactive mode: the terminal stays live after `/name <name>` while an extension's `session_info_changed` handler runs. The input loop waited for the first handler to reach its first wait or to end, and a Go, Rust, Python or Lisp subprocess handler reports neither before its first host call, so no key echoed and nothing was drawn for as long as such a handler ran: 10 s for a handler that slept 10 s, where Pi 1.5.2 echoes at once while a handler awaits. The loop now starts the handler and goes on. Every release from v0.3.0 to v0.7.0 has the wait.
 
 ### BF-d6464d3
 

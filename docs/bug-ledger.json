@@ -49069,6 +49069,30 @@
       ]
     },
     {
+      "id": "BF-d636592",
+      "title": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed`…",
+      "symptom": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed` handler runs.",
+      "rootCause": "Session.dispatchUnawaitedEvent is the tree's form of Pi's `void this._extensionRunner.emit(...)` (agent-session.ts setSessionName, setThinkingLevel): the caller waits for the first handler's acknowledgment, so that the handler's synchronous part runs before the caller's next step.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed` handler runs. The input loop waited for the first handler to reach its first wait or to end, and a Go, Rust, Python or Lisp subprocess handler reports neither before its first host call, so no key echoed and nothing was drawn for as long as such a handler ran: 10 s for a handler that slept 10 s, where Pi 1.5.2 echoes at once while a handler awaits. The loop now starts the handler and goes on. Every release from v0.3.0 to v0.7.0 has the wait.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d63659241b",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/session_owner_loop_wait_test.go::TestUnawaitedEventDoesNotHoldTheOwnerLoop",
+        "coding/session_owner_loop_wait_test.go::TestUnawaitedEventKeepsTheFirstPrefixOffTheOwnerLoop",
+        "internal/codingagent/name_handler_sleep_tmux_test.go::TestTypingEchoesWhileASessionNameHandlerSleeps"
+      ]
+    },
+    {
       "id": "BF-d6464d3",
       "title": "Chord: a plugin update's retry that a newer set replaced is cancelled even when the newer set arrives while…",
       "symptom": "Chord: a plugin update's retry that a newer set replaced is cancelled even when the newer set arrives while the retry's timer is being set; the client kept the replaced set's timer pending.",
