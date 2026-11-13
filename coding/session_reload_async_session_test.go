@@ -137,7 +137,9 @@ func TestSessionBindExtensionsAwaitsSessionStartBeforeResourceDiscovery(t *testi
 		order.add("session_start:done")
 	})
 	done := make(chan error, 1)
-	go func() { done <- session.BindExtensions(t.Context(), ExtensionBindings{UIContext: extension.NoopUIContext}) }()
+	go func() {
+		done <- session.BindExtensions(t.Context(), ExtensionBindings{UIContext: extension.NoopUIContext})
+	}()
 	<-entered
 	select {
 	case err := <-done:

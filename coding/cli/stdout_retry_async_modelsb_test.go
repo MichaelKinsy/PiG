@@ -3,6 +3,7 @@ package cli
 // pi: packages/coding-agent/src/core/output-guard.ts
 
 import (
+	"errors"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -38,23 +39,9 @@ func TestStdoutQueueOverRawWriterReportsAClosedReader(t *testing.T) {
 	if reports.Load() != 1 {
 		t.Fatalf("failure reported %d times, want once", reports.Load())
 	}
-	if err, _ := errs.Load().(error); err == nil || !errorsIsEPIPE(err) {
+	if err, _ := errs.Load().(error); err == nil || !errors.Is(err, syscall.EPIPE) {
 		t.Fatalf("reported %v, want EPIPE", err)
 	}
-}
-
-func errorsIsEPIPE(err error) bool {
-	for err != nil {
-		if err == syscall.EPIPE {
-			return true
-		}
-		u, ok := err.(interface{ Unwrap() error })
-		if !ok {
-			return false
-		}
-		err = u.Unwrap()
-	}
-	return false
 }
 
 type eagainOnce struct {

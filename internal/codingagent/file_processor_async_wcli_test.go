@@ -3,6 +3,7 @@ package codingagent
 // pi: packages/coding-agent/src/cli/file-processor.ts
 
 import (
+	"bytes"
 	"encoding/base64"
 	"image/color"
 	"os"
@@ -43,7 +44,7 @@ func TestProcessCLIFileArgumentsKeepsArgumentOrderAcrossArguments(t *testing.T) 
 			t.Fatalf("Images[%d].MimeType = %q, want %q", i, image.MimeType, wantMimes[i])
 		}
 	}
-	if raw, _ := base64.StdEncoding.DecodeString(got.Images[0].Data); len(raw) == 0 || string(raw) == string(blue) {
+	if raw, _ := base64.StdEncoding.DecodeString(got.Images[0].Data); len(raw) == 0 || bytes.Equal(raw, blue) {
 		t.Fatal("first attachment is not the first image argument")
 	}
 }

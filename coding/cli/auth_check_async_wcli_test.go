@@ -62,7 +62,6 @@ func TestAuthCheckRefreshFailureBecomesInvalidAndCarriesCallerContext(t *testing
 	}
 }
 
-
 // Pi :63 getProviderCredential awaits credentials.read and then getAuth for
 // the same call: the refresh runs once, under the caller context, and its
 // token is the result.

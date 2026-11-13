@@ -55,7 +55,7 @@ func TestNestedToolCallRunnerQueuedCallStartsOnlyAfterTheHolderEndsEvenWhenTheHo
 					return textResult("queued")
 				}},
 			}
-			host := &failingRunHost{nestedTestHost: nestedTestHost{tools: &tools}, entered: entered, release: release}
+			host := &failingRunHost{tools: &tools, entered: entered, release: release}
 			runner := NewNestedToolCallRunner(host)
 			holderDone := make(chan error, 1)
 			go func() {

@@ -3,6 +3,7 @@ package cli
 // pi: packages/coding-agent/src/cli/list-models.ts
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -122,7 +123,7 @@ func TestListModelsListsStoredOAuthAndConfiguredKeyProvidersWithoutRefreshing(t 
 		}
 	}
 	after, err := os.ReadFile(filepath.Join(dir, "auth.json"))
-	if err != nil || string(after) != string(auth) {
+	if err != nil || !bytes.Equal(after, auth) {
 		t.Fatalf("auth.json after the listing = %q (%v), want it untouched", after, err)
 	}
 }

@@ -78,11 +78,8 @@ func (w *settingsWriter) settle(write *settingsWrite) error {
 	}
 	self := goroutineid.Current()
 	w.mu.Lock()
-	for {
-		if w.performer == self {
-			// Called from inside one of this writer's writes: that write's goroutine performs this one after it.
-			break
-		}
+	// Called from inside one of this writer's writes the loop does not run: that write's goroutine performs this one after it.
+	for w.performer != self {
 		if w.performer != 0 {
 			if write.performed() {
 				break

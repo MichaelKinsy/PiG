@@ -13,7 +13,9 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 )
 
-type scriptedModelRuntime struct{ refresh func(context.Context) ai.ModelsRefreshResult }
+type scriptedModelRuntime struct {
+	refresh func(context.Context) ai.ModelsRefreshResult
+}
 
 func (r scriptedModelRuntime) Refresh(ctx context.Context, _ ...ai.ModelsRefreshOptions) ai.ModelsRefreshResult {
 	return r.refresh(ctx)

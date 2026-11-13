@@ -75,7 +75,7 @@ func TestHuggingFaceRequestTimesOutAtFifteenSeconds(t *testing.T) {
 		synctest.Wait()
 		select {
 		case err := <-result:
-			if _, ok := err.(timeoutError); !ok {
+			if !errors.As(err, new(timeoutError)) {
 				t.Fatalf("error = %v, want the timeout error", err)
 			}
 		default:

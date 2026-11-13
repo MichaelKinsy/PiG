@@ -22,13 +22,13 @@ type scriptedProgressUI struct {
 func (u *scriptedProgressUI) ShowModels(string, []LlamaModelInfo) LlamaManagerAction {
 	return LlamaManagerAction{Type: LlamaManagerActionClose}
 }
-func (u *scriptedProgressUI) Select(string, []string) (string, bool)   { return "", false }
-func (u *scriptedProgressUI) Confirm(string, string) bool                { return u.confirm() }
-func (u *scriptedProgressUI) ConnectionError(string, string) string      { return "close" }
+func (u *scriptedProgressUI) Select(string, []string) (string, bool)            { return "", false }
+func (u *scriptedProgressUI) Confirm(string, string) bool                       { return u.confirm() }
+func (u *scriptedProgressUI) ConnectionError(string, string) string             { return "close" }
 func (u *scriptedProgressUI) SearchModels(HuggingFaceSearchFunc) (string, bool) { return "", false }
-func (u *scriptedProgressUI) ShowStatus(string, string)                  {}
-func (u *scriptedProgressUI) Progress(ProgressState) <-chan struct{}     { return u.progress() }
-func (u *scriptedProgressUI) UpdateProgress(ProgressState)               {}
+func (u *scriptedProgressUI) ShowStatus(string, string)                         {}
+func (u *scriptedProgressUI) Progress(ProgressState) <-chan struct{}            { return u.progress() }
+func (u *scriptedProgressUI) UpdateProgress(ProgressState)                      {}
 
 // ui.ts:549-565 runWithProgress: after a confirmed stop it awaits options.cancel() while the run is still live, then aborts the
 // run's signal with "Cancelled" and awaits the settled run before it returns; a rejection of cancel() is rethrown (Go returns it

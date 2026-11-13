@@ -137,7 +137,7 @@ func formatTokenCount(count int) string {
 }
 
 // listModelsTimeout is main.ts:951's AbortSignal.timeout(15_000).
-const listModelsTimeout = 15 * time.Second
+const listModelsTimeout = 15 * time.Second // upstream: coding-agent/src/main.ts:main
 
 // listModels is upstream listModels (cli/list-models.ts:29-115) under the bound of main.ts:951. It warns of the runtime's error (:34-37), awaits a
 // fresh availability pass (:39, model-runtime.ts:490-506) and prints the table of the registry, which reads the availability that pass published. A

@@ -176,7 +176,9 @@ func TestSDKProviderHooksAreAwaitedAndReportHandlerErrors(t *testing.T) {
 			}
 			return err
 		},
-		"response": func() error { return sess.extensionProviderResponseHook(t.Context(), ai.ProviderResponse{Status: 200}, nil) },
+		"response": func() error {
+			return sess.extensionProviderResponseHook(t.Context(), ai.ProviderResponse{Status: 200}, nil)
+		},
 		"event": func() error {
 			return sess.extensionProviderStreamEventHook(t.Context(), map[string]any{}, &ai.Model{ID: "m"})
 		},
