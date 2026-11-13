@@ -5,6 +5,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 // pig additive (D614): the terminal view client in a real interactive session. A Go SDK fixture
@@ -498,6 +500,181 @@ func TestUIViewBindingsFireFromTheFocusedMount(t *testing.T) {
 			if pane := r.settle(); !strings.Contains(pane, "bound {}") || strings.Contains(pane, `bound {"n":7}`) {
 				t.Fatalf("after Escape the bound key changed the panel:\n%s", pane)
 			}
+		})
+	}
+}
+
+// A dialog in a real session: a key the panel binds opens it in a titled frame over the screen with the keys; its list
+// and its bound keys answer; its close key ends it and the panel under it has its focus and its selection again; the
+// same key opens it again as it was. In both TUI modes.
+func TestUIViewDialogOpensAndClosesAtBoundKeys(t *testing.T) {
+	for _, mode := range []string{"fullscreen", "regular"} {
+		t.Run(mode, func(t *testing.T) {
+			r := startUIView(t, "on.yaml", mode, true)
+			r.send("/vdialog\r")
+			r.settle("places rows", "m map")
+			r.sendKey("Down")
+			r.send("m")
+			if pane := r.settle("┌ Map ", "map rows", "q close", "l legend"); strings.Contains(pane, "m map") {
+				t.Fatalf("the panel under the dialog draws its hint row, so it holds the focus:\n%s", pane)
+			}
+			r.sendKey("Down")
+			r.sendKey("Enter")
+			r.settle("Map picked beta after 0 cancelled")
+			r.send("q")
+			r.gone("┌ Map ", "Map picked", "q close")
+			// The panel has the keys again, on the item it stood on before the dialog.
+			r.settle("m map", "places rows")
+			r.sendKey("Enter")
+			r.settle("places picked beta")
+			r.send("m")
+			r.settle("┌ Map ", "Map picked beta after 0 cancelled", "q close")
+		})
+	}
+}
+
+// The keys of a dialog in a real session. The key that interrupts cancels the dialog's cancellable intent in flight and
+// returns the keys to the editor while the frame stays; F6 moves between the editor and the dialog and passes the
+// focusable panel under it by. A second dialog is drawn over the first with the keys, and when it ends the first has
+// them again. In both TUI modes.
+func TestUIViewDialogKeysAndStack(t *testing.T) {
+	for _, mode := range []string{"fullscreen", "regular"} {
+		t.Run(mode, func(t *testing.T) {
+			r := startUIView(t, "on.yaml", mode, true)
+			r.send("/vdialog\r")
+			r.settle("places rows", "m map")
+			r.send("m")
+			r.settle("┌ Map ", "q close")
+			// An intent that ends only when it is cancelled: while it is in flight the dialog raises no other.
+			r.send("s")
+			r.sendKey("Enter")
+			if pane := r.settle("┌ Map "); strings.Contains(pane, "Map picked") {
+				t.Fatalf("the dialog raised an intent while another was in flight:\n%s", pane)
+			}
+			r.sendKey("Escape")
+			r.gone("q close")
+			if pane := r.settle("┌ Map ", "map rows"); strings.Contains(pane, "m map") {
+				t.Fatalf("Escape in the dialog gave the keys to the panel, not the editor:\n%s", pane)
+			}
+			// What is typed now is the editor's: no key of it reaches the dialog, whose key l would open the legend. In
+			// regular mode the frame can cover the editor, so the text is looked for once the dialogs are closed.
+			r.send("typed beside")
+			if pane := r.settle("┌ Map "); strings.Contains(pane, "Legend") || strings.Contains(pane, "Map picked") {
+				t.Fatalf("a key typed beside the dialog reached it:\n%s", pane)
+			}
+			r.sendKey("F6")
+			if pane := r.settle("q close"); strings.Contains(pane, "m map") {
+				t.Fatalf("F6 from the editor stopped on the panel under the dialog:\n%s", pane)
+			}
+			r.sendKey("Enter")
+			r.settle("Map picked alpha after 1 cancelled")
+			r.sendKey("F6")
+			r.gone("q close")
+			if pane := r.settle("┌ Map "); strings.Contains(pane, "m map") {
+				t.Fatalf("F6 from the dialog stopped on the panel under it:\n%s", pane)
+			}
+			r.sendKey("F6")
+			r.settle("q close")
+
+			r.send("l")
+			r.settle("┌ Legend ", "legend rows", "q close")
+			r.sendKey("Down")
+			r.sendKey("Enter")
+			r.settle("Legend picked beta after 1 cancelled")
+			r.send("q")
+			r.gone("┌ Legend ", "Legend picked")
+			r.settle("┌ Map ", "Map picked alpha after 1 cancelled", "q close")
+			r.sendKey("Down")
+			r.sendKey("Enter")
+			r.settle("Map picked beta after 1 cancelled")
+			r.send("q")
+			r.gone("┌ Map ")
+			r.settle("m map", "typed beside")
+		})
+	}
+}
+
+// A reload ends a stack of two dialogs with their extension's instance: both frames close and the keys are the
+// editor's; the mount the new instance makes opens a dialog again. In both TUI modes.
+func TestUIViewDialogEndsAtAReloadAndOpensAgain(t *testing.T) {
+	for _, mode := range []string{"fullscreen", "regular"} {
+		t.Run(mode, func(t *testing.T) {
+			r := startUIView(t, "on.yaml", mode, true)
+			r.send("/vdialog\r")
+			r.settle("places rows", "m map")
+			r.send("m")
+			r.settle("┌ Map ", "map rows", "q close")
+			r.send("l")
+			r.settle("┌ Legend ", "legend rows", "q close")
+			r.sendKey("Escape")
+			r.gone("q close")
+			r.send("/reload\r")
+			r.gone("┌ Map ", "┌ Legend ", "legend rows", "map rows", "places rows")
+			r.send("/vdialog\r")
+			r.settle("places rows", "m map")
+			r.send("m")
+			r.settle("┌ Map ", "map rows", "q close")
+			r.sendKey("Down")
+			r.sendKey("Enter")
+			r.settle("Map picked beta after 0 cancelled")
+		})
+	}
+}
+
+// In fullscreen mode a click inside the frame of a dialog that does not hold the keys gives them to it.
+func TestUIViewDialogClickTakesTheKeys(t *testing.T) {
+	r := startUIView(t, "on.yaml", "fullscreen", true)
+	r.send("/vdialog\r")
+	r.settle("places rows", "m map")
+	r.send("m")
+	r.settle("┌ Map ", "q close")
+	r.sendKey("Escape")
+	r.gone("q close")
+	pane := r.settle("┌ Map ", "Beta item")
+	row, column := 0, 0
+	for i, line := range strings.Split(pane, "\n") {
+		if at := strings.Index(line, "Beta item"); at >= 0 && strings.Contains(line, "│") {
+			row, column = i+1, utf8.RuneCountInString(line[:at])+2
+		}
+	}
+	if row == 0 {
+		t.Fatalf("the dialog's list is not on the screen:\n%s", pane)
+	}
+	r.send(fmt.Sprintf("\x1b[<0;%d;%dM", column, row))
+	r.send(fmt.Sprintf("\x1b[<0;%d;%dm", column, row))
+	r.settle("q close", "Map picked beta after 0 cancelled")
+}
+
+// A dialog shown while the user types is drawn without the keys: what was typed and what is typed next stays in the
+// editor, the extension reads an unfocused notice with the reason, and F6 gives the dialog the keys. In both TUI modes.
+func TestUIViewDialogLeavesATypingUserTheKeys(t *testing.T) {
+	for _, mode := range []string{"fullscreen", "regular"} {
+		t.Run(mode, func(t *testing.T) {
+			r := startUIView(t, "on.yaml", mode, true)
+			r.send("/vlater\r")
+			r.send("typed before")
+			if pane := r.settle("┌ Map ", "map rows"); strings.Contains(pane, "q close") {
+				t.Fatalf("the dialog shown over a typing user holds the keys:\n%s", pane)
+			}
+			// In regular mode the frame can cover the editor, so the text is looked for once the dialog is closed.
+			r.send(" and after")
+			if pane := r.settle("┌ Map "); strings.Contains(pane, "Legend") || strings.Contains(pane, "q close") {
+				t.Fatalf("a key typed beside the dialog reached it:\n%s", pane)
+			}
+			r.sendKey("F6")
+			r.settle("q close")
+			r.sendKey("Down")
+			r.sendKey("Enter")
+			r.settle("Map picked beta after 0 cancelled")
+			r.send("q")
+			r.gone("┌ Map ")
+			r.settle("typed before and after")
+			for range len("typed before and after") {
+				r.sendKey("BSpace")
+			}
+			r.gone("typed before")
+			r.send("/vdiag\r")
+			r.settle("map notices [unfocused focus: the editor holds text]")
 		})
 	}
 }

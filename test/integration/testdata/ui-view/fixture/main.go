@@ -1,7 +1,10 @@
 // Command fixture is the extension of the terminal view client's integration test (test/integration). Its commands mount
 // a panel with a list and a widget, update, hide, show, remove and finish them, and its intent handler redraws the panel
 // with the picked value. vtabs mounts three titled panels and hides the third, which the user can open; vfocus updates
-// the second with a focus request; vbind mounts a panel whose keys are bindings. With PIG_UI_VIEW_FIXTURE_MOUNTS=0 every command runs and makes no ui.view call, so a session
+// the second with a focus request; vbind mounts a panel whose keys are bindings; vdialog mounts a panel whose key m
+// opens a dialog, whose keys close it, open a second dialog over it and raise an intent that only ends when it is
+// cancelled; vlater mounts that dialog two seconds later, and vdiag shows the notices the client left on it. With
+// PIG_UI_VIEW_FIXTURE_MOUNTS=0 every command runs and makes no ui.view call, so a session
 // that never mounted takes the same keys. With PIG_UI_VIEW_FIXTURE_ABILITIES=panel or =widget-above it mounts one view
 // in that slot when it is told the abilities of the client that attached (OnViewAbilities), before any command; with
 // =listen it takes that event and makes no ui.view call.
@@ -11,7 +14,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
@@ -73,6 +79,42 @@ func bound(text string) sdk.ViewContent {
 	}
 }
 
+// The intents of the dialogs: a key of the places panel opens the map, and the keys of a dialog close it, open the
+// legend over it and raise slow, whose handler ends only when the intent is cancelled.
+var (
+	object       = sdk.ViewShape{Type: "object"}
+	openMap      = sdk.ViewIntent{Name: "viewfx.map", Arg: object, TimeoutMs: 5000}
+	openLegend   = sdk.ViewIntent{Name: "viewfx.legend", Arg: object, TimeoutMs: 5000}
+	closeDialog  = sdk.ViewIntent{Name: "viewfx.close", Arg: object, TimeoutMs: 5000}
+	slow         = sdk.ViewIntent{Name: "viewfx.slow", Arg: object, TimeoutMs: 120000, Cancellable: true}
+	dialogTitles = map[string]string{"map": "Map", "legend": "Legend"}
+	pickItems    = []kit.SelectItem{{Value: "alpha", Label: "Alpha item"}, {Value: "beta", Label: "Beta item"}}
+)
+
+// places is the panel a dialog is opened from: a list, and the key m.
+func places(text string) sdk.ViewContent {
+	return sdk.ViewContent{
+		View:     kit.View{Root: kit.NewContainer(kit.NewText(text, 1, 0), kit.NewSelectList("pick", pickItems, 4)), Focus: "pick"},
+		Intents:  []sdk.ViewIntent{pick, openMap},
+		Bindings: []sdk.ViewBinding{{Key: "m", Intent: openMap.Name, Name: "map"}},
+		Focus:    []sdk.ViewFocus{{Node: "pick", Request: "mount"}},
+	}
+}
+
+// dialog is the content of the dialog key: a title, a list, and its keys.
+func dialog(key, text string) sdk.ViewContent {
+	return sdk.ViewContent{
+		Title:   dialogTitles[key],
+		View:    kit.View{Root: kit.NewContainer(kit.NewText(text, 1, 0), kit.NewSelectList("pick", pickItems, 4)), Focus: "pick"},
+		Intents: []sdk.ViewIntent{pick, closeDialog, openLegend, slow},
+		Bindings: []sdk.ViewBinding{
+			{Key: "q", Intent: closeDialog.Name, Name: "close"},
+			{Key: "l", Intent: openLegend.Name, Name: "legend"},
+			{Key: "s", Intent: slow.Name, Name: "slow"},
+		},
+	}
+}
+
 func note(text string) sdk.ViewContent {
 	return sdk.ViewContent{View: kit.View{Root: kit.NewText(text, 1, 0)}}
 }
@@ -81,6 +123,7 @@ func main() {
 	ext := sdk.New("viewfx")
 	mounts := os.Getenv("PIG_UI_VIEW_FIXTURE_MOUNTS") != "0"
 	var mu sync.Mutex
+	var cancelled atomic.Int64
 	refs := map[string]sdk.ViewRef{}
 	keep := func(st sdk.ViewStatus, err error) error {
 		if err != nil {
@@ -155,6 +198,25 @@ func main() {
 	command("vbind", "Mount a panel with key bindings", func(ctx sdk.Context) error {
 		return keep(ctx.MountView(sdk.ViewMount{Key: "bind", Slot: sdk.ViewSlotPanel, ViewContent: bound("bind rows")}))
 	})
+	command("vdialog", "Mount a panel whose key opens a dialog", func(ctx sdk.Context) error {
+		return keep(ctx.MountView(sdk.ViewMount{Key: "places", Slot: sdk.ViewSlotPanel, ViewContent: places("places rows")}))
+	})
+	command("vlater", "Mount the map dialog two seconds from now", func(ctx sdk.Context) error {
+		time.Sleep(2 * time.Second)
+		return keep(ctx.MountView(sdk.ViewMount{Key: "map", Slot: sdk.ViewSlotDialog, ViewContent: dialog("map", "map rows")}))
+	})
+	command("vdiag", "Show the notices of the map dialog", func(ctx sdk.Context) error {
+		notices, err := ctx.ViewDiagnostics("map")
+		if err != nil {
+			return err
+		}
+		said := make([]string, len(notices))
+		for i, n := range notices {
+			said[i] = n.Code + " " + n.Path + ": " + n.Message
+		}
+		ctx.Notify("map notices ["+strings.Join(said, "; ")+"]", "info")
+		return nil
+	})
 	command("vhide", "Hide the fixture's views", func(ctx sdk.Context) error { return both(ctx.HideView) })
 	command("vshow", "Show the fixture's views", func(ctx sdk.Context) error { return both(ctx.ShowView) })
 	command("vremove", "Remove the fixture's views", func(ctx sdk.Context) error { return both(ctx.RemoveView) })
@@ -167,6 +229,39 @@ func main() {
 			return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
 		}
 		at := sdk.ViewRef{Key: in.Mount.Key, Epoch: in.Mount.Epoch, Rev: in.Rev}
+		failed := func(err error) sdk.ViewIntentResult {
+			if err != nil {
+				return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+			}
+			return sdk.ViewIntentResult{Outcome: "done"}
+		}
+		switch in.Intent {
+		case openMap.Name, openLegend.Name:
+			// A key of the panel opens the map and a key of the map the legend: the first press mounts the dialog, a
+			// later one shows the dialog its own key hid.
+			key := "map"
+			if in.Intent == openLegend.Name {
+				key = "legend"
+			}
+			if hidden := ref(key); hidden.Key != "" {
+				return failed(keep(in.Context.ShowView(hidden)))
+			}
+			return failed(keep(in.Context.MountView(sdk.ViewMount{Key: key, Slot: sdk.ViewSlotDialog, ViewContent: dialog(key, key+" rows")})))
+		case closeDialog.Name:
+			return failed(keep(in.Context.HideView(at)))
+		case slow.Name:
+			// Ends only when the client cancels it. The next pick of any dialog shows how many were cancelled.
+			<-in.Context.Done()
+			cancelled.Add(1)
+			return sdk.ViewIntentResult{Outcome: "failed", Error: "cancelled"}
+		}
+		if title, isDialog := dialogTitles[in.Mount.Key]; isDialog && in.Intent == pick.Name {
+			text := fmt.Sprintf("%s picked %s after %d cancelled", title, arg.Value, cancelled.Load())
+			return failed(keep(in.Context.UpdateView(sdk.ViewUpdate{Mount: at, ViewContent: dialog(in.Mount.Key, text)})))
+		}
+		if in.Mount.Key == "places" {
+			return failed(keep(in.Context.UpdateView(sdk.ViewUpdate{Mount: at, ViewContent: places("places picked " + arg.Value)})))
+		}
 		if in.Intent == goTo.Name {
 			// A key of the bound panel: the panel shows the argument the client raised the intent with.
 			if err := keep(in.Context.UpdateView(sdk.ViewUpdate{Mount: at, ViewContent: bound("bound " + string(in.Arg))})); err != nil {
