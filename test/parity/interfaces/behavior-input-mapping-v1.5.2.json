@@ -3795,10 +3795,18 @@
     {
       "id": "render:packages/tui/src/terminal-image.ts#<module>.renderImage",
       "ownerFamily": "clipboard-images",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/terminal_image.go#RenderImage"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/34-render-image.toml",
+        "tui/render_image_oracle_test.go#TestRenderImageMatchesPi",
+        "tui/render_image_registry_contract_test.go#TestRenderImageRegistersKittyMetadataLikePi"
+      ],
+      "contracts": [
+        "tui/terminal-image/render-image"
+      ],
       "divergence": "",
       "rationale": ""
     },
