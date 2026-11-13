@@ -219,10 +219,21 @@ func (h *NodeHost) eventsAcked(payload []byte) {
 	h.events.acked(message.Events)
 }
 
-// nodeEvents is one `event` message of the Node host. No reference of this side takes a type with an event member yet
-// (NodeHost.reference refuses it: eventsDoNotCross), so no hold has a listener: its entries are dropped unread, and the
-// message is acknowledged, as a consumer acknowledges one whose holds it does not know (Pi remote/consumer.ts:312-320).
-// It runs on the goroutine that reads the channel, which writes nothing: the acknowledgement goes through the sender.
-func (h *NodeHost) nodeEvents() {
+// nodeEvents is one `event` message of the Node host: each entry goes to the reference it names (dropped for a hold this
+// side released or never had, as a consumer drops one whose hold it does not know: Pi remote/consumer.ts:312-320), in the
+// message's order, and the message is acknowledged once the listeners returned, whatever it held: a message that does not
+// decode is acknowledged too, or its slot of the Node host's window would never be free again. It runs on the goroutine
+// that reads the channel, which writes nothing: the acknowledgement goes through the sender.
+func (h *NodeHost) nodeEvents(payload []byte) {
+	var message struct {
+		Events []hostevents.Entry `json:"events"`
+	}
+	if err := json.Unmarshal(payload, &message); err == nil {
+		for i := range message.Events {
+			if reference := h.bridge.reference(message.Events[i].Hold); reference != nil {
+				reference.deliverEvent(&message.Events[i])
+			}
+		}
+	}
 	h.events.ack(1)
 }

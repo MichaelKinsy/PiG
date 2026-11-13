@@ -107290,7 +107290,7 @@
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
         "test:chord/next/store/jsonl_test.go#TestJsonl",
-        "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay"
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext"
       ]
     },
     {
@@ -107312,7 +107312,7 @@
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
         "test:chord/next/store/jsonl_test.go#TestJsonl",
-        "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay"
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext"
       ]
     },
     {
@@ -133508,9 +133508,9 @@
         "call:chord/sync/batch.go#DecodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/lines_test.go#TestBatchBodies",
-        "test:chord/sync/sync_test.go#TestBatches"
+        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
+        "test:chord/sync/limits_test.go#TestLineLimit"
       ]
     },
     {
@@ -133530,9 +133530,9 @@
         "call:chord/sync/batch.go#DecodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/lines_test.go#TestBatchBodies",
-        "test:chord/sync/sync_test.go#TestBatches"
+        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
+        "test:chord/sync/limits_test.go#TestLineLimit"
       ]
     },
     {
@@ -133672,9 +133672,9 @@
         "call:chord/sync/batch.go#EncodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units",
-        "test:chord/sync/lines_test.go#TestBatchBodies"
+        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
+        "test:chord/sync/limits_test.go#TestLineLimit"
       ]
     },
     {
@@ -133694,9 +133694,9 @@
         "call:chord/sync/batch.go#EncodeBatch"
       ],
       "evidence": [
-        "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/limits_test.go#TestSizesCountUTF16Units",
-        "test:chord/sync/lines_test.go#TestBatchBodies"
+        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
+        "test:chord/sync/limits_test.go#TestLineLimit"
       ]
     },
     {
@@ -133990,9 +133990,9 @@
         "call:chord/sync/filesystem.go#NewFileSystemSyncRemote"
       ],
       "evidence": [
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
         "test:chord/sync/files_contract_test.go#TestFileSystemSyncRemoteCallsTheFileSystemOperationsInPisOrderWithPisArguments",
-        "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures",
-        "test:chord/sync/proof_chord_test.go#TestAStreamedBodyReadsAFileInChunksAndReleasesItsReaderOnce"
+        "test:chord/sync/lines_test.go#TestIsNotFoundTellsAMissingFileFromOtherFailures"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -134207,6 +134207,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot"
       ],
       "evidence": [
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
         "test:chord/sync/files_contract_test.go#TestFileSystemSyncRemoteCallsTheFileSystemOperationsInPisOrderWithPisArguments"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -134228,6 +134229,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.GetSnapshot"
       ],
       "evidence": [
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
         "test:chord/sync/files_contract_test.go#TestFileSystemSyncRemoteCallsTheFileSystemOperationsInPisOrderWithPisArguments"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -134381,6 +134383,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot"
       ],
       "evidence": [
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
         "test:chord/sync/files_contract_test.go#TestFileSystemSyncRemoteCallsTheFileSystemOperationsInPisOrderWithPisArguments"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -134402,6 +134405,7 @@
         "call:chord/sync/filesystem.go#FileSystemSyncRemote.PutSnapshot"
       ],
       "evidence": [
+        "test:chord/sync/chunks_test.go#TestNothingThatReadsABodyKeepsAChunkPastTheNextNext",
         "test:chord/sync/files_contract_test.go#TestFileSystemSyncRemoteCallsTheFileSystemOperationsInPisOrderWithPisArguments"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -136122,8 +136126,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/sync/limits_test.go#TestLineLimit",
-        "test:chord/sync/lines_test.go#TestSnapshotBodies"
+        "test:chord/sync/chunks_test.go#TestAGzipBodyFillsTheChunkItHandedOutAgainAtTheNextNext",
+        "test:chord/sync/limits_test.go#TestLineLimit"
       ]
     },
     {

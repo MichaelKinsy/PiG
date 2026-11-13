@@ -27207,7 +27207,6 @@
         "chord/next/host/remote_events_order_window_test.go::TestTheDefaultEventWindowSendsThe32ndUnacknowledgedMessageAndDropsThe33rd",
         "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsCallTheLatestListenerOfUseEventsFollowItsMemberAndStopAtUnmount",
         "chord/nextnode/plugins/plugins_node_events_bridge_test.go::TestNodeDescribeRebuildsAnEventMemberAsAnEventMember",
-        "chord/nextnode/plugins/plugins_node_events_bridge_test.go::TestNodeGetOfATypeWithAnEventMemberSaysEventsDoNotCrossThePluginsBridge",
         "chord/nextnode/plugins/plugins_node_events_test.go::TestANodePluginDeclaresAnEventMemberAndItsEmitsReachASubscriberOnTheNodeHost",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeVendoredFilesAreExactlyTheManifests",
         "chord/nextnode/surfaces/surfaces_events_test.go::TestClientEventsReachAListenerCrossALinkAndAreExportedToReact",
