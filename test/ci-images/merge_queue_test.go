@@ -102,7 +102,7 @@ func tierRows(t *testing.T) []tierRow {
 	return rows
 }
 
-// parseTierRows reads the rows of ci-tiers.txt.
+// parseTierRows reads the rows of ci-tiers.txt. A table with no rows is an error: every caller ranges over the rows.
 func parseTierRows(data []byte) ([]tierRow, error) {
 	var rows []tierRow
 	for line := range strings.SplitSeq(string(data), "\n") {
@@ -118,6 +118,9 @@ func parseTierRows(data []byte) ([]tierRow, error) {
 			fields = append(fields, "")
 		}
 		rows = append(rows, tierRow{fields[0], fields[1], fields[2], fields[3]})
+	}
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("automation/ci/ci-tiers.txt has no rows (%d bytes read)", len(data))
 	}
 	return rows, nil
 }

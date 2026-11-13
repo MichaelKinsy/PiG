@@ -44,11 +44,14 @@ type linkedBinary struct {
 	Forbid map[string]string `toml:"forbid"`
 }
 
-// loadLinkedPackages reads the policy file at path.
+// loadLinkedPackages reads the policy file at path. A file that lists no target or no binary is an error: the gate would build nothing and pass.
 func loadLinkedPackages(path string) (linkedPackages, error) {
 	var policy linkedPackages
 	if _, err := toml.DecodeFile(path, &policy); err != nil {
-		return linkedPackages{}, err
+		return linkedPackages{}, fmt.Errorf("read %s: %w", path, err)
+	}
+	if len(policy.Targets) == 0 || len(policy.Binary) == 0 {
+		return linkedPackages{}, fmt.Errorf("%s lists no targets or no binary (%d targets, %d binaries)", path, len(policy.Targets), len(policy.Binary))
 	}
 	return policy, nil
 }

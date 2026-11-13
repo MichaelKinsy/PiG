@@ -48,7 +48,7 @@ type baselineFile struct {
 func loadBaseline(path string) (baselineFile, error) {
 	var baseline baselineFile
 	if _, err := toml.DecodeFile(path, &baseline); err != nil && !os.IsNotExist(err) {
-		return baselineFile{}, err
+		return baselineFile{}, fmt.Errorf("read baseline %s: %w", path, err)
 	}
 	return baseline, nil
 }
