@@ -189,7 +189,7 @@ func accessible(t *testing.T, browser *browsertest.Browser, roles ...string) []s
 		line := n.Role.Value + " " + strconv.Quote(n.Name.Value)
 		for _, state := range []string{"level", "checked", "selected", "disabled", "required"} {
 			for _, p := range n.Properties {
-				if p.Name == state && !(state == "required" && p.Value.Value == false) {
+				if p.Name == state && (state != "required" || p.Value.Value != false) {
 					line += fmt.Sprintf(" %s=%v", state, p.Value.Value)
 				}
 			}
