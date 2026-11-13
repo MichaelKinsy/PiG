@@ -41087,6 +41087,42 @@
       ]
     },
     {
+      "id": "BF-acc1492",
+      "title": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects…",
+      "symptom": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects at once instead of first waiting for its `CanRetry` check: with a check that takes 3 s, the next attempt went 3 250 ms after the wake and now goes at 0 ms.",
+      "rootCause": "The wait happened because the connection loop scheduled its next attempt only once `CanRetry` had answered.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects at once instead of first waiting for its `CanRetry` check: with a check that takes 3 s, the next attempt went 3 250 ms after the wake and now goes at 0 ms. The wait happened because the connection loop scheduled its next attempt only once `CanRetry` had answered. `KeepConnected` now asks `CanRetry` beside the next attempt, one question at a time (a link that drops while a question is open asks nothing more); a late `false` still stops the loop and ends the attempt made meanwhile, which is reported `waiting`; a drop within 26 s of a wake is retried at once, once per wake, and the replacement of a silent socket no longer waits a pause. `StartClient` stops the loop before it calls `Outdated`, so the app starts over with the link already ended. The vendored page and plugin runtimes carry the same change (Pi 21e4cb80d: `surfaces/connection.ts`, `surfaces/client.ts`, `web/page.ts`). The old loop is in v0.2.0, v0.3.0 and v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6e061374e2",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "acc14924df",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_client_test.go::TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "chord/next/surfaces/surfaces_client_test.go::TestAsksTheServersBaseAtAReconnectAnotherOneStopsTheLoopThenCallsOutdated",
+        "chord/next/surfaces/surfaces_connection_test.go::TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "chord/next/surfaces/surfaces_connection_test.go::TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "chord/next/surfaces/surfaces_connection_test.go::TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped",
+        "chord/next/surfaces/surfaces_connection_test.go::TestAsksCanRetryOneQuestionAtATimeClosesWhileItIsOpenAskNothingMoreTheNextCloseAsksAgain",
+        "chord/next/surfaces/surfaces_connection_test.go::TestDoesNotWaitForCanRetryTheNextAttemptGoesAheadALateNoAfterItOpenedClosesItReportedWaiting",
+        "chord/next/surfaces/surfaces_connection_test.go::TestOneWakeWithASlowCheckTheNextAttemptGoesAtOnceBesideTheOneCheck",
+        "chord/next/surfaces/surfaces_connection_test.go::TestReconnectsAfterAGrowingPauseAndReportsItsStates",
+        "chord/next/surfaces/surfaces_connection_test.go::TestRetriesAtOnceADropSoonAfterAWakeTheSocketThatWasAwayOncePerWake",
+        "chord/next/surfaces/surfaces_connection_test.go::TestStopReportsTheAttemptItEndedAsWaitingOnceAndNothingBetweenAttempts"
+      ]
+    },
+    {
       "id": "BF-ad0c167",
       "title": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and…",
       "symptom": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and emphasis, tool titles, selector titles, diff highlights) now draw only when Pi's chalk would: its stdout color level is above zero.",
@@ -44372,6 +44408,28 @@
         "durable/core/turn/classify_carried_test.go::TestConnectionClosedIsRetryable",
         "durable/core/turn/classify_carried_test.go::TestStreamCutShortMidReplyIsRetryable",
         "extensions/sdk/pi_ai_helpers_test.go::TestConnectionClosedIsRetryable"
+      ]
+    },
+    {
+      "id": "BF-bedd7ec",
+      "title": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead…",
+      "symptom": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead of answering them.",
+      "rootCause": "the Go server host loads its own facets first and its plugins after, in the Node plugin host, and its HTTP component resolved its registries once the first of the two were loaded. Pi's one host loads both in one load, and until then its HTTP component refuses every request and upgrade with 503.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead of answering them. A page that reconnected to a restarted server in that time (about 220 ms in the run that found it; the page's first retry comes after 250 ms) was connected, shown the scripts object's empty set, took its base for another one and reloaded: what the page held was lost (the server's state was kept). This happened because the Go server host loads its own facets first and its plugins after, in the Node plugin host, and its HTTP component answered once the first of the two were loaded, where Pi's one host loads both in one `load` and its HTTP component refuses until that ended (`not_ready`). The HTTP component now sees the server host's registries only once the plugins are loaded. The fix is commit aa77aa9c2f1d3eccb4597259bdf1440915b97215; its message names the divergence of the server's two hosts (number 605 in docs/parity/DIVERGENCES.md) because the defect exists only where those two hosts exist, and the fix does not close or change that divergence. In no release: the app kit (`chord/nextnode/app`) is in none of v0.2.0, v0.3.0 and v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bedd7ec384",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_bases_linux_test.go::TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading"
       ]
     },
     {
