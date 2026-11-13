@@ -191302,8 +191302,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption",
-        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame",
-        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterSettingChangeWaitsForTheNextStart"
+        "test:internal/codingagent/frame_pacing_test.go#TestStartupNoticeWhenAdaptivePacingLacksTheScreenWriter",
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame"
       ]
     },
     {

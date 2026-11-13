@@ -261412,6 +261412,17 @@
       "shapeHash": "sha256:aeeb622c0406db9e784011796b2e2f1e0533872f347d15207d4a348b5778aecf"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showFramePacingNotice",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.showFramePacingNotice",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showFullscreenModelScopeNotice",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.showFullscreenModelScopeNotice",
@@ -278308,6 +278319,17 @@
       "shapeHash": "sha256:23b73e8e3f313b988a078c7adbd96c9d8ce56e0cb6abf544afc29ea3483f0607"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#adaptiveFramePacingLacksScreenWriter",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "adaptiveFramePacingLacksScreenWriter",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(framePacing string, screenWriter string, getenv func(string) string) bool"
+      },
+      "shapeHash": "sha256:49b5b473f4fad122f9755e241ccc7cc6fbfb099ad78b5ce9a1d5772e43bd0272"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#adaptiveFramePacingSelected",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "adaptiveFramePacingSelected",
@@ -289014,6 +289036,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#framePacingEnv",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "framePacingEnv",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#framePacingWithoutScreenWriterNotice",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "framePacingWithoutScreenWriterNotice",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -351852,6 +351885,17 @@
         "type": "ScopedModelsResult"
       },
       "shapeHash": "sha256:3e9b2a2464053113fc223a1730baec7a43f25158cba6028f2e1deb20e11cc19e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ScreenWriterSelected",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ScreenWriterSelected",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(writer bool, getenv func(string) string) bool"
+      },
+      "shapeHash": "sha256:d97ef4b993f64eba55de35385aee29bc73402a1776d8c53e10ccfc39ce8f2f09"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ScrollLayoutNode",
