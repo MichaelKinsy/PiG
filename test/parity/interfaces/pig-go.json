@@ -151423,6 +151423,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#missingCompiler",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "missingCompiler",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buildType string) error"
+      },
+      "shapeHash": "sha256:830de060a8b739a9588e121b626edb8b1aa12d9169bc4a3d08fbd9cf0dd4113a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelFetchBody",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "modelFetchBody",
@@ -156467,9 +156478,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, cfg ExtConfig) fusedChoice"
+        "type": "func(cfg ExtConfig) fusedChoice"
       },
-      "shapeHash": "sha256:e533300621f583e99c1c0d01779fc367476f6c624c096f8d9d6ebcfd38731203"
+      "shapeHash": "sha256:8289f3bdc543a9b41e96b42f19aa55ac4a6d273fef618be0ecb8769c7848dffe"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#resolveNodeEntrypoint",
