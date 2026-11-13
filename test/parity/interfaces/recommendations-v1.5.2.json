@@ -160474,7 +160474,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "115 normalized-name Pig candidates are ambiguous."
+        "117 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160543,6 +160543,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#SteppedSubmenu.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#ThinkingSelectorComponent.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#TrustSelectorComponent.Add",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#activeSettingsWriters.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#backgroundGroup.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#currentRendererTUI.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#earendilAnnouncementComponent.Add",
@@ -160557,6 +160558,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionLinesEncoded.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionProjector.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionSnapshot.add",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#settingsWriterSet.add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/export#exportCardSeq.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#headJoin.Add",

@@ -851,7 +851,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-68b129d](#bf-68b129d) | `/export` to a directory that cannot be created on a read-only file system (such as macOS's root) reports… | PiG's own defect | macOS | 0.5.0 |
 | [BF-68ceee2](#bf-68ceee2) | Tool-argument validation compares JSON values as JSON Schema does: a number is never equal to a string | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68d0628](#bf-68d0628) | The Go, Rust and Python SDKs export Pi's `getLanguageFromPath` | PiG's own defect | All platforms | 0.5.0 |
-| [BF-68dfec5](#bf-68dfec5) | Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system… | PiG's own defect | All platforms | Unreleased |
+| [BF-68dfec5](#bf-68dfec5) | Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-68f8761](#bf-68f8761) | `insecure: true` on a provider an extension registers with `refreshModels` now reaches the request transport | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68f98d7](#bf-68f98d7) | Fixed the error message of a failed lazy API setup, such as a module load or auth failure, using its failure… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68fd735](#bf-68fd735) | grep takes its context lines from ripgrep instead of reading each matched file, reports the match limit only… | PiG's own defect | All platforms | Unreleased |
@@ -1335,6 +1335,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D633](#bf-d633) | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -13560,14 +13561,16 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system…**
 
-- **Source:** PiG's own defect
+- **Source:** A Pi defect that PiG fixed first (divergence D632)
 - **Symptom:** Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system prompt) that calls the resource loader, and a project-trust callback or extension load that calls `ExtendResources` or `Close`, no longer block forever on the loader's operation lock; the call runs inside the reload in progress, as Pi's unlocked reload does.
 - **Root cause:** Pi's DefaultResourceLoader.reload() has no lock (resource-loader.ts:541-710), so a callback of a running reload may call the loader: reload(), extendResources() and the other methods run at once. PiG serialises ReloadWith, LoadProjectTrustExtensions, ExtendResources and Close with opMu, and a call made from a callback waited for the lock its own operation held.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi serialises `reload()` or orders its fields, so that overlapping reloads end in the state of one of them.
 - **Fix commits:** `68dfec5e1a` (2026-11-12)
-- **Tests:** `coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContext`, `coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayExtendAndClose`, `coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContextOnAnotherGoroutine`, `coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderContextOfAnEndedReloadDoesNotBypassTheOperationLock`, `coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderOverrideMayCallTheLoader`, `coding/resource_loader_reentry_async_test.go::TestPiOverlappingReloadsMixTheirResultsD632`
+- **Tests:** `coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContext`, `coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderManyOverlappingReloadsEndInTheSameState`, `coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderOverlappingReloadsEndInTheLastInputsState`, `coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayExtendAndClose`, `coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContextOnAnotherGoroutine`, `coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderContextOfAnEndedReloadDoesNotBypassTheOperationLock`, `coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderOverrideMayCallTheLoader`, `coding/resource_loader_reentry_async_test.go::TestPiOverlappingReloadsMixTheirResultsD632`
 - **Release note:** Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system prompt) that calls the resource loader, and a project-trust callback or extension load that calls `ExtendResources` or `Close`, no longer block forever on the loader's operation lock; the call runs inside the reload in progress, as Pi's unlocked reload does. Reloads that overlap from outside still wait for each other (D632).
 
 ### BF-68f8761
@@ -20296,6 +20299,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** Pi's `Loader` draws a step within a time, or the owner withdraws the change.
 - **Fix commits:** `1488c993df` (2026-11-11), `5042dd06e8` (2026-11-11), `deaeb3a5dc` (2026-11-11), `e3373144bb` (2026-11-11)
 - **Tests:** `internal/codingagent/status_tick_within_test.go::TestRemovingTheIndicatorCancelsItsWaitingStepFrame`, `internal/codingagent/status_tick_within_test.go::TestStatusTickAsksForItsFrameWithinTheStepDelay`, `internal/codingagent/status_tick_within_test.go::TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `tui/render_within_test.go::TestCancelRenderWithinDropsTheWaitingStepFrame`, `tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange`, `tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin`, `tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame`, `tui/render_within_test.go::TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn` and 2 more in docs/bug-ledger.json
+
+### BF-D633
+
+**A failed settings save is reported where the change was made, where Pi reports it only in its settings…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D633)
+- **Symptom:** not reported upstream yet.
+- **Root cause:** a user who changes a setting and is told nothing believes it is saved; on the next start the old value is back. Pi reports the failure at a later start, away from the change that caused it. PiG says so when and where the change was made.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi reports a failed save at the point of change.
+- **Fix commits:** `a4960ace50` (2026-11-12)
+- **Tests:** `coding/cli/settings_failed_save_d633_test.go::TestConfigSelectorReportsAToggleThatCouldNotBeSaved`, `coding/cli/settings_failed_save_d633_test.go::TestPackageInstallAndRemoveReportAFailedSave`, `coding/cli/settings_failed_save_d633_test.go::TestRPCQueueModeSettersAnswerAFailedSave`, `coding/settings_failed_save_d633_test.go::TestSessionQueueModeSettersReturnAFailedSave`, `coding/settings_failed_save_d633_test.go::TestSetCacheWarmingModeReturnsAFailedSaveAndDoesNotTellTheWarmer`, `internal/codingagent/file_lock_test.go::TestSettingsAndTrustLockErrorsAreProperLockfileErrorsUpstream`, `internal/codingagent/file_lock_test.go::TestSettingsAndTrustLocksFailWhileHeld`, `internal/codingagent/file_lock_test.go::TestSettingsLockTakesOverStaleLocks` and 7 more in docs/bug-ledger.json
 
 ### BF-a076a50
 
@@ -30376,6 +30394,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-e299ba1](#bf-e299ba1) |
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
 | D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | [BF-D619](#bf-d619) |
+| D632 | Resource loader operations that overlap wait for each other, where Pi's reloads interleave and can mix their… | [BF-68dfec5](#bf-68dfec5) |
+| D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
 
 ## Fix-titled commits that are not bugs in a release
 

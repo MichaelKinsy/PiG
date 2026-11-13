@@ -23168,7 +23168,9 @@
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
-      "class": "own",
+      "class": "ahead-of-pi",
+      "divergence": "D632",
+      "removeWhen": "Pi serialises `reload()` or orders its fields, so that overlapping reloads end in the state of one of them.",
       "fixedIn": "Unreleased",
       "releaseNote": "Resource reload: an override function (skills, prompt templates, themes, extensions, context files, system prompt) that calls the resource loader, and a project-trust callback or extension load that calls `ExtendResources` or `Close`, no longer block forever on the loader's operation lock; the call runs inside the reload in progress, as Pi's unlocked reload does. Reloads that overlap from outside still wait for each other (D632).",
       "origin": "release note",
@@ -23180,6 +23182,8 @@
       ],
       "tests": [
         "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContext",
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderManyOverlappingReloadsEndInTheSameState",
+        "coding/resource_loader_overlap_async_modelsb_test.go::TestDefaultResourceLoaderOverlappingReloadsEndInTheLastInputsState",
         "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayExtendAndClose",
         "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderCallbackMayReloadWithItsContextOnAnotherGoroutine",
         "coding/resource_loader_reentry_async_test.go::TestDefaultResourceLoaderContextOfAnEndedReloadDoesNotBypassTheOperationLock",
@@ -36502,6 +36506,43 @@
         "tui/render_within_test.go::TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn",
         "tui/render_within_test.go::TestRequestRenderWithinDuringAFrameAsksForTheNextFrame",
         "tui/render_within_test.go::TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor"
+      ]
+    },
+    {
+      "id": "BF-D633",
+      "title": "A failed settings save is reported where the change was made, where Pi reports it only in its settings…",
+      "symptom": "not reported upstream yet.",
+      "rootCause": "a user who changes a setting and is told nothing believes it is saved; on the next start the old value is back. Pi reports the failure at a later start, away from the change that caused it. PiG says so when and where the change was made.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D633",
+      "removeWhen": "Pi reports a failed save at the point of change.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "a4960ace50",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/settings_failed_save_d633_test.go::TestConfigSelectorReportsAToggleThatCouldNotBeSaved",
+        "coding/cli/settings_failed_save_d633_test.go::TestPackageInstallAndRemoveReportAFailedSave",
+        "coding/cli/settings_failed_save_d633_test.go::TestRPCQueueModeSettersAnswerAFailedSave",
+        "coding/settings_failed_save_d633_test.go::TestSessionQueueModeSettersReturnAFailedSave",
+        "coding/settings_failed_save_d633_test.go::TestSetCacheWarmingModeReturnsAFailedSaveAndDoesNotTellTheWarmer",
+        "internal/codingagent/file_lock_test.go::TestSettingsAndTrustLockErrorsAreProperLockfileErrorsUpstream",
+        "internal/codingagent/file_lock_test.go::TestSettingsAndTrustLocksFailWhileHeld",
+        "internal/codingagent/file_lock_test.go::TestSettingsLockTakesOverStaleLocks",
+        "internal/codingagent/file_lock_test.go::TestSettingsUpdateKeepsMemoryWhenTheWriteFailsUpstream",
+        "internal/codingagent/settings_failed_save_d633_test.go::TestGraphSettingsManagerSettersReturnAFailedSave",
+        "internal/codingagent/settings_failed_save_d633_test.go::TestModelSelectorShowsAFailedSaveOfTheDefaultModel",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsSetterCalledFromInsideAWriteReturnsNilAndItsFailureIsOnlyRecorded",
+        "internal/codingagent/settings_write_queue_async_test.go::TestSettingsWriteFailureIsRecordedOnceAndTheQueueGoesOn",
+        "internal/codingagent/settings_write_queue_oracle_test.go::TestSettingsWriteQueueErrorPathMatchesPi",
+        "internal/codingagent/slash_session_handlers_test.go::TestSettingsHandlerTUI_FailedSaveRestoresTheRowValue"
       ]
     },
     {
@@ -58861,6 +58902,16 @@
       "id": "D619",
       "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
       "entry": "BF-D619"
+    },
+    {
+      "id": "D632",
+      "title": "Resource loader operations that overlap wait for each other, where Pi's reloads interleave and can mix their…",
+      "entry": "BF-68dfec5"
+    },
+    {
+      "id": "D633",
+      "title": "A failed settings save is reported where the change was made, where Pi reports it only in its settings…",
+      "entry": "BF-D633"
     }
   ],
   "exemptCommits": {
