@@ -844,6 +844,20 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                                (attempt "member" 7 (list odd))))
                            (let ((cur (pig:ctx-view-state ctx "grid")))
                              (kp-notify ctx (format nil "view-g-state:~A,rev=~D" (pig:view-status-state cur) (pig:view-ref-rev (pig:view-status-mount cur))))))))))
+      ;; D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The argument is
+      ;; the row's token: the ids of the container, the text and the box are built from it.
+      (pig:command ext "ui_view_node_ids" "Mount a view whose container, text and box carry an id"
+                   (lambda (ctx args)
+                     (let* ((tok (string-trim " " args))
+                            (label (format nil "Label ~A" tok))
+                            (root (pig:kit-container
+                                   (list (pig:kit-text label 0 0 :bg "selectedBg" :id (format nil "~A-label" tok))
+                                         (pig:kit-box 1 0 :bg "toolPendingBg" :id (format nil "~A-frame" tok)
+                                                          :children (list (pig:kit-text "inside" 0 0))))
+                                   :id (format nil "~A-root" tok)))
+                            (st (pig:ctx-mount-view ctx "ids" "panel" (pig:kit-view root)
+                                                    :a11y (list (pig:obj "node" (format nil "~A-label" tok) "name" label)))))
+                       (kp-notify ctx (format nil "view-i-mounted:~A" (pig:view-status-state st))))))
       ;; D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
       (labels ((b-intents ()
                  (list (pig:view-intent "fx.go" (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n")))

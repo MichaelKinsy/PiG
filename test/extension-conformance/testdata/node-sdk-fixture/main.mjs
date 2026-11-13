@@ -1154,6 +1154,21 @@ export default function (pi) {
     const cur = await ctx.ui.viewState("grid");
     ctx.ui.notify(`view-g-state:${cur.state},rev=${cur.mount.rev}`, "info");
   } });
+  // D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The argument is the
+  // row's token: the ids of the container, the text and the box are built from it.
+  pi.registerCommand("ui_view_node_ids", { description: "Mount a view whose container, text and box carry an id", handler: async (args, ctx) => {
+    const tok = args.trim();
+    const st = await ctx.ui.mountView({
+      key: "ids",
+      slot: "panel",
+      view: { root: { kind: "container", id: `${tok}-root`, children: [
+        { kind: "text", id: `${tok}-label`, text: `Label ${tok}`, paddingX: 0, paddingY: 0, bg: "selectedBg" },
+        { kind: "box", id: `${tok}-frame`, paddingX: 1, paddingY: 0, bg: "toolPendingBg", children: [{ kind: "text", text: "inside", paddingX: 0, paddingY: 0 }] },
+      ] } },
+      a11y: [{ node: `${tok}-label`, name: `Label ${tok}` }],
+    });
+    ctx.ui.notify(`view-i-mounted:${st.state}`, "info");
+  } });
   // D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
   pi.registerCommand("ui_view_bindings", { description: "Mount a view with bindings and probe what the host refuses", handler: async (args, ctx) => {
     const [key, number] = args.split(" ");
