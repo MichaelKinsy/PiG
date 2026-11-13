@@ -26,6 +26,8 @@ func exitProcess(code int) {
 	stopAutomaticExtensionCacheGC()
 	stopModelServices()
 	stopStartupExtensions()
+	// A settings write that a setter on another goroutine is performing finishes before the process ends.
+	codingagent.FlushSettingsWrites()
 	codingagent.RestoreStdout()
 	stopGCPolicy()
 	stopProfiles()

@@ -722,6 +722,7 @@ func Main(args []string, options *MainOptions) {
 	defer nativeplatform.ShutdownClipboard()
 	defer exitOnRenderOverflow()
 	defer exitOnConfigRootFailure()
+	defer codingagent.FlushSettingsWrites()
 
 	termuxenv.Configure()
 	// pig additive (D95): record the executable before anything can replace it, so an error can report that this process runs a replaced install.
