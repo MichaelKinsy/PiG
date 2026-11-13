@@ -55,11 +55,14 @@ type MountImages struct {
 	// ToPNG converts the bytes of an image to PNG and returns nil when it cannot. It is called off the loop. Nil: an
 	// image that is not PNG is not drawn through the Kitty protocol.
 	ToPNG func(data []byte) []byte
-	// Go runs fn off the loop, never inside the call. Nil: a goroutine.
+	// Go runs fn off the loop, never inside the call. Nil: a goroutine of the MountImages, which Wait waits for.
 	Go func(fn func())
 	// Post runs fn on the loop; it is called off the loop, when an image is prepared. Nil: fn runs where the work ran,
 	// which a caller whose Repaint may be called from any goroutine can take.
 	Post func(fn func())
+
+	// workers are the goroutines started without Go.
+	workers sync.WaitGroup
 
 	mu       sync.Mutex
 	prepared map[string]*mountImageData
@@ -214,10 +217,18 @@ func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter f
 	if m.Go != nil {
 		m.Go(work)
 	} else {
-		go work()
+		m.workers.Add(1)
+		go func() {
+			defer m.workers.Done()
+			work()
+		}()
 	}
 	return d, nil, false
 }
+
+// Wait returns when the work started without Go has ended. It is called on the loop, which starts that work, once Post
+// no longer waits for the loop.
+func (m *MountImages) Wait() { m.workers.Wait() }
 
 // halfBlock draws img, whose size is dims, as half-block rows inside the box of half. It returns nil for bytes without
 // a size, with more pixels than mountHalfMaxPixels, or that cannot be decoded. An image that is not PNG is converted

@@ -269,6 +269,8 @@ func (c *viewClient) detach() {
 	for _, m := range slices.Clone(c.order) {
 		c.drop(m)
 	}
+	// The context has ended, so an image being prepared is not posted to the loop: its goroutine ends with its work.
+	c.images.Wait()
 	c.mu.Lock()
 	c.queue, c.deliveries, c.gap = nil, 0, false
 	c.mu.Unlock()
