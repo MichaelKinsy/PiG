@@ -1000,6 +1000,34 @@ class BackportTests(unittest.TestCase):
             with self.assertRaisesRegex(pinlib.PinError, "2 copies of pi-tui"):
                 oracle.apply_backports(modules)
 
+    def test_backport_blocks_that_share_a_file_key_all_apply_in_file_order(self):
+        # Two Pi commits can change one file. The tables were built with Object.fromEntries, so the later block replaced the earlier one silently.
+        blocks = '''
+patch("aaaa1111", "pi-ai/utils/shared-key.js", [["one\\n", "one, by the first block\\n"]]);
+patch("bbbb2222", "pi-ai/utils/shared-key.js", [["two\\n", "two, by the second block\\n"]]);
+patch("cccc3333", "pi-ai/utils/ordered-key.js", [["alpha\\n", "beta\\n"]]);
+patch("dddd4444", "pi-ai/utils/ordered-key.js", [["beta\\n", "gamma\\n"]]);
+patch("eeee5555", "pi-ai/utils/stale-key.js", [["alpha\\n", "beta\\n"]]);
+patch("ffff6666", "pi-ai/utils/stale-key.js", [["alpha\\n", "delta\\n"]]);
+'''
+        text = backport_fixture.text()
+        anchor = re.search(r"^const packageFile = .*\n", text, re.M)
+        script = '''
+import assert from "node:assert/strict";
+const { backportPatches, patchBackports } = await import(process.env.BACKPORTS);
+assert.equal(backportPatches["pi-ai/utils/shared-key.js"].length, 2, "both blocks of the key are in the table");
+assert.equal(patchBackports("pi-ai/utils/shared-key.js", "one\\ntwo\\n"), "one, by the first block\\ntwo, by the second block\\n");
+// File order: the second block's before-text is the first block's after-text.
+assert.equal(patchBackports("pi-ai/utils/ordered-key.js", "alpha\\n"), "gamma\\n");
+// A later block whose before-text the earlier block removed no longer applies, and says so.
+assert.throws(() => patchBackports("pi-ai/utils/stale-key.js", "alpha\\n"), /no longer applies: alpha/);
+'''
+        with tempfile.TemporaryDirectory() as root:
+            shared = Path(root) / "pi-post-release-backports.mjs"
+            shared.write_text(text[:anchor.end()] + blocks + text[anchor.end():], encoding="utf-8")
+            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": shared.as_uri()}, capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 0, done.stderr)
+
     def test_a_backport_that_does_not_apply_fails_the_build_with_the_scripts_reason(self):
         with tempfile.TemporaryDirectory() as root, mock.patch.object(oracle, "BACKPORTS", backport_fixture.script()):
             modules = self.tree(Path(root))
