@@ -198,6 +198,9 @@ func (m *modalOverlay) renderModal(width, height int) []string {
 
 func (m *modalOverlay) Invalidate() { m.component.Invalidate() }
 
+// childSnapshot is childLister: a whole-tree invalidation reaches the descendants of the framed component.
+func (m *modalOverlay) childSnapshot() []Component { return []Component{m.component} }
+
 // HandleMouse hands an event inside the box to the framed component, at
 // its own cells, as the component would take it without PiG's titled box,
 // which Pi's ui.custom does not have.
