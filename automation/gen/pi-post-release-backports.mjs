@@ -855,7 +855,33 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
-const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
+const tableOf = (name) => {
+  // The table of the blocks whose table is `name`: key -> patches. The patches of every block of a key are joined in the order the blocks
+  // are written (two Pi commits can change one file); classification stays per block. Blocks of other tables are not read, so a block of
+  // another kind need not have patches. What cannot work fails here, when the script loads, naming both blocks: two patches that replace
+  // the same text of a key (the second would find nothing to replace), and a key that one block names with patch and another with
+  // packageFile (patchesOf reads one of those two tables).
+  const table = {};
+  const owners = new Map();
+  const twin = name === "dist" ? "package" : name === "package" ? "dist" : undefined;
+  for (const block of blocks.filter((b) => b.table === name)) {
+    const { id, key, patches } = block;
+    const other = blocks.find((b) => b.table === twin && b.key === key);
+    if (other !== undefined) {
+      const [first, second] = blocks.indexOf(other) < blocks.indexOf(block) ? [other.id, id] : [id, other.id];
+      throw new Error(`backport blocks ${first} and ${second} disagree on ${key}: one names it with patch (compiled output), the other with packageFile`);
+    }
+    for (const [before] of patches) {
+      const place = `${key}\n${before}`;
+      if (owners.has(place)) {
+        throw new Error(`backport blocks ${owners.get(place)} and ${id} both replace the same text of ${key}: ${JSON.stringify(before.slice(0, 80))}`);
+      }
+      owners.set(place, id);
+    }
+    (table[key] ??= []).push(...patches);
+  }
+  return table;
+};
 export const backportPatches = tableOf("dist");
 export const packageFileBackports = tableOf("package");
 // mirrorSourceBackports keys the mirrorSource entries by the path of the source in the Pi repository (packages/ai/src/providers/x.ts).
