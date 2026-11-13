@@ -9018,6 +9018,17 @@
       "shapeHash": "sha256:b25babc494452e36aaa670b795ec5c91819cc66e01d255c5aacee5c7e566f870"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#AssistantMessageEventStream.SettledResult",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "AssistantMessageEventStream.SettledResult",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (*AssistantMessage, bool)"
+      },
+      "shapeHash": "sha256:baf7e32c248f3629361d58b2bbce165894b98023d4e81e4efcdef0450548d2be"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#AssistantMessageEventStream.clearPublicationsLocked",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "AssistantMessageEventStream.clearPublicationsLocked",
@@ -201177,6 +201188,17 @@
       "shapeHash": "sha256:c8b63da1afba7ee0381bffd6877a211021ee2094db852c109f8afdd525da2313"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.requestContext",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Context.requestContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() context.Context"
+      },
+      "shapeHash": "sha256:a670f80d9d343290c72d955f9b551785e49cb0b898c60c1c710e194570222157"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.rpcMode",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "Context.rpcMode",
@@ -213418,6 +213440,17 @@
         "type": "func(state string, reason string)"
       },
       "shapeHash": "sha256:c8b63da1afba7ee0381bffd6877a211021ee2094db852c109f8afdd525da2313"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.requestContext",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ReplacedSessionContext.requestContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() context.Context"
+      },
+      "shapeHash": "sha256:a670f80d9d343290c72d955f9b551785e49cb0b898c60c1c710e194570222157"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.rpcMode",

@@ -1653,6 +1653,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
 | [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cbf4a52](#bf-cbf4a52) | The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-cc05ab3](#bf-cc05ab3) | Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ccaade2](#bf-ccaade2) | The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cd7fa1c](#bf-cd7fa1c) | A read-only config root no longer prints warnings at every start | PiG's own defect | All platforms | 0.5.0 |
@@ -24764,6 +24765,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cbf4a52c17` (2026-11-04)
 - **Tests:** `extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire`, `test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs`
 - **Release note:** The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of `Input`/`input` as given, as Pi's `ctx.ui.editor(title, "")` and `ctx.ui.input(title, "")` do (an RPC client sees `prefill: ""`). They used to drop it, so a port of Pi's plan-mode example wrote a different RPC request than Pi. Pi's `editor(title)` and `input(title)`, which write no such member, are now `EditorWithoutPrefill`, `InputWithoutPlaceholder` and `InputWithoutPlaceholderWithOptions` in Go and `editor_without_prefill`, `input_without_placeholder` and `input_without_placeholder_with_options` in Rust, as `ClearStatus` is for `SetStatus`. `TestConformance_UIEmptyMembersAgreeAcrossSDKs` now requires every SDK (isolated, packed, fused) to tell the empty string from the unset member.
+
+### BF-cc05ab3
+
+**Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now keeps what the provider's stream does after the abort, as Pi does: the text already shown, the provider's own stop reason and error message, or its complete answer when it ignores the abort.
+- **Root cause:** An aborted turn whose model is served by an extension's streamSimple lost the text the user had seen: the host ended the stream at the cancel with a message of its own (empty content, aborted, "context canceled") and discarded whatever the author's stream did next. Pi's consumer has no check of the abort signal (packages/agent/src/agent-loop.ts:424-478): the author's later events, its terminal event, its result or its error decide the turn's final message.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `452127f75d` (2026-11-13), `cc05ab3196` (2026-11-13), `f362f57ac0` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now keeps what the provider's stream does after the abort, as Pi does: the text already shown, the provider's own stop reason and error message, or its complete answer when it ignores the abort. PiG's extension host ended such a stream at the abort with a message of its own (empty content, `aborted`, `context canceled`), so the text the user had seen was gone from the turn, from the session file and from the next request's context. The abort now only aborts the signal the provider holds, in the Go, Node, Python, Rust and Lisp SDKs, and the provider's stream decides how the turn ends; a provider that never reacts holds the turn, as in Pi, and no time limit is added. In RPC mode, when stdin closes while a Node provider's aborted stream never reacts, the process exits 0 once the runtime's event loop is empty, as Pi's process does, and leaves no runtime process. PiG 0.3.0 through 0.7.0 have the defect.
 
 ### BF-cc9370b
 
