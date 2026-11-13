@@ -21,37 +21,53 @@ type ownerOverride struct {
 	OwnerFamily string `json:"ownerFamily"`
 }
 
-// unchangedSurfaces names the handlers and renderers whose inventory record is identical in both inventories and whose keybindings are too, so a reviewed mapping entry for them still describes the same source. Any difference, including a moved line, leaves the surface pending.
+// unchangedSurfaces names the handlers and renderers whose source hash and facets are the same in both inventories and whose keybindings are too, so a reviewed mapping entry for them still describes the same source. Where a declaration, a referenced constant or a keybinding sits in its file is not behaviour: a record that differs only in line numbers keeps its entry. Any other difference leaves the surface pending.
 func unchangedSurfaces(before, after inputInventory) map[string]bool {
 	record := func(value any) string {
 		data, _ := json.Marshal(value)
 		return string(data)
 	}
+	handlerRecord := func(handler inputHandler) string {
+		handler.StartLine, handler.EndLine = 0, 0
+		return record(handler)
+	}
+	rendererRecord := func(item renderer) string {
+		item.StartLine, item.EndLine = 0, 0
+		item.Dependencies = slices.Clone(item.Dependencies)
+		for i := range item.Dependencies {
+			item.Dependencies[i].Line = 0
+		}
+		return record(item)
+	}
+	bindingRecord := func(binding keybinding) string {
+		binding.Line = 0
+		return record(binding)
+	}
 	oldRecords := make(map[string]string, len(before.Handlers)+len(before.Renderers))
 	for _, handler := range before.Handlers {
-		oldRecords[handler.ID] = record(handler)
+		oldRecords[handler.ID] = handlerRecord(handler)
 	}
 	for _, item := range before.Renderers {
-		oldRecords[item.ID] = record(item)
+		oldRecords[item.ID] = rendererRecord(item)
 	}
 	oldBindings := make(map[string]string, len(before.Keybindings))
 	for _, binding := range before.Keybindings {
-		oldBindings[binding.ID] = record(binding)
+		oldBindings[binding.ID] = bindingRecord(binding)
 	}
 	changedBindings := make(map[string]bool)
 	for _, binding := range after.Keybindings {
-		if oldBindings[binding.ID] != record(binding) {
+		if oldBindings[binding.ID] != bindingRecord(binding) {
 			changedBindings[binding.ID] = true
 		}
 	}
 	unchanged := make(map[string]bool)
 	for _, handler := range after.Handlers {
-		if oldRecords[handler.ID] == record(handler) && !slices.ContainsFunc(handler.Bindings, func(id string) bool { return changedBindings[id] }) {
+		if oldRecords[handler.ID] == handlerRecord(handler) && !slices.ContainsFunc(handler.Bindings, func(id string) bool { return changedBindings[id] }) {
 			unchanged[handler.ID] = true
 		}
 	}
 	for _, item := range after.Renderers {
-		if oldRecords[item.ID] == record(item) {
+		if oldRecords[item.ID] == rendererRecord(item) {
 			unchanged[item.ID] = true
 		}
 	}
