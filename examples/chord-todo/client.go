@@ -24,7 +24,7 @@ type socket struct {
 	send      sync.Mutex
 }
 
-// dial opens the server's links endpoint (`/chord`) with the cookie of a signed-in session.
+// dial opens the server's links endpoint (`/chord`) with the cookie of a sign-in.
 func dial(ctx context.Context, origin string, cookie *http.Cookie) (*socket, error) {
 	header := http.Header{}
 	header.Add("Cookie", cookie.String())

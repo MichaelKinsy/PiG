@@ -154,7 +154,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 
 	// 1. Start the app: the kit makes the data directory, the server's store and host, HTTP and the owner link. Nobody is signed
 	//    in yet, so the page answers 401. The owner opens the link: its page posts the token from the URL's fragment and gets
-	//    a session cookie.
+	//    a sign-in cookie.
 	store, err := openTelemetry(telemetryFile(dataDir))
 	if err != nil {
 		return err

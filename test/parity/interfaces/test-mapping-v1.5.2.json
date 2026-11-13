@@ -3159,9 +3159,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:fab1945f8e105433609797ebe1e35d35ba97a4ff6b0ca5e4f112fed332fe9fea",
       "evidence": [
-        "chord/nextnode/app/ephemeral_sessions_test.go"
+        "chord/nextnode/app/ephemeral_sign_ins_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
+      "rationale": "All 3 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane). Pi ff7414d51 renames the file ephemeral-sign-ins.test.ts and its describe (ephemeral sign-ins), the three cases unchanged: the Go file is ephemeral_sign_ins_test.go, its tests TestEphemeralSignIns...; the path and the hash are the pin's."
     },
     {
       "path": "packages/chord/test/node/app/ephemeral.test.ts",
@@ -3170,7 +3170,7 @@
       "evidence": [
         "chord/nextnode/app/ephemeral_upstream_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
+      "rationale": "All 2 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane). Pi ff7414d51 renames one case title (ends its sign-ins with the server): TestEphemeralLoginEndsItsSignInsWithTheServer; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/app/files-copy.test.ts",
@@ -3243,7 +3243,7 @@
       "evidence": [
         "chord/nextnode/app/owner_upstream_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi ff7414d51 renames three case titles (session to sign-in) and reads the list through SignIns: the three Go tests are renamed alike; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/app/pairing.test.ts",
@@ -3252,7 +3252,7 @@
       "evidence": [
         "chord/nextnode/app/pairing_upstream_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi ff7414d51 renames one case title (issues the device sign-in for it) and reads the list through SignIns: TestAnOwnerTheAppChoosesAloneApprovesGetsTheDeviceSignInAndIsNotCounted; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/app/secrets.test.ts",
@@ -3269,9 +3269,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:80ef31c8fdfc51eed65bf752cb66e2e3839dfa8846cac85d4c345d5e4487c77f",
       "evidence": [
-        "chord/nextnode/app/sessions_upstream_test.go"
+        "chord/nextnode/app/sign_ins_upstream_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 9 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi ff7414d51 renames the file sign-ins.test.ts and six case titles (session to sign-in; `limits.ephemeralSignIns`), same inputs and results but the cookie's name chord-sign-in: the Go file is sign_ins_upstream_test.go with its tests renamed alike, and the start option is run through the whole app in sign_ins_limits_test.go; the path and the hash are the pin's."
     },
     {
       "path": "packages/chord/test/node/app/tar.test.ts",
@@ -3643,7 +3643,7 @@
       "evidence": [
         "chord/nextnode/app/app_surfaces_test.go"
       ],
-      "rationale": "All 6 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the base bundle and the page › answers the current base hash publicly, and refuses the page and files to a request without a session\" -\u003e nextnode/app/app_surfaces_test.go:TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession; \"plugin scripts › publishes a new set on a rollout without waiting for clients; the previous files stay served\" -\u003e nextnode/app/app_surfaces_test.go:TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed."
+      "rationale": "All 6 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the base bundle and the page › answers the current base hash publicly, and refuses the page and files to a request without a session\" -\u003e nextnode/app/app_surfaces_test.go:TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn; \"plugin scripts › publishes a new set on a rollout without waiting for clients; the previous files stay served\" -\u003e nextnode/app/app_surfaces_test.go:TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed. Pi ff7414d51 renames one case title (a request without a sign-in) and issues through SignIns: TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASignIn; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/tui/actions.test.ts",
@@ -3679,7 +3679,7 @@
       "evidence": [
         "chord/nextnode/tui/tui_kit_upstream_test.go"
       ],
-      "rationale": "All 10 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the Node it needs › refuses a Node older than 26.5.1 with a clear error\" -\u003e nextnode/tui/tui_launcher_test.go:TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError; \"the files the sandbox may fetch › are the terminal surface's, after dot segments and encodings resolve (Opus M2, Fable L1)\" -\u003e nextnode/tui/tui_launcher_test.go:TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEncodingsResolveOpusM2FableL1; \"a terminal client › runs the app's terminal code with the plugins, confirms its actions, applies an edit in place, exits\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits; \"a terminal client › answers eight requests at once, refuses more, and ignores SIGUSR1 (Opus E10, E8)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8; \"a terminal client › ends on Ctrl-C while its prompt is open, whatever the sandbox asks (Opus E11)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11; \"a terminal client › ends on three Ctrl-C within a second, though the sandbox ignores them (Opus R2)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnThreeCtrlCWithinASecondThoughTheSandboxIgnoresThemOpusR2."
+      "rationale": "All 10 upstream cases have a Go test on this branch. Cases earlier listed missing, with the Go test checked: \"the Node it needs › refuses a Node older than 26.5.1 with a clear error\" -\u003e nextnode/tui/tui_launcher_test.go:TestTheNodeItNeedsRefusesANodeOlderThan2651WithAClearError; \"the files the sandbox may fetch › are the terminal surface's, after dot segments and encodings resolve (Opus M2, Fable L1)\" -\u003e nextnode/tui/tui_launcher_test.go:TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEncodingsResolveOpusM2FableL1; \"a terminal client › runs the app's terminal code with the plugins, confirms its actions, applies an edit in place, exits\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits; \"a terminal client › answers eight requests at once, refuses more, and ignores SIGUSR1 (Opus E10, E8)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8; \"a terminal client › ends on Ctrl-C while its prompt is open, whatever the sandbox asks (Opus E11)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11; \"a terminal client › ends on three Ctrl-C within a second, though the sandbox ignores them (Opus R2)\" -\u003e nextnode/tui/tui_kit_upstream_test.go:TestATerminalClientEndsOnThreeCtrlCWithinASecondThoughTheSandboxIgnoresThemOpusR2. Pi ff7414d51 issues and lists through SignIns (no title changes): tui_kit_upstream_test.go reads app.SignIns; the hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/tui/pipe.test.ts",

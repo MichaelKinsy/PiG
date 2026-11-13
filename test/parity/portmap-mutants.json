@@ -6430,7 +6430,7 @@
  ],
  "packages/chord/src/node/app/ephemeral-sessions.ts": [
   {
-   "file": "chord/nextnode/app/ephemeral_sessions.go",
+   "file": "chord/nextnode/app/ephemeral_sign_ins.go",
    "old": "\tif grace == 0 {\n",
    "new": "\tif grace != 0 {\n"
   }

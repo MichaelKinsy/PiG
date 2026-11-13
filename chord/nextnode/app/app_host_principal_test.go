@@ -31,12 +31,12 @@ func TestTheAppsHookStampsTheServerHostsOwnSpans(t *testing.T) {
 	// A call records its span under the telemetry parent its context carries (a context with none records nothing).
 	err := recorder.StartSpan(telemetry.SpanOptions{Name: "test.root"}, func(parent telemetry.TelemetrySpan) error {
 		_, err := s.app.Host.Root(func(ctx host.Ctx) (any, error) {
-			sessions, err := ctx.Get(Sessions, delta.NewJsonObject(0), host.GetOptions{})
+			signIns, err := ctx.Get(SignIns, delta.NewJsonObject(0), host.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
-			// `verify` is a traced method call of the kit's sessions object, made as the owner: its `chord.method` span carries the hook's attributes.
-			return sessions.Call("verify", "no-such-token", ctx)
+			// `verify` is a traced method call of the kit's sign-ins object, made as the owner: its `chord.method` span carries the hook's attributes.
+			return signIns.Call("verify", "no-such-token", ctx)
 		}, chordctx.WithTelemetry(background, parent), host.RootOptions{Principal: testOwner})
 		return err
 	})
