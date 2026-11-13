@@ -79,6 +79,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0950d13](#bf-0950d13) | Chord: `FormatNumber` and `FormatTime` format in ICU's root locale when neither the tag nor the platform… | PiG's own defect | All platforms | Unreleased |
 | [BF-09587d2](#bf-09587d2) | Chord: the surfaces' and bases' build goroutines are joined by `App.Wait` | PiG's own defect | All platforms | Unreleased |
+| [BF-095939f](#bf-095939f) | Extensions: a host call that a handler of a TypeScript extension makes while a reload is replacing that… | PiG's own defect | All platforms | Unreleased |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a0d27d](#bf-0a0d27d) | The training run's socket was in the build's work directory, whose path under a deep agent directory can… | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3094a](#bf-0a3094a) | fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function | PiG's own defect | All platforms | Unreleased |
@@ -1628,6 +1629,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cf8566b](#bf-cf8566b) | fix(chord): spans of the SQLite store carry the store's own capabilities | PiG's own defect | All platforms | Unreleased |
 | [BF-cfe05f8](#bf-cfe05f8) | A `message_end` handler that returns a system message with missing or null content now keeps that content, as… | PiG's own defect | All platforms | Unreleased |
 | [BF-d03cd05](#bf-d03cd05) | fix(chord/next/host,chord/nextnode/plugins): route resolve is lent the section that triggers it as Pi's… | PiG's own defect | All platforms | Unreleased |
+| [BF-d047508](#bf-d047508) | RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the… | PiG's own defect | All platforms | Unreleased |
+| [BF-d047508-2](#bf-d047508-2) | RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it… | PiG's own defect | All platforms | Unreleased |
 | [BF-d06b3d2](#bf-d06b3d2) | The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request… | PiG's own defect | All platforms | Unreleased |
 | [BF-d06e6cf](#bf-d06e6cf) | Ending an RPC session while a response is running (stdin closes, an extension calls `ctx.shutdown()`, or pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-d0c2727](#bf-d0c2727) | fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization… | PiG's own defect | All platforms | Unreleased |
@@ -2890,6 +2893,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `09587d2718` (2026-11-09)
 - **Tests:** `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen`, `chord/nextnode/surfaces/surfaces_build_test.go::TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503`
 - **Release note:** Chord: the surfaces' and bases' build goroutines are joined by `App.Wait`. It is bounded by its context and returns the context's error when that ends first (the builds finish on their own and what they finish after the close is dropped); a surface whose build had not started never starts it. `App.Close` does not wait for them, as Pi's `#close` does not.
+
+### BF-095939f
+
+**Extensions: a host call that a handler of a TypeScript extension makes while a reload is replacing that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Extensions: a host call that a handler of a TypeScript extension makes while a reload is replacing that extension is answered with Pi's stale-context error, from the point the reload has run the `session_shutdown` handlers; a call that was already waiting for its answer keeps it.
+- **Root cause:** The flag was stored on the generation and never cleared, so a generation that stayed registered after a reload would have stayed stale.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `095939f576` (2026-11-12), `bf60a53121` (2026-11-12), `de7a83636f` (2026-11-12)
+- **Tests:** `coding/cli/rpc_reload_pipelined_test.go::TestRPCCommandInFlightAtAReloadIsAnswered`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogInFlightAtAReloadIsAnswered`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCReloadHoldEnds`, `coding/extension/host/subprocess/node_recovery_test.go::TestNodeCrashQuarantinesOnlyCulpritAndDoesNotReplay`, `test/extension-conformance/reload_supersede_test.go::TestConformance_CallsOfAGenerationAReloadReplacesAgreeAcrossSDKs`
+- **Release note:** Extensions: a host call that a handler of a TypeScript extension makes while a reload is replacing that extension is answered with Pi's stale-context error, from the point the reload has run the `session_shutdown` handlers; a call that was already waiting for its answer keeps it. PiG dropped such a call while the replacement was loading, so the handler's command never finished and, in RPC mode, its prompt got no response.
 
 ### BF-098e33d
 
@@ -24344,6 +24361,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d03cd05f3e` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-d047508
+
+**RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the reload, runs on the reloaded extension and answers after that command, as in Pi.
+- **Root cause:** A client that waits for each response before it writes the next record was not affected.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d04750891b` (2026-11-12)
+- **Tests:** `coding/cli/rpc_reload_gate_test.go::TestRPCCommandFlightRunsResumptionWorkAtTheNextSuspensionOrTheAnswer`, `coding/cli/rpc_reload_gate_test.go::TestRPCSettleGateHoldsInputThroughAReload`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptOfTheReloadsChunkRunsOnTheReplacedExtension`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptWrittenDuringAReloadRunsOnTheReloadedExtension`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCReloadHoldEnds`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCToolCallInFlightAtARefusedReloadIsAnswered` and 1 more in docs/bug-ledger.json
+- **Release note:** RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the reload, runs on the reloaded extension and answers after that command, as in Pi. PiG read it while the reload ran: it ran on the extension being replaced and answered first, and with a TypeScript extension neither prompt was answered and the stream stayed silent until stdin closed. A client that waits for each response before it writes the next record was not affected. Present since 0.5.2.
+
+### BF-d047508-2
+
+**RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it…**
+
+- **Source:** PiG's own defect
+- **Symptom:** RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it ran on the replaced one, whose `ctx` was stale.
+- **Root cause:** Pi dispatches every stdin line as it is read and awaits none (rpc-mode.ts:832-834, :415), so what orders a record written behind a command that calls ctx.reload() is its one event loop: session.reload() awaits session_shutdown, the loaders, session_start and resources_discover in one chain, and the command that awaited it goes on in the microtasks of its end (agent-session.ts:3815-3861, rpc-mode.ts:345-347). No stdin chunk is read inside that chain unless a handler of it waits on a timer or I/O.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d04750891b` (2026-11-12)
+- **Tests:** `coding/cli/rpc_reload_gate_test.go::TestRPCCommandFlightRunsResumptionWorkAtTheNextSuspensionOrTheAnswer`, `coding/cli/rpc_reload_gate_test.go::TestRPCSettleGateHoldsInputThroughAReload`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptOfTheReloadsChunkRunsOnTheReplacedExtension`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptWrittenDuringAReloadRunsOnTheReloadedExtension`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCReloadHoldEnds`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCToolCallInFlightAtARefusedReloadIsAnswered` and 1 more in docs/bug-ledger.json
+- **Release note:** RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it ran on the replaced one, whose `ctx` was stale.
 
 ### BF-d06b3d2
 
