@@ -183491,8 +183491,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding",
-        "test:internal/codingagent/reload_ui_upstream_test.go#TestSessionStartNotifyOriginalReloadRender",
-        "test:coding/session_bind_merge_test.go#TestBindExtensionsKeepsMembersTheLaterCallLeavesUnset"
+        "test:internal/codingagent/reload_ui_upstream_test.go#TestReloadWritesTheSessionTitleOnTheRenderersTerminal",
+        "test:internal/codingagent/reload_ui_upstream_test.go#TestSessionStartNotifyOriginalReloadRender"
       ]
     },
     {
@@ -183513,8 +183513,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding",
-        "test:internal/codingagent/reload_ui_upstream_test.go#TestSessionStartNotifyOriginalReloadRender",
-        "test:coding/session_bind_merge_test.go#TestBindExtensionsKeepsMembersTheLaterCallLeavesUnset"
+        "test:internal/codingagent/reload_ui_upstream_test.go#TestReloadWritesTheSessionTitleOnTheRenderersTerminal",
+        "test:internal/codingagent/reload_ui_upstream_test.go#TestSessionStartNotifyOriginalReloadRender"
       ]
     },
     {
@@ -191317,7 +191317,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.drawsOnProcessTerminal"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption"
+        "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption",
+        "test:internal/codingagent/terminal_writer_test.go#TestProgressIsWrittenOnTheTerminalOption",
+        "test:internal/codingagent/terminal_writer_test.go#TestTitleIsWrittenOnTheTerminalOption"
       ]
     },
     {
@@ -305415,82 +305417,88 @@
       "id": "pkg:tui/.#ProcessTerminal::property:setProgress",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9d11b791fc978adf2ac89070f884e9e16fd906cffee882a4dd701f90a47c1c20",
-      "rationale": "ProcessTerminal.setProgress is the Go method ProcessTerminal.SetProgress; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs).",
+      "rationale": "Derived by the interface gap detector: ProcessTerminal::property:setProgress is Go tui/terminal.go#ProcessTerminal.SetProgress (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/terminal.go#ProcessTerminal.SetProgress"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:tui/terminal.go#SetTerminalProgress"
+        "call:tui/terminal.go#ProcessTerminal.SetProgress"
       ],
       "evidence": [
-        "test:tui/terminal_input_regression_test.go#TestTerminalProgressCancellationJoinsKeepalive",
-        "test:tui/terminal_protocol_parity_test.go#TestTerminalProtocolParityObservations"
+        "test:tui/terminal_upstream_test.go#TestUpstreamTerminalProgressClear",
+        "test:internal/codingagent/terminal_writer_test.go#TestProgressIsWrittenOnTheTerminalOption",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode"
       ]
     },
     {
       "id": "pkg:tui/.#ProcessTerminal::property:setProgress::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d255d0cbcac210aeab6eb24e17201393cf486bd55d3a1ef2fa92a38ac55c8b88",
-      "rationale": "ProcessTerminal.setProgress is the Go method ProcessTerminal.SetProgress; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs).",
+      "rationale": "Derived by the interface gap detector: ProcessTerminal::property:setProgress::call:0 is Go tui/terminal.go#ProcessTerminal.SetProgress (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/terminal.go#ProcessTerminal.SetProgress"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:tui/terminal.go#SetTerminalProgress"
+        "call:tui/terminal.go#ProcessTerminal.SetProgress"
       ],
       "evidence": [
-        "test:tui/terminal_input_regression_test.go#TestTerminalProgressCancellationJoinsKeepalive",
-        "test:tui/terminal_protocol_parity_test.go#TestTerminalProtocolParityObservations"
+        "test:tui/terminal_upstream_test.go#TestUpstreamTerminalProgressClear",
+        "test:internal/codingagent/terminal_writer_test.go#TestProgressIsWrittenOnTheTerminalOption",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode"
       ]
     },
     {
       "id": "pkg:tui/.#ProcessTerminal::property:setTitle",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1547199760ac03572d1801ea742f868f301b68833568fd968143b8363b857343",
-      "rationale": "ProcessTerminal.setTitle is the Go method ProcessTerminal.SetTitle; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs).",
+      "rationale": "Derived by the interface gap detector: ProcessTerminal::property:setTitle is Go tui/terminal.go#ProcessTerminal.SetTitle (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/terminal.go#ProcessTerminal.SetTitle"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:tui/terminal.go#SetTerminalTitle"
+        "call:tui/terminal.go#ProcessTerminal.SetTitle"
       ],
       "evidence": [
-        "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+        "test:tui/terminal_test.go#TestProcessTerminalSetTitleReplacesControlCharacters",
+        "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences",
+        "test:tui/terminal_write_log_test.go#TestProcessTerminalControlMethodsAreNotLogged"
       ]
     },
     {
       "id": "pkg:tui/.#ProcessTerminal::property:setTitle::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3ac8eb8de53466687ef5f5d0221069e80eb7ff72e0236c79cefca98645271624",
-      "rationale": "ProcessTerminal.setTitle is the Go method ProcessTerminal.SetTitle; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs).",
+      "rationale": "Derived by the interface gap detector: ProcessTerminal::property:setTitle::call:0 is Go tui/terminal.go#ProcessTerminal.SetTitle (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/terminal.go#ProcessTerminal.SetTitle"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:tui/terminal.go#SetTerminalTitle"
+        "call:tui/terminal.go#ProcessTerminal.SetTitle"
       ],
       "evidence": [
-        "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences"
+        "test:tui/terminal_test.go#TestProcessTerminalSetTitleReplacesControlCharacters",
+        "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences",
+        "test:tui/terminal_write_log_test.go#TestProcessTerminalControlMethodsAreNotLogged"
       ]
     },
     {
@@ -311577,11 +311585,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/terminal.go#Terminal.SetProgress"
+        "call:internal/codingagent/interactive_chat.go#InteractiveMode.setTerminalProgress"
       ],
       "evidence": [
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
@@ -311597,11 +311605,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/terminal.go#Terminal.SetProgress"
+        "call:internal/codingagent/interactive_chat.go#InteractiveMode.setTerminalProgress"
       ],
       "evidence": [
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
@@ -311621,7 +311629,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ExtUIContext.SetTitle"
+        "call:internal/codingagent/interactive_chat.go#InteractiveMode.setTerminalTitle"
       ],
       "evidence": [
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
@@ -311641,7 +311649,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ExtUIContext.SetTitle"
+        "call:internal/codingagent/interactive_chat.go#InteractiveMode.setTerminalTitle"
       ],
       "evidence": [
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"

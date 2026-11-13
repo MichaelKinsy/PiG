@@ -267529,6 +267529,28 @@
       "shapeHash": "sha256:7eb62440e6c0c957a7ae69f67361674e89b0caa18db5b0e8636e55da7787c483"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setTerminalProgress",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.setTerminalProgress",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(active bool)"
+      },
+      "shapeHash": "sha256:293b70ea26cb4b4db9f1f3d8c96c066cb3dbc334eecbf120c15f9a4fec3970ad"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setTerminalTitle",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.setTerminalTitle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(title string)"
+      },
+      "shapeHash": "sha256:f367e22391c4615b117f492599736bd0d634b874317e34b1da946fcd5646fef7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setTurnSystemPrompt",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.setTurnSystemPrompt",
@@ -315522,28 +315544,6 @@
       "shapeHash": "sha256:731b06c6c8ea365de2821a3a64f653376e23123a844b951721923f5e860e5f2a"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#setTerminalProgress",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "setTerminalProgress",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func(active bool)"
-      },
-      "shapeHash": "sha256:293b70ea26cb4b4db9f1f3d8c96c066cb3dbc334eecbf120c15f9a4fec3970ad"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#setTerminalTitle",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "setTerminalTitle",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func(title string)"
-      },
-      "shapeHash": "sha256:f367e22391c4615b117f492599736bd0d634b874317e34b1da946fcd5646fef7"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#setWarnings",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "setWarnings",
@@ -361313,28 +361313,6 @@
         "type": "func(status ProgramStatus)"
       },
       "shapeHash": "sha256:71fe18595ae242990ccb36550034403f9996026e66cd8cca3b02bf2a67cb62e4"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#SetTerminalProgress",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "SetTerminalProgress",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(active bool)"
-      },
-      "shapeHash": "sha256:293b70ea26cb4b4db9f1f3d8c96c066cb3dbc334eecbf120c15f9a4fec3970ad"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#SetTerminalTitle",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "SetTerminalTitle",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(title string)"
-      },
-      "shapeHash": "sha256:f367e22391c4615b117f492599736bd0d634b874317e34b1da946fcd5646fef7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SetTheme",

@@ -407,7 +407,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// Update terminal title + status-line name
 		// whenever /name sets a new session name.
 		OnNameChange: func(name string) {
-			tui.SetTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
+			m.setTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
 			m.statusLine.SetName(name)
 		},
 		FlushCompactionQueue: func() {

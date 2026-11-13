@@ -15,14 +15,11 @@ import (
 
 // session_info_changed sets the terminal title from the session name and the working directory.
 func TestHandleEventSessionInfoChangedSetsTheTerminalTitle(t *testing.T) {
-	var titles []string
-	previous := setTerminalTitle
-	setTerminalTitle = func(title string) { titles = append(titles, title) }
-	t.Cleanup(func() { setTerminalTitle = previous })
 	p := newEventProbe(t, false)
 	p.opts.CWD = "/work/project"
 	p.handleAgentEvent(agent.SessionInfoChangedEvent{Name: "named"})
 	p.handleAgentEvent(agent.SessionInfoChangedEvent{})
+	titles := p.terminal.takeTitles()
 	if want := []string{tui.BuildTerminalTitle("named", "/work/project"), tui.BuildTerminalTitle("", "/work/project")}; !slices.Equal(titles, want) {
 		t.Fatalf("titles = %q, want %q", titles, want)
 	}

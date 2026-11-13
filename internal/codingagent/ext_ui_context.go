@@ -698,9 +698,7 @@ func (m *InteractiveMode) setBuiltInHeader(expanded bool) {
 }
 
 func (u *ExtUIContext) SetTitle(title string) {
-	if u.m.tuiInst != nil {
-		u.m.tuiInst.Terminal().SetTitle(title)
-	}
+	u.m.setTerminalTitle(title)
 }
 
 // RunRemoteOverlay mounts remote custom UI as an overlay or editor-slot replacement and waits for its result. The owner loop mounts the component and transfers renderer focus; this caller drains its modal input lease off-loop while the component has focus. Normal completion restores the editor slot and focus before returning.
