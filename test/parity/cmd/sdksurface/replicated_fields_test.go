@@ -26,14 +26,15 @@ var replicatedReadyOnly = map[string]string{
 	"width":  "width_change notifies",
 	"height": "height_change notifies",
 	// Fields the OnLoaded and subscription machinery keep beside the replicated state: no snapshot carries them.
-	"sourceInfo":      "the loader's provenance, stamped once in the ready payload and fixed for the connection",
-	"sourceInfoKnown": "set with sourceInfo from the ready payload",
-	"loadedMu":        "guards the OnLoaded handlers, which are not host state",
-	"loadedFuncs":     "the OnLoaded handlers registered before Run, not host state",
-	"loadedDone":      "closes when the OnLoaded handlers returned, not host state",
-	"themeFeed":       "delivers a theme change to the OnThemeChange handlers; the theme itself is assigned by setUITheme",
-	"expandedFeed":    "delivers a tool-expansion change to the OnToolsExpandedChange handlers; the state itself is assigned by setToolsExpanded",
-	"branchFeed":      "delivers a Git branch change to the FooterData.OnBranchChange handlers; notifyFooterData publishes it when a footer update reports a branch change, and no snapshot field backs it",
+	"sourceInfo":        "the loader's provenance, stamped once in the ready payload and fixed for the connection",
+	"sourceInfoKnown":   "set with sourceInfo from the ready payload",
+	"loadedMu":          "guards the OnLoaded handlers, which are not host state",
+	"loadedFuncs":       "the OnLoaded handlers registered before Run, not host state",
+	"loadedDone":        "closes when the OnLoaded handlers returned, not host state",
+	"themeFeed":         "delivers a theme change to the OnThemeChange handlers; the theme itself is assigned by setUITheme",
+	"expandedFeed":      "delivers a tool-expansion change to the OnToolsExpandedChange handlers; the state itself is assigned by setToolsExpanded",
+	"branchFeed":        "delivers a Git branch change to the FooterData.OnBranchChange handlers; notifyFooterData publishes it when a footer update reports a branch change, and no snapshot field backs it",
+	"viewAbilitiesFeed": "delivers a change of the client abilities to the OnViewAbilities handlers; the abilities themselves (views.abilities) are assigned by viewState.applyAbilities, which handleNotifyAt calls for the ready state and every state_update",
 }
 
 func readRepoFile(t *testing.T, rel string) string {
