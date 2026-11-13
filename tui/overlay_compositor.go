@@ -262,6 +262,33 @@ type OverlayBounds struct {
 	Height int
 }
 
+// hideImagesUnderOverlay drops image placements that intersect an overlay rectangle (overlay.Row is viewport-relative).
+// Terminals draw images above text, so an overlay cannot paint over them. The renderers delete a placement once its line
+// changes and draw it again when the overlay no longer covers it. Images beside the overlay stay; on the row holding such an
+// image's sequence the overlay is not drawn, because CompositeTuiLine passes image lines through. Mirrors upstream
+// hideImagesUnderOverlay.
+func hideImagesUnderOverlay(lines []string, overlay OverlayBounds, viewportStart int) {
+	if overlay.Height == 0 {
+		return
+	}
+	// Kitty images extend downward, so an image line above the viewport can still reach into it.
+	for index := max(0, viewportStart-GetMaxKittyImageRows()); index < len(lines); index++ {
+		line := lines[index]
+		extent, ok := getImageLineExtent(line)
+		if !ok {
+			continue
+		}
+		firstRow := index + extent.firstRow - viewportStart
+		lastRow := index + extent.lastRow - viewportStart
+		if firstRow < overlay.Row+overlay.Height &&
+			lastRow >= overlay.Row &&
+			extent.startCol < overlay.Col+overlay.Width &&
+			extent.endCol > overlay.Col {
+			lines[index] = stripImageSequences(line)
+		}
+	}
+}
+
 func composeOverlaySnapshotWithStats(background []string, snapshot overlayStateSnapshot, termWidth, termHeight int, showHardwareCursor bool) ([]string, overlayCompositionStats) {
 	stats := overlayCompositionStats{RetainedSnapshotPayloadBytes: snapshot.RetainedBytes}
 	if !snapshot.MountedAny {
@@ -299,7 +326,9 @@ func composeOverlaySnapshotWithStats(background []string, snapshot overlayStateS
 		result = append(result, "")
 	}
 	viewportStart := max(0, workingHeight-termHeight)
+	// Composite each overlay, back to front. Hiding images per overlay also hides images drawn by overlays below it.
 	for _, overlay := range rendered {
+		hideImagesUnderOverlay(result, OverlayBounds{Row: overlay.row, Col: overlay.col, Width: overlay.width, Height: len(overlay.lines)}, viewportStart)
 		for row, line := range overlay.lines {
 			index := viewportStart + overlay.row + row
 			if index < 0 || index >= len(result) {

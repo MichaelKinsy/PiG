@@ -77,6 +77,9 @@ func NewTestHarnessWithOutput(t testing.TB, opts InteractiveModeOptions, onEvent
 			select {
 			case fn := <-m.uiTaskCh:
 				fn()
+			case <-m.renderWakeCh:
+				// Nil until OwnFrames: the renderer's own timer runs the frames otherwise.
+				m.runScheduledRender()
 			case ev, ok := <-m.eventCh:
 				if !ok {
 					m.eventCh = nil

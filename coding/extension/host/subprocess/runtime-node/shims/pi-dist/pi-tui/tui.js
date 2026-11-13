@@ -4,7 +4,8 @@
 import { performance } from "node:perf_hooks";
 import { isKeyRelease, matchesKey } from "./keys.js";
 import { parseOscColorResponse, parseTerminalColorSchemeReport, } from "./terminal-colors.js";
-import { getCapabilities, isImageLine, setCellDimensions } from "./terminal-image.js";
+// Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+import { getCapabilities, getImageLineExtent, getMaxKittyImageRows, isImageLine, setCellDimensions, stripImageSequences, } from "./terminal-image.js";
 import { extractSegments, normalizeTerminalOutput, sliceByColumn, sliceWithWidth, visibleWidth } from "./utils.js";
 /**
  * Dispatch an event to a component and retain the exact target and coordinate
@@ -175,6 +176,33 @@ export function compositeTuiLine(baseLine, overlayLine, startCol, overlayWidth, 
         base.after +
         " ".repeat(afterPad);
     return visibleWidth(result) <= totalWidth ? result : sliceByColumn(result, 0, totalWidth, true);
+}
+// Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+/**
+ * Drop image placements that intersect an overlay rectangle (`row` is viewport-relative).
+ * Terminals draw images above text, so an overlay cannot paint over them. The renderers delete a
+ * placement once its line changes and draw it again when the overlay no longer covers it.
+ * Images beside the overlay stay; on the row holding such an image's sequence the overlay is not
+ * drawn, because `compositeTuiLine` passes image lines through.
+ */
+function hideImagesUnderOverlay(lines, overlay, viewportStart) {
+    if (overlay.height === 0)
+        return;
+    // Kitty images extend downward, so an image line above the viewport can still reach into it.
+    for (let index = Math.max(0, viewportStart - getMaxKittyImageRows()); index < lines.length; index++) {
+        const line = lines[index];
+        const extent = getImageLineExtent(line);
+        if (!extent)
+            continue;
+        const firstRow = index + extent.firstRow - viewportStart;
+        const lastRow = index + extent.lastRow - viewportStart;
+        if (firstRow < overlay.row + overlay.height &&
+            lastRow >= overlay.row &&
+            extent.startCol < overlay.col + overlay.width &&
+            extent.endCol > overlay.col) {
+            lines[index] = stripImageSequences(line);
+        }
+    }
 }
 export const VIEWPORT_TUI = Symbol.for("@earendil-works/pi-tui/viewport");
 export function isViewportTUI(tui) {
@@ -1027,8 +1055,10 @@ export class TuiBase extends Container {
             result.push("");
         }
         const viewportStart = Math.max(0, workingHeight - termHeight);
-        // Composite each overlay
+        // Pi 787005a40 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // Composite each overlay, back to front. Hiding images per overlay also hides images drawn by overlays below it.
         for (const { overlayLines, row, col, w } of rendered) {
+            hideImagesUnderOverlay(result, { row, col, width: w, height: overlayLines.length }, viewportStart);
             for (let i = 0; i < overlayLines.length; i++) {
                 const idx = viewportStart + row + i;
                 if (idx >= 0 && idx < result.length) {

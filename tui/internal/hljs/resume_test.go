@@ -229,12 +229,12 @@ func TestResumedRunCountsTheIterationsOfAWholeRun(t *testing.T) {
 	var checked atomic.Int64
 	eachSupportedSample(t, func(r *Registry, c corpusSample) {
 		units := stringToUnits(c.Code)
-		whole := r.highlightFrom(c.Lang, units, true, nil, checkpoint{}, true)
+		whole := r.highlightFrom(c.Lang, units, true, nil, checkpoint{}, recordStack)
 		if whole.failed {
 			return
 		}
 		for _, point := range whole.checkpoints {
-			resumed := r.highlightFrom(c.Lang, units, true, nil, point, false)
+			resumed := r.highlightFrom(c.Lang, units, true, nil, point, recordNone)
 			if resumed.failed {
 				t.Errorf("%s: the run resumed at unit %d failed", c.ID, point.unit)
 				return

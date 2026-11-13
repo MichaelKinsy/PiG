@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 """The oracle Node: the release the observation oracles are recorded under (ai/testdata/node-microtasks/oracle-node-version).
 
-The goldens record the microtask order of one Node release line (24.14.1 through 24.21.0 record identical cases, 24.22.0 and later differ), and the
+The goldens record the microtask order of one Node release line (automation/gen/regenerate-observation-oracles.sh names the releases that record identical cases and the first that differs), and the
 repository's qualified Node (.node-version) is a later one, so the recording step needs the exact oracle release. No image or host is guaranteed to
 have it: this module downloads nodejs.org's tarball for the platform, checks its sha256 against the release's SHASUMS256.txt, unpacks it into the
 user cache and checks `node --version`. A cached copy is reused without a request.

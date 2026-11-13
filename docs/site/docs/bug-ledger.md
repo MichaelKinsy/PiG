@@ -907,7 +907,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6d3043e](#bf-6d3043e) | The startup prompts (the project-trust and extension selectors, the extension text input and first-time… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-6da170c](#bf-6da170c) | `pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is… | PiG's own defect | All platforms | Unreleased |
+| [BF-6da170c](#bf-6da170c) | `pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-6dfa6bf](#bf-6dfa6bf) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6e4cea8](#bf-6e4cea8) | fix(chord/next/host): one UndeclaredRegistries, not two: the host's merge of fix/chord-host-tests kept the… | PiG's own defect | All platforms | Unreleased |
@@ -921,6 +921,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f553ca](#bf-6f553ca) | `pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f74b70](#bf-6f74b70) | The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a… | PiG's own defect | All platforms | Unreleased |
+| [BF-6f949d9](#bf-6f949d9) | A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first… | PiG's own defect | All platforms | Unreleased |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6fdf59f](#bf-6fdf59f) | On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot… | PiG's own defect | macOS | Unreleased |
 | [BF-7008884](#bf-7008884) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -992,6 +993,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-7838047](#bf-7838047) | `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or… | PiG's own defect | All platforms | Unreleased |
 | [BF-787c354](#bf-787c354) | Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on… | PiG's own defect | All platforms | Unreleased |
 | [BF-78c4c6c](#bf-78c4c6c) | `pig piglet add` now names the offending bundled path and where it came from (for example `Package herdr… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-78f1007](#bf-78f1007) | The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before… | PiG's own defect | All platforms | 0.7.0 |
@@ -1257,6 +1259,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9515bcb](#bf-9515bcb) | Code mode: a deterministic run's clocks round like `Math.round` (0.49999999999999994 ms read 1 ms), and a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-951b35a](#bf-951b35a) | The pi-env daemon no longer loses the end of a program's output when the program exits while the link is… | PiG's own defect | All platforms | Unreleased |
 | [BF-958e80d](#bf-958e80d) | A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-959646e](#bf-959646e) | Kitty and iTerm2 images no longer cover an overlay drawn over them | PiG's own defect | All platforms | Unreleased |
 | [BF-959a66e](#bf-959a66e) | fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no… | PiG's own defect | All platforms | Unreleased |
 | [BF-95a5f79](#bf-95a5f79) | RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-95db124](#bf-95db124) | A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of… | PiG's own defect | All platforms | Unreleased |
@@ -1284,6 +1287,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99d6e28](#bf-99d6e28) | Resizing an image no longer differs from Photon's by one in a channel of a rare pixel | PiG's own defect | All platforms | 0.7.0 |
+| [BF-99faf66](#bf-99faf66) | In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame… | PiG's own defect | All platforms | Unreleased |
 | [BF-9a9b153](#bf-9a9b153) | Aborting a compaction or a branch summary while an extension's `session_before_compact` or… | PiG's own defect | All platforms | Unreleased |
 | [BF-9a9dc99](#bf-9a9dc99) | `WaitForTask` on a task whose terminal commit was adopted no longer fails with "Harness is closed" when a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9abc6ac](#bf-9abc6ac) | Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions… | PiG's own defect | All platforms | 0.5.2 |
@@ -1350,9 +1354,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D601](#bf-d601) | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D628](#bf-d628) | auth.json is read once per availability pass, where Pi stats it on every credential read | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D631](#bf-d631) | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -1636,6 +1640,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ce0f352-2](#bf-ce0f352-2) | The editor's autocomplete list takes its colors from one `getSelectListTheme` equivalent, the same function… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ce366dd](#bf-ce366dd) | fix(coding): resume restores the transcript's tools only for the unchanged default selection… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce42877](#bf-ce42877) | `durable/images.CreatePhotonImages`, and `durable/images/node.CreateNodePhotonImages` with `Worker: false`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ce4df6b](#bf-ce4df6b) | An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce7dae9](#bf-ce7dae9) | MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce8587e](#bf-ce8587e) | On macOS, reading an image or file paths from the clipboard and writing text to it no longer risk passing… | PiG's own defect | macOS | 0.5.0 |
 | [BF-ced3a9c](#bf-ced3a9c) | RPC model objects of built-in models carry `"type":"chat"` (`get_available_models`, `get_state`, `set_model`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1746,6 +1751,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dae37be](#bf-dae37be) | fix: the input loop never waits for the Session lock; the abort-fix leak and two stale tests | PiG's own defect | All platforms | Unreleased |
 | [BF-dafd5f5](#bf-dafd5f5) | Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read… | PiG's own defect | All platforms | Unreleased |
 | [BF-db12780](#bf-db12780) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
+| [BF-db38fad](#bf-db38fad) | In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second… | PiG's own defect | All platforms | Unreleased |
 | [BF-db5d71f](#bf-db5d71f) | fix(chord/nextnode/workers): a lock holder reads its waiters' connections and forgets one that closed | PiG's own defect | All platforms | Unreleased |
 | [BF-db7007d](#bf-db7007d) | A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-db8955f](#bf-db8955f) | A terminal sandbox chunk holding valid frames before a malformed one delivered the valid messages before… | PiG's own defect | All platforms | Unreleased |
@@ -14364,15 +14370,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **`pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is…**
 
-- **Source:** PiG's own defect
+- **Source:** A Pi defect that PiG fixed first (divergence D631)
 - **Symptom:** `pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is signalled, as Pi does.
 - **Root cause:** Pi's execCommand, on the chunk that crosses the cap, destroys both pipes and then calls killProcess (core/exec.ts:111-113; Node's destroy() closes the descriptor before it returns). ExecCommand did the two in the other order: SIGTERM, then the two Close calls. The order decides the code of a command that is still writing: with Pi's order its next write meets the closed pipe and SIGPIPE ends it (141) unless the SIGTERM lands first (143); with the signal first it always ended by SIGTERM.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `6da170c870` (2026-11-12)
-- **Tests:** None recorded.
-- **Release note:** `pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is signalled, as Pi does. PiG signalled first, so a command that was still writing always reported code 143; it now reports 141 when its next write met the closed pipe first (SIGPIPE) and 143 when the SIGTERM came first, as Pi does. A command that had already exited keeps its own code, 1 for a 0.
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.
+- **Fix commits:** `27686ebf32` (2026-11-12), `4ea002437f` (2026-11-12), `6da170c870` (2026-11-12), `bc197ac2ba` (2026-11-12), `e3a198a439` (2026-11-12), `de77bce727` (2026-11-13)
+- **Tests:** `coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi`, `coding/extension/exec_socket_linux_test.go::TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset`, `coding/extension/exec_socket_linux_test.go::TestExecCommandReopensItsOutputWherePiCannot`
+- **Release note:** `pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is signalled, as Pi does. PiG signalled first, so a command that was still writing always reported code 143; it now reports 141 when its next write met the closed pipe first (SIGPIPE) and 143 when the SIGTERM came first, as Pi does; the code 1 Pi can still report there is D631. A command that had already exited keeps its own code, 1 for a 0.
 
 ### BF-6debb12
 
@@ -14552,6 +14560,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6f74b7089f` (2026-11-07)
 - **Tests:** `telemetry/memory_events_test.go::TestInMemoryStoredSpanKeepsEachEventsOwnTime`
 - **Release note:** The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a span read another event's time in stored traces. Each event keeps its own.
+
+### BF-6f949d9
+
+**A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first measured.
+- **Root cause:** Pi (backported by the merge of follow/pi-main-13) makes pi-tui/terminal-image.js import visibleWidth from utils.js, for getImageLineExtent. This line's Node runtime loads terminal-image.js at every extension start: runtime.mjs imports it to hand pi-tui the host's terminal capabilities, and the vendored theme.js imports it because the theme's colour mode reads that capability cache in initTheme. So every start loaded utils.js, which TestNodeStartupDefersPresentationDependencies forbids before a presentation module is asked for: red on the merge, green here. Each side of the merge alone passes; no release had the import.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6f949d9716` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies`, `coding/extension/host/subprocess/runtime_node_terminal_image_width_test.go::TestNodeTerminalImageDefersTheWidthModule`, `coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage`
+- **Release note:** A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first measured. Cause: the Node runtime loads pi-tui's terminal-image module at every start (the runtime hands it the host's terminal capabilities, and the theme's colour mode reads them from it), and the backport of Pi 787005a40 made that module import the width module for its image-line extent, so the merge that brought the backport loaded the width tables at every start. No released PiG had this: the import arrives with that merge.
 
 ### BF-6fb1307
 
@@ -15530,6 +15552,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `78093645cf` (2026-10-24)
 - **Tests:** None recorded.
 - **Release note:** Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as Pi's do (the `additionalProperties`, `propertyNames` and `unevaluatedProperties` lists and the order of the errors); they came out in sorted key order.
+
+### BF-7838047
+
+**`/resume` no longer selects an unrelated session while its list reloads after a session is deleted or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or renamed: the selected session stays selected through the partial lists of the reload.
+- **Root cause:** After a delete or a rename the picker reloads its list progressively, and the first partial list holds only the session that finished loading first. A touched selection that is missing from a partial list is now kept as the target (pendingSelectedPath) and selected again once it arrives, instead of becoming whichever session the clamped index points to. A complete list ends the wait, and so does a key that moves the selection or types a search; the scope toggle waits while the scope it switches to is loading or not yet loaded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7838047e30` (2026-11-12)
+- **Tests:** `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheReloadAfterADelete`, `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestSessionSelectorKeepsTheSelectedSessionWhenTheScopeToggledToHasNotLoadedYet`, `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestSessionSelectorMovingOrSearchingDuringAProgressiveReloadGivesUpTheAwaitedSession`, `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestUpstreamSessionSelectorKeepsTheNextSessionSelectedWhenAProgressiveReloadAfterDeleteStartsWithAnotherSession`, `internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession`
+- **Release note:** `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or renamed: the selected session stays selected through the partial lists of the reload.
 
 ### BF-787c354
 
@@ -19212,6 +19248,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/tool_call_nonfinite_test.go::FuzzToolArgumentNumberLiterals`, `ai/tool_call_nonfinite_test.go::TestCellPublishesNonFiniteArguments`, `ai/tool_call_nonfinite_test.go::TestNonFiniteArgumentsAreValidCloneAndSerializeAsStringify`, `ai/tool_call_nonfinite_test.go::TestNonFiniteArgumentsDoNotExcuseOtherFaults`, `ai/tool_call_nonfinite_test.go::TestStreamedNonFiniteArgumentsDoNotPanic`, `ai/tool_call_nonfinite_test.go::TestStreamedNonFiniteArgumentsMatchPi`, `ai/transcript_frozen_test.go::TestFrozenContextStillValidatesAndStillCopiesTheCallersTools`, `ai/transcript_test.go::TestNormalizeContextAcceptsNonFiniteToolArguments` and 3 more in docs/bug-ledger.json
 - **Release note:** A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session with a panic (`clone validated JSON value: json: unsupported value: +Inf`). Pi reads such a number as an infinity, keeps it in the call's arguments, and writes `null` wherever it serializes them (events, the session file, requests); PiG now does the same, for a streamed argument text, a tool call a Go caller or the faux provider supplies, and an Anthropic `content_block_start` input, which used to end the turn with a decode error.
 
+### BF-959646e
+
+**Kitty and iTerm2 images no longer cover an overlay drawn over them**
+
+- **Source:** PiG's own defect
+- **Symptom:** Kitty and iTerm2 images no longer cover an overlay drawn over them.
+- **Root cause:** An image under an overlay left a hole in it, and a Kitty image also covered the overlay's text on the rows below its image line. While the overlays are composited back to front, hideImagesUnderOverlay now removes from the frame's lines every image placement an overlay overlaps by row and by column; the renderers' change detection deletes the image and draws it again once the overlay no longer covers it. An image beside an overlay stays. Ports getImageLineExtent and stripImageSequences of packages/tui/src/terminal-image.ts, hideImagesUnderOverlay of packages/tui/src/tui.ts and the nine cases of packages/tui/test/overlay-terminal-image.test.ts; each frame of a case must equal the bytes Pi…
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `959646e66a` (2026-11-12)
+- **Tests:** `tui/image_line_extent_oracle_test.go::TestImageLineExtentAndStripMatchPi`, `tui/main_screen_oracle_test.go::TestMainScreenFramesMatchPiOracle`, `tui/overlay_terminal_image_upstream_test.go::TestFullscreenOverlayKeepsAnImageBesideItThatSharesItsRows`, `tui/overlay_terminal_image_upstream_test.go::TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem`, `tui/overlay_terminal_image_upstream_test.go::TestGetImageLineExtentReadsTheCellsAnImageLineCovers`, `tui/overlay_terminal_image_upstream_test.go::TestLaterOverlayHidesAnImageInsideAnEarlierOverlay`, `tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAKittyImageWhoseLineIsAboveTheViewport`, `tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAnITerm2ImageWhenItCoversRowsAboveItsImageLine` and 5 more in docs/bug-ledger.json
+- **Release note:** Kitty and iTerm2 images no longer cover an overlay drawn over them. An image that an overlay overlaps by row and column is removed while the overlay is open and drawn again when it closes, on the main screen and in fullscreen mode; an image beside an overlay, such as a sidebar, stays visible.
+
 ### BF-959a66e
 
 **fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no…**
@@ -19586,6 +19636,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `99d6e28a33` (2026-10-29)
 - **Tests:** None recorded.
 - **Release note:** Resizing an image no longer differs from Photon's by one in a channel of a rare pixel. Photon computes the Lanczos weights with libm's single-precision `sinf`, which is not always the correctly rounded sine Go's `math.Sin` gives; PiG now runs the same `sinf`, so the resized pixels, and the PNG and JPEG written from them, are Photon's for every size measured (251 more pictures against Photon, 19 of which differed before).
+
+### BF-99faf66
+
+**In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame timer fired before the clean-up at the end of the turn reached the screen loop.
+- **Root cause:** The second cause of scenario interactive-rendering/68 failing for pig under CPU load ("1 frame(s) began after the reply text"): the frame that agent_end requested ran before the turn's cleanup reached the owner loop, and the cleanup then painted a frame that changed no row. The runner counts every CSI ? 2026 h after the reply text, so that frame failed the run. With only the fix for the first cause (the events of one task applied together), the scenario still failed at run 18 of 100 under load.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `99faf66401` (2026-11-11)
+- **Tests:** `internal/codingagent/interactive_turn_end_frame_test.go::TestInteractiveTurnCleanupDrawsNoFrameAfterTheFrameOfAgentEnd`
+- **Release note:** In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame timer fired before the clean-up at the end of the turn reached the screen loop. The clean-up now paints only a frame that is still owed or rows it changed.
 
 ### BF-9a9b153
 
@@ -20535,7 +20599,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-D619
 
-**A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…**
+**A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are…**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D619)
 - **Symptom:** none; Pi's frame per step is correct, only costlier.
@@ -20545,8 +20609,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** Pi's `Loader` draws a step within a time, or the owner withdraws the change.
-- **Fix commits:** `1488c993df` (2026-11-11), `5042dd06e8` (2026-11-11), `deaeb3a5dc` (2026-11-11), `e3373144bb` (2026-11-11)
-- **Tests:** `internal/codingagent/status_tick_within_test.go::TestRemovingTheIndicatorCancelsItsWaitingStepFrame`, `internal/codingagent/status_tick_within_test.go::TestStatusTickAsksForItsFrameWithinTheStepDelay`, `internal/codingagent/status_tick_within_test.go::TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `tui/render_within_test.go::TestCancelRenderWithinDropsTheWaitingStepFrame`, `tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange`, `tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin`, `tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame`, `tui/render_within_test.go::TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn` and 2 more in docs/bug-ledger.json
+- **Fix commits:** `1488c993df` (2026-11-11), `5042dd06e8` (2026-11-11), `deaeb3a5dc` (2026-11-11), `e3373144bb` (2026-11-11), `440cb8b15a` (2026-11-12), `c3fdda8351` (2026-11-12)
+- **Tests:** `internal/codingagent/status_tick_within_test.go::TestRemovingTheIndicatorCancelsItsWaitingStepFrame`, `internal/codingagent/status_tick_within_test.go::TestStatusTickAsksForItsFrameWithinTheStepDelay`, `internal/codingagent/status_tick_within_test.go::TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `tui/render_within_test.go::TestCancelRenderWithinDropsTheWaitingStepFrame`, `tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange`, `tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin`, `tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame`, `tui/render_within_test.go::TestRequestRenderWithinAsksAtOnceWhenNoFrameWasDrawnWithinTheDelay` and 3 more in docs/bug-ledger.json
 
 ### BF-D628
 
@@ -20563,20 +20627,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b5c9e29c8f` (2026-11-12)
 - **Tests:** `coding/model_availability_auth_pass_test.go::TestAuthWriteDuringAvailabilityPassIsUsedByNextRequest`, `coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEachAuthFileOnce`, `coding/model_availability_auth_pass_test.go::TestAvailabilityPassStatsEveryReadAfterACommandKey`, `coding/model_availability_auth_pass_test.go::TestBrokenAuthFileDuringAvailabilityPass`, `coding/model_availability_auth_pass_test.go::TestCredentialAPIWriteDuringAvailabilityPassIsUsedByTheSamePass`, `coding/model_availability_auth_pass_test.go::TestExtensionCheckRewritingAuthFileIsUsedByNextRequest`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream`, `internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextGivesEveryPassOneAuthView`
 
-### BF-D631
+### BF-D629
 
-**A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs**
+**A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D631)
-- **Symptom:** none. The socket pair is libuv's choice for every Node child; Pi does not ask for it.
-- **Root cause:** a faithful port would make commands that work on Linux fail (`> /dev/stdout`, `tee /dev/stderr`), which no PiG user gains from. The cost of keeping pipes is that a command which fails under Pi for that reason succeeds under PiG, and that an exit code 1 which Pi shows in a share of cut-off runs never appears.
-- **User impact:** Behavior differed from Pi
+- **Source:** A Pi defect that PiG fixed first (divergence D629)
+- **Symptom:** A prompt is answered `started` and never run; no error is emitted; an `agent_settled` is emitted for a run that never started, and it clears the busy state of the run that did. An upstream issue draft is the owner's to post; none has been posted.
+- **Root cause:** a client is told that its prompt was not taken and can send it again or queue it. Pi accepts the prompt and loses it without an error, so a client that waits for the run of a prompt answered `started` waits for a run that never comes, and reads an `agent_settled` that belongs to no run it can see.
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
-- **Removed when Pi fixes it:** PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.
-- **Fix commits:** `27686ebf32` (2026-11-12), `4ea002437f` (2026-11-12), `6da170c870` (2026-11-12), `bc197ac2ba` (2026-11-12), `e3a198a439` (2026-11-12)
-- **Tests:** `coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi`, `coding/extension/exec_socket_linux_test.go::TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset`, `coding/extension/exec_socket_linux_test.go::TestExecCommandReopensItsOutputWherePiCannot`
+- **Removed when Pi fixes it:** Pi rejects the second prompt of a batch with an error, or stops answering `started` for a prompt it does not run. `TestRPCPromptsWrittenInOneChunkDivergeFromPi` runs the pinned Pi and fails when Pi's side changes.
+- **Fix commits:** `dbb1bbb1bd` (2026-11-12)
+- **Tests:** `coding/cli/rpc_prompt_one_chunk_pi_test.go::TestRPCPromptsWrittenInOneChunkDivergeFromPi`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder`
 
 ### BF-a076a50
 
@@ -24485,6 +24549,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/images/node/worker_test.go::TestTheWorkerPreparesImagesInCallOrder`, `durable/images/node/worker_test.go::TestTheWorkerPreparesOneImageAtATime`, `durable/images/node/worker_test.go::TestWorkerFalsePreparesWithThePlainProcessor`, `durable/images/sequential_test.go::TestCreatePhotonImagesPreparesImagesInCallOrder`, `durable/images/sequential_test.go::TestCreatePhotonImagesPreparesOneImageAtATime`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation` and 4 more in docs/bug-ledger.json
 - **Release note:** `durable/images.CreatePhotonImages`, and `durable/images/node.CreateNodePhotonImages` with `Worker: false`, which returns it, prepare images one at a time in call order on the caller's goroutine, as Pi's `createPhotonImages` does on its calling thread. Before, concurrent calls prepared side by side. A caller whose context is cancelled while it waits returns the context's error and does not hold up or reorder the calls after it.
 
+### BF-ce4df6b
+
+**An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the system prompt in memory.
+- **Root cause:** An interactive start rendered the system prompt three times (the CLI, the Session, the interactive mode) and kept all three. With this repository's 60 KB AGENTS.md in the prompt, each copy is 65 KB: TestInteractiveFirstFrameProcessGate measured process.interactive_first_frame.heap_live_bytes at 2,155,000 B on and 2,024,080-2,025,328 B with the Session and the mode keeping the CLI's string when their own rendering is equal (8 runs, same host; 24 runs before: 2,153,264-2,157,104 B). The prompt text is unchanged.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ce4df6b13c` (2026-11-11)
+- **Tests:** `test/integration/perf_gate_test.go::TestInteractiveFirstFrameProcessGate`
+- **Release note:** An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the system prompt in memory. The CLI, the Session and the interactive mode each rendered the same prompt text and each kept it; the Session and the interactive mode now keep the CLI's string when their rendering is equal, so the live heap at the first frame is 130 KB smaller in this repository (2,155,000 B before, 2,025,000 B after, `process.interactive_first_frame.heap_live_bytes`). The prompt text is unchanged.
+
 ### BF-ce7dae9
 
 **MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their…**
@@ -26006,6 +26084,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `db12780931` (2026-10-09)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow`
+
+### BF-db38fad
+
+**In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second frame to take away, where Pi draws both in one frame: the 16 ms frame timer could fire between two events of the end of a response.
+- **Root cause:** One cause: the 16 ms frame timer fired between two events of the end of a response, so one frame drew the reply with the Working indicator still shown and a second one took it away.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `db38fad50e` (2026-11-11)
+- **Tests:** `agent/task_bounds_pacing_test.go::TestTaskFollowsThePacingOfTheProvider`, `agent/task_bounds_test.go::TestRunWithoutATaskReportsNone`, `agent/task_bounds_test.go::TestTaskEndsBeforeAFollowUpTurnIsPrepared`, `agent/task_bounds_test.go::TestTaskEndsWhereTheReaderWaitsForTheProvider`, `agent/task_bounds_test.go::TestTaskHoldsEveryToolStartAndEndsBeforeAToolRuns`, `agent/task_bounds_test.go::TestTaskSpansAResponseAndTheLoopEndEvents`, `internal/codingagent/interactive_reply_frame_test.go::TestInteractiveDrawsTheReplyWhileAnExtensionHandlerWaits`, `internal/codingagent/interactive_reply_frame_test.go::TestInteractiveReplyAndWorkingRemovalAreOneFrame` and 2 more in docs/bug-ledger.json
+- **Release note:** In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second frame to take away, where Pi draws both in one frame: the 16 ms frame timer could fire between two events of the end of a response. The events that Pi's event loop handles in one task (the part of a response its provider delivered in one run, and behind it `message_end`, the tool starts, `turn_end` and `agent_end`) are now applied together, so a frame draws all of them or none. Print mode, RPC mode and SDK consumers of `Session.Events` receive the events they received before.
 
 ### BF-db5d71f
 
@@ -30781,9 +30873,10 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D616 | An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory… | [BF-5043738](#bf-5043738) |
 | D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-e299ba1](#bf-e299ba1) |
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
-| D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks… | [BF-D619](#bf-d619) |
+| D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are… | [BF-D619](#bf-d619) |
 | D628 | auth.json is read once per availability pass, where Pi stats it on every credential read | [BF-D628](#bf-d628) |
-| D631 | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | [BF-D631](#bf-d631) |
+| D629 | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | [BF-D629](#bf-d629) |
+| D631 | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | [BF-6da170c](#bf-6da170c) |
 
 ## Fix-titled commits that are not bugs in a release
 

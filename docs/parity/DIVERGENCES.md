@@ -1428,7 +1428,17 @@ SCRUTINIZED:approved
 
 ## D93 /reload evaluates an edited ES module extension again
 
-What: Pi 1.0.0 imports each extension through jiti with `moduleCache: false` (`core/extensions/loader.ts:569-572`, `loadExtensionModule`), so `/reload` evaluates a TypeScript or CommonJS extension and its local imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module, an extension's entry or a local module it imports, until it restarts, even when the edit is a syntax error. This also holds for an `.mjs` module that a TypeScript extension imports. A TypeScript extension's own source runs its edit. This was probed with the pinned Pi in RPC mode.
+What: Pi 1.5.2 imports each extension through jiti with `moduleCache: false` (`packages/coding-agent/src/core/extensions/loader.ts:571-602`, `loadExtensionModule`; the jiti instance and its `import` are `:588-593`), so `/reload` evaluates a TypeScript extension and its local TypeScript imports again. jiti 2.7.0 hands a file it treats as an ES module, an `.mjs` file or a `.js` file under `"type": "module"`, to Node's own `import()` when it imports asynchronously (`eval_evalModule`), and Node keeps an ES module for the life of the process by its URL. Pi therefore keeps running an edited ES module, an extension's entry or a local module it imports, until it restarts, even when the edit is a syntax error. This also holds for an `.mjs` module that a TypeScript extension imports. A TypeScript extension's own source runs its edit. This was probed with the pinned Pi in RPC mode. Pi main is the same: at `d36266e06` (read 2026-11-13) `loader.ts` does not differ from 1.5.2 and jiti is still 2.7.0.
+
+What an edit followed by `/reload` runs, per source form (Pi 1.5.2 and PiG on the same extension, `TestReloadOfAnEditedNodeExtensionAgainstPi`):
+
+| Source form | Pi | PiG |
+|---|---|---|
+| Node `.ts`: the entry and its local `.ts` imports | the edit | the edit |
+| Node `.mjs` | the old module | the edit (this record) |
+| Node `.js` under `"type": "module"` | the old module | the edit (this record) |
+| Node `.cjs`, and `.js` read as CommonJS: the entry or a module it requires | the old module, which Node's `require` cache keeps | the old module |
+| Go, Python and Rust source extensions | no Pi side: Pi loads no such extension | the edit: PiG builds or starts the extension again (`TestReloadRunsTheCurrentSourceOfACommandLineExtension/go`, `/python`, `/rust`) |
 
 PiG's runtime hooks record, for each local extension module that Node loads, the source it loaded and the extension modules each evaluation imports. Local means outside the runtime and outside `node_modules`. When a reload pass starts, PiG gives a new URL, with a `pig-reload=<pass>` query, to each ES module whose source changed since Node loaded it and to each ES module that imports one, directly or through others. The resolve hook resolves every import of such a module to that URL, so the reload evaluates exactly those modules again:
 - Every other module keeps its instance and its state, as in Pi.
@@ -1464,12 +1474,13 @@ Evidence: these tests are in `coding/extension/host/subprocess`.
 - `TestNodeReloadEvaluatesAnEditedTypeModuleJsEntryAgain`: an edit runs, a broken edit fails the load, and the fix loads it again. It replaces the test that pinned Pi's behavior.
 - `TestSessionReplacementKeepsAnEditedESModuleUntilAReload`.
 - `TestHostReloadKeepsMjsModuleStateAndReevaluatesTsModules`: Pi's rule for an unedited `.mjs` module.
-- `TestReloadRunsTheCurrentSourceOfACommandLineExtension/node-mjs` (`cmd/pig`): the real CLI over RPC.
+- `TestReloadRunsTheCurrentSourceOfACommandLineExtension/node-mjs` (`coding/cli`): the real CLI over RPC.
+- `TestReloadOfAnEditedNodeExtensionAgainstPi` (`coding/cli/reload_edited_source_pi_test.go`): the pinned Pi and PiG over RPC on the same extension, for each Node source form of the table above. Its Pi rows fail when Pi's side changes.
 - The Bun row (`PIG_TS_RUNTIME=bun` with Bun 1.4.2 in the runtime slot) runs every test above in `coding/extension/host/subprocess` and passes them; before the Bun plugin, nine of them failed there.
 
 Each test fails with an earlier runtime: the CLI test with the runtime before D93, and the last four regression tests with the first D93 runtime. Each of ten mutations of the rules fails at least one test. Loading 19 more ES module extensions in one process takes the same 30 ms as before D93.
 
-Parity allowance: Pi keeps the old code of an edited ES module, so no paired scenario compares the reload; the tests above pin PiG's behavior.
+Parity allowance: after an edit and `/reload`, the factory of an ES module extension runs from the new module in PiG and from the old one in Pi. `TestReloadOfAnEditedNodeExtensionAgainstPi` compares both on the same extension and fails when Pi's side changes; the other tests above pin PiG's behavior.
 
 Remove when: Pi's loader evaluates an edited ES module extension again on `/reload` (upstream issue drafted 2026-10-04).
 
@@ -3689,11 +3700,13 @@ Evidence: `TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop`, `TestLoad
 
 Parity allowance: scenario 69 (`final_frame_cursor_only_pig = 1`, `final_frame_cursor_only_pi = 1`) pins the count of cursor-only frames after the footer's text; the settled screens are compared as in the family's other scenarios.
 
-## D619 A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks for it at once
+## D619 A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are being drawn, where Pi asks for it at once
 
 What: Pi's `Loader` (`packages/tui/src/components/loader.ts`) calls `ui.requestRender()` on every animation step (`setInterval` every 80 ms for the default spinner), so a step that falls between the frames a streaming reply asks for is drawn as a frame of its own, up to 16 ms after the last frame. PiG's interactive mode drew every status-indicator tick with an immediate `Render()` (so also off the 16 ms throttle, often 3-8 ms after the stream's last frame); the mode and `Loader` now ask for the step's frame through `RequestRenderWithin(min(40 ms, interval/2))` when the TUI has one: any frame drawn in that time draws the step and the timer is dropped; only when none is does the timer ask for a frame (`RequestRender`, with the same 16 ms throttle). Every other change to the loader (start, message, indicator, invalidate) still asks for a frame at once. A request made while a frame is running asks for the next frame at once, as `RequestRender` does. The final screen, the order of what is drawn and the 80 ms step cadence are Pi's; a step is drawn at most 40 ms plus the frame throttle after its tick, and a step that a streaming frame has already drawn adds no frame.
 
 Removing the status indicator drops the step frame that still waits (`CancelRenderWithin`), so no frame follows the one that removed it; Pi-Bolt's `Loader.stop()` leaves its timer armed.
+
+The wait applies only while frames are being drawn. When no frame was drawn within the last min(40 ms, interval/2) before the step, nothing is about to draw one, and `RequestRenderWithin` asks for the step's frame at once, as Pi does: a spinner that animates while the model has not answered yet or a tool runs steps every 80 ms, on time. Without this rule each such step was drawn 40 ms late, and the longest time without output while waiting for a reply grew from one step (81-83 ms on the `write:200` cell of the Pi-Bolt `pauses.py` harness, Pi's figure) to a step and the wait (120-122 ms, Pi-Bolt 1.2.1's figure).
 
 Why: while a reply or a tool call streams in, Pi draws a frame every 16-20 ms and the spinner step adds a frame of its own every 80 ms, about one frame in five. In a tmux pane every frame is a read, a parse and a redraw for the tmux server; on the `write:50` cell of the Pi-Bolt `tmux_load.py` harness (65 s, 160x48 pane) PiG wrote 4,066 frames to the pane (Pi 1.5.2: 3,951) where Pi-Bolt, which has this change (`TUI.requestRenderWithin`, `STEP_FRAME_DELAY_MS`), wrote 3,262; with it PiG writes 3,278. The frames dropped carry only a glyph of the spinner that the next frame draws anyway.
 
@@ -3709,7 +3722,7 @@ Remove when: Pi's `Loader` draws a step within a time, or the owner withdraws th
 
 Call-site markers: `tui/loader.go` (`requestStepRender`), `tui/tui.go` (`RequestRenderWithin`, `CancelRenderWithin`), `internal/codingagent/interactive_layout.go` (`renderStatusStep`), `internal/codingagent/interactive_status.go` (`clearStatusIndicator`).
 
-Evidence: `tui/render_within_test.go` (`TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn`, `TestFrameDrawnWithinTheDelayCarriesTheChange`, `TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor`, `TestRequestRenderWithinDuringAFrameAsksForTheNextFrame`, `TestLoaderAnimationStepAsksForItsFrameWithin`, `TestLoaderTickStepAsksForNoFrame`, `TestCancelRenderWithinDropsTheWaitingStepFrame`) and `internal/codingagent/status_tick_within_test.go` (`TestStatusTickAsksForItsFrameWithinTheStepDelay`, `TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `TestRemovingTheIndicatorCancelsItsWaitingStepFrame`).
+Evidence: `tui/render_within_test.go` (`TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn`, `TestRequestRenderWithinAsksAtOnceWhenNoFrameWasDrawnWithinTheDelay`, `TestFrameDrawnWithinTheDelayCarriesTheChange`, `TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor`, `TestRequestRenderWithinDuringAFrameAsksForTheNextFrame`, `TestLoaderAnimationStepAsksForItsFrameWithin`, `TestLoaderTickStepAsksForNoFrame`, `TestCancelRenderWithinDropsTheWaitingStepFrame`) and `internal/codingagent/status_tick_within_test.go` (`TestStatusTickAsksForItsFrameWithinTheStepDelay`, `TestStatusTickDrawsAtOnceOnATUIThatCannotWait`, `TestRemovingTheIndicatorCancelsItsWaitingStepFrame`).
 
 Parity allowance: the frame count differs from Pi's on a streaming call (3,278 against 3,951 frames in 66 s of the `write:50` cell) and the final screen is identical; the frames of a spinner step that another frame draws are not written; the settled screen and every frame a request other than a spinner step asks for are Pi's.
 
@@ -3736,6 +3749,36 @@ Call-site markers: `internal/codingagent/model_availability.go` (`AvailabilityRe
 Evidence: `coding/model_availability_auth_pass_test.go`: `TestExtensionCheckRewritingAuthFileIsUsedByNextRequest` (the divergent case: the pass publishes from the view of its start, the next request and the next pass use the rewrite), `TestAuthWriteDuringAvailabilityPassIsUsedByNextRequest` (another process writes during each kind of pass: an API key, an OAuth token refreshed elsewhere, an OpenAI-compatible provider with a custom base URL, a credential removed, a credential added; the next request succeeds or fails exactly as a process started over the new file), `TestCredentialAPIWriteDuringAvailabilityPassIsUsedByTheSamePass`, `TestAvailabilityPassStatsEveryReadAfterACommandKey`, `TestAvailabilityPassStatsEachAuthFileOnce` (at most one stat per auth file per pass), `TestBrokenAuthFileDuringAvailabilityPass`; `internal/codingagent/model_availability_read_context_test.go` (`TestAvailabilityReadContextGivesEveryPassOneAuthView`); `coding/model_availability_auth_view_test.go` (`TestAvailabilityPassAuthViewMatchesPiUpstream`: a pass without extension providers publishes what Pi publishes for a rewrite before, during and after it).
 
 Parity allowance: no parity scenario can make an extension provider's check rewrite auth.json between two credential reads of one pass, so no scenario pins the difference; `TestExtensionCheckRewritingAuthFileIsUsedByNextRequest` is its regression test. Every scenario of the oauth, model-runtime-store-catalog and startup families compares as before.
+
+## D629 A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi answers it `started` and never runs it
+
+What: in `--mode rpc`, two `prompt` commands without `streamingBehavior` that reach standard input in one chunk (written with one `write`) are handled by Pi before either of them has started a run. Pi 1.5.2's `prompt()` awaits `_preparePrompt` (`packages/coding-agent/src/core/agent-session.ts:2191`, since #9154), so both prompts pass the `isStreaming` check in it (`:2227`) before either reaches `_startRun` (`:2195`). `_startRun` sets `_isAgentRunActive = true` (`:1944`) without checking whether a run is already starting, so both prompts answer `{"success":true,"data":{"disposition":"started"}}` (`:1960`). The second prompt's `agent.prompt(messages)` (`:1969`) then throws `Agent is already processing a prompt. ...` (`packages/agent/src/agent.ts:383-387`); its `finally` emits `agent_settled` with `aborted:false` (`:1986`, `_emitAgentSettled` `:1139-1146`), and RPC mode drops the error because the preflight already answered (`packages/coding-agent/src/modes/rpc/rpc-mode.ts:425-429`). The client reads, in this order: the first prompt's `started`, the second prompt's `started`, `agent_start`, `agent_settled`, then the first prompt's run, its `agent_end` and its `agent_settled`. The second prompt's message never appears, no run is made for it (`messageCount` is 3 afterwards) and no error names it.
+
+That `agent_settled` also sets `_isAgentRunActive = false` (`:1141`) while the first run streams, so from then until the run ends Pi's `get_state` reports `isStreaming: false`, and a further `prompt` without `streamingBehavior` is answered `started` and dropped in the same way, with one more `agent_settled`.
+
+PiG answers the second prompt `{"success":false,"error":"Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."}`, the error both programs give a prompt that arrives while a run streams. The error is written before the first prompt's `started`; one `agent_start`, one `agent_end` and one `agent_settled` follow. `get_state` reports `isStreaming: true` while the run streams and a further `prompt` without `streamingBehavior` gets the same error.
+
+Written one after the other (the second after the first prompt's `agent_start`; 50 ms apart in the probe) both programs agree: the first is `started` and the second is rejected with that error.
+
+Pi main is the same: at `bacd45b9c` (150 commits after `v1.5.2`, read 2026-11-12) `prompt()` is `agent-session.ts:2175-2209`, the `isStreaming` check is `:2240`, `_startRun` is `:1956-2001` (`:1957`, `:1973`, `:1982`, `:1999`), and `rpc-mode.ts` and `agent.ts` do not differ from 1.5.2.
+
+Why: a client is told that its prompt was not taken and can send it again or queue it. Pi accepts the prompt and loses it without an error, so a client that waits for the run of a prompt answered `started` waits for a run that never comes, and reads an `agent_settled` that belongs to no run it can see.
+
+Pi bug: A prompt is answered `started` and never run; no error is emitted; an `agent_settled` is emitted for a run that never started, and it clears the busy state of the run that did. An upstream issue draft is the owner's to post; none has been posted.
+
+Scope: RPC mode (`pig --mode rpc`): two `prompt` commands whose handlers overlap before either run starts. `rpcAdmission.promptInput` passes both, as Pi's `_preparePrompt` does; `rpcAdmission.startPrompt` (`coding/cli/rpc_admission.go`) calls `Session.BeginRunStart` (`coding/session_run_state.go`), which rejects the second because the first marked the Session busy. Prompts that name a `streamingBehavior`, `steer`, `follow_up` and extension commands are not affected. The other caller of `BeginRunStart`, `Session.prepareContentRun` (`coding/session.go`), checks `IsStreaming` itself first and was not compared with Pi for this record.
+
+Owner decision: 2026-11-12T23:22:43Z owner: "proceed with recommendations": "RPC batch prompts (owner line 5): KEEP PiG's explicit rejection, recorded as a numbered divergence."
+
+SCRUTINIZED:approved 2026-11-12
+
+Remove when: Pi rejects the second prompt of a batch with an error, or stops answering `started` for a prompt it does not run. `TestRPCPromptsWrittenInOneChunkDivergeFromPi` runs the pinned Pi and fails when Pi's side changes.
+
+Call-site markers: `coding/cli/rpc_admission.go` (`startPrompt`), `coding/session_run_state.go` (`BeginRunStart`).
+
+Evidence: `coding/cli/rpc_prompt_one_chunk_pi_test.go` (`TestRPCPromptsWrittenInOneChunkDivergeFromPi`: the pinned Pi and PiG on the same input, one chunk, one chunk followed by a `get_state` and a third prompt while the first runs, and one after the other, where both agree) and `coding/cli/rpc_prompt_order_test.go` (`TestRPCPromptsOfOneBatchAnswerInRequestOrder`, `TestRPCPromptsWithDueCompactionsAnswerInRequestOrder`: PiG's side on a saved Session, and with a compaction due).
+
+Parity allowance: for two prompts of one chunk in RPC mode, the second prompt's response (`success:false` with the error against Pi's `started`), its place before the first prompt's `started`, the absence of Pi's extra `agent_settled`, and `isStreaming` and the answer to further prompts until the first run ends. The first prompt's response, its run and the settled Session are Pi's.
 
 ## D631 A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs
 

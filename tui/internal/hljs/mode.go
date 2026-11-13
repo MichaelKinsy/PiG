@@ -66,12 +66,16 @@ type compiledProps struct {
 	cachedVariants   []*Mode
 	beforeBegin      callback
 	keywordPatternRe *jsRegExp
-	beginRe          *jsRegExp
-	endRe            *jsRegExp
-	illegalRe        *jsRegExp
-	terminatorEnd    string
-	matcher          *resumableMultiRegex
-	data             *responseData
+	// lexemes finds what keywordPatternRe finds, without the regular expression, when the pattern is of a form it reads; it goes where keywordPatternRe goes.
+	lexemes       *lexemeScanner
+	beginRe       *jsRegExp
+	endRe         *jsRegExp
+	illegalRe     *jsRegExp
+	terminatorEnd string
+	matcher       *resumableMultiRegex
+	data          *responseData
+	// endFromBegin is set on a mode whose endRe a run copied from the begin of the endSameAsBegin mode that starts it.
+	endFromBegin bool
 }
 
 // languageProps are the properties of a language object. A registry holds a few hundred languages among thousands of modes, so they sit outside Mode.
@@ -394,6 +398,7 @@ func copyKey(target, source *Mode, key modeKeys) {
 		target.setComp().beforeBegin = source.comp().beforeBegin
 	case keyKeywordPatternRe:
 		target.setComp().keywordPatternRe = source.comp().keywordPatternRe
+		target.setComp().lexemes = source.comp().lexemes
 	case keyBeginRe:
 		target.setComp().beginRe = source.comp().beginRe
 	case keyEndRe:
