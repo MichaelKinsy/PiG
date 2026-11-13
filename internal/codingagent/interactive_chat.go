@@ -429,7 +429,11 @@ func (m *InteractiveMode) finishPackageUpdateCheck(goos string, updates []string
 // updateTerminalTitle sets the title from the session name and the cwd.
 // Mirrors upstream updateTerminalTitle (interactive-mode.ts).
 func (m *InteractiveMode) updateTerminalTitle() {
-	setTerminalTitle(tui.BuildTerminalTitle(m.currentSession().GetSessionName(), m.opts.CWD))
+	name := ""
+	if session := m.currentSession(); session != nil {
+		name = session.GetSessionName()
+	}
+	setTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
 }
 
 // setTerminalTitle writes the terminal title; tests replace it.

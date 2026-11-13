@@ -29,7 +29,7 @@ import (
 // (session_shutdown with reason reload, Host.Reload, a new runner, session_start with reason reload: the order Session.Reload runs) and
 // requires that the host holds nothing more after the hundredth reload than it held before the first. Ten reloads come first, so the
 // baseline holds whatever a host allocates once. Nothing is retried: a row that grows is red and names the resource and its samples.
-// PIG_RELOAD_LEAK_RELOADS sets the count of a longer run.
+// PIG_RELOAD_LEAK_RELOADS sets the count of a longer run. The surfaces rows reload extensions that draw (reload_leak_surfaces_test.go).
 const (
 	reloadLeakWarmup      = 10
 	reloadLeakReloads     = 100
@@ -61,6 +61,8 @@ type reloadLeakRow struct {
 	parallel bool
 	// afterLoad runs once after the first load and before the warm-up reloads.
 	afterLoad func(t *testing.T)
+	// surfaces is the kind of a row whose extensions draw, "views", "keys" or "surfaces" (both): after every reload the row draws what that kind names (reload_leak_surfaces_test.go).
+	surfaces string
 }
 
 func reloadLeakRows() []reloadLeakRow {
@@ -109,6 +111,7 @@ func reloadLeakRows() []reloadLeakRow {
 				reloadLeakHybridDigest = hybridDigest(t, hybridSource)
 				return []subprocess.ExtConfig{cfg}
 			}, afterLoad: func(t *testing.T) { hybridEdit(t, hybridSource, reloadLeakHybridName, "v1") }})
+			rows = append(rows, reloadLeakSurfaceRows()...)
 		}
 	}
 	// The two rows whose generations each left a goroutine behind run again on every P, so the reload's own scheduling across Ps stays
@@ -363,7 +366,14 @@ func TestReloadLeak(t *testing.T) {
 			host := subprocess.NewHost(dir)
 			t.Cleanup(func() { host.Shutdown("done") })
 			bridge := subprocess.NewUIBridge(func() {})
-			bridge.SetUIContext(newRecordingUI(new([]string), new([]string)))
+			recording := newRecordingUI(new([]string), new([]string))
+			var ui extension.UIContext = recording
+			var surfaces *reloadLeakSurfaces
+			if row.surfaces != "" {
+				surfaces = newReloadLeakSurfaces(row.surfaces, bridge, recording)
+				ui = reloadLeakDialogUI{recording}
+			}
+			bridge.SetUIContext(ui)
 			bridge.SetNotifyFunc(func(string, string) {})
 			bridge.SetHostAction("getFlag", func(_, _ string) any { return nil })
 			host.SetUIBridge(bridge)
@@ -373,6 +383,7 @@ func TestReloadLeak(t *testing.T) {
 				t.Fatalf("load: %d of %d loaded, %v", len(loaded), len(configs), errs)
 			}
 			runner := inproc.NewRunner(loaded, dir)
+			bridge.SetUIPromptScope(runner)
 			if row.afterLoad != nil {
 				row.afterLoad(t)
 			}
@@ -408,10 +419,14 @@ func TestReloadLeak(t *testing.T) {
 					t.Fatalf("reload %d: %d cells, want %d: %+v", n, len(report.Cells), want, report.Cells)
 				}
 				runner = inproc.NewRunner(loaded, dir)
+				bridge.SetUIPromptScope(runner)
 				if _, err := runner.Emit(t.Context(), extension.SessionStartEvent{Type: "session_start", Reason: "reload"}); err != nil {
 					t.Fatalf("reload %d: session_start: %v", n, err)
 				}
 				durations = append(durations, time.Since(start))
+				if surfaces != nil {
+					surfaces.draw(t, n, runner, loaded)
+				}
 			}
 			// answer proves that the extensions the host holds after a reload are running: each answers a command.
 			answer := func(n int) {
