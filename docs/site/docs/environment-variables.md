@@ -153,7 +153,7 @@ These variables describe how PiG was installed, so `pig update` can give the rig
 | `PI_PROGRAM_STATUS` | Override OSC 7501 program status detection: `1` always reports, `0` never reports; otherwise PiG reports only after the terminal confirms support. See [Terminal setup](/docs/latest/terminal-setup#program-status) |
 | `PI_IMAGE_PROTOCOL` | Override inline image detection with `kitty`, `iterm2`, `none`, or `auto` |
 | `PI_TRUE_COLOR` | Override true-color detection with `1`, `0`, or `auto`. With true color off, themes use the 256-color palette |
-| `PIG_FRAME_PACING` | PiG-only (D625). `adaptive` begins the frames of a streaming reply 10 to 16 ms apart in fullscreen mode on the terminals listed in [Terminal setup](/docs/latest/terminal-setup#display-problems), for this run; `pi` or `0` begins them 16 ms apart, as Pi does, which is also the default. Any other value, and an empty one, counts as unset. Read when PiG starts |
+| `PIG_FRAME_PACING` | PiG-only (D625). `adaptive` begins the frames of a streaming reply 10 to 16 ms apart in fullscreen mode on the terminals listed in [Terminal setup](/docs/latest/terminal-setup#display-problems), for this run; `pi` or `0` begins them 16 ms apart, as Pi does, which is also the default. Any other value, and an empty one, counts as unset. `adaptive` takes effect only with the screen writer (`PIG_TUI_SCREEN_WRITER=writer` or `terminal.screenWriter`); without it, interactive mode shows a warning at start. Read when PiG starts |
 
 Each has a setting that does the same thing. A `terminal.hyperlinks`, `terminal.images` or `terminal.trueColor` setting wins over its variable; `PIG_FRAME_PACING` wins over the `terminal.framePacing` setting. See [settings](/docs/latest/settings).
 

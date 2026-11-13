@@ -501,3 +501,90 @@ func TestTerminalFramePacingSetting(t *testing.T) {
 		t.Fatalf("a setter that changed terminal.framePacing to %q left the file without it: %s", byDefault, data)
 	}
 }
+
+// The adaptive policy without the screen writer is the one selection that does nothing. Each half is decided as the run decides it: PIG_FRAME_PACING before terminal.framePacing, PIG_TUI_SCREEN_WRITER before terminal.screenWriter, and a missing or invalid setting is its default.
+func TestAdaptiveFramePacingLacksScreenWriter(t *testing.T) {
+	pacingUnset := terminalFramePacingDefault == TerminalFramePacingAdaptive
+	writerUnset := TerminalScreenWriterDefault == TerminalScreenWriterWriter
+	for _, tc := range []struct {
+		pacing, pacingEnv, writer, writerEnv string
+		want                                 bool
+	}{
+		{"adaptive", "", "pi", "", true},
+		{"adaptive", "", "", "", !writerUnset},
+		{"adaptive", "", "Writer", "", !writerUnset},
+		{"", "adaptive", "", "", !writerUnset},
+		{"pi", "adaptive", "pi", "", true},
+		{"adaptive", "", "writer", "pi", true},
+		{"adaptive", "", "writer", "0", true},
+		{"", "adaptive", "writer", "pi", true},
+		{"adaptive", "", "writer", "", false},
+		{"", "adaptive", "", "writer", false},
+		{"", "adaptive", "", "1", false},
+		{"adaptive", "", "pi", "writer", false},
+		{"pi", "adaptive", "writer", "", false},
+		{"adaptive", "pi", "pi", "", false},
+		{"adaptive", "0", "", "", false},
+		{"pi", "", "pi", "", false},
+		{"pi", "", "writer", "", false},
+		{"pi", "", "", "writer", false},
+		{"", "", "pi", "", pacingUnset},
+		{"faster", "1", "pi", "", pacingUnset},
+		{"", "", "writer", "", false},
+	} {
+		getenv := func(name string) string {
+			switch name {
+			case framePacingEnv:
+				return tc.pacingEnv
+			case "PIG_TUI_SCREEN_WRITER":
+				return tc.writerEnv
+			}
+			return ""
+		}
+		settings := Settings{TerminalFramePacing: tc.pacing, TerminalScreenWriter: tc.writer}
+		if got := adaptiveFramePacingLacksScreenWriter(settings.GetTerminalFramePacing(), settings.GetTerminalScreenWriter(), getenv); got != tc.want {
+			t.Errorf("terminal.framePacing %q, %s=%q, terminal.screenWriter %q, PIG_TUI_SCREEN_WRITER=%q: adaptive without the screen writer = %v, want %v", tc.pacing, framePacingEnv, tc.pacingEnv, tc.writer, tc.writerEnv, got, tc.want)
+		}
+	}
+}
+
+// Interactive mode says once, among the notices of its start, that the adaptive frame pacing the run selects does nothing without the screen writer: the warning is in the transcript and on the screen one time. A run that selects both, by any mix of the settings file and the environment, only the screen writer, or neither shows nothing of it.
+func TestStartupNoticeWhenAdaptivePacingLacksTheScreenWriter(t *testing.T) {
+	writerUnset := 1
+	if TerminalScreenWriterDefault == TerminalScreenWriterWriter {
+		writerUnset = 0
+	}
+	for _, tc := range []struct {
+		name, terminal, pacingEnv, writerEnv string
+		notices                              int
+	}{
+		{"the setting selects adaptive, the writer is unset", `{"framePacing":"adaptive"}`, "", "", writerUnset},
+		{"the setting selects adaptive, the writer is pi", `{"framePacing":"adaptive","screenWriter":"pi"}`, "", "", 1},
+		{"the environment selects adaptive, the writer is unset", "", "adaptive", "", writerUnset},
+		{"the environment selects adaptive over a setting of pi", `{"framePacing":"pi","screenWriter":"pi"}`, "adaptive", "", 1},
+		{"the environment turns off the writer the setting selects", `{"framePacing":"adaptive","screenWriter":"writer"}`, "", "pi", 1},
+		{"both by the settings file", `{"framePacing":"adaptive","screenWriter":"writer"}`, "", "", 0},
+		{"both by the environment", "", "adaptive", "writer", 0},
+		{"adaptive by the setting, the writer by the environment", `{"framePacing":"adaptive"}`, "", "writer", 0},
+		{"adaptive by the environment, the writer by the setting", `{"screenWriter":"writer"}`, "adaptive", "", 0},
+		{"the environment turns off the pacing the setting selects", `{"framePacing":"adaptive"}`, "pi", "", 0},
+		{"only the writer", `{"screenWriter":"writer"}`, "", "", 0},
+		{"neither", "", "", "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(framePacingEnv, tc.pacingEnv)
+			r := startScreenWriterRun(t, tc.writerEnv, tc.terminal, "fullscreen", nil)
+			r.mode.showInitNotices()
+			if got := strings.Count(reloadChatText(r.mode), "Warning: "+framePacingWithoutScreenWriterNotice); got != tc.notices {
+				t.Errorf("the transcript holds the notice %d times, want %d:\n%s", got, tc.notices, reloadChatText(r.mode))
+			}
+			written, err := os.ReadFile(r.written)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Count(stripANSITest(string(written)), "Warning: Adaptive frame pacing"); got != tc.notices {
+				t.Errorf("the frames drew the notice's first row %d times, want %d", got, tc.notices)
+			}
+		})
+	}
+}

@@ -22,6 +22,23 @@ func adaptiveFramePacingSelected(setting string, getenv func(string) string) boo
 	return setting == TerminalFramePacingAdaptive
 }
 
+// framePacingWithoutScreenWriterNotice is the warning interactive mode shows at start when the run selects the adaptive frame pacing policy and not the screen writer (showFramePacingNotice).
+const framePacingWithoutScreenWriterNotice = `Adaptive frame pacing (terminal.framePacing, PIG_FRAME_PACING) has no effect without the screen writer (terminal.screenWriter "writer"): frames keep Pi's 16 ms interval.`
+
+// adaptiveFramePacingLacksScreenWriter reports whether a run with these terminal.framePacing and terminal.screenWriter settings (Settings.GetTerminalFramePacing, Settings.GetTerminalScreenWriter) and environment selects the adaptive frame pacing policy and not the screen writer, without which the policy never answers. Each selection is decided by the rule the run itself uses, the environment before the setting: adaptiveFramePacingSelected and tui.ScreenWriterSelected.
+func adaptiveFramePacingLacksScreenWriter(framePacing, screenWriter string, getenv func(string) string) bool {
+	return adaptiveFramePacingSelected(framePacing, getenv) && !tui.ScreenWriterSelected(screenWriter == TerminalScreenWriterWriter, getenv)
+}
+
+// showFramePacingNotice shows one warning in the transcript when the run selects the adaptive frame pacing policy and not the screen writer, so the selection does nothing. It is one of the start's notices (showInitNotices): both settings are read once, at start, so a settings change or a reload is judged at the next start. Print, JSON and RPC mode read neither setting and show nothing.
+//
+// pig additive (D625): Pi has neither setting and no such warning; a run that selects neither, both, or only the screen writer shows none.
+func (m *InteractiveMode) showFramePacingNotice() {
+	if adaptiveFramePacingLacksScreenWriter(m.opts.Settings.GetTerminalFramePacing(), m.opts.Settings.GetTerminalScreenWriter(), os.Getenv) {
+		m.showWarning(framePacingWithoutScreenWriterNotice)
+	}
+}
+
 // installFramePacing gives the renderer the adaptive frame pacing policy when the run selects it (PIG_FRAME_PACING, else terminal.framePacing of the global settings file, else terminalFramePacingDefault, Pi's interval); otherwise the renderer keeps Pi's interval and nothing of the policy exists in the run. The selection is read once, at start: a settings change or a reload acts at the next start.
 //
 // pig additive (D625): Pi has one frame interval and no setting for it; a run that does not select the adaptive policy has Pi's.
