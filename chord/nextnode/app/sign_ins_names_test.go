@@ -19,14 +19,15 @@ import (
 func upgradeOldCookie(token string) string {
 	request := provenanceRequest{provenance: chordhttp.Provenance{Kind: chordhttp.ProvenanceLocal}}
 	set := chordhttp.Cookie("chord-session", token, chordhttp.CookieOptions{Secret: cookieSecret, Request: request, MaxAge: new(float64(400 * 24 * 60 * 60))})
-	return strings.SplitN(set, ";", 2)[0]
+	pair, _, _ := strings.Cut(set, ";")
+	return pair
 }
 
 func TestTheKitsCookieIsChordSignInAndTheNameItHadBeforeSignsNobodyIn(t *testing.T) {
 	s := newKitServer(t, kitServerOptions{})
 	defer s.close()
 	_, token, set := s.issue(ownerPrincipal(), "b", "browser")
-	pair := strings.SplitN(set, ";", 2)[0]
+	pair, _, _ := strings.Cut(set, ";")
 	if name, _, _ := strings.Cut(pair, "="); name != "chord-sign-in" {
 		t.Fatalf("the kit's cookie is named %q, want chord-sign-in", name)
 	}
