@@ -35567,15 +35567,15 @@
     },
     {
       "id": "BF-9e34810",
-      "title": "A plugin view is sent only to a client that draws every node kind it holds: the registry now reads the…",
-      "symptom": "A plugin view is sent only to a client that draws every node kind it holds: the registry now reads the client's `nodes` list when it decides what a client is sent.",
+      "title": "A plugin view is sent only to a client that draws every node kind it holds (D614): the registry now reads the…",
+      "symptom": "A plugin view is sent only to a client that draws every node kind it holds (D614): the registry now reads the client's `nodes` list when it decides what a client is sent.",
       "rootCause": "fits and fallbackFits never read ClientAbilities.Nodes, so a view holding a kind the client does not draw was sent to it as is. The registry now measures the kinds a view holds and a client the content does not fit is refused or sent the fallback, as for a limit; an empty nodes list draws no kind, as an empty slots list draws no slot (D614 abilities paragraph, awaiting the owner). Two conformance fixtures declared too few kinds for what they mount and now declare select-list.",
       "rootCauseSource": "commit",
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A plugin view is sent only to a client that draws every node kind it holds: the registry now reads the client's `nodes` list when it decides what a client is sent. A view with a kind outside the list does not fit that client (code `unsupported` when no attached client draws it) and a client the content does not fit is sent the fallback, as for a limit; an empty or absent `nodes` list draws no kind.",
+      "releaseNote": "A plugin view is sent only to a client that draws every node kind it holds (D614): the registry now reads the client's `nodes` list when it decides what a client is sent. A view with a kind outside the list does not fit that client (code `unsupported` when no attached client draws it) and a client the content does not fit is sent the fallback, as for a limit; an empty or absent `nodes` list draws no kind.",
       "origin": "release note",
       "commits": [
         {
