@@ -237,6 +237,94 @@ patch("bbfc6c7ce", "pi-coding-agent/core/tools/find.js", [
 // END backport bbfc6c7ce
 
 // BEGIN backport 282b01c80
+// 282b01c80 (#12116, #12066): a relative path pattern is anchored at the search path, like grep's glob, instead of matching through the folders above it.
+patch("282b01c80", "pi-coding-agent/core/tools/find.js", [
+    [`        description: "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'",
+`,
+      `        description: "Glob pattern relative to the search directory, e.g. 'src/**/*.ts'. Without '/', e.g. '*.ts', it matches file names at any depth",
+`],
+    [`                        // mode it matches against the absolute candidate path, so a path-containing
+                        // pattern like 'src/**/*.spec.ts' needs a leading '**/' to match anything.
+`,
+      `                        // mode it matches against the absolute candidate path.
+`],
+    [`                        const isPathPattern = effectivePattern.includes("/");
+                        if (isPathPattern &&
+                            !effectivePattern.startsWith("/") &&
+                            !effectivePattern.startsWith("**/") &&
+                            effectivePattern !== "**") {
+                            effectivePattern = \`**/\${effectivePattern}\`;
+                        }
+                        // fd before 10.5.1 never matches --full-path globs on Windows, and workarounds for that
+                        // break on fd 10.5.1 (sharkdp/fd#2067). pi cannot rely on either fd version, so on
+                        // Windows fd lists every entry and minimatch matches path patterns. The options keep
+                        // fd's glob behavior: \`*\` matches dotfiles, \`+(a|b)\` is literal, and an all-lowercase
+                        // pattern matches case-insensitively (smart case). A trailing '/**' becomes '/**/*'
+                        // because minimatch's 'src/**' also matches 'src' itself and fd's does not.
+`,
+      `                        const isPathPattern = effectivePattern.includes("/");
+                        ${note("282b01c80").trim()}
+                        // fd's smart case: an all-lowercase pattern matches case-insensitively.
+                        const ignoreCase = effectivePattern === effectivePattern.toLowerCase();
+                        // A relative path pattern is anchored at the search path, like grep's glob (#12066):
+                        // 'src/*.ts' finds 'src/a.ts' but not 'pkg/src/b.ts'; '**/src/*.ts' finds both.
+                        // Absolute patterns are matched as given.
+                        const isRelativePathPattern = isPathPattern && !path.isAbsolute(effectivePattern);
+                        // fd before 10.5.1 never matches --full-path globs on Windows, and workarounds for that
+                        // break on fd 10.5.1 (sharkdp/fd#2067). pi cannot rely on either fd version, so on
+                        // Windows fd lists every entry and minimatch matches path patterns against the path
+                        // relative to the search path, or the absolute path for absolute patterns. The options
+                        // keep fd's glob behavior: \`*\` matches dotfiles, \`+(a|b)\` is literal, and smart case.
+                        // A trailing '/**' becomes '/**/*' because minimatch's 'src/**' also matches 'src'
+                        // itself and fd's does not.
+`],
+    [`                                nocase: effectivePattern === effectivePattern.toLowerCase(),
+`,
+      `                                nocase: ignoreCase,
+`],
+    [`                            if (isPathPattern)
+                                args.push("--full-path");
+                            args.push("--", effectivePattern, searchPath);
+`,
+      `                            if (isPathPattern)
+                                args.push("--full-path");
+                            if (isRelativePathPattern) {
+                                // fd matches the absolute path, so the pattern is prefixed with the glob-escaped
+                                // search path. Smart case is decided by the user's pattern, not by the search
+                                // path's letters, so it is set explicitly.
+                                const escapedRoot = searchPath.replace(/\\/+$/, "").replace(/[\\\\*?[\\]{}]/g, "\\\\$&");
+                                effectivePattern = \`\${escapedRoot}/\${effectivePattern}\`;
+                                if (ignoreCase)
+                                    args.push("--ignore-case");
+                            }
+                            args.push("--", effectivePattern, searchPath);
+`],
+    [`                            if (windowsPathMatcher && !windowsPathMatcher.match(line))
+                                return;
+                            if (resultCount === effectiveLimit) {
+                                resultLimitReached = true;
+                                // Without --max-results, fd keeps listing after the limit.
+                                if (windowsPathMatcher)
+                                    stopChild?.();
+                                return;
+                            }
+                            const result = relativizeFindResultPath(line, searchPath);
+`,
+      `                            const result = relativizeFindResultPath(line, searchPath);
+                            if (windowsPathMatcher && !windowsPathMatcher.match(isRelativePathPattern ? result : line))
+                                return;
+                            if (resultCount === effectiveLimit) {
+                                resultLimitReached = true;
+                                // Without --max-results, fd keeps listing after the limit.
+                                if (windowsPathMatcher)
+                                    stopChild?.();
+                                return;
+                            }
+`],
+]);
+// END backport 282b01c80
+
+// BEGIN backport 282b01c80
 // 282b01c80: grep's glob description, in the wording find's pattern now shares.
 patch("282b01c80", "pi-coding-agent/core/tools/grep.js", [
     [`"Filter files by glob pattern, relative to path, e.g. '*.ts', 'src/**/*.ts' or '**/*.spec.ts'. A pattern without '/' matches file names at any depth"`,

@@ -363,7 +363,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/find.js",
-      "sha256": "2260b1eb39af786fc1c68b4ac70aa2d0f1261a0a68b4510b44f777a5f905c59c"
+      "sha256": "1cb1aa4c41f9204ae00a5c50ce01eef49389de4d5b398d302a6d7f519a4a1a72"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/grep.js",
