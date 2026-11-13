@@ -18,6 +18,8 @@ const token = new URLSearchParams(location.search).get("token");
 const state = document.getElementById("state");
 const chat = document.getElementById("chat");
 let session = "";
+// Whether the page is a client of a running session's view endpoint (the bridge's --connect) and not of a pig of its own.
+let attached = false;
 let attachment = 0;
 let lastSeq = 0;
 let resyncing = false;
@@ -27,7 +29,7 @@ const pending = new Map(); // command + " " + id -> resolve
 const mounts = new Map(); // plugin + "\n" + key -> { snapshot, element, ids, prefix }
 
 // What the page exposes to a test or a console: the carrier state it keeps.
-window.uiView = { mounts, get attachment() { return attachment; }, get lastSeq() { return lastSeq; }, resyncs: 0, gaps: 0, reports: 0 };
+window.uiView = { mounts, abilities: ABILITIES, get session() { return session; }, get attachment() { return attachment; }, get lastSeq() { return lastSeq; }, resyncs: 0, gaps: 0, reports: 0 };
 
 function say(text, kind = "note") {
   const line = document.createElement("div");
@@ -136,6 +138,7 @@ function draw(key, snapshot, held) {
   element.className = "mount";
   element.dataset.plugin = snapshot.plugin;
   element.dataset.key = snapshot.mount.key;
+  element.dataset.digest = snapshot.digest ?? "";
   element.hidden = snapshot.state === "hidden";
   const head = document.createElement("header");
   const title = document.createElement("span");
@@ -435,11 +438,23 @@ function report(mount, path, message) {
 document.getElementById("prompt").addEventListener("submit", (event) => {
   event.preventDefault();
   const input = event.target.elements.message;
-  if (!input.value) return;
+  if (!input.value || attached) return;
   say(input.value, "user");
   request({ type: "prompt", message: input.value });
   input.value = "";
 });
+
+// lost forgets what belonged to a connection that ended: its registry is out of reach, so every mount goes from the
+// page and no reply is waited for. The next `session` attaches to what follows.
+function lost(why) {
+  session = "";
+  attachment = 0;
+  lastSeq = 0;
+  resyncing = false;
+  pending.clear();
+  for (const [key, mount] of mounts) drop(key, mount);
+  state.textContent = why;
+}
 
 const source = new EventSource(`/events?token=${token}`);
 source.addEventListener("session", (event) => {
@@ -447,7 +462,24 @@ source.addEventListener("session", (event) => {
   attach();
 });
 source.addEventListener("message", (event) => onLine(JSON.parse(event.data)));
-source.addEventListener("end", () => {
-  state.textContent = "pig ended";
+// With --connect the bridge says what it does about the session's socket. The page is then a client of a running
+// session's view endpoint, which serves the carrier and nothing else: the prompt goes and one line says why.
+source.addEventListener("endpoint", (event) => {
+  if (!attached) {
+    attached = true;
+    const form = document.getElementById("prompt");
+    form.hidden = true;
+    for (const control of form.elements) control.disabled = true;
+    document.getElementById("attached").hidden = false;
+  }
+  state.textContent = JSON.parse(event.data).reason;
+});
+source.addEventListener("end", (event) => {
+  const end = JSON.parse(event.data);
+  // With --connect the session closed the connection and the bridge opens the next one: the stream stays.
+  if (end.retry) return lost(end.reason);
+  state.textContent = end.reason ?? "pig ended";
   source.close();
 });
+// The stream broke: the bridge cut a page that did not read, or the bridge ended. The browser connects again by itself.
+source.addEventListener("error", () => lost("the stream from the bridge broke; connecting again"));
