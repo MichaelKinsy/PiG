@@ -4664,6 +4664,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/72-resume-very-large-edit-diff.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "+189990 a",
+            "capture_end": "LARGE-EDIT-END"
+          },
+          "reason": "Owned visible surface: A resumed session whose edit result draws 190 000 rows shows its last rows and the message after them, as Pi does from 5b5be2c316 on.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {

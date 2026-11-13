@@ -10264,6 +10264,28 @@
       ]
     },
     {
+      "id": "BF-37c6264",
+      "title": "A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell…",
+      "symptom": "A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell: \"self\"`) no longer fails with `RangeError: Maximum call stack size exceeded` when the tool's result draws about 125,000 rows or more: the bundled Node runtime carries Pi's fix (Pi #12145).",
+      "rootCause": "The sync ledger records tool-execution.ts as unchanged-observable in Go.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell: \"self\"`) no longer fails with `RangeError: Maximum call stack size exceeded` when the tool's result draws about 125,000 rows or more: the bundled Node runtime carries Pi's fix (Pi #12145). PiG's own interactive screen draws tool cards in Go and never had this limit.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "37c6264b53",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "test/parity/scenarios/interactive-rendering/72-resume-very-large-edit-diff.toml"
+      ]
+    },
+    {
       "id": "BF-37d2daa",
       "title": "An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an…",
       "symptom": "An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an empty array (a provider object's or a models store's model), as Pi keeps the authored cost, instead of dropping the member.",
