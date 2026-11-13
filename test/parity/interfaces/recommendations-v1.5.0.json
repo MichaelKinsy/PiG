@@ -43528,7 +43528,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -43539,7 +43539,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/agent#Agent.Transport",
-        "go:github.com/MichaelKinsy/PiG/ai#Transport"
+        "go:github.com/MichaelKinsy/PiG/ai#Transport",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcModeResources.transport"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -100985,7 +100986,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -100996,7 +100997,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/agent#Agent.Transport",
-        "go:github.com/MichaelKinsy/PiG/ai#Transport"
+        "go:github.com/MichaelKinsy/PiG/ai#Transport",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcModeResources.transport"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -171068,7 +171070,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "105 normalized-name Pig candidates are ambiguous."
+        "107 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -171097,6 +171099,8 @@
         "go:github.com/MichaelKinsy/PiG/ai#timeComposer.add",
         "go:github.com/MichaelKinsy/PiG/coding#pathMetadataIndex.add",
         "go:github.com/MichaelKinsy/PiG/coding/cli#authContributionRegistry.add",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#listenControls.add",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#listenHosts.add",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension#registrationRevision.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#workersStarted.Add",

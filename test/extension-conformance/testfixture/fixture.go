@@ -324,10 +324,14 @@ func modelConformanceOptions() map[string]any {
 	}
 }
 
+// processFactoryCalls is a package-level counter the factory increments (D232): every generation in one Go process shares it.
+var processFactoryCalls atomic.Int64
+
 // Extension returns the canonical Go SDK fixture shared by subprocess and
 // fused conformance harnesses.
 func Extension() *sdk.Extension {
 	ext := sdk.New("sdk-fixture")
+	processFactoryCalls.Add(1)
 	// factoryAgentDir is getAgentDir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
 	factoryAgentDir, factoryAgentDirErr := sdk.AgentDir()
 	if factoryAgentDirErr != nil {
@@ -670,6 +674,44 @@ func Extension() *sdk.Extension {
 	}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		text, _ := params["text"].(string)
 		return map[string]string{"content": "echo: " + text}, nil
+	})
+
+	// D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+	var sharedMu sync.Mutex
+	sharedCalls := 0
+	var sharedHeard []string
+	if _, err := ext.Events().On("shared-cells", func(_ sdk.Context, data any) error {
+		from, _ := data.(map[string]any)["from"].(string)
+		sharedMu.Lock()
+		sharedHeard = append(sharedHeard, from)
+		sharedMu.Unlock()
+		return nil
+	}); err != nil {
+		panic(err)
+	}
+	ext.Tool("counter", "This instance's call count", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+		sharedMu.Lock()
+		defer sharedMu.Unlock()
+		sharedCalls++
+		return map[string]string{"content": strconv.Itoa(sharedCalls)}, nil
+	})
+	// Registered only for the module-state row, so the other conformance comparisons see the tool set every SDK fixture shares.
+	if os.Getenv("PIG_FIXTURE_MODULE_STATE") != "" {
+		ext.Tool("module_state", "The factory calls this process's package has seen", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+			return map[string]string{"content": "factoryCalls=" + strconv.FormatInt(processFactoryCalls.Load(), 10)}, nil
+		})
+	}
+	ext.Tool("ping", "Emit on the shared-cells channel", sdk.Schema{"type": "object", "required": []string{"name"}, "properties": map[string]any{"name": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		name, _ := params["name"].(string)
+		if err := ctx.Events().Emit("shared-cells", map[string]any{"from": name}); err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "pinged"}, nil
+	})
+	ext.Tool("received", "What this instance heard on shared-cells", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+		sharedMu.Lock()
+		defer sharedMu.Unlock()
+		return map[string]string{"content": "received=" + strings.Join(sharedHeard, ",")}, nil
 	})
 
 	ext.Tool("update_tool", "Stream two partial results", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {

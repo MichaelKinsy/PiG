@@ -112,11 +112,12 @@ func makePackedUIHarness(t *testing.T, language string) *harness {
 	bridge := subprocess.NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
 	bridge.SetActions(conformanceActions(actions))
-	host := subprocess.NewHost(t.TempDir())
+	host := subprocess.NewHost(harnessHostCwd(t))
 	if rpcRowMode != "" {
 		host.SetMode(rpcRowMode)
 	}
 	host.SetHostInfo(conformanceHostInfo)
+	host.ShareCells(conformanceCellRegistry)
 	host.SetUIBridge(bridge)
 	wire := observeWire(t, host)
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })

@@ -11,7 +11,10 @@ import {
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,
 } from "@earendil-works/pi-coding-agent";
 
+// D232: a module-level counter the factory increments; every generation in one Node process shares it.
+let processFactoryCalls = 0;
 export default function (pi) {
+  processFactoryCalls++;
   pi.ownThinkingRuns(true);
   // factoryAgentDir is getAgentDir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
   const factoryAgentDir = getAgentDir();
@@ -253,6 +256,15 @@ export default function (pi) {
     parameters: { type: "object", required: ["text"], properties: { text: { type: "string", description: "Text to echo" }, offset: { type: "number" } } },
     async execute(_id, params) { return { content: [{ type: "text", text: `echo: ${params.text ?? ""}` }] }; },
   });
+  // D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+  let sharedCalls = 0;
+  const sharedHeard = [];
+  pi.events.on("shared-cells", (data) => sharedHeard.push(data.from));
+  pi.registerTool({ name: "counter", description: "This instance's call count", parameters: { type: "object", properties: {} }, async execute() { return { content: [{ type: "text", text: String(++sharedCalls) }] }; } });
+  // Registered only for the module-state row, so the other conformance comparisons see the tool set every SDK fixture shares.
+  if (process.env.PIG_FIXTURE_MODULE_STATE) pi.registerTool({ name: "module_state", description: "The factory calls this process's module has seen", parameters: { type: "object", properties: {} }, async execute() { return { content: [{ type: "text", text: "factoryCalls=" + processFactoryCalls }] }; } });
+  pi.registerTool({ name: "ping", description: "Emit on the shared-cells channel", parameters: { type: "object", required: ["name"], properties: { name: { type: "string" } } }, async execute(_id, params) { pi.events.emit("shared-cells", { from: params.name }); return { content: [{ type: "text", text: "pinged" }] }; } });
+  pi.registerTool({ name: "received", description: "What this instance heard on shared-cells", parameters: { type: "object", properties: {} }, async execute() { return { content: [{ type: "text", text: "received=" + sharedHeard.join(",") }] }; } });
   let abortObserved = false;
   pi.registerTool({
     name: "update_tool",

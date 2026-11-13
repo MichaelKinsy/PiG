@@ -80,19 +80,27 @@ func startRPCCommandAt(t *testing.T, cwd string, env []string, binary string, ar
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := &rpcProcess{
-		t: t, cmd: cmd, stdin: stdin, stderr: &lockedBuffer{},
-		records: make(chan rpcRecord, 64),
-		budget:  testbudget.Wait(t),
-	}
+	p := newRPCClient(t, stdin, stdout)
+	p.cmd = cmd
 	cmd.Stderr = p.stderr
 	// A descendant that outlives pig and holds the stderr copy open must not hold cleanup and waitForExit: on Windows Kill ends only pig, and Wait would otherwise wait for that descendant with no bound.
 	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	p.scanOutput(stdout)
 	t.Cleanup(p.cleanup(stdout))
+	return p
+}
+
+// newRPCClient is the client of one RPC stream pair: a child process's stdin and stdout, or a --listen connection. It starts reading records at once.
+func newRPCClient(t *testing.T, in io.WriteCloser, out io.Reader) *rpcProcess {
+	t.Helper()
+	p := &rpcProcess{
+		t: t, stdin: in, stderr: &lockedBuffer{},
+		records: make(chan rpcRecord, 64),
+		budget:  testbudget.Wait(t),
+	}
+	p.scanOutput(out)
 	return p
 }
 

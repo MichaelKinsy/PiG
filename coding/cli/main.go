@@ -34,6 +34,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -889,13 +890,15 @@ func Main(args []string, options *MainOptions) {
 	}
 
 	runMode := processAppMode(flags)
-	if runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC {
+	// pig additive (D232): a --listen server skips D175's GOGC 400 start, because resident memory across many sessions is its objective.
+	if (runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC) && flags.Listen == "" {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
 		stopGCPolicy = gcpolicy.Apply()
 		// Deferred after stopProfiles, so it runs first: the exit record counts no watcher.
 		defer stopGCPolicy()
 	}
-	if runMode == appModeRPC {
+	// pig additive (D232): a --listen server skips the rpc cap of 1 P, because one process runs many sessions.
+	if runMode == appModeRPC && flags.Listen == "" {
 		// pig additive (D174): an rpc run schedules on procpolicy.RPCCap Ps unless the environment sets GOMAXPROCS.
 		procpolicy.ApplyRPC()
 	}
@@ -952,6 +955,10 @@ func Main(args []string, options *MainOptions) {
 	signal.Notify(sigCh, syscall.SIGTERM)
 	if runtime.GOOS != "windows" {
 		signal.Notify(sigCh, syscall.SIGHUP)
+	}
+	if flags.Listen != "" {
+		// pig additive (D232): Ctrl+C ends a --listen server like SIGTERM, so the sessions shut down and the socket file is removed.
+		signal.Notify(sigCh, os.Interrupt)
 	}
 	defer signal.Stop(sigCh)
 	go func() {
@@ -1190,6 +1197,11 @@ func Main(args []string, options *MainOptions) {
 			return stageExtensionSDKsFor(ctx, codingagent.ConfigRoot(), startupSDKLockTimeout)
 		},
 	}
+	if flags.Listen != "" {
+		// pig additive (D232): a --listen server's Hosts share cell processes through one registry and build one at a time.
+		builder.cellRegistry = subprocess.NewCellRegistry()
+		builder.buildMu = &sync.Mutex{}
+	}
 	startupExtensions := &startupExtensionSet{}
 	stopStartupExtensions = startupExtensions.close
 	defer startupExtensions.close()
@@ -1377,6 +1389,12 @@ func Main(args []string, options *MainOptions) {
 		codingagent.ReportDiagnostics(startupDiagnostics)
 		timings.PrintTimings()
 		startAutomaticExtensionCacheGC(ctx)
+		if flags.Listen != "" {
+			// pig additive (D232): --listen serves one rpc session per connection.
+			exitProcess(runRPCListen(ctx, flags, activePiglet, rpcModeResources{
+				Builder: builder, Build: build, SessionManager: startupSession.manager, ResumePath: resumePath,
+			}))
+		}
 		exitProcess(runRPCMode(ctx, flags, activePiglet, rpcModeResources{
 			Builder: builder, Build: build, SessionManager: startupSession.manager, ResumePath: resumePath,
 		}))
