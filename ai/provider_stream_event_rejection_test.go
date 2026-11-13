@@ -4,10 +4,19 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 )
+
+// providerStreamEventRejectionCase is one API and credential shape of TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI: run streams one
+// reply under options and returns the final message.
+type providerStreamEventRejectionCase struct {
+	name  string
+	shape string
+	run   func(t *testing.T, options StreamOptions) *AssistantMessage
+}
 
 // Every provider adapter awaits options.onProviderStreamEvent before it maps the event (for await ... { await onProviderStreamEvent(event, model); ... }), so an
 // observer that rejects ends the stream at that event: the stream result is the error with the observer's message, the event is not normalized into content, and no
@@ -24,11 +33,7 @@ func TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI(t *testing.
 	mistralFirst := `{"id":"response-1","choices":[{"index":0,"finish_reason":null,"delta":{"content":"hello"}}]}`
 	mistralSecond := `{"id":"response-1","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`
 
-	cases := []struct {
-		name  string
-		shape string
-		run   func(t *testing.T, options StreamOptions) *AssistantMessage
-	}{
+	cases := []providerStreamEventRejectionCase{
 		{"openai-completions", "API key, custom base URL", func(t *testing.T, options StreamOptions) *AssistantMessage {
 			server := serveSSE(t, sseFrames(completionsFirst, completionsFinal, "[DONE]"))
 			model := &Model{ID: "m", DisplayName: "m", Input: []string{"text"}, Capabilities: ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}, ProviderMeta: ProviderMetadata{API: APIOpenAICompletions, ProviderID: "custom", BaseURL: server.URL}}
@@ -94,17 +99,9 @@ func TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI(t *testing.
 			}
 			return stream.Result()
 		}},
-		{"google-vertex", "OAuth (ADC token), custom base URL", func(t *testing.T, options StreamOptions) *AssistantMessage {
-			server := serveSSE(t, sseFrames(googleFirst, googleSecond))
-			want := mustGeneratedModel(t, "google-vertex", "gemini-3-flash-preview").ToModel()
-			vertex := NewGoogleVertexProvider(GoogleVertexConfig{ModelMetadata: want, Model: want.ID, ProviderID: want.ProviderMeta.ProviderID, Project: "test-project", Location: "us-central1", BaseURL: server.URL})
-			vertex.(*googleVertexProvider).accessToken = func(context.Context, ProviderEnv) (string, error) { return "test-adc", nil }
-			stream, err := vertex.Stream(t.Context(), userTranscript("hello"), options)
-			if err != nil {
-				t.Fatal(err)
-			}
-			return stream.Result()
-		}},
+	}
+	// The Google Vertex case comes from provider_stream_event_rejection_google_vertex_test.go: a Piglet built with pig_strip_google_vertex has no such provider, and this file is built for every Piglet.
+	cases = slices.Concat(cases, providerStreamEventRejectionGoogleVertexCases(googleFirst, googleSecond), []providerStreamEventRejectionCase{
 		{"mistral-conversations", "API key", func(t *testing.T, options StreamOptions) *AssistantMessage {
 			model := mustGeneratedModel(t, "mistral", "mistral-large-latest").ToModel()
 			options.APIKey = "test"
@@ -128,7 +125,7 @@ func TestProviderStreamEventObserverRejectionEndsTheStreamOnEveryAPI(t *testing.
 			}
 			return stream.Result()
 		}},
-	}
+	})
 	for _, tc := range cases {
 		t.Run(tc.name+"/"+tc.shape, func(t *testing.T) {
 			var calls atomic.Int32
