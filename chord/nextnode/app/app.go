@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/next/telemetryingest"
@@ -466,6 +467,27 @@ func inGoBuildCache(path string) bool {
 	return false
 }
 
+// loadingHost is the server host as its HTTP component sees it. Pi's one server host loads the kit's facets and the plugins in one
+// `load`, and until that ended Pi's HTTP component refuses every request and upgrade with 503 (http.ts `#resolve`: the registries
+// are `not_ready`). Here the plugins load in the NodeHost after the server host's own facets (D605), so the host's registries
+// would resolve while the plugins are still loading: a link connected then and held the scripts object's empty set, whose base is
+// none a page runs (a page reconnecting to a restarted server reloaded). The registries are `not_ready` to the component until
+// loaded is closed (the NodeHost's load ended), as before the host's `Load`.
+type loadingHost struct {
+	host.Host
+	loaded <-chan struct{}
+}
+
+// Registry is the host's registry once the server's plugins are loaded; `not_ready` before.
+func (h loadingHost) Registry(ctx context.Context, r registries.Registry[any, any], options host.GetOptions) (*registries.RegistryValueSource, error) {
+	select {
+	case <-h.loaded:
+		return h.Host.Registry(ctx, r, options)
+	default:
+		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeNotReady, Message: "app: the server's plugins are not loaded yet"}, nil)
+	}
+}
+
 func (a *App) start(opened openedServer, ctx context.Context) error {
 	options := a.options
 	limits := options.Limits
@@ -502,7 +524,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if options.Telemetry != nil {
 		httpOptions.Telemetry = options.Telemetry
 	}
-	a.HTTP = chordhttp.CreateHttp(h, httpOptions, ctx)
+	// Closed once the NodeHost is loaded: the server's load, as its HTTP component and its delegation see it.
+	nodeReady := make(chan struct{})
+	a.HTTP = chordhttp.CreateHttp(loadingHost{Host: h, loaded: nodeReady}, httpOptions, ctx)
 	root := options.Root
 	if root == "" {
 		root = "plugins"
@@ -587,7 +611,6 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	// The server's plugins run in a Node subprocess behind this host (D462): the remote types placed on the server that the Go facets
 	// do not serve are the NodeHost's, so the server host delegates them to its link (D605), and serves the union as Pi's one host does.
 	// The link is attached by the first hold that goes over it, as a worker's is; the NodeHost loads after this host.
-	nodeReady := make(chan struct{})
 	var nodeHost atomic.Pointer[plugins.NodeHost]
 	if _, err := h.Delegate(Server, host.RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
