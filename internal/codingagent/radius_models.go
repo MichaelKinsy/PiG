@@ -273,7 +273,7 @@ func (r *ModelRegistry) resolveRadiusModel(providerID, modelID string) (ModelEnt
 	if !found {
 		return entry, found, owned
 	}
-	if credential, ok := r.storedCredential(context.Background(), providerID); ok {
+	if credential, ok := r.storedCredential(providerID); ok {
 		if credential.Type == ai.CredentialOAuth {
 			entry.APIKey = credential.Access
 		} else {
@@ -292,7 +292,13 @@ func radiusCredentialKey(credential ai.Credential) string {
 	return credential.Key
 }
 
-func (r *ModelRegistry) storedCredential(ctx context.Context, providerID string) (ai.Credential, bool) {
+// storedCredential reads providerID's stored credential for a synchronous lookup that has no operation to read in (Resolve, usingOAuth).
+func (r *ModelRegistry) storedCredential(providerID string) (ai.Credential, bool) {
+	return r.storedCredentialIn(context.Background(), providerID)
+}
+
+// storedCredentialIn is storedCredential with its read made in ctx's operation.
+func (r *ModelRegistry) storedCredentialIn(ctx context.Context, providerID string) (ai.Credential, bool) {
 	r.mu.RLock()
 	storage := r.credentialStore
 	r.mu.RUnlock()
@@ -319,7 +325,7 @@ func (r *ModelRegistry) radiusHasAuth(ctx context.Context, providerID string) bo
 			return true
 		}
 	}
-	if _, ok := r.storedCredential(ctx, providerID); ok {
+	if _, ok := r.storedCredentialIn(ctx, providerID); ok {
 		return true
 	}
 	if raw, env, ok := r.radiusConfiguredKey(providerID); ok {
@@ -329,8 +335,8 @@ func (r *ModelRegistry) radiusHasAuth(ctx context.Context, providerID string) bo
 }
 
 // radiusEntries returns the effective models of every Radius provider,
-// limited to providers with configured auth when authenticated is set.
-func (r *ModelRegistry) radiusEntries(ctx context.Context, authenticated bool) []ModelEntry {
+// limited to the providers hasAuth accepts when it is set.
+func (r *ModelRegistry) radiusEntries(hasAuth func(providerID string) bool) []ModelEntry {
 	r.mu.RLock()
 	providers := make([]*ai.RadiusProvider, 0, len(r.radius))
 	for providerID := range r.radius {
@@ -341,7 +347,7 @@ func (r *ModelRegistry) radiusEntries(ctx context.Context, authenticated bool) [
 	r.mu.RUnlock()
 	var entries []ModelEntry
 	for _, provider := range providers {
-		if authenticated && !r.radiusHasAuth(ctx, provider.ID()) {
+		if hasAuth != nil && !hasAuth(provider.ID()) {
 			continue
 		}
 		r.mu.RLock()
