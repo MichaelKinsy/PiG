@@ -57,6 +57,14 @@ A client that stops reading costs the host a bounded queue and nothing else. No 
 
 `ui_view_report` tells the plugin that the client could not draw part of a mount, or did not give it the focus its `focus` record asked for: `code` is undrawn, unsupported, limit or unfocused and `severity` info, warning or error. The plugin reads it with `ui.view.diagnostics`.
 
+## Dismissal
+
+One entry of a snapshot's `intents` may carry `dismiss: true`. It is the intent the plugin wants when the user dismisses a mount of the `dialog` or `overlay` slot (Escape, a close control, a click outside: the gesture is the client's). The host has checked it: at most one intent of a mount has the member, it names no node and its `arg` accepts `{}`.
+
+- When the user dismisses such a mount, send `ui_view_intent` for that intent on the ref you drew, with `arg: {}` and no `nodeKey`. Keep drawing the mount: the plugin's handler closes it, and the snapshot that follows (removed, finished or hidden) is what takes it away. An outcome other than done leaves it open.
+- A mount without such an intent keeps the earlier rule: Escape leaves the mount, and it stays open until a key or control of the plugin closes it. A client that does not read the member does the same for every mount.
+- In any other slot the member has no effect: do not raise the intent for the user's leaving a panel.
+
 ## Bindings
 
 A snapshot's `bindings [{key | gesture, intent, arg?, name?}]` tie keys and gestures to intents of the mount that name no node. The host has checked them (the record is in [additive-features.md](additive-features.md), D614, "Bindings") and sends every client all of them; firing them is the client's part:
