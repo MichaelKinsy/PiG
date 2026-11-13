@@ -15,7 +15,9 @@ import (
 
 // windowsRelativize is the relativize of a Windows find call: find.ts's relativizeFindResultPath with path.win32.
 func windowsRelativize(searchPath string) func(string) string {
-	return func(line string) string { return relativizeFindResultPathFor(line, searchPath, true, nodepath.Process()) }
+	return func(line string) string {
+		return relativizeFindResultPathFor(line, searchPath, true, nodepath.Process())
+	}
 }
 
 // Pi v1.5.1 463b8f89 (#11972, fixes #9262) 3302-find-path-glob.test.ts: the cases beyond the shared fixture that run on every platform.
@@ -201,7 +203,7 @@ func TestFindPathFilterStopsFdAtTheLimit(t *testing.T) {
 	stops := 0
 	filter := &findPathFilter{matcher: inv.pathMatcher, relativize: windowsRelativize(`C:\s`), limit: 2, stop: func() { stops++ }}
 	// Chunks split a line, mix in non-matching entries and CRLF, and end with one entry past the limit.
-	for _, chunk := range []string{`C:\s\src\a.t`, "s\r\n" + `C:\s\other\x.ts` + "\n" + `C:\s\pkg\src\x.ts` + "\n" + `C:\s\src\b`, ".ts\n  \n" + `C:\s\src\c.ts` + "\n", `C:\s\src\d.ts` + "\n" + `C:\s\src\e.ts` + "\n"} {
+	for _, chunk := range []string{`C:\s\src\a.t`, "s\r\n" + `C:\s\lib\x.ts` + "\n" + `C:\s\pkg\src\x.ts` + "\n" + `C:\s\src\b`, ".ts\n  \n" + `C:\s\src\c.ts` + "\n", `C:\s\src\d.ts` + "\n" + `C:\s\src\e.ts` + "\n"} {
 		if n, err := filter.Write([]byte(chunk)); n != len(chunk) || err != nil {
 			t.Fatalf("Write(%q) = %d, %v", chunk, n, err)
 		}

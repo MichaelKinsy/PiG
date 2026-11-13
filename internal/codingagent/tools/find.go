@@ -411,8 +411,8 @@ type findPathFilter struct {
 	matcher *minimatch.Minimatch
 	// relativize, when set, turns a listed path into the path relative to the search path, which the matcher of a relative pattern matches.
 	relativize func(line string) string
-	limit   float64
-	stop    func()
+	limit      float64
+	stop       func()
 
 	pending []byte
 	count   float64
