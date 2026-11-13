@@ -177,7 +177,7 @@ func (r *row) readLine(line string, old *row, cols, room int, symbols *symbolWid
 	pens = append(pens, pen{})
 	uncertain := -1
 	var p pen
-	var over, at cell // the over count and the pen's index, in their fields
+	var over, at cell          // the over count and the pen's index, in their fields
 	col, start, ink := 0, 0, 0 // ink: the cells so far through the last that is not a blank under the default pen
 	// tail is the first of old's cells that may still be taken over, and splice where in line it would start.
 	tail, splice, moved := 0, len(line)+1, 0

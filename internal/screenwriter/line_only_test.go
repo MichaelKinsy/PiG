@@ -4,6 +4,7 @@
 package screenwriter
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand/v2"
 	"slices"
@@ -39,7 +40,7 @@ func sameRows(later, now *Writer) string {
 		if !a.known {
 			continue
 		}
-		if string(a.line) != string(b.line) || !slices.Equal(a.cells, b.cells) || !slices.Equal(a.pens, b.pens) || a.width != b.width || a.endPen != b.endPen || a.uncertain != b.uncertain || a.inked != b.inked {
+		if !bytes.Equal(a.line, b.line) || !slices.Equal(a.cells, b.cells) || !slices.Equal(a.pens, b.pens) || a.width != b.width || a.endPen != b.endPen || a.uncertain != b.uncertain || a.inked != b.inked {
 			return fmt.Sprintf("row %d: the line %q read later is not the line %q read at once, cell for cell", i, a.line, b.line)
 		}
 	}
