@@ -316,3 +316,15 @@ func comparePayload(t *testing.T, label, got, want string, failures *int, classe
 		t.Errorf("%s:%s", label, diff)
 	}
 }
+
+// comparePayloadBytes counts a payload that holds Pi's JSON with the members of an object in another order, and reports the first few.
+// JSON.stringify writes the members of an object in the order Pi's code created them, and that order is on the wire.
+func comparePayloadBytes(t *testing.T, label, got, want string, reordered *int) {
+	t.Helper()
+	if got == want || payloadDiff(got, want) != "" {
+		return
+	}
+	if *reordered++; *reordered <= 4 {
+		t.Errorf("%s: %s", label, wireDifference(got, want))
+	}
+}

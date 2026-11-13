@@ -4393,9 +4393,11 @@ func (b *UIBridge) handleComplete(ctx context.Context, actions *HostCallbacks, a
 		}
 		var fields struct {
 			RequestMetadata json.RawMessage `json:"requestMetadata"`
+			ToolChoice      json.RawMessage `json:"toolChoice"`
 		}
 		if json.Unmarshal(p.Request, &fields) == nil {
 			orderRequestMetadata(request, fields.RequestMetadata)
+			keepToolChoiceText(request, fields.ToolChoice)
 		}
 	}
 	if actions == nil || actions.Complete == nil {
@@ -4422,6 +4424,14 @@ func orderRequestMetadata(request map[string]any, raw json.RawMessage) {
 	}
 }
 
+// keepToolChoiceText replaces a toolChoice object with the JSON text the extension sent. Pi hands the caller's object to the provider, which
+// writes its members in the caller's order (anthropic-messages.ts:1587-1593), and a Go map has no order. A name or null stays as decoded.
+func keepToolChoiceText(request map[string]any, raw json.RawMessage) {
+	if request != nil && orderedjson.IsObject(raw) {
+		request["toolChoice"] = raw
+	}
+}
+
 func decodeModelStreamRequest(raw json.RawMessage) (map[string]any, error) {
 	var request map[string]any
 	if err := json.Unmarshal(raw, &request); err != nil {
@@ -4432,6 +4442,7 @@ func decodeModelStreamRequest(raw json.RawMessage) (map[string]any, error) {
 		return nil, err
 	}
 	orderRequestMetadata(request, fields["requestMetadata"])
+	keepToolChoiceText(request, fields["toolChoice"])
 	var rawMessages []json.RawMessage
 	if messages, exists := fields["messages"]; exists {
 		if err := json.Unmarshal(messages, &rawMessages); err != nil {
