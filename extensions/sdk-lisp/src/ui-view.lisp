@@ -98,7 +98,7 @@ of 8 clauses."
   "A kit VIEW a client is sent in place of the mount's view when WHEN (a VIEW-WHEN) holds for that client's claims. DRAWING is a JSON object."
   (list when view drawing))
 
-(defun view-content-args (ctx view intents assets fallback &key title alternatives drawing a11y focus)
+(defun view-content-args (ctx view intents assets fallback &key title alternatives drawing a11y focus bindings)
   (let* ((ext (ctx-extension ctx))
          (args (obj "view" (view-inline-wire (kit-encode ext view)))))
     (when (and title (string/= title "")) (setf (gethash "title" args) title))
@@ -114,6 +114,7 @@ of 8 clauses."
     (when drawing (setf (gethash "drawing" args) drawing))
     (when a11y (setf (gethash "a11y" args) (coerce a11y 'simple-vector)))
     (when focus (setf (gethash "focus" args) (coerce focus 'simple-vector)))
+    (when bindings (setf (gethash "bindings" args) (coerce bindings 'simple-vector)))
     (when intents (setf (gethash "intents" args) (coerce intents 'simple-vector)))
     (when assets (setf (gethash "assets" args) (coerce assets 'simple-vector)))
     (when fallback
@@ -128,20 +129,25 @@ of 8 clauses."
       (%view-status (view-ref (jget mount "key" "") (jget mount "epoch" 0) (jget mount "rev" 0))
                     (jget result "state" "") (jget result "reason" "") (jget result "result")))))
 
-(defun ctx-mount-view (ctx key slot view &key target title intents assets fallback alternatives drawing a11y focus)
+(defun ctx-mount-view (ctx key slot view &key target title intents assets fallback alternatives drawing a11y focus bindings)
   "Mount VIEW (a kit view) under KEY in SLOT, a slot the attached client draws. TARGET is a VIEW-TARGET, INTENTS VIEW-INTENTs, ASSETS
 VIEW-ASSETs, FALLBACK a kit node the client draws when it cannot draw the view. ALTERNATIVES are VIEW-ALTERNATIVEs (at most 8; a client
 draws the first whose predicate holds for its claims), DRAWING a JSON object (\"profile\" \"scene\" with \"shapes\" or \"pixels\" with
 \"pixels\", and \"regions\"), A11Y and FOCUS lists of JSON objects naming view nodes by id (at most 256 each); a focus object's
-\"request\" is \"mount\" or \"update\". TITLE is the short text a client labels the mount with (at most 64 bytes on one line)."
-  (let ((args (view-content-args ctx view intents assets fallback :title title :alternatives alternatives :drawing drawing :a11y a11y :focus focus)))
+\"request\" is \"mount\" or \"update\". TITLE is the short text a client labels the mount with (at most 64 bytes on one line). BINDINGS
+is a list of JSON objects (at most 32), each with \"key\" (a key id such as \"d\" or \"shift+left\") or \"gesture\" (\"swipe-left\",
+\"swipe-right\", \"swipe-up\", \"swipe-down\"), the \"intent\" it raises (one that names no node), and optionally \"arg\" and \"name\"; a
+client fires one only while the mount holds the focus and the focused node did not take the key."
+  (let ((args (view-content-args ctx view intents assets fallback :title title :alternatives alternatives :drawing drawing :a11y a11y :focus focus
+                                 :bindings bindings)))
     (setf (gethash "key" args) key (gethash "slot" args) slot)
     (when target (setf (gethash "target" args) target))
     (view-call ctx "ui.view.mount" args)))
 
-(defun ctx-update-view (ctx mount view &key title intents assets fallback alternatives drawing a11y focus)
+(defun ctx-update-view (ctx mount view &key title intents assets fallback alternatives drawing a11y focus bindings)
   "Replace the content of MOUNT, a VIEW-REF, its TITLE included. Signals code \"stale\" unless MOUNT carries the epoch and rev the last operation returned."
-  (let ((args (view-content-args ctx view intents assets fallback :title title :alternatives alternatives :drawing drawing :a11y a11y :focus focus)))
+  (let ((args (view-content-args ctx view intents assets fallback :title title :alternatives alternatives :drawing drawing :a11y a11y :focus focus
+                                 :bindings bindings)))
     (setf (gethash "mount" args) (view-ref-wire mount))
     (view-call ctx "ui.view.update" args)))
 

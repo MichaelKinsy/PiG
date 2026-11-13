@@ -124,7 +124,8 @@ type IntentDecl struct {
 }
 
 // Content is what a mount shows: the D107 view, the intents its nodes raise, its assets and a degrade node; and beside
-// them the alternatives a client's claims select from, a drawing, and the a11y and focus records of the view's nodes.
+// them the alternatives a client's claims select from, a drawing, the a11y and focus records of the view's nodes, and
+// the bindings of keys and gestures to its intents.
 // Title is the short text a client labels the mount with, in a tab or a list of views.
 type Content struct {
 	Title string          `json:"title,omitempty"`
@@ -141,24 +142,30 @@ type Content struct {
 	A11y []A11y `json:"a11y,omitempty"`
 	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
 	Focus []Focus `json:"focus,omitempty"`
+	//portlint:allow emptydrop the D614 records are PiG-owned with no Pi counterpart, and an absent and an empty list mean the same: none
+	Bindings []Binding `json:"bindings,omitempty"`
 }
 
 // MountArgs is the ui.view.mount record. Answering is not a member of the record: a transport sets it to the ticket of
-// the intent whose handler made the call (see [Registry.Invoke]).
+// the intent whose handler made the call (see [Registry.Invoke]). A record is held to the closed shape once: by
+// [DecodeMount] when it came off the wire, by [Registry.Mount] when it was built in Go.
 type MountArgs struct {
 	Key    string  `json:"key"`
 	Slot   Slot    `json:"slot"`
 	Target *Target `json:"target,omitempty"`
 	Content
 	Answering string `json:"-"`
+	checked   bool
 }
 
 // UpdateArgs is the ui.view.update record: a full replacement of the content of the named revision. Answering is not a
-// member of the record: a transport sets it to the ticket of the intent whose handler made the call.
+// member of the record: a transport sets it to the ticket of the intent whose handler made the call. A record is held to
+// the closed shape once: by [DecodeUpdate] when it came off the wire, by [Registry.Update] when it was built in Go.
 type UpdateArgs struct {
 	Mount Ref `json:"mount"`
 	Content
 	Answering string `json:"-"`
+	checked   bool
 }
 
 // RefArgs is the record of hide, show and remove. Rev is not compared.
@@ -211,19 +218,36 @@ func DecodeMount(raw []byte) (MountArgs, *Error) {
 	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
+	err := a.check()
+	return a, err
+}
+
+// check holds a mount record to the closed shape and marks the record that passed, so that it is checked once whichever
+// way it reaches the registry.
+func (a *MountArgs) check() *Error {
+	if a.checked {
+		return nil
+	}
 	if n := len(a.Key); n < 1 || n > 128 {
-		return a, fail(CodeInvalid, "key must be 1..128 bytes")
+		return fail(CodeInvalid, "key must be 1..128 bytes")
+	}
+	if offLabel(a.Key) {
+		return fail(CodeInvalid, "key holds %s", labelFault)
 	}
 	if !slices.Contains(slots, a.Slot) {
-		return a, fail(CodeInvalid, "unknown slot %q", a.Slot)
+		return fail(CodeInvalid, "unknown slot %q", a.Slot)
 	}
 	if a.Target != nil && !validTarget(a.Slot, *a.Target) {
-		return a, fail(CodeInvalid, "target does not fit slot %q", a.Slot)
+		return fail(CodeInvalid, "target does not fit slot %q", a.Slot)
 	}
 	if a.Target == nil && (a.Slot == SlotToolCard || a.Slot == SlotMessage || a.Slot == SlotEntry) {
-		return a, fail(CodeInvalid, "slot %q needs a target", a.Slot)
+		return fail(CodeInvalid, "slot %q needs a target", a.Slot)
 	}
-	return a, a.check()
+	if err := a.Content.check(); err != nil {
+		return err
+	}
+	a.checked = true
+	return nil
 }
 
 func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
@@ -232,10 +256,23 @@ func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
 	if err := closed(dec, dec.Decode(&a)); err != nil {
 		return a, err
 	}
-	if a.Mount.Key == "" {
-		return a, fail(CodeInvalid, "mount.key is required")
+	err := a.check()
+	return a, err
+}
+
+// check holds an update record to the closed shape and marks the record that passed, as [MountArgs.check] does.
+func (a *UpdateArgs) check() *Error {
+	if a.checked {
+		return nil
 	}
-	return a, a.check()
+	if a.Mount.Key == "" {
+		return fail(CodeInvalid, "mount.key is required")
+	}
+	if err := a.Content.check(); err != nil {
+		return err
+	}
+	a.checked = true
+	return nil
 }
 
 func DecodeRef(raw []byte) (RefArgs, *Error) {
@@ -324,16 +361,30 @@ func hasRoot(raw json.RawMessage) bool {
 	return len(raw) > 0 && json.Unmarshal(raw, &view) == nil && len(view.Root) > 0
 }
 
-// pig additive (D614): a mount's title is at most 64 bytes, on one line: it holds no C0 or C1 control character (ESC and
-// the line breaks are among them) and neither U+2028 nor U+2029. An empty title is no title.
+// pig additive (D614): a mount's title is at most 64 bytes and a label (offLabel). An empty title is no title.
 const maxTitle = 64
+
+// labelFault says what a label must not hold.
+const labelFault = "a control character, a line separator or a control that reorders text"
+
+// pig additive (D614): a label is text a client writes on one line among its own: a mount's title, a mount's key, which
+// labels a mount that has no title, and a binding's name. offLabel reports whether s cannot be one. A label holds no C0
+// or C1 control character (ESC and the line breaks are among them), neither U+2028 nor U+2029, and none of the controls
+// that reorder or hide the text around them, with which one label could pass for another: the embeddings and overrides
+// U+202A to U+202E and the isolates U+2066 to U+2069. The direction marks U+200E, U+200F and U+061C are not among them:
+// Arabic and Hebrew text beside Latin holds them, and they reorder nothing on their own.
+func offLabel(s string) bool {
+	return strings.ContainsFunc(s, func(r rune) bool {
+		return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' || (r >= '\u202a' && r <= '\u202e') || (r >= '\u2066' && r <= '\u2069')
+	})
+}
 
 func (c *Content) check() *Error {
 	if len(c.Title) > maxTitle {
 		return fail(CodeInvalid, "title is %d bytes, at most %d", len(c.Title), maxTitle)
 	}
-	if strings.ContainsFunc(c.Title, func(r rune) bool { return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' }) {
-		return fail(CodeInvalid, "title holds a control character or a line separator")
+	if offLabel(c.Title) {
+		return fail(CodeInvalid, "title holds %s", labelFault)
 	}
 	if !hasRoot(c.View) {
 		return fail(CodeInvalid, "view must be an object with a root")
@@ -416,6 +467,9 @@ func (c *Content) check() *Error {
 		return fail(CodeInvalid, "%v", err)
 	}
 	if err := checkFocus(c.Focus); err != nil {
+		return fail(CodeInvalid, "%v", err)
+	}
+	if err := checkBindings(c.Bindings, c.Intents); err != nil {
 		return fail(CodeInvalid, "%v", err)
 	}
 	return nil
@@ -796,6 +850,11 @@ func fits(a *ClientAbilities, c *Content, m measured, d *Drawing) *misfit {
 	if len(c.Intents) > 0 && !a.Input.Keyboard && !a.Input.Pointer && !a.Input.Text {
 		return &misfit{code: CodeUnsupported, message: fmt.Sprintf("the client delivers no input, so intent %q cannot be raised", c.Intents[0].Name)}
 	}
+	for i := range c.Bindings {
+		if n := len(c.Bindings[i].Arg); n > a.Limits.IntentArgBytes {
+			return overLimit("binding argument bytes", n, a.Limits.IntentArgBytes)
+		}
+	}
 	if d == nil {
 		return nil
 	}
@@ -867,6 +926,9 @@ func (r *Registry) admit(slot Slot, mounting bool, c *Content, cands []measured)
 // Mount makes a new mount for plugin. A key that is live or hidden is taken; a key whose mount ended can be mounted again
 // under a new epoch.
 func (r *Registry) Mount(plugin string, a MountArgs) (Status, *Error) {
+	if err := a.check(); err != nil {
+		return Status{}, err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := ownerKey{plugin, a.Key}
@@ -932,6 +994,10 @@ func (m *mount) rejected(path string, err *Error) *Error {
 // Update replaces the content of a live or hidden mount. It is rejected as stale unless the epoch and rev are current,
 // so an update computed from an old snapshot never overwrites a newer one.
 func (r *Registry) Update(plugin string, a UpdateArgs) (Status, *Error) {
+	if err := a.check(); err != nil {
+		r.refused(plugin, "update", a.Mount, err)
+		return Status{}, err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	m, err := r.find(plugin, a.Mount.Key, a.Mount.Epoch)

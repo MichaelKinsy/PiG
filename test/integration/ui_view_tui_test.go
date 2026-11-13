@@ -392,3 +392,35 @@ func TestUIViewPanelsAreTabs(t *testing.T) {
 		})
 	}
 }
+
+// A mount's key bindings in a real session: the bound key is the editor's until the user enters the mount with F6; then
+// the hint row names it, the key raises the intent with the binding's argument, or {} without one, and the extension's
+// handler shows what it was given. Escape leaves the mount and the hint row goes. In both TUI modes.
+func TestUIViewBindingsFireFromTheFocusedMount(t *testing.T) {
+	for _, mode := range []string{"fullscreen", "regular"} {
+		t.Run(mode, func(t *testing.T) {
+			r := startUIView(t, "on.yaml", mode, true)
+			r.send("/vbind\r")
+			if pane := r.settle("bind rows"); strings.Contains(pane, "d Day") {
+				t.Fatalf("the hint row is drawn before the mount holds the focus:\n%s", pane)
+			}
+			r.send("d")
+			if pane := r.settle(); strings.Contains(pane, "bound {") {
+				t.Fatalf("a binding fired while the editor held the focus:\n%s", pane)
+			}
+			r.sendKey("BSpace")
+			r.sendKey("F6")
+			r.settle("d Day", "bind rows")
+			r.send("d")
+			r.settle(`bound {"n":7}`, "d Day")
+			r.send("w")
+			r.settle("bound {}", "d Day")
+			r.sendKey("Escape")
+			r.gone("d Day")
+			r.send("d")
+			if pane := r.settle(); !strings.Contains(pane, "bound {}") || strings.Contains(pane, `bound {"n":7}`) {
+				t.Fatalf("after Escape the bound key changed the panel:\n%s", pane)
+			}
+		})
+	}
+}

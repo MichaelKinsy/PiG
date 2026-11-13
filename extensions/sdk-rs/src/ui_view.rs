@@ -156,6 +156,8 @@ pub struct ViewMount {
     pub a11y: Vec<ViewA11y>,
     /// At most 256 entries; at most one requests the focus.
     pub focus: Vec<ViewFocus>,
+    /// At most 32 entries; a key or a gesture is bound once.
+    pub bindings: Vec<ViewBinding>,
 }
 
 /// The argument of [`Context::update_view`]: a full replacement of the content of the revision `mount` names.
@@ -174,6 +176,8 @@ pub struct ViewUpdate {
     pub a11y: Vec<ViewA11y>,
     /// At most 256 entries; at most one requests the focus.
     pub focus: Vec<ViewFocus>,
+    /// At most 32 entries; a key or a gesture is bound once.
+    pub bindings: Vec<ViewBinding>,
 }
 
 /// Bounds of one mount on the attached client.
@@ -632,6 +636,24 @@ pub struct ViewFocus {
     pub restore: String,
 }
 
+/// Ties a key or a gesture to an intent of the same content that names no node; a client fires it only while the mount
+/// holds the focus and the focused node did not take the key. Exactly one of `key` and `gesture` is set. `key` is a key
+/// id as `register_shortcut` writes it (`d`, `shift+left`, `ctrl+shift+p`); `gesture` is `swipe-left`, `swipe-right`,
+/// `swipe-up` or `swipe-down`. `arg` is the constant argument the intent is raised with (`{}` when `None`) and `name`
+/// what a client shows for the binding.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct ViewBinding {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub gesture: String,
+    pub intent: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arg: Option<Value>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub name: String,
+}
+
 /// One diagnostic of a mount: an operation the host rejected (`invalid`, `unsupported`, `limit`, `stale`,
 /// `terminal`), an intent it ended (`refused`, `failed`, `timeout`, `stale`), a part a client could not draw
 /// (`undrawn`) or a focus request a client did not grant (`unfocused`). `count` is how often it happened.
@@ -670,6 +692,7 @@ struct ViewParts<'a> {
     drawing: Option<&'a ViewDrawing>,
     a11y: &'a [ViewA11y],
     focus: &'a [ViewFocus],
+    bindings: &'a [ViewBinding],
 }
 
 impl Context {
@@ -701,6 +724,7 @@ impl Context {
             drawing,
             a11y,
             focus,
+            bindings,
         } = parts;
         let mut out = Map::new();
         out.insert("view".into(), self.view_wire(view)?);
@@ -742,6 +766,12 @@ impl Context {
             out.insert(
                 "focus".into(),
                 serde_json::to_value(focus).map_err(transport)?,
+            );
+        }
+        if !bindings.is_empty() {
+            out.insert(
+                "bindings".into(),
+                serde_json::to_value(bindings).map_err(transport)?,
             );
         }
         if !intents.is_empty() {
@@ -796,6 +826,7 @@ impl Context {
             drawing: mount.drawing.as_ref(),
             a11y: &mount.a11y,
             focus: &mount.focus,
+            bindings: &mount.bindings,
         })?;
         args.insert("key".into(), Value::String(mount.key));
         args.insert("slot".into(), Value::String(mount.slot));
@@ -821,6 +852,7 @@ impl Context {
             drawing: update.drawing.as_ref(),
             a11y: &update.a11y,
             focus: &update.focus,
+            bindings: &update.bindings,
         })?;
         args.insert(
             "mount".into(),
@@ -1080,6 +1112,24 @@ mod tests {
             })
             .unwrap(),
             json!({"node": "n", "request": "update"})
+        );
+        assert_eq!(
+            serde_json::to_value([
+                ViewBinding {
+                    key: "shift+left".into(),
+                    intent: "x.page".into(),
+                    arg: Some(json!({})),
+                    name: "Back".into(),
+                    ..Default::default()
+                },
+                ViewBinding {
+                    gesture: "swipe-left".into(),
+                    intent: "x.page".into(),
+                    ..Default::default()
+                },
+            ])
+            .unwrap(),
+            json!([{"key": "shift+left", "intent": "x.page", "arg": {}, "name": "Back"}, {"gesture": "swipe-left", "intent": "x.page"}])
         );
         let state = ViewState::default();
         let snapshot = json!({"uiAbilities": {"claims": [{"name": "display.colors", "value": 4242}], "slotClaims": [{"slot": "panel", "claims": [{"name": "display.colors", "value": 77}]}], "drawing": {"profiles": ["scene"], "shapes": 5, "pixels": 16}}});
