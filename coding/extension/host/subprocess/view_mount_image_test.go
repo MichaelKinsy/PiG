@@ -92,7 +92,7 @@ func imageTerminal(t *testing.T, protocol tui.ImageProtocol) {
 	tui.SetCellDimensions(tui.CellDimensions{WidthPx: 10, HeightPx: 20})
 }
 
-func acceptView(t *testing.T, s *MountSurface, view json.RawMessage) {
+func acceptMountView(t *testing.T, s *MountSurface, view json.RawMessage) {
 	t.Helper()
 	if err := s.Accept(view, ""); err != nil {
 		t.Fatalf("accept: %v", err)
@@ -182,7 +182,7 @@ func TestMountImageIsPreparedOffTheLoopAndTransmittedOnce(t *testing.T) {
 	p := newImageProbe(true)
 	s := p.surface()
 	defer s.Close()
-	acceptView(t, s, mountPhoto(t, "round 1", `,"maxWidthCells":20`))
+	acceptMountView(t, s, mountPhoto(t, "round 1", `,"maxWidthCells":20`))
 	first := s.Render(40)
 	if drawn := drawnRows(first); len(drawn) != 2 || !strings.Contains(drawn[0], "round 1") || !strings.Contains(drawn[1], "below") {
 		t.Fatalf("before the photograph is prepared the mount draws %q, want its two texts and an empty row", first)
@@ -220,13 +220,13 @@ func TestMountImageUpdateSecondMountAndEnd(t *testing.T) {
 	imageTerminal(t, tui.ImageProtocolKitty)
 	p := newImageProbe(true)
 	s := p.surface()
-	acceptView(t, s, mountPhoto(t, "round 1", `,"maxWidthCells":20`))
+	acceptMountView(t, s, mountPhoto(t, "round 1", `,"maxWidthCells":20`))
 	s.Render(40)
 	p.run()
 	s.Render(40)
 	id, _, _ := transmission(t, p.written[0])
 
-	acceptView(t, s, mountPhoto(t, "round 2", `,"maxWidthCells":20`))
+	acceptMountView(t, s, mountPhoto(t, "round 2", `,"maxWidthCells":20`))
 	got := s.Render(40)
 	if len(p.written) != 1 || p.conversions != 1 || len(p.work) != 0 {
 		t.Fatalf("an update that keeps the photograph wrote %q, converted %d times, asked for %d pieces of work", p.written[1:], p.conversions-1, len(p.work))
@@ -236,7 +236,7 @@ func TestMountImageUpdateSecondMountAndEnd(t *testing.T) {
 	}
 
 	second := p.surface()
-	acceptView(t, second, mountPhoto(t, "another mount", `,"maxWidthCells":20`))
+	acceptMountView(t, second, mountPhoto(t, "another mount", `,"maxWidthCells":20`))
 	if got := second.Render(40); len(placeholderRows(t, got, id, 20)) != 10 || len(p.written) != 1 {
 		t.Fatalf("a second mount of the photograph wrote %q", p.written[1:])
 	}
@@ -274,7 +274,7 @@ func TestMountImageIsNoTallerThanItsSlot(t *testing.T) {
 	p := newImageProbe(true)
 	s := p.surface()
 	defer s.Close()
-	acceptView(t, s, mountPhoto(t, "round 1", ""))
+	acceptMountView(t, s, mountPhoto(t, "round 1", ""))
 	s.Render(80)
 	p.run()
 	s.Render(80)
@@ -293,7 +293,7 @@ func TestMountImageRowsPerTerminal(t *testing.T) {
 		p := newImageProbe(false)
 		s := p.surface()
 		t.Cleanup(s.Close)
-		acceptView(t, s, mountPhoto(t, "round 1", `,"maxWidthCells":20`))
+		acceptMountView(t, s, mountPhoto(t, "round 1", `,"maxWidthCells":20`))
 		s.Render(80)
 		p.run()
 		return p, s, s.Render(80)
@@ -320,7 +320,7 @@ func TestMountImageRowsPerTerminal(t *testing.T) {
 		if n != 1 || id == nil || !strings.Contains(row, "iVBOR") || p.conversions != 1 || len(p.written) != 0 {
 			t.Fatalf("%d rows carry a Kitty image (%.60q), %d conversions, %d writes; want one PNG with an id, 1 and 0", n, row, p.conversions, len(p.written))
 		}
-		acceptView(t, s, mountPhoto(t, "round 2", `,"maxWidthCells":20`))
+		acceptMountView(t, s, mountPhoto(t, "round 2", `,"maxWidthCells":20`))
 		_, row = count(s.Render(80), "\x1b_G")
 		if again := regexp.MustCompile(`[,G]i=(\d+)`).FindStringSubmatch(row); again == nil || again[1] != id[1] || p.conversions != 1 {
 			t.Fatalf("after an update the image is %v (was %v) and was converted %d times, want the same id and once", again, id, p.conversions)
