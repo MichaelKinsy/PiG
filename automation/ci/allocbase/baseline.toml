@@ -4330,13 +4330,63 @@ allocs = 0
 
 [[benchmark]]
 package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/col1000"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/col1000_marker"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/marker"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/markers2"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/plain"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/styled"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/tab"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/thai"
+allocs = 2
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/wide"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkApplyLineReset/wide_marker"
+allocs = 1
+
+[[benchmark]]
+package = "./tui/widthx"
 benchmark = "BenchmarkReviewTranscript/ASCII/VisibleWidth"
 allocs = 0
 
 [[benchmark]]
 package = "./tui/widthx"
 benchmark = "BenchmarkReviewTranscript/ASCII/Wrap"
-allocs = 37902
+allocs = 9230
 
 [[benchmark]]
 package = "./tui/widthx"
@@ -4346,7 +4396,7 @@ allocs = 0
 [[benchmark]]
 package = "./tui/widthx"
 benchmark = "BenchmarkReviewTranscript/Styled/Wrap"
-allocs = 28686
+allocs = 9230
 
 [[benchmark]]
 package = "./tui/widthx"
@@ -4356,7 +4406,7 @@ allocs = 2
 [[benchmark]]
 package = "./tui/widthx"
 benchmark = "BenchmarkReviewTranscript/Unicode/Wrap"
-allocs = 37902
+allocs = 10254
 
 [[benchmark]]
 package = "./tui/widthx"
@@ -4367,4 +4417,19 @@ allocs = 0
 package = "./tui/widthx"
 benchmark = "BenchmarkVisibleWidth_Styled"
 allocs = 0
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkWrapTextWithAnsi/inline"
+allocs = 27
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkWrapTextWithAnsi/plain"
+allocs = 26
+
+[[benchmark]]
+package = "./tui/widthx"
+benchmark = "BenchmarkWrapTextWithAnsi/styled"
+allocs = 61
 
