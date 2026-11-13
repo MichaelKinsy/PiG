@@ -530,6 +530,7 @@ type ReadyPayload struct {
 // costs the SDK nothing in the size of the registry. It is
 // sent with [ReadyPayload] at startup and re-sent via "state_update"
 // notifies whenever the host knows it has changed.
+// Order: the ready payload is a connection's first state. The Host writes no state_update to a connection before its ready (Conn.withholdState), and pushes a change the ready's snapshot missed right after it. An SDK that reads a state_update before the ready applies it before the ready's snapshot and goes on loading.
 // State fields carry explicit empty/null values so a snapshot clears prior values; session log pages remain incremental. A state_update omits commands and systemPromptOptions while the recipient already holds them byte for byte; the ready state always carries them.
 type StatePayload struct {
 	// Commands is the wire form of the slash-command catalog ([]CommandInfo),

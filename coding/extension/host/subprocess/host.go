@@ -699,7 +699,7 @@ type managedExt struct {
 	// a push the host would otherwise skip still corrects the runtime. A cache
 	// from an older generation is not trusted.
 	runtimeStateGen atomic.Uint64
-	// pushedStateEpoch is the hostStateEpoch the last completed push to this extension began at: every change up to it is in a state this extension received.
+	// pushedStateEpoch is the hostStateEpoch the last state this extension received began at, a completed push or a ready payload: every change up to it is in that state.
 	pushedStateEpoch   atomic.Uint64
 	providerNames      []string
 	mcpServerNames     []string          // MCP servers this extension registered, guarded by Host.mu
@@ -1233,12 +1233,25 @@ func (h *Host) syncGeometry(mes []*managedExt) {
 }
 
 // sendReady fills ready's geometry and enqueues it on conn, ordered with every
-// other geometry delivery (geometryMu).
-func (h *Host) sendReady(me *managedExt, conn *Conn, ready *Envelope) error {
+// other geometry delivery (geometryMu). The ready payload is conn's first
+// state: stateEpoch is the hostStateEpoch read before its snapshot was taken,
+// so the snapshot holds every change up to it. Pushes to conn were withheld
+// until here (Conn.withholdState); a withheld one, or a change reported after
+// stateEpoch, is pushed now and follows the ready on the connection.
+func (h *Host) sendReady(me *managedExt, conn *Conn, ready *Envelope, stateEpoch uint64) error {
 	h.geometryMu.Lock()
-	defer h.geometryMu.Unlock()
 	ready.Ready.Width, ready.Ready.Height = h.readyGeometryFor(me)
-	return conn.Send(ready)
+	err := conn.Send(ready)
+	h.geometryMu.Unlock()
+	if err != nil {
+		return err
+	}
+	me.statePushedAt(stateEpoch)
+	owed := conn.readySent()
+	if h.uiBridge != nil && (owed || h.behindHostState(me)) {
+		h.queueStatePush(me)
+	}
+	return nil
 }
 
 func geometryEnvelope(method, field string, value int) *Envelope {
@@ -1792,12 +1805,15 @@ func (h *Host) pushState(ctx context.Context, me *managedExt, conn *Conn, cursor
 	if h.uiBridge == nil || me == nil || conn == nil {
 		return nil
 	}
+	if conn.withholdState() {
+		// The ready payload is conn's first state, and sendReady pushes what is owed after it.
+		return nil
+	}
 	// The epoch is read before the snapshot, so the snapshot holds every change up to it.
 	epoch := h.hostStateEpoch.Load()
 	defer func() {
 		if err == nil {
-			for held := me.pushedStateEpoch.Load(); held < epoch && !me.pushedStateEpoch.CompareAndSwap(held, epoch); held = me.pushedStateEpoch.Load() {
-			}
+			me.statePushedAt(epoch)
 		}
 	}()
 	if err := h.syncRunSignal(conn); err != nil {
@@ -3497,6 +3513,7 @@ func (h *Host) acceptExtConn(ctx context.Context, cancel context.CancelFunc, me 
 func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, extCtx context.Context, cancel context.CancelFunc, isRestart bool) (*extension.Extension, error) {
 	// Wrap in managed connection.
 	conn := NewConn(me.config.Name, rawConn)
+	conn.awaitReady()
 	// The process's exit ends the connection's read when the socket does not (peer_exit.go); the share's exit channel for a process other extensions share.
 	conn.watchPeerExit(me.exited())
 	h.observeXref(conn)
@@ -3566,7 +3583,9 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		Mode:       h.mode,
 		SourceInfo: h.readySourceInfo(me),
 	}
+	var stateEpoch uint64
 	if h.uiBridge != nil {
+		stateEpoch = h.readyStateEpoch(conn)
 		flagNames := make([]string, 0, len(reg.Flags))
 		for _, f := range reg.Flags {
 			flagNames = append(flagNames, f.Name)
@@ -3599,7 +3618,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 	if err := h.sendReady(me, conn, &Envelope{
 		Type:  MsgReady,
 		Ready: readyPayload,
-	}); err != nil {
+	}, stateEpoch); err != nil {
 		cancel()
 		loadErr := newLoadError(me.config.Name, "ready", "send_ready_failed", fmt.Errorf("send ready: %w", err))
 		loadErr.StderrLog = me.stderrLogPath

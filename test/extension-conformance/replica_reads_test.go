@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
 // Pi's ctx.model is the live Session model and ctx.sessionManager.getSessionId() its id (runner.ts:906, agent-session.ts). The Node runtime answers both from the
@@ -35,7 +36,7 @@ func TestReplicatedReadsAreLocalAcrossSDKs(t *testing.T) {
 				}
 			})
 			state := &replicaHostState{model: replicaModels["a"], session: "replica-session-one", tokens: 777, window: 100000}
-			state.bind(h)
+			state.bind(h.bridge)
 			command, ok := findCommand(h.runner, "replica-probe")
 			if !ok {
 				t.Fatal("replica-probe command missing")
@@ -182,8 +183,8 @@ func (s *replicaHostState) usage() *extension.ContextUsage {
 	return &extension.ContextUsage{Tokens: &tokens, ContextWindow: s.window, Percent: &percent}
 }
 
-func (s *replicaHostState) bind(h *harness) {
-	h.bridge.SetHostAction("getModelInfo", func() json.RawMessage {
+func (s *replicaHostState) bind(bridge *subprocess.UIBridge) {
+	bridge.SetHostAction("getModelInfo", func() json.RawMessage {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.model == "" {
@@ -191,24 +192,24 @@ func (s *replicaHostState) bind(h *harness) {
 		}
 		return json.RawMessage(s.model)
 	})
-	h.bridge.SetHostAction("getSessionID", func() string {
+	bridge.SetHostAction("getSessionID", func() string {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		return s.session
 	})
-	h.bridge.SetHostAction("getSessionName", func() string {
+	bridge.SetHostAction("getSessionName", func() string {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		return replicaNameOf(s.session)
 	})
-	h.bridge.SetHostAction("getSessionFile", func() string {
+	bridge.SetHostAction("getSessionFile", func() string {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		return replicaFileOf(s.session)
 	})
-	h.bridge.SetHostAction("getContextUsage", s.usage)
+	bridge.SetHostAction("getContextUsage", s.usage)
 	// A read of the session manager asks the host for the id through sessionRead.
-	h.bridge.SetHostAction("sessionRead", func(method string, _ json.RawMessage) (any, error) {
+	bridge.SetHostAction("sessionRead", func(method string, _ json.RawMessage) (any, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		switch method {
@@ -221,7 +222,7 @@ func (s *replicaHostState) bind(h *harness) {
 		}
 		return nil, fmt.Errorf("replica row: unexpected sessionRead %s", method)
 	})
-	setModelBySpec(h.bridge, func(_ context.Context, model string) (bool, error) {
+	setModelBySpec(bridge, func(_ context.Context, model string) (bool, error) {
 		for _, candidate := range replicaModels {
 			var m struct{ Provider, ID string }
 			if json.Unmarshal([]byte(candidate), &m) == nil && m.Provider+"/"+m.ID == model {

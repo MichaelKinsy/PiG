@@ -132889,6 +132889,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitReady",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.awaitReady",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitSuspensions",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.awaitSuspensions",
@@ -133351,6 +133362,17 @@
       "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.readySent",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.readySent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.releaseAbort",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.releaseAbort",
@@ -133734,6 +133756,17 @@
         "type": "func(requestID string) *withSessionRoute"
       },
       "shapeHash": "sha256:a63db18f3f4dd060bb66727265a5ba571c18be75311ea38493f7468be613ff67"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.withholdState",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.withholdState",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.workBusy",
@@ -137432,6 +137465,17 @@
       "shapeHash": "sha256:8832a2e68edf5ab02e761dd69f592b98d33c32a4b037a6eefe77db6f6cec1968"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.readyStateEpoch",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.readyStateEpoch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *Conn) uint64"
+      },
+      "shapeHash": "sha256:c9800df5ecb9f6bdda940b0e3c65b370361a7543d9e801c89f75986215ea62bc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.recordLoadOrder",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.recordLoadOrder",
@@ -137878,9 +137922,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(me *managedExt, conn *Conn, ready *Envelope) error"
+        "type": "func(me *managedExt, conn *Conn, ready *Envelope, stateEpoch uint64) error"
       },
-      "shapeHash": "sha256:92387a1f2f5c182512aa9d8b0b8b5854ddd0ca9268aa06239ecc6bcd7ce4faba"
+      "shapeHash": "sha256:de5c6b45e909874157f893513f97b46353e097ddf9657d968afeffe499c816eb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.sendRunSignal",
@@ -147849,6 +147893,17 @@
       "shapeHash": "sha256:b009677275cae8857571ffe1fa5f8d6a3d5126863e3410ce4e883468330631eb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connAwaitsReady",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connAwaitsReady",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "uint32"
+      },
+      "shapeHash": "sha256:e2f4ed83633600c75852f5e9011eb898ae169826a443cebea091a9781a100848"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connBuiltinPeer",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "connBuiltinPeer",
@@ -147913,6 +147968,28 @@
         "type": "connOptions"
       },
       "shapeHash": "sha256:ffdbf6e7e375e5d5e2ae70a2cde739022c89d02257d2a33b045cec71acdf856a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connOwedState",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connOwedState",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "uint32"
+      },
+      "shapeHash": "sha256:e2f4ed83633600c75852f5e9011eb898ae169826a443cebea091a9781a100848"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connReady",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connReady",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "uint32"
+      },
+      "shapeHash": "sha256:e2f4ed83633600c75852f5e9011eb898ae169826a443cebea091a9781a100848"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connSessionGraph",
@@ -153380,6 +153457,17 @@
         "type": "func(raw encoding/json.RawMessage)"
       },
       "shapeHash": "sha256:91e3555b0a2a9fe69928d2be8ab3677b343acf8ddbc1cf6d04e350e0e6166cf3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.statePushedAt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "managedExt.statePushedAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(epoch uint64)"
+      },
+      "shapeHash": "sha256:dee33c70526e1d908ffa50d18c464fe4227bf75b81416610fdcd91c220177503"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.stoppedByOwner",
@@ -205621,6 +205709,17 @@
       "shapeHash": "sha256:178a74dacb061f948003607b9fe364bf4adda9aed515b695445274e0642fccb1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.applyQueuedNotify",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Extension.applyQueuedNotify",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(env envelope)"
+      },
+      "shapeHash": "sha256:06498c1ea862953c09d886cc90aeb74577e3b252f483ffe07b19cf8012986095"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.applyReplicatedState",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "Extension.applyReplicatedState",
@@ -206034,9 +206133,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(env envelope, seq uint64)"
+        "type": "func(env envelope, at uint64)"
       },
-      "shapeHash": "sha256:23a76a0f43b0cbf0e6b61453ad6e8f49b2fc79a56713abc3308e3540269ec40e"
+      "shapeHash": "sha256:03f1eaec9269950287bbe5c279b68a7d5049cbee91a0e09db2bf5c5ba3708976"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.handleRequest",
