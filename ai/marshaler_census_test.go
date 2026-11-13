@@ -94,6 +94,10 @@ var marshalerCensus = map[string]censusRow{
 	"ai.ToolSchema": {probe: func() any {
 		return ToolSchema{Name: loneSurrogateProbe, Description: loneSurrogateProbe, Parameters: censusProbeSchema()}
 	}},
+	"ai.compatObject": {probe: func() any {
+		return compatObject{value: map[string]any{"sort": loneSurrogateProbe, "order": []any{loneSurrogateProbe}, loneSurrogateProbe: map[string]any{"k": loneSurrogateProbe}},
+			order: schemaObjectOrder{"/openRouterRouting": {"sort", "order", loneSurrogateProbe}}, path: "/openRouterRouting"}
+	}},
 	"ai.ToolCall":    {probe: func() any { return ToolCall{ID: "call_1", Name: loneSurrogateProbe} }, sameUnderEncodingJSON: true},
 	"ai.TextContent": {probe: func() any { return TextContent{Text: loneSurrogateProbe} }, sameUnderEncodingJSON: true},
 
