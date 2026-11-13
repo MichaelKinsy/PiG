@@ -1,11 +1,12 @@
 // Package deadterm is the Go SDK extension of the dead-terminal integration test (test/integration). It appends its
-// process ID at session_start, and the reason at session_shutdown before and after a wait the host has to sit through, to
-// the file that PIG_DEAD_TERMINAL_MARKER names.
+// process ID at session_start, and the reason at session_shutdown before and after a wait of PIG_DEAD_TERMINAL_WAIT_MS
+// that the host has to sit through, to the file that PIG_DEAD_TERMINAL_MARKER names.
 package deadterm
 
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
@@ -29,7 +30,8 @@ func Extension() *sdk.Extension {
 	})
 	ext.OnSessionShutdown(func(_ sdk.Context, event map[string]any) (any, error) {
 		mark("session_shutdown reason=%v", event["reason"])
-		time.Sleep(50 * time.Millisecond)
+		wait, _ := strconv.Atoi(os.Getenv("PIG_DEAD_TERMINAL_WAIT_MS"))
+		time.Sleep(time.Duration(wait) * time.Millisecond)
 		mark("session_shutdown settled reason=%v", event["reason"])
 		return nil, nil
 	})
