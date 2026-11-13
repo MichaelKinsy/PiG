@@ -5,6 +5,7 @@ package tui
 import (
 	"errors"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/internal/hljs"
@@ -15,23 +16,47 @@ import (
 // hlResumeMax bounds the blocks that keep a resume state, so a few blocks streaming at once each resume.
 const hlResumeMax = 4
 
-// hlResume is the resume state of the code last highlighted for a block: seen is the whole code of that run, code[:len(prefix)] the text before the resume point, lines the complete output lines before it, and partial the output of the line the point is on, up to the point. The run's decisions before the point read past it, up to the end of seen, so the point holds only for code that starts with seen.
+// hlResume is the resume state of the code last highlighted for a block: seen is the whole code of that run, code[:len(prefix)] the text before the resume point, lines the complete output lines before the line the point is on, and partial the output of that line up to where the HTML before the point last ends a tag or starts a line. pending is the HTML from there to the point, the text of one run with no tag in it, which the HTML of the next run continues, and scopes the spans open at the point (at most hljs.ResumeStackMax, three words each): the point can lie inside a span (a string or a comment over lines), and a formatter takes a run of text whole, so the next run renders pending again with the text that follows it, inside those spans. The run's decisions before the point read past it, up to the end of seen, so the point holds only for code that starts with seen.
 type hlResume struct {
-	lang       string
-	theme      *Theme
-	seen       string
-	prefix     string
-	lines      []string
-	partial    string
-	iterations int
+	lang    string
+	theme   *Theme
+	seen    string
+	prefix  string
+	lines   []string
+	partial string
+	pending string
+	scopes  []scopeEntry
+	// point is where the engine continues: its offsets in seen and in the units of seen, its iteration count, and the modes it lies inside.
+	point hljs.ResumePoint
 	// text is the units of seen, kept by a warm-up so the next one converts only the text it gained. A run that continues from the state takes it (hlFindResume), so it is held by one run at a time; a state without it converts seen again.
 	text *hljs.Text
-	// unit is the offset of the resume point in the units of seen.
-	unit int
 }
 
 // hlResumes holds the states, least recently used first; hlMu guards it.
 var hlResumes []hlResume
+
+// hlTexts holds the units a run converted its code into, for the next run to convert into. A block that streams is highlighted once per frame, and each frame converts the whole code of the block (4 bytes for each code unit): into a new array every time, a stream allocates the square of the block's length.
+var hlTexts = sync.Pool{New: func() any { return new(hljs.Text) }}
+
+// hlPooledUnitsMax bounds the units of a Text that goes back to hlTexts (1 MiB): a pooled array keeps the size of the largest code it held (golang/go#23199).
+// pig additive (D112): see hlCacheMax. The units are a function of the code; only where they are written differs.
+const hlPooledUnitsMax = 1 << 18
+
+// hlFormatters is cliHighlightTheme(hlFormattersTheme); hlMu guards both. A streamed block is highlighted once per frame, and the formatters of a theme are the same every time: each reads the theme when it runs.
+var (
+	hlFormatters      HighlightTheme
+	hlFormattersTheme *Theme
+)
+
+// hlFormattersOf is cliHighlightTheme(t), built once for a theme. Its callers only read it.
+func hlFormattersOf(t *Theme) HighlightTheme {
+	hlMu.Lock()
+	defer hlMu.Unlock()
+	if hlFormattersTheme != t || hlFormatters == nil {
+		hlFormatters, hlFormattersTheme = cliHighlightTheme(t), t
+	}
+	return hlFormatters
+}
 
 func resetHighlightResumesLocked() { hlResumes = nil }
 
@@ -45,11 +70,18 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme, ke
 	base, generation := hlFindResume(code, lang, t, true)
 	source := base.text
 	if source == nil {
-		source = hljs.NewText(code)
+		source = hlTexts.Get().(*hljs.Text).Reset(code)
 	} else {
 		source = source.Grow(code)
 	}
-	html, points, err := registry.HighlightResumable(source, lang, true, hljs.ResumePoint{Byte: len(base.prefix), Unit: base.unit, Iterations: base.iterations})
+	kept := false
+	defer func() {
+		// The units go to the next run unless a state holds them: the engine keeps none of them past its run.
+		if !kept && source.Cap() <= hlPooledUnitsMax {
+			hlTexts.Put(source.Reset(""))
+		}
+	}()
+	html, points, err := registry.HighlightResumable(source, lang, true, base.point)
 	if errors.Is(err, hljs.ErrResumeFailed) {
 		base = hlResume{}
 		html, points, err = registry.HighlightResumable(source, lang, true, hljs.ResumePoint{})
@@ -57,39 +89,53 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme, ke
 	if err != nil {
 		return nil, false
 	}
-	theme := cliHighlightTheme(t)
-	split := len(html)
+	theme := hlFormattersOf(t)
+	// end is the last point in the HTML, and cut the place where the HTML before it last ends a tag or starts a line. The HTML, which continues the text the last run left pending, renders as its parts before and after cut do, the second inside the spans the first leaves open (renderHighlightedHTMLFrom): the output before cut is kept, and the next run renders the rest again.
+	end := len(html)
 	if len(points) > 0 {
-		split = points[len(points)-1].HTML
+		end = points[len(points)-1].HTML
 	}
-	head, err := renderHighlightedHTML(html[:split], theme)
+	cut := strings.LastIndexAny(html[:end], ">\n") + 1
+	head, scopes, pending := "", base.scopes, base.pending
+	if cut > 0 {
+		if head, scopes, err = renderHighlightedHTMLFrom(theme, base.scopes, pending, html[:cut]); err != nil {
+			return nil, false
+		}
+		pending = ""
+	}
+	tail, _, err := renderHighlightedHTMLFrom(theme, scopes, pending, html[cut:])
 	if err != nil {
 		return nil, false
 	}
-	tail, err := renderHighlightedHTML(html[split:], theme)
-	if err != nil {
-		return nil, false
-	}
-	headText := base.partial + jsstring.Canonical(head)
-	text := headText + jsstring.Canonical(tail)
+	// The halves of a surrogate pair that a tag at a cut parts are one character in the output of a whole run.
+	headText := jsstring.Canonical(base.partial + head)
+	text := jsstring.Canonical(headText + tail)
 	lines := make([]string, 0, len(base.lines)+strings.Count(text, "\n")+1)
 	lines = append(lines, base.lines...)
 	lines = append(lines, strings.Split(text, "\n")...)
 	if len(points) > 0 {
 		point := points[len(points)-1]
 		complete := len(base.lines) + strings.Count(headText, "\n")
+		// The text left pending is a copy: the HTML goes with its run.
+		if pending == "" {
+			pending = strings.Clone(html[cut:end])
+		} else {
+			pending += html[cut:end]
+		}
 		next := hlResume{
-			lang:       lang,
-			theme:      t,
-			seen:       code,
-			prefix:     code[:point.Byte],
-			lines:      lines[:complete:complete],
-			partial:    headText[strings.LastIndexByte(headText, '\n')+1:],
-			iterations: point.Iterations,
-			unit:       point.Unit,
+			lang:    lang,
+			theme:   t,
+			seen:    code,
+			prefix:  code[:point.Byte],
+			lines:   lines[:complete:complete],
+			partial: headText[strings.LastIndexByte(headText, '\n')+1:],
+			pending: pending,
+			scopes:  scopes,
+			point:   point,
 		}
 		if keepUnits {
 			next.text = source
+			kept = true
 		}
 		hlStoreResume(next, base, generation)
 	}

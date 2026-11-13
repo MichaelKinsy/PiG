@@ -68,7 +68,7 @@ func TestReleasedRecordEncodesToTheAppendedRecord(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, appended := heldMessageEntry(entry, raw); !appended {
+				if _, appended := heldMessageEntry(entry, raw, proveHeldEntry(entry)); !appended {
 					t.Skip("the session holds the record's decode, with its record")
 				}
 				if got := entry.Raw(); !bytes.Equal(got, raw) {

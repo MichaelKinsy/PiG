@@ -24,10 +24,32 @@ func DefaultMarkdownMessageTypes() []MarkdownMessageType {
 }
 
 // MarkdownTransformerRegistration is a registered Markdown transformer and the surfaces it runs on (types.ts MarkdownTransformerRegistration).
-// MessageTypes is Pi's ReadonlySet: a Go set of the listed types.
+// MessageTypes is Pi's ReadonlySet: a Go set of the listed types. A registration does not change once it is made: registering again stores a new
+// one (loader.ts:367).
 type MarkdownTransformerRegistration struct {
 	Transformer  MarkdownTransformer
 	MessageTypes map[MarkdownMessageType]struct{}
+	// scoped is what Scoped returns for a registration NewMarkdownTransformerRegistration made.
+	scoped MarkdownTransformer
+}
+
+// Scoped is the transformer a runner hands out for the registration (runner.ts getMarkdownTransformers): Transformer on the surfaces in
+// MessageTypes, and the Markdown unchanged on every other. A registration made by NewMarkdownTransformerRegistration returns the same function
+// on every call; one made as a literal holds none and makes one from its members each time.
+func (r *MarkdownTransformerRegistration) Scoped() MarkdownTransformer {
+	if r.scoped != nil {
+		return r.scoped
+	}
+	return scopeMarkdownTransformer(r.Transformer, r.MessageTypes)
+}
+
+func scopeMarkdownTransformer(transformer MarkdownTransformer, messageTypes map[MarkdownMessageType]struct{}) MarkdownTransformer {
+	return func(markdown string, context MarkdownTransformContext) string {
+		if _, ok := messageTypes[context.MessageType]; !ok {
+			return markdown
+		}
+		return transformer(markdown, context)
+	}
 }
 
 // NewMarkdownTransformerRegistration is the registration registerMarkdownTransformer(transformer, options) stores (loader.ts:365):
@@ -41,7 +63,7 @@ func NewMarkdownTransformerRegistration(transformer MarkdownTransformer, message
 	for _, messageType := range messageTypes {
 		types[messageType] = struct{}{}
 	}
-	return &MarkdownTransformerRegistration{Transformer: transformer, MessageTypes: types}
+	return &MarkdownTransformerRegistration{Transformer: transformer, MessageTypes: types, scoped: scopeMarkdownTransformer(transformer, types)}
 }
 
 // MarkdownTransformContext mirrors upstream MarkdownTransformContext. It is [markdowntransform.MarkdownTransformContext].

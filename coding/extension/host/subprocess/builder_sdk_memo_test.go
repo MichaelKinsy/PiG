@@ -1,8 +1,10 @@
 package subprocess
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -165,28 +167,89 @@ func TestStagedSDKFingerprintIsTheWalkAndARestageRehashes(t *testing.T) {
 	expectRehash("a restage")
 }
 
-// The Go SDK tree of this repository stands in for a staged SDK (about 200 sources, 1.4 MB).
+// benchSDKDir is the Go SDK tree of this repository.
 const benchSDKDir = "../../../../extensions/sdk"
+
+// benchSDKTree is the shape of the repository's Go SDK at 3388cdeb2, when the rows of the two benchmarks below were first taken: every directory
+// that holds Go sources, with the number it holds (338 in all; the root holds the go.mod as well).
+var benchSDKTree = []struct {
+	dir     string
+	sources int
+}{
+	{".", 225}, {"frontend", 3}, {"internal/jsloop", 5}, {"internal/kitwire", 3}, {"json", 23}, {"kit", 14}, {"tui", 10},
+	{"tui/internal/engine", 11}, {"tui/internal/jsnumber", 1}, {"tui/internal/jsstring", 5}, {"tui/internal/lazyregexp", 1}, {"tui/internal/widthx", 12},
+	{"upgrade", 16}, {"upgrade/testdata/fixtures/sdk-0.2.0/input", 1}, {"upgrade/testdata/fixtures/sdk-0.2.0/want", 1},
+	{"upgrade/testdata/fixtures/sdk-0.4.1-config-home/input", 2}, {"upgrade/testdata/fixtures/sdk-0.4.1-config-home/want", 2},
+	{"upgrade/testdata/fixtures/sdk-0.4.1/input", 1}, {"upgrade/testdata/fixtures/sdk-dev/input", 1}, {"upgrade/testdata/fixtures/sdk-dev/want", 1},
+}
+
+// benchSDKSourceBytes is the mean size of a Go source of that SDK (2.65 MB in 338 files).
+const benchSDKSourceBytes = 7840
+
+// writeBenchSDK writes the staged SDK the two benchmarks below read: a generated tree of benchSDKTree's shape, with the four files beside the
+// sources that the hash does not read and the hidden directory it does not enter. The tree is fixed, so the rows do not move when the
+// repository's SDK gains a file.
+func writeBenchSDK(b *testing.B) string {
+	b.Helper()
+	root := b.TempDir()
+	write := func(rel string, content []byte) {
+		path := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			b.Fatal(err)
+		}
+		if err := os.WriteFile(path, content, 0o644); err != nil {
+			b.Fatal(err)
+		}
+	}
+	write("go.mod", []byte("module github.com/MichaelKinsy/PiG/extensions/sdk\ngo 1.26\n"))
+	line := []byte("// a line of a generated SDK source\n")
+	source := bytes.Repeat(line, benchSDKSourceBytes/len(line)+1)[:benchSDKSourceBytes]
+	for _, dir := range benchSDKTree {
+		for i := range dir.sources {
+			write(filepath.Join(dir.dir, fmt.Sprintf("source%03d.go", i)), source)
+		}
+	}
+	for _, other := range []string{"LICENSE", "README.md", "json/LICENSE", "json/README.md", ".gz/record.gz"} {
+		write(other, []byte("not a source\n"))
+	}
+	return root
+}
 
 // BenchmarkStagedSDKWalkHash is what every Go extension's cache key cost before the memo: read and hash the SDK.
 func BenchmarkStagedSDKWalkHash(b *testing.B) {
+	sdk := writeBenchSDK(b)
 	for b.Loop() {
-		if err := hashDirSources(sha256.New(), benchSDKDir, sdkSourceExts("go")); err != nil {
+		if err := hashDirSources(sha256.New(), sdk, sdkSourceExts("go")); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 // BenchmarkStagedSDKKeyMemoized is a cache key after the first: stat the SDK sources, hash nothing of them.
+//
+// allocs/sdk-file is the same key over the repository's own SDK, for each of its sources: what the benchmarks that start a real Go extension
+// against that SDK (BenchmarkNodeAdmissionStartup/node-go-node, BenchmarkDuplicateGoFolderStartup, BenchmarkReload_PackedCellWarmCache) pay for
+// every key they compute, so their rows grow by a multiple of it with every file the SDK gains.
 func BenchmarkStagedSDKKeyMemoized(b *testing.B) {
 	base := hex.EncodeToString(make([]byte, 32))
-	if _, err := hashWithStagedSDK(base, benchSDKDir, "go"); err != nil {
+	sdk := writeBenchSDK(b)
+	if _, err := hashWithStagedSDK(base, sdk, "go"); err != nil {
 		b.Fatal(err)
 	}
 	b.ReportAllocs()
 	for b.Loop() {
-		if _, err := hashWithStagedSDK(base, benchSDKDir, "go"); err != nil {
+		if _, err := hashWithStagedSDK(base, sdk, "go"); err != nil {
 			b.Fatal(err)
 		}
 	}
+	sources := 0
+	if err := walkDirSources(benchSDKDir, sdkSourceExts("go"), func(string, string) error { sources++; return nil }); err != nil {
+		b.Fatal(err)
+	}
+	perKey := testing.AllocsPerRun(1, func() {
+		if _, err := hashWithStagedSDK(base, benchSDKDir, "go"); err != nil {
+			b.Fatal(err)
+		}
+	})
+	b.ReportMetric(perKey/float64(sources), "allocs/sdk-file")
 }
