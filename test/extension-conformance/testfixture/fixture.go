@@ -576,6 +576,22 @@ func Extension() *sdk.Extension {
 		ctx.Notify("active_tools:"+strings.Join(names, ","), "info")
 		return nil
 	})
+	// mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+	ext.Command("mcp_register_run", "Register two MCP servers and report the active tools after each", func(ctx sdk.Context, _ string) error {
+		var reads []string
+		for _, name := range []string{"conformance-run-a", "conformance-run-b"} {
+			if err := ctx.RegisterMcpServer(name, sdk.McpServerConfig{URL: "https://" + name + ".invalid/mcp"}); err != nil {
+				return err
+			}
+			names, err := ctx.GetActiveTools()
+			if err != nil {
+				return err
+			}
+			reads = append(reads, strings.Join(names, ","))
+		}
+		ctx.Notify("mcp_register_run:"+strings.Join(reads, "|"), "info")
+		return nil
+	})
 	// provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
 	ext.Command("provider_probe_register", "Register a provider with one model", func(ctx sdk.Context, _ string) error {
 		var config sdk.ProviderConfig

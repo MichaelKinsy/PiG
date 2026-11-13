@@ -1754,6 +1754,15 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("event_session_actions_stored", "Call the session actions through the context an event handler kept", event_session_actions_stored)
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
+    # mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+    def mcp_register_run(ctx, _args):
+        reads = []
+        for name in ("conformance-run-a", "conformance-run-b"):
+            ctx.register_mcp_server(name, {"url": "https://%s.invalid/mcp" % name})
+            reads.append(",".join(ctx.get_active_tools()))
+        ctx.notify("mcp_register_run:%s" % "|".join(reads), "info")
+
+    ext.command("mcp_register_run", "Register two MCP servers and report the active tools after each", mcp_register_run)
     # provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
     # registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
     def registry_model_probe(ctx, name):

@@ -227,6 +227,15 @@ export default function (pi) {
     ctx.ui.notify(`stored_actions:${await reportSessionActions(keptEventCtx)}`, "info");
   }});
   pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
+  // mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+  pi.registerCommand("mcp_register_run", { description: "Register two MCP servers and report the active tools after each", handler: async (_args, ctx) => {
+    const reads = [];
+    for (const name of ["conformance-run-a", "conformance-run-b"]) {
+      pi.registerMcpServer(name, { url: `https://${name}.invalid/mcp` });
+      reads.push(pi.getActiveTools().join(","));
+    }
+    ctx.ui.notify(`mcp_register_run:${reads.join("|")}`, "info");
+  } });
   // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
   pi.registerCommand("registry-model-probe", {
     description: "Register the active model's provider with a new name, then read the model",
