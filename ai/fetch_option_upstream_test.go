@@ -6,9 +6,28 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 )
+
+// fetchURLs collects the request URLs a custom fetch saw.
+type fetchURLs struct {
+	mu   sync.Mutex
+	urls []string
+}
+
+func (f *fetchURLs) add(url string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.urls = append(f.urls, url)
+}
+
+func (f *fetchURLs) snapshot() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.urls...)
+}
 
 type fetchOptionTransport func(*http.Request) (*http.Response, error)
 
@@ -69,9 +88,9 @@ func TestFetchOptionOwnsRedirectPolicy(t *testing.T) {
 
 func TestFetchOptionUpstream(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		apis    []API
-		rejects bool
+		name       string
+		apis       []API
+		googleSDKs bool
 	}{
 		// .upstream/v0.87.1/packages/ai/test/fetch-option.test.ts:63
 		{"passes fetch through streamSimple to the Anthropic SDK", []API{APIAnthropicMessages}, false},
@@ -79,11 +98,12 @@ func TestFetchOptionUpstream(t *testing.T) {
 		{"passes fetch through streamSimple to OpenAI SDK adapters", []API{APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses}, false},
 		// .upstream/v0.87.1/packages/ai/test/fetch-option.test.ts:103
 		{"uses fetch for Mistral, Codex SSE, and pi-messages HTTP requests", []API{APIMistralConversations, APIOpenAICodexResponses, APIPiMessages}, false},
-		// .upstream/v0.87.1/packages/ai/test/fetch-option.test.ts:124
-		{"rejects custom fetch for Google adapters instead of silently bypassing it", []API{APIGoogleGenerativeAI, APIGoogleVertex}, true},
+		// packages/ai/test/fetch-option.test.ts:124 (Pi f72f799a4: the Google adapters take a custom fetch; maxRetries 0 there, a 401 here is not retried)
+		{"passes fetch through streamSimple to the Google GenAI SDK adapters", []API{APIGoogleGenerativeAI, APIGoogleVertex}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var fallbackCalls, customCalls atomic.Int32
+			var customURLs fetchURLs
 			fallback := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				fallbackCalls.Add(1)
 				w.WriteHeader(http.StatusUnauthorized)
@@ -92,49 +112,33 @@ func TestFetchOptionUpstream(t *testing.T) {
 			ambient := http.DefaultClient
 			custom := &http.Client{Transport: fetchOptionTransport(func(request *http.Request) (*http.Response, error) {
 				customCalls.Add(1)
+				customURLs.add(request.URL.String())
 				return &http.Response{StatusCode: http.StatusUnauthorized, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"upstream rejected request"}}`)), Request: request}, nil
 			})}
 			for _, api := range tc.apis {
 				message := fetchOptionResult(t, fetchOptionProvider(api, fallback.URL), custom)
-				if tc.rejects {
-					name := "Google Generative AI"
-					if api == APIGoogleVertex {
-						name = "Google Vertex"
-					}
-					if !strings.Contains(message, "Custom fetch is not supported by the "+name+" adapter") {
-						t.Errorf("%s error = %q", api, message)
-					}
+				if tc.googleSDKs && !strings.Contains(message, "upstream rejected request") {
+					t.Errorf("%s error = %q", api, message)
 				}
 			}
-			want := int32(len(tc.apis))
-			if tc.rejects {
-				want = 0
+			if customCalls.Load() != int32(len(tc.apis)) || fallbackCalls.Load() != 0 {
+				t.Fatalf("custom/fallback calls = %d/%d, want %d/0", customCalls.Load(), fallbackCalls.Load(), len(tc.apis))
 			}
-			if customCalls.Load() != want || fallbackCalls.Load() != 0 {
-				t.Fatalf("custom/fallback calls = %d/%d, want %d/0", customCalls.Load(), fallbackCalls.Load(), want)
+			if tc.googleSDKs {
+				for _, url := range customURLs.snapshot() {
+					if !strings.HasPrefix(url, fallback.URL) {
+						t.Errorf("custom fetch url = %q, want it under the model's base URL %q", url, fallback.URL)
+					}
+				}
 			}
 			if http.DefaultClient != ambient {
 				t.Fatal("global HTTP client was replaced")
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/fetch-option.test.ts:142
-	t.Run("allows Google adapters to receive globalThis.fetch explicitly", func(t *testing.T) {
-		var calls atomic.Int32
-		original := http.DefaultClient
-		t.Cleanup(func() { http.DefaultClient = original })
-		http.DefaultClient = &http.Client{Transport: fetchOptionTransport(func(request *http.Request) (*http.Response, error) {
-			calls.Add(1)
-			return &http.Response{StatusCode: http.StatusUnauthorized, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"upstream rejected request"}}`)), Request: request}, nil
-		})}
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusUnauthorized) }))
-		t.Cleanup(server.Close)
-		ambient := http.DefaultClient
-		result := fetchOptionResult(t, fetchOptionProvider(APIGoogleGenerativeAI, server.URL), ambient)
-		if calls.Load() != 1 || strings.Contains(result, "Custom fetch is not supported") || http.DefaultClient != ambient {
-			t.Fatalf("calls=%d result=%q globalPreserved=%v", calls.Load(), result, http.DefaultClient == ambient)
-		}
-	})
+	// packages/ai/test/fetch-option.test.ts: "allows Google adapters to receive globalThis.fetch explicitly" is gone in Pi 22f456d73 (#12108): it
+	// covered the escape hatch of the removed custom-fetch rejection; "keeps the global dispatcher for Google adapters when no fetch is given" is
+	// TestGoogleAdaptersWithoutFetchUseTheirOwnClientNotACallersFetch.
 	// .upstream/v0.87.1/packages/ai/test/fetch-option.test.ts:161
 	t.Run("uses fetch for image generation", func(t *testing.T) {
 		var customCalls, fallbackCalls atomic.Int32

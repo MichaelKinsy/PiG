@@ -17687,6 +17687,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -17865,6 +17866,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -42301,6 +42303,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -42479,6 +42482,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -63122,6 +63126,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -63300,6 +63305,7 @@
       ],
       "evidence": [
         "test:ai/google_vertex_option_fields_upstream_test.go#TestGoogleVertexProjectAndLocationOptions",
+        "test:ai/google_fetch_option_shapes_test.go#TestGoogleAdaptersRouteEveryRequestShapeThroughTheCallersFetch",
         "test:ai/google_vertex_adc_test.go#TestGoogleVertexProjectAndLocationFromStreamOptions"
       ]
     },
@@ -108713,8 +108719,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
+        "test:chord/next/host/host_follow_section_test.go#TestFollowSectionAfterItsSourceDetachedStillRunsWorkOnceAndTheAdvanceInItIsDropped",
+        "test:chord/next/host/host_follow_section_test.go#TestFollowSectionKeepsTheReadsAndTheAdvancesOfTwoGoroutinesInOneOrder"
       ]
     },
     {
@@ -113564,9 +113570,9 @@
         "call:chord/next/state/native_source.go#FollowedSource.Observe"
       ],
       "evidence": [
+        "test:chord/next/host/host_watch_outside_loop_test.go#TestAnObserverAttachedFromOutsideTheLoopIsToldOfAChangeCommittedWhileItAttached",
         "test:chord/next/registries/value_test.go#TestObserve",
-        "test:chord/next/registries/value_test.go#TestRegistryValue",
-        "test:chord/next/state/native_own_test.go#TestFollowedSourceEnd"
+        "test:chord/next/registries/value_test.go#TestRegistryValue"
       ]
     },
     {
@@ -153697,8 +153703,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -160971,8 +160977,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -162148,9 +162154,9 @@
         "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
         "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs",
-        "test:coding/extension/host/subprocess/packed_go_test.go#TestHost_MixedFusedPackedAndIsolatedExtensions"
+        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
       ]
     },
     {
@@ -162171,8 +162177,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -164970,7 +164976,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/session_boundary_publication_test.go#TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots"
+        "test:coding/session_boundary_publication_test.go#TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -164992,7 +164999,7 @@
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/session_boundary_projection_test.go#TestBoundaryProjectionWithDraftsLeavesTheSessionAlone"
+        "test:coding/session_overflow_owner_test.go#TestExtensionOwnedCompactionContinuesAfterOverflow"
       ]
     },
     {
@@ -171548,7 +171555,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_upstream_test.go#TestUpstreamSessionBoundaries",
-        "test:coding/session_boundary_publication_test.go#TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots"
+        "test:coding/session_boundary_publication_test.go#TestSessionBeforeSettlePublishesCommittedEntriesAndCanonicalSnapshots",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -173948,8 +173956,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -173970,8 +173978,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -173992,8 +174000,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -174014,8 +174022,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -182373,7 +182381,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182396,7 +182404,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -186620,7 +186628,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -186642,7 +186650,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -186664,7 +186672,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -186686,7 +186694,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -187170,7 +187178,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -187192,7 +187200,7 @@
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -191979,8 +191987,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -192001,8 +192009,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -192023,8 +192031,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -192045,8 +192053,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -195320,8 +195328,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -195342,8 +195350,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -195364,8 +195372,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -195386,8 +195394,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
