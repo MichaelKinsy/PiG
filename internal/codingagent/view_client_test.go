@@ -296,7 +296,7 @@ func testViewClientIsInertUntilAMount(t *testing.T) {
 	for i := range viewSlots {
 		slots = append(slots, viewSlots[i].slot)
 	}
-	if !slices.Equal(a.Slots, slots) || !a.Input.Keyboard || !a.Input.Text || a.Input.Pointer || a.Drawing != nil || len(a.ImageFormats) != 0 || a.Limits != terminalViewLimits {
+	if !slices.Equal(a.Slots, slots) || !a.Input.Keyboard || !a.Input.Text || a.Input.Pointer || a.Drawing != nil || !slices.Equal(a.ImageFormats, terminalViewImageFormats) || a.Limits != terminalViewLimits {
 		t.Errorf("abilities = %+v", a)
 	}
 	for _, file := range []string{"view_client.go", "view_client_mount.go", "view_client_wire.go"} {

@@ -28,7 +28,7 @@ func TestImageBytesAreNotTheLongestText(t *testing.T) {
 		}
 	}
 	wantOK(t, "an image of 70,657 bytes", tryMount(t, a, mountRecord("k", map[string]any{"view": view(photo)})))
-	limit("a text of the same length", tryMount(t, a, mountRecord("k", map[string]any{"view": textView(photo)})),
+	limit("a text of the same length", tryMount(t, a, mountRecord("k", map[string]any{"view": map[string]any{"root": map[string]any{"kind": "text", "text": photo}}})),
 		"longest text is 94212, the client takes 65536")
 	// The bytes still count in the snapshot: 200,000 bytes are 266,668 base64 characters.
 	limit("an image of 200,000 bytes", tryMount(t, a, mountRecord("k", map[string]any{"view": view(strings.Repeat("A", 266668))})),
