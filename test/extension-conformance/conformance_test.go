@@ -2714,6 +2714,8 @@ var wantUIPromptEvents = []string{
 
 // recordingUI records notifications and mutable UI values used by the conformance fixtures.
 type recordingUI struct {
+	// theme is the active theme a test publishes as the UI's (Theme); without it the UI has none.
+	theme func() extension.Theme
 	// runOverlay replaces RunRemoteOverlay when a test supplies its own mounted-overlay behaviour.
 	runOverlay func(extension.RemoteOverlayOptions, extension.RemoteOverlayHost, func(extension.RemoteOverlayHandle)) (any, bool)
 	// showOverlay answers ShowRemoteOverlay (a factory's tui.showOverlay) when a test supplies it; without it the UI shows none.
@@ -3028,9 +3030,14 @@ func (u *recordingUI) installedEditor() extension.RemoteEditor {
 	return u.editor
 }
 func (u *recordingUI) GetEditorComponent() extension.EditorFactory { return nil }
-func (u *recordingUI) Theme() extension.Theme                      { return nil }
-func (u *recordingUI) GetAllThemes() []extension.ThemeMeta         { return nil }
-func (u *recordingUI) GetTheme(string) (extension.Theme, error)    { return nil, nil }
+func (u *recordingUI) Theme() extension.Theme {
+	if u.theme != nil {
+		return u.theme()
+	}
+	return nil
+}
+func (u *recordingUI) GetAllThemes() []extension.ThemeMeta      { return nil }
+func (u *recordingUI) GetTheme(string) (extension.Theme, error) { return nil, nil }
 func (u *recordingUI) SetTheme(extension.ThemeSelection) extension.SetThemeResult {
 	return extension.SetThemeResult{Success: true}
 }

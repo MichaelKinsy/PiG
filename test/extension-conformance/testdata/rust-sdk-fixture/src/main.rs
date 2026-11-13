@@ -3600,6 +3600,95 @@ fn main() {
         },
     );
     ext.command(
+        "overlay-invalidate-probe",
+        "Count the host's invalidations of a mounted overlay and draw the theme",
+        |ctx, args| {
+            fn row(ctx: &pig_sdk::Context) -> String {
+                let theme = ctx.theme();
+                format!("{}|{}", theme.name, theme.fg("accent", "x"))
+            }
+            fn input(data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+                if data == "q" {
+                    return Ok(RemoteComponentResult::done(Some(json!("closed"))));
+                }
+                Ok(RemoteComponentResult::pending())
+            }
+            struct InvalidateProbe {
+                ctx: pig_sdk::Context,
+                invalidations: u64,
+                kept: String,
+            }
+            impl RemoteComponent for InvalidateProbe {
+                fn render(&self, _width: u32) -> Vec<String> {
+                    vec![format!(
+                        "inv={} kept={} live={}",
+                        self.invalidations,
+                        self.kept,
+                        self.ctx.theme().name
+                    )]
+                }
+                fn invalidate(&mut self) {
+                    self.invalidations += 1;
+                    self.kept = row(&self.ctx);
+                }
+                fn handle_input(
+                    &mut self,
+                    data: &pig_sdk::JsString,
+                ) -> Result<RemoteComponentResult, String> {
+                    input(data)
+                }
+            }
+            // No invalidate: the host's invalidation renders it again all the same.
+            struct PlainThemeProbe(pig_sdk::Context);
+            impl RemoteComponent for PlainThemeProbe {
+                fn render(&self, _width: u32) -> Vec<String> {
+                    vec![format!("plain live={}", row(&self.0))]
+                }
+                fn handle_input(
+                    &mut self,
+                    data: &pig_sdk::JsString,
+                ) -> Result<RemoteComponentResult, String> {
+                    input(data)
+                }
+            }
+            let on_handle = |_overlay: pig_sdk::OverlayHandle| {};
+            let result = if args.trim() == "plain" {
+                ctx.custom_component_with_handle(
+                    PlainThemeProbe(ctx.clone()),
+                    json!({"overlay": true}),
+                    on_handle,
+                )
+            } else {
+                ctx.custom_component_with_handle(
+                    InvalidateProbe {
+                        ctx: ctx.clone(),
+                        invalidations: 0,
+                        kept: row(ctx),
+                    },
+                    json!({"overlay": true}),
+                    on_handle,
+                )
+            };
+            if let Err(err) = result {
+                return CommandResult::Error(err.to_string());
+            }
+            ctx.notify("overlay-invalidate=ok", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "theme-read-probe",
+        "Report the theme the extension holds, with no component mounted",
+        |ctx, _args| {
+            let theme = ctx.theme();
+            ctx.notify(
+                &format!("theme-read={}|{}", theme.name, theme.fg("accent", "x")),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "overlay-focus-probe",
         "Render the focus the host publishes to a mounted overlay",
         |ctx, _args| {
@@ -8856,7 +8945,7 @@ impl MutDoc {
         screen.invalidate()?;
         r.push(format!(
             "invalidate={}",
-            self.invalidations.load(Ordering::SeqCst) > 0
+            self.invalidations.load(Ordering::SeqCst)
         ));
         r.push(format!("lines={}", screen.get_screen_lines()?.len()));
         Ok(r.join(","))
@@ -8971,8 +9060,8 @@ fn tui_alt_frame_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     screen.invalidate()?;
     f.push(format!(
         "invalidate={}/{}",
-        doc.invalidations.load(Ordering::SeqCst) > 0,
-        ov.invalidations.load(Ordering::SeqCst) > 0
+        doc.invalidations.load(Ordering::SeqCst),
+        ov.invalidations.load(Ordering::SeqCst)
     ));
     ov2.hide()?;
     let link = Arc::new(std::sync::OnceLock::new());

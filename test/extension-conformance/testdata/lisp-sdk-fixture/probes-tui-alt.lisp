@@ -266,7 +266,7 @@
         (let ((hide-two (pig:tui-alt-screen-show-overlay screen over (pig:obj "width" 8))))
           (setf doc-invalidated 0 over-invalidated 0)
           (pig:tui-alt-screen-invalidate screen)
-          (fact (format nil "invalidate=~A/~A" (alt-b (plusp doc-invalidated)) (alt-b (plusp over-invalidated))))
+          (fact (format nil "invalidate=~D/~D" doc-invalidated over-invalidated))
           (pig:tui-alt-overlay-hide hide-two))
         ;; a render that changes the screen reads its own changes back at once
         (let* ((extra (alt-lines (lambda (w) (declare (ignore w)) (list "EXTRA"))))
@@ -305,7 +305,7 @@
                                      (add (format nil "scroll=~D/~A" (pig:tui-alt-screen-viewport-top screen) (alt-b (pig:tui-alt-screen-following-output-p screen))))
                                      (setf mut-invalidated 0)
                                      (pig:tui-alt-screen-invalidate screen)
-                                     (add (format nil "invalidate=~A" (alt-b (plusp mut-invalidated))))
+                                     (add (format nil "invalidate=~D" mut-invalidated))
                                      (add (format nil "lines=~D" (length (pig:tui-alt-screen-get-screen-lines screen)))))
                                    (push (alt-join "," (reverse r)) mut-log)))
                                (list "MUT"))))

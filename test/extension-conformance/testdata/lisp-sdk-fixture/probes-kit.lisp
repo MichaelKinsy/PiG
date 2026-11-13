@@ -637,6 +637,27 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                                                   (pig:overlay-unfocus handle :target nil))))
                    (when failures (error "~{~A~^; ~}" (reverse failures)))
                    (kp-notify ctx "overlay-handle=ok"))))
+  (pig:command ext "overlay-invalidate-probe" "Count the host's invalidations of a mounted overlay and draw the theme"
+               (lambda (ctx args)
+                 (flet ((row () (let ((theme (pig:ctx-theme ctx))) (format nil "~A|~A" (pig:theme-name theme) (pig:theme-fg theme "accent" "x"))))
+                        (input (data) (if (equal data "q") (pig:make-custom-result :done t :value "closed") nil)))
+                   (let* ((invalidations 0) (kept (row))
+                          (component (if (equal (string-trim " " (if (stringp args) args "")) "plain")
+                                         ;; no :invalidate: the host's invalidation renders it again all the same
+                                         (pig:make-custom-component
+                                          :render (lambda (width) (declare (ignore width)) (list (format nil "plain live=~A" (row))))
+                                          :handle-input #'input)
+                                         (pig:make-custom-component
+                                          :render (lambda (width) (declare (ignore width))
+                                                    (list (format nil "inv=~D kept=~A live=~A" invalidations kept (pig:theme-name (pig:ctx-theme ctx)))))
+                                          :handle-input #'input
+                                          :invalidate (lambda () (incf invalidations) (setf kept (row)))))))
+                     (pig:ctx-custom ctx component :options (pig:obj "overlay" t))
+                     (kp-notify ctx "overlay-invalidate=ok")))))
+  (pig:command ext "theme-read-probe" "Report the theme the extension holds, with no component mounted"
+               (lambda (ctx args) (declare (ignore args))
+                 (let ((theme (pig:ctx-theme ctx)))
+                   (kp-notify ctx (format nil "theme-read=~A|~A" (pig:theme-name theme) (pig:theme-fg theme "accent" "x"))))))
   (pig:command ext "overlay-focus-probe" "Render the focus the host publishes to a mounted overlay"
                (lambda (ctx args) (declare (ignore args))
                  (let* ((handle nil)

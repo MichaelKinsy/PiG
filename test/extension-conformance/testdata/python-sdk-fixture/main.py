@@ -2261,6 +2261,49 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("overlay-handle-probe", "Exercise the overlay handle ui.custom hands to on_handle", overlay_handle_probe)
 
+    def theme_probe_row(ctx: pig_sdk.Context) -> str:
+        theme = ctx.theme
+        return f"{theme.name}|{theme.fg('accent', 'x')}"
+
+    class InvalidateProbeComponent:
+        def __init__(self, ctx: pig_sdk.Context) -> None:
+            self.ctx = ctx
+            self.invalidations = 0
+            self.kept = theme_probe_row(ctx)
+
+        def render(self, width: int) -> list[str]:
+            return [f"inv={self.invalidations} kept={self.kept} live={self.ctx.theme.name}"]
+
+        def invalidate(self) -> None:
+            self.invalidations += 1
+            self.kept = theme_probe_row(self.ctx)
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            return pig_sdk.RemoteComponentResult(done=data == "q", value="closed" if data == "q" else None)
+
+    class PlainThemeProbeComponent:
+        # No invalidate: the host's invalidation renders it again all the same.
+        def __init__(self, ctx: pig_sdk.Context) -> None:
+            self.ctx = ctx
+
+        def render(self, width: int) -> list[str]:
+            return [f"plain live={theme_probe_row(self.ctx)}"]
+
+        def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+            return pig_sdk.RemoteComponentResult(done=data == "q", value="closed" if data == "q" else None)
+
+    def overlay_invalidate_probe(ctx: pig_sdk.Context, args: str) -> None:
+        component = PlainThemeProbeComponent(ctx) if str(args or "").strip() == "plain" else InvalidateProbeComponent(ctx)
+        ctx.custom(component, {"overlay": True})
+        ctx.notify("overlay-invalidate=ok", "info")
+
+    ext.command("overlay-invalidate-probe", "Count the host's invalidations of a mounted overlay and draw the theme", overlay_invalidate_probe)
+
+    def theme_read_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.notify("theme-read=" + theme_probe_row(ctx), "info")
+
+    ext.command("theme-read-probe", "Report the theme the extension holds, with no component mounted", theme_read_probe)
+
     class FocusProbeComponent:
         def __init__(self) -> None:
             self.handle: pig_sdk.OverlayHandle | None = None
@@ -4231,7 +4274,7 @@ def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
         hide_two = screen.show_overlay(over, {"width": 8})
         doc.invalidated = over.invalidated = 0
         screen.invalidate()
-        facts.append(f"invalidate={b(doc.invalidated > 0)}/{b(over.invalidated > 0)}")
+        facts.append(f"invalidate={doc.invalidated}/{over.invalidated}")
         hide_two.hide()
         mut_log: list[str] = []
         armed = False
@@ -4273,7 +4316,7 @@ def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
             r.append(f"scroll={screen.viewport_top}/{b(screen.is_following_output)}")
             mut.invalidated = 0
             screen.invalidate()
-            r.append(f"invalidate={b(mut.invalidated > 0)}")
+            r.append(f"invalidate={mut.invalidated}")
             r.append(f"lines={len(screen.get_screen_lines())}")
             mut_log.append(",".join(r))
             return ["MUT"]
