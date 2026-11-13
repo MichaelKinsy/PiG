@@ -37,12 +37,45 @@ type inputEntry struct {
 	Paths []string `toml:"paths"`
 }
 
+// toolingEntry puts a directory of PiG-owned CI tooling outside the expected-value rule: the program there is not ported
+// from Pi, so there is no Pi behavior to cite for a changed expectation. The list is reviewed like the ledger: every entry
+// names its reason, and only a directory under automation/ qualifies, so product code never leaves the rule.
+type toolingEntry struct {
+	// Prefix is a directory of the repository, with a trailing slash, such as automation/ci/preflight/.
+	Prefix string `toml:"prefix"`
+	Reason string `toml:"reason"`
+}
+
+// inTooling reports whether a test file lies under a listed tooling directory.
+func inTooling(tooling []toolingEntry, file string) bool {
+	return slices.ContainsFunc(tooling, func(e toolingEntry) bool { return e.Prefix != "" && strings.HasPrefix(file, e.Prefix) })
+}
+
+// checkTooling returns every violation of the tooling list's rules.
+func checkTooling(tooling []toolingEntry, tracked []string) []string {
+	var problems []string
+	for i, e := range tooling {
+		where := fmt.Sprintf("%s: tooling entry %d (%s)", provenanceFile, i+1, e.Prefix)
+		switch {
+		case !strings.HasPrefix(e.Prefix, "automation/") || !strings.HasSuffix(e.Prefix, "/") || strings.Count(e.Prefix, "/") < 3 || strings.Contains(e.Prefix, ".."):
+			problems = append(problems, where+": a tooling prefix is a directory below automation/<area>/ and ends with a slash; product code stays under the rule")
+		case strings.TrimSpace(e.Reason) == "":
+			problems = append(problems, where+": has no reason")
+		case !slices.ContainsFunc(tracked, func(f string) bool { return strings.HasPrefix(f, e.Prefix) }):
+			problems = append(problems, where+": matches no tracked file")
+		}
+	}
+	return problems
+}
+
 type provenance struct {
 	// ExpectationsFrom exempts commits authored before this RFC 3339 time from the
 	// expected-value rule, so history from before the ratchet is not reviewed again.
 	ExpectationsFrom string        `toml:"expectations_from"`
 	Golden           []goldenEntry `toml:"golden"`
 	Input            []inputEntry  `toml:"input"`
+	// Tooling lists the PiG-owned CI tooling directories the expected-value rule does not guard.
+	Tooling []toolingEntry `toml:"tooling"`
 }
 
 // goldenWriterRE matches the switch a test uses to rewrite its own expected files.
@@ -161,6 +194,7 @@ func checkProvenance(root string, tracked []string, prov provenance, hasTest fun
 			problems = append(problems, f+": golden or snapshot file without provenance in "+provenanceFile)
 		}
 	}
+	problems = append(problems, checkTooling(prov.Tooling, tracked)...)
 	sort.Strings(problems)
 	return problems
 }
@@ -220,10 +254,10 @@ func piSourceNames(root string) (map[string]bool, error) {
 // checkCoEdits returns each commit that edits an expectation value in a test
 // file while changing production code of the same directory, unless the commit
 // message or a line the commit adds to the test file cites a Pi source line
-// (a file piNames holds) whose behavior changed, or the reviewed ledger holds an entry for the commit and path. An entry
+// (a file piNames holds) whose behavior changed, unless the test file lies in a tooling directory (inTooling), or the reviewed ledger holds an entry for the commit and path. An entry
 // is read first: it can record that a commit's own citation names a Pi line that did not change, which history cannot
 // rewrite.
-func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[string]bool, ledger []reviewEntry) ([]string, error) {
+func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[string]bool, ledger []reviewEntry, tooling []toolingEntry) ([]string, error) {
 	edits, err := scanCoEdits(root, []string{rangeSpec, "--", "*.go"})
 	if err != nil {
 		return nil, err
@@ -232,7 +266,7 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 	seen := map[string]bool{}
 	used := make([]bool, len(ledger))
 	for _, e := range edits {
-		if e.ValueEdits == 0 || seen[e.Commit+e.Path] {
+		if e.ValueEdits == 0 || seen[e.Commit+e.Path] || inTooling(tooling, e.Path) {
 			continue
 		}
 		if authored, err := time.Parse(time.RFC3339, e.Authored); err == nil && authored.Before(from) {
@@ -405,7 +439,7 @@ func runLint(root string, args []string) error {
 			return err
 		}
 		rangeSpec := *base + ".." + *head
-		p, err := checkCoEdits(root, rangeSpec, from, piNames, reviewed.Entry)
+		p, err := checkCoEdits(root, rangeSpec, from, piNames, reviewed.Entry, prov.Tooling)
 		if err != nil {
 			return err
 		}

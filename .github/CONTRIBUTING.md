@@ -30,6 +30,8 @@ git commit --signoff
 
 The sign-off certifies that you have the right to submit the contribution under the project license. It is not a copyright assignment or a cryptographic signature.
 
+One commit needs no sign-off: the merge of `main` that GitHub's **Update branch** button adds to a pull request. GitHub commits it, nobody can add the line to it, and it holds no contribution of its own. The pre-flight exempts it only when it has exactly two parents, GitHub committed it and verifies its signature, its second parent is on the base branch, and its tree is the one git's own merge of the two parents writes; a merge you make yourself, a merge of another branch, and a merge with a conflict resolution or an edit need the line like every other commit, and so does every commit the pull request adds on either side of the merge.
+
 ### Signing off a commit afterwards
 
 If a commit you authored lacks the sign-off and its history cannot be rewritten, add a later commit to the same pull request that signs it off. Author it as the same identity (name and email) as the unsigned commit, or as another identity that `automation/ci/dco-identities.txt` lists as the same person, with an empty change and a remediation block in the message:
