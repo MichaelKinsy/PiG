@@ -388,7 +388,18 @@ func TestPageDrawsFocusesAndRaisesIntents(t *testing.T) {
 // and a function that sends a line as the user does: `/fx-a mount <content>`, `/fx-b update <content>`.
 func openFixtures(t *testing.T) (*browsertest.Browser, func(line string)) {
 	t.Helper()
-	b := startBridge(t, "-e", "testdata/fixture-a.mjs", "-e", "testdata/fixture-b.mjs")
+	return openWith(t, "testdata/fixture-a.mjs", "testdata/fixture-b.mjs")
+}
+
+// openWith opens the page of a bridge whose session loads the named extensions, and returns the browser and a function
+// that sends a line through the page's prompt.
+func openWith(t *testing.T, extensions ...string) (*browsertest.Browser, func(line string)) {
+	t.Helper()
+	var load []string
+	for _, extension := range extensions {
+		load = append(load, "-e", extension)
+	}
+	b := startBridge(t, load...)
 	browser := browsertest.Start(t)
 	browser.Open(b.base + "/?token=" + b.token)
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)

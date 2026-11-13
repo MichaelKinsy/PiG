@@ -479,6 +479,53 @@ func TestPageDefaultTokensHaveContrast(t *testing.T) {
 	}
 }
 
+// TestPageHasAColourForEveryThemeToken: a view and a drawing name their colours by Pi's theme tokens, and a token the
+// page has no colour for draws nothing. Every colour of Pi's theme schema (schemas/theme.schema.json) is a custom
+// property `--pig-<token>` of the default stylesheet that the browser computes to a colour, in the light and in the
+// dark scheme.
+func TestPageHasAColourForEveryThemeToken(t *testing.T) {
+	raw, err := os.ReadFile("../../schemas/theme.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema struct {
+		Properties struct {
+			Colors struct {
+				Required   []string
+				Properties map[string]json.RawMessage
+			}
+		}
+	}
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		t.Fatal(err)
+	}
+	tokens := make([]string, 0, len(schema.Properties.Colors.Properties))
+	for name := range schema.Properties.Colors.Properties {
+		tokens = append(tokens, name)
+	}
+	sort.Strings(tokens)
+	if len(tokens) < len(schema.Properties.Colors.Required) || len(schema.Properties.Colors.Required) < 51 {
+		t.Fatalf("the theme schema names %d colours, %d of them required; want the 51 required ones at least", len(tokens), len(schema.Properties.Colors.Required))
+	}
+	list, err := json.Marshal(tokens)
+	if err != nil {
+		t.Fatal(err)
+	}
+	browser, _ := openFixtures(t)
+	// A property that is not set computes to the fallback, and one that is no colour to the inherited colour.
+	missing := `(() => { const around = document.body.appendChild(document.createElement("span")), probe = around.appendChild(document.createElement("span"));
+		around.style.color = "rgb(3, 2, 1)";
+		const bad = ` + string(list) + `.filter((token) => { probe.style.color = "var(--pig-" + token + ", rgb(1, 2, 3))"; const colour = getComputedStyle(probe).color; return !/^rgba?\(/.test(colour) || colour === "rgb(1, 2, 3)" || colour === "rgb(3, 2, 1)"; });
+		around.remove();
+		return bad.join(" "); })()`
+	for _, scheme := range []string{"light", "dark"} {
+		browser.Emulate("prefers-color-scheme", scheme)
+		if got := browser.String(missing); got != "" {
+			t.Errorf("%s scheme: the page has no colour for the theme tokens %s (of %d)", scheme, got, len(tokens))
+		}
+	}
+}
+
 // TestPageDrawsASceneAndItsRegions: a drawing is vector graphics. Each shape kind is its SVG element with the colour
 // the view names (a hex colour as it is, a token as the page's colour for it); a region is a focusable element with
 // its role and name (and the pointer's cursor for what it takes) that raises its intent for a click, a key and a drag, with the properties the intent's argument
@@ -770,15 +817,20 @@ func TestPageDrawsAGrid(t *testing.T) {
 
 // TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript: the default page shows no line of the carrier's numbers
 // (the address asks for it with ?debug), and while its chat holds no line the panels and the prompt are one centred
-// column of at most 880 px; with a line in the chat the panels stand beside it.
+// column of at most 880 px; under a panel taller than the window the page scrolls and the prompt stays in sight; with
+// a line in the chat the panels stand beside it.
 func TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript(t *testing.T) {
 	b := startBridge(t, "-e", "testdata/scene.mjs")
 	browser := browsertest.Start(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if _, err := browser.Call(ctx, "Emulation.setDeviceMetricsOverride", map[string]any{"width": 1280, "height": 800, "deviceScaleFactor": 1, "mobile": false}); err != nil {
-		t.Fatal(err)
+	window := func(height int) {
+		t.Helper()
+		if _, err := browser.Call(ctx, "Emulation.setDeviceMetricsOverride", map[string]any{"width": 1280, "height": height, "deviceScaleFactor": 1, "mobile": false}); err != nil {
+			t.Fatal(err)
+		}
 	}
+	window(800)
 	browser.Open(b.base + "/?token=" + b.token)
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	// The command is sent without a line in the chat, as an extension's own trigger would mount the panel.
@@ -789,6 +841,14 @@ func TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript(t *testing.T) {
 	if got, want := browser.String(layout), `{"state":"/none","width":880,"centred":true,"promptUnder":true,"beside":false}`; got != want {
 		t.Errorf("without a transcript the page is\n  %s\nwant\n  %s", got, want)
 	}
+	// In a window lower than the panel the page scrolls and the prompt stays in sight, under the panel.
+	window(480)
+	fits := `(() => { const prompt = document.getElementById("prompt").getBoundingClientRect(), page = document.documentElement, at = document.elementFromPoint(640, prompt.top + prompt.height / 2);
+		return JSON.stringify({ pageScrolls: page.scrollHeight > page.clientHeight, promptInSight: prompt.top > 0 && prompt.bottom <= innerHeight, promptOnTop: at?.closest("#prompt") !== null }); })()`
+	if got, want := browser.String(fits), `{"pageScrolls":true,"promptInSight":true,"promptOnTop":true}`; got != want {
+		t.Errorf("in a window lower than the panel the page is\n  %s\nwant\n  %s", got, want)
+	}
+	window(800)
 	browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.value = "hello"; form.requestSubmit(); })()`)
 	browser.Wait(`document.querySelector(".line.user") !== null`)
 	if got, want := browser.String(`JSON.stringify(JSON.parse(`+layout+`).beside)`), "true"; got != want {
@@ -798,5 +858,96 @@ func TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript(t *testing.T) {
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	if got := browser.String(`document.getElementById("state").textContent`); got != "attachment 1, event 0, 0 mounts" {
 		t.Errorf("with ?debug the status line reads %q, want the carrier's numbers", got)
+	}
+}
+
+// TestPageOffersAHiddenMountThatDeclaresWhenHidden: a hidden mount that declares a `whenHidden` intent is listed by its
+// title among the page's hidden views, and choosing it raises that intent with {} and no node key; the extension's
+// handler shows the mount, and the list is empty again. A hidden mount without the intent is not listed, and a live
+// mount has no header button for the intent.
+func TestPageOffersAHiddenMountThatDeclaresWhenHidden(t *testing.T) {
+	browser, send := openWith(t, "testdata/fixture-a.mjs", "testdata/fixture-c.mjs")
+	send(`/fx-c mount {"title":"Places","view":{"root":{"kind":"text","text":"A place"}},"intents":[{"name":"fx.open","arg":{"type":"object"},"whenHidden":true}]}`)
+	send(`/fx-a mount {"title":"Notes","view":{"root":{"kind":"text","text":"A note"}}}`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"]') !== null && document.querySelector('[data-key="fx-c"]') !== null`)
+	offered := `(() => { const list = document.getElementById("closed"); return JSON.stringify({ hidden: list.hidden, offered: [...list.querySelectorAll("button")].map((b) => b.textContent), header: document.querySelectorAll('[data-key="fx-c"] header button').length }); })()`
+	if got, want := browser.String(offered), `{"hidden":true,"offered":[],"header":0}`; got != want {
+		t.Errorf("with both mounts live the page offers %s, want %s", got, want)
+	}
+	browser.Run(recordFrames)
+	send(`/fx-c hide`)
+	send(`/fx-a hide`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"]').hidden && document.querySelector('[data-key="fx-c"]').hidden`)
+	if got, want := browser.String(offered), `{"hidden":false,"offered":["Places"],"header":0}`; got != want {
+		t.Errorf("with both mounts hidden the page offers %s, want %s", got, want)
+	}
+	browser.Run(`document.querySelector("#closed button").click()`)
+	browser.Wait(`window.frames.length === 1 && !document.querySelector('[data-key="fx-c"]').hidden`)
+	if got, want := browser.String(`(() => { const f = JSON.parse(window.frames[0]); return [f.intent, JSON.stringify(f.arg), "nodeKey" in f, f.mount.key].join(" "); })()`), "fx.open {} false fx-c"; got != want {
+		t.Errorf("choosing the hidden mount posted %q, want %q", got, want)
+	}
+	if got, want := browser.String(offered), `{"hidden":true,"offered":[],"header":0}`; got != want {
+		t.Errorf("with the mount shown again the page offers %s, want %s", got, want)
+	}
+	if got := browser.String(`String(document.querySelector('[data-key="fx-a"]').hidden)`); got != "true" {
+		t.Errorf("the mount without the intent is hidden: %s, want true", got)
+	}
+}
+
+// TestPageRaisesTheDismissIntentOfADialogOrOverlay: a mount of the dialog or the overlay slot that declares a `dismiss`
+// intent takes the user's leaving: Escape inside it, or the dialog element's `cancel` event (the browser's request to
+// close it), raises that intent once with {} and no node key, and the page closes nothing itself: the extension's
+// handler hides the mount. A mount that declares none posts nothing and stays open, and in the panel slot the member
+// has no effect.
+func TestPageRaisesTheDismissIntentOfADialogOrOverlay(t *testing.T) {
+	browser, send := openWith(t, "testdata/fixture-a.mjs", "testdata/fixture-b.mjs", "testdata/fixture-c.mjs", "testdata/fixture-d.mjs")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if _, err := browser.Call(ctx, "Emulation.setFocusEmulationEnabled", map[string]any{"enabled": true}); err != nil {
+		t.Fatal(err)
+	}
+	browser.Run(recordFrames)
+	content := func(slot, intents string) string {
+		return `{"slot":"` + slot + `","title":"Save place","view":{"root":{"kind":"input","id":"name","value":""}},"focus":[{"node":"name","request":"mount"}],"intents":[` + intents + `]}`
+	}
+	const closes = `{"name":"fx.close","arg":{"type":"object"},"dismiss":true}`
+	el := func(key string) string { return `document.querySelector('[data-key="` + key + `"]')` }
+	inside := func(key string) string {
+		return el(key) + ` !== null && ` + el(key) + `.open === true && ` + el(key) + `.contains(document.activeElement)`
+	}
+	var want []string
+	for _, c := range []struct{ slot, key string }{{"dialog", "fx-c"}, {"overlay", "fx-d"}} {
+		send(`/` + c.key + ` mount ` + content(c.slot, closes))
+		browser.Wait(inside(c.key) + ` && ` + el(c.key) + `.closest("section").dataset.slot === "` + c.slot + `"`)
+		press(t, browser, "Escape", 0)
+		want = append(want, c.key+" fx.close {} false")
+		browser.Wait(`window.frames.length === ` + strconv.Itoa(len(want)) + ` && ` + el(c.key) + `.hidden && !` + el(c.key) + `.open`)
+		send(`/` + c.key + ` show`)
+		browser.Wait(`!` + el(c.key) + `.hidden && ` + el(c.key) + `.open`)
+		if got := browser.String(`String(` + el(c.key) + `.dispatchEvent(new Event("cancel", { cancelable: true })))`); got != "false" {
+			t.Errorf("%s: the dialog's cancel event was not prevented, so the browser would close the mount", c.slot)
+		}
+		want = append(want, c.key+" fx.close {} false")
+		browser.Wait(`window.frames.length === ` + strconv.Itoa(len(want)) + ` && ` + el(c.key) + `.hidden`)
+	}
+	if got := browser.String(`window.frames.map((f) => { f = JSON.parse(f); return [f.mount.key, f.intent, JSON.stringify(f.arg), "nodeKey" in f].join(" "); }).join("; ")`); got != strings.Join(want, "; ") {
+		t.Errorf("leaving a mount that declares a dismiss intent posted\n  %s\nwant\n  %s", got, strings.Join(want, "; "))
+	}
+
+	// In the panel slot the member has no effect.
+	send(`/fx-b mount ` + content("panel", closes))
+	browser.Wait(el("fx-b") + `?.tagName === "ARTICLE" && ` + el("fx-b") + `.querySelector("input") !== null`)
+	browser.Run(el("fx-b") + `.querySelector("input").focus()`)
+	press(t, browser, "Escape", 0)
+	// Without the member nothing is posted and the mount stays as it is.
+	send(`/fx-a mount ` + content("dialog", `{"name":"fx.other","arg":{"type":"object"}}`))
+	browser.Wait(inside("fx-a"))
+	press(t, browser, "Escape", 0)
+	browser.Run(el("fx-a") + `.dispatchEvent(new Event("cancel", { cancelable: true }))`)
+	press(t, browser, "Escape", 0)
+	// A frame the page posts is recorded before the key's event returns.
+	state := `[window.frames.length, ` + el("fx-a") + `.open, ` + el("fx-a") + `.matches(":modal"), ` + el("fx-b") + `.hidden].join()`
+	if got, want := browser.String(state), strconv.Itoa(len(want))+",true,true,false"; got != want {
+		t.Errorf("a panel that declares the member and a dialog without it: frames, dialog open, modal, panel hidden = %s, want %s", got, want)
 	}
 }

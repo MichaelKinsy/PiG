@@ -37,7 +37,8 @@
   @media (prefers-reduced-motion: reduce) {
     :root { --view-motion: 0ms; }
   }
-  /* The page's colours for the theme tokens a view names (client.js: colour); a view's theme overrides them for itself. */
+  /* The page's colours for the theme tokens a view names (client.js: colour), one for every colour of Pi's theme
+     schema (schemas/theme.schema.json), each a neutral token of this page; a view's theme overrides them for itself. */
   :root {
     --pig-text: var(--view-fg); --pig-accent: var(--view-accent); --pig-muted: var(--view-fg-muted); --pig-dim: var(--view-fg-muted);
     --pig-border: var(--view-border); --pig-borderAccent: var(--view-accent); --pig-borderMuted: var(--view-border);
@@ -45,11 +46,23 @@
     --pig-selectedBg: var(--view-selected); --pig-customMessageBg: var(--view-surface-2);
     --pig-userMessageBg: var(--view-surface-2); --pig-toolPendingBg: var(--view-surface-2);
     --pig-toolSuccessBg: var(--view-success-bg); --pig-toolErrorBg: var(--view-error-bg);
+    --pig-thinkingText: var(--view-fg-muted); --pig-userMessageText: var(--view-fg); --pig-customMessageText: var(--view-fg); --pig-customMessageLabel: var(--view-accent);
+    --pig-toolTitle: var(--view-fg); --pig-toolOutput: var(--view-fg-muted);
+    --pig-mdHeading: var(--view-fg); --pig-mdLink: var(--view-accent); --pig-mdLinkUrl: var(--view-fg-muted); --pig-mdCode: var(--view-fg); --pig-mdCodeBlock: var(--view-fg);
+    --pig-mdCodeBlockBorder: var(--view-border); --pig-mdQuote: var(--view-fg-muted); --pig-mdQuoteBorder: var(--view-border); --pig-mdHr: var(--view-border); --pig-mdListBullet: var(--view-accent);
+    --pig-toolDiffAdded: var(--view-success); --pig-toolDiffRemoved: var(--view-error); --pig-toolDiffContext: var(--view-fg-muted);
+    --pig-syntaxComment: var(--view-fg-muted); --pig-syntaxKeyword: var(--view-accent); --pig-syntaxFunction: var(--view-accent); --pig-syntaxVariable: var(--view-fg); --pig-syntaxString: var(--view-success);
+    --pig-syntaxNumber: var(--view-warning); --pig-syntaxType: var(--view-accent); --pig-syntaxOperator: var(--view-fg); --pig-syntaxPunctuation: var(--view-fg-muted);
+    --pig-thinkingOff: var(--view-border); --pig-thinkingMinimal: var(--view-fg-muted); --pig-thinkingLow: var(--view-accent); --pig-thinkingMedium: var(--view-accent);
+    --pig-thinkingHigh: var(--view-warning); --pig-thinkingXhigh: var(--view-error); --pig-thinkingMax: var(--view-error); --pig-bashMode: var(--view-success);
+    --pig-scrollbarThumb: var(--view-border); --pig-scrollbarTrack: var(--view-surface-2); --pig-searchMatchBg: var(--view-selected); --pig-searchMatchText: var(--view-fg);
   }
   html { font: var(--view-text)/var(--view-leading) var(--view-font); color: var(--view-fg); background: var(--view-bg); }
   body { margin: 0; display: flex; justify-content: center; flex-wrap: wrap; }
   [hidden] { display: none !important; }
+  /* A scrolling area shows a thin bar in the page's own colours. */
   * { box-sizing: border-box; }
+  html, #chat, .scroll-view, dialog.mount, pre.lines { scrollbar-width: thin; scrollbar-color: var(--view-border) transparent; }
   main { flex: 1 1 24rem; max-width: 52rem; min-height: 100vh; display: flex; flex-direction: column; gap: var(--view-space); padding: calc(2 * var(--view-space)); }
   section[data-slot] { display: flex; flex-direction: column; gap: var(--view-space); }
   section[data-slot]:empty { display: none; }
@@ -84,10 +97,11 @@
   #panels .mount { flex: 1 1 12rem; min-width: 0; }
   #panels .mount.behind { display: none; }
   /* One column while there is no transcript: the panels, then the prompt, centred. Two columns once the chat holds a
-     line. A page beside a running session (bridge.mjs --connect) has no chat at all: its panels take the page. */
+     line. A page beside a running session (bridge.mjs --connect) has no chat at all: its panels take the page. Under
+     panels taller than the window the page scrolls and the prompt stays in sight at the window's lower edge. */
   body:not(:has(#chat .line)), body.attached { flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; align-items: center; min-height: 100vh; }
-  body:not(:has(#chat .line)) #panels, body.attached #panels { flex: none; width: 100%; max-width: 880px; }
-  body:not(:has(#chat .line)) main, body.attached main { order: 1; flex: 1 1 auto; width: 100%; max-width: 880px; min-height: 0; }
+  body:not(:has(#chat .line)) #panels, body.attached #panels { flex: none; width: 100%; max-width: 880px; padding-bottom: 0; }
+  body:not(:has(#chat .line)) main, body.attached main { order: 1; flex: 1 1 auto; width: 100%; max-width: 880px; min-height: 0; position: sticky; bottom: 0; z-index: 1; background: var(--view-bg); }
   body.attached #panels, body.attached main { max-width: none; }
 
   /* Controls: one height, one radius, one set of states. */
@@ -215,6 +229,9 @@
   .text:has(+ .drawn) { color: var(--view-fg-muted); font-size: var(--view-text-sm); }
   form.arg { display: flex; flex-wrap: wrap; gap: var(--view-space); align-items: center; margin-top: var(--view-space); }
   form.arg label { display: inline-flex; gap: var(--view-space); align-items: center; }
+  /* The hidden mounts the user can open (client.js: offer): a quiet button each, by title. */
+  #closed { display: flex; flex-wrap: wrap; gap: var(--view-space); align-items: center; font-size: var(--view-text-sm); color: var(--view-fg-muted); }
+  #closed button { border-radius: calc(var(--view-control) / 2); color: var(--view-fg); }
   #prompt { display: flex; gap: var(--view-space); }
   #prompt[hidden] { display: none; }
   #prompt input { flex: 1; }
@@ -231,6 +248,7 @@
     <section data-slot="tool-card"></section>
   </div>
   <section data-slot="widget-above"></section>
+  <nav id="closed" aria-label="Hidden views" hidden><span>Open</span></nav>
   <form id="prompt"><input name="message" autocomplete="off" aria-label="Message" placeholder="Message, or a /command of an extension"><button>Send</button></form>
   <p id="attached" hidden>This page shows the views of a running pig session and has no prompt: the session's view endpoint takes view commands only, so type in its terminal.</p>
   <section data-slot="widget-below"></section>

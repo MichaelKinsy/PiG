@@ -143,6 +143,47 @@ function showPanels() {
     mount.tab.tabIndex = key === panels.chosen ? 0 : -1;
     mount.element.classList.toggle("behind", !side && key !== panels.chosen);
   }
+  offer();
+}
+
+// offer lists the hidden mounts the user can open: the ones that declare a `whenHidden` intent, each as a button that
+// reads the mount's title. Choosing one raises that intent with {}, and the extension's handler shows the view; the
+// page shows nothing by itself. A hidden mount without the intent is not offered.
+const closed = document.getElementById("closed");
+const opener = (snapshot) => (snapshot.state === "hidden" ? (snapshot.intents ?? []).find((decl) => decl.whenHidden) : undefined);
+
+function offer() {
+  const kept = new Map([...closed.querySelectorAll("button")].map((button) => [button.dataset.mount, button]));
+  for (const [key, mount] of mounts) {
+    if (!opener(mount.snapshot)) continue;
+    let button = kept.get(key);
+    if (button) kept.delete(key);
+    else {
+      button = document.createElement("button");
+      button.type = "button";
+      button.dataset.mount = key;
+      button.addEventListener("click", () => open(key));
+      closed.append(button);
+    }
+    button.textContent = labelOf(mount.snapshot);
+    button.title = `${mount.snapshot.plugin} / ${mount.snapshot.mount.key}`;
+  }
+  for (const button of kept.values()) button.remove();
+  closed.hidden = closed.querySelector("button") === null;
+}
+
+async function open(key) {
+  const mount = mounts.get(key);
+  const decl = mount && opener(mount.snapshot);
+  if (!decl) return;
+  const label = labelOf(mount.snapshot);
+  const result = await raise(mount, decl, "", undefined, undefined, { arg: {}, quiet: true });
+  if (result.outcome !== "done") return void say(`${label} did not open (${result.outcome})`);
+  // The button that held the focus is gone: the focus goes to the view it opened.
+  const shown = mounts.get(key);
+  if (shown && shown.snapshot.state !== "hidden" && (document.activeElement ?? document.body) === document.body) {
+    (shown.element.querySelector("input, textarea, button, [tabindex]") ?? shown.tab)?.focus();
+  }
 }
 
 // labelOf is what a mount is called in a tab: its title, or its key.
@@ -234,9 +275,12 @@ function shell(snapshot) {
   el.addEventListener("pointermove", (event) => onPointerMove(mount, event));
   for (const end of ["pointerup", "pointercancel"]) el.addEventListener(end, (event) => onPointerUp(mount, event));
   if (mount.floating) {
-    // The mount is the extension's: the page does not close it. A dialog the browser closed all the same is opened again.
-    el.setAttribute("closedby", "none");
-    el.addEventListener("cancel", (event) => event.preventDefault());
+    // The mount is the extension's: the page does not close it. A request to close it (Escape, the platform's own
+    // gesture) is passed on (leave); a dialog the browser closed all the same is opened again.
+    el.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      leave(mount);
+    });
     el.addEventListener("close", () => present(mount));
     // A dialog that opened without the focus (present) becomes modal when the user enters it.
     el.addEventListener("focusin", () => {
@@ -296,7 +340,11 @@ function draw(key, snapshot, held) {
   mount.element.dataset.digest = snapshot.digest ?? "";
   const title = `${snapshot.title || `${snapshot.plugin} / ${snapshot.mount.key}`}${snapshot.degraded ? " (degraded)" : ""}`;
   mount.head.firstChild.textContent = title;
-  if (mount.floating) mount.element.setAttribute("aria-label", title);
+  if (mount.floating) {
+    mount.element.setAttribute("aria-label", title);
+    // The browser asks before it closes the dialog (its `cancel` event) only for a mount that can be dismissed.
+    mount.element.setAttribute("closedby", dismissal(snapshot) ? "closerequest" : "none");
+  }
   mount.body.removeAttribute("style");
   theme(mount.body, snapshot.view);
 
@@ -330,9 +378,10 @@ function draw(key, snapshot, held) {
     if (old && old !== el && typed(el) && old.tagName === el.tagName && (el.view.value ?? "") === (old.view.value ?? "")) el.value = old.value;
   }
   // The mount's own intents are buttons in its header, but for the ones a binding or a region of the drawing raises:
-  // those have their own trigger, which gives them their argument.
+  // those have their own trigger, which gives them their argument. The intent that opens the mount while it is hidden
+  // (`whenHidden`) has its trigger in the list of hidden mounts (offer).
   const triggered = new Set([...(snapshot.bindings ?? []), ...(snapshot.drawing?.regions ?? [])].map((trigger) => trigger.intent));
-  const actions = JSON.stringify((snapshot.intents ?? []).filter((decl) => !decl.nodeKey && !triggered.has(decl.name)));
+  const actions = JSON.stringify((snapshot.intents ?? []).filter((decl) => !decl.nodeKey && !decl.whenHidden && !triggered.has(decl.name)));
   if (actions !== mount.actions) {
     mount.actions = actions;
     mount.head.replaceChildren(mount.head.firstChild);
@@ -901,18 +950,34 @@ function onClick(mount, event) {
 const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
 // onKey is the one key listener of a mount. The focused control gets the key first (control); a key it does not take
-// fires the mount's binding of that key. Escape is neither: it never closes a dialog mount, and it cancels the
-// mount's cancellable intent in flight.
+// fires the mount's binding of that key. Escape is neither: it is the user leaving (leave), and the page closes no
+// dialog mount by itself.
 function onKey(mount, event) {
   if (event.key === "Escape") {
     if (mount.floating) event.preventDefault();
-    return void mount.cancel?.();
+    return void leave(mount);
   }
   if (control(mount, event)) return;
   const hit = bound(mount, event);
   if (!hit) return;
   event.preventDefault();
   fireBinding(mount, hit.i);
+}
+
+// dismissal is the intent a dialog or an overlay mount declares `dismiss`: the one the user's leaving raises.
+const dismissal = (snapshot) => (snapshot.slot === "dialog" || snapshot.slot === "overlay" ? (snapshot.intents ?? []).find((decl) => decl.dismiss) : undefined);
+
+// leave is Escape in a mount, or the browser's request to close a dialog mount. It cancels the mount's cancellable
+// intent in flight; with none in flight it raises the mount's `dismiss` intent with {}, once until that intent has
+// settled, and the extension hides or removes the mount. A mount that declares no such intent stays as it is.
+function leave(mount) {
+  if (mount.cancel) return void mount.cancel();
+  const decl = dismissal(mount.snapshot);
+  if (!decl || mount.leaving) return;
+  mount.leaving = true;
+  raise(mount, decl, "", undefined, undefined, { arg: {}, quiet: true }).finally(() => {
+    mount.leaving = false;
+  });
 }
 
 // control gives a key to the control that holds the focus and reports whether the control took it. A native control
@@ -1319,6 +1384,7 @@ async function raise(mount, decl, nodeKey, value, item, { extra, quiet = false, 
   for (const box of mount.body.querySelectorAll("input[type=checkbox], input[type=radio]")) box.checked = box.hasAttribute("checked");
   if (mount.drawnAt > posted) window.uiView.timing.intent = mount.drawnAt - posted;
   if (since !== undefined && mount.drawnAt > since) window.uiView.timing.gesture = mount.drawnAt - since;
+  return result;
 }
 
 const RELATIONS = { labelledBy: "aria-labelledby", describedBy: "aria-describedby", controls: "aria-controls", owns: "aria-owns" };
