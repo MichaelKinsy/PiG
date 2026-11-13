@@ -66,6 +66,8 @@ func exitAtDrainedQuit(session *coding.Session) {
 	}()
 }
 
+func (r interactiveRuntime) SetBeforeQuitDispose(settle func()) { r.rt.SetBeforeQuitDispose(settle) }
+
 func (r interactiveRuntime) SetBeforeSessionReplacement(drain func(context.Context) error) {
 	r.rt.SetBeforeSessionReplacement(drain)
 }

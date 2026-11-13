@@ -86,6 +86,13 @@ var setTerminalProgress = tui.SetTerminalProgress
 //
 // Applying a task's events at its close, rather than as they arrive with only the frame timer kept out of the task, makes the task one change of the mode's state: every paint sees all of it or none, the paint after a keystroke and the one a dialog asks for by name included, and a task whose end went unreported would hold back its own events, never the screen. What is collected is kept small (collectEvent).
 func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
+	if m.tuiTornDown {
+		// Pi's stop() unsubscribes the mode from its Session before it stops the TUI (interactive-mode.ts stop: this.unsubscribe()), so the events of a run that ends under the quit's dispose reach the extensions and the session file but not the mode, and nothing of the run is drawn after the stop. The Session's flush still waits for its acknowledgement.
+		if barrier, ok := ev.(eventBarrier); ok {
+			barrier.AcknowledgeEvent()
+		}
+		return
+	}
 	if barrier, ok := ev.(eventBarrier); ok {
 		if marker, ok := ev.(eventRegionMarker); ok {
 			if open, bounds := marker.EventRegion(); bounds {

@@ -15,6 +15,7 @@ func (rt *Runtime) EmitQuitShutdownAfterInputEnd(drained func()) {
 func (rt *Runtime) emitQuitShutdownAfterInputEnd(drained func()) bool {
 	session := rt.Session()
 	if session == nil || session.ExtensionHost() == nil {
+		rt.settleBeforeQuitDispose()
 		rt.EmitQuitShutdown()
 		return false
 	}
@@ -22,6 +23,7 @@ func (rt *Runtime) emitQuitShutdownAfterInputEnd(drained func()) bool {
 	host := session.ExtensionHost()
 	host.SetRuntimeDrainHandler(dispose.report)
 	host.EndInput()
+	rt.settleBeforeQuitDispose()
 	rt.EmitQuitShutdown()
 	return dispose.finish()
 }
@@ -55,4 +57,15 @@ func (d *inputEndedDispose) finish() bool {
 	}
 	d.returned = true
 	return false
+}
+
+// SetBeforeQuitDispose installs the mode's settle of its active run. EmitQuitShutdownAfterInputEnd runs it on its caller's goroutine once the extension runtimes heard that input ended and before the dispose awaits the Session's abort: an interactive run ends on the mode's owner loop (its event flush and its turn's cleanup), and that dispose runs on the same loop, so the mode aborts the run and serves its loop until the run has settled, agent_settled included, as Pi's loop turns under `await this.session.abort()`. Configure it before the mode runs.
+func (rt *Runtime) SetBeforeQuitDispose(settle func()) {
+	rt.replacement.quitSettle = settle
+}
+
+func (rt *Runtime) settleBeforeQuitDispose() {
+	if settle := rt.replacement.quitSettle; settle != nil {
+		settle()
+	}
 }
