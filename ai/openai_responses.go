@@ -1521,7 +1521,12 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	}
 	store := false
 	req.Store = &store
-	req.ServiceTier = opts.ServiceTier
+	// azure-openai-responses.ts buildParams (:204-262) writes its own request: no service tier, no cache retention or cache options, a
+	// prompt cache key whatever the retention, and max_output_tokens whatever the model's compat says.
+	azure := p.api() == APIAzureOpenAIResponses
+	if !azure {
+		req.ServiceTier = opts.ServiceTier
+	}
 	if p.cfg.Codex {
 		req.Instructions = "You are a helpful assistant."
 		// openai-codex-responses.ts buildParams reads the initial system message of the resolved transcript, before transformMessages drops an errored or aborted turn ahead of it.
@@ -1550,7 +1555,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		req.Tools = convertedTools
 	}
 	omitUnsupportedFields := p.isChatGPTSignIn(apiKey)
-	if !p.cfg.Codex && !omitUnsupportedFields && opts.MaxTokens > 0 && (p.cfg.Compat == nil || p.cfg.Compat.SupportsMaxOutputTokens == nil || *p.cfg.Compat.SupportsMaxOutputTokens) {
+	if !p.cfg.Codex && !omitUnsupportedFields && opts.MaxTokens > 0 && (azure || p.cfg.Compat == nil || p.cfg.Compat.SupportsMaxOutputTokens == nil || *p.cfg.Compat.SupportsMaxOutputTokens) {
 		// OpenAI Responses rejects max_output_tokens below 16 (earendil-works/pi#6265).
 		req.MaxOutputTokens = max(opts.MaxTokens, openAIResponsesMinOutputTokens)
 	}
@@ -1618,11 +1623,11 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if !p.cfg.Codex {
 		cacheRetention = string(resolveCompletionsCacheRetention(opts.CacheRetention, mergeProviderEnv(p.cfg.Env, opts.Env)))
 	}
-	if opts.SessionID != "" && cacheRetention != "none" && (p.cfg.Codex || compat.PromptCacheKeyMode != PromptCacheKeyDisabled) {
+	if opts.SessionID != "" && (azure || cacheRetention != "none") && (p.cfg.Codex || compat.PromptCacheKeyMode != PromptCacheKeyDisabled) {
 		req.PromptCacheKey = ClampOpenAIPromptCacheKey(opts.SessionID)
 	}
 	// Retention and write policy do not depend on a session-affinity key.
-	if !p.cfg.Codex && !omitUnsupportedFields {
+	if !p.cfg.Codex && !azure && !omitUnsupportedFields {
 		if ret := getPromptCacheRetention(compat, cacheRetention); ret != nil {
 			req.PromptCacheRetention = *ret
 		}

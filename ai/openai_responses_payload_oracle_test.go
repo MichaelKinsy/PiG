@@ -70,9 +70,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 				compat = append(compat, member)
 			}
 		}
-		if !azure { // azure-openai-responses.ts buildParams reads neither supportsMaxOutputTokens nor the cache options
-			add(`"supportsMaxOutputTokens":` + boolean())
-		}
+		add(`"supportsMaxOutputTokens":` + boolean())
 		add(`"supportsStrictMode":` + boolean())
 		add(`"supportsMidConvoSystemMessages":` + boolean())
 		add(`"supportsLongCacheRetention":` + boolean())
@@ -100,7 +98,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 		if rng.Intn(2) == 0 {
 			p.Options["temperature"] = []float64{0, 0.2, 1}[rng.Intn(3)]
 		}
-		if !azure && rng.Intn(3) == 0 {
+		if rng.Intn(3) == 0 {
 			p.Options["cacheRetention"] = pick("none", "short", "long")
 		}
 		if rng.Intn(3) == 0 {
@@ -110,7 +108,7 @@ func checkResponsesPayload(t *testing.T, api string) {
 		if codex && !p.Simple && rng.Intn(3) == 0 {
 			p.Options["textVerbosity"] = pick("low", "medium", "high")
 		}
-		if !azure && !p.Simple && rng.Intn(4) == 0 {
+		if !p.Simple && rng.Intn(4) == 0 {
 			p.Options["serviceTier"] = pick("flex", "priority", "auto", "default")
 		}
 		if rng.Intn(4) == 0 {

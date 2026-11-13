@@ -69,6 +69,7 @@ func openAIResponsesWireRows() []providerWireRow {
 		{"custom base url", api, "custom", "http://127.0.0.1:9/v1", "k"},
 		{"xai", api, "xai", "https://api.x.ai/v1", "k"},
 		{"opencode", api, "opencode", "https://opencode.ai/zen/v1", "k"},
+		{"azure", "azure-openai-responses", "azure-openai-responses", "https://resource.openai.azure.com/openai/v1", "k"},
 	} {
 		row := providerWireRow{API: route.api, Provider: route.provider, BaseURL: route.baseURL, APIKey: route.key}
 		add("route "+route.name+": replay", row)
@@ -127,6 +128,26 @@ func openAIResponsesWireRows() []providerWireRow {
 		wireAssistant(api, "openai", id, "toolUse", reasoning(`{"id":"rs_4","type":"reasoning"`)+","+wireCall("call_1|fc_1")), wireResult("call_1|fc_1", wireText, false),
 		wireAssistant(api, "openai", id, "error", ``), wireUserNext)})
 
+	// azure-openai-responses.ts buildParams (:204-262) reads no cache retention, service tier or max output token compat.
+	azure := providerWireRow{API: "azure-openai-responses", Provider: "azure-openai-responses", BaseURL: "https://resource.openai.azure.com/openai/v1", APIKey: "k"}
+	for _, option := range []struct{ name, compat, options string }{
+		{"session, retention none", ``, `{"sessionId":"s1","cacheRetention":"none"}`},
+		{"session, retention short", ``, `{"sessionId":"s1","cacheRetention":"short"}`},
+		{"session, retention long", `{"supportsLongCacheRetention":true}`, `{"sessionId":"s1","cacheRetention":"long"}`},
+		{"retention long, explicit cache mode", `{"supportsExplicitPromptCacheMode":true,"supportsLongCacheRetention":true}`, `{"cacheRetention":"long"}`},
+		{"retention none, explicit cache mode", `{"supportsExplicitPromptCacheMode":true}`, `{"cacheRetention":"none"}`},
+		{"prompt cache key disabled", `{"promptCacheKeyMode":"disabled"}`, `{"sessionId":"s1"}`},
+		{"service tier", ``, `{"serviceTier":"priority"}`},
+		{"max tokens, model without max_output_tokens", `{"supportsMaxOutputTokens":false}`, `{"maxTokens":64}`},
+		{"text verbosity", ``, `{"textVerbosity":"high"}`},
+	} {
+		row := azure
+		if option.compat != "" {
+			row.Compat = raw(option.compat)
+		}
+		row.Options = raw(option.options)
+		add("azure: "+option.name, row)
+	}
 	add("last item: function call", providerWireRow{Context: wireContext(wireTools, wireUserGo, called("openai"))})
 
 	// Tools declared during the conversation (openai-responses-shared.ts:236-264): client tool search, additional tools, or a notice.
@@ -162,4 +183,9 @@ func wireRowsOf(rows []providerWireRow, api string) []providerWireRow {
 
 func TestOpenAIResponsesWireBodyMatchesPi(t *testing.T) {
 	checkProviderWireRows(t, wireRowsOf(openAIResponsesWireRows(), "openai-responses"))
+}
+
+// azure-openai-responses.ts builds its own request (buildParams, :173-262) over the shared converter.
+func TestAzureOpenAIResponsesWireBodyMatchesPi(t *testing.T) {
+	checkProviderWireRows(t, wireRowsOf(openAIResponsesWireRows(), "azure-openai-responses"))
 }
