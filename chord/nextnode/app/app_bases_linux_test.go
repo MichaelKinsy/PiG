@@ -416,17 +416,29 @@ func heldServerPlugin(t *testing.T) (files map[string]string, pipe string) {
 // request and upgrade with 503 (http.ts `#resolve` at Pi 21e4cb80d: the registries are `not_ready`). The Go server's plugins load
 // in the NodeHost after the server host's own facets (D605): a request or a link asked meanwhile is refused the same way. A link
 // that connected then held the scripts object's empty set, whose base is none a page runs: a page whose reconnect to a restarted
-// server came then reloaded.
+// server came then reloaded; a page request admitted then started the build of the bases before the load had ended. Once the
+// plugins are loaded the bases are built right after, as Pi's are, and the same client's retries succeed.
 func TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading(t *testing.T) {
 	files, pipe := heldServerPlugin(t)
+	entry := filepath.Join(t.TempDir(), "main.ts")
+	if err := os.WriteFile(entry, []byte("globalThis.started = true;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	web := withPublicWeb(entry, plainPage)
 	port := freePort(t)
 	stop := feedPipe(t, pipe, "held")
-	first := startTestApp(t, map[string]map[string]string{"held": files}, func(o *AppOptions) { o.Listen.Port = port })
+	first := startTestApp(t, map[string]map[string]string{"held": files}, func(o *AppOptions) {
+		web(o)
+		o.Listen.Port = port
+	})
 	stop()
 	headers := ownerHeaders(t, first.app)
 	closeAndWait(t, first.app)
 	// The restarted server's start waits in its plugin's evaluation, which reads the pipe.
-	options, _ := testOptions(t, func(o *AppOptions) { o.Listen.Port, o.DataDir, o.Root = port, first.dataDir, first.root })
+	options, _ := testOptions(t, func(o *AppOptions) {
+		web(o)
+		o.Listen.Port, o.DataDir, o.Root = port, first.dataDir, first.root
+	})
 	type outcome struct {
 		app *App
 		err error
@@ -453,8 +465,10 @@ func TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading(
 	case <-time.After(30 * time.Second):
 		t.Fatal("the restarted server's plugin was not evaluated")
 	}
-	if got := surfaceGet(t, port, "/nothing", nil).status; got != http.StatusServiceUnavailable {
-		t.Errorf("request = %d, want 503 while the server's plugins are still loading", got)
+	for _, path := range []string{"/nothing", "/"} {
+		if got := surfaceGet(t, port, path, nil).status; got != http.StatusServiceUnavailable {
+			t.Errorf("request of %s = %d, want 503 while the server's plugins are still loading", path, got)
+		}
 	}
 	got, err := upgradeLink(port, headers)
 	if err != nil {
@@ -474,7 +488,16 @@ func TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading(
 		t.Fatal(second.err)
 	}
 	t.Cleanup(func() { closeAndWait(t, second.app) })
-	if got, err := upgradeLink(port, ownerHeaders(t, second.app)); err != nil || got != http.StatusSwitchingProtocols {
-		t.Fatalf("link = %d, %v, want 101 once the server's plugins are loaded", got, err)
+	// The bases are built right after the load, started by the start itself (every request before was refused), and the same
+	// client's retries succeed: its page request, and its link with the sign-in it had.
+	<-second.app.BasesBuilt()
+	if second.app.Web.Base() == "" {
+		t.Fatal("the web base was not built right after the load")
+	}
+	if got := surfaceGet(t, port, "/", nil).status; got != http.StatusOK {
+		t.Errorf("page after the load = %d, want 200", got)
+	}
+	if got, err := upgradeLink(port, headers); err != nil || got != http.StatusSwitchingProtocols {
+		t.Fatalf("link after the load = %d, %v, want 101 for the sign-in refused before", got, err)
 	}
 }
