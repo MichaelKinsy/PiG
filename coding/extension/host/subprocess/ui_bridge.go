@@ -1020,11 +1020,14 @@ func (b *UIBridge) RemoveWidget(key string) {
 	}
 }
 
-// ResetExtensionUI drops what the extension processes put on screen that Pi resets when a /reload begins (interactive-mode.ts
-// handleReloadCommand, resetExtensionUI): every widget they set (clearExtensionWidgets), and it tells the widget sync callback. A widget
-// the reloaded extension does not set again is gone.
-// It is the bridge's half of the interactive mode's reset: a surface the extension processes own is dropped here.
+// ResetExtensionUI drops what the extension processes put on screen that Pi's resetExtensionUI resets (interactive-mode.ts), when a
+// /reload begins and before a Session replacement: every widget they set (clearExtensionWidgets), and it tells the widget sync
+// callback; the statuses, the footer and the header the bridge keeps to show a UI bound later; and their terminal input listeners. The
+// UI resets what it draws itself. The connection of a footer or header factory is told that its surface is retired, as Pi disposes the
+// component, and a frame the factory renders afterwards is not installed. What an extension sets after the reset is its own.
 func (b *UIBridge) ResetExtensionUI() {
+	b.headerMu.Lock()
+	b.footerMu.Lock()
 	b.mu.Lock()
 	widgets := make([]*PushProxy, 0, len(b.widgets))
 	for key, proxy := range b.widgets {
@@ -1032,7 +1035,37 @@ func (b *UIBridge) ResetExtensionUI() {
 		delete(b.widgets, key)
 		delete(b.widgetOwners, key)
 	}
+	clear(b.pendingStatuses)
+	retired := maps.Clone(b.surfaceOwners)
+	clear(b.surfaceOwners)
+	b.pendingFooterSet, b.pendingFooterClear, b.pendingFooter, b.pendingFooterView = false, false, nil, nil
+	b.pendingHeaderSet, b.pendingHeaderClear, b.pendingHeader, b.pendingHeaderView = false, false, nil, nil
+	if b.footerView != nil {
+		b.footerView.close()
+		b.footerView, b.footerViewConn = nil, nil
+	}
+	if b.headerView != nil {
+		b.headerView.close()
+		b.headerView, b.headerViewConn = nil, nil
+	}
+	listeners := b.terminalInputSubs
+	b.terminalInputSubs = nil
 	b.mu.Unlock()
+	b.footerMu.Unlock()
+	b.headerMu.Unlock()
+	for kind, owner := range retired {
+		if owner.conn == nil || owner.id == 0 {
+			continue
+		}
+		args, _ := json.Marshal(struct {
+			Kind      string `json:"kind"`
+			SurfaceID int    `json:"surfaceId"`
+		}{kind, owner.id})
+		_ = owner.conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "ui.surface_retired", Args: args}})
+	}
+	for _, retire := range listeners {
+		retire()
+	}
 	// Clear outside b.mu: it requests a render through b.Invalidate.
 	for _, proxy := range widgets {
 		proxy.Clear()

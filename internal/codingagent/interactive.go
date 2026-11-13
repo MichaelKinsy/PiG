@@ -59,8 +59,8 @@ type SubprocessUIBridge interface {
 	SetWidgetClearFunc(fn func(key string))
 	// RemoveWidget drops the extension processes' widget under key, which a host-process extension replaced.
 	RemoveWidget(key string)
-	// ResetExtensionUI drops what the extension processes put on screen that a /reload resets when it begins: the bridge's half of the
-	// interactive mode's resetExtensionUI.
+	// ResetExtensionUI drops what the extension processes put on screen that Pi's resetExtensionUI resets, when a /reload begins and
+	// before a Session replacement.
 	ResetExtensionUI()
 	// SetFrontend tells extensions whether a frontend session draws
 	// (StatePayload.frontend, D107).
