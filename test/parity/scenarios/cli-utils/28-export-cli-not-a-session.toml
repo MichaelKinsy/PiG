@@ -19,11 +19,14 @@ pi_args = ["--export", "testdata/export-inputs/garbage.jsonl", "{{TEMP}}/out.htm
 timeout_seconds = 15
 cwd = "."
 
+# The diagnostic names the product that prints it (D2, "Product name in messages", docs/parity/divergences/D2.md), so the two stderr
+# streams differ in that one word. stderr_equal compares raw bytes and takes no normalization: the scenario compares stdout and stderr
+# as one stream, where the name normalization below applies, and asserts each binary's own word. Measured 2026-11-13 against Pi 1.5.2:
+# both binaries print the one line on stderr and nothing on stdout. TestExportOfAFileThatIsNotASessionAnswersOnStderr (coding/cli)
+# holds PiG's stream.
 [assert]
 exit_code = 1
 output_equal = true
-stderr_equal = true
-# D2 ("Product name in messages", docs/parity/divergences/D2.md): each binary's diagnostic names its own product.
 pig_contains = ["Error: Session file is not a valid pig session:"]
 pi_contains = ["Error: Session file is not a valid pi session:"]
 runs = 3

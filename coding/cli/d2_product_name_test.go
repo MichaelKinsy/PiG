@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -63,5 +64,21 @@ func TestExportTelemetryOverride(t *testing.T) {
 	exportTelemetryOverride()
 	if got := os.Getenv("PI_TELEMETRY"); got != "1" {
 		t.Fatalf("PI_TELEMETRY = %q, want the 1 that was set", got)
+	}
+}
+
+// Pi's main.ts prints a failed `--export` as "Error: <message>" on stderr and exits 1, with nothing on stdout. The parity scenario
+// cli-utils/28-export-cli-not-a-session compares the two binaries on the merged streams, because the product's name differs (D2); this
+// test holds PiG's stream.
+func TestExportOfAFileThatIsNotASessionAnswersOnStderr(t *testing.T) {
+	dir := t.TempDir()
+	garbage := filepath.Join(dir, "garbage.jsonl")
+	if err := os.WriteFile(garbage, []byte("{\"type\":\"event\",\"data\":\"not a session\"}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := runPigForModeTest(t, buildPigBinaryForSignalTest(t), nil, nil, "--export", garbage, filepath.Join(dir, "out.html"))
+	want := d2Text("Error: Session file is not a valid pi session: ")
+	if code != 1 || stdout != "" || !strings.HasPrefix(stderr, want) || !strings.HasSuffix(stderr, "garbage.jsonl\n") || strings.Count(stderr, "\n") != 1 {
+		t.Fatalf("code=%d stdout=%q stderr=%q, want exit 1, no stdout and the one line %q<path> on stderr", code, stdout, stderr, want)
 	}
 }
