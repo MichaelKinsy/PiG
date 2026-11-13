@@ -66,7 +66,7 @@ export default function extension(pi: ExtensionAPI): void {
     await ctx.ui.registerSprite(sprite);
     ctx.ui.notify("ready", "info");
     const abilities: PiGViewAbilities | null = ctx.ui.viewAbilities();
-    const mounted: PiGViewStatus = await ctx.ui.mountView({ key: "k", slot: "panel", title: "K", intents: [{ name: "x.open", arg: { type: "object" }, whenHidden: true }], view: { root: { kind: "text", text: String(abilities?.limits.mounts) } } });
+    const mounted: PiGViewStatus = await ctx.ui.mountView({ key: "k", slot: "panel", title: "K", intents: [{ name: "x.open", arg: { type: "object" }, whenHidden: true }, { name: "x.close", arg: { type: "object" }, dismiss: true }], view: { root: { kind: "text", text: String(abilities?.limits.mounts) } } });
     await ctx.ui.updateView(mounted.mount, { title: "K2", view: { root: { kind: "text", id: "t", text: "next" } }, focus: [{ node: "t", request: "update" }] });
     await ctx.ui.updateView(mounted.mount, {
       view: { root: { kind: "text", id: "t", text: "next" } },
