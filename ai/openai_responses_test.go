@@ -355,8 +355,8 @@ func TestResponsesConvertMessages_ReasoningReplay(t *testing.T) {
 	}
 }
 
-// Another model's thinking never reaches the converter as a signed block: transformMessages, which convertResponsesMessages runs first
-// (openai-responses-shared.ts), turns it into text. The converter itself replays whatever a signature holds (:337-338).
+// Another model's thinking never reaches the converter: transformMessages, which convertResponsesMessages runs first
+// (openai-responses-shared.ts), drops it (transform-messages.ts:128-131). The converter itself replays whatever a signature holds (:337-338).
 func TestResponsesConvertMessages_CrossProviderThinkingSkipped(t *testing.T) {
 	provider := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai", Model: "gpt-5"}}
 	model := &Model{ID: "gpt-5", ProviderMeta: ProviderMetadata{API: APIOpenAIResponses, ProviderID: "openai"}}
@@ -364,13 +364,13 @@ func TestResponsesConvertMessages_CrossProviderThinkingSkipped(t *testing.T) {
 		ThinkingContent{Thinking: "reasoning", ThinkingSignature: "opaque"}, TextContent{Text: "answer"},
 	}}}, model, responsesToolCallNormalizer(nil))
 	items, err := provider.convertMessages(transformed, nil)
-	if err != nil || len(items) == 0 {
+	if err != nil || len(items) != 1 || items[0].Type != "message" {
 		t.Fatalf("items = %#v, err = %v", items, err)
 	}
-	for _, item := range items {
-		if item.Type != "message" || item.stored != nil {
-			t.Fatalf("items = %#v", items)
-		}
+	// The input Pi's openai-responses stream hands to onPayload for this transcript: the answer alone.
+	const want = `[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"answer","annotations":[]}],"status":"completed","id":"msg_pi_0"}]`
+	if got, err := json.Marshal(items); err != nil || string(got) != want {
+		t.Fatalf("items = %s, err = %v, want %s", got, err, want)
 	}
 }
 
