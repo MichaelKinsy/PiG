@@ -246,6 +246,13 @@ func RenderHighlightedHtml(html string, theme HighlightTheme) string {
 }
 
 func renderHighlightedHTML(html string, theme HighlightTheme) (output string, err error) {
+	output, _, err = renderHighlightedHTMLFrom(theme, nil, html)
+	return output, err
+}
+
+// renderHighlightedHTMLFrom is renderHighlightedHTML for the HTML that parts join to, none of which ends inside a tag or a character reference, and which starts inside the spans of open, outermost first; it also returns the spans open where the HTML ends. HTML cut after a tag or a line break renders as its two parts do, the second from the spans the first leaves open: a formatter takes the text between two tags line by line.
+// pig additive (D112): see hlCacheMax. A streamed code block is rendered from where its highlighting resumes (highlightResumable).
+func renderHighlightedHTMLFrom(theme HighlightTheme, open []scopeEntry, parts ...string) (output string, scopes []scopeEntry, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			thrown, ok := recovered.(error)
@@ -256,7 +263,7 @@ func renderHighlightedHTML(html string, theme HighlightTheme) (output string, er
 		}
 	}()
 	var out, textBuffer strings.Builder
-	var scopes []scopeEntry
+	scopes = slices.Clone(open)
 	flushText := func() {
 		if textBuffer.Len() == 0 {
 			return
@@ -276,37 +283,39 @@ func renderHighlightedHTML(html string, theme HighlightTheme) (output string, er
 		}
 		textBuffer.Reset()
 	}
-	for index := 0; index < len(html); {
-		if isSpanOpenTagStart(html, index) {
-			if tagEnd := strings.IndexByte(html[index+5:], '>'); tagEnd >= 0 {
-				tagEnd += index + 5
+	for _, html := range parts {
+		for index := 0; index < len(html); {
+			if isSpanOpenTagStart(html, index) {
+				if tagEnd := strings.IndexByte(html[index+5:], '>'); tagEnd >= 0 {
+					tagEnd += index + 5
+					flushText()
+					scope, ok := getScopeFromSpanTag(html[index : tagEnd+1])
+					scopes = append(scopes, scopeEntry{scope, ok})
+					index = tagEnd + 1
+					continue
+				}
+			}
+			if strings.HasPrefix(html[index:], "</span>") {
 				flushText()
-				scope, ok := getScopeFromSpanTag(html[index : tagEnd+1])
-				scopes = append(scopes, scopeEntry{scope, ok})
-				index = tagEnd + 1
+				if len(scopes) > 0 {
+					scopes = scopes[:len(scopes)-1]
+				}
+				index += len("</span>")
 				continue
 			}
-		}
-		if strings.HasPrefix(html[index:], "</span>") {
-			flushText()
-			if len(scopes) > 0 {
-				scopes = scopes[:len(scopes)-1]
+			if html[index] == '&' {
+				if text, length, ok := decodeHTMLEntityAt(html, index); ok {
+					textBuffer.WriteString(text)
+					index += length
+					continue
+				}
 			}
-			index += len("</span>")
-			continue
+			textBuffer.WriteByte(html[index])
+			index++
 		}
-		if html[index] == '&' {
-			if text, length, ok := decodeHTMLEntityAt(html, index); ok {
-				textBuffer.WriteString(text)
-				index += length
-				continue
-			}
-		}
-		textBuffer.WriteByte(html[index])
-		index++
 	}
 	flushText()
-	return out.String(), nil
+	return out.String(), scopes, nil
 }
 
 // decodeHTMLEntityAt ports utils/html.ts decodeHtmlEntityAt: the reference ends at the next semicolon within 16 UTF-16 code units. length is in bytes of html.

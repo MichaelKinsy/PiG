@@ -159687,7 +159687,7 @@
       "evidence": [
         "test:tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd",
         "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach",
-        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
+        "test:tui/assistant_message_stream_pin_test.go#TestStreamingMessageLetsGoOfItsBlocksWhenItEnds"
       ]
     },
     {
@@ -159709,7 +159709,7 @@
       "evidence": [
         "test:tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd",
         "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach",
-        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
+        "test:tui/assistant_message_stream_pin_test.go#TestStreamingMessageLetsGoOfItsBlocksWhenItEnds"
       ]
     },
     {
