@@ -34,7 +34,7 @@ The first command attaches a web page to the running terminal session. The secon
 
 ## A complete extension
 
-This extension mounts a todo list in the `panel` slot. A terminal draws the plain view. A web page draws the alternative. Both show the same state.
+This extension mounts a todo list in the `panel` slot. A terminal draws the plain view. A web page draws the alternative. Both show the same state. The key `c` opens a second mount, a dialog that asks before it removes the done items.
 
 ```js
 // todo.mjs: one todo list for the terminal and a web page.
@@ -45,6 +45,7 @@ export default function todo(pi) {
     { id: "plants", label: "Water the plants", done: false },
   ];
   let mount = null;
+  let confirm = null;
 
   const open = () => items.filter((item) => !item.done).length;
   const list = () => ({
@@ -54,19 +55,33 @@ export default function todo(pi) {
   });
   const plain = () => ({ root: { kind: "vstack", children: [{ kind: "text", text: `Todo: ${open()} open. Press c to clear the done items.` }, list()] } });
   const rich = () => ({ root: { kind: "vstack", gap: 1, children: [{ kind: "markdown", text: `# Todo\n\n**${open()}** of ${items.length} open.` }, list()] } });
+  const removed = { type: "object", properties: { removed: { type: "integer" } }, required: ["removed"] };
   const content = () => ({
     title: "Todo",
     view: plain(),
     alternatives: [{ when: { any: [{ all: [{ claim: "client.kind", op: "equals", value: "web" }] }] }, view: rich() }],
     intents: [
       { name: "todo.toggle", nodeKey: "items", arg: { type: "object", properties: { value: { type: "string" } }, required: ["value"] } },
-      { name: "todo.clear", arg: { type: "object" }, answer: { type: "object", properties: { removed: { type: "integer" } }, required: ["removed"] } },
+      { name: "todo.clear", arg: { type: "object" }, answer: removed },
     ],
     bindings: [{ key: "c", intent: "todo.clear", name: "Clear done" }],
     a11y: [{ node: "items", name: "Todo items", role: "list" }],
     focus: [{ node: "items", request: "mount" }],
     fallback: { kind: "text", text: "The todo list does not fit this client." },
   });
+
+  // The dialog. Its two bindings raise one intent with different arguments.
+  const question = () => ({
+    title: "Clear done items",
+    view: { root: { kind: "text", text: `Remove ${items.length - open()} done items? Press y or n.` } },
+    intents: [{ name: "todo.confirm", arg: { type: "object", properties: { yes: { type: "boolean" } }, required: ["yes"] }, answer: removed }],
+    bindings: [{ key: "y", intent: "todo.confirm", arg: { yes: true }, name: "Remove" }, { key: "n", intent: "todo.confirm", arg: { yes: false }, name: "Keep" }],
+  });
+  const clear = () => {
+    const before = items.length;
+    items.splice(0, items.length, ...items.filter((item) => !item.done));
+    return { removed: before - items.length };
+  };
 
   // Mount once, when a client that draws panels is attached.
   const show = async (abilities, ctx) => {
@@ -83,13 +98,124 @@ export default function todo(pi) {
       if (!item) return { outcome: "refused", error: "no such item" };
       item.done = !item.done;
     } else if (inv.intent === "todo.clear") {
-      const before = items.length;
-      items.splice(0, items.length, ...items.filter((item) => !item.done));
-      answer = { removed: before - items.length };
+      // Ask in a dialog when a client draws dialogs. Only the extension closes a dialog.
+      if (ctx.ui.viewAbilities()?.slots.includes("dialog")) {
+        if (!confirm) confirm = (await ctx.ui.mountView({ key: "todo-confirm", slot: "dialog", ...question() })).mount;
+        return { outcome: "done", answer: { removed: 0 } };
+      }
+      answer = clear();
+    } else if (inv.intent === "todo.confirm") {
+      answer = inv.arg.yes ? clear() : { removed: 0 };
+      await ctx.ui.removeView(confirm);
+      confirm = null;
     } else return { outcome: "refused", error: "unknown intent" };
     mount = (await ctx.ui.updateView(mount, content())).mount;
     return { outcome: "done", answer };
   });
+}
+```
+
+## The same extension in Go
+
+A Go extension is a package with `func Extension() *sdk.Extension`, in a module that requires `github.com/MichaelKinsy/PiG/extensions/sdk`. `pig extension init ./todo --lang go` creates the module ([Extensions](extensions.md)). PiG builds the package when it loads it and at every `/reload`. Name the directory in the Piglet's `origins` (`local:./todo`) or with `-e ./todo`.
+
+The Go SDK takes the records of this page as structs with the same member names (`sdk.ViewContent`, `sdk.ViewIntent`, `sdk.ViewAlternative`), and the `kit` package builds the nodes. A handler runs on a goroutine of its own, so guard your state.
+
+```go
+// todo/extension.go: the todo list of todo.mjs as a Go extension.
+package todo
+
+import (
+	"encoding/json"
+	"fmt"
+	"slices"
+	"sync"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
+)
+
+type item struct {
+	id, label string
+	done      bool
+}
+
+// Extension returns a new instance. PiG calls it at every load and reload.
+func Extension() *sdk.Extension {
+	var (
+		mu    sync.Mutex
+		mount *sdk.ViewRef
+		items = []*item{{id: "milk", label: "Buy milk"}, {id: "letter", label: "Send the letter", done: true}, {id: "plants", label: "Water the plants"}}
+	)
+	content := func() sdk.ViewContent {
+		open := 0
+		rows := make([]kit.SelectItem, len(items))
+		for i, it := range items {
+			box := "[x]"
+			if !it.done {
+				box = "[ ]"
+				open++
+			}
+			rows[i] = kit.SelectItem{Value: it.id, Label: box + " " + it.label}
+		}
+		list := func() kit.Node { return kit.NewSelectList("items", rows, 8) }
+		web := sdk.ViewWhen{Any: []sdk.ViewWhenAll{{All: []sdk.ViewClause{{Claim: "client.kind", Op: "equals", Value: "web"}}}}}
+		rich := kit.NewMarkdown(fmt.Sprintf("# Todo\n\n**%d** of %d open.", open, len(items)), 1, 0)
+		return sdk.ViewContent{
+			Title:        "Todo",
+			View:         kit.View{Root: kit.NewContainer(kit.NewText(fmt.Sprintf("Todo: %d open", open), 1, 0), list())},
+			Alternatives: []sdk.ViewAlternative{{When: web, View: kit.View{Root: kit.NewContainer(rich, list())}}},
+			Intents: []sdk.ViewIntent{{
+				Name: "todo.toggle", NodeKey: "items",
+				Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"value": {Type: "string"}}, Required: []string{"value"}},
+			}},
+			Focus: []sdk.ViewFocus{{Node: "items", Request: "mount"}},
+		}
+	}
+	// Mount once, when a client that draws panels is attached.
+	show := func(ctx sdk.Context, abilities *sdk.ViewAbilities) {
+		mu.Lock()
+		defer mu.Unlock()
+		if abilities == nil || mount != nil || !slices.Contains(abilities.Slots, sdk.ViewSlotPanel) {
+			return
+		}
+		status, err := ctx.MountView(sdk.ViewMount{Key: "todo", Slot: sdk.ViewSlotPanel, ViewContent: content()})
+		if err != nil {
+			ctx.Notify("todo: "+err.Error(), "error")
+			return
+		}
+		mount = &status.Mount
+	}
+
+	ext := sdk.New("todo")
+	ext.OnViewAbilities(show)
+	ext.OnSessionStart(func(ctx sdk.Context, _ map[string]any) (any, error) {
+		show(ctx, ctx.ViewAbilities())
+		return nil, nil
+	})
+	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
+		var arg struct {
+			Value string `json:"value"`
+		}
+		if err := json.Unmarshal(in.Arg, &arg); err != nil {
+			return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		i := slices.IndexFunc(items, func(it *item) bool { return it.id == arg.Value })
+		if in.Intent != "todo.toggle" || i < 0 {
+			return sdk.ViewIntentResult{Outcome: "refused", Error: "no such item"}
+		}
+		items[i].done = !items[i].done
+		// Update through the handler's context, then answer.
+		status, err := in.Context.UpdateView(sdk.ViewUpdate{Mount: *mount, ViewContent: content()})
+		if err != nil {
+			return sdk.ViewIntentResult{Outcome: "failed", Error: err.Error()}
+		}
+		mount = &status.Mount
+		return sdk.ViewIntentResult{Outcome: "done"}
+	})
+	return ext
 }
 ```
 
@@ -308,6 +434,8 @@ export default function meter(pi) {
 
 `slot` is one of `notify`, `status`, `widget-above`, `widget-below`, `header`, `footer`, `dialog`, `overlay`, `panel`, `tool-card`, `message` and `entry`. A mount has one slot. To show the same state in a panel and in a dialog, make two mounts with two keys. Mount only in a slot that `abilities.slots` lists: another slot rejects with code `unsupported`.
 
+A mount in the slot `dialog` is a dialog over the screen, as `todo.mjs` shows. Give it a `title`. Only your extension closes a dialog: hide, finish or remove the mount in the handler of a key that it binds or of a node's intent. Escape does not end the mount, and `escape` cannot be bound, so bind another key and give the binding a `name`.
+
 ## Errors
 
 A rejected operation rejects its promise with an `Error` whose `code` is one of:
@@ -342,7 +470,8 @@ Every SDK has every call, and its mount takes the same members. The Go, Python, 
 
 | Capability | Terminal (`viewClient: terminal`) | Reference web page (`examples/ui-view-web`) |
 |---|---|---|
-| Slots | `widget-above` and `widget-below` (at most 10 rows each), `panel` (at most half the terminal's rows); every other slot is not drawn at this version | all twelve slots |
+| Slots | `widget-above` and `widget-below` (at most 10 rows each), `panel` (at most half the terminal's rows), `dialog`; every other slot is not drawn at this version | all twelve slots, each in its own section of the page |
+| `dialog` | a titled frame centred over the screen, eight tenths of the terminal's columns and rows; its `size.columns` and `size.rows` claims are the cells inside the frame. It takes the keys when it is shown, unless the user types in the editor: then it waits as one row above the editor (`<title>: F6 to enter`) and leaves an `unfocused` notice. Escape returns the keys to the editor, and the mount stays live. Several dialogs stack, the last on top. A hidden dialog is not listed | drawn in its section of the page, like every other slot |
 | Node kinds | every kind of [Nodes](#nodes) | every kind of [Nodes](#nodes) except `grid`, which is not drawn at this version |
 | Limits of one mount | 512 nodes, depth 16, 262144 snapshot bytes, 65536 text bytes, 16 mounts, 4096 intent argument bytes | 2048 nodes, depth 32, 1048576 snapshot bytes, 65536 text bytes, 32 mounts, 65536 intent argument bytes |
 | `title` | panels are tabs, labelled by `title`, or by `key` without one | not used at this version: a tab is labelled by `key` |
