@@ -88,6 +88,11 @@ func viewSlotOf(slot uiview.Slot) *viewSlot {
 // that does not drain them before the registry's gap rule applies.
 var terminalViewLimits = uiview.Limits{Nodes: 512, Depth: 16, SnapshotBytes: 262144, TextBytes: 65536, Mounts: 16, IntentArgBytes: 4096}
 
+// terminalViewImageFormats are the formats of an image node the terminal draws, in the names the web client declares:
+// the formats the image transcoder reads. The terminal declares them whatever it is, because a terminal without an
+// image protocol draws the node too.
+var terminalViewImageFormats = []string{"png", "jpeg", "gif", "webp"}
+
 const viewQueueLimit = 64 // pig additive (D614): deliveries the client keeps for a loop that does not drain them
 
 // pig additive (D614): the key that moves the keyboard focus to the next focusable panel and, after the last, back to the
@@ -106,7 +111,7 @@ type viewSize struct {
 func terminalViewAbilities(size viewSize) uiview.ClientAbilities {
 	integer := func(n int) json.RawMessage { return json.RawMessage(strconv.Itoa(max(n, 0))) }
 	a := uiview.ClientAbilities{
-		Nodes: subprocess.MountNodeKinds(), Markdown: true, ImageFormats: []string{},
+		Nodes: subprocess.MountNodeKinds(), Markdown: true, ImageFormats: slices.Clone(terminalViewImageFormats),
 		Limits: terminalViewLimits,
 		Input:  uiview.Input{Keyboard: true, Pointer: size.pointer, Text: true},
 		Claims: []uiview.Claim{

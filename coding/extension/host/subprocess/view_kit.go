@@ -893,6 +893,12 @@ func (b *viewBuilder) build(n *ViewNode, out *frontend.ViewNode) (tui.Component,
 		if n.MaxHeightCells != nil {
 			opts.MaxHeightCells = *n.MaxHeightCells
 		}
+		// A mount is cut to the rows of its slot, so its image is at most that tall.
+		if b.s.rowBudget != nil {
+			if budget := b.s.rowBudget(); budget > 0 && (opts.MaxHeightCells <= 0 || opts.MaxHeightCells > budget) {
+				opts.MaxHeightCells = budget
+			}
+		}
 		fallback := b.fgFn(n.FallbackColor)
 		if fallback == nil {
 			fallback = identity

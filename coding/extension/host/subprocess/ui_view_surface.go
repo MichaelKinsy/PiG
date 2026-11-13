@@ -14,16 +14,16 @@ import (
 // whether an extension sent it as a D107 view or mounted it. The surface turns the D107 events of its nodes into
 // activations, which the client maps to the mount's intents.
 
-// mountFirstKinds are the kinds of the first D107 set a mount surface draws. The image kind is not among them: a
-// mount's assets are not carried to the D107 image store.
+// mountFirstKinds are the kinds of the first D107 set a mount surface draws. The image kind is among them: a mount's
+// view carries the bytes of its images in its own `images` list, and the surface keeps them in a store of its own.
 var mountFirstKinds = []string{
 	ViewKindContainer, ViewKindBox, ViewKindText, ViewKindTruncatedText, ViewKindMarkdown, ViewKindSpacer, ViewKindDynamicBorder,
-	ViewKindSelectList, ViewKindSettingsList, ViewKindLoader, ViewKindHStack, ViewKindVStack, ViewKindLines,
+	ViewKindSelectList, ViewKindSettingsList, ViewKindImage, ViewKindLoader, ViewKindHStack, ViewKindVStack, ViewKindLines,
 	ViewKindUserMessage, ViewKindAssistantMessage, ViewKindToolExecution, ViewKindBashExecution, ViewKindDiff,
 }
 
-// MountNodeKinds returns the view node kinds a MountSurface draws, sorted: the first D107 set without image, and every
-// registered widget kind.
+// MountNodeKinds returns the view node kinds a MountSurface draws, sorted: the first D107 set and every registered
+// widget kind.
 func MountNodeKinds() []string {
 	kinds := slices.Concat(mountFirstKinds, slices.Collect(maps.Keys(viewWidgets)))
 	slices.Sort(kinds)
