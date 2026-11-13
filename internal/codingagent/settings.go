@@ -1722,7 +1722,11 @@ type SettingsManager struct {
 	globalLoadErr  error
 	projectLoadErr error
 	errors         []SettingsError
-	memory         *memorySettingsStorage
+	// writer performs the persisted writes of file and extension storage in the order the setters queued them (settings-manager.ts writeQueue).
+	writer settingsWriter
+	// unsavedGlobal and unsavedProject are the changes of a scope that no write has saved yet: Pi's modifiedFields and modifiedProjectFields, which a write clears only when it succeeds (settings-manager.ts:578-584). nil when there is none.
+	unsavedGlobal, unsavedProject *unsavedSettings
+	memory                        *memorySettingsStorage
 	// storage is the extension-owned backend of SettingsManager.fromStorage; nil for file and memory storage.
 	storage SettingsStorage
 	// generation counts the changes of merged (setMergedLocked); extensionEncoding is the extension encoding of one generation.
@@ -1919,11 +1923,13 @@ func (sm *SettingsManager) CWD() string {
 	return sm.cwd
 }
 
-// Load reloads the backing settings layers and discards transient overrides. Previously recorded errors remain until DrainErrors.
+// Load reloads the backing settings layers and discards transient overrides, after the writes queued before the call (settings-manager.ts reload awaits writeQueue). Previously recorded errors remain until DrainErrors.
 func (sm *SettingsManager) Load() {
+	sm.writer.wait()
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	// upstream: packages/coding-agent/src/core/settings-manager.ts:reload
+	sm.unsavedGlobal, sm.unsavedProject = nil, nil
 	if sm.memory != nil {
 		sm.global = cloneSettings(sm.memory.global)
 		sm.globalObject = cloneSettingsObject(sm.memory.globalObject)
@@ -2046,6 +2052,7 @@ func (sm *SettingsManager) SetProjectTrusted(trusted bool) {
 		return
 	}
 	sm.projectTrusted = trusted
+	sm.unsavedProject = nil
 	sm.project = Settings{}
 	sm.projectObject = orderedjson.New()
 	sm.projectLoadErr = nil
@@ -2080,9 +2087,86 @@ func ThemeOverride(theme string) Settings {
 	return Settings{Theme: theme, themeEmpty: theme == ""}
 }
 
-// Flush waits for queued writes. pig writes settings synchronously, so this is a no-op.
-// Mirrors upstream SettingsManager.flush() API for parity.
-func (sm *SettingsManager) Flush() error { return nil }
+// Flush waits for the writes queued before the call (settings-manager.ts flush). A setter returns after its own write, so Flush waits only for the write of a setter that another goroutine is still in. A write that fails is recorded for DrainErrors, so Flush itself does not fail.
+func (sm *SettingsManager) Flush() error {
+	sm.writer.wait()
+	return nil
+}
+
+// unsavedSettings is the change of a settings scope that no write has saved yet.
+type unsavedSettings struct {
+	// before is the scope as it was before its oldest unsaved setter.
+	before Settings
+	// marked lists the top-level keys the unsaved setters before the latest one changed, in the order they first changed them: Pi's modifiedFields is a Set, which a write walks in insertion order (settings-manager.ts:278, :609).
+	marked []string
+	// latestBefore and latestOrder are the scope before the latest unsaved setter and the order that setter passed. Its keys are worked out only when a later setter carries it, which happens only after a write failed.
+	latestBefore Settings
+	latestOrder  []string
+	// replace is what the unsaved setters passed as replace.
+	replace []string
+}
+
+// settingsChange is what one write persists: the change of its scope from before to the setter's result, with the order and replace of saveScope.
+type settingsChange struct {
+	before         Settings
+	order, replace []string
+}
+
+// carryUnsaved returns the change the write of a setter persists and the scope's unsaved change after that setter. The setter changed the scope from before to after and passed order and replace. With an unsaved change the write starts from the scope before the oldest unsaved setter, so it also saves what an earlier, failed write of the scope did not, as Pi's does with the fields still marked modified, and it adds new keys to the file in the order the setters changed them. The caller holds sm.mu for writing.
+func carryUnsaved(unsaved *unsavedSettings, before, after Settings, order, replace []string) (settingsChange, *unsavedSettings) {
+	if unsaved == nil {
+		return settingsChange{before: before, order: order, replace: replace}, &unsavedSettings{before: before, latestBefore: before, latestOrder: order, replace: replace}
+	}
+	marked := appendMissing(unsaved.marked, setterKeys(unsaved.latestOrder, unsaved.latestBefore, before))
+	change := settingsChange{before: unsaved.before, order: appendMissing(marked, setterKeys(order, before, after)), replace: slices.Concat(unsaved.replace, replace)}
+	return change, &unsavedSettings{before: unsaved.before, marked: marked, latestBefore: before, latestOrder: order, replace: change.replace}
+}
+
+// setterKeys lists the top-level keys a setter changed, in the order it changed them: the order it passed, or the keys that differ between before and after, sorted as a write applies them.
+func setterKeys(order []string, before, after Settings) []string {
+	if order != nil {
+		return order
+	}
+	beforeMap, err := settingsJSONMap(before)
+	if err != nil {
+		return nil
+	}
+	afterMap, err := settingsJSONMap(after)
+	if err != nil {
+		return nil
+	}
+	var keys []string
+	for key, value := range afterMap {
+		if old, ok := beforeMap[key]; !ok || !bytes.Equal(old, value) {
+			keys = append(keys, key)
+		}
+	}
+	for key := range beforeMap {
+		if _, ok := afterMap[key]; !ok {
+			keys = append(keys, key)
+		}
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// appendMissing returns keys followed by the entries of more that keys does not hold, in a new slice.
+func appendMissing(keys, more []string) []string {
+	out := slices.Clone(keys)
+	for _, key := range more {
+		if !slices.Contains(out, key) {
+			out = append(out, key)
+		}
+	}
+	return out
+}
+
+// writeFailed records the failure of a queued write for DrainErrors (settings-manager.ts recordError); path is the file the write targeted.
+func (sm *SettingsManager) writeFailed(scope, path string, err error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.errors = append(sm.errors, SettingsError{Scope: scope, Path: sm.errorPath(path), Error: err})
+}
 
 // GetCompactionSettings resolves ordinary settings and rejects invalid authored token values. The optional model selects the compaction.modelOverrides entry for its provider and ID, as upstream getCompactionSettings(model?: Pick<Model, "provider" | "id">).
 func (sm *SettingsManager) GetCompactionSettings(model ...*ai.Model) (CompactionConfig, error) {
@@ -3270,7 +3354,7 @@ func (sm *SettingsManager) GlobalPath() string {
 	return filepath.Join(sm.agentDir, "settings.json")
 }
 
-// UpdateGlobal applies fn and refreshes the merged view, then saves to the selected backing storage. Like Pi's setters (settings-manager.ts:668-682), the change stays in effect in memory when the global file had parse errors, which skips the save, or when the save fails.
+// UpdateGlobal applies fn and refreshes the merged view, then saves to the selected backing storage. Like Pi's setters (settings-manager.ts save), the change is in effect in memory at once and its write goes through the manager's write queue, which has performed it when UpdateGlobal returns (settingsWriter). A write that fails is recorded for DrainErrors, as Pi's is, and the change stays in effect in memory; UpdateGlobal also returns the failure, which Pi's setter cannot, or the skipped save of a global file that had parse errors.
 func (sm *SettingsManager) UpdateGlobal(fn func(*Settings)) error {
 	return sm.updateGlobalOrdered(nil, fn)
 }
@@ -3284,6 +3368,16 @@ func (sm *SettingsManager) updateGlobalOrdered(order []string, fn func(*Settings
 // updateGlobalReplacing is updateGlobalOrdered for a setter that assigns whole top-level objects: the keys in replace are written as the setter left
 // them, dropping members the file holds that PiG does not model (setWarnings assigns `{ ...warnings }`), where other setters patch their nested objects.
 func (sm *SettingsManager) updateGlobalReplacing(order, replace []string, fn func(*Settings)) error {
+	write, err := sm.changeGlobal(order, replace, fn)
+	if err != nil {
+		return err
+	}
+	// pig divergence (D633): the setter returns the failure of its write, which Pi's cannot throw; both record it for the settings diagnostics.
+	return sm.writer.settle(write)
+}
+
+// changeGlobal applies fn to the global layer and queues the write of the change, which the caller settles after the lock is released.
+func (sm *SettingsManager) changeGlobal(order, replace []string, fn func(*Settings)) (*settingsWrite, error) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	before := cloneSettings(sm.global)
@@ -3293,25 +3387,45 @@ func (sm *SettingsManager) updateGlobalReplacing(order, replace []string, fn fun
 	if sm.memory != nil {
 		sm.memory.global = cloneSettings(sm.global)
 		sm.memory.globalObject = sm.globalObject.Clone()
-		return nil
+		return nil, nil
 	}
 	if sm.globalLoadErr != nil {
-		return fmt.Errorf("global settings file has parse errors: %w", sm.globalLoadErr)
+		return nil, fmt.Errorf("global settings file has parse errors: %w", sm.globalLoadErr)
 	}
 	path := filepath.Join(sm.agentDir, "settings.json")
-	if err := sm.saveScope("global", path, before, sm.global, order, replace); err != nil {
-		sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: sm.errorPath(path), Error: err})
-		return err
-	}
-	return nil
+	after := cloneSettings(sm.global)
+	var change settingsChange
+	change, sm.unsavedGlobal = carryUnsaved(sm.unsavedGlobal, before, after, order, replace)
+	return sm.writer.enqueue(func() error {
+		if err := sm.saveScope("global", path, change.before, after, change.order, change.replace); err != nil {
+			return err
+		}
+		sm.mu.Lock()
+		sm.unsavedGlobal = nil
+		sm.mu.Unlock()
+		return nil
+	}, func(err error) { sm.writeFailed("global", path, err) }), nil
 }
 
-// UpdateProject applies fn to trusted project settings and refreshes the merged view, then saves to the selected storage. Like Pi's saveProjectSettings (settings-manager.ts:684-698), an untrusted project refuses the change, and otherwise the change stays in effect in memory when the project file had parse errors, which skips the save, or when the save fails.
+// errProjectUntrustedWrite is the error of Pi's assertProjectTrustedForWrite (settings-manager.ts:555-559).
+var errProjectUntrustedWrite = errors.New("Project is not trusted; refusing to write project settings")
+
+// UpdateProject applies fn to trusted project settings and refreshes the merged view, then saves to the selected storage. Like Pi's saveProjectSettings (settings-manager.ts), an untrusted project refuses the change, and otherwise the change is in effect in memory at once and its write goes through the manager's write queue, which has performed it when UpdateProject returns (settingsWriter) and which checks the trust again when it performs it. A write that fails is recorded for DrainErrors, as Pi's is, and the change stays in effect in memory; UpdateProject also returns the failure, which Pi's setter cannot, or the refusal, or the skipped save of a project file that had parse errors.
 func (sm *SettingsManager) UpdateProject(fn func(*Settings)) error {
+	write, err := sm.changeProject(fn)
+	if err != nil {
+		return err
+	}
+	// pig divergence (D633): the setter returns the failure of its write, which Pi's cannot throw; both record it for the settings diagnostics.
+	return sm.writer.settle(write)
+}
+
+// changeProject is changeGlobal for the project layer.
+func (sm *SettingsManager) changeProject(fn func(*Settings)) (*settingsWrite, error) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	if !sm.projectTrusted {
-		return errors.New("Project is not trusted; refusing to write project settings")
+		return nil, errProjectUntrustedWrite
 	}
 	before := cloneSettings(sm.project)
 	fn(&sm.project)
@@ -3320,17 +3434,28 @@ func (sm *SettingsManager) UpdateProject(fn func(*Settings)) error {
 	if sm.memory != nil {
 		sm.memory.project = cloneSettings(sm.project)
 		sm.memory.projectObject = sm.projectObject.Clone()
-		return nil
+		return nil, nil
 	}
 	if sm.projectLoadErr != nil {
-		return fmt.Errorf("project settings file has parse errors: %w", sm.projectLoadErr)
+		return nil, fmt.Errorf("project settings file has parse errors: %w", sm.projectLoadErr)
 	}
 	path := filepath.Join(ProjectConfigDir(sm.cwd), "settings.json")
-	if err := sm.saveScope("project", path, before, sm.project, nil, nil); err != nil {
-		sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: sm.errorPath(path), Error: err})
-		return err
-	}
-	return nil
+	after := cloneSettings(sm.project)
+	var change settingsChange
+	change, sm.unsavedProject = carryUnsaved(sm.unsavedProject, before, after, nil, nil)
+	return sm.writer.enqueue(func() error {
+		// The trust is checked again when the write is performed (settings-manager.ts:579-581): a project that lost it since the setter is not written.
+		if !sm.IsProjectTrusted() {
+			return errProjectUntrustedWrite
+		}
+		if err := sm.saveScope("project", path, change.before, after, change.order, change.replace); err != nil {
+			return err
+		}
+		sm.mu.Lock()
+		sm.unsavedProject = nil
+		sm.mu.Unlock()
+		return nil
+	}, func(err error) { sm.writeFailed("project", path, err) }), nil
 }
 
 // SetPackages persists the global package source list, including an explicitly empty array.
