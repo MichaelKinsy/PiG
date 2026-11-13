@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -536,6 +537,72 @@ func TestASendDuringTheHandshakeIsFlushedWithTheQueuedMessages(t *testing.T) {
 		}
 		if !slices.Equal(holds, []int{1, 2}) {
 			t.Fatalf("released holds = %v, want [1 2] in the order they were sent", holds)
+		}
+	})
+}
+
+// stalledLink is a link end whose listener gets each message once before ran: a test makes something arrive while the
+// channel's goroutine has a message it did not handle yet.
+type stalledLink struct {
+	link.Link
+	before func()
+}
+
+func (l *stalledLink) OnMessage(listener func(message []byte)) {
+	l.Link.OnMessage(func(message []byte) {
+		l.before()
+		listener(message)
+	})
+}
+
+// Regression: Start sends `hello` and then sets the listener, which is handed the peer's `hello` when that arrived
+// already. The peer answers our `hello` with what it had waiting (a `hold`), and that arrived on the transport's goroutine
+// while this one still handed over the queued `hello`: it went straight to the channel, which closed the fresh link with
+// `handshake: hold before hello`. It is handled after the `hello` now, as in Pi, whose onMessage hands the queue over in
+// one synchronous step (link.ts:47-55).
+func TestThePeersFirstMessageIsHandledAfterItsQueuedHello(t *testing.T) {
+	eachCodec(t, func(t *testing.T, codec link.Codec) {
+		hello := encode(t, codec, &link.HelloMessage{Protocol: data.ProtocolVersion, Incarnation: rawPeerIncarnation, Calls: 256})
+		hold := encode(t, codec, &link.HoldMessage{Hold: 0, Type: "app.thing", Version: 1, Fingerprint: "0000000000000000", Params: link.Text("{}"), Address: server()})
+		a, b := link.MemoryLinkPair()
+		port := newFakePort()
+		for name, end := range map[string]struct {
+			link   link.Link
+			arrive func(message []byte)
+		}{
+			// The pair's queue is the transport's goroutine.
+			"a memory link": {a, func(message []byte) {
+				b.Send(message)
+				transported(a, b)
+			}},
+			// A port's messages arrive on a goroutine of its own.
+			"an IPC link": {link.IpcLink(port), func(message []byte) {
+				arrived := make(chan struct{})
+				go func() {
+					defer close(arrived)
+					port.receive(message)
+				}()
+				<-arrived
+			}},
+		} {
+			t.Run(name, func(t *testing.T) {
+				end.arrive(hello)
+				var stalled atomic.Bool
+				handler, reported := &recordingHandler{}, &reports{}
+				options := link.ChannelOptions{Codec: codec, Incarnation: incarnation, Calls: 256, Report: reported.add}
+				channel, err := link.NewChannel(&stalledLink{Link: end.link, before: func() {
+					// The peer's `hold` arrives while the queued `hello` is on its way to the channel.
+					if stalled.CompareAndSwap(false, true) {
+						end.arrive(hold)
+					}
+				}}, handler, options, background)
+				requireNoError(t, err)
+				channel.Start()
+				if !channel.Opened() || len(reported.messages()) != 0 || !slices.Equal(handler.names(), []string{"hold"}) {
+					t.Fatalf("opened = %v, reports = %v, handled = %v, want an open channel that handled [hold]",
+						channel.Opened(), reported.messages(), handler.names())
+				}
+			})
 		}
 	})
 }
