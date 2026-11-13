@@ -153,10 +153,13 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 
 	// The child writes straight into OS pipes, so Wait returns when the child
 	// exits even if a descendant still holds a write end.
+	// pig divergence (D631): Node gives the command a socket pair for stdout and one for stderr (libuv). These are pipes: a command can open one again
+	// through /dev/stdout, which a socket refuses (ENXIO), and its write after the close raises SIGPIPE, where a socket's first one fails with ECONNRESET.
 	stdoutRead, stdoutWrite, pipeErr := childwait.NewPipe()
 	if pipeErr != nil {
 		return ExecResult{Code: 1}, nil
 	}
+	// pig divergence (D631): a pipe where Node gives a socket pair, as for stdout above.
 	stderrRead, stderrWrite, pipeErr := childwait.NewPipe()
 	if pipeErr != nil {
 		_ = stdoutRead.Close()
