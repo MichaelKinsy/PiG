@@ -346,9 +346,29 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
-const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
-export const backportPatches = tableOf("dist");
-export const packageFileBackports = tableOf("package");
+// The patches of every block of a key apply in the order the blocks are written (two Pi commits can change one file); classification stays
+// per block. What cannot work fails here, when the script loads, naming both blocks: two patches that replace the same text of a key (the
+// second would find nothing to replace), and a key that one block calls compiled output and another a package file (patchesOf reads one table).
+const tables = { dist: {}, package: {} };
+const keyOwners = new Map();
+const textOwners = new Map();
+for (const { id, key, patches, table } of blocks) {
+  const owner = keyOwners.get(key);
+  if (owner !== undefined && owner.table !== table) {
+    throw new Error(`backport blocks ${owner.id} and ${id} disagree on ${key}: one names it with patch (compiled output), the other with packageFile`);
+  }
+  keyOwners.set(key, { id, table });
+  for (const [before] of patches) {
+    const place = `${key}\n${before}`;
+    if (textOwners.has(place)) {
+      throw new Error(`backport blocks ${textOwners.get(place)} and ${id} both replace the same text of ${key}: ${JSON.stringify(before.slice(0, 80))}`);
+    }
+    textOwners.set(place, id);
+  }
+  (tables[table][key] ??= []).push(...patches);
+}
+export const backportPatches = tables.dist;
+export const packageFileBackports = tables.package;
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
 

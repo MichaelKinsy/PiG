@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -101,6 +102,84 @@ console.log(JSON.stringify({{ ...backportPatches, ...packageFileBackports }}));'
         self.assertIn("8080", entry["detail"])
         self.assertIn("8081", entry["detail"])
         self.assertIn("line 1", entry["detail"])
+
+    def blocks_script(self, directory: Path, entries: str) -> Path:
+        """The committed machinery with `entries` as its only blocks."""
+        committed = SCRIPT.read_text(encoding="utf-8")
+        bare = carried.retire_backport_blocks(committed, oracle.backport_ids(committed))
+        anchor = re.search(r"^const packageFile = .*\n", bare, re.M)
+        path = directory / "blocks.mjs"
+        path.write_text(bare[:anchor.end()] + entries + bare[anchor.end():], encoding="utf-8")
+        return path
+
+    def test_two_blocks_of_one_key_both_apply_in_the_order_written(self):
+        # The later block's before text holds the earlier block's after text, so it applies only after it.
+        entries = '''
+// BEGIN backport aaaaaaaaa
+packageFile("aaaaaaaaa", "pi-ai/api/x.js", [["one();\\n", "one(1);\\n"]]);
+// END backport aaaaaaaaa
+// BEGIN backport bbbbbbbbb
+patch("bbbbbbbbb", "pi-ai/api/y.js", [["y", "Y"]]);
+// END backport bbbbbbbbb
+// BEGIN backport ccccccccc
+packageFile("ccccccccc", "pi-ai/api/x.js", [["one(1);\\ntwo();\\n", "one(1);\\ntwo(2);\\n"], ["three", "3"]]);
+// END backport ccccccccc
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            script = self.blocks_script(Path(directory), entries)
+            api = Path(directory) / "pi-ai" / "dist" / "api"
+            api.mkdir(parents=True)
+            (api / "x.js").write_text("one();\ntwo();\nthree\n", encoding="utf-8")
+            (api / "y.js").write_text("y\n", encoding="utf-8")
+            package = f"pi-ai={Path(directory) / 'pi-ai'}"
+            tables = subprocess.run(["node", "--input-type=module", "-e", f'''
+import {{ backportPatches, packageFileBackports }} from {json.dumps(script.as_uri())};
+console.log(JSON.stringify([backportPatches, packageFileBackports]));'''], capture_output=True, text=True, check=True)
+            subprocess.run(["node", str(script), "--packages", package], capture_output=True, text=True, check=True)
+            subprocess.run(["node", str(script), "--verify-packages", package], capture_output=True, text=True, check=True)
+            classified = subprocess.run(["node", str(script), "--classify", package], capture_output=True, text=True, check=True)
+            self.assertEqual((api / "x.js").read_text(encoding="utf-8"), "one(1);\ntwo(2);\n3\n")
+            self.assertEqual((api / "y.js").read_text(encoding="utf-8"), "Y\n")
+        self.assertEqual(json.loads(tables.stdout), [
+            {"pi-ai/api/y.js": [["y", "Y"]]},
+            {"pi-ai/api/x.js": [["one();\n", "one(1);\n"], ["one(1);\ntwo();\n", "one(1);\ntwo(2);\n"], ["three", "3"]]},
+        ])
+        self.assertEqual([(r["id"], r["key"], r["state"]) for r in json.loads(classified.stdout)], [
+            ("aaaaaaaaa", "pi-ai/api/x.js", "carried"), ("bbbbbbbbb", "pi-ai/api/y.js", "carried"), ("ccccccccc", "pi-ai/api/x.js", "carried"),
+        ])
+
+    def test_two_blocks_that_replace_the_same_text_fail_naming_both(self):
+        entries = '''
+// BEGIN backport aaaaaaaaa
+packageFile("aaaaaaaaa", "pi-ai/api/x.js", [["one();\\n", "one(1);\\n"]]);
+// END backport aaaaaaaaa
+// BEGIN backport ccccccccc
+packageFile("ccccccccc", "pi-ai/api/x.js", [["two();\\n", "two(2);\\n"], ["one();\\n", "one(3);\\n"]]);
+// END backport ccccccccc
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            script = self.blocks_script(Path(directory), entries)
+            api = Path(directory) / "pi-ai" / "dist" / "api"
+            api.mkdir(parents=True)
+            (api / "x.js").write_text("one();\ntwo();\n", encoding="utf-8")
+            with mock.patch.object(oracle, "BACKPORTS", script), self.assertRaises(pinlib.PinError) as caught:
+                oracle.patch_packages({"pi-ai": Path(directory) / "pi-ai"}, "a test tree")
+            self.assertEqual((api / "x.js").read_text(encoding="utf-8"), "one();\ntwo();\n")
+        self.assertIn("backport blocks aaaaaaaaa and ccccccccc both replace the same text of pi-ai/api/x.js", str(caught.exception))
+
+    def test_a_key_that_is_compiled_output_in_one_block_and_a_package_file_in_another_fails_naming_both(self):
+        entries = '''
+// BEGIN backport aaaaaaaaa
+patch("aaaaaaaaa", "pi-ai/api/x.js", [["one();\\n", "one(1);\\n"]]);
+// END backport aaaaaaaaa
+// BEGIN backport ccccccccc
+packageFile("ccccccccc", "pi-ai/api/x.js", [["two();\\n", "two(2);\\n"]]);
+// END backport ccccccccc
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            done = subprocess.run(["node", str(self.blocks_script(Path(directory), entries)), "--package-files"], capture_output=True, text=True, check=False)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("backport blocks aaaaaaaaa and ccccccccc disagree on pi-ai/api/x.js", done.stderr)
 
     def test_the_script_without_blocks_is_valid_exports_nothing_and_applies_nothing(self):
         text = carried.retire_backport_blocks(SCRIPT.read_text(encoding="utf-8"), oracle.backport_ids(SCRIPT.read_text(encoding="utf-8")))
