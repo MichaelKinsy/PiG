@@ -58,8 +58,10 @@ func WebSocketLink(socket WebSocketLike) Link {
 	end.removeMessage = socket.AddEventListener(WebSocketMessage, func(data any) {
 		if frame, ok := data.([]byte); ok {
 			end.deliver(frame)
-		} else {
-			end.Close()
+		} else if detached := end.detach(); detached != nil {
+			// A text frame closes the link as the socket's own close does: after the frames that arrived before it.
+			end.ended()
+			detached.Close()
 		}
 	})
 	// `error` and `close` stay handled until the socket's own close, after this end closed: `ws` emits an `error` for a
@@ -115,23 +117,28 @@ func (end *webSocketLink) Send(message []byte) {
 }
 
 func (end *webSocketLink) Close() {
-	end.mu.Lock()
-	socket := end.socket
-	end.mu.Unlock()
-	if socket == nil {
-		return
+	socket := end.detach()
+	// At once, also when the socket ended already and its end waits for a hand-over (the socket is forgotten then).
+	end.closedHere()
+	if socket != nil {
+		socket.Close()
 	}
-	end.end()
-	socket.Close()
 }
 
-// end stops listening for frames, drops what waits to be sent and closes this end.
+// end closes this end for the socket, which ended (its close, its error): after the frames that arrived before.
 func (end *webSocketLink) end() {
+	if end.detach() != nil {
+		end.ended()
+	}
+}
+
+// detach stops listening for frames and drops what waits to be sent; it returns the socket, nil once detached.
+func (end *webSocketLink) detach() WebSocketLike {
 	end.mu.Lock()
 	socket := end.socket
 	if socket == nil {
 		end.mu.Unlock()
-		return
+		return nil
 	}
 	end.socket = nil
 	end.connecting, end.connectingSet = nil, false
@@ -143,5 +150,5 @@ func (end *webSocketLink) end() {
 	if removeMessage != nil {
 		removeMessage()
 	}
-	end.ended()
+	return socket
 }
