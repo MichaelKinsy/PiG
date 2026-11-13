@@ -10937,6 +10937,46 @@
       ]
     },
     {
+      "id": "BF-386b88c",
+      "title": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`…",
+      "symptom": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response.",
+      "rootCause": "Pi (fixes #12128) adds two entries to the transport section of RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts), after \"getaddrinfo\":",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response. The same applies in the extension SDKs' `isRetryableAssistantError` (Go, Python, Rust, Lisp and the Node runtime).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "386b88c3b6",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestCodelessTransportErrorsKeepTheirNodeForm",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorNodeSocketErrorCodes",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorOtherSocketCodesStayNonRetryable",
+        "ai/assistant_retry_socket_codes_upstream_test.go::TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm",
+        "ai/assistant_retry_test.go::TestConnectionResetTextIsRetryable",
+        "ai/providers/bedrock/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockBadRequestThatNamesASocketCodeInsideAnIdentifierIsNotRetried",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockBareSocketCodeIsRetriedByTheAssistantRetryLoop",
+        "ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockConnectionResetBeforeTheResponseIsRetried",
+        "coding/session_socket_code_retry_test.go::TestSessionDoesNotRetryABadRequestThatNamesASocketCodeInsideAnIdentifier",
+        "coding/session_socket_code_retry_test.go::TestSessionDoesNotRetryASocketCodeInsideAnIdentifier",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesABareSocketCodeOnce",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesAConnectionResetAfterTheRequestHeaders",
+        "coding/session_socket_code_retry_test.go::TestSessionRetriesARequestThatReachesItsDeadline",
+        "coding/session_socket_code_retry_test.go::TestSessionSurfacesABareSocketCodeAfterTheConfiguredRetries",
+        "coding/session_socket_code_retry_test.go::TestSessionSurfacesAConnectionResetAfterTheConfiguredRetries",
+        "durable/core/turn/classify_carried_test.go::TestNodeSocketErrorCodesAreRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestNodeSocketErrorCodesAreRetryable"
+      ]
+    },
+    {
       "id": "BF-38b0f0c",
       "title": "Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code…",
       "symptom": "Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code blocks.",
@@ -15755,6 +15795,36 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-4f62143",
+      "title": "`/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a…",
+      "symptom": "`/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a turn that ended without an answer.",
+      "rootCause": "An assistant message without text is skipped when its turn did not end normally (aborted, failed, only tool calls, or cut at the length limit); a reply that ended normally without text is still the last reply.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a turn that ended without an answer. After Esc during a tool call or after a provider error they copy or return the previous answer; before, `/copy` said `No agent messages to copy yet.` and RPC returned `null` while the answer was on screen. An assistant message without text is skipped when its turn did not end normally (aborted, failed, only tool calls, or cut at the length limit); a reply that ended normally without text is still the last reply. Follows Pi #12121 (ede360e4d).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4f62143568",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/child_session_last_assistant_text_test.go::TestChildSessionLastAssistantTextSkipsATurnWithoutAnAnswer",
+        "coding/cli/rpc_upstream_test.go::TestRPCModeUpstream",
+        "coding/session_last_assistant_text_cases_test.go::TestSessionLastAssistantTextCases",
+        "coding/session_last_assistant_text_cases_test.go::TestSessionLastAssistantTextMatchesPi",
+        "coding/session_last_assistant_text_test.go::TestSessionLastAssistantText",
+        "internal/codingagent/copy_after_abort_or_error_upstream_test.go::TestCopyAfterAProviderErrorCopiesThePreviousAnswer",
+        "internal/codingagent/copy_after_abort_or_error_upstream_test.go::TestCopyWithNothingToCopySaysSo",
+        "test/parity/scenarios/slash-commands/27-copy-after-aborted-turn.toml",
+        "test/parity/scenarios/slash-commands/28-copy-after-errored-turn.toml"
+      ]
     },
     {
       "id": "BF-4f6992d",

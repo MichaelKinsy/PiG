@@ -406,6 +406,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3838d0b](#bf-3838d0b) | Interactive mode is ready to type about 10 ms sooner when the recorded "what's new" version differs from the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3840820](#bf-3840820) | MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3868dd5](#bf-3868dd5) | MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a… | PiG's own defect | All platforms | Unreleased |
+| [BF-386b88c](#bf-386b88c) | A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`… | PiG's own defect | All platforms | Unreleased |
 | [BF-38b0f0c](#bf-38b0f0c) | Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-38e6506](#bf-38e6506) | The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3902803](#bf-3902803) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -582,6 +583,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4ed1d72](#bf-4ed1d72) | A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f079a7](#bf-4f079a7) | An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-4f3cc2e](#bf-4f3cc2e) | `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`… | PiG's own defect | All platforms | Unreleased |
+| [BF-4f62143](#bf-4f62143) | `/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f6992d](#bf-4f6992d) | Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f6992d-2](#bf-4f6992d-2) | Durable: a `PrepareArguments` result that is not an object fails validation as an `invalid_arguments` tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f75f77](#bf-4f75f77) | Chord (Go): the observer of a followed source has `Section`, which runs a runtime's read and its advance as… | PiG's own defect | All platforms | Unreleased |
@@ -7492,6 +7494,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `mcp/deepjson_test.go::TestParseWireMessageKeepsACallResultNested12000LevelsDeep`, `mcp/deepjson_test.go::TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep`, `mcp/deepjson_test.go::TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep`
 - **Release note:** MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.
 
+### BF-386b88c
+
+**A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response.
+- **Root cause:** Pi (fixes #12128) adds two entries to the transport section of RETRYABLE_PROVIDER_ERROR_PATTERN (packages/ai/src/utils/retry.ts), after "getaddrinfo":
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `386b88c3b6` (2026-11-13)
+- **Tests:** `ai/assistant_retry_classifier_oracle_test.go::TestIsRetryableAssistantErrorMatchesPiOracle`, `ai/assistant_retry_socket_codes_upstream_test.go::TestCodelessTransportErrorsKeepTheirNodeForm`, `ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorNodeSocketErrorCodes`, `ai/assistant_retry_socket_codes_upstream_test.go::TestIsRetryableAssistantErrorOtherSocketCodesStayNonRetryable`, `ai/assistant_retry_socket_codes_upstream_test.go::TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm`, `ai/assistant_retry_test.go::TestConnectionResetTextIsRetryable`, `ai/providers/bedrock/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/providers/bedrock/bedrock_socket_code_retry_test.go::TestBedrockBadRequestThatNamesASocketCodeInsideAnIdentifierIsNotRetried` and 11 more in docs/bug-ledger.json
+- **Release note:** A turn that ends with a provider error that reports only a socket error code, such as `read ECONNRESET`, `write EPIPE` or `connect ETIMEDOUT`, or with `connection reset by peer`, is now retried automatically like other dropped connections, instead of stopping with the error; this is what Amazon Bedrock reports when a connection fails before a response. The same applies in the extension SDKs' `isRetryableAssistantError` (Go, Python, Rust, Lisp and the Node runtime).
+
 ### BF-38b0f0c
 
 **Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code…**
@@ -9913,6 +9929,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4f3cc2e060` (2026-11-08)
 - **Tests:** None recorded.
 - **Release note:** `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`): a host call that reads the session id while the swap runs sees the old or the new session, and the Go race detector no longer reports the read.
+
+### BF-4f62143
+
+**`/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a turn that ended without an answer.
+- **Root cause:** An assistant message without text is skipped when its turn did not end normally (aborted, failed, only tool calls, or cut at the length limit); a reply that ended normally without text is still the last reply.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4f62143568` (2026-11-13)
+- **Tests:** `coding/cli/child_session_last_assistant_text_test.go::TestChildSessionLastAssistantTextSkipsATurnWithoutAnAnswer`, `coding/cli/rpc_upstream_test.go::TestRPCModeUpstream`, `coding/session_last_assistant_text_cases_test.go::TestSessionLastAssistantTextCases`, `coding/session_last_assistant_text_cases_test.go::TestSessionLastAssistantTextMatchesPi`, `coding/session_last_assistant_text_test.go::TestSessionLastAssistantText`, `internal/codingagent/copy_after_abort_or_error_upstream_test.go::TestCopyAfterAProviderErrorCopiesThePreviousAnswer`, `internal/codingagent/copy_after_abort_or_error_upstream_test.go::TestCopyWithNothingToCopySaysSo`, `test/parity/scenarios/slash-commands/27-copy-after-aborted-turn.toml` and 1 more in docs/bug-ledger.json
+- **Release note:** `/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a turn that ended without an answer. After Esc during a tool call or after a provider error they copy or return the previous answer; before, `/copy` said `No agent messages to copy yet.` and RPC returned `null` while the answer was on screen. An assistant message without text is skipped when its turn did not end normally (aborted, failed, only tool calls, or cut at the length limit); a reply that ended normally without text is still the last reply. Follows Pi #12121 (ede360e4d).
 
 ### BF-4f6992d
 

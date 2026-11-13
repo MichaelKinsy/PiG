@@ -108,7 +108,6 @@ import {
   resetTimings,
   resolveCliModel,
   resolveModelReference,
-  resolveModelScope,
   resolveModelScopeFromModels,
   resolveModelScopeWithDiagnostics,
   restoreStdout,
@@ -124,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-BYHKDTJN.js";
+} from "./chunk-SCW2O6CM.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -163,7 +162,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-QZRBRK3S.js";
+} from "./chunk-LH44ZUZH.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -22942,7 +22941,10 @@ async function main(args, options) {
       }))
     ];
     const modelPatterns = parsed.models ?? settingsManager2.getEnabledModels();
-    const scopedModels = modelPatterns && modelPatterns.length > 0 ? await resolveModelScope(modelPatterns, modelRuntime2, { signal: AbortSignal.timeout(15e3) }) : [];
+    const { scopedModels, diagnostics: modelScopeDiagnostics } = modelPatterns && modelPatterns.length > 0 ? await resolveModelScopeWithDiagnostics(modelPatterns, modelRuntime2, {
+      signal: AbortSignal.timeout(15e3)
+    }) : { scopedModels: [], diagnostics: [] };
+    diagnostics.push(...modelScopeDiagnostics);
     const { options: sessionOptions, cliThinkingFromModel, diagnostics: sessionOptionDiagnostics } = buildSessionOptions(parsed, scopedModels, sessionManager2.buildSessionContext().messages.length > 0, modelRuntime2, settingsManager2);
     diagnostics.push(...sessionOptionDiagnostics);
     if (parsed.apiKey) {
