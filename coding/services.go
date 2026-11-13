@@ -662,7 +662,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 			return nil, nil, ai.StreamOptions{}, err
 		}
 		if auth == nil {
-			if options.APIKey == "" && modelRuntimeRequiresAuth(providerID) && registry.GetProvider(providerID) == nil && !registry.ModelRegistry.HasConfiguredAuth(providerID) {
+			if options.APIKey == "" && registry.GetProvider(providerID) == nil && !registry.ModelRegistry.HasConfiguredAuth(providerID) {
 				return nil, nil, ai.StreamOptions{}, &modelRuntimeAuthMissingError{provider: providerID}
 			}
 			build := func() (*ai.Model, error) {
@@ -750,16 +750,6 @@ func mergeRuntimeHeaders(base map[string]string, override ai.ProviderHeaders) ai
 		merged[name] = value
 	}
 	return merged
-}
-
-// modelRuntimeRequiresAuth reports whether a provider without a registered auth contract needs configured auth. Amazon Bedrock needs it: its upstream auth (amazon-bedrock.ts bedrockAuth.resolve) requires a stored key or an AWS env signal.
-func modelRuntimeRequiresAuth(providerID string) bool {
-	switch providerID {
-	case "ollama":
-		return false
-	default:
-		return true
-	}
 }
 
 func (runtime *ModelRuntime) fail(ctx context.Context, stream *ai.AssistantMessageEventStream, model *ai.Model, err error) {

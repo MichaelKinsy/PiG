@@ -3,7 +3,7 @@
 // AuthenticatedProviders + ReachableProviders are the single source of
 // truth for "which providers can the user actually talk to right now"
 // vs "which providers can ModelRuntime compose". Reachable is the whole
-// built-in catalog plus ollama; authenticated is the subset whose
+// built-in catalog; authenticated is the subset whose
 // credentials resolve from the environment, models.json, or auth.json.
 //
 // Used by the interactive model surfaces (cycleModel, showScopedModels,
@@ -16,15 +16,13 @@
 package codingagent
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // ReachableProviders returns the set of provider IDs that ModelRuntime can
-// compose: every provider in the built-in catalog plus ollama, which is
-// configured from the environment rather than declared in the catalog.
+// compose: every provider in the built-in catalog.
 //
 // coding.BuildModel's buildProviderForEntry switches on a provider's API
 // kind, not its id, so every catalog provider is wireable. Deriving this
@@ -32,11 +30,10 @@ import (
 // omitted from the picker.
 func ReachableProviders() map[string]bool {
 	catalog := ai.ListRuntimeProviders()
-	out := make(map[string]bool, len(catalog)+1)
+	out := make(map[string]bool, len(catalog))
 	for _, providerID := range catalog {
 		out[providerID] = true
 	}
-	out["ollama"] = true
 	return out
 }
 
@@ -46,9 +43,6 @@ func ReachableProviders() map[string]bool {
 //
 //   - every other provider: ModelRegistry.HasConfiguredAuth (models.json, then
 //     Pi's checkProviderAuth over the stored auth.json credential and the environment)
-//   - ollama: OLLAMA_HOST env set (cheap heuristic; we do NOT probe
-//     localhost:11434: picking ollama with no daemon running is a
-//     user error caught at switch time)
 //   - amazon-bedrock, google-vertex, cloudflare-*: their resolvers' env signals (Pi reads no shared AWS config file)
 //
 // agentDir is the pig config dir (typically ~/.pig/agent). auth.json
@@ -74,10 +68,6 @@ func AuthenticatedProviders(agentDir string) map[string]bool {
 		}
 	}
 
-	if os.Getenv("OLLAMA_HOST") != "" {
-		out["ollama"] = true
-	}
-
 	return out
 }
 
@@ -88,9 +78,6 @@ func envOnlyAuthenticated() map[string]bool {
 		if hasEnvAuth(providerID) {
 			out[providerID] = true
 		}
-	}
-	if os.Getenv("OLLAMA_HOST") != "" {
-		out["ollama"] = true
 	}
 	return out
 }

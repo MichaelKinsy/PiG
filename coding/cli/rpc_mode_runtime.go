@@ -4,7 +4,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -282,7 +281,7 @@ func (h *rpcHost) announce(ctx context.Context, session *coding.Session, st *rpc
 	}
 	st.join.Store(join)
 	h.commandJoin.Store(join)
-	h.admission.Store(h.newAdmission(session, runner, catalog, session.Services(), join))
+	h.admission.Store(h.newAdmission(session, runner, catalog, join))
 	return nil
 }
 
@@ -327,25 +326,12 @@ func (h *rpcHost) rebindAgain(ctx context.Context) error {
 	return h.announce(ctx, session, h.state(session), session.StartEvent())
 }
 
-func (h *rpcHost) newAdmission(session *coding.Session, runner *inproc.Runner, catalog headlessCommandCatalog, services *coding.AgentSessionServices, commands *rpcCommandJoin) *rpcAdmission {
-	registry := services.Registry()
+func (h *rpcHost) newAdmission(session *coding.Session, runner *inproc.Runner, catalog headlessCommandCatalog, commands *rpcCommandJoin) *rpcAdmission {
 	return &rpcAdmission{
 		ctx: h.ctx, turn: h.responses, session: session, runner: runner, catalog: catalog,
 		write: h.responses.write, turns: &h.turns, runs: h.promptWG, shared: h.tasks, shutdown: h.shutdown, commands: commands, commandsInFlight: &h.commandsInFlight, background: &h.background,
-		validateModel: func() error {
-			model := session.Model()
-			if model == nil {
-				return errors.New(codingagent.FormatNoAPIKeyFoundMessage("unknown"))
-			}
-			providerID := model.ProviderMeta.ProviderID
-			if providerID == "" && model.Provider != nil {
-				providerID = model.Provider.ID()
-			}
-			if !registry.ModelRegistry.HasConfiguredAuth(providerID) {
-				return errors.New(codingagent.FormatNoAPIKeyFoundMessage(providerID))
-			}
-			return nil
-		},
+		// RPC's prompt command runs AgentSession.prompt, so the Session's one model and auth check answers it (agent-session.ts:2242-2259), as in print and interactive mode.
+		validateModel: func() error { return session.ValidatePromptModelAuth(h.ctx) },
 	}
 }
 
