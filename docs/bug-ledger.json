@@ -34590,6 +34590,44 @@
       ]
     },
     {
+      "id": "BF-98d708f",
+      "title": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its…",
+      "symptom": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.",
+      "rootCause": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it. PiG's `Invalidate` set a flag on the root of the screen and reached no component, where Pi's `TUI.invalidate` calls `invalidate()` on every mounted root and every overlay's component. It now reaches both, the host tells a subprocess extension's component (`ui.custom.invalidate`, after the new palette), the Node runtime calls its `invalidate()`, and a theme set invalidates twice as Pi's does. Extensions on the Go, Python, Rust and Lisp runtimes ignore the notify until those runtimes handle it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e82be6163",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "557b2210a1",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "98d708f331",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop",
+        "test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml",
+        "test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml",
+        "test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml",
+        "test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml",
+        "tui/tui_invalidate_test.go::TestAltScreenStartInvalidatesOverlayComponentsWhenITerm2ImagesAreDropped",
+        "tui/tui_invalidate_test.go::TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "tui/tui_invalidate_test.go::TestInvalidateReachesMountedRootsAndEveryOverlayComponent",
+        "tui/tui_invalidate_test.go::TestOverlayBookkeepingInvalidatesNoComponent"
+      ]
+    },
+    {
       "id": "BF-98f0403",
       "title": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in…",
       "symptom": "`AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in flight (it aborts the current session first) before it emits `session_shutdown`, as Pi's `dispose` does; the run's `agent_end` reaches the extension before the shutdown.",

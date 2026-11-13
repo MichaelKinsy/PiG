@@ -1278,6 +1278,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9883d4b](#bf-9883d4b) | Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-98d708f](#bf-98d708f) | An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its… | PiG's own defect | All platforms | Unreleased |
 | [BF-98f0403](#bf-98f0403) | `AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in… | PiG's own defect | All platforms | Unreleased |
 | [BF-98f0403-2](#bf-98f0403-2) | `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when… | PiG's own defect | All platforms | Unreleased |
 | [BF-9910d00](#bf-9910d00) | An extension that declared one provider name in several `registerProvider` calls while it loaded kept only… | PiG's own defect | All platforms | Unreleased |
@@ -19502,6 +19503,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `98a21dfb02` (2026-10-30, #11604)
 - **Tests:** `chord/output/output_test.go::TestToolOutputBounds`, `durable/core/host/cf/test/output-sanitize.test.ts`, `durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences`
 - **Release note:** Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape sequences (strings up to BEL or ST, CSI, short `ESC x` forms), not only their ESC bytes, which left `[31m` in transcripts; a sequence split across chunks goes too. Carried forward from Pi 50d9f823 (earendil-works/pi#11604), past the 1.4.0+b3a29f11 pin.
+
+### BF-98d708f
+
+**An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.
+- **Root cause:** An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e82be6163` (2026-11-13), `557b2210a1` (2026-11-13), `98d708f331` (2026-11-13)
+- **Tests:** `internal/codingagent/custom_overlay_invalidate_test.go::TestRemoteOverlayInvalidateOnlyCountsOnTheOwnerLoop`, `test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml`, `test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml`, `test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml`, `test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml`, `tui/tui_invalidate_test.go::TestAltScreenStartInvalidatesOverlayComponentsWhenITerm2ImagesAreDropped`, `tui/tui_invalidate_test.go::TestInvalidateFromARenderDoesNotWaitForTheFrame`, `tui/tui_invalidate_test.go::TestInvalidateReachesMountedRootsAndEveryOverlayComponent` and 1 more in docs/bug-ledger.json
+- **Release note:** An extension's overlay (`ctx.ui.custom` with `overlay: true`) that keeps colored rows until its `invalidate()` is called kept the old theme after a theme change, in the regular and the fullscreen screen, and after a theme change in `/settings` it was not drawn again at all, where Pi redraws it. PiG's `Invalidate` set a flag on the root of the screen and reached no component, where Pi's `TUI.invalidate` calls `invalidate()` on every mounted root and every overlay's component. It now reaches both, the host tells a subprocess extension's component (`ui.custom.invalidate`, after the new palette), the Node runtime calls its `invalidate()`, and a theme set invalidates twice as Pi's does. Extensions on the Go, Python, Rust and Lisp runtimes ignore the notify until those runtimes handle it.
 
 ### BF-98f0403
 
