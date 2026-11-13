@@ -2912,6 +2912,8 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	// would then be silently discarded as stale instead of quarantined.
 	//
 	// The generations are superseded first, so no call finds a generation armed and not yet superseded, which handleIncoming would drop without an answer.
+	// A reload that failed earlier left every generation stale (Invalidate, called by the reload's mode). Pi's next reload() builds a new runner, whose ctx is live (agent-session.ts:3844), so the staleness ends here: the generations this reload loads are served. A generation a Node runtime hosts stays stale: its runtime has the message, and the supersede point below marks it. A Go, Python, Rust or Lisp generation is served from here to the commit, as in every reload.
+	h.staleMessage.Store(nil)
 	unacknowledged, endSupersede := h.supersedeGenerations(ctx)
 	defer endSupersede()
 	h.armPackedProcessGenerations()
