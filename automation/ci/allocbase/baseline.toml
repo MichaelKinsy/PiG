@@ -2161,12 +2161,12 @@ allocs = 2
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkHostShutdownProviderCatalog/1"
-allocs = 30
+allocs = 16
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkHostShutdownProviderCatalog/20"
-allocs = 1250
+allocs = 288
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2191,32 +2191,32 @@ allocs = 734
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkMessageUpdateExtensions/extensions=1/shared=false"
-allocs = 48639
+allocs = 15339
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkMessageUpdateExtensions/extensions=1/shared=true"
-allocs = 48519
+allocs = 15200
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkMessageUpdateExtensions/extensions=10/shared=false"
-allocs = 485139
+allocs = 151950
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkMessageUpdateExtensions/extensions=10/shared=true"
-allocs = 53237
+allocs = 17974
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkMessageUpdateExtensions/extensions=3/shared=false"
-allocs = 145547
+allocs = 45591
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkMessageUpdateExtensions/extensions=3/shared=true"
-allocs = 49567
+allocs = 15818
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
