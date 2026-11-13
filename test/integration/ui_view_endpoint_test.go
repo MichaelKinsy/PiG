@@ -337,17 +337,40 @@ func uiViewCopiedPiglet(t *testing.T) (piglet, source string) {
 	return filepath.Join(dir, "subprocess.yaml"), filepath.Join(dir, "viewsub.mjs")
 }
 
+// uiViewPigletBinary builds the Piglet piglet of testdata/ui-view from this checkout's source into a Piglet Binary, with the pig the tests built, and returns the Binary's path.
+func uiViewPigletBinary(t *testing.T, piglet string) string {
+	t.Helper()
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	binary := filepath.Join(dir, "pig-ui-view")
+	cmd := exec.CommandContext(t.Context(), buildBinary(t), "piglet", "build", filepath.Join(root, "test", "integration", "testdata", "ui-view", piglet), "--format", "binary", "--builder", "native", "--out", binary)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PIG_SOURCE_ROOT="+root)
+	for _, key := range []string{"PIG_HOME", "PIG_CODING_AGENT_DIR", "PI_HOME", "PI_CODING_AGENT_DIR"} {
+		cmd.Env = append(cmd.Env, key+"="+filepath.Join(dir, strings.ToLower(key)))
+	}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("pig piglet build %s: %v\n%s", piglet, err, out)
+	}
+	return binary
+}
+
 // A reload replaces every extension's instance, and a mount belongs to the instance that made it (D614, as Pi's reload
 // removes everything an extension drew). The client on the socket keeps its connection and its attachment and is sent
 // each mount of the reloaded extension once more, broken with reason owner_gone, and nothing else; the terminal's
 // panel goes. An intent raised afterwards on the mount of the instance before is refused and reaches no handler.
 // The instance the reload loaded mounts the same keys again under a new epoch, drawn by both, and answers its intents.
 // The rows: a Node extension in a process of its own, with its source as it was and with its source changed before the
-// reload, and the Go fixture.
+// reload, the Go fixture, and the fixture's factory form as a member fused into a Piglet Binary, which runs in pig's own
+// process.
 func TestUIViewEndpointReloadEndsTheMountsOfTheReloadedExtensions(t *testing.T) {
 	rows := []struct {
 		name           string
 		piglet         string // a file of testdata/ui-view, or "" for the copied subprocess Piglet
+		binary         bool   // the session runs the Piglet Binary built from piglet
 		edit           bool   // the extension's source changes before the reload
 		mount          string
 		keys           []string // the mounts' keys, the panel first
@@ -363,16 +386,23 @@ func TestUIViewEndpointReloadEndsTheMountsOfTheReloadedExtensions(t *testing.T) 
 			pick: func(w *uiViewWire, id string, snapshot map[string]any) {
 				w.pick(id, map[string]any{"snapshot": snapshot}, "alpha")
 			}},
+		{name: "a Go member fused into a Piglet Binary", piglet: "fused.yaml", binary: true, mount: "/vmount", keys: []string{"panel", "note"}, needle: "fixture panel", picked: "picked alpha", focused: true,
+			pick: func(w *uiViewWire, id string, snapshot map[string]any) {
+				w.pick(id, map[string]any{"snapshot": snapshot}, "alpha")
+			}},
 	}
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
 			var run *uiViewRun
 			var source string
-			if row.piglet == "" {
+			switch {
+			case row.binary:
+				run = startUIViewBinary(t, uiViewShortHome(t), uiViewPigletBinary(t, row.piglet), "fullscreen")
+			case row.piglet == "":
 				var piglet string
 				piglet, source = uiViewCopiedPiglet(t)
 				run = startUIViewPiglet(t, uiViewShortHome(t), piglet, "fullscreen", true)
-			} else {
+			default:
 				run = startUIViewAt(t, uiViewShortHome(t), row.piglet, "fullscreen", true)
 			}
 			path, pig := uiViewSocket(t, run)
