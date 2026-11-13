@@ -51,19 +51,39 @@ type bridge struct {
 }
 
 // startBridge runs bridge.mjs over a pig with the demo extension and the faux model, and returns the page's address.
-func startBridge(t *testing.T) bridge {
+// More arguments go to pig.
+func startBridge(t *testing.T, more ...string) bridge {
+	t.Helper()
+	node := nodeBinary(t)
+	home := t.TempDir()
+	env := []string{"PIG_TEST_FAUX=1", "PIG_HOME=" + filepath.Join(home, "home"), "PI_HOME=" + filepath.Join(home, "pihome"),
+		"PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PI_CODING_AGENT_DIR=" + filepath.Join(home, "piagent")}
+	return runBridge(t, node, env, append([]string{"--pig", buildPig(t), "--", "--model", "test-faux/echo", "--no-session", "-e", "demo-extension.mjs"}, more...)...)
+}
+
+// nodeBinary returns the Node that runs the bridge. The test is skipped in short mode and where there is none.
+func nodeBinary(t *testing.T) string {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("starts Node and pig")
+		t.Skip("starts Node")
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {
+		// Where the page tests are required (CI sets CHORD_REQUIRE_CHROMIUM, as for the chord web tests), a missing Node
+		// fails them as a missing browser does (browsertest.Start) rather than skipping them.
+		if os.Getenv("CHORD_REQUIRE_CHROMIUM") != "" {
+			t.Fatal("node is not installed, and CHORD_REQUIRE_CHROMIUM is set")
+		}
 		t.Skip("node is not installed")
 	}
-	home := t.TempDir()
-	cmd := exec.Command(node, "bridge.mjs", "--port", "0", "--pig", buildPig(t), "--", "--model", "test-faux/echo", "--no-session", "-e", "demo-extension.mjs")
-	cmd.Env = append(os.Environ(), "PIG_TEST_FAUX=1", "PIG_HOME="+filepath.Join(home, "home"), "PI_HOME="+filepath.Join(home, "pihome"),
-		"PIG_CODING_AGENT_DIR="+filepath.Join(home, "agent"), "PI_CODING_AGENT_DIR="+filepath.Join(home, "piagent"))
+	return node
+}
+
+// runBridge runs bridge.mjs with args on any free port and returns the page's address.
+func runBridge(t *testing.T, node string, env []string, args ...string) bridge {
+	t.Helper()
+	cmd := exec.Command(node, append([]string{"bridge.mjs", "--port", "0"}, args...)...)
+	cmd.Env = append(os.Environ(), env...)
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -108,39 +128,43 @@ func (b bridge) open(t *testing.T) *page {
 	}
 	t.Cleanup(func() { _ = res.Body.Close() })
 	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "text/event-stream" {
+		_ = res.Body.Close()
 		t.Fatalf("GET /events = %s %s", res.Status, res.Header.Get("Content-Type"))
 	}
 	p := &page{t: t, b: b, lines: make(chan string, 4096), close: cancel}
 	session := make(chan string, 1)
-	go func() {
-		defer close(p.lines)
-		defer func() { _ = res.Body.Close() }()
-		reader := bufio.NewReaderSize(res.Body, 1<<16)
-		event := "message"
-		for {
-			line, err := reader.ReadString('\n')
-			if err != nil {
-				return
-			}
-			line = strings.TrimSuffix(line, "\n")
-			switch {
-			case strings.HasPrefix(line, "event: "):
-				event = strings.TrimPrefix(line, "event: ")
-			case strings.HasPrefix(line, "data: ") && event == "session":
-				session <- strings.TrimPrefix(line, "data: ")
-			case strings.HasPrefix(line, "data: ") && event == "message":
-				p.lines <- strings.TrimPrefix(line, "data: ")
-			case line == "":
-				event = "message"
-			}
-		}
-	}()
+	go p.relay(res, session)
 	select {
 	case p.session = <-session:
 	case <-time.After(30 * time.Second):
 		t.Fatal("the bridge sent no session")
 	}
 	return p
+}
+
+// relay reads the event stream of a page until it ends: the session it names and the lines pig wrote.
+func (p *page) relay(res *http.Response, session chan<- string) {
+	defer close(p.lines)
+	defer func() { _ = res.Body.Close() }()
+	reader := bufio.NewReaderSize(res.Body, 1<<16)
+	event := "message"
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		line = strings.TrimSuffix(line, "\n")
+		switch {
+		case strings.HasPrefix(line, "event: "):
+			event = strings.TrimPrefix(line, "event: ")
+		case strings.HasPrefix(line, "data: ") && event == "session":
+			session <- strings.TrimPrefix(line, "data: ")
+		case strings.HasPrefix(line, "data: ") && event == "message":
+			p.lines <- strings.TrimPrefix(line, "data: ")
+		case line == "":
+			event = "message"
+		}
+	}
 }
 
 func (p *page) post(line string) int {
@@ -351,5 +375,211 @@ func TestPageDrawsFocusesAndRaisesIntents(t *testing.T) {
 	browser.Wait(`document.querySelector('[data-key="demo"]') === null && document.activeElement.name === "message"`)
 	if got := browser.String(`String(window.uiView.reports) + "/" + String(window.uiView.resyncs)`); got != "0/0" {
 		t.Errorf("reports/resyncs = %s, want 0/0", got)
+	}
+}
+
+// openFixtures opens the page over a pig with the two fixture extensions (testdata/fixture.mjs) and returns the browser
+// and a function that sends a line as the user does: `/fx-a mount <content>`, `/fx-b update <content>`.
+func openFixtures(t *testing.T) (*browsertest.Browser, func(line string)) {
+	t.Helper()
+	b := startBridge(t, "-e", "testdata/fixture-a.mjs", "-e", "testdata/fixture-b.mjs")
+	browser := browsertest.Start(t)
+	browser.Open(b.base + "/?token=" + b.token)
+	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
+	return browser, func(line string) {
+		t.Helper()
+		text, err := json.Marshal(line)
+		if err != nil {
+			t.Fatal(err)
+		}
+		browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.value = ` + string(text) + `; form.requestSubmit(); })()`)
+	}
+}
+
+// TestPageLaysOutStacks checks the geometry the page computes for the layout members of a view: an hstack's children
+// with `stack {basis: 0, grow: 1}` are columns of one width side by side whatever their text, `gap` is cells between
+// children, `align` places a shorter child, a `basis` is a width in cells, and the padding of a box and of a text is
+// what the view says (a text's default is one cell each way). A cell is 1ch wide and one line high.
+func TestPageLaysOutStacks(t *testing.T) {
+	browser, send := openFixtures(t)
+	send(`/fx-a mount {"view":{"root":{"kind":"vstack","gap":1,"children":[` +
+		`{"kind":"hstack","gap":2,"children":[` +
+		`{"kind":"text","text":"a","paddingX":0,"paddingY":0,"stack":{"basis":0,"grow":1}},` +
+		`{"kind":"text","text":"a much longer cell than its neighbours","paddingX":0,"paddingY":0,"stack":{"basis":0,"grow":1}},` +
+		`{"kind":"text","text":"c","paddingX":0,"paddingY":0,"stack":{"basis":0,"grow":1}}]},` +
+		`{"kind":"hstack","align":"end","children":[{"kind":"text","text":"one","paddingX":0,"paddingY":0},{"kind":"text","text":"one\ntwo\nthree","paddingX":0,"paddingY":0}]},` +
+		`{"kind":"box","paddingX":3,"paddingY":2,"children":[{"kind":"text","text":"boxed"}]},` +
+		`{"kind":"hstack","children":[{"kind":"text","text":"x","paddingX":0,"paddingY":0,"stack":{"basis":10,"shrink":0}},{"kind":"text","text":"y","paddingX":0,"paddingY":0,"stack":{"grow":1}}]}` +
+		`]}}}`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .box') !== null`)
+	got := browser.String(`(() => {
+		const view = document.querySelector('[data-key="fx-a"] .vstack');
+		const probe = document.createElement("div");
+		probe.style.cssText = "width: 10ch; height: 0";
+		view.append(probe);
+		const col = probe.getBoundingClientRect().width / 10;
+		probe.remove();
+		const row = parseFloat(getComputedStyle(view).lineHeight);
+		const rect = (el) => el.getBoundingClientRect();
+		const near = (a, b) => Math.abs(a - b) < 0.75;
+		const [cells, ends, box, fixed] = view.children;
+		const c = [...cells.children].map(rect), e = [...ends.children].map(rect);
+		const boxStyle = getComputedStyle(box), textStyle = getComputedStyle(box.firstChild);
+		return JSON.stringify({
+			equalColumns: near(c[0].width, c[1].width) && near(c[1].width, c[2].width) && c[0].width > col,
+			sameRow: near(c[0].top, c[1].top) && near(c[1].top, c[2].top) && c[0].left < c[1].left && c[1].left < c[2].left,
+			columnGap: near(c[1].left - c[0].right, 2 * col) && near(c[2].left - c[1].right, 2 * col),
+			rowGap: near(rect(ends).top - rect(cells).bottom, row),
+			alignEnd: near(e[0].bottom, e[1].bottom) && e[0].top > e[1].top + row,
+			boxPadding: near(parseFloat(boxStyle.paddingLeft), 3 * col) && near(parseFloat(boxStyle.paddingTop), 2 * row),
+			textPadding: near(parseFloat(textStyle.paddingLeft), col) && near(parseFloat(textStyle.paddingTop), row),
+			basis: near(rect(fixed.children[0]).width, 10 * col) && near(rect(fixed.children[1]).right, rect(fixed).right),
+		});
+	})()`)
+	if want := `{"equalColumns":true,"sameRow":true,"columnGap":true,"rowGap":true,"alignEnd":true,"boxPadding":true,"textPadding":true,"basis":true}`; got != want {
+		t.Errorf("the layout is\n  %s\nwant\n  %s", got, want)
+	}
+}
+
+// TestPageDrawsColoursThemeAndMarkdown checks the computed colours and the markdown the page draws: a `bg` and a
+// `color` token take the colour the view's theme gives the token (a theme belongs to its view: the same token in
+// another mount keeps the page's colour), a markdown node is drawn as headings, lists, emphasis and links with its
+// default text style, and nothing in its text becomes markup: a script tag, an element with an on* attribute and a
+// javascript link are drawn as the characters they are.
+func TestPageDrawsColoursThemeAndMarkdown(t *testing.T) {
+	browser, send := openFixtures(t)
+	root := `"root":{"kind":"vstack","children":[` +
+		`{"kind":"box","bg":"selectedBg","children":[{"kind":"text","text":"chip","bg":"customMessageBg"}]},` +
+		`{"kind":"dynamic-border","color":"accent"},` +
+		`{"kind":"markdown","defaultTextStyle":{"color":"accent","bold":true},"text":"# Title\n\nSome **bold** and a [link](https://example.com/).\n\n- one\n- two\n\n` +
+		`<script>window.pwned = 1</script>\n\n<img src=x onerror=\"window.pwned = 2\">\n\n[bad](javascript:window.pwned=3)"}]}`
+	send(`/fx-a mount {"view":{"theme":{"selectedBg":"#102030","accent":"#123456"},` + root + `}}`)
+	send(`/fx-b mount {"view":{` + root + `}}`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .box') !== null && document.querySelector('[data-key="fx-b"] .box') !== null`)
+	got := browser.String(`(() => {
+		const a = document.querySelector('[data-key="fx-a"] .view'), b = document.querySelector('[data-key="fx-b"] .view');
+		const style = (root, selector) => getComputedStyle(root.querySelector(selector));
+		const md = a.querySelector(".markdown");
+		const all = [...a.querySelectorAll("*")];
+		return JSON.stringify({
+			themedBg: style(a, ".box").backgroundColor,
+			otherMountBg: style(b, ".box").backgroundColor !== "rgb(16, 32, 48)" && style(b, ".box").backgroundColor !== "rgba(0, 0, 0, 0)",
+			textBg: style(a, ".box .text").backgroundColor !== "rgba(0, 0, 0, 0)",
+			rule: style(a, ".rule").borderTopColor,
+			markdownStyle: md ? getComputedStyle(md).color + " " + getComputedStyle(md).fontWeight : "",
+			markdown: [md?.querySelector("h1")?.textContent, md?.querySelector("strong")?.textContent, md?.querySelectorAll("li").length, md?.querySelector("a")?.href].join("|"),
+			inert: all.every((el) => !["SCRIPT", "IMG"].includes(el.tagName) && [...el.attributes].every((at) => !at.name.startsWith("on"))) &&
+				a.querySelectorAll("a").length === 1 && window.pwned === undefined,
+			asText: a.textContent.includes("<script>window.pwned = 1</script>") && a.textContent.includes('<img src=x onerror="window.pwned = 2">') && a.textContent.includes("[bad](javascript:window.pwned=3)"),
+		});
+	})()`)
+	if want := `{"themedBg":"rgb(16, 32, 48)","otherMountBg":true,"textBg":true,"rule":"rgb(18, 52, 86)","markdownStyle":"rgb(18, 52, 86) 700","markdown":"Title|bold|2|https://example.com/","inert":true,"asText":true}`; got != want {
+		t.Errorf("colours and markdown are\n  %s\nwant\n  %s", got, want)
+	}
+}
+
+// TestPageKeepsTypedTextAcrossUpdates checks what an update does to what the user is typing: a text node whose id is
+// in the next view keeps its element, text, selection and the focus while a sibling changes; a value the extension
+// changes replaces the text; a node that moved to another parent keeps its text and the focus; and when the node is
+// gone, the node with another id that stands in its place starts with its own value.
+func TestPageKeepsTypedTextAcrossUpdates(t *testing.T) {
+	browser, send := openFixtures(t)
+	view := func(mail, input string) string {
+		return `{"view":{"root":{"kind":"vstack","children":[{"kind":"text","text":"` + mail + `"},` + input + `,{"kind":"editor","id":"body","value":""}]}}}`
+	}
+	reply := `{"kind":"input","id":"reply","value":""}`
+	state := `(() => { const el = document.querySelector('[id$="-reply"]'), body = document.querySelector('[id$="-body"]');
+		return JSON.stringify({ same: el === window.typedInto, value: el?.value, selection: el?.selectionStart + "-" + el?.selectionEnd, focused: document.activeElement === el, body: body?.value, sameBody: body === window.bodyWas }); })()`
+	send(`/fx-a mount ` + view("1 mail", reply))
+	browser.Wait(`document.querySelector('[id$="-reply"]') !== null`)
+	browser.Run(`(window.bodyWas = document.querySelector('[id$="-body"]')).focus()`)
+	browser.Type("a draft")
+	browser.Run(`(window.typedInto = document.querySelector('[id$="-reply"]')).focus()`)
+	browser.Type("half typed")
+	browser.Run(`window.typedInto.setSelectionRange(2, 5)`)
+	// A sibling changes: a new mail arrives.
+	send(`/fx-a update ` + view("2 mails", reply))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "2 mails"`)
+	if got, want := browser.String(state), `{"same":true,"value":"half typed","selection":"2-5","focused":true,"body":"a draft","sameBody":true}`; got != want {
+		t.Fatalf("after a sibling changed, the typed text is\n  %s\nwant\n  %s", got, want)
+	}
+	// The extension changes the value: its value is drawn.
+	send(`/fx-a update ` + view("3 mails", `{"kind":"input","id":"reply","value":"sent"}`))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "3 mails"`)
+	if got, want := browser.String(state), `{"same":true,"value":"sent","selection":"2-4","focused":true,"body":"a draft","sameBody":true}`; got != want {
+		t.Errorf("after the extension changed the value, the text is\n  %s\nwant\n  %s", got, want)
+	}
+	// The node moves into a box: it is another element, with the text and the focus of the one it replaces.
+	browser.Run(`window.typedInto.setSelectionRange(4, 4)`)
+	browser.Type(" again")
+	send(`/fx-a update ` + view("4 mails", `{"kind":"box","children":[{"kind":"input","id":"reply","value":"sent"}]}`))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "4 mails"`)
+	if got, want := browser.String(state), `{"same":false,"value":"sent again","selection":"10-10","focused":true,"body":"a draft","sameBody":true}`; got != want {
+		t.Errorf("after the node moved, the text is\n  %s\nwant\n  %s", got, want)
+	}
+	// The node is gone and one with another id and the same value stands in its place: it has its own value, not the
+	// text typed into the old one.
+	send(`/fx-a update ` + view("5 mails", `{"kind":"box","children":[{"kind":"input","id":"other","value":"sent"}]}`))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "5 mails"`)
+	if got, want := browser.String(`(() => { const other = document.querySelector('[id$="-other"]'); return [document.querySelector('[id$="-reply"]') === null, JSON.stringify(other.value), other === window.typedInto, document.activeElement === other].join(); })()`), `true,"sent",false,false`; got != want {
+		t.Errorf("after the node was removed: gone, the new node's value, same element, focused = %s, want %s", got, want)
+	}
+}
+
+// TestPageShowsPanelsAsTabsAndSideBySide checks the panels of two extensions: each has a tab, both are drawn side by
+// side until the user asks for tabs, then only the chosen one is shown; an update reaches the panel that is not shown
+// and does not change the choice; choosing its tab shows it, with the update.
+func TestPageShowsPanelsAsTabsAndSideBySide(t *testing.T) {
+	browser, send := openFixtures(t)
+	view := func(text string) string {
+		return `{"view":{"root":{"kind":"text","text":"` + text + `"}}}`
+	}
+	send(`/fx-a mount ` + view("trough 1"))
+	send(`/fx-b mount ` + view("pen 1"))
+	browser.Wait(`document.querySelector('[data-key="fx-a"]') !== null && document.querySelector('[data-key="fx-b"]') !== null`)
+	state := `(() => {
+		const a = document.querySelector('[data-key="fx-a"]'), b = document.querySelector('[data-key="fx-b"]');
+		const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+		const tabs = [...document.querySelectorAll('[role=tab]')];
+		return JSON.stringify({
+			tabs: tabs.map((tab) => tab.textContent + (tab.getAttribute("aria-selected") === "true" ? "*" : "")).join(),
+			shown: [a, b].map((el) => el.getClientRects().length > 0).join(),
+			beside: ra.width > 0 && rb.width > 0 && Math.abs(ra.top - rb.top) < 1 && ra.right <= rb.left,
+			text: [a, b].map((el) => el.querySelector(".text").textContent).join(),
+		});
+	})()`
+	if got, want := browser.String(state), `{"tabs":"fx-a,fx-b*","shown":"true,true","beside":true,"text":"trough 1,pen 1"}`; got != want {
+		t.Fatalf("two panels are\n  %s\nwant\n  %s", got, want)
+	}
+	// The user asks for tabs: the chosen panel alone is shown.
+	browser.Run(`document.getElementById("side").click()`)
+	if got, want := browser.String(state), `{"tabs":"fx-a,fx-b*","shown":"false,true","beside":false,"text":"trough 1,pen 1"}`; got != want {
+		t.Errorf("as tabs, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+	// An update of the panel that is not shown is drawn in it and leaves the choice alone.
+	send(`/fx-a update ` + view("trough 2"))
+	browser.Wait(`document.querySelector('[data-key="fx-a"] .text').textContent === "trough 2"`)
+	if got, want := browser.String(state), `{"tabs":"fx-a,fx-b*","shown":"false,true","beside":false,"text":"trough 2,pen 1"}`; got != want {
+		t.Errorf("after an update of the panel behind, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+	// The user chooses the other tab, by pointer and then back by keyboard.
+	browser.Run(`document.querySelector('[role=tab]').click()`)
+	if got, want := browser.String(state), `{"tabs":"fx-a*,fx-b","shown":"true,false","beside":false,"text":"trough 2,pen 1"}`; got != want {
+		t.Errorf("after choosing the first tab, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+	// The extension hides the chosen panel: its tab goes and the other panel is shown. Shown again, it is chosen.
+	send(`/fx-a hide`)
+	browser.Wait(`document.querySelector('[data-key="fx-a"]').hidden`)
+	if got, want := browser.String(`[...document.querySelectorAll('[role=tab]')].map((tab) => tab.hidden).join() + "/" + (document.querySelector('[data-key="fx-b"]').getClientRects().length > 0)`), `true,false/true`; got != want {
+		t.Errorf("after the extension hid the chosen panel: tabs hidden / other panel shown = %s, want %s", got, want)
+	}
+	send(`/fx-a show`)
+	browser.Wait(`!document.querySelector('[data-key="fx-a"]').hidden`)
+	if got, want := browser.String(state), `{"tabs":"fx-a*,fx-b","shown":"true,false","beside":false,"text":"trough 2,pen 1"}`; got != want {
+		t.Errorf("after the extension showed the panel again, the panels are\n  %s\nwant\n  %s", got, want)
+	}
+	browser.Run(`document.querySelector('[role=tab][aria-selected=true]').dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }))`)
+	if got, want := browser.String(state+` + "/" + document.activeElement.textContent`), `{"tabs":"fx-a,fx-b*","shown":"false,true","beside":false,"text":"trough 2,pen 1"}/fx-b`; got != want {
+		t.Errorf("after ArrowRight on the tab, the panels are\n  %s\nwant\n  %s", got, want)
 	}
 }

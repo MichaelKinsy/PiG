@@ -278,6 +278,7 @@ func acquireWithProbe(ctx context.Context, path string, stale, update time.Durat
 	ctx, cancel := context.WithCancelCause(ctx)
 	lock := &Lock{path: path, mtime: mtime, precision: precision, ctx: ctx, cancel: cancel, stop: make(chan struct{}), done: make(chan struct{}), onCompromised: onCompromised}
 	held.add(lock)
+	//portlint:allow asyncorder the heartbeat is proper-lockfile's update timer of the lock lockfile.lockSync returns (settings-manager.ts:204); Release joins it (close(stop), <-done) before it removes the directory
 	go lock.heartbeat(stale, update)
 	return lock, nil
 }

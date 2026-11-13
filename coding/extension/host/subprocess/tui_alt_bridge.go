@@ -707,7 +707,10 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 		screen.RequestRender(call.Force)
 		return empty()
 	case "invalidate":
-		screen.Invalidate()
+		// The root is flagged for the next frame and the components are invalidated below, once each and at once, as Pi's
+		// TUI.invalidate does on its one thread (tui.ts:951-954). screen.Invalidate would walk the same components a second time,
+		// and during a frame only when the frame ends, after the render that asked has read its own invalidation back.
+		screen.Container.Invalidate()
 		// Pi's invalidate reaches the mounted roots (the layout root, else the children) and every overlay's component, each of the extension.
 		// The renderer's container lock is taken before s.mu: a frame holds it while it waits on a component's render, which calls back into s.
 		children := m.Children()

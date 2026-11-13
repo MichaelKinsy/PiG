@@ -40,8 +40,9 @@
         "call:agent/tool_call_hook_funcs.go#AfterToolCallFunc.hook"
       ],
       "evidence": [
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages",
-        "test:agent/tool_call_hook_funcs_test.go#TestAfterToolCallFunc_SeesTheResultAndOverridesIt"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime",
+        "test:agent/parallel_shared_context_test.go#TestAToolOfAParallelBatchThatReplacesAMessageInPlaceChangesTheRun",
+        "test:agent/parallel_shared_context_test.go#TestAToolThatWritesTheMessagesKeptFromItsBeforeHook"
       ]
     },
     {
@@ -84,7 +85,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
         "test:agent/hook_context_view_test.go#TestAHookOfASequentialToolCallThatReplacesAMessageInPlaceChangesTheRun",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ]
     },
     {
@@ -2785,7 +2786,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
         "test:agent/hook_context_view_test.go#TestAHookOfASequentialToolCallThatReplacesAMessageInPlaceChangesTheRun",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -4243,7 +4244,7 @@
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMixedBatchWithOneTerminatingBlockedCallContinues",
         "test:agent/tool_call_hook_func_upstream_test.go#TestRunToolCallFuncHooksValidateRunAndReportFailures",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages"
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime"
       ]
     },
     {
@@ -4286,7 +4287,7 @@
       ],
       "evidence": [
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:agent/hook_context_view_test.go#TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages",
+        "test:agent/hook_context_view_test.go#TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime",
         "test:agent/hook_context_view_test.go#TestTheBeforeHooksOfParallelToolCallsShareTheRunsMessages"
       ]
     },
@@ -119174,7 +119175,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/sessions.go#sessionsFacet"
+        "call:chord/nextnode/app/sign_ins.go#signInsFacet"
       ],
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptDeclarationsContributeOnlyInHostLifetimeObjectsR21SelfHasNoContributeADeclarationErrorAtRuntime",
@@ -119196,7 +119197,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/sessions.go#sessionsFacet"
+        "call:chord/nextnode/app/sign_ins.go#signInsFacet"
       ],
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestAttemptDeclarationsContributeOnlyInHostLifetimeObjectsR21SelfHasNoContributeADeclarationErrorAtRuntime",
@@ -123102,7 +123103,7 @@
         "call:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns"
       ],
@@ -123217,7 +123218,7 @@
         "call:chord/nextnode/app/app.go#App.Close"
       ],
       "evidence": [
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer",
         "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
         "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
       ],
@@ -123240,7 +123241,7 @@
         "call:chord/nextnode/app/app.go#App.Close"
       ],
       "evidence": [
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer",
         "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
         "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
       ],
@@ -123922,7 +123923,7 @@
         "call:chord/nextnode/app/ephemeral.go#EphemeralLoginFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer",
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginSignsInUnderAPickedNameAsAFreshUserEachLoginItsOwn"
       ]
     },
@@ -124307,31 +124308,17 @@
     },
     {
       "id": "pkg:chord/app#SESSION_COOKIE",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:61403c6af5402ac495ae447ea1eeb5ba48243826f436dcd9ac16bf29dc506314",
-      "rationale": "Derived by the interface gap detector: SESSION_COOKIE is Go chord/nextnode/app/sessions.go#SessionCookie (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/nextnode/app/sessions.go#SessionCookie"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/app/sessions.go#CreateSessions"
-      ],
-      "evidence": [
-        "reach:chord/nextnode/app/sessions.go#CreateSessions"
-      ]
+      "rationale": "Pi 1.5.2 packages/chord/src/node/app/sessions.ts declares SESSION_COOKIE = \"chord-session\", the name of the app kit's cookie. Pi main ff7414d5130e898bf4a931ae04281a9a8b59381f (2026-11-13, decision \"Sign-ins, not sessions\") renames the constant SIGN_IN_COOKIE and its value \"chord-sign-in\", exports no alias and reads nothing under the old name. PiG follows that commit ahead of the pin: the Go form is app.SignInCookie = \"chord-sign-in\" (chord/nextnode/app/sign_ins.go), read by the kit's authenticator, its links hook and its rolling cookie, and proven by TestTheKitsCookieIsChordSignInAndTheNameItHadBeforeSignsNobodyIn and the nine tests of sign_ins_upstream_test.go; the pinned name and the pinned value are kept nowhere, as in Pi main. The detector binds the constant by rename and reports type-mismatch, rightly: the pin's literal type is \"chord-session\". This decision leaves at the pin move, when the id's type at the new pin equals the Go value (past ff7414d51 the id is SIGN_IN_COOKIE with the literal \"chord-sign-in\", which the name and shape rules find): the lane that moves the pin deletes this entry, it does not inherit it."
     },
     {
       "id": "pkg:chord/app#SessionInfo",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0ea5158533b0b7a77734c591e78bda1f0d9e59bf460ea27f663a727896cb71ee",
-      "rationale": "Derived by the interface gap detector: SessionInfo is Go chord/nextnode/app/sessions.go#SessionInfo (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionInfo is Go chord/nextnode/app/sign_ins.go#SignInInfo (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/app/sessions.go#SessionInfo"
+        "chord/nextnode/app/sign_ins.go#SignInInfo"
       ],
       "layers": {
         "behavior": "complete",
@@ -124339,19 +124326,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/sessions.go#sessionsFacet"
+        "call:chord/nextnode/app/sign_ins.go#signInsFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_index_summary_test.go#TestSessionInfoShowsEveryMemberOfTheListEntry"
+        "test:chord/nextnode/app/files_index_summary_test.go#TestSignInInfoShowsEveryMemberOfTheListEntry"
       ]
     },
     {
       "id": "pkg:chord/app#SessionKind",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:381468f042c3f5218082926da65c0230054b38e65495db20236cdbeb0f6b2a1a",
-      "rationale": "Derived by the interface gap detector: SessionKind is Go chord/nextnode/app/sessions.go#SessionKind (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SessionKind is Go chord/nextnode/app/sign_ins.go#SignInKind (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/app/sessions.go#SessionKind"
+        "chord/nextnode/app/sign_ins.go#SignInKind"
       ],
       "layers": {
         "behavior": "complete",
@@ -124362,16 +124349,16 @@
         "call:chord/nextnode/app/ephemeral.go#EphemeralLoginFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_index_summary_test.go#TestSessionInfoShowsEveryMemberOfTheListEntry"
+        "test:chord/nextnode/app/files_index_summary_test.go#TestSignInInfoShowsEveryMemberOfTheListEntry"
       ]
     },
     {
       "id": "pkg:chord/app#Sessions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:94296333db1b38715b9b4cdad49a026bcbf537e49c895d5e51e4c0458eb41a10",
-      "rationale": "Derived by the interface gap detector: Sessions is Go chord/nextnode/app/sessions.go#Sessions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Sessions is Go chord/nextnode/app/sign_ins.go#SignIns (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/app/sessions.go#Sessions"
+        "chord/nextnode/app/sign_ins.go#SignIns"
       ],
       "layers": {
         "behavior": "complete",
@@ -124383,7 +124370,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerLinkServesAPageReadingTheFragmentSignsTheOwnerInOnceAndRefusesTheTokenASecondTime",
-        "test:chord/nextnode/app/sessions_upstream_test.go#TestEphemeralSessionsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore",
+        "test:chord/nextnode/app/sign_ins_upstream_test.go#TestEphemeralSignInsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns"
       ]
     },
@@ -126950,8 +126937,8 @@
         "call:chord/nextnode/http/http.go#HttpComponent.resolve"
       ],
       "evidence": [
-        "test:chord/nextnode/app/sessions_touch_test.go#TestASessionsTouchIsDroppedWhenItsRequestWasCancelled",
-        "test:chord/nextnode/app/sessions_touch_test.go#TestASessionsTouchOfAFinishedRequestStillLands",
+        "test:chord/nextnode/app/sign_ins_touch_test.go#TestASignInsTouchIsDroppedWhenItsRequestWasCancelled",
+        "test:chord/nextnode/app/sign_ins_touch_test.go#TestASignInsTouchOfAFinishedRequestStillLands",
         "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten"
       ]
     },
@@ -127195,7 +127182,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsAdmitsHostsAWritableContributionAddsAndRemovesAtRuntime",
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer",
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginSignsInUnderAPickedNameAsAFreshUserEachLoginItsOwn"
       ]
     },
@@ -137074,7 +137061,7 @@
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion",
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -137097,7 +137084,7 @@
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion",
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -137120,7 +137107,7 @@
       "evidence": [
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile",
         "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion",
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSignInsWithTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -314038,7 +314025,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/alt_screen_search.go#AltScreenSearchComponent.Invalidate"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
@@ -314760,9 +314747,9 @@
       "id": "pkg:tui/.#TuiAltScreen::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -314770,21 +314757,21 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
       "id": "pkg:tui/.#TuiAltScreen::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate::call:0 is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiAltScreen::property:invalidate::call:0 is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -314792,12 +314779,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
@@ -316139,7 +316126,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/alt_screen_search.go#AltScreenSearchComponent.Invalidate"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
@@ -316676,9 +316663,9 @@
       "id": "pkg:tui/.#TuiMainScreen::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -316686,21 +316673,21 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {
       "id": "pkg:tui/.#TuiMainScreen::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate::call:0 is Go tui/tui.go#invalidatable.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiMainScreen::property:invalidate::call:0 is Go tui/cell_size.go#tuiBase.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#invalidatable.Invalidate"
+        "tui/cell_size.go#tuiBase.Invalidate"
       ],
       "layers": {
         "behavior": "complete",
@@ -316708,12 +316695,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#invalidatable.Invalidate"
+        "call:tui/cell_size.go#tuiBase.Invalidate"
       ],
       "evidence": [
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/tui_invalidate_test.go#TestInvalidateFromARenderDoesNotWaitForTheFrame",
+        "test:tui/tui_invalidate_test.go#TestInvalidateReachesMountedRootsAndEveryOverlayComponent"
       ]
     },
     {

@@ -1086,6 +1086,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/100-overlay-invalidate-settings-preview.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: the /settings theme preview while a non-capturing overlay is open, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/101-overlay-invalidate-settings-preview-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
+          },
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: the /settings theme preview while a non-capturing overlay is open, alternate screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/102-export-osc8-links.toml",
       "transforms": [
         {
@@ -1123,6 +1159,42 @@
           "group": "ui-request",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "reason": "extension_ui_request ids are random UUIDs; the pattern leaves the fixed command id \"probe\" compared as written."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/104-editor-slot-invalidate-set-theme.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "EDINV",
+            "capture_end": "EDEND"
+          },
+          "reason": "Owned visible surface: A ui.custom component in the editor slot is invalidated as often as Pi invalidates it by one theme set, regular screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/105-editor-slot-invalidate-set-theme-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "EDINV",
+            "capture_end": "EDEND"
+          },
+          "reason": "Owned visible surface: A ui.custom component in the editor slot is invalidated as often as Pi invalidates it by one theme set, alternate screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
         }
       ]
     },
@@ -2676,14 +2748,15 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/extensions-runtime/98-reload-resets-extension-ui.toml",
+      "scenario": "test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml",
       "transforms": [
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "parity-snap-cwd-"
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
           },
-          "reason": "Owned visible surface: A status and a footer an extension set are gone after /reload when it does not set them again",
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: an extension's ctx.ui.setTheme while its overlay is open, regular screen.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -2693,15 +2766,15 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/extensions-runtime/99-failed-reload-then-reload.toml",
+      "scenario": "test/parity/scenarios/extensions-runtime/99-overlay-invalidate-set-theme-fullscreen.toml",
       "transforms": [
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "reload-cells-begin",
-            "capture_end": "reload-cells-end"
+            "capture_start": "OVINV",
+            "capture_end": "OVEND"
           },
-          "reason": "Owned visible surface: A /reload that fails leaves the old extension instance stale; a later /reload loads a live one.",
+          "reason": "Owned visible surface: An extension overlay that keeps a themed row until invalidate() shows the new theme: an extension's ctx.ui.setTheme while its overlay is open, alternate screen.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

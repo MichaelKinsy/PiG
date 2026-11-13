@@ -19,17 +19,17 @@ import (
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 )
 
-// A server of the app kit as its own tests need it: a host on a store, the HTTP component on a loopback port, the kit's session
+// A server of the app kit as its own tests need it: a host on a store, the HTTP component on a loopback port, the kit's sign-in
 // facet, the `whoami` route of the tests' plugin, and the kit facets a test adds. Pi's `testApp` is the whole app (startServer);
 // these tests exercise the kit's facets, and the app's own tests (app_test.go) the composition.
 
-// cookieSecret is the secret the tests' sessions sign their cookies with.
+// cookieSecret is the secret the tests' sign-ins sign their cookies with.
 const cookieSecret = "test-cookie-secret"
 
 type kitServer struct {
 	*kitHost
 	component *chordhttp.HttpComponent
-	sessions  *KitSessions
+	signIns   *KitSignIns
 	port      int
 	errs      *httpErrors
 }
@@ -68,7 +68,7 @@ func whoami() host.Facet {
 
 type kitServerOptions struct {
 	Dir      string
-	Limits   SessionLimits
+	Limits   SignInLimits
 	Facets   []host.HostFacet
 	Owner    data.Principal
 	NoWhoami bool
@@ -88,10 +88,10 @@ func newKitServer(t *testing.T, options kitServerOptions) *kitServer {
 		t.Fatal(err)
 	}
 	component := chordhttp.CreateHttp(h, chordhttp.HttpOptions{Listen: &chordhttp.ListenAddress{Host: "127.0.0.1", Port: 0}, OnError: errs.add}, background)
-	sessions := CreateSessions(cookieSecret, options.Limits)
+	signIns := CreateSignIns(cookieSecret, options.Limits)
 	facets := []host.HostFacet{
 		{Name: "chord.http", Facet: component.Facet()},
-		{Name: "chord.app.sessions", Facet: sessions.Facet},
+		{Name: "chord.app.sign-ins", Facet: signIns.Facet},
 	}
 	if !options.NoWhoami {
 		facets = append(facets, host.HostFacet{Name: "@test/whoami", Facet: whoami()})
@@ -108,7 +108,7 @@ func newKitServer(t *testing.T, options kitServerOptions) *kitServer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &kitServer{kitHost: &kitHost{t: t, store: chordStore, host: h, errors: hostErrors}, component: component, sessions: sessions, port: address.Port, errs: errs}
+	server := &kitServer{kitHost: &kitHost{t: t, store: chordStore, host: h, errors: hostErrors}, component: component, signIns: signIns, port: address.Port, errs: errs}
 	return server
 }
 
@@ -195,15 +195,15 @@ func sendTo(t testing.TB, port int, method, path string, headers map[string]stri
 	return reply{status: response.StatusCode, headers: response.Header, body: text}
 }
 
-// issue issues a session on the kit's `Sessions` and returns its id, token and cookie.
+// issue issues a sign-in on the kit's `SignIns` and returns its id, token and cookie.
 func (s *kitServer) issue(principal delta.JsonValue, label, kind string) (id, token, cookie string) {
 	s.t.Helper()
-	sessions, err := s.host.Get(background, Sessions, delta.NewJsonObject(0), host.GetOptions{})
+	signIns, err := s.host.Get(background, SignIns, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	defer sessions.Release()
-	issued, err := sessions.Call("issue", delta.JsonObjectOf("principal", principal, "label", label, "kind", kind), background)
+	defer signIns.Release()
+	issued, err := signIns.Call("issue", delta.JsonObjectOf("principal", principal, "label", label, "kind", kind), background)
 	if err != nil {
 		s.t.Fatal(err)
 	}

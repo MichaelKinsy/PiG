@@ -251,7 +251,7 @@ Step 1 of `run` opens the telemetry store (chapter XI), starts the app, tries th
 1. owner link: http://127.0.0.1:<port>/_chord/owner#<token>
    data directory: cache, logs, owner-token, plugins, server, telemetry.sqlite, telemetry.sqlite-shm, telemetry.sqlite-wal, workers
    GET / signed out: 401
-   the owner signs in: 200 chord-session=…
+   the owner signs in: 200 chord-sign-in=…
    GET / signed in: 200
 ```
 
@@ -269,7 +269,7 @@ func closeServer(ctx context.Context, server *app.App) {
 
 `StartServer` made the data directory: `server/` (its store, the cookie secret, its files), `workers/` (one directory per worker), `plugins/` (the user's plugin root, beside the app's built-in one), `cache/` (the workers' bases), `logs/`, `owner-token` and the telemetry store's files. Without the owner's session both requests are answered 401: the kit answers it before a route or the page runs; once signed in, the page is served.
 
-The **owner link** (`/_chord/owner#<token>`) is how the owner gets in: a single-use token, valid ten minutes, made at each start. It sits in the URL's fragment, which browsers never send, so it never reaches a log; the link's page posts it and receives a session cookie. A command-line client on the same machine reads `owner-token` instead (mode 0600). Nothing is the owner because it comes from loopback: any local process could.
+The **owner link** (`/_chord/owner#<token>`) is how the owner gets in: a single-use token, valid ten minutes, made at each start. It sits in the URL's fragment, which browsers never send, so it never reaches a log; the link's page posts it and receives a sign-in cookie. A command-line client on the same machine reads `owner-token` instead (mode 0600). Nothing is the owner because it comes from loopback: any local process could.
 
 # A List on Its Own Worker
 

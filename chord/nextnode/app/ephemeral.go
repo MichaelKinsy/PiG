@@ -9,9 +9,9 @@ import (
 )
 
 // The ephemeral login plugin (slice 13 §3, decision "The app kit, point 2"): an IRC-like "pick a name and you're in".
-// `POST /_chord/login` (public: `{ name }`) issues an ephemeral session for `{ kind: "user", id: <fresh>, name }` (the app's
-// principal type must allow it) and answers with its cookie. No account is stored. The session ends with the browser (its cookie
-// has no lifetime) or the server (ephemeral sessions are dropped whenever it starts).
+// `POST /_chord/login` (public: `{ name }`) issues an ephemeral sign-in for `{ kind: "user", id: <fresh>, name }` (the app's
+// principal type must allow it) and answers with its cookie. No account is stored. The sign-in ends with the browser (its cookie
+// has no lifetime) or the server (ephemeral sign-ins are dropped whenever it starts).
 //
 // Ports packages/chord/src/node/app/ephemeral.ts (Pi main c23b9ec1).
 
@@ -21,7 +21,7 @@ const LoginPath = "/_chord/login"
 // maxLoginName is the longest name taken, in UTF-16 code units.
 const maxLoginName = 40
 
-// EphemeralUser is the principal an ephemeral login issues a session for: `{ kind: "user", id, name }`.
+// EphemeralUser is the principal an ephemeral login issues a sign-in for: `{ kind: "user", id, name }`.
 type EphemeralUser struct {
 	Kind string
 	ID   string
@@ -53,7 +53,7 @@ func EphemeralLoginFacet() host.Facet {
 					return chordhttp.HttpResponse{Kind: chordhttp.KindError, Status: 400}, nil
 				}
 				principal := EphemeralUser{Kind: "user", ID: NewToken(12), Name: name}.Principal()
-				issued, err := issueSession(ctx, principal, name, SessionEphemeral, request.Provenance().Kind != chordhttp.ProvenanceLocal)
+				issued, err := issueSignIn(ctx, principal, name, SignInEphemeral, request.Provenance().Kind != chordhttp.ProvenanceLocal)
 				if err != nil {
 					return chordhttp.HttpResponse{}, err
 				}

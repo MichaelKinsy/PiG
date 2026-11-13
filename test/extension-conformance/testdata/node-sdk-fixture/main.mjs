@@ -754,6 +754,31 @@ export default function (pi) {
       ctx.ui.notify("overlay-handle=ok", "info");
     },
   });
+  pi.registerCommand("overlay-invalidate-probe", {
+    description: "Count the host's invalidations of a mounted overlay and draw the theme",
+    handler: async (args, ctx) => {
+      const row = () => `${ctx.ui.theme.name}|${ctx.ui.theme.fg("accent", "x")}`;
+      await ctx.ui.custom((_tui, _theme, _keys, done) => {
+        const handleInput = (data) => { if (data === "q") done("closed"); };
+        // A component without invalidate() is rendered again all the same.
+        if (String(args ?? "").trim() === "plain") return { render: () => [`plain live=${row()}`], handleInput };
+        let invalidations = 0;
+        let kept = row();
+        return {
+          render: () => [`inv=${invalidations} kept=${kept} live=${ctx.ui.theme.name}`],
+          handleInput,
+          invalidate() { invalidations++; kept = row(); },
+        };
+      }, { overlay: true });
+      ctx.ui.notify("overlay-invalidate=ok", "info");
+    },
+  });
+  pi.registerCommand("theme-read-probe", {
+    description: "Report the theme the extension holds, with no component mounted",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify(`theme-read=${ctx.ui.theme.name}|${ctx.ui.theme.fg("accent", "x")}`, "info");
+    },
+  });
   pi.registerCommand("overlay-focus-probe", {
     description: "Render the focus the host publishes to a mounted overlay",
     handler: async (_args, ctx) => {
@@ -842,7 +867,7 @@ export default function (pi) {
       f.push(`visibleOff=${screen.hasOverlay()}/${screen.hasOverlayEntries}`);hOff.hide();
       const ov2=screen.showOverlay(ov,{width:8});
       docInv=0;ovInv=0;screen.invalidate();
-      f.push(`invalidate=${docInv>0}/${ovInv>0}`);
+      f.push(`invalidate=${docInv}/${ovInv}`);
       ov2.hide();
       const mutLog=[];let armed=false,mutInv=0;
       const extra={render:()=>["EXTRA"],invalidate(){}},target={render:()=>["TARGET"],invalidate(){}},popup={render:()=>["POP"],invalidate(){}};
@@ -858,7 +883,7 @@ export default function (pi) {
         r.push(`overlay=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${h.isFocused()}/${first}`);
         h.hide();r.push(`hidden=${screen.hasOverlayEntries}`);
         screen.scrollBy(-2);r.push(`scroll=${screen.viewportTop}/${screen.isFollowingOutput}`);
-        mutInv=0;screen.invalidate();r.push(`invalidate=${mutInv>0}`);
+        mutInv=0;screen.invalidate();r.push(`invalidate=${mutInv}`);
         r.push(`lines=${screen.getScreenLines().length}`);
         mutLog.push(r.join(","));
         return ["MUT"];
@@ -1154,7 +1179,62 @@ export default function (pi) {
     const cur = await ctx.ui.viewState("grid");
     ctx.ui.notify(`view-g-state:${cur.state},rev=${cur.mount.rev}`, "info");
   } });
+  // D614 node ids: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewNodeIds). The argument is the
+  // row's token: the ids of the container, the text and the box are built from it.
+  pi.registerCommand("ui_view_node_ids", { description: "Mount a view whose container, text and box carry an id", handler: async (args, ctx) => {
+    const tok = args.trim();
+    const st = await ctx.ui.mountView({
+      key: "ids",
+      slot: "panel",
+      view: { root: { kind: "container", id: `${tok}-root`, children: [
+        { kind: "text", id: `${tok}-label`, text: `Label ${tok}`, paddingX: 0, paddingY: 0, bg: "selectedBg" },
+        { kind: "box", id: `${tok}-frame`, paddingX: 1, paddingY: 0, bg: "toolPendingBg", children: [{ kind: "text", text: "inside", paddingX: 0, paddingY: 0 }] },
+      ] } },
+      a11y: [{ node: `${tok}-label`, name: `Label ${tok}` }],
+    });
+    ctx.ui.notify(`view-i-mounted:${st.state}`, "info");
+  } });
+  // D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
+  pi.registerCommand("ui_view_bindings", { description: "Mount a view with bindings and probe what the host refuses", handler: async (args, ctx) => {
+    const [key, number] = args.split(" ");
+    const n = Number(number);
+    const content = (bindings) => ({
+      view: viewText(ctx, "-bind"), bindings,
+      intents: [{ name: "fx.go", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] } }, { name: "fx.tap", arg: { type: "object" } }],
+    });
+    const goTo = (key, n) => ({ key, intent: "fx.go", arg: { n } });
+    const tap = (key) => ({ key, intent: "fx.tap" });
+    const st = await ctx.ui.mountView({ key: "bind", slot: "panel", ...content([{ ...goTo(key, n), name: `Go ${n}` }, goTo("w", n + 1), { gesture: "swipe-left", intent: "fx.tap" }]) });
+    ctx.ui.notify(`view-b-mounted:${st.state}`, "info");
+    const attempt = async (label, bindings) => ctx.ui.notify(`view-b-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content(bindings)))}`, "info");
+    await attempt("many", [..."abcdefghijklmnopqrstuvwxyz0123456"].map(tap));
+    await attempt("reserved", [tap("shift+tab")]);
+    await attempt("order", [tap("ctrl+shift+p"), tap("shift+ctrl+p")]);
+    await attempt("gesture", [{ gesture: "pinch", intent: "fx.tap" }]);
+    await attempt("arg", [goTo("a", "x")]);
+    await attempt("ok", [goTo("ctrl+shift+p", n), goTo("shift+ctrl+q", n + 1)]);
+  } });
+  // D614 dismiss: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewDismiss).
+  pi.registerCommand("ui_view_dismiss", { description: "Mount a dialog with a dismiss intent and probe what the host refuses", handler: async (args, ctx) => {
+    const object = { type: "object" };
+    const tap = { name: "fx.tap", arg: object };
+    const closing = (name) => ({ name, arg: object, dismiss: true });
+    const content = (intents) => ({ view: viewText(ctx, "-dismiss"), intents });
+    const st = await ctx.ui.mountView({ key: "dismiss", slot: "dialog", ...content([tap, closing(args)]) });
+    ctx.ui.notify(`view-d-mounted:${st.state}`, "info");
+    const attempt = async (label, intents) => ctx.ui.notify(`view-d-${label}:${await viewCode(() => ctx.ui.updateView(st.mount, content(intents)))}`, "info");
+    await attempt("two", [tap, closing(args), closing(`${args}2`)]);
+    await attempt("node", [tap, { ...closing(args), nodeKey: "n" }]);
+    await attempt("arg", [tap, { ...closing(args), arg: { type: "object", properties: { value: { type: "string" } }, required: ["value"] } }]);
+    await attempt("ok", [closing(args), tap]);
+  } });
   pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent.startsWith("fx.close-")) {
+      // The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
+      if (JSON.stringify(inv.arg) !== "{}") return { outcome: "refused", error: "dismiss takes {}" };
+      await ctx.ui.removeView({ ...inv.mount, rev: inv.rev });
+      return { outcome: "done" };
+    }
     if (inv.intent === "fx.redraw" || inv.intent === "fx.foreign") {
       const own = inv.intent === "fx.redraw";
       const content = { view: textView(`fixture-${own ? "redraw" : "foreign"}-${inv.arg.n + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0)}`), intents: redrawIntents };

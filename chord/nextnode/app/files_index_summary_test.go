@@ -16,8 +16,8 @@ func TestSpaceSummaryOfAnEmptySpaceIsZero(t *testing.T) {
 	}
 }
 
-func TestSessionInfoShowsEveryMemberOfTheListEntry(t *testing.T) {
-	info := SessionInfo{ID: "i", Label: "l", Kind: SessionDevice, Principal: "p", Created: 1, LastUsed: 2}.JSON()
+func TestSignInInfoShowsEveryMemberOfTheListEntry(t *testing.T) {
+	info := SignInInfo{ID: "i", Label: "l", Kind: SignInDevice, Principal: "p", Created: 1, LastUsed: 2}.JSON()
 	for key, want := range map[string]any{"id": "i", "label": "l", "kind": "device", "principal": "p", "created": float64(1), "lastUsed": float64(2)} {
 		if got := info.Value(key); got != want {
 			t.Fatalf("%s = %v, want %v", key, got, want)

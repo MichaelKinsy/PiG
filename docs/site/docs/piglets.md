@@ -95,6 +95,7 @@ build:
 | `discovery` | Permit or reject ambient workspace and user Resources. |
 | `contextFiles` | Set `trusted-only` to load no project `AGENTS.md` or `CLAUDE.md` until the project is trusted. |
 | `viewClient` | Set `terminal` to let the TUI draw the views extensions mount (D614). |
+| `viewEndpoint` | Set `socket` to let other programs of the same user attach to an interactive session's views (D614). |
 | `secrets` | Declare logical secret requirements without storing values. |
 | `agentEnv` | Require an image, Dev Container, or typed environment source. |
 | `slots` | Replace a part of PiG with a fused Go member. `frontend` is the only slot (D91); see [Piglet Binaries](piglet-binaries.md#frontend-members). |
@@ -304,6 +305,16 @@ viewClient: terminal
 ```
 
 With `terminal`, the TUI draws mounted views above and below the editor and in a panel directly above it. Until an extension mounts a view, the screen and the keys are unchanged. `none` is the default; a child Piglet that extends a base with `terminal` sets `viewClient: none` to turn it off. See [Terminal UI](tui.md#extension-views).
+
+## View endpoint
+
+A view client outside the process, such as a web page behind a bridge, can attach to a running interactive session when the Piglet says so:
+
+```yaml
+viewEndpoint: socket
+```
+
+With `socket`, an interactive session serves the view carrier on the Unix socket `<agent directory>/view-endpoint/<pid>.sock`. Only your own user can connect, and a client can only draw the mounted views and raise the intents they declare: it cannot prompt the agent or read the session. The terminal and every connected client show the same mounts. A new session and the exit close the connections and remove the socket; a reload keeps them, ends the views of the extensions it reloads and shows the views they mount again. `none` is the default: nothing listens. Print, JSON and RPC mode ignore the key, and on Windows no socket is served. The lines a client speaks are in `docs/ui-view-carrier.md`.
 
 ## Origins
 

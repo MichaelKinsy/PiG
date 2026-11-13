@@ -108,22 +108,26 @@ type anthRequest struct {
 	Stream    bool          `json:"stream"`
 	// Betas is visible to OnPayload as upstream params.betas. The wire body
 	// omits it and sends it as the anthropic-beta header instead.
+	//portlint:allow emptydrop buildParams adds betas only when there is a beta feature (anthropic-messages.ts:1487): Pi sends no empty array
 	Betas []string `json:"betas,omitempty" requestsplice:"read"`
 	// The members below follow in the order buildParams assigns them to the literal of the members above (anthropic-messages.ts:1487-1597):
 	// JSON.stringify writes an object's members in the order they were created.
+	//portlint:allow emptydrop buildParams sets system only to a non-empty array, the OAuth identity block or a non-empty prompt (anthropic-messages.ts:1491-1508)
 	System []anthSystemBlock `json:"system,omitempty"`
 	// Temperature is incompatible with extended thinking.
-	Temperature *float64      `json:"temperature,omitempty"`
-	Tools       []anthTool    `json:"tools,omitempty"`
-	Thinking    *anthThinking `json:"thinking,omitempty"`
+	Temperature *float64 `json:"temperature,omitempty"`
+	//portlint:allow emptydrop buildParams sets tools to the definitions and the placeholder, or only when there is a tool (anthropic-messages.ts:1533-1537)
+	Tools    []anthTool    `json:"tools,omitempty"`
+	Thinking *anthThinking `json:"thinking,omitempty"`
 	// OutputConfig controls output quality knobs like thinking effort.
 	// Used with adaptive thinking (Opus 4.6+, Sonnet 4.6) to set effort level.
 	// Mirrors upstream anthropic.ts output_config.
 	OutputConfig *anthOutputConfig `json:"output_config,omitempty"`
 	Metadata     *anthMetadata     `json:"metadata,omitempty"`
 	// ToolChoice is { type } for a named choice, or the caller's object as the caller wrote it.
-	ToolChoice any            `json:"tool_choice,omitempty"`
-	Fallbacks  []anthFallback `json:"fallbacks,omitempty"`
+	ToolChoice any `json:"tool_choice,omitempty"`
+	//portlint:allow emptydrop buildParams sets fallbacks only when the model allows a fallback model (anthropic-messages.ts:1593-1594)
+	Fallbacks []anthFallback `json:"fallbacks,omitempty"`
 }
 
 type anthFallback struct {
