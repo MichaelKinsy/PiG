@@ -1,0 +1,60 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: Pi 5b5be2c316 (#12145, fixes #8036). ToolExecutionComponent.render (tool-execution.ts) appended the rows of a tool
+# that draws itself (renderShell "self": the built-in edit) with lines.push(...contentLines); a large edit diff draws hundreds of thousands
+# of rows, the spread exceeds V8's argument limit (near 125 000 arguments), and pi exited with "RangeError: Maximum call stack size
+# exceeded" on the render and on every resume, because the diff is saved in the session. Pi's commit has no test; its message gives a
+# manual case (a diff with two lines of about 12 MB each, resumed at 100 columns: 24 MB, about 10 s and 2.9 GB in Pi).
+# This scenario is the smallest form of it: the row count is what fails, so the saved diff has 190 000 short added lines (1.5 times the
+# limit, about 2 MB), resumed at 100 columns. The Pi side needs the oracle block of that commit
+# (automation/gen/pi-post-release-backports.mjs, 5b5be2c316e0); without it Pi crashes in the last step.
+# Fixture: the session is not in git. Each binary writes it into its own cwd copy with `!sh make-session.sh` (user bash), then opens
+# it with /resume, which draws the saved result through the same transcript path as `--session <file>`.
+# Exact ANSI crop: the last rows of the diff down to the assistant text after it; the header and the footer are other scenarios'.
+name = "72-resume-very-large-edit-diff"
+description = "A resumed session whose edit result draws 190 000 rows shows its last rows and the message after them, as Pi does from 5b5be2c316 on."
+covers = ["packages/coding-agent/src/modes/interactive/components/tool-execution.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions"]
+pi_args = ["--session-dir", "sessions"]
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/large-edit-cwd"
+capture_start = "+189990 a"
+capture_end = "LARGE-EDIT-END"
+
+[[tmux.steps]]
+keys = ["!sh make-session.sh", "Enter"]
+wait_contains = ["LARGE-EDIT-SESSION-WRITTEN"]
+wait_timeout_seconds = 60
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_contains = ["LARGE-EDIT-START"]
+wait_timeout_seconds = 30
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["LARGE-EDIT-END"]
+wait_timeout_seconds = 120
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_contain = ["+190000 LARGE-EDIT-LAST", "LARGE-EDIT-END"]
+both_not_contain = ["RangeError", "Maximum call stack size exceeded", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3
