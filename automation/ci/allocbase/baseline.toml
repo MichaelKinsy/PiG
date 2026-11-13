@@ -1191,7 +1191,7 @@ allocs = 119
 [[benchmark]]
 package = "./ai/providers/bedrock"
 benchmark = "BenchmarkBedrockReplayDocument"
-allocs = 3528
+allocs = 3021
 
 [[benchmark]]
 package = "./ai/providers/bedrock"
