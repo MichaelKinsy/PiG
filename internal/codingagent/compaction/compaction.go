@@ -403,6 +403,17 @@ func projectedMessages(entries []codingagent.ProjectedSessionEntry) []agent.Agen
 	return out
 }
 
+// ownedMessages replaces each message with a copy the caller owns. The projection PrepareCompaction reads holds the session
+// entries' own messages; the preparation it returns goes to extension hooks, the summarizer and the session file, none of
+// which may reach an entry. A system message never gets here (getMessagesFromProjectedEntryForCompaction leaves them out), so
+// the tool declarations the entries hold are read for the estimate and cloned for nobody.
+func ownedMessages(messages []agent.AgentMessage) []agent.AgentMessage {
+	for i, message := range messages {
+		messages[i] = message.Clone()
+	}
+	return messages
+}
+
 // PrepareCompaction selects what a compaction of pathEntries, a root-to-leaf
 // branch, summarizes and keeps (compaction.ts prepareCompaction). It works on
 // the canonical session projection, so context edits, omissions, and the
@@ -447,10 +458,10 @@ func PrepareCompaction(
 		historyEnd = cutPoint.TurnStartIndex
 	}
 
-	toSummarize := projectedMessages(entries[boundaryStart:historyEnd])
+	toSummarize := ownedMessages(projectedMessages(entries[boundaryStart:historyEnd]))
 	turnPrefix := []agent.AgentMessage{}
 	if cutPoint.IsSplitTurn {
-		turnPrefix = projectedMessages(entries[cutPoint.TurnStartIndex:cutPoint.FirstKeptEntryIndex])
+		turnPrefix = ownedMessages(projectedMessages(entries[cutPoint.TurnStartIndex:cutPoint.FirstKeptEntryIndex]))
 	}
 	if len(toSummarize) == 0 && len(turnPrefix) == 0 {
 		return nil
