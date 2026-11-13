@@ -1693,8 +1693,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestAgentLoopConfigAfterToolCallFuncMarksBatchTerminating",
-        "test:coding/cli/agent_loop_oracle_test.go#TestAgentLoopMatchesPi"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -1761,6 +1761,7 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
         "test:coding/cli/agent_loop_oracle_test.go#TestAgentLoopMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -2008,7 +2009,7 @@
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
         "test:coding/cli/agent_loop_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/standalone_loop_test.go#TestRunAgentLoop_PollsSteeringAndFollowUpMessages"
+        "test:agent/abort_batch_answers_test.go#TestSteeringQueuedDuringAnAbortedBatchFollowsAResultForEveryCall"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -2362,8 +2363,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:coding/cli/agent_loop_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/standalone_loop_test.go#TestAgentLoop_ReportsARunFailureOnTheProcessLogAndEndsTheStream"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -3810,7 +3811,8 @@
         "call:agent/run_tool_call.go#RunToolCall"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs"
+        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs",
+        "test:agent/abort_batch_answers_test.go#TestRunToolCallAnswersAnAbortedSignalBeforeTheLookupAndTheHooks"
       ]
     },
     {
@@ -4041,9 +4043,9 @@
         "call:agent/tool_execution.go#ToolUpdatesObserved"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -4063,9 +4065,9 @@
         "call:agent/tool_execution.go#ToolUpdatesObserved"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -4218,8 +4220,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMixedBatchWithOneTerminatingBlockedCallContinues",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMutatedArgsExecuteWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMixedBatchWithOneTerminatingBlockedCallContinues"
       ]
     },
     {
@@ -4305,8 +4307,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestRunToolCallFuncHooksValidateRunAndReportFailures",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/tool_call_hook_func_upstream_test.go#TestRunToolCallFuncHooksValidateRunAndReportFailures"
       ]
     },
     {
@@ -34213,7 +34215,7 @@
       "evidence": [
         "test:ai/openai_completions_member_type_oracle_test.go#TestOpenAICompletionsMistypedMembersMatchPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared"
       ]
     },
     {
@@ -34234,8 +34236,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
       ]
     },
     {
@@ -34278,8 +34280,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
       ]
     },
     {
@@ -34846,8 +34848,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnlyContentIsReplaced"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs"
       ]
     },
     {
@@ -81121,7 +81123,7 @@
       "evidence": [
         "test:ai/openai_completions_member_type_oracle_test.go#TestOpenAICompletionsMistypedMembersMatchPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared"
       ]
     },
     {
@@ -81142,8 +81144,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
       ]
     },
     {
@@ -81186,8 +81188,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
       ]
     },
     {
@@ -81754,8 +81756,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnlyContentIsReplaced"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs"
       ]
     },
     {
@@ -158126,8 +158128,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -158148,8 +158150,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes",
-        "test:agent/agent_upstream_test.go#TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes"
       ]
     },
     {
@@ -158257,9 +158259,9 @@
         "call:agent/tool_execution.go#ToolUpdatesObserved"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -158279,9 +158281,9 @@
         "call:agent/tool_execution.go#ToolUpdatesObserved"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {

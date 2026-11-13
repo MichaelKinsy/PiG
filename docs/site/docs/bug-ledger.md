@@ -252,6 +252,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-261fecd](#bf-261fecd) | `tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-264127b](#bf-264127b) | `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-2653e62](#bf-2653e62) | Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the… | PiG's own defect | All platforms | Unreleased |
 | [BF-26787ff](#bf-26787ff) | `pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down… | PiG's own defect | All platforms | Unreleased |
 | [BF-2699291](#bf-2699291) | The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26a08b0](#bf-26a08b0) | `PI_STARTUP_BENCHMARK=1` disposes the session runtime after it stops interactive mode, so extensions receive… | PiG's own defect | All platforms | Unreleased |
@@ -5298,6 +5299,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `264127b95e` (2026-10-30, #11331)
 - **Tests:** `coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksANameMatchAboveMentionsInDescriptions`, `coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName`, `coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi`, `coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream`
 - **Release note:** `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in their descriptions, for example `peekaboo app` ranking `mcp__peekaboo__app` 14th. A query word in a tool's name now scores more than any number of mentions in its description, a tool whose whole name is in the query gets a large bonus, and long server instructions no longer lower the scores of that server's tools. Carried forward from Pi cc44fa21 (earendil-works/pi#11331), past the 1.4.0+b3a29f11 pin.
+
+### BF-2653e62
+
+**Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the session: the transcript held an assistant message with tool calls that no tool result answered.
+- **Root cause:** When a run was aborted in the middle of a batch of tool calls, the loop left the batch at once: executeToolCallsSequential and executeToolCallsParallel stopped at the first call that ended under a cancelled context. The calls the loop had not reached got no tool_execution_start, no tool_execution_end and no tool result. The session then held an assistant message whose tool calls nothing answered, followed by the aborted response. PiG 0.2.0, 0.3.0 and 0.7.0 have the defect; it is Pi's own (#9986), fixed there by.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2653e62834` (2026-11-13)
+- **Tests:** `agent/abort_batch_answers_test.go::TestABeforeHookEndedByTheAbortAnswersOperationAborted`, `agent/abort_batch_answers_test.go::TestAbortBeforeTheFirstCallOfABatchAnswersEveryCall`, `agent/abort_batch_answers_test.go::TestAbortBetweenTwoCallsOfASequentialBatchAnswersTheRest`, `agent/abort_batch_answers_test.go::TestAbortDuringACallOfASequentialBatchAnswersTheRestInOrder`, `agent/abort_batch_answers_test.go::TestAbortWhileAParallelBatchIsPreparedAnswersEveryCallInOrder`, `agent/abort_batch_answers_test.go::TestRunToolCallAnswersAnAbortedSignalBeforeTheLookupAndTheHooks`, `agent/abort_batch_answers_test.go::TestSteeringQueuedDuringAnAbortedBatchFollowsAResultForEveryCall`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi` and 8 more in docs/bug-ledger.json
+- **Release note:** Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the session: the transcript held an assistant message with tool calls that no tool result answered. Each of those calls now gets its start and end events and an "Operation aborted" error result, and extension `tool_call` handlers are not asked about a call that will not run. A call whose `tool_call` handler in an extension process was still deciding when the run was aborted now reads "Operation aborted" too, where it read "event tool_call: context canceled". `ctx.executeTool` answers an aborted run the same way, before it looks the tool up. A session that an older build left with unanswered calls still opens and continues as before. Follows Pi 4438c58ba ([#9986](https://github.com/earendil-works/pi/issues/9986)).
 
 ### BF-26787ff
 
