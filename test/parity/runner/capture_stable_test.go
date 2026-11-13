@@ -5,6 +5,9 @@ package runner
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -349,5 +352,54 @@ func TestWithFinalCaptures_ACropFailureIsReportedAlongsideAnOperationFailure(t *
 	alone := withFinalCaptures(Result{}, "scn", "pig", cfg, use, plain, escaped, cropErr)
 	if alone.Err == nil || strings.Contains(alone.Err.Error(), "timed out") {
 		t.Fatalf("got %v, want only the crop failure", alone.Err)
+	}
+}
+
+// The case of the review: the asserted plain capture lacks its start marker and no comparator reads the escaped one. The failure artifacts hold the escaped capture under its not-asserted name and the failed plain capture under the plain name, both whole.
+func TestWithFinalCaptures_AnUnassertedEscapedCaptureKeepsItsArtifactNameWhenThePlainCropFails(t *testing.T) {
+	cfg := TmuxDriverConfig{CaptureStart: "BEGIN"}
+	use := captureUse{plain: true}
+	plain, escaped, cropErr := cropCaptures(cfg, use, "banner", "esc banner")
+	if cropErr == nil {
+		t.Fatal("the plain capture lacks the start marker and must fail to crop")
+	}
+	run := withFinalCaptures(Result{}, "scn", "pi", cfg, use, plain, escaped, cropErr)
+	root := t.TempDir()
+	source := filepath.Join(root, "scenario.toml")
+	if err := os.WriteFile(source, []byte("name = \"scn\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outcome := &ScenarioOutcome{
+		Scenario: &Scenario{Name: "scn", Driver: "interactive-tmux", SourcePath: source},
+		Pig:      SystemResults{Runs: []Result{{Output: "pig", Escaped: "pig"}}},
+		Pi:       SystemResults{Runs: []Result{run}},
+		Failures: []string{"pi run error: " + run.Err.Error()},
+	}
+	dir, err := WriteFailureArtifacts(t, filepath.Join(root, "artifacts"), outcome, BinaryRef{Label: "pig", Path: "/tmp/pig"}, BinaryRef{Label: "pi", Path: "/tmp/pi"}, FreshnessReport{Fresh: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{"pi.stdout": "banner", "pi.escaped.not-asserted-uncropped": "esc banner"} {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil || string(data) != want {
+			t.Fatalf("artifact %s = %q, %v; want the whole capture %q", name, data, err, want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "pi.escaped")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("pi.escaped: %v; the capture no comparator reads must not be written under the asserted name", err)
+	}
+}
+
+// The order is the order of events: the step that failed first, then the final capture that could not be cropped, with the capture kind and the marker. The line is the one the runner puts into the scenario's failures.
+func TestWithFinalCaptures_TheOperationFailurePrintsBeforeTheCropFailure(t *testing.T) {
+	cfg := TmuxDriverConfig{CaptureStart: "BEGIN"}
+	use := captureUse{plain: true}
+	plain, escaped, cropErr := cropCaptures(cfg, use, "banner", "esc banner")
+	operationErr := errors.New(`step 2: wait_contains "ready" timed out`)
+	got := withFinalCaptures(Result{Err: operationErr}, "scn", "pig", cfg, use, plain, escaped, cropErr)
+	want := "pig run error: step 2: wait_contains \"ready\" timed out\n" +
+		"scenario scn (pig), final capture of a scenario without steps: plain capture: capture_start \"BEGIN\" not found"
+	if printed := fmt.Sprintf("pig run error: %v", got.Err); printed != want {
+		t.Fatalf("printed\n%s\nwant\n%s", printed, want)
 	}
 }
