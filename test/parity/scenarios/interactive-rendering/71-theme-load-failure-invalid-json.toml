@@ -1,0 +1,59 @@
+# Upstream evidence: theme-controller.ts:178-186 applyThemeName prints
+# `Failed to load theme "<name>": ${result.error}`; theme.ts setTheme (703-724) takes the error
+# from loadThemeJson (487-507): a name that is not registered is read from
+# <agent directory>/themes/<name>.json whenever that file exists, so a file that fails to load
+# repeats the loader's reason (labelled with the name, not the path); only a name without such
+# a file is "Theme not found". A theme file that fails at startup is never registered.
+# Measured, Pi build b4afdddf44e0 against PiG aef9474df0, tmux 100x35, 1 screen per side:
+# settings {"theme":"proto"}, themes/proto.json = `{"name": "proto",`.
+#   Pi:  Error: Failed to load theme "proto": Failed to parse theme proto: SyntaxError: Expected
+#        double-quoted property name in JSON at position 17 (line 1 column 18)
+#   PiG: Error: Failed to load theme "proto": Theme not found: proto
+# The [Theme conflicts] block labels the same error with the file's path (equal on both sides).
+# The crop is that block and the whole error block; the scenario runs at 220 columns so that no line wraps.
+name = "71-theme-load-failure-invalid-json"
+description = "A theme selected by settings.json whose file is not JSON: the error line repeats the parse error, labelled with the theme name."
+covers = [
+  "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts",
+  "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/theme-load-invalid-json-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/theme-load-invalid-json-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+# Wide enough that neither the listed snapshot path nor the error line wraps: the two binaries'
+# snapshot directory names differ in length by one character.
+width = 220
+height = 35
+ready_pattern_pig = "Fell back to the system theme."
+ready_pattern_pi = "Fell back to the system theme."
+ready_timeout_seconds = 30
+capture_start = "[Theme conflicts]"
+capture_end = "Fell back to the system theme."
+
+[[tmux.steps]]
+wait_visible_contains = ["Fell back to the system theme."]
+
+[assert]
+both_reach_ready = true
+both_contain = ["[Theme conflicts]", "Failed to load theme \"proto\": Failed to parse theme proto: SyntaxError: Expected"]
+both_not_contain = ["Theme not found"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: the runner snapshots each binary's agent directory to
+# parity-snap-PIG_CODING_AGENT_DIR-<n> or parity-snap-PI_CODING_AGENT_DIR-<n>, and the
+# [Theme conflicts] block names the theme file by that path. Only that directory name is
+# replaced; the error block, which is the line under test, holds no path.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+'
+with = "<agent-dir>"
+reason = "D2: the runner allocates independent agent-root names. Keep the block's order, the file's relative path and every message."

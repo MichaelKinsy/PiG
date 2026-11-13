@@ -15,7 +15,7 @@ Set `PIG_HOME` to move the whole configuration root. Set `PIG_CODING_AGENT_DIR` 
 
 Add `"$schema": "https://pi.dev/schemas/settings.schema.json"` to `settings.json` for editor validation and completion. PiG keeps the key when it writes the file. The schema is the one Pi 1.5.2 publishes. It does not list the PiG-only keys, but it accepts them.
 
-Use `/settings` to change a setting from inside a session. PiG writes the file for you and applies the change without a restart.
+Use `/settings` to change a setting from inside a session. PiG writes the file for you and applies the change without a restart. When the file cannot be written, PiG prints `Failed to save settings: <error>`, so you know the change will not survive a restart; Pi 1.5.2 reports the failed write only in the settings warnings of a later start (D633).
 
 [Settings by example](/docs/latest/settings-examples) shows the common keys at work, with the output to expect.
 

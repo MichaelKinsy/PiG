@@ -1,0 +1,73 @@
+# Behavior family: oauth
+# Surface: /login -> Sign in with an API key -> provider picker (oauth-selector.ts), moving the selection across the two preferred
+# partner rows and off them.
+#
+# Upstream evidence: Pi 1.5.2 oauth-selector.ts:144-148 render() rebuilds the list on every frame while the selected row is a
+# preferred partner's (Radius shimmers, OpenRouter glows: provider-brand.ts) and the selector has a TUI; updateList (oauth-selector.ts:197)
+# styles only the selected row with the brand style, every other row is theme.fg("text", name) with the muted " ✦" partner mark.
+# The brand colours of a selected partner row depend on the time of the frame, so no capture of that row is byte-stable in either
+# binary. This scenario therefore drives the selection through both animated rows (each step waits for the row to be the selected
+# one in both binaries) and compares the complete picker byte for byte once the selection rests on Amazon Bedrock: the two partner
+# rows must be back in the plain text style with their mark, the accent must be on the third row only, and the counter must read
+# (3/42). The per-frame rebuild itself is proved by tui/oauth_selector_render_contract_test.go
+# (TestOAuthSelectorRenderRebuildsTheSelectedPartnerRowForEachFrame) and the colours by TestRadiusShimmerMatchesPi and
+# TestOpenRouterGlowMatchesPi.
+#
+# The fixture is that of 27-login-radius-method-intro (one agent directory for both binaries, no stored credentials), so both
+# binaries draw with the same theme and the escaped captures are comparable; selectors/11 gives the two binaries different themes.
+name = "33-login-partner-rows-release-brand-style"
+description = "/login API-key picker: after the selection passes the animated Radius and OpenRouter rows, the picker is byte-identical with the selection on the third row."
+covers = ["packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "Select provider to configure"
+capture_end = "(3/42)"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method:", "Sign in with an API key"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_contains = ["Select provider to configure:", "→ Radius ✦ • not configured", "(1/42)"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_contains = ["→ OpenRouter ✦ • not configured", "(2/42)"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_contains = ["→ Amazon Bedrock • not configured", "(3/42)"]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PIG_CODING_AGENT_DIR=", "PIG_HOME=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "  Radius ✦ • not configured",
+  "  OpenRouter ✦ • not configured",
+  "→ Amazon Bedrock • not configured",
+  "(3/42)",
+]
+escaped_output_equal = true
+runs = 3

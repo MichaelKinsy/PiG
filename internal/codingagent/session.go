@@ -743,8 +743,10 @@ func (s *Session) appendMessageEntry(msg agent.AgentMessage) (string, error) {
 		Timestamp: RFC3339NowNano(),
 		Message:   msg,
 	}
+	// The message's decoded form is proven once: it decides both whether a record is encoded at all and which entry is held.
+	proof := proveHeldEntry(entry)
 	// pig additive (D112): a session without a file writes no record, so a message entry that is held as appended and whose encoding cannot fail is not encoded at all.
-	if s.holdsWithoutRecord(entry) {
+	if s.holdsWithoutRecord(entry, proof) {
 		if err := s.appendEntryRecordOf(entry, nil, true); err != nil {
 			return "", err
 		}
@@ -761,7 +763,7 @@ func (s *Session) appendMessageEntry(msg agent.AgentMessage) (string, error) {
 	// An entry held as appended is held without its record: Pi's session holds the appended object and no encoding of it (session-manager.ts
 	// appendMessage). The record is the encoding of entry's own value, so entry encodes to it again (MessageEntry.MarshalJSON), and every reader
 	// of the entry, eviction and a first write of the file get the record's bytes.
-	held, appended := heldMessageEntry(entry, raw)
+	held, appended := heldMessageEntry(entry, raw, proof)
 	if appended {
 		held = entry
 	}
@@ -778,66 +780,153 @@ func (s *Session) fileless() bool {
 	return s.path == ""
 }
 
-// holdsWithoutRecord reports whether the session of no file holds entry exactly as appended, with no record to write, and with the entry
-// encoding without error, which is what heldMessageEntry decides from a record's decode. It is the case heldMessageEntry returns entry for
-// (its decoded form is proven equal to entry), minus the encoding that only the file needs. A message whose Details are a Go value encodes
-// them once here, because only the encoding says whether they can be encoded; the other members are proven by decodedFormBesideDetails.
-// pig additive (D112): Pi appends the object and stringifies it only to persist (session-manager.ts _persist returns without a session file).
-func (s *Session) holdsWithoutRecord(entry MessageEntry) bool {
-	if !s.fileless() {
-		return false
-	}
+// heldProof is what a message entry proves, with no record of it decoded, about the entry a session holds for it.
+type heldProof struct {
+	// decoded is the decode of the entry's record, less the record, when the message's decoded form is proven (agent.AgentMessage.DecodedForm).
+	decoded MessageEntry
+	proven  bool
+	// appended reports that the decode holds what the entry holds, so the session holds the entry itself. besideDetails reports that this is
+	// proven apart from a tool result's Details, a Go value whose JSON the decode holds (decodedFormBesideDetails).
+	appended      bool
+	besideDetails bool
+}
+
+// proveHeldEntry is the proof for entry; the zero proof says that only a decode of the record tells what the session holds. An append makes it
+// once, before the record exists, and both holdsWithoutRecord and heldMessageEntry decide from it: the entry's record, whatever it is, sits on
+// both sides of the comparison heldMessageEntry would make, so the comparison is made without it.
+func proveHeldEntry(entry MessageEntry) heldProof {
+	bare := sessionentry.WithRecord(entry, nil)
 	if form, ok := entry.Message.DecodedForm(); ok {
 		decoded, ok := sessionentry.NewDecodedMessageEntry(entry.SessionEntryBase, form, nil)
-		return ok && reflect.DeepEqual(SessionEntry(decoded), SessionEntry(entry))
+		if !ok {
+			return heldProof{}
+		}
+		// A proven form's Details are the message's own (nil, a scalar, canonical raw JSON), so decodesToAppended's rule for Details adds nothing here.
+		return heldProof{decoded: decoded, proven: true, appended: sameMessageEntry(decoded, bare)}
 	}
 	form, ok := decodedFormBesideDetails(entry.Message)
 	if !ok {
-		return false
+		return heldProof{}
 	}
 	decoded, ok := sessionentry.NewDecodedMessageEntry(entry.SessionEntryBase, form, nil)
 	if !ok {
-		return false
+		return heldProof{}
 	}
+	// The decode is form with the Details' JSON decoded into it, so it holds what entry holds exactly when form does with entry's Details
+	// left out, which is decodesToAppended's rule for Details.
 	result := *entry.Message.ToolResult
 	result.Details = nil
-	stripped := entry
-	stripped.Message.ToolResult = &result
-	if !reflect.DeepEqual(SessionEntry(decoded), SessionEntry(stripped)) {
+	bare.Message.ToolResult = &result
+	if !sameMessageEntry(decoded, bare) {
+		return heldProof{}
+	}
+	return heldProof{appended: true, besideDetails: true}
+}
+
+// sameMessageEntry is reflect.DeepEqual of the two entries. It compares them through pointers into one allocation: an entry passed to
+// DeepEqual as an interface value is an allocation of its own.
+func sameMessageEntry(a, b MessageEntry) bool {
+	pair := &[2]MessageEntry{a, b}
+	return reflect.DeepEqual(&pair[0], &pair[1])
+}
+
+// holdsWithoutRecord reports whether the session of no file holds entry exactly as appended, with no record to write, and with the entry
+// encoding without error, which is what heldMessageEntry decides from a record's decode. It is the case heldMessageEntry returns entry for
+// (proof, the proof for entry, says its decoded form equals entry), minus the encoding that only the file needs. A message whose Details are a
+// Go value of a type that can hold a value the encoder rejects encodes them once here, because only the encoding says whether they can be
+// encoded; Details of a type whose every value encodes (alwaysEncodes: the built-in tools' details) are not encoded at all. The other
+// members are proven by decodedFormBesideDetails.
+// pig additive (D112): Pi appends the object and stringifies it only to persist (session-manager.ts _persist returns without a session file).
+func (s *Session) holdsWithoutRecord(entry MessageEntry, proof heldProof) bool {
+	if !proof.appended || !s.fileless() {
 		return false
+	}
+	if !proof.besideDetails {
+		return true
+	}
+	if alwaysEncodes(reflect.TypeOf(entry.Message.ToolResult.Details)) {
+		return true
 	}
 	_, err := jsstring.MarshalJSON(entry.Message.ToolResult.Details)
 	return err == nil
 }
 
-// heldMessageEntry returns the entry the session holds for entry, whose record is raw, and whether that is entry itself (with raw as its
-// record). Pi's session holds the object the agent appended
+// encodableTypes remembers alwaysEncodes for each type asked about: reflect.Type -> bool.
+var encodableTypes sync.Map
+
+// alwaysEncodes reports whether the JSON encoder writes every value of type t without an error, decided from the type alone and once for
+// each type. It holds for a type built only from booleans, numbers, plain strings, and pointers to, slices, arrays and structs of those:
+// such a value has no number the encoder rejects, no key or member with an encoding of its own that can fail, no dynamic type to meet
+// and, as no such type holds itself, no cycle. It reports false for every other type (an interface, a map, a named string such
+// as a JSON number, a type with its own JSON or text encoding, a type that refers to itself), which is then encoded to find out.
+func alwaysEncodes(t reflect.Type) bool {
+	if t == nil {
+		return false
+	}
+	if known, ok := encodableTypes.Load(t); ok {
+		return known.(bool)
+	}
+	result := typeAlwaysEncodes(t, map[reflect.Type]bool{})
+	encodableTypes.Store(t, result)
+	return result
+}
+
+var plainStringType = reflect.TypeFor[string]()
+
+// typeAlwaysEncodes is alwaysEncodes without the memo; within holds the types the walk is inside.
+func typeAlwaysEncodes(t reflect.Type, within map[reflect.Type]bool) bool {
+	if within[t] {
+		return false
+	}
+	p := reflect.PointerTo(t)
+	if t.Implements(jsonMarshalerType) || p.Implements(jsonMarshalerType) || t.Implements(textMarshalerType) || p.Implements(textMarshalerType) {
+		return false
+	}
+	switch t.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		// A number that is not finite is written as null, as JSON.stringify writes it (jsstring.MarshalJSON).
+		return true
+	case reflect.String:
+		return t == plainStringType
+	case reflect.Pointer, reflect.Slice, reflect.Array:
+		within[t] = true
+		defer delete(within, t)
+		return typeAlwaysEncodes(t.Elem(), within)
+	case reflect.Struct:
+		within[t] = true
+		defer delete(within, t)
+		for field := range t.Fields() {
+			// A field the encoder does not write holds nothing it can reject; an embedded struct's exported fields are written.
+			if !field.IsExported() && !field.Anonymous {
+				continue
+			}
+			if _, options, _ := strings.Cut(field.Tag.Get("json"), ","); options != "" && options != "omitempty" && options != "omitzero" {
+				return false
+			}
+			if !typeAlwaysEncodes(field.Type, within) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// heldMessageEntry returns the entry the session holds for entry, whose record is raw and whose proof is proof, and whether that is entry
+// itself (with raw as its record). Pi's session holds the object the agent appended
 // (session-manager.ts appendMessage); the record's decode is held instead when it differs from that message in Go: an absent usage, a
 // streaming view. A message whose decoded form is proven, or a tool result whose decoded form is proven apart from its Details (a tool's typed
 // details), needs no decode of the record just encoded.
-func heldMessageEntry(entry MessageEntry, raw json.RawMessage) (SessionEntry, bool) {
+func heldMessageEntry(entry MessageEntry, raw json.RawMessage, proof heldProof) (SessionEntry, bool) {
 	shared := sessionentry.WithRecord(entry, raw)
-	var se SessionEntry
-	if form, ok := entry.Message.DecodedForm(); ok {
-		if decoded, ok := sessionentry.NewDecodedMessageEntry(entry.SessionEntryBase, form, raw); ok {
-			se = decoded
-		}
-	} else if form, ok := decodedFormBesideDetails(entry.Message); ok {
-		// The decode is form with the Details' JSON decoded into it, so it holds what entry holds exactly when form does with entry's Details
-		// left out, which is decodesToAppended's rule for Details.
-		if decoded, ok := sessionentry.NewDecodedMessageEntry(entry.SessionEntryBase, form, raw); ok {
-			result := *entry.Message.ToolResult
-			result.Details = nil
-			stripped := entry
-			stripped.Message.ToolResult = &result
-			if reflect.DeepEqual(SessionEntry(decoded), SessionEntry(sessionentry.WithRecord(stripped, raw))) {
-				return shared, true
-			}
-		}
+	switch {
+	case proof.appended:
+		return shared, true
+	case proof.proven:
+		return sessionentry.WithRecord(proof.decoded, raw), false
 	}
-	if se == nil {
-		se = sessionentry.DecodeSessionEntry(raw)
-	}
+	se := sessionentry.DecodeSessionEntry(raw)
 	if decodesToAppended(se, shared) {
 		return shared, true
 	}

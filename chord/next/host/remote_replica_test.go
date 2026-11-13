@@ -180,3 +180,60 @@ func jsonOps(ops []delta.Op) []any {
 	}
 	return out
 }
+
+// replica.test.ts: replicas › counts the values it takes: a snapshot's value, each adoption and recovery; failures and
+// vanishings count none (Pi main 47e9d74f9)
+func TestReplicasCountTheValuesTheyTakeASnapshotsValueEachAdoptionAndRecoveryFailuresAndVanishingsCountNone(t *testing.T) {
+	batch := state.NewBatch(func(state.BatchError) {}, nil)
+	failed := newReplica(batch, memberSnapshot{kind: "failed", err: errors.New("x")})
+	if failed.generation != 0 {
+		t.Fatalf("a failed snapshot's generation = %d, want 0", failed.generation)
+	}
+	own, source, _, _ := replicaOfN(t)
+	if source.generation != 1 {
+		t.Fatalf("a value snapshot's generation = %d, want 1", source.generation)
+	}
+	replicaCommit(t, own, func() { source.adopt(delta.JsonObjectOf("n", 2.0), []delta.Op{{"s", []any{"n"}, 2.0}}, false) })
+	replicaCommit(t, own, func() { source.fail(errors.New("down")) })
+	replicaCommit(t, own, func() { source.vanish(data.Invalid(data.ReasonMember, "gone")) })
+	if source.generation != 2 {
+		t.Fatalf("generation after an adoption, a failure and a vanishing = %d, want 2", source.generation)
+	}
+	replicaCommit(t, own, func() { source.reset(memberSnapshot{kind: "value", value: delta.JsonObjectOf("n", 3.0)}) })
+	replicaCommit(t, own, func() { source.retireAlone() })
+	if source.generation != 4 {
+		t.Fatalf("generation after a reset and a retirement alone = %d, want 4", source.generation)
+	}
+}
+
+// replica.test.ts: replicas › forks with its state, last good value and count, on another batch, with a fresh decoder
+// (Pi main 47e9d74f9)
+func TestReplicasForkWithTheirStateLastGoodValueAndCountOnAnotherBatchWithAFreshDecoder(t *testing.T) {
+	batch, source, _, _ := replicaOfN(t)
+	down := errors.New("down")
+	replicaCommit(t, batch, func() { source.adopt(delta.JsonObjectOf("n", 2.0), []delta.Op{{"s", []any{"n"}, 2.0}}, false) })
+	replicaCommit(t, batch, func() { source.fail(down) })
+	scheduler := chord.NewDeliveryScheduler()
+	other := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(scheduler)
+	fork := source.fork(other)
+	start := fork.Start()
+	if fork.generation != 2 || start.Kind != state.StartFailed || !errors.Is(start.Error, down) || !start.HasLast {
+		t.Fatalf("fork: generation %d, start %+v, want 2 and failed `down` with a last value", fork.generation, start)
+	}
+	nexttest.RequireJSONEqual(t, start.Last, delta.JsonObjectOf("n", 2.0))
+	// A failed member recovers with a root replacement; the fork's decoder knows nothing of the original's ops.
+	value, _, err := fork.decode([]any{[]any{"r", delta.JsonObjectOf("n", 5.0)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replicaCommit(t, other, func() { fork.adopt(value, []delta.Op{{"r", value}}, false) })
+	scheduler.Wait()
+	got, err := fork.Value()
+	if err != nil {
+		t.Fatal(err)
+	}
+	nexttest.RequireJSONEqual(t, got, delta.JsonObjectOf("n", 5.0))
+	if fork.generation != 3 || source.generation != 2 {
+		t.Fatalf("generations: fork %d, original %d, want 3 and 2", fork.generation, source.generation)
+	}
+}

@@ -16,7 +16,6 @@ func init() {
 				c.fail("skill-invocation needs a skill")
 			}
 		},
-		build: buildSkillInvocation,
 	})
 }
 

@@ -2780,3 +2780,342 @@ func TestHostReportsABatchAndARegistryFailureToOnErrorWithTheirOwnFields(t *test
 		}
 	}
 }
+
+// Ports the describe 'bind: remote references sharing one wire hold (decision "References share one wire hold")' of
+// host.test.ts.
+
+// host.test.ts › bind: remote references sharing one wire hold (decision "References share one wire hold") › one hold per
+// type, version, fingerprint, params and placed address; escaped parts never collide
+func TestBindRemoteReferencesSharingOneWireHoldOneHoldPerTypeVersionFingerprintParamsAndPlacedAddressEscapedPartsNeverCollide(t *testing.T) {
+	rig := rawProvider(t, rawLinkedOptions{})
+	keyed := func(version float64, member string, address func() contracts.Address) *contracts.Contract {
+		return mustContract(contracts.Remote("app.keyed", contracts.RemoteDeclaration{
+			Version:     version,
+			Params:      contracts.Params{contracts.Prop("a", contracts.Str()), contracts.Prop("b", contracts.Str())},
+			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return address(), nil },
+			Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
+				State: []contracts.Property{contracts.Prop(member, contracts.Int())},
+			})},
+		}))
+	}
+	onServer := func() contracts.Address { return Server.Address(nil) }
+	keyedType := keyed(1, "n", onServer)
+	params := func(a, b string) *delta.JsonObject { return jsonObject("a", a, "b", b) }
+	mustHold(t, rig.Client, keyedType, params("x", "y"))
+	mustHold(t, rig.Client, keyedType, params("x", "y"))
+	if got := holdsAt(t, rig.Peer); got != 1 {
+		t.Fatalf("holds of one key = %d, want 1", got)
+	}
+	// Another version, another fingerprint, another address (`hostAddress` is not in the fingerprint): one each.
+	mustHold(t, rig.Client, keyed(2, "n", onServer), params("x", "y"))
+	mustHold(t, rig.Client, keyed(1, "m", onServer), params("x", "y"))
+	elsewhere := keyed(1, "n", func() contracts.Address { return Session.Address(jsonObject("id", "elsewhere")) })
+	if elsewhere.Fingerprint != keyedType.Fingerprint {
+		t.Fatalf("fingerprints differ: %s, %s", elsewhere.Fingerprint, keyedType.Fingerprint)
+	}
+	mustHold(t, rig.Client, elsewhere, params("x", "y"))
+	if got := holdsAt(t, rig.Peer); got != 3 {
+		t.Fatalf("holds of another version, fingerprint and address = %d, want 3", got)
+	}
+	// Separators, backslashes and NUL moved between params: all apart.
+	split := [][2]string{{"x|", "y"}, {"x", "|y"}, {"x\\", "y"}, {"x", "\\y"}, {"x\x00", "y"}, {"x", "\x00y"}}
+	for _, each := range split {
+		mustHold(t, rig.Client, keyedType, params(each[0], each[1]))
+	}
+	if got := holdsAt(t, rig.Peer); got != len(split) {
+		t.Fatalf("holds of split params = %d, want %d", got, len(split))
+	}
+}
+
+// host.test.ts › bind: remote references sharing one wire hold (decision "References share one wire hold") › one hold per
+// caller: equal principal JSON shares, another field order, another principal or none holds anew
+//
+// Go form: Pi's root does not await its `ctx.get`; here the root's `ctx.Get` blocks (nothing binds the hold) until the
+// test cancels the roots' context, and the test waits for every getter's binding where Pi's turn order has it.
+func TestBindRemoteReferencesSharingOneWireHoldOneHoldPerCallerEqualPrincipalJSONSharesAnotherFieldOrderAnotherPrincipalOrNoneHoldsAnew(t *testing.T) {
+	rig := rawProvider(t, rawLinkedOptions{})
+	ctx, cancel := context.WithCancel(background)
+	var holding sync.WaitGroup
+	as := func(options RootOptions) {
+		holding.Go(func() {
+			_, _ = rig.Client.Root(func(ctx Ctx) (any, error) {
+				_, _ = ctx.Get(Notes, jsonObject("session", "S1"), GetOptions{})
+				return nil, nil
+			}, ctx, options)
+		})
+	}
+	bound := func(n int) {
+		t.Helper()
+		rhWaitFor(t, func() bool { bindings, _ := remoteBindings(rig.Client); return bindings == n })
+	}
+	as(RootOptions{Principal: guestPrincipal("S1")})
+	as(RootOptions{Principal: guestPrincipal("S1")})
+	bound(2)
+	if got := holdsAt(t, rig.Peer); got != 1 {
+		t.Fatalf("holds of two equal principals = %d, want 1", got)
+	}
+	// Field order is part of the principal's JSON as the wire carries it.
+	as(RootOptions{Principal: jsonObject("session", "S1", "kind", "guest")})
+	as(RootOptions{Principal: guestPrincipal("S2")})
+	as(RootOptions{Anonymous: true})
+	bound(5)
+	if got := holdsAt(t, rig.Peer); got != 3 {
+		t.Fatalf("holds of another field order, another principal and none = %d, want 3", got)
+	}
+	cancel()
+	holding.Wait()
+}
+
+// sharingOther is another consumer of the relay's server: a host connected to it as an owner's tab.
+func sharingOther(t testing.TB, rel *relayed) (Host, []*link.MemoryLink) {
+	t.Helper()
+	other := newHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(other.Load(nil, background))
+	near, far := link.MemoryLinkPair()
+	must(t, rel.Server.Accept(near, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+	must(t, other.Connect(far, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+	return other, []*link.MemoryLink{near, far}
+}
+
+// host.test.ts › bind: remote references sharing one wire hold (decision "References share one wire hold") › one hold per
+// caller's incarnation: ctx.get for two calls of one tab shares, for another tab's holds anew
+func TestBindRemoteReferencesSharingOneWireHoldOneHoldPerCallersIncarnationCtxGetForTwoCallsOfOneTabSharesForAnotherTabsHoldsAnew(t *testing.T) {
+	opener := mustContract(contracts.Remote("app.opener", contracts.RemoteDeclaration{
+		Version: 1, Params: contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
+			Methods: []contracts.MethodEntry{contracts.Meth("open", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
+		})},
+	}))
+	gate := newSignal()
+	var opened atomic.Int32
+	rel := relay(t, relayedOptions{Server: func(h FacetHost) error {
+		return h.Serve(opener, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				"open": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					if _, err := ctx.(Ctx).Get(PlacedNotes, jsonObject("session", "S1"), GetOptions{}); err != nil {
+						return nil, err
+					}
+					opened.Add(1)
+					gate.await(t, ctx)
+					return float64(1), nil
+				},
+			}}}, nil
+		}, ServeOptions{})
+	}})
+	other, pair := sharingOther(t, rel)
+	tabOpener := mustGet(t, rel.Tab, opener, jsonObject())
+	another := mustGet(t, other, opener, jsonObject())
+	open := func(ref *Reference) *rhAsync[delta.JsonValue] {
+		return rhGo(func() (delta.JsonValue, error) { return ref.Call("open", nil, background) })
+	}
+	calls := []*rhAsync[delta.JsonValue]{open(tabOpener), open(tabOpener)}
+	rhWaitFor(t, func() bool { return opened.Load() == 2 })
+	rel.Transported()
+	key := Session.Address(jsonObject("id", "S1")).Key
+	rel.WorkerLoaded(t, key)
+	worker := rel.Worker(key)
+	if got := rhActivityReferences(t, worker); got != 1 {
+		t.Fatalf("the worker's references for two calls of one tab = %v, want 1", got)
+	}
+	calls = append(calls, open(another))
+	rhWaitFor(t, func() bool { return opened.Load() == 3 })
+	rel.Transported()
+	transported(pair...)
+	if got := rhActivityReferences(t, worker); got != 2 {
+		t.Fatalf("the worker's references with another tab's call = %v, want 2", got)
+	}
+	gate.fire()
+	for index, call := range calls {
+		if value := call.must(t); value != float64(1) {
+			t.Fatalf("call %d = %v, want 1", index, value)
+		}
+	}
+}
+
+// host.test.ts › bind: remote references sharing one wire hold (decision "References share one wire hold") › self.get
+// references hold on their own: while activating, once live, and on a re-hold
+//
+// Go form: the dependent's member re-exposes the remote member (Expose) where Pi derives its value; the hold is the
+// `self.get`'s either way.
+func TestBindRemoteReferencesSharingOneWireHoldSelfGetReferencesHoldOnTheirOwnWhileActivatingOnceLiveAndOnAReHold(t *testing.T) {
+	user := mustContract(contracts.Local("app.notes-user", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("count", contracts.Int())},
+	}))
+	client := newHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/user", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(user, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			notes := self.Get(Notes, jsonObject("session", "S1"))
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"count": Expose(notes.Member("count"))},
+			}}, nil
+		}, ServeOptions{})
+	})}}, background))
+	peer := rawParent(t, client, link.PartLimits{})
+	shared := mustHold(t, client, Notes, jsonObject("session", "S1"))
+	held := mustHold(t, client, user, jsonObject())
+	for range 2 {
+		bindHold(t, peer, peer.Next("hold").(*link.HoldMessage).Hold)
+	}
+	waitLive(t, shared)
+	waitLive(t, held)
+	// A reference made now joins the host's own hold, not the dependent's.
+	mustHold(t, client, Notes, jsonObject("session", "S1"))
+	if got := holdsAt(t, peer); got != 0 {
+		t.Fatalf("holds of a joining reference = %d, want 0", got)
+	}
+	peer.Close()
+	next := rhNextParent(t, client)
+	if got := holdsAt(t, next); got != 2 {
+		t.Fatalf("re-holds on the next link = %d, want 2", got)
+	}
+}
+
+// host.test.ts › bind: remote references sharing one wire hold (decision "References share one wire hold") › a relay
+// forwards two downstream holds of the same key as two upstream holds
+func TestBindRemoteReferencesSharingOneWireHoldARelayForwardsTwoDownstreamHoldsOfTheSameKeyAsTwoUpstreamHolds(t *testing.T) {
+	rel := relay(t, relayedOptions{})
+	other, pair := sharingOther(t, rel)
+	mustGet(t, rel.Tab, PlacedNotes, jsonObject("session", "S1"))
+	mustGet(t, rel.Tab, PlacedNotes, jsonObject("session", "S1"))
+	mustGet(t, other, PlacedNotes, jsonObject("session", "S1"))
+	key := Session.Address(jsonObject("id", "S1")).Key
+	rel.WorkerLoaded(t, key)
+	rel.Transported()
+	transported(pair...)
+	if got := rhActivityReferences(t, rel.Worker(key)); got != 2 {
+		t.Fatalf("the worker's references = %v, want 2 (one per downstream hold)", got)
+	}
+}
+
+// host.test.ts › bind: remote references sharing one wire hold (decision "References share one wire hold") › revocation
+// ends every reference sharing a hold, and the next one holds anew
+func TestBindRemoteReferencesSharingOneWireHoldRevocationEndsEveryReferenceSharingAHoldAndTheNextOneHoldsAnew(t *testing.T) {
+	client := newHost(t, HostOptions{
+		RevokedBy: RevokedBy[delta.JsonValue](func(principal data.Principal) ([]delta.JsonValue, error) {
+			if principalKind(principal) == "guest" {
+				return []delta.JsonValue{principal.Value("session")}, nil
+			}
+			return nil, nil
+		}),
+		OnError: func(HostError) {},
+	})
+	mustLoad(t)(client.Load(nil, background))
+	peer := rawParent(t, client, link.PartLimits{})
+	open := newSignal()
+	var mu sync.Mutex
+	var ended []string
+	var watching atomic.Int32
+	guest := guestPrincipal("S1")
+	scope := func(name string) *rhAsync[struct{}] {
+		return rhGo(func() (struct{}, error) {
+			_, _ = client.Root(func(ctx Ctx) (any, error) {
+				notes, err := ctx.Get(Notes, jsonObject("session", "S1"), GetOptions{})
+				if err != nil {
+					return nil, err
+				}
+				watch, err := notes.State().Watch(background)
+				if err != nil {
+					return nil, err
+				}
+				go func() {
+					<-watch.Closed()
+					mu.Lock()
+					ended = append(ended, name)
+					mu.Unlock()
+				}()
+				watching.Add(1)
+				open.await(t, ctx)
+				return nil, nil
+			}, background, RootOptions{Principal: guest})
+			return struct{}{}, nil
+		})
+	}
+	scopes := []*rhAsync[struct{}]{scope("a")}
+	bindHold(t, peer, peer.Next("hold").(*link.HoldMessage).Hold)
+	scopes = append(scopes, scope("b"))
+	rhWaitFor(t, func() bool { return watching.Load() == 2 })
+	if got := holdsAt(t, peer); got != 0 {
+		t.Fatalf("holds of the second scope = %d, want 0", got)
+	}
+	must(t, client.Revoke("S1", background))
+	rhWaitFor(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(ended) == 2 })
+	rhSync(t, peer)
+	mu.Lock()
+	got := slices.Clone(ended)
+	mu.Unlock()
+	slices.Sort(got)
+	if !slices.Equal(got, []string{"a", "b"}) {
+		t.Fatalf("ended = %v, want [a b]", got)
+	}
+	if releases := takenOf(peer, "release"); releases != 1 {
+		t.Fatalf("releases = %d, want 1", releases)
+	}
+	scopes = append(scopes, scope("c"))
+	peer.Next("hold")
+	if more := holdsAt(t, peer); more != 0 {
+		t.Fatalf("holds of the scope after the revocation = %d more, want the one", more)
+	}
+	open.fire()
+	for _, each := range scopes {
+		each.must(t)
+	}
+}
+
+// PiG's own (Pi keeps the sharing tables in a WeakMap by path; here the table is a field of its path, each entry taken
+// out by its object): make and release rounds leave no entry and no holder, a non-last release keeps the entry, and a
+// reference made in the very turn of the last release takes a new hold with a new id, after the old one's release.
+func TestBindRemoteTheSharingTableIsEmptyAfterMakeAndReleaseRoundsAReferenceMadeInTheTurnOfTheLastReleaseHoldsAnew(t *testing.T) {
+	rig := rawProvider(t, rawLinkedOptions{})
+	client := rig.Client.(*chordHost)
+	session := jsonObject("session", "S1")
+	previous := -1
+	for round := range 5 {
+		a := mustHold(t, rig.Client, Notes, session)
+		b := mustHold(t, rig.Client, Notes, session)
+		id := rig.Peer.Next("hold").(*link.HoldMessage).Hold
+		if id <= previous {
+			t.Fatalf("round %d: hold %d, want a new id above %d", round, id, previous)
+		}
+		var c *Reference
+		entries := []int{}
+		hostTurn(rig.Client, func() {
+			entries = append(entries, len(client.parent.shared))
+			a.Release()
+			entries = append(entries, len(client.parent.shared))
+			b.Release()
+			entries = append(entries, len(client.parent.shared))
+			c = mustHold(t, rig.Client, Notes, session)
+			entries = append(entries, len(client.parent.shared))
+		})
+		if !slices.Equal(entries, []int{1, 1, 0, 1}) {
+			t.Fatalf("round %d: table entries = %v, want [1 1 0 1]", round, entries)
+		}
+		rhSync(t, rig.Peer)
+		kinds := []string{}
+		for _, kind := range rig.Peer.Kinds() {
+			if kind == "release" || kind == "hold" {
+				kinds = append(kinds, kind)
+			}
+		}
+		if !slices.Equal(kinds, []string{"release", "hold"}) {
+			t.Fatalf("round %d: wire = %v, want [release hold]", round, kinds)
+		}
+		if released := rig.Peer.Next("release").(*link.ReleaseMessage).Hold; released != id {
+			t.Fatalf("round %d: released %d, want %d", round, released, id)
+		}
+		next := rig.Peer.Next("hold").(*link.HoldMessage).Hold
+		if next <= id {
+			t.Fatalf("round %d: the reference made in the releasing turn holds %d, want a new id above %d", round, next, id)
+		}
+		previous = next
+		c.Release()
+		rhSync(t, rig.Peer)
+		if released := rig.Peer.Next("release").(*link.ReleaseMessage).Hold; released != next {
+			t.Fatalf("round %d: released %d, want %d", round, released, next)
+		}
+	}
+	if bindings, entries := remoteBindings(rig.Client); bindings != 0 || entries != 0 {
+		t.Fatalf("after the rounds: %d bindings, %d table entries, want none", bindings, entries)
+	}
+}

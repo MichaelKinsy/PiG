@@ -256,9 +256,9 @@ func formatFindResults(relativized []string, effectiveLimit float64, resultLimit
 	result := agent.AgentToolResult{}
 	if len(notices) > 0 {
 		resultOutput += "\n\n[" + strings.Join(notices, ". ") + "]"
-		shareTruncatedContent(details.Truncation, resultOutput)
 		result.Details = details
 	}
+	resultOutput = sharedOutput(details.Truncation, resultOutput)
 	result.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: resultOutput}}
 	return result
 }

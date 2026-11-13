@@ -165,14 +165,20 @@ func invalid(text string) *uiview.Error {
 	return &uiview.Error{Code: uiview.CodeInvalid, Message: text}
 }
 
-// decode reads a command strictly: an unknown member rejects it.
-func decode(raw []byte, v any) *uiview.Error {
+// strict returns a decoder that reads a command strictly: an unknown member rejects it. Each command decodes into its
+// own struct where it is declared, so no decode has an interface value as its destination (make any-trap).
+func strict(raw []byte) *json.Decoder {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(v); err != nil {
-		return invalid(strings.TrimPrefix(err.Error(), "json: "))
+	return dec
+}
+
+// malformed is the answer to a command strict could not decode, or nil when it could.
+func malformed(err error) *uiview.Error {
+	if err == nil {
+		return nil
 	}
-	return nil
+	return invalid(strings.TrimPrefix(err.Error(), "json: "))
 }
 
 // Handle serves one command line. It never waits on the client; an intent replies from its own goroutine once settled.
@@ -245,7 +251,7 @@ func (c *Carrier) attach(id json.RawMessage, raw []byte, reply Reply) {
 		Type      string                  `json:"type"`
 		Abilities *uiview.ClientAbilities `json:"abilities"`
 	}
-	if err := decode(raw, &cmd); err != nil {
+	if err := malformed(strict(raw).Decode(&cmd)); err != nil {
 		reply(failure(id, CommandAttach, err), nil)
 		return
 	}
@@ -302,7 +308,7 @@ func (c *Carrier) abilities(id json.RawMessage, raw []byte, reply Reply) {
 		Attachment *uint64                 `json:"attachment"`
 		Abilities  *uiview.ClientAbilities `json:"abilities"`
 	}
-	if err := decode(raw, &cmd); err != nil {
+	if err := malformed(strict(raw).Decode(&cmd)); err != nil {
 		reply(failure(id, CommandAbilities, err), nil)
 		return
 	}
@@ -330,7 +336,7 @@ func (c *Carrier) resync(id json.RawMessage, raw []byte, reply Reply) {
 		Type       string          `json:"type"`
 		Attachment *uint64         `json:"attachment"`
 	}
-	if err := decode(raw, &cmd); err != nil {
+	if err := malformed(strict(raw).Decode(&cmd)); err != nil {
 		reply(failure(id, CommandResync, err), nil)
 		return
 	}
@@ -356,7 +362,7 @@ func (c *Carrier) detach(id json.RawMessage, raw []byte, reply Reply) {
 		Type       string          `json:"type"`
 		Attachment *uint64         `json:"attachment"`
 	}
-	if err := decode(raw, &cmd); err != nil {
+	if err := malformed(strict(raw).Decode(&cmd)); err != nil {
 		reply(failure(id, CommandDetach, err), nil)
 		return
 	}
@@ -383,7 +389,7 @@ func (c *Carrier) intent(id json.RawMessage, raw []byte, reply Reply) {
 		Intent     string          `json:"intent"`
 		Arg        json.RawMessage `json:"arg"`
 	}
-	if err := decode(raw, &cmd); err != nil {
+	if err := malformed(strict(raw).Decode(&cmd)); err != nil {
 		reply(failure(id, CommandIntent, err), nil)
 		return
 	}
@@ -435,7 +441,7 @@ func (c *Carrier) intentCancel(id json.RawMessage, raw []byte, reply Reply) {
 		ID   json.RawMessage `json:"id"`
 		Type string          `json:"type"`
 	}
-	if err := decode(raw, &cmd); err != nil {
+	if err := malformed(strict(raw).Decode(&cmd)); err != nil {
 		reply(failure(id, CommandIntentCancel, err), nil)
 		return
 	}
@@ -475,7 +481,7 @@ func (c *Carrier) report(id json.RawMessage, raw []byte, reply Reply) {
 			Limit    *int64          `json:"limit"`
 		} `json:"notice"`
 	}
-	if err := decode(raw, &cmd); err != nil {
+	if err := malformed(strict(raw).Decode(&cmd)); err != nil {
 		reply(failure(id, CommandReport, err), nil)
 		return
 	}

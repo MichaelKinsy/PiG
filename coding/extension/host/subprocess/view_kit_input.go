@@ -24,7 +24,6 @@ func init() {
 				c.fail("input cursor must be {line: 0, col >= 0}")
 			}
 		},
-		build:     buildInput,
 		focusable: true,
 	})
 }

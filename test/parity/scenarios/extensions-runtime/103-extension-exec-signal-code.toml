@@ -1,0 +1,74 @@
+# Behavior family: extensions-runtime
+# Surface: pi.exec() reports 128 + the signal number as the code of a command that a signal ended.
+#
+# Upstream evidence (Pi a83b75a07, #12089, fixes #12088; packages/coding-agent/src/core/exec.ts): a child that a signal ends has no exit code,
+# and execCommand resolved `code ?? 0`, so a command that timed out, was aborted or crashed read as a success. The fix resolves
+# `code ?? (proc.signalCode ? 128 + os.constants.signals[proc.signalCode] : 1)`, as a shell reports it. The oracle is the pinned Pi 1.5.2
+# plus the post-release backports (automation/gen/pi-post-release-backports.mjs), a83b75a07 among them.
+#
+# testdata/ext/parity-exec-signal.mjs registers /exec-signal-probe, which runs three commands through pi.exec and notifies each result:
+#   term:    sh -c 'kill -TERM $$'         the command ends itself with SIGTERM (15)
+#   kill:    sh -c 'kill -KILL $$'         the same with SIGKILL (9): the code follows the signal, it is not one constant
+#   timeout: sleep 30, { timeout: 200 }    pi.exec sends SIGTERM when the timeout fires
+#
+# Pi probe, the oracle alone (2026-11-13; check-oracle: backports 569928a7cdd3, pi bundle dffb7fef14a9):
+#   PI_OFFLINE=1 PI_SKIP_VERSION_CHECK=1 pi --no-extensions -e test-faux-provider.ts -e testdata/ext/parity-exec-signal.mjs --mode rpc \
+#     --model test-faux/faux-1 --no-session
+#   stdin: {"id":"probe","type":"prompt","message":"/exec-signal-probe"}
+#   stdout, exit 0, empty stderr:
+#     {"type":"extension_ui_request","id":"<uuid>","method":"notify","message":"exec-signal term: code=143 killed=false","notifyType":"info"}
+#     {"type":"extension_ui_request","id":"<uuid>","method":"notify","message":"exec-signal kill: code=137 killed=false","notifyType":"info"}
+#     {"type":"extension_ui_request","id":"<uuid>","method":"notify","message":"exec-signal timeout: code=143 killed=true","notifyType":"info"}
+#     {"id":"probe","type":"response","command":"prompt","success":true,"data":{"disposition":"handled"}}
+#
+# RPC mode, not the tmux form of 07-extension-exec: the notifications are whole records here, compared with everything else the process
+# writes, where a tmux capture would be a crop of the notification rows.
+#
+# Tag posix-signals: the probe sends signals with `kill` from `sh`, and a Windows process has no signal to die of. The runner skips a
+# scenario with this tag when runtime.GOOS is "windows" (runner_test.go, "scenario sends POSIX signals"), and its skip-allowlist gate accepts
+# that skip there; on every other host the scenario runs.
+
+name = "103-extension-exec-signal-code"
+description = "Extension pi.exec() reports 143 and 137 for commands that SIGTERM and SIGKILL ended, and 143 with killed for a timeout"
+covers = [
+  "packages/coding-agent/src/core/exec.ts",
+]
+tags = ["hermetic", "fast", "posix-signals"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+
+[[rpc.steps]]
+line = '{"id":"probe","type":"prompt","message":"/exec-signal-probe"}'
+wait_contains = ['exec-signal timeout: code=', '"id":"probe","type":"response","command":"prompt"']
+wait_timeout_seconds = 20
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/ext/parity-exec-signal.mjs"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/parity-exec-signal.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = [
+  '"message":"exec-signal term: code=143 killed=false"',
+  '"message":"exec-signal kill: code=137 killed=false"',
+  '"message":"exec-signal timeout: code=143 killed=true"',
+]
+both_not_contain = ["Failed to load extension", "panic:"]
+
+# normalize-rationale: each notification carries a generated request id; the alias keeps a one-to-one correspondence between the two streams'
+# ids and leaves every other field of every record compared.
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui-request"
+pattern = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+reason = "extension_ui_request ids are random UUIDs; the pattern leaves the fixed command id \"probe\" compared as written."

@@ -26,7 +26,7 @@ Behavior that changed to match Pi: the HTTP idle timeout and cache warming chang
 
 Differences that stay, with the reason:
 
-- Pig's setters return the save error where Pi's cannot throw, so a failed save shows `Failed to save settings: ...`, skips the live effect and shows the manager's value again.
+- Pig's setters return the save error where Pi's cannot throw, so a failed save shows `Failed to save settings: ...`, skips the live effect and shows the manager's value again. This is divergence D633 (`docs/parity/divergences/D633.md`), which lists every caller that acts on the returned error.
 - Pi's `onTuiModeChange` calls `switchTuiMode` and then the setter; Pig does the same through `SlashContext.SwitchTuiMode`.
 - The `mask-secret-input` row is PiG-only (D80).
 - `test/parity/correspondence/golang.go` extracts the Go rows from `NewSettingsSelectorComponent` (`toggle`, `cycle` and `tui.SettingItem` expressions) and the callbacks from `settingsHandlerTUI`; rows built from non-literal values (`http-idle-timeout`, `cache-warming-mode`, `fullscreen-wheel-scroll-lines`) now carry a values expression where they carried literals, so the Pi comparison of their value lists is weaker until the extractor evaluates `httpIdleTimeoutChoices` and `CacheWarmingModes`.

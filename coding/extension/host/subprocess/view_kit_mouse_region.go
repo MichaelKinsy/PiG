@@ -35,7 +35,6 @@ func init() {
 				}
 			}
 		},
-		build:    buildMouseRegion,
 		children: 1,
 	})
 }

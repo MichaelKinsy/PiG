@@ -46,7 +46,7 @@ func TestStreamedHighlightEqualsAWholeRun(t *testing.T) {
 			if base, _ := hlFindResume(code, c.Lang, theme, false); base.prefix != "" {
 				resumed++
 				// A point follows at least one scan iteration; its count is where the resumed run continues counting.
-				if base.iterations == 0 {
+				if base.point.Iterations == 0 {
 					t.Fatalf("%s (%s): the resume state at %d bytes holds no iteration count", c.ID, c.Lang, len(base.prefix))
 				}
 			}
