@@ -2416,42 +2416,42 @@ allocs = 322
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendLargeMessageEntry/1024KiB"
-allocs = 52
+allocs = 34
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendLargeMessageEntry/1KiB"
-allocs = 58
+allocs = 34
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendLargeMessageEntry/64KiB"
-allocs = 52
+allocs = 34
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendTurnMessages"
-allocs = 261
+allocs = 86
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendTypedReadToolResult/1024KiB"
-allocs = 26
+allocs = 20
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendTypedReadToolResult/1KiB"
-allocs = 56
+allocs = 43
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAppendTypedReadToolResult/64KiB"
-allocs = 26
+allocs = 20
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkArminFrameRender"
-allocs = 222
+allocs = 179
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2511,7 +2511,7 @@ allocs = 3023
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkBuiltInHeaderRender/compact"
-allocs = 146
+allocs = 137
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2676,7 +2676,7 @@ allocs = 103
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionSessionProjection"
-allocs = 101040
+allocs = 85040
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2696,7 +2696,7 @@ allocs = 36
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveLongAnswerStream"
-allocs = 1196069
+allocs = 1017779
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2750,6 +2750,11 @@ allocs = 926
 
 [[benchmark]]
 package = "./internal/codingagent"
+benchmark = "BenchmarkLongTranscriptSurfaceRender"
+allocs = 1
+
+[[benchmark]]
+package = "./internal/codingagent"
 benchmark = "BenchmarkManagedToolStartup"
 allocs = 69
 
@@ -2766,32 +2771,52 @@ allocs = 10033
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkMermaidOversizedTransform"
-allocs = 3150
+allocs = 558
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkMermaidTransformFencedBlocks"
-allocs = 6717
+allocs = 3453
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelCommandCachedMatch/1"
-allocs = 651
+allocs = 115
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelCommandCachedMatch/1000"
-allocs = 3713
+allocs = 3177
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelPickerScopedReopen"
-allocs = 6472
+allocs = 5394
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelPickerSnapshotAndRender"
-allocs = 2023
+allocs = 1440
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelRegistryReaders/decodeOrderedHeaderEntries/jsontext"
+allocs = 24
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelRegistryReaders/decodeOrderedHeaderEntries/v1"
+allocs = 52
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelRegistryReaders/orderedObjectValues/jsontext"
+allocs = 42
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelRegistryReaders/orderedObjectValues/v1"
+allocs = 63
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2821,7 +2846,7 @@ allocs = 4
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkProjectTrustWarning"
-allocs = 96
+allocs = 45
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2841,7 +2866,7 @@ allocs = 18
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRegisterExtensionProviderAndRead"
-allocs = 668
+allocs = 375
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2871,7 +2896,7 @@ allocs = 97
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/0"
-allocs = 4899
+allocs = 4079
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3045,6 +3070,11 @@ allocs = 8495
 
 [[benchmark]]
 package = "./internal/codingagent"
+benchmark = "BenchmarkStartupChangelogRecordedVersionAhead"
+allocs = 71
+
+[[benchmark]]
+package = "./internal/codingagent"
 benchmark = "BenchmarkStartupInputHandoff"
 allocs = 77
 
@@ -3082,6 +3112,16 @@ allocs = 60
 package = "./internal/codingagent"
 benchmark = "BenchmarkStatusLifecycle/regular/editor=standalone"
 allocs = 127
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkStreamedWriteCard/50KB"
+allocs = 475958
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkStreamedWriteCard/5KB"
+allocs = 381127
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3187,6 +3227,16 @@ allocs = 141665
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/legacy"
 allocs = 155106
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkWriteCardFrames/warm=off/200KB"
+allocs = 290388
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkWriteCardFrames/warm=off/50KB"
+allocs = 136618
 
 [[benchmark]]
 package = "./internal/codingagent"
