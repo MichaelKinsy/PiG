@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -15,6 +16,10 @@ import (
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture"
 )
 
+// errHostEndsTheRequest is the cause the rows end their request's context with. The host waits for the author of a provider_stream_simple request whose context ended by a
+// cancel or a deadline, the abort of a turn, and sends it a signal-only cancel (Conn.request); any other cause ends the request with an ordinary cancel, which these rows state.
+var errHostEndsTheRequest = errors.New("the host ends the request")
+
 // providerCancelCase is one SDK and load mode of a provider stream cancel row.
 type providerCancelCase struct {
 	name, source, provider string
@@ -23,7 +28,7 @@ type providerCancelCase struct {
 	answersResult bool
 }
 
-// providerCancelAnswer runs one case: the provider pushes start and three text_delta events, the host reads them and cancels the request, and the provider, which waited for
+// providerCancelAnswer runs one case: the provider pushes start and three text_delta events, the host reads them and ends the request (errHostEndsTheRequest), and the provider, which waited for
 // the cancel, does what its fixture does next. The host has the four events as pushed, the SDK forwards no later one, and the host's stream ends aborted; those are checked
 // here. The host stops listening to a provider_stream_simple request at its cancel, so the SDK's answer, which is returned, is read from the frames the extension sends.
 func providerCancelAnswer(t *testing.T, tc providerCancelCase) *subprocess.ResponsePayload {
@@ -66,8 +71,8 @@ func providerCancelAnswer(t *testing.T, tc providerCancelCase) *subprocess.Respo
 	if model == nil {
 		t.Fatalf("%s/faux is not registered", tc.provider)
 	}
-	requestContext, cancel := context.WithCancel(t.Context())
-	defer cancel()
+	requestContext, cancel := context.WithCancelCause(t.Context())
+	defer cancel(nil)
 	stream := services.ModelRuntime().Stream(requestContext, model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("go")}}}, ai.StreamOptions{APIKey: "extension-key"})
 	var shown, ends []string
 	for event := range stream.Events(t.Context()) {
@@ -79,7 +84,7 @@ func providerCancelAnswer(t *testing.T, tc providerCancelCase) *subprocess.Respo
 			}
 			shown = append(shown, text)
 			if len(shown) == 1+testfixture.ProviderCancelBurstBefore {
-				cancel()
+				cancel(errHostEndsTheRequest)
 			}
 		case ai.EventDone, ai.EventError:
 			raw, err := json.Marshal(event)
