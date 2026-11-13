@@ -34,7 +34,10 @@ driver = "headless-terminal"
 width = 100
 height = 35
 ready_pattern_pig = "(auto)"
-ready_pattern_pi = "$0.000"
+# Pi starts typing after its startup rebind, which sets the autocomplete provider and then prints this warning
+# (interactive-mode.ts:1085-1099; settings/02 waits the same way). The footer paints before the rebind, and
+# "/settings" sent then is submitted as a prompt: the list never opens (seen once in three family runs).
+ready_pattern_pi = "Warning: No models available."
 ready_timeout_seconds = 25
 keys = ["/settings<CR>"]
 settle_seconds = 1
