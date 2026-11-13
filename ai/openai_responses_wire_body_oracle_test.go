@@ -80,6 +80,7 @@ func openAIResponsesWireRows() []providerWireRow {
 	}
 
 	add("no system prompt, no tools, no options", providerWireRow{Context: wireContext("", wireUserGo)})
+	add("no message", providerWireRow{Context: wireContext("")})
 	add("system prompt, no tools", providerWireRow{Context: wireContext(wireSystem, wireUserGo)})
 	add("system prompt of a reasoning model", providerWireRow{Reasoning: true, Context: wireContext(wireSystem, wireUserGo)})
 	add("max tokens", providerWireRow{Options: raw(`{"maxTokens":64}`)})

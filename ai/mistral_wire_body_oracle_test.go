@@ -56,6 +56,7 @@ func mistralWireRows() []providerWireRow {
 	}
 
 	add("no system prompt, no tools, no options", providerWireRow{Context: wireContext("", wireUserGo)})
+	add("no message", providerWireRow{Context: wireContext("")})
 	add("system prompt, no tools", providerWireRow{Context: wireContext(wireSystem, wireUserGo)})
 	add("max tokens", providerWireRow{Options: raw(`{"maxTokens":64}`)})
 	add("temperature zero", providerWireRow{Options: raw(`{"temperature":0}`)})
