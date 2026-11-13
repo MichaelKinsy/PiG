@@ -1167,6 +1167,7 @@ func (p *anthropicProvider) Stream(ctx context.Context, transcript TranscriptCon
 	}
 	requestContext, abort := context.WithCancel(ctx)
 	builder.abort = abort
+	//portlint:allow asyncorder Pi's stream() starts a detached async IIFE and returns the stream (anthropic-messages.ts:820, :1178); the stream owns this goroutine, which sends the request and runs the body pipeline as a turn of the stream's continuation executor (responseTurn in streamResponse), the ordering point with the consumer; TestAnthropicMicrotaskTrace holds each delivery's macrotask and microtask position to Pi's
 	go builder.runResponse(func() error { return p.streamResponse(ctx, requestContext, request, opts, model, builder) })
 	return builder.stream, nil
 }

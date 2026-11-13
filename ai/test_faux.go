@@ -875,6 +875,7 @@ func messageImages(message Message) []ImageContent {
 // image, or text only under TEST_FAUX_TEXT_ONLY=1 (the scenarios of a read under a model without image input). The switch
 // changes only the model's input.
 func TestFauxInput() []string {
+	//perf:ok read once per registration of the harness provider (coding/services.go registerHarnessTestFaux, the only caller), the moment test/parity/testdata/test-faux-provider.ts:727 reads process.env; a value kept for the process would outlive a test's Setenv
 	if os.Getenv("TEST_FAUX_TEXT_ONLY") == "1" {
 		return []string{"text"}
 	}
