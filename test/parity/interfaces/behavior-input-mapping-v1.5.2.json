@@ -332,20 +332,66 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
       "ownerFamily": "model-resolver-selector",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/session.go#setModel",
+        "internal/codingagent/interactive_commands.go#buildSlashContext",
+        "internal/codingagent/model_picker.go#persistDefaultModel",
+        "tui/model_select.go#HandleInput",
+        "tui/model_select.go#applyFilter",
+        "tui/model_select.go#moveCursor"
+      ],
+      "evidence": [
+        "coding/session_model_default_test.go#TestSessionModelSwitchDoesNotRewriteGlobalDefault",
+        "internal/codingagent/model_picker_parity_test.go#TestModelPickerPersistsOnlyExplicitDefault",
+        "internal/codingagent/model_picker_parity_test.go#TestModelPickerReopensInScopeOrderAfterSavingDefault",
+        "test/parity/scenarios/model-resolver-selector/06-model-scope-toggle.toml",
+        "test/parity/scenarios/model-resolver-selector/09-model-filter-resets-selection.toml",
+        "test/parity/scenarios/model-resolver-selector/11-model-picker-arrow-wrap.toml",
+        "test/parity/scenarios/model-resolver-selector/14-model-picker-fuzzy-filter.toml",
+        "test/parity/scenarios/model-resolver-selector/16-model-picker-enter-session-only.toml",
+        "test/parity/scenarios/model-resolver-selector/17-model-picker-save-default.toml",
+        "test/parity/scenarios/model-resolver-selector/18-model-picker-save-default-scope-order.toml",
+        "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
+        "tui/model_select_default_test.go#TestModelSelectorCtrlSSelectsDefault",
+        "tui/model_select_default_test.go#TestModelSelectorRemappedDefaultAction",
+        "tui/model_select_test.go#TestModelSelectorArrowNavigationWrapsAtBothEnds",
+        "tui/model_select_test.go#TestModelSelector_FilterResetsSelectionToBestMatch",
+        "tui/model_select_test.go#TestModelSelector_FilterUsesFuzzySubsequence",
+        "tui/model_select_test.go#TestModelSelector_SearchDelegatesCursorEditingToInput",
+        "tui/model_selector_contract_test.go#TestModelSelectorOverlappingBindingsMatchPi",
+        "tui/model_selector_oracle_test.go#TestModelSelectorInputMatchesPi",
+        "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys"
+      ],
+      "contracts": [
+        "coding-agent/model-selector/arrow-wrap",
+        "coding-agent/model-selector/explicit-default",
+        "coding-agent/model-selector/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.refreshModels",
       "ownerFamily": "model-resolver-selector",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_models.go#modelSelectorRuntime",
+        "tui/model_select.go#UpdateModels",
+        "tui/model_selector_runtime.go#NewModelSelectorComponent",
+        "tui/model_selector_runtime.go#applyCatalogRefresh",
+        "tui/model_selector_runtime.go#rejectCatalogRefresh"
+      ],
+      "evidence": [
+        "test/parity/scenarios/model-resolver-selector/03-model-invalid.toml",
+        "test/parity/scenarios/model-resolver-selector/12-expired-credential-is-not-refresh-failure.toml",
+        "tui/model_select_refresh_test.go#TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive",
+        "tui/model_selector_refresh_oracle_test.go#TestModelSelectorRefreshModelsMatchesPi",
+        "tui/model_selector_runtime_test.go#TestModelSelectorConstructorKeepsTheListAfterATimedOutRefresh"
+      ],
+      "contracts": [
+        "coding-agent/model-selector/refresh-result-status"
+      ],
       "divergence": "",
       "rationale": ""
     },
