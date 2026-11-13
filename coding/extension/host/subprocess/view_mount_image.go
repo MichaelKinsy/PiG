@@ -48,6 +48,9 @@ type MountImages struct {
 	ToPNG func(data []byte) []byte
 	// Go runs fn off the loop, never inside the call. Nil: a goroutine.
 	Go func(fn func())
+	// Post runs fn on the loop; it is called off the loop, when an image is prepared. Nil: fn runs where the work ran,
+	// which a caller whose Repaint may be called from any goroutine can take.
+	Post func(fn func())
 
 	mu       sync.Mutex
 	prepared map[string]*mountImageData
@@ -163,7 +166,11 @@ func (m *MountImages) prepare(img *viewImage, png bool, ready func()) (*mountIma
 		d.waiters = nil
 		m.mu.Unlock()
 		for _, ready := range waiters {
-			ready()
+			if m.Post != nil {
+				m.Post(ready)
+			} else {
+				ready()
+			}
 		}
 	}
 	if m.Go != nil {
@@ -362,7 +369,7 @@ func (c *mountImage) Render(width int) []string {
 		return mountImagePending
 	}
 	// The width and the default height are those of Pi's component (image.ts render).
-	maxWidth := 60
+	maxWidth := 60 // upstream: packages/tui/src/components/image.ts:render
 	if c.maxWidth > 0 {
 		maxWidth = c.maxWidth
 	}

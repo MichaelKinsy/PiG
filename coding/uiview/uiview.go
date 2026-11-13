@@ -745,7 +745,8 @@ func measure(raw json.RawMessage, known func(string) bool) (m measured, badKind 
 		if isText {
 			text = tok.String()
 			// The bytes of an image are not text: they count in the snapshot's bytes and not as its longest text.
-			if !(top >= 0 && open[top].image && open[top].name == "data") && len(text) > m.text {
+			imageBytes := top >= 0 && open[top].image && open[top].name == "data"
+			if !imageBytes && len(text) > m.text {
 				m.text = len(text)
 			}
 		}

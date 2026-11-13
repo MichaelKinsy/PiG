@@ -70,6 +70,8 @@ func TestViewClientDrawsAPhotographInAPanel(t *testing.T) {
 	// The photograph is measured off the loop: the mount draws an empty row for it until then.
 	var rows []string
 	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(time.Millisecond) {
+		// The loop is told that the photograph is ready.
+		f.loop.run()
 		rows = drawn[0].Render(40)
 		if slices.ContainsFunc(rows, func(row string) bool { return strings.Contains(row, "\x1b]1337;File=") }) {
 			break

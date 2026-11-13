@@ -186,11 +186,12 @@ type viewItem struct {
 type viewClient struct {
 	host viewHost
 	ui   viewClientUI
-	// images is what the mounts' surfaces share to draw image nodes.
-	images *subprocess.MountImages
 	att  *uiview.Attachment
 	ctx  context.Context
 	end  context.CancelFunc
+
+	// images is what the mounts' surfaces share to draw image nodes.
+	images *subprocess.MountImages
 
 	mu sync.Mutex
 	// queue holds the deliveries and intent results the loop has not applied, in the order they were made. deliveries
@@ -237,8 +238,12 @@ type viewClient struct {
 // registry takes no further client. It runs on the interactive loop.
 func attachViewClient(ctx context.Context, host viewHost, ui viewClientUI) *viewClient {
 	c := &viewClient{host: host, ui: ui, mounts: map[viewMountKey]*viewMount{}}
-	// The conversion of an image to PNG runs off the loop, on the goroutine the surface starts for it.
-	c.images = &subprocess.MountImages{Write: ui.write, Placeholders: ui.placeholders, ToPNG: ConvertImageBytesToPng}
+	// The conversion of an image to PNG runs off the loop, on the goroutine the surface starts for it, and the mount is
+	// told on the loop that its image is ready.
+	c.images = &subprocess.MountImages{
+		Write: ui.write, Placeholders: ui.placeholders, ToPNG: ConvertImageBytesToPng,
+		Post: func(fn func()) { ui.postWait(c.ctx, fn) },
+	}
 	c.ctx, c.end = context.WithCancel(ctx)
 	c.listener = c.focusKey
 	c.declared = ui.size()
