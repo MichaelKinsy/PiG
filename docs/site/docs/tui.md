@@ -160,6 +160,24 @@ An extension's terminal input listener runs after PiG has read the input, not as
 
 Source extensions send bounded serializable state through the extension host. PiG keeps socket and JSON work off the TUI render loop and renders from local cached state.
 
+## Extension views
+
+When the active Piglet sets `viewClient: terminal` (PiG Standard does), an extension can mount views that PiG draws for it. Stock PiG draws none.
+
+| Where | What appears |
+|---|---|
+| Above the editor, after the widgets | views mounted in the `widget-above` slot, at most 10 rows each |
+| Directly above the editor | panels (the `panel` slot), at most half the terminal's rows each |
+| Below the editor, after the widgets | views mounted in the `widget-below` slot, at most 10 rows each |
+
+| Key | Effect |
+|---|---|
+| F6 | Move the focus from the editor to the first panel that takes keys, then to the next, then back to the editor. |
+| Escape in a panel | Return the focus to the editor. A second Escape interrupts the agent as usual. |
+| Up, Down, Enter and typing in a panel | Go to the panel's list or input. |
+
+In fullscreen mode a click on a panel focuses it. A view taller than its place ends with `... (view truncated)`. F6 is a fixed key and is active only while a panel that takes keys is on screen.
+
 ## Focused custom components
 
 A focused component owns keyboard input until it completes or is cancelled.

@@ -62,9 +62,6 @@ func (p *googleVertexProvider) Close() error { p.client.CloseIdleConnections(); 
 
 func (p *googleVertexProvider) Stream(ctx context.Context, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
 	// upstream: packages/ai/src/api/google-vertex.ts:stream
-	if options.Fetch != nil && options.Fetch != http.DefaultClient {
-		return nil, errors.New("Custom fetch is not supported by the Google Vertex adapter")
-	}
 	key := resolveVertexAPIKey(p.cfg.APIKey)
 	project, location := "", ""
 	if key == "" {

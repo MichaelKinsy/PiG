@@ -53,7 +53,12 @@ func (t *BashTool) Label() string { return "" }
 func (t *BashTool) OutputSchema() json.RawMessage { return json.RawMessage(shellOutputSchema) }
 
 func (t *BashTool) Schema() ai.ToolSchema {
-	return shellToolSchema("bash", "bash", !t.HideSessionEnvironment)
+	return shellToolSchema("bash", "bash", !t.HideSessionEnvironment, false)
+}
+
+// BorrowedSchema is Schema with the parameters shared, not copied: the caller reads them and never modifies them.
+func (t *BashTool) BorrowedSchema() ai.ToolSchema {
+	return shellToolSchema("bash", "bash", !t.HideSessionEnvironment, true)
 }
 
 // ExecutionMode is parallel: upstream's shell tool definition sets no

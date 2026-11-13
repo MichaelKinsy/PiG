@@ -117,6 +117,9 @@ type Args struct {
 	// ContextFilesTrustedOnly withholds the project's context files until the project is trusted. A Piglet's contextFiles: trusted-only sets it; no command-line flag does.
 	// pig additive (D211).
 	ContextFilesTrustedOnly bool
+	// TerminalViewClient attaches the TUI as a client of the interactive session's plugin view registry. A Piglet's viewClient: terminal sets it; no command-line flag does.
+	// pig additive (D614).
+	TerminalViewClient bool
 	// Export exports a session file to HTML and exits.
 	// Mirrors upstream --export (args.ts:106).
 	Export string

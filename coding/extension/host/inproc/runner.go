@@ -1179,18 +1179,21 @@ func (r *Runner) MessageRenderer(customType string) extension.MessageRenderer {
 //
 // upstream: runner.ts getMarkdownTransformers
 func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
-	var transformers []extension.MarkdownTransformer
-	for _, ext := range r.extensions {
-		if ext.MarkdownTransformer == nil {
-			continue
+	count := 0
+	for i := range r.extensions {
+		if r.extensions[i].MarkdownTransformer != nil {
+			count++
 		}
-		transformer, messageTypes := ext.MarkdownTransformer.Transformer, ext.MarkdownTransformer.MessageTypes
-		transformers = append(transformers, func(markdown string, context extension.MarkdownTransformContext) string {
-			if _, ok := messageTypes[context.MessageType]; !ok {
-				return markdown
-			}
-			return transformer(markdown, context)
-		})
+	}
+	if count == 0 {
+		return nil
+	}
+	// The list is the one allocation, whatever the number of transformers: a registration holds its wrapper. Pi makes one arrow function per transformer on every call (runner.ts getMarkdownTransformers) from the registration's two members, which do not change, and a Go function has no identity, so a wrapper made by the call and the registration's cannot be told apart.
+	transformers := make([]extension.MarkdownTransformer, 0, count)
+	for i := range r.extensions {
+		if registration := r.extensions[i].MarkdownTransformer; registration != nil {
+			transformers = append(transformers, registration.Scoped())
+		}
 	}
 	return transformers
 }

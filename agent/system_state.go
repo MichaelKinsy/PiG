@@ -16,12 +16,22 @@ func toolDeclarations(current []AgentTool) []ai.ToolSchema {
 	return tools
 }
 
-// toolSchemas are the loadout's schemas as the tools return them. Comparing them needs no declaration copy, because
-// ai.DeclarationsEqual ignores prompt guidelines and ai.GetToolStateChanges copies only the declarations it adds.
+// schemaBorrower is implemented by a tool that can state its schema without copying the parameters: the schema it returns
+// shares them, and the caller reads them and never modifies them.
+type schemaBorrower interface{ BorrowedSchema() ai.ToolSchema }
+
+// toolSchemas are the loadout's schemas for comparison with the declared ones. They are borrowed where the tool offers it,
+// because comparing needs no copy: ai.DeclarationsEqual reads both sides and ignores prompt guidelines, and
+// ai.GetToolStateChanges copies only the declarations it adds. A borrowed schema is compared by content, as a copied one is, so a
+// tool that rebuilds its schema on every call is re-declared only when the content changed.
 func toolSchemas(current []AgentTool) []ai.ToolSchema {
 	schemas := make([]ai.ToolSchema, len(current))
 	for i, t := range current {
-		schemas[i] = t.Schema()
+		if borrower, ok := t.(schemaBorrower); ok {
+			schemas[i] = borrower.BorrowedSchema()
+		} else {
+			schemas[i] = t.Schema()
+		}
 	}
 	return schemas
 }

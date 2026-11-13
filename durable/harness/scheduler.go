@@ -400,6 +400,15 @@ type TaskScheduler struct {
 	sealOnce sync.Once
 	dirty    bool
 	draining bool
+	// drainPlace, reconcilePlace and sweepPlace give a scheduled pass its place on the Session line. A pass joins the
+	// background group when it is scheduled, under the mutex and with the scheduler not closing, so before the seal can
+	// complete and Join can wait for the group. Its place on the line is taken later, once the publication in progress has
+	// run the host's commit listeners (Session.DeferUntilPublished), which can be after the seal: the pass waits for it
+	// here. At most one pass of a kind is scheduled and not yet started (draining, reconcileScheduled, sweepScheduled), so
+	// each channel holds at most one place.
+	drainPlace     chan *session.LineTicket
+	reconcilePlace chan *session.LineTicket
+	sweepPlace     chan *session.LineTicket
 
 	unsubscribeRegistry func()
 	taskWaiters         Waiters[durable.TaskId, durable.SettledTask[durable.JsonValue]]
@@ -456,6 +465,9 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 		idleNewest:          math.Inf(-1),
 		pins:                map[treeNode]int{},
 		sealed:              make(chan struct{}),
+		drainPlace:          make(chan *session.LineTicket, 1),
+		reconcilePlace:      make(chan *session.LineTicket, 1),
+		sweepPlace:          make(chan *session.LineTicket, 1),
 		live:                map[durable.TaskId]anyTaskRecord{},
 		invocations:         map[durable.TaskId]*invocation{},
 		failedMigrations:    map[durable.TaskId]failedMigration{},
@@ -1312,12 +1324,10 @@ func (s *TaskScheduler) scheduleReconcileLocked() {
 		s.reconcilesIdle = make(chan struct{})
 	}
 	s.reconciles++
-	// Taken in the turn that scheduled it, as upstream's queued reconcile microtask is: once the publication in progress ran
-	// the host's commit listeners, whose own commits therefore queue first.
-	s.options.Session.DeferUntilPublished(func() {
-		ticket := s.options.Session.TakeLineTicket()
-		s.background.Go(func() { s.reconcile(ticket) })
-	})
+	// Its place on the line is taken in the turn that scheduled it, as upstream's queued reconcile microtask is: once the
+	// publication in progress ran the host's commit listeners, whose own commits therefore queue first (reconcilePlace).
+	s.background.Go(func() { s.reconcile(<-s.reconcilePlace) })
+	s.options.Session.DeferUntilPublished(func() { s.reconcilePlace <- s.options.Session.TakeLineTicket() })
 }
 
 // awaitReconcilesLocked returns, with s.mu held, once no reconcile pass is scheduled or running. Upstream queues a
@@ -2004,11 +2014,9 @@ func (s *TaskScheduler) kick() {
 	s.draining = true
 	// Never commit synchronously from a commit or registry listener. The pass takes its place on the Session line as
 	// upstream's queueMicrotask does in the publishing turn, after the host's commit listeners ran, so a commit started
-	// after this point queues behind.
-	s.options.Session.DeferUntilPublished(func() {
-		ticket := s.options.Session.TakeLineTicket()
-		s.background.Go(func() { s.drain(ticket) })
-	})
+	// after this point queues behind (drainPlace).
+	s.background.Go(func() { s.drain(<-s.drainPlace) })
+	s.options.Session.DeferUntilPublished(func() { s.drainPlace <- s.options.Session.TakeLineTicket() })
 }
 
 func (s *TaskScheduler) drain(ticket *session.LineTicket) {

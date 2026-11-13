@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/uiview"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
@@ -575,6 +576,9 @@ type StatePayload struct {
 	// The Node runtime installs it as pi-tui's keybindings manager, the one
 	// Pi hands editor and custom-component factories and sets globally.
 	Keybindings any `json:"keybindings,omitempty"`
+	// UIAbilities (D614) is what the attached client draws; absent when none is attached, so an extension cannot mount.
+	// Every state is a full snapshot, so an absent value clears it.
+	UIAbilities *uiview.ClientAbilities `json:"uiAbilities,omitempty"`
 }
 
 // TerminalCapabilitiesPayload mirrors pi-tui's TerminalCapabilities.
@@ -1067,6 +1071,23 @@ const (
 	NotifyUIViewEvicted = "ui.view.evicted"
 )
 
+// pig additive (D614): plugin UI mounts over D107 views. An extension mounts a view in a client slot and the host sends
+// back the user's intents. The records are in coding/uiview; the wire has no version field.
+const (
+	CallUIViewMount  = "ui.view.mount"
+	CallUIViewUpdate = "ui.view.update"
+	CallUIViewHide   = "ui.view.hide"
+	CallUIViewShow   = "ui.view.show"
+	CallUIViewFinish = "ui.view.finish"
+	CallUIViewRemove = "ui.view.remove"
+	CallUIViewState  = "ui.view.state"
+	// CallUIViewDiagnostics returns the notices of a mount: what the host rejected or ended and what a client could not draw.
+	CallUIViewDiagnostics = "ui.view.diagnostics"
+	// RequestUIViewIntent (host→ext) raises one intent of a mount and expects {outcome: done|refused|failed, answer?, error?}.
+	// A cancellable intent that times out or is cancelled by its caller is cancelled through the request's ordinary cancel frame.
+	RequestUIViewIntent = "ui.view.intent"
+)
+
 // View node kinds. Each mirrors the upstream pi-tui (or coding-agent
 // DynamicBorder) component of the same name; ViewKindLines is an opaque
 // range of rows a custom render(width) drew.
@@ -1245,6 +1266,8 @@ type ViewNode struct {
 
 	// ViewWidgetFields are the fields of the widget kinds (view_widget_wire.go).
 	ViewWidgetFields
+	// ViewGridFields are the fields of a grid (view_grid_wire.go).
+	ViewGridFields
 }
 
 // viewNodeWire is a ViewNode with its "message" as raw JSON: a loader's
@@ -1264,6 +1287,12 @@ func (n *ViewNode) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*n = ViewNode(wire.viewNodeFields)
+	if n.Kind == ViewKindGrid {
+		// pig additive (D614): a grid is read strictly, in the node, its cells and its chips.
+		if err := decodeGridNode(data); err != nil {
+			return err
+		}
+	}
 	if len(wire.Message) == 0 || string(wire.Message) == "null" {
 		return nil
 	}

@@ -80,6 +80,14 @@
       ],
       "description": "Which project context files (AGENTS.md, CLAUDE.md) load. all is Pi's behaviour. trusted-only withholds the project's context files until the project is trusted, and makes a project that has one need a trust decision."
     },
+    "viewClient": {
+      "type": "string",
+      "enum": [
+        "none",
+        "terminal"
+      ],
+      "description": "The client an interactive session attaches to its plugin view registry (D614). none is Stock PiG: no client, so an extension's ui.view mount fails unsupported. terminal attaches the TUI, which draws mounts in its widget and panel regions."
+    },
     "agentEnv": {
       "$ref": "#/$defs/agentEnvironment"
     },

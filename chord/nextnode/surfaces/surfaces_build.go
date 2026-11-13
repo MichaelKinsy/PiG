@@ -46,11 +46,11 @@ const (
 	SurfaceBuiltKindFailed SurfaceBuiltKind = "failed"
 )
 
-// surfaceBuildOptions is what a surface builds: its kind, entry, conditions and the plugins component.
+// surfaceBuildOptions is what a surface builds: its kind, entry, how its base resolves and the plugins component.
 type surfaceBuildOptions struct {
 	kind       string
 	entry      string
-	conditions []string
+	resolution BaseResolution
 	plugins    *plugins.Plugins
 }
 
@@ -229,7 +229,7 @@ func (b *surfaceBuild) step(name string) plugins.RolloutStep {
 
 // run builds the base bundle, takes the kind's current set as the first and publishes it.
 func (b *surfaceBuild) run(ctx context.Context) *buildOutcome {
-	base, err := BuildBase(b.options.entry, b.platform, b.prefix, b.options.conditions)
+	base, err := BuildBase(b.options.entry, b.platform, b.prefix, b.options.resolution)
 	if err != nil {
 		return &buildOutcome{err: err}
 	}

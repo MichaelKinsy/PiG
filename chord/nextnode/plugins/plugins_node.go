@@ -596,6 +596,8 @@ type NodeHost struct {
 	cb nodeCallbacks
 	// bridge is what the app holds of the plugins' host through the reference RPC (plugins_node_reference.go).
 	bridge nodeBridge
+	// events is the sender of the events that cross between the Go hosts and the process's host (plugins_node_events.go).
+	events eventOutbox
 }
 
 // Exited is closed when the process ended.
@@ -691,6 +693,7 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 
 	life, endLife := context.WithCancel(context.WithoutCancel(ctx))
 	h := &NodeHost{options: options, life: life, endLife: endLife, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), closeBegun: make(chan struct{}), closeTimeout: defaultCloseTimeout, startAfter: afterTimer, pending: map[int]*nodeCall{}}
+	h.events.control = h.controlEvents
 	output := options.OnOutput
 	if output == nil {
 		output = func(stream NodeStream, chunk []byte) {
@@ -788,7 +791,7 @@ func (h *NodeHost) startFailure(what string) error {
 
 // wait is the goroutine that waits for the process: it records how it ended, closes Exited and fails every pending
 // request. The channel is read to its end first (the process closed it when it ended; bounded by the stop grace), so a `fatal`
-// the process sent before it exited is in the NodeExit.
+// the process sent before it exited is in the NodeExit; then the sender of the bridge's events is ended and joined.
 func (h *NodeHost) wait() {
 	err := h.cmd.Wait()
 	if errors.Is(err, exec.ErrWaitDelay) {
@@ -804,6 +807,8 @@ func (h *NodeHost) wait() {
 		}
 		timer.Stop()
 	}
+	// The sender of the bridge's events is joined before Exited closes: the process is gone, so a write under way returns.
+	h.events.stop()
 	h.mu.Lock()
 	if !h.closing || err != nil {
 		code, signal := processExit(h.cmd.ProcessState, h.killed.Load())

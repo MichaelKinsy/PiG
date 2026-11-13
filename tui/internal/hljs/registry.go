@@ -81,18 +81,20 @@ func (r *Registry) Highlight(code, language string, ignoreIllegals bool) (html s
 	return r.highlight(language, stringToUnits(code), ignoreIllegals, nil).Value, nil
 }
 
-// ResumePoint is a state of Highlight from which HighlightResumable continues over more text. Byte is the offset in the code, Unit the offset in its UTF-16 code units, and HTML the offset in the HTML of the run that recorded it; the text before it is a whole number of finished top-level nodes. Iterations is the scan iterations before it, which the resumed run continues counting.
+// ResumePoint is a state of Highlight from which HighlightResumable continues over more text. Byte is the offset in the code, Unit the offset in its UTF-16 code units, and HTML the offset in the HTML of the run that recorded it. Iterations is the scan iterations before it, which the resumed run continues counting. A point lies between finished top-level nodes, or inside open modes (a string, a comment, an object): the HTML before it then ends inside the spans of those modes, and the point holds their stack, at most ResumeStackMax frames, so it continues only in the Registry that offered it.
 type ResumePoint struct {
 	Byte       int
 	Unit       int
 	HTML       int
 	Iterations int
+	// top is the mode stack of a point inside open modes.
+	top *frame
 }
 
-// ErrResumeFailed reports that a resumed run hit an exception highlight.js reports for the whole code, so the caller highlights the whole code instead.
+// ErrResumeFailed reports that a resumed run hit an exception highlight.js reports for the whole code, or that the Registry does not continue the point for the language, so the caller highlights the whole code instead.
 var ErrResumeFailed = errors.New("hljs: resumed highlight failed")
 
-// HighlightResumable is Highlight over the code of text that starts at from, a ResumePoint of a run over a prefix of that code, or the zero ResumePoint for the whole code. It returns the HTML of code[from:] only, and the resume points at or after from, with HTML offsets into that returned HTML. The points are valid for code extended with more text: a language with a pattern that reads without bound has none, and the last ones, whose decisions could have read the end of the code, are dropped. javascript and typescript have three such patterns and a callback that reads past the match (the JSX tag's, which looks for a closing tag anywhere after); a text check bounds each (guardedSources), and a point that fails one is dropped.
+// HighlightResumable is Highlight over the code of text that starts at from, a ResumePoint of a run over a prefix of that code, or the zero ResumePoint for the whole code. It returns the HTML of code[from:] only, for a point inside open modes without the opening tags of their spans, which the HTML before the point holds, and the resume points at or after from, with HTML offsets into that returned HTML. The points are valid for code extended with more text: a language with a pattern that reads without bound has none, and the last ones, whose decisions could have read the end of the code, are dropped. javascript and typescript have three such patterns and a callback that reads past the match (the JSX tag's, which looks for a closing tag anywhere after); a text check bounds each (guardedSources), and a point that fails one is dropped.
 func (r *Registry) HighlightResumable(text *Text, language string, ignoreIllegals bool, from ResumePoint) (html string, points []ResumePoint, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -106,39 +108,48 @@ func (r *Registry) HighlightResumable(text *Text, language string, ignoreIllegal
 		}
 	}()
 	code := text.code
-	start := checkpoint{unit: from.Unit, iterations: from.Iterations}
-	result := r.highlightFrom(language, text.units, ignoreIllegals, nil, start, true)
-	if result.failed && from.Byte > 0 {
+	record, reach := r.resumeRecording(language)
+	start := checkpoint{unit: int32(from.Unit), iterations: int32(from.Iterations), top: from.top}
+	result := r.highlightFrom(language, text.units, ignoreIllegals, nil, start, record)
+	if result.failed && (from.Byte > 0 || from.top != nil) {
 		return "", nil, ErrResumeFailed
 	}
 	if result.failed {
 		return result.Value, nil, nil
 	}
-	reach := languageReach(compileLanguage(r.getLanguage(language)))
-	if reach.unbounded {
-		result.checkpoints = nil
-	}
 	limit := resumeLimit(code, reach)
-	counts := make([]int, len(result.checkpoints))
-	for i, c := range result.checkpoints {
-		counts[i] = c.children
-	}
-	value, offsets := result.emitter.rootOffsets(counts)
-	if jsstring.Canonical(value) != value {
-		return jsstring.Canonical(value), nil, nil
+	value, offsets, placed := result.emitter.checkpointHTML(result.checkpoints)
+	if canonical := jsstring.Canonical(value); canonical != value || !placed {
+		return canonical, nil, nil
 	}
 	points = make([]ResumePoint, len(offsets))
 	unit, byteOff := from.Unit, from.Byte
 	for i, c := range result.checkpoints {
-		byteOff += unitsByteLen(code[byteOff:], c.unit-unit)
-		unit = c.unit
-		points[i] = ResumePoint{Byte: byteOff, Unit: unit, HTML: offsets[i], Iterations: c.iterations}
+		byteOff += unitsByteLen(code[byteOff:], int(c.unit)-unit)
+		unit = int(c.unit)
+		points[i] = ResumePoint{Byte: byteOff, Unit: unit, HTML: offsets[i], Iterations: int(c.iterations), top: c.top}
 	}
 	for len(points) > 0 && points[len(points)-1].Byte > limit {
 		points = points[:len(points)-1]
 	}
 	points = guardPoints(points, code, reach.guards)
 	return value, points, nil
+}
+
+// resumeRecording is the checkpoints a run of the language records for HighlightResumable, and the reach of the language's patterns. A language with a pattern that reads without bound keeps no point, so its run records none. A language with a text check in place of such a pattern (reach.guards: guardedSources and the callback of xmlTagBegin) takes the points between top-level nodes only: guardPoints reads the text after a point as it stands there (the parentheses open before it, the white space and the comments before the next token), which is not how it stands inside a string, a comment or a parameter list. Every other language takes the points inside open modes as well. An unknown language records nothing: its run throws.
+func (r *Registry) resumeRecording(language string) (recording, reach) {
+	mode := r.getLanguage(language)
+	if mode == nil {
+		return recordNone, reach{}
+	}
+	found := languageReach(compileLanguage(mode))
+	switch {
+	case found.unbounded:
+		return recordNone, found
+	case found.guards != 0:
+		return recordRoot, found
+	}
+	return recordStack, found
 }
 
 // resumeLimit is the greatest byte offset of a resume point that stays valid when more text follows code: at least reach.lines+1 line breaks follow it, so no attempt before it, which started on or before the point's line and crossed at most reach.lines line breaks, read to the end of code, and, when a pattern repeats white space, a character that is not white space follows it, so no run of white space before it reached the end.

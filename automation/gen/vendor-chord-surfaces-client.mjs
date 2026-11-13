@@ -3,8 +3,7 @@
 //
 //   node vendor-chord-surfaces-client.mjs <pi tree root> <pi commit> <pi-telemetry package dir> <out node dir> <pin commit> [<carried commits, comma-separated>]
 //
-// The manifest records the pin the copy was made against; when the copied commit is not the pin's, it names that commit as
-// `catchup` (the commit the manifest may differ from the pin by: the Go test accepts exactly it, while the pin stays put).
+// The manifest's provenance (commit, pin, `catchup`, `carried`) is vendor-chord-provenance.mjs's, shared with the plugins component's copy.
 //
 // packages/chord/src is copied byte for byte, keeping its layout, for the import closure of the entries the subprocess
 // loads (Node strips the types of the copies; nothing is transpiled). The closure is found on the type-stripped source,
@@ -19,10 +18,9 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { provenance } from "./vendor-chord-provenance.mjs";
 
 const [piTree, commit, telemetryDir, outDir, pin, carriedList = ""] = process.argv.slice(2);
-// The Pi commits cherry-picked onto `commit` to make the tree (automation/gen/vendor-chord-surfaces-client.sh, PI_CARRIED): recorded in the manifest.
-const carried = carriedList === "" ? [] : carriedList.split(",");
 if (pin === undefined) throw new Error("usage: vendor-chord-surfaces-client.mjs <pi tree> <commit> <pi-telemetry> <out> <pin>");
 
 const ENTRIES = [
@@ -179,10 +177,7 @@ const reactVersions = {};
 }
 
 const manifest = {
-	commit,
-	pin,
-	...(commit === pin ? {} : { catchup: commit }),
-	...(carried.length === 0 ? {} : { carried }),
+	...provenance(commit, pin, carriedList),
 	piSchema: JSON.parse(readFileSync(join(schemaDir, "package.json"), "utf8")).version,
 	piTelemetry: JSON.parse(readFileSync(join(telemetryDir, "package.json"), "utf8")).version,
 	react: reactVersions,

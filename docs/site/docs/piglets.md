@@ -94,6 +94,7 @@ build:
 | `systemPrompt` | Select one inline or file-based system prompt. |
 | `discovery` | Permit or reject ambient workspace and user Resources. |
 | `contextFiles` | Set `trusted-only` to load no project `AGENTS.md` or `CLAUDE.md` until the project is trusted. |
+| `viewClient` | Set `terminal` to let the TUI draw the views extensions mount (D614). |
 | `secrets` | Declare logical secret requirements without storing values. |
 | `agentEnv` | Require an image, Dev Container, or typed environment source. |
 | `slots` | Replace a part of PiG with a fused Go member. `frontend` is the only slot (D91); see [Piglet Binaries](piglet-binaries.md#frontend-members). |
@@ -293,6 +294,16 @@ contextFiles: trusted-only
 ```
 
 With `trusted-only`, a project that has a context file needs a trust decision. Until the project is trusted, PiG loads only the context file in the agent directory and the one in your home directory. PiG prints a notice that names each file it skipped. `contextFiles: all` is the default. A Piglet that extends a `trusted-only` Piglet and sets `all` widens its base, so it needs `allowWiden`.
+
+## View client
+
+An extension can mount a view (`ui.view`, D614) only when a client that draws views is attached to the session. Stock PiG attaches none in an interactive session, so a mount fails with `unsupported`. A Piglet can attach the terminal:
+
+```yaml
+viewClient: terminal
+```
+
+With `terminal`, the TUI draws mounted views above and below the editor and in a panel directly above it. Until an extension mounts a view, the screen and the keys are unchanged. `none` is the default; a child Piglet that extends a base with `terminal` sets `viewClient: none` to turn it off. See [Terminal UI](tui.md#extension-views).
 
 ## Origins
 

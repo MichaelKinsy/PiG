@@ -417,5 +417,45 @@
   ],
   "upstream_reference": "packages/durable/src/harness/registry-reader.ts: the reader serves the latest composition its observer recorded",
   "mutation": "durable/harness/registry_reader.go: replace \"cache.snapshot, cache.seen = call.Value, true\" with \"cache.seen = true\"; compiling go test -overlay -run RegistryReader -count=1 fails TestRegistryReader, TestRegistryReaderOnAChordHost."
+ },
+ {
+  "upstream": "packages/durable/src/session/writer.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestGroupCommitAPublicationThatThrows"
+  ],
+  "upstream_reference": "packages/durable/src/session/writer.ts:250-256 (a throw anywhere in a publication, the read caches included, is an adoption failure); packages/durable/test/session-group-commit.test.ts:635",
+  "mutation": "durable/session/writer.go: replace \"failure = &PublishFailure{Kind: PublishAdoption, Err: panicError(recovered)}\" with \"failure = &PublishFailure{Kind: PublishListener, Err: panicError(recovered)}\"; compiling go test -overlay -count=1 ./durable/session fails TestGroupCommitAPublicationThatThrows."
+ },
+ {
+  "upstream": "packages/durable/src/session/writer.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestGroupCommitDeferredCommits",
+   "TestGroupCommitFailuresPerPart",
+   "TestGroupCommitOutcomes"
+  ],
+  "upstream_reference": "packages/durable/src/session/writer.ts:228-236 (a part that was not received rejects with the refusal at its index); packages/durable/test/session-group-commit.test.ts:414, :538, :680",
+  "mutation": "durable/session/writer.go: replace \"case result != nil && index == result.Stored && result.Refused != nil:\" with \"case result != nil && index != result.Stored && result.Refused != nil:\"; compiling go test -overlay -count=1 ./durable/session fails TestGroupCommitDeferredCommits, TestGroupCommitFailuresPerPart, TestGroupCommitOutcomes."
+ },
+ {
+  "upstream": "packages/durable/src/session/writer.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestGroupCommitAFailureBetweenTwoPublications",
+   "TestGroupCommitPublication",
+   "TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener"
+  ],
+  "upstream_reference": "packages/durable/src/session/writer.ts:239-240 (a macrotask between two parts of a call); packages/durable/test/session-group-commit.test.ts:698, :770, :796",
+  "mutation": "durable/session/writer.go: replace \"if published > 0 {\\n\\t\\t\\twriter.host.Hop()\" with \"if published > 1 {\\n\\t\\t\\twriter.host.Hop()\"; compiling go test -overlay -count=1 ./durable/session fails TestGroupCommitAFailureBetweenTwoPublications, TestGroupCommitPublication, TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener."
+ },
+ {
+  "upstream": "packages/durable/src/session/writer.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestGroupCommitFailuresPerPart"
+  ],
+  "upstream_reference": "packages/durable/src/session/writer.ts:269-274 (a part published while its call rejected rejects with the storage error); packages/durable/test/session-group-commit.test.ts:441, :461, :514",
+  "mutation": "durable/session/writer.go: replace \"failedOutcome{own: true, err: rejected}, published: true})\" with \"failedOutcome{err: rejected}, published: true})\"; compiling go test -overlay -count=1 ./durable/session fails TestGroupCommitFailuresPerPart."
  }
 ]

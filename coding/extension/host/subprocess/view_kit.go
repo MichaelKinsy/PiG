@@ -52,6 +52,9 @@ type viewSurface struct {
 	// terminalRows is the terminal's height in rows, 0 when unknown; an
 	// editor's visible line count follows it (nil: an in-memory surface).
 	terminalRows func() int
+	// rowBudget is the rows the surface is drawn with when its owner cuts it, 0 or nil for no cut; a grid draws fewer
+	// chip lines to fit it (nil: a D107 surface).
+	rowBudget func() int
 
 	frame     *viewFrame
 	instances map[string]*viewInstance
@@ -77,6 +80,11 @@ type viewSurface struct {
 	// cardChanged reports that a tool card drew again on its own since the
 	// surface last counted a revision.
 	cardChanged atomic.Bool
+	// defaultFocus is the id of the node that takes the keys when a frame names none, and unfocused reports that the
+	// surface does not hold the keyboard focus, so no node draws as focused. Only a plugin mount's surface sets them
+	// (ui_view_surface.go); the zero values are a D107 surface, which holds the focus whenever it is shown.
+	defaultFocus string
+	unfocused    bool
 	// disposers dispose the components of the frames the surface built
 	// that no later frame keeps (tool cards without an id); they run
 	// outside s.mu by the next accept or close.
@@ -736,13 +744,20 @@ func (s *viewSurface) buildLocked(f *viewFrame, base *tui.Theme) error {
 	f.tree = tree
 	if f.payload.Focus != "" {
 		f.focus = s.instances[f.payload.Focus]
+	} else if inst := s.instances[s.defaultFocus]; inst != nil && (inst.list != nil || inst.settings != nil || viewWidgetFocusable(inst.kind)) {
+		f.focus = inst
 	}
+	s.focusWidgetsLocked(f)
+	return nil
+}
+
+// focusWidgetsLocked tells each widget of f whether it draws as focused.
+func (s *viewSurface) focusWidgetsLocked(f *viewFrame) {
 	for _, inst := range s.instances {
 		if inst.widget != nil {
-			inst.widget.setFocused(inst == f.focus || inst.sent != nil && inst.sent.Focused)
+			inst.widget.setFocused(!s.unfocused && (inst == f.focus || inst.sent != nil && inst.sent.Focused))
 		}
 	}
-	return nil
 }
 
 func (b *viewBuilder) fgFn(token string) func(string) string {

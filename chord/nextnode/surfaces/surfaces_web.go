@@ -42,6 +42,8 @@ type WebSurfaceOptions struct {
 	// Conditions are the conditions the base bundle's packages resolve with: the server process's by default (nil;
 	// ProcessConditions).
 	Conditions []string
+	// Tsconfig is a tsconfig.json whose `paths` the base bundle's packages resolve through, as the server's loader does (BaseResolution).
+	Tsconfig string
 }
 
 // PageAssets is what a page includes, in this order: Bootstrap as an inline script with the response's nonce (before the
@@ -93,7 +95,7 @@ func NewWebSurface(server host.Host, options WebSurfaceOptions) *WebSurface {
 	if kind == "" {
 		kind = "web"
 	}
-	building := newSurfaceBuild(Web, PlatformBrowser, WebPrefix, surfaceBuildOptions{kind: kind, entry: options.Entry, conditions: options.Conditions, plugins: options.Plugins}, server)
+	building := newSurfaceBuild(Web, PlatformBrowser, WebPrefix, surfaceBuildOptions{kind: kind, entry: options.Entry, resolution: BaseResolution{Conditions: options.Conditions, Tsconfig: options.Tsconfig}, plugins: options.Plugins}, server)
 	withRoutes := options.Routes == nil || *options.Routes
 	var routes []http.HttpRouteEntry
 	if withRoutes {

@@ -55,7 +55,12 @@ type ReadOperations struct {
 func (t *ReadTool) Name() string  { return "read" }
 func (t *ReadTool) Label() string { return "" }
 
-func (t *ReadTool) Schema() ai.ToolSchema {
+func (t *ReadTool) Schema() ai.ToolSchema { return t.schema(false) }
+
+// BorrowedSchema is Schema with the parameters shared, not copied: the caller reads them and never modifies them.
+func (t *ReadTool) BorrowedSchema() ai.ToolSchema { return t.schema(true) }
+
+func (t *ReadTool) schema(borrow bool) ai.ToolSchema {
 	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:                "read",
 		Description:         "Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.",
@@ -67,7 +72,7 @@ func (t *ReadTool) Schema() ai.ToolSchema {
 		"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},
 		"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},
 		"limit":{"type":"number","description":"Maximum number of lines to read"}
-	}}`)
+	}}`, borrow)
 }
 
 func (t *ReadTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }

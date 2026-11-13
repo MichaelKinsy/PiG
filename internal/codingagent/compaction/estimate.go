@@ -256,7 +256,7 @@ func EstimateProjectedContextTokens(projection codingagent.SessionProjection, br
 		}
 	}
 	tokens := 0
-	if current := codingagent.CurrentSystemMessage(projection.Messages); current != nil {
+	if current := codingagent.CurrentSystemMessageView(projection.Messages); current != nil {
 		tokens = estimateSystemTokens(*current)
 	}
 	for _, message := range projection.Messages {

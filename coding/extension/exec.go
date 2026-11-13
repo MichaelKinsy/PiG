@@ -117,8 +117,11 @@ type execDrainHooksKey struct{}
 // opts.MaxBuffer caps the bytes of stdout and stderr together (default 256 MiB,
 // capped by the runtime string limit; an invalid value fails the call, as
 // upstream's RangeError rejects it, before anything runs). Output past the cap
-// is dropped at the byte: both pipes are closed, the child is terminated, and
-// the result carries Truncated, Killed and a nonzero code. Each stream is
+// is dropped at the byte: both pipes are closed and then the child is
+// signalled, in upstream's order (exec.ts:111-113), and the result carries
+// Truncated, Killed and a nonzero code: the command's own when it had exited
+// by then (1 for a 0), 141 when its next write met the closed pipe before the
+// SIGTERM did (SIGPIPE), 143 when the SIGTERM came first. Each stream is
 // decoded across chunk boundaries (utf8stream); a character the cap cuts is
 // dropped with the bytes a decoder still holds, and a stream that ends inside
 // a character yields one U+FFFD.
@@ -150,10 +153,13 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 
 	// The child writes straight into OS pipes, so Wait returns when the child
 	// exits even if a descendant still holds a write end.
+	// pig divergence (D631): Node gives the command a socket pair for stdout and one for stderr (libuv). These are pipes: a command can open one again
+	// through /dev/stdout, which a socket refuses (ENXIO), and its write after the close raises SIGPIPE, where a socket's first one fails with ECONNRESET.
 	stdoutRead, stdoutWrite, pipeErr := childwait.NewPipe()
 	if pipeErr != nil {
 		return ExecResult{Code: 1}, nil
 	}
+	// pig divergence (D631): a pipe where Node gives a socket pair, as for stdout above.
 	stderrRead, stderrWrite, pipeErr := childwait.NewPipe()
 	if pipeErr != nil {
 		_ = stdoutRead.Close()
@@ -249,13 +255,15 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		}
 		if remaining := maxBuffer - outputBytes; int64(len(chunk)) > remaining {
 			truncated = true
-			// exec.ts destroys the pipes first (Node closes the descriptors at once) and signals the child a few microseconds later, so there a
-			// writer can die of SIGPIPE and a shell that forked it can exit with that status, 141, before SIGTERM lands: a scheduling race that
-			// Pi's runs show on a busy host. Here SIGTERM goes first, so the child ends by the signal (code 0, 1 once truncated), the outcome
-			// Pi reaches in most runs, and the result does not depend on that race.
-			killProcess()
+			// exec.ts:111-113 destroys both pipes and then calls killProcess, and Node's destroy() closes the descriptor before it returns, so the
+			// child's next write meets a closed pipe before SIGTERM is sent. The order decides the code of a command that is still writing: the
+			// writer can die of SIGPIPE, and a shell that waited for it can run on into the same closed pipe, before SIGTERM lands (141), or
+			// SIGTERM lands first (143); a command that had already exited keeps its own code (1 once truncated). Signalling first ends every
+			// such command by SIGTERM and never reports 141, which most of Pi's runs of an endless writer report. Close returns once the reader
+			// of the other pipe has left its wait, so both descriptors are closed when the signal goes.
 			_ = stdoutRead.Close()
 			_ = stderrRead.Close()
+			killProcess()
 			chunk = chunk[:max(remaining, 0)]
 		}
 		outputBytes += int64(len(chunk))
