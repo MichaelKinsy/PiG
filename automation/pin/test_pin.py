@@ -978,7 +978,7 @@ const entriesByFile = { ...backportPatches, ...packageFileBackports };
 const where = (file) => {
   const [name, ...rest] = file.split("/");
   packages[name] = join(root, name);
-  return join(root, name, name === "pi-coding-agent" && (rest[0] === "docs" || rest[0] === "schemas") ? rest.join("/") : ["dist", ...rest].join("/"));
+  return join(root, name, name === "pi-coding-agent" && (rest[0] === "docs" || rest[0] === "schemas" || rest[0] === "examples") ? rest.join("/") : ["dist", ...rest].join("/"));
 };
 for (const [file, entries] of Object.entries(entriesByFile)) {
   const path = where(file);

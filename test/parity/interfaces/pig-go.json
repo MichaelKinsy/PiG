@@ -325619,6 +325619,17 @@
       "shapeHash": "sha256:cf600243af33247cfa552d0a1ac9c92825ac0a43dada249a00390d0ccc492e4f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findGlobEscaper",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "findGlobEscaper",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*strings.Replacer"
+      },
+      "shapeHash": "sha256:2210a4b0b5447db85408863294091e2116a8350bf2f356d7976b8a153e247e14"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findParams",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "findParams",
