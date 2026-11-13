@@ -1,6 +1,6 @@
 ### Fixed
 
-- A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member is refused, as Pi refuses it ("Invalid boundary entries: Context edit replacement must be null or contain string/array content"): nothing is appended and the run does not continue. PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value. <!-- fix: c05aa12b6c -->
+- A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member is refused, as Pi refuses it ("Invalid boundary entries: Context edit replacement must be null or contain string/array content"): nothing is appended and the run does not continue. Before this fix, PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value. <!-- fix: c05aa12b6c -->
 
 ### Changed
 
