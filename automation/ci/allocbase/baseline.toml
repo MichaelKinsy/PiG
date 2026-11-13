@@ -1261,7 +1261,7 @@ allocs = 707
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkInjectedCredentialAvailability"
-allocs = 314
+allocs = 352
 
 [[benchmark]]
 package = "./coding"
@@ -1441,7 +1441,7 @@ allocs = 1064
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionRegistryMetadataRefresh"
-allocs = 968
+allocs = 1089
 
 [[benchmark]]
 package = "./coding"
@@ -2236,7 +2236,7 @@ allocs = 2
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/node-go-node"
-allocs = 5863
+allocs = 6672
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2356,7 +2356,7 @@ allocs = 12
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkReload_PackedCellWarmCache"
-allocs = 5416
+allocs = 6199
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
