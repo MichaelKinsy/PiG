@@ -112,6 +112,13 @@ func (g *rpcSettleGate) holdReload() (release func()) {
 	}
 }
 
+// reloading reports whether a reload holds stdin (holdReload).
+func (g *rpcSettleGate) reloading() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.reloads > 0
+}
+
 func (g *rpcSettleGate) releaseLocked() {
 	if !g.openLocked() {
 		return

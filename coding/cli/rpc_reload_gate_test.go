@@ -1,6 +1,9 @@
 package cli
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // Pi's session.reload() awaits session_shutdown, the loaders, session_start and resources_discover in one chain, and the command that awaited ctx.reload() goes on in the microtasks of its end (agent-session.ts:3815-3861, rpc-mode.ts:345-347), so its loop reads no stdin line inside the chain unless a handler of it waits on a timer or I/O. The gate holds input from the reload's start to the end of its hold, and admits it only while such a handler waits.
 // mutation-checked: with rpcSettleGate.openLocked ignoring the reloads the gate holds, input is admitted while a reload runs.
@@ -62,5 +65,31 @@ func TestRPCCommandFlightRunsResumptionWorkAtTheNextSuspensionOrTheAnswer(t *tes
 	answering.AfterResumption(func() { ran++ })
 	if ran != 3 {
 		t.Fatal("work left with an answered command did not run at once")
+	}
+}
+
+// An answer read while a reload runs resumes a handler of the reload's chain, and Pi runs that continuation behind the lines of the answer's chunk and the microtasks they queued (deliverRPCDialogAnswer): the response of a prompt in the chunk is written before the handler goes on. Outside a reload the answer is delivered on its line.
+// mutation-checked: with deliverRPCDialogAnswer delivering at once during a reload, the handler that asked goes on first.
+func TestRPCDialogAnswerReadDuringAReloadIsDeliveredBehindItsBatch(t *testing.T) {
+	batch := func(reloading bool) []string {
+		var order []string
+		turn := &rpcResponseTurn{write: func(any) {}}
+		turn.Begin()
+		deliverRPCDialogAnswer(turn, reloading, func() { order = append(order, "the handler that asked goes on") })
+		// The prompt behind the answer: its handler returns in the batch, and its response is a microtask of that return.
+		turn.Microtask(func() {
+			order = append(order, "the prompt's handler returned")
+			turn.Microtask(func() { order = append(order, "the prompt's response") })
+		})
+		turn.End()
+		return order
+	}
+	want := []string{"the prompt's handler returned", "the prompt's response", "the handler that asked goes on"}
+	if got := batch(true); !slices.Equal(got, want) {
+		t.Fatalf("an answer read during a reload: %q, want %q", got, want)
+	}
+	want = []string{"the handler that asked goes on", "the prompt's handler returned", "the prompt's response"}
+	if got := batch(false); !slices.Equal(got, want) {
+		t.Fatalf("an answer read outside a reload: %q, want %q", got, want)
 	}
 }

@@ -188,32 +188,6 @@ func (f *reloadRPC) expectStream(what string, want ...string) {
 	}
 }
 
-// expectChains requires the tokens up to the last token of the last chain to be an interleaving of the chains, each in its own order.
-func (f *reloadRPC) expectChains(what string, chains ...[]string) {
-	f.p.t.Helper()
-	last := chains[len(chains)-1]
-	got := f.through(last[len(last)-1])
-	next := make([]int, len(chains))
-	for _, token := range got {
-		matched := false
-		for i, chain := range chains {
-			if next[i] < len(chain) && chain[next[i]] == token {
-				next[i]++
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			f.p.t.Fatalf("%s: %q is not an interleaving of %q", what, got, chains)
-		}
-	}
-	for i, chain := range chains {
-		if next[i] != len(chain) {
-			f.p.t.Fatalf("%s: %q does not complete %q", what, got, chain)
-		}
-	}
-}
-
 // awaitDialog returns the id of the input dialog a handler opened.
 func (f *reloadRPC) awaitDialog(title string) string {
 	f.p.t.Helper()
@@ -232,6 +206,7 @@ func (f *reloadRPC) answer(dialog string) string {
 }
 
 // A handler of the reload that waits on a timer lets Pi's loop turn, so a prompt written meanwhile is read inside the reload: on the extension being replaced while a session_shutdown handler waits (the old runner is invalidated only after session_shutdown, agent-session.ts:3825-3826), and on the reloaded one while a session_start handler waits (the rebuilt runner is current before session_start, :3844-3857). It answers before the reloading command.
+// mutation-checked: with the generation superseded before its session_shutdown(reload) handler runs (Host.supersedeGenerations at that event's dispatch), the session_shutdown subtest never reads `notify shutting down g1`: the handler's ctx throws the stale message.
 func TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload(t *testing.T) {
 	t.Run("session_start", func(t *testing.T) {
 		eachReloadSDK(t, func(t *testing.T, sdk string) {
@@ -261,7 +236,8 @@ func TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload(t *testing.T)
 
 // A handler of the reload that asks the client something waits for a line of stdin: Pi's loop turns at the dialog's await and reads it, so the hold on stdin must not keep the answer out. A prompt in the chunk that carries the answer is dispatched before the handler's continuation runs, and one written before the answer is read inside the reload like any prompt read during a handler's wait.
 //
-// For the answer and a prompt in one chunk Pi's stream is the prompt's chain and then the handler's (`notify ping, response c, notify <handler went on>, ..., response b`). The two subtests require each chain in its order, the prompt on the generation Pi runs it on, and the reload's response last; they do not require the prompt's response before the handler's first notification, because PiG writes a dialog's continuation as soon as its answer is read, with or without a reload: differs from Pi here: item 1 of FOUR-DIFFERENCES.md.
+// For the answer and a prompt in one chunk Pi's stream is the prompt's chain and then the handler's: `notify ping`, `response c`, the notifications of the handler that went on, `response b` (Pi 1.5.2 with this fixture, 20 of 20 runs of each of the two cases). Pi resolves the dialog on its line and the handler goes on in a microtask behind the chunk's lines (rpc-mode.ts:784-797, 832-834; jsonl.ts:29-40), and the prompt's handler, which awaits nothing, has answered by then (agent-session.ts:2171-2176). PiG delivers an answer read during a reload behind its batch (deliverRPCDialogAnswer), and the two subtests require Pi's stream.
+// mutation-checked: with deliverRPCDialogAnswer delivering at once during a reload, both "answered in a prompt's chunk" subtests failed in 5 of 5 runs: the notification of the handler that went on was written before `response c`.
 func TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload(t *testing.T) {
 	t.Run("session_start answered", func(t *testing.T) {
 		eachReloadSDK(t, func(t *testing.T, sdk string) {
@@ -277,7 +253,7 @@ func TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload(t *testing.T) {
 			f := startReloadRPC(t, sdk, "RL_START=ask")
 			f.p.send(f.prompt("b", "/rl"))
 			f.p.send(f.answer(f.awaitDialog("start-ask")) + "\n" + f.prompt("c", "/ping"))
-			f.expectChains("the answer and a prompt in one chunk", []string{"notify ping g2", "response c success=true"}, []string{"notify start answered v g2", "response b success=true"})
+			f.expectStream("the answer and a prompt in one chunk", "notify ping g2", "response c success=true", "notify start answered v g2", "response b success=true")
 			f.finish()
 		})
 	})
@@ -298,7 +274,7 @@ func TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload(t *testing.T) {
 			f := startReloadRPC(t, sdk, "RL_SHUTDOWN=ask")
 			f.p.send(f.prompt("b", "/rl"))
 			f.p.send(f.answer(f.awaitDialog("shutdown-ask")) + "\n" + f.prompt("c", "/ping"))
-			f.expectChains("the answer and a prompt in one chunk", []string{"notify ping g1", "response c success=true"}, []string{"notify shutdown done g1", "notify started g2", "response b success=true"})
+			f.expectStream("the answer and a prompt in one chunk", "notify ping g1", "response c success=true", "notify shutdown done g1", "notify started g2", "response b success=true")
 			f.finish()
 		})
 	})

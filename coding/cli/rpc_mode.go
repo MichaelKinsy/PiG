@@ -1053,7 +1053,7 @@ commandLoop:
 		}
 
 		if env.Type == "extension_ui_response" {
-			rpcUI.HandleResponse(env.Raw)
+			deliverRPCDialogAnswer(turn, host.settle.reloading(), func() { rpcUI.HandleResponse(env.Raw) })
 			continue
 		}
 
