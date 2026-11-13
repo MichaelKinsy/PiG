@@ -548,13 +548,15 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	}
 
 	// Find results are echoed, not replaced with a success token: a failed search must fail the scenario.
-	if strings.Contains(lastText, "Run: find txt files") || strings.Contains(lastText, "Run: find path glob") || strings.Contains(lastText, "Run: find dot slash glob") || strings.Contains(lastText, "Run: find scoped ignores") {
+	if strings.Contains(lastText, "Run: find txt files") || strings.Contains(lastText, "Run: find path glob") || strings.Contains(lastText, "Run: find dot slash glob") || strings.Contains(lastText, "Run: find anchored glob") || strings.Contains(lastText, "Run: find scoped ignores") {
 		pattern := "*.txt"
 		switch {
 		case strings.Contains(lastText, "Run: find path glob"):
 			pattern = "src/**/*.spec.ts"
 		case strings.Contains(lastText, "Run: find dot slash glob"):
 			pattern = "./src/**/*.spec.ts"
+		case strings.Contains(lastText, "Run: find anchored glob"):
+			pattern = "{src,parent}/**/*.spec.ts"
 		case strings.Contains(lastText, "Run: find scoped ignores"):
 			pattern = "**/*.txt"
 		}
@@ -686,7 +688,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		if strings.Contains(currentUserText, "Run: grep hello") {
 			return "text", "found", nil
 		}
-		if strings.Contains(currentUserText, "Run: find txt files") || strings.Contains(currentUserText, "Run: find path glob") || strings.Contains(currentUserText, "Run: find dot slash glob") || strings.Contains(currentUserText, "Run: find scoped ignores") {
+		if strings.Contains(currentUserText, "Run: find txt files") || strings.Contains(currentUserText, "Run: find path glob") || strings.Contains(currentUserText, "Run: find dot slash glob") || strings.Contains(currentUserText, "Run: find anchored glob") || strings.Contains(currentUserText, "Run: find scoped ignores") {
 			// fd traversal order is unspecified; upstream's find regression tests sort the paths too.
 			paths := strings.Split(lastText, "\n")
 			slices.Sort(paths)
