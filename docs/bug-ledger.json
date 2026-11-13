@@ -7017,6 +7017,31 @@
       ]
     },
     {
+      "id": "BF-349959b",
+      "title": "CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's \"Update branch\"…",
+      "symptom": "CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's \"Update branch\" button adds.",
+      "rootCause": "The pre-flight's signoff check failed PR #452 for its \"Merge branch 'main' into ...\" commits. GitHub's \"Update branch\" makes them: two parents, committed by GitHub \u003cnoreply@github.com\u003e, signed by GitHub, and without a Signed-off-by line, which nobody can add. Every pull request kept current that way was rejected.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's \"Update branch\" button adds. That commit is GitHub's and cannot carry a `Signed-off-by` line, so the `signoff` check failed every pull request kept current that way. The check now exempts it, and only it: two parents, committed and verified by GitHub, the second parent on the base branch, and the tree git's own merge of the two parents writes. A merge made by hand, a merge of another branch and a merge with a conflict resolution or an edit still need the line, as does every commit the pull request adds.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "349959b6ff",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/merges_test.go::TestAllCommitsParametersAreValidated",
+        "automation/ci/preflight/merges_test.go::TestSignoffExemptsOnlyGitHubsUpdateBranchMerge",
+        "automation/ci/preflight/merges_test.go::TestSignoffIsUndecidedWhenGitCannotTellAboutAMerge",
+        "automation/ci/preflight/scanner_test.go::TestMergeTree"
+      ]
+    },
+    {
       "id": "BF-34aa421",
       "title": "fix(agent): hand the stream function Pi's messages; repair the tool flow in the provider path",
       "symptom": "fix(agent): hand the stream function Pi's messages; repair the tool flow in the provider path",

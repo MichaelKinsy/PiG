@@ -125,7 +125,10 @@ func TestPaneMatchesCaptureSurface_RequiresConfiguredMarkers(t *testing.T) {
 
 func TestCropCapture_EndRegexMatchesVariableSuffix(t *testing.T) {
 	pane := "$ expr 20 + 22\n\n42\n\nTook 0.1s\n\n\n42\n────"
-	got := cropCapture(pane, "$ expr 20 + 22", "", `Took \d+\.\ds`, false)
+	got, err := cropCapture(pane, "$ expr 20 + 22", "", `Took \d+\.\ds`, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := "$ expr 20 + 22\n\n42\n\nTook 0.1s"
 	if got != want {
 		t.Fatalf("end_regex crop mismatch\ngot:  %q\nwant: %q", got, want)
@@ -134,7 +137,10 @@ func TestCropCapture_EndRegexMatchesVariableSuffix(t *testing.T) {
 
 func TestCropCapture_EndRegexAlsoMatchesZeroVariant(t *testing.T) {
 	pane := "$ expr 20 + 22\n\n42\n\nTook 0.0s\n\n\n42\n────"
-	got := cropCapture(pane, "$ expr 20 + 22", "", `Took \d+\.\ds`, false)
+	got, err := cropCapture(pane, "$ expr 20 + 22", "", `Took \d+\.\ds`, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := "$ expr 20 + 22\n\n42\n\nTook 0.0s"
 	if got != want {
 		t.Fatalf("end_regex crop mismatch\ngot:  %q\nwant: %q", got, want)

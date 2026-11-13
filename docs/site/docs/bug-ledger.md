@@ -256,6 +256,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-33fe10d](#bf-33fe10d) | `ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33fe10d-2](#bf-33fe10d-2) | Live-Pi oracles `TestExtensionSelectorMatchesPi` (4,320 probes) and `TestExtensionInputMatchesPi` (1,144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3452432](#bf-3452432) | Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-349959b](#bf-349959b) | CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch"… | PiG's own defect | All platforms | Unreleased |
 | [BF-34aa421](#bf-34aa421) | fix(agent): hand the stream function Pi's messages; repair the tool flow in the provider path | PiG's own defect | All platforms | Unreleased |
 | [BF-34b8e92](#bf-34b8e92) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-34bcd58](#bf-34bcd58) | OpenAI Responses prices a response that reports no `service_tier` at the requested tier, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
@@ -4904,6 +4905,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ba9c37b247` (2026-10-06, #171), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `3452432f8b` (2026-10-08, #190), `4610c9f4a1` (2026-10-08, #189)
 - **Tests:** `coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure`, `coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure` and 34 more in docs/bug-ledger.json
 - **Release note:** Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with `(cancelled)`. Escape had left the command running until it finished on its own. While an agent run streams, Escape still aborts the run and leaves a command started during it running, as Pi does.
+
+### BF-349959b
+
+**CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch"…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch" button adds.
+- **Root cause:** The pre-flight's signoff check failed PR #452 for its "Merge branch 'main' into ..." commits. GitHub's "Update branch" makes them: two parents, committed by GitHub <noreply@github.com>, signed by GitHub, and without a Signed-off-by line, which nobody can add. Every pull request kept current that way was rejected.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `349959b6ff` (2026-11-12)
+- **Tests:** `automation/ci/preflight/merges_test.go::TestAllCommitsParametersAreValidated`, `automation/ci/preflight/merges_test.go::TestSignoffExemptsOnlyGitHubsUpdateBranchMerge`, `automation/ci/preflight/merges_test.go::TestSignoffIsUndecidedWhenGitCannotTellAboutAMerge`, `automation/ci/preflight/scanner_test.go::TestMergeTree`
+- **Release note:** CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch" button adds. That commit is GitHub's and cannot carry a `Signed-off-by` line, so the `signoff` check failed every pull request kept current that way. The check now exempts it, and only it: two parents, committed and verified by GitHub, the second parent on the base branch, and the tree git's own merge of the two parents writes. A merge made by hand, a merge of another branch and a merge with a conflict resolution or an edit still need the line, as does every commit the pull request adds.
 
 ### BF-34aa421
 

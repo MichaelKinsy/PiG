@@ -259,10 +259,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	// keys+settle fields; canonical staged scenarios use [[tmux.steps]].
 	if operationErr == nil && len(cfg.Steps) > 0 {
 		for _, step := range cfg.Steps {
-			timeout := time.Duration(step.WaitTimeoutSeconds) * time.Second
-			if timeout <= 0 {
-				timeout = 5 * time.Second
-			}
+			timeout := stepWaitTimeout(step)
 			baseline := capturePaneHistory(ctx, session, transcriptPath)
 			if err := sendTmuxKeys(ctx, session, step.Keys); err != nil {
 				operationErr = err
@@ -310,7 +307,15 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		}
 	}
 
-	pane, escaped, err := capturePanePair(ctx, session, cfg)
+	use := scenarioCaptureUse(sc)
+	pane, escaped, err := capturePanePair(ctx, session, cfg, use)
+	if errors.Is(err, errScreenNeverStable) {
+		return Result{
+			RuntimeMs: elapsed,
+			ReadyOK:   readyOK,
+			Err:       finalCaptureError(sc.Name, bin.Label, cfg, err),
+		}
+	}
 	if err != nil {
 		return Result{
 			RuntimeMs: elapsed,
@@ -318,6 +323,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 			Err:       fmt.Errorf("capture-pane: %w (%s)", err, tmuxServerReport(ctx, session)),
 		}
 	}
+	pane, escaped, cropErr := cropCaptures(cfg, use, pane, escaped)
 	if !readyOK && paneMatchesCaptureSurface(pane, cfg) {
 		readyOK = true
 	}
@@ -340,16 +346,12 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 
 	result = Result{
 		ChangelogSource: changelogSource,
-		Output:          pane,
-		Escaped:         escaped,
 		ExitCode:        exitCode,
 		RuntimeMs:       elapsed,
 		ReadyOK:         readyOK,
 		Err:             operationErr,
 	}
-	if result.Err == nil && readyOK && cfg.CaptureStart != "" && !strings.Contains(pane, cfg.CaptureStart) {
-		result.Err = fmt.Errorf("capture_start %q absent after scenario steps", cfg.CaptureStart)
-	}
+	result = withFinalCaptures(result, sc.Name, bin.Label, cfg, use, pane, escaped, cropErr)
 	// Coverage-only: Go integration coverage flushes on a clean process exit, but
 	// an interactive pig sits at its prompt and is SIGKILLed at teardown, losing
 	// its counters. When GOCOVERDIR is set, drive a clean quit after capture so
@@ -814,24 +816,18 @@ func capturePaneArgs(session string, escaped bool, cfg TmuxDriverConfig) []strin
 	return append(args, "-t", session, "-p")
 }
 
-func capturePanePair(ctx context.Context, session string, cfg TmuxDriverConfig) (string, string, error) {
-	//nolint:gosec // G204 (class a): program is literal tmux; args are fixed capture-pane with a harness-generated session.
-	plainOut, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, false, cfg)...)...).Output()
-	if err != nil {
-		return "", "", err
+// capturePanePair takes the final capture of the pane: the plain and the escaped screen, uncropped, of one still frame (see captureStablePair).
+func capturePanePair(ctx context.Context, session string, cfg TmuxDriverConfig, use captureUse) (string, string, error) {
+	read := func(escaped bool) (string, error) {
+		//nolint:gosec // G204 (class a): program is literal tmux; args are fixed capture-pane (plain or escaped) with a harness-generated session.
+		out, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, escaped, cfg)...)...).Output()
+		return string(out), err
 	}
-	//nolint:gosec // G204 (class a): program is literal tmux; args are fixed capture-pane (escape) with a harness-generated session.
-	escapedOut, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, true, cfg)...)...).Output()
-	if err != nil {
-		return "", "", err
+	cropsCleanly := func(plain, escaped string) bool {
+		_, _, err := cropCaptures(cfg, use, plain, escaped)
+		return err == nil
 	}
-	plain := string(plainOut)
-	escaped := string(escapedOut)
-	if cfg.CaptureStart != "" || cfg.CaptureEnd != "" || cfg.CaptureEndRegex != "" {
-		plain = cropCapture(plain, cfg.CaptureStart, cfg.CaptureEnd, cfg.CaptureEndRegex, cfg.CaptureStartLast)
-		escaped = cropCapture(escaped, cfg.CaptureStart, cfg.CaptureEnd, cfg.CaptureEndRegex, cfg.CaptureStartLast)
-	}
-	return plain, escaped, nil
+	return captureStablePair(ctx, wallClock, read, cropsCleanly, finalCaptureBudget(cfg), tmuxQuiescencePoll)
 }
 
 // sessionRegistry tracks every tmux session created by Run() so we can
@@ -1038,16 +1034,18 @@ func isSpecialTmuxKey(key string) bool {
 	}
 }
 
-func cropCapture(s, start, end, endRegex string, startLast bool) string {
+// cropCapture cuts a capture to the scenario's capture markers. A capture_start that is not in the capture is an error: returning the whole screen instead would compare a different region than the scenario names.
+func cropCapture(s, start, end, endRegex string, startLast bool) (string, error) {
 	from := 0
 	if start != "" {
 		idx := strings.Index(s, start)
 		if startLast {
 			idx = strings.LastIndex(s, start)
 		}
-		if idx >= 0 {
-			from = idx
+		if idx < 0 {
+			return s, fmt.Errorf("capture_start %q not found", start)
 		}
+		from = idx
 	}
 	to := len(s)
 	if end != "" {
@@ -1062,9 +1060,9 @@ func cropCapture(s, start, end, endRegex string, startLast bool) string {
 		}
 	}
 	if from > to {
-		return s
+		return s, nil
 	}
-	return strings.TrimRight(s[from:to], "\n")
+	return strings.TrimRight(s[from:to], "\n"), nil
 }
 
 // tmuxServerReport states what the isolated tmux server looks like now, so a capture that fails because the whole server vanished is told apart from one session ending: the recorded server process, the socket file, the sessions that remain, and whether the named session is among them.

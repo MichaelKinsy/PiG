@@ -34,6 +34,14 @@ type fakeGitHub struct {
 	issuesDown bool
 	searchDown bool
 	issuesGone bool
+	// pulls gives a PR a head and a commit list of its own (the JSON of the API's list).
+	pulls map[int]fakePull
+}
+
+type fakePull struct {
+	head    string
+	count   int
+	commits string
 }
 
 type fakeIssue struct {
@@ -102,12 +110,18 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if g.unknown {
 			mergeable = nil
 		}
+		head, count := fmt.Sprintf("head%d", pr), map[bool]int{true: maxCommits + 1, false: 1}[g.big[pr]]
+		if p, ok := g.pulls[pr]; ok {
+			head, count = p.head, p.count
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"number": pr, "state": "open", "body": g.bodies[pr], "mergeable": mergeable, "commits": map[bool]int{true: maxCommits + 1, false: 1}[g.big[pr]], "changed_files": 1,
-			"head": map[string]string{"sha": fmt.Sprintf("head%d", pr)}, "base": map[string]string{"sha": "old-base", "ref": "main"},
+			"number": pr, "state": "open", "body": g.bodies[pr], "mergeable": mergeable, "commits": count, "changed_files": 1,
+			"head": map[string]string{"sha": head}, "base": map[string]string{"sha": "old-base", "ref": "main"},
 		})
 	case rest == "/files":
 		_, _ = fmt.Fprint(w, `[{"filename":"a.go","status":"modified","sha":"blob","patch":"@@ -1 +1,2 @@\n x\n+y"}]`)
+	case rest == "/commits" && g.pulls[pr].commits != "":
+		_, _ = fmt.Fprint(w, g.pulls[pr].commits)
 	case rest == "/commits":
 		_, _ = fmt.Fprint(w, `[{"sha":"c1c1c1c1c1","commit":{"message":"a: b","verification":{"verified":true,"reason":"valid"}}}]`)
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/compare/"):
