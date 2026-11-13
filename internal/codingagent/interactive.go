@@ -803,7 +803,7 @@ func (m *InteractiveMode) runScheduledRender() {
 		return
 	}
 	m.tuiInst.RunDueRender()
-	if due := m.frameDue.Load(); due != 0 && time.Now().UnixNano() >= due {
+	if due := m.frameDue.Load(); due != 0 && time.Until(time.Unix(0, due)) <= 0 {
 		// RunDueRender ran the frame of that deadline; a frame requested while it ran has a later one.
 		m.frameDue.CompareAndSwap(due, 0)
 	}
