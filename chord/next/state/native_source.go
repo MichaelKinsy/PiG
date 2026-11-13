@@ -221,9 +221,9 @@ func (f *FollowedSource[T]) Watch(ctx context.Context) (chord.NativeWatchHandle[
 	return watch, nil
 }
 
-// OpenWatch is Watch without the Promise. On a failed source it opens at the last good value and its first call is the
+// openWatch is OpenWatch inside a section of the host. On a failed source it opens at the last good value and its first call is the
 // failure; with no value to start at it returns the failure. An ended source gives a watch that has ended.
-func (f *FollowedSource[T]) OpenWatch(ctx context.Context) (*chord.NativeWatch[T], error) {
+func (f *FollowedSource[T]) openWatch(ctx context.Context) (*chord.NativeWatch[T], error) {
 	batch := f.batch.Load()
 	if batch == nil {
 		value, err := startValue(f.impl.Start())
@@ -267,10 +267,10 @@ func (f *FollowedSource[T]) OpenWatch(ctx context.Context) (*chord.NativeWatch[T
 	return watch, nil
 }
 
-// Observe attaches a synchronous observer at the current value (Durable's observeXXX); it counts as following, so a lazy
+// observe is Observe inside a section of the host: the observer is attached at the current value; it counts as following, so a lazy
 // value is computed in the batch that changed it. It returns the failure when there is no value to start at; aborting ctx
 // detaches it (aborted); the source's end detaches it too (ended), its abort listener removed.
-func (f *FollowedSource[T]) Observe(observer NativeObserver[T], ctx context.Context) (NativeObservation[T], error) {
+func (f *FollowedSource[T]) observe(observer NativeObserver[T], ctx context.Context) (NativeObservation[T], error) {
 	if batch := f.batch.Load(); batch != nil {
 		if err := batch.AssertOutside("observe"); err != nil {
 			return NativeObservation[T]{}, err
@@ -318,9 +318,9 @@ func (f *FollowedSource[T]) Observe(observer NativeObserver[T], ctx context.Cont
 	return NativeObservation[T]{Value: value, Detach: func() { f.Unsubscribe(observer) }}, nil
 }
 
-// Subscribe feeds observer every call from now on, inside each batch, also while the source has no value (Chord's own
+// subscribe is Subscribe inside a section of the host: every call from now on, inside each batch, also while the source has no value (Chord's own
 // followers: retryOn). Nothing is delivered for the current value.
-func (f *FollowedSource[T]) Subscribe(observer NativeObserver[T]) {
+func (f *FollowedSource[T]) subscribe(observer NativeObserver[T]) {
 	if f.batch.Load() == nil {
 		return
 	}
@@ -558,4 +558,46 @@ func (f *FollowedSource[T]) settleFollowers() {
 	f.hasShown, f.shown = false, shown[T]{}
 	f.mu.Unlock()
 	f.impl.Unfollowed()
+}
+
+// OpenWatch is Watch without the Promise. On a failed source it opens at the last good value and its first call is the
+// failure; with no value to start at it returns the failure. An ended source gives a watch that has ended.
+//
+// Forced Go difference. Pi reads the source, records what its followers have and registers the watch in one synchronous
+// turn of the one event loop (native-source.ts openWatch). A Go caller outside the host's loop (a native's open, the
+// goroutine of a request) took the read as a section of its own and registered after it: a commit between the two changed
+// a source nobody followed yet, which lists no frame, and the watch stayed at the older value for good. The read and the
+// registration are one section of the host: inline for a caller in one, and on a batch without sections.
+func (f *FollowedSource[T]) OpenWatch(ctx context.Context) (watch *chord.NativeWatch[T], err error) {
+	batch := f.batch.Load()
+	if batch == nil || batch.InSection() {
+		return f.openWatch(ctx)
+	}
+	batch.Section(func() { watch, err = f.openWatch(ctx) })
+	return watch, err
+}
+
+// Observe attaches a synchronous observer at the current value (Durable's observeXXX); it counts as following, so a lazy
+// value is computed in the batch that changed it. It returns the failure when there is no value to start at; aborting ctx
+// detaches it (aborted); the source's end detaches it too (ended), its abort listener removed. As OpenWatch, its read and
+// its registration are one section of the host.
+func (f *FollowedSource[T]) Observe(observer NativeObserver[T], ctx context.Context) (observation NativeObservation[T], err error) {
+	batch := f.batch.Load()
+	if batch == nil || batch.InSection() {
+		return f.observe(observer, ctx)
+	}
+	batch.Section(func() { observation, err = f.observe(observer, ctx) })
+	return observation, err
+}
+
+// Subscribe feeds observer every call from now on, inside each batch, also while the source has no value (Chord's own
+// followers: retryOn). Nothing is delivered for the current value. As OpenWatch, its read and its registration are one
+// section of the host.
+func (f *FollowedSource[T]) Subscribe(observer NativeObserver[T]) {
+	batch := f.batch.Load()
+	if batch == nil || batch.InSection() {
+		f.subscribe(observer)
+		return
+	}
+	batch.Section(func() { f.subscribe(observer) })
 }
