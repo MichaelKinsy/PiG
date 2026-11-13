@@ -5,7 +5,9 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -64,8 +66,12 @@ type builder struct {
 	rank    map[*Entry]int
 	// prior is the committed ledger. Its entries stand in for history this clone lacks; see inherit.
 	prior []Entry
-	// present holds the 10-character prefix of every commit reachable from HEAD.
-	present map[string]bool
+	// reach is every commit reachable from HEAD.
+	reach history
+	// divs is the divergence records of the tree, by number.
+	divs map[string]divergence
+	// wrote caches the commit hashes each commit wrote into the committed ledger; see ledgerHashes.
+	wrote map[string]map[string]bool
 	// kept marks the entries copied from prior; their commits and tests are not recomputed.
 	kept map[*Entry]bool
 	// anchor is the commit that wrote each release note; its message may cite divergences of the other notes it wrote.
@@ -78,9 +84,27 @@ type builder struct {
 	replaced map[string]string
 }
 
+// history is the full hashes of the commits HEAD reaches, sorted. A name is looked up among them alone: what git makes of an abbreviation, and whether it finds a commit at all, depends on every object the clone holds, the commits of other branches included, and the ledger of a commit must not differ between two clones of it.
+type history []string
+
+// has reports whether the history holds a commit that hash names in full or abbreviates.
+func (h history) has(hash string) bool {
+	i, _ := slices.BinarySearch(h, hash)
+	return i < len(h) && strings.HasPrefix(h[i], hash)
+}
+
+// find returns the one commit of the history that name names in full or abbreviates.
+func (h history) find(name string) (string, bool) {
+	i, _ := slices.BinarySearch(h, name)
+	if name == "" || i >= len(h) || !strings.HasPrefix(h[i], name) || (i+1 < len(h) && strings.HasPrefix(h[i+1], name)) {
+		return "", false
+	}
+	return h[i], true
+}
+
 // inHistory reports whether the commit named by a short hash is reachable from HEAD.
 func (b *builder) inHistory(hash string) bool {
-	return len(hash) >= 10 && b.present[hash[:10]]
+	return len(hash) >= 10 && b.reach.has(hash)
 }
 
 // inherit returns a copy of the committed entry that matches, when that entry names a commit missing from this history. A squash landing replaces the development commits with one commit, so neither the fix commits, their tests, nor the class their messages imply can be recomputed there; the committed entry, generated on the full history, is kept, less any test the tree no longer declares. On the history that holds every commit nothing is inherited and every entry is recomputed.
@@ -93,6 +117,10 @@ func (b *builder) inherit(match func(Entry) bool) *Entry {
 		e.Commits = slices.Clone(p.Commits)
 		// A test the tree no longer declares (a port that renamed or retired it) cannot be recomputed from history either, so the entry follows moved-tests.txt to the test it became, or drops it instead of failing the check on a guard that was replaced.
 		e.Tests = recordedTests(b.r.root, b.moved, p.Tests)
+		// A paragraph that reports how the fix was checked is not its cause (see readMessage), and the message that could say more is not in this history.
+		if e.CauseFrom == "commit" && evidenceHead.MatchString(e.RootCause) {
+			e.RootCause, e.CauseFrom = "", ""
+		}
 		return &e
 	}
 	return nil
@@ -235,11 +263,11 @@ func build(root, since string) (*Ledger, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.present = map[string]bool{}
-	for h := range strings.SplitSeq(strings.TrimSpace(all), "\n") {
-		if len(h) >= 10 {
-			b.present[h[:10]] = true
-		}
+	b.reach = strings.Fields(all)
+	slices.Sort(b.reach)
+	divPath := ""
+	if p, text, ok := divergenceFile(root); ok {
+		divPath, b.divs = p, parseDivergences(text)
 	}
 	list, err := r.git("log", "--no-merges", "--format=%H %at", base+"..HEAD")
 	if err != nil {
@@ -271,12 +299,7 @@ func build(root, since string) (*Ledger, error) {
 	if err := b.checkAttribution(); err != nil {
 		return nil, err
 	}
-	divs := map[string]divergence{}
-	divPath := ""
-	if p, text, ok := divergenceFile(root); ok {
-		divPath, divs = p, parseDivergences(text)
-	}
-	if err := b.divergenceEntries(divs, divPath); err != nil {
+	if err := b.divergenceEntries(b.divs, divPath); err != nil {
 		return nil, err
 	}
 	exempt, err := b.commitEntries()
@@ -284,7 +307,7 @@ func build(root, since string) (*Ledger, error) {
 		return nil, err
 	}
 	sort.SliceStable(b.entries, func(i, j int) bool { return b.rank[b.entries[i]] < b.rank[b.entries[j]] })
-	l := &Ledger{Since: since, Exempt: exempt}
+	l := &Ledger{Since: since, Exempt: exempt, reach: b.reach}
 	used := map[string]int{}
 	for _, e := range b.entries {
 		if b.kept[e] {
@@ -299,9 +322,10 @@ func build(root, since string) (*Ledger, error) {
 		if e.Tests == nil {
 			e.Tests = []string{}
 		}
+		b.classify(e)
 		l.Entries = append(l.Entries, *e)
 	}
-	refs, err := b.divergenceRefs(divs, divPath, l.Entries)
+	refs, err := b.divergenceRefs(b.divs, divPath, l.Entries)
 	if err != nil {
 		return nil, err
 	}
@@ -422,19 +446,14 @@ func (b *builder) releaseNoteEntries(cur []bullet, first map[string]intro) error
 		}
 	}
 	for _, bl := range uniq {
-		kept := b.inherit(func(p Entry) bool {
-			return p.Origin == "release note" && p.Note == bl.Text && p.FixedIn == bl.Version
-		})
-		// The fold of a fragment into CHANGELOG.md moves the bullet from "Unreleased" to its release, and a marker re-pointed at the squash that replaced the fix commits names a commit of dozens of files. Neither the squash nor the new version says which tests guard this fix, so the entry the fragment had keeps its own.
-		if kept == nil && bl.Version != "Unreleased" {
-			kept = b.inherit(func(p Entry) bool {
-				return p.Origin == "release note" && p.Note == bl.Text && p.FixedIn == "Unreleased"
-			})
-			if kept != nil {
-				kept.FixedIn = bl.Version
-			}
+		kept, err := b.keptNote(bl)
+		if err != nil {
+			return err
 		}
 		if kept != nil {
+			if err := b.applyStated(kept, bl); err != nil {
+				return err
+			}
 			b.entries = append(b.entries, kept)
 			b.kept[kept] = true
 			b.rank[kept] = keptRank(kept)
@@ -445,7 +464,7 @@ func (b *builder) releaseNoteEntries(cur []bullet, first map[string]intro) error
 		rank := pendingRank
 		var messages, fixMessages []string
 		if len(bl.Fix) > 0 {
-			if err := b.explicitFix(e, bl.Fix, &messages, &rank); err != nil {
+			if err := b.explicitFix(e, bl, &messages, &rank); err != nil {
 				return err
 			}
 			fixMessages = messages
@@ -475,7 +494,11 @@ func (b *builder) releaseNoteEntries(cur []bullet, first map[string]intro) error
 					fixMessages = append(fixMessages, c.Message)
 				}
 			}
+			// A bullet that names its tests takes no test from a commit, so no commit is read for them.
 			for _, c := range append(slices.Clone(fix), testers...) {
+				if len(bl.Tests) > 0 {
+					break
+				}
 				tests, err := b.testsOf(e, c.Hash, c.Message)
 				if err != nil {
 					return err
@@ -490,10 +513,11 @@ func (b *builder) releaseNoteEntries(cur []bullet, first map[string]intro) error
 		}
 		symptom, _ := symptomOf(bl.Text)
 		e.Symptom = symptom
-		e.Impact = impactOf(bl.Text)
-		e.Platform = platformOf(bl.Text)
 		e.RootCause, e.CauseFrom = rootCauseOf(messages, bl.Text)
 		e.Class = classOf(bl.Text, fixMessages)
+		if err := b.applyStated(e, bl); err != nil {
+			return err
+		}
 		b.entries = append(b.entries, e)
 		b.rank[e] = rank
 	}
@@ -540,10 +564,9 @@ func (b *builder) replacedCommits() (map[string]string, error) {
 	return b.replaced, nil
 }
 
-// resolveFix returns the commit a fix marker names. A commit HEAD reaches is itself. A commit a squash removed from the history is the squash commit whose "Fix-Commit: <full sha>" trailer names it, so the ledger attributes the squash's diff to the entry; a marker whose prefix fits the trailers of two different commits resolves to neither. A commit that exists in the clone but is neither reachable nor named by a trailer resolves as it did before, to itself.
+// resolveFix returns the commit of HEAD's history that a fix marker names. A commit HEAD reaches is itself. A commit a squash removed from the history is the squash commit whose "Fix-Commit: <full sha>" trailer names it, so the ledger attributes the squash's diff to the entry; a marker whose prefix fits the trailers of two different commits resolves to neither. Any other name resolves to nothing, whether or not the clone holds a commit of that name: one clone holds the commits of other branches and another does not, and both must write the same ledger.
 func (b *builder) resolveFix(name string) (string, bool) {
-	full, ok := b.r.resolve(name)
-	if ok && b.inHistory(full) {
+	if full, ok := b.reach.find(name); ok {
 		return full, true
 	}
 	if len(name) >= 7 {
@@ -563,15 +586,89 @@ func (b *builder) resolveFix(name string) (string, bool) {
 			}
 		}
 	}
-	return full, ok
+	return "", false
 }
 
-// explicitFix records the commits a release note names as its fix, with the tests each adds or names.
-func (b *builder) explicitFix(e *Entry, names []string, messages *[]string, rank *int) error {
-	for _, name := range names {
+// keptNote returns the committed entry of a bullet when that entry stands in for history this clone lacks (see inherit), and nil when the entry is computed from the history.
+//
+// A bullet whose fix marker names commits of HEAD's history is computed from them, and its committed entry does not stand in. An entry generated before a rebase or a re-pick names the commits of the branch as it was, which no reader of this history can find, while the marker names the commits that replaced them; keeping the entry kept the old hashes for ever. One commit a marker names is not the fix itself: the squash that landed the fix together with its ledger entry, at which a release fold re-points the marker so that it stays reachable. That commit's diff wrote the entry's own commit into the committed ledger. The entry then keeps the commits and tests of its own fix, because the squash's diff is everything it landed.
+func (b *builder) keptNote(bl bullet) (*Entry, error) {
+	recorded := func(version string) func(Entry) bool {
+		return func(p Entry) bool { return p.Origin == "release note" && p.Note == bl.Text && p.FixedIn == version }
+	}
+	kept := b.inherit(recorded(bl.Version))
+	// The fold of a fragment into CHANGELOG.md moves the bullet from "Unreleased" to its release. The new version does not say which tests guard this fix, so the entry the fragment had keeps its own.
+	if kept == nil && bl.Version != "Unreleased" {
+		if kept = b.inherit(recorded("Unreleased")); kept != nil {
+			kept.FixedIn = bl.Version
+		}
+	}
+	if kept == nil || len(bl.Fix) == 0 {
+		return kept, nil
+	}
+	for _, name := range bl.Fix {
 		full, ok := b.resolveFix(name)
 		if !ok {
-			return fmt.Errorf("release note %q: the fix marker names %s, which is not a commit", e.Title, name)
+			// The marker names a commit this history lacks, as the entry does: a squash landing whose marker was left as it was.
+			return kept, nil
+		}
+		wrote, err := b.ledgerHashes(full)
+		if err != nil {
+			return nil, err
+		}
+		if slices.ContainsFunc(kept.Commits, func(c Commit) bool { return !b.inHistory(c.Hash) && wrote[c.Hash] }) {
+			return kept, nil
+		}
+	}
+	return nil, nil
+}
+
+// applyStated gives an entry what its bullet states outright, as written and in place of whatever the fix commits say: the cause of a cause marker and the tests of a tests marker.
+func (b *builder) applyStated(e *Entry, bl bullet) error {
+	e.stated = stated{file: bl.File}
+	if bl.Cause != "" {
+		e.RootCause, e.CauseFrom, e.stated.cause = bl.Cause, "release note", true
+	}
+	if len(bl.Tests) == 0 {
+		return nil
+	}
+	e.Tests, e.stated.tests = nil, true
+	for _, name := range bl.Tests {
+		ref, ok := statedTest(b.root, b.idx, b.moved, nil, name)
+		switch {
+		case ok && !slices.Contains(e.Tests, ref):
+			e.Tests = append(e.Tests, ref)
+		case !ok && bl.File != "CHANGELOG.md":
+			// A fragment can still be edited. CHANGELOG.md is not edited after the fold, so there a test a later change retired is dropped as a recorded test is.
+			return fmt.Errorf("%s: the tests marker of %q names %s, which is no test of the tree: write a Go test name that one file declares, <file>::<Name>, a parity scenario <area>/<nn-name>, or the path of a test file", bl.File, clip(bl.Text, 80), name)
+		}
+	}
+	slices.Sort(e.Tests)
+	return nil
+}
+
+// classify sets the impact and the platform of an entry from the text they are read from: the release note, the title of the fix commit, or the symptom of the divergence record. Both are functions of that text alone, so an entry kept from the committed ledger takes them again from the rules as they are now; a kept class would outlive the rule that chose it.
+func (b *builder) classify(e *Entry) {
+	text := e.Note
+	switch e.Origin {
+	case "commit":
+		text = e.Symptom
+	case "divergence":
+		d, ok := b.divs[e.Divergence]
+		if !ok {
+			return
+		}
+		text = d.symptom()
+	}
+	e.Impact, e.Platform = impactOf(text), platformOf(text)
+}
+
+// explicitFix records the commits a release note names as its fix, with the tests each adds or names. A bullet that names its tests takes none from a commit, so a commit is not read for them.
+func (b *builder) explicitFix(e *Entry, bl bullet, messages *[]string, rank *int) error {
+	for _, name := range bl.Fix {
+		full, ok := b.resolveFix(name)
+		if !ok {
+			return fmt.Errorf("%s: the fix marker of %q names %s, which is not a commit HEAD reaches, and no commit of HEAD's history carries a \"Fix-Commit: <full sha>\" trailer for it (a rebase, squash or amend replaced it): name the commit that replaced it, git log --oneline -- <the code the bullet describes>", bl.File, clip(bl.Text, 80), name)
 		}
 		if err := b.addCommit(e, full); err != nil {
 			return err
@@ -581,6 +678,12 @@ func (b *builder) explicitFix(e *Entry, names []string, messages *[]string, rank
 			return err
 		}
 		*messages = append(*messages, msg)
+		if n := b.rankOf(full); n < *rank {
+			*rank = n
+		}
+		if len(bl.Tests) > 0 {
+			continue
+		}
 		tests, err := b.testsOf(e, full, msg)
 		if err != nil {
 			return err
@@ -589,9 +692,6 @@ func (b *builder) explicitFix(e *Entry, names []string, messages *[]string, rank
 			if !slices.Contains(e.Tests, t) {
 				e.Tests = append(e.Tests, t)
 			}
-		}
-		if n := b.rankOf(full); n < *rank {
-			*rank = n
 		}
 	}
 	slices.Sort(e.Tests)
@@ -946,7 +1046,7 @@ func (b *builder) commitEntries() (map[string]int, error) {
 			title = "Fix in shipped code"
 		}
 		e.Title, e.Symptom = clip(title, 110), title
-		e.Impact, e.Platform, e.Class = impactOf(title), platformOf(title), ClassOwn
+		e.Class = ClassOwn
 		if e.Tests, err = b.testsOf(e, c.hash, msg); err != nil {
 			return nil, err
 		}
@@ -968,26 +1068,45 @@ func (b *builder) commitEntries() (map[string]int, error) {
 // ledgerHashLine matches a commit hash of an entry in the JSON ledger.
 var ledgerHashLine = regexp.MustCompile(`^\s*"hash":\s*"([0-9a-f]{10})"`)
 
-// joinLanded adds commit hash to every inherited entry that hash wrote a commit of into the committed ledger, and reports whether it found one. A squash merge replaces the commits of a pull request with one commit titled after the pull request. That commit carries the ledger the pull request regenerated, which names the pull request's own commits, so the squash commit is the landing of those entries, not a bug without one. Pull request checks run before the squash, so without this every fix-titled squash merge would fail the check of the branch it lands on.
-func (b *builder) joinLanded(hash string) (bool, error) {
-	diff, err := b.r.git("show", "--format=", "-U0", hash, "--", jsonPath)
-	if err != nil {
-		return false, err
+// ledgerHashes returns the commit hashes that commit hash wrote into the committed ledger: the entries it landed. For a merge it is what the merge brought in over its first parent.
+func (b *builder) ledgerHashes(hash string) (map[string]bool, error) {
+	if written, ok := b.wrote[hash]; ok {
+		return written, nil
 	}
 	written := map[string]bool{}
-	for l := range strings.SplitSeq(diff, "\n") {
+	err := b.r.gitLines([]string{"show", "--format=", "-U0", "-m", "--first-parent", hash, "--", jsonPath}, func(l string) {
 		if rest, ok := strings.CutPrefix(l, "+"); ok {
 			if m := ledgerHashLine.FindStringSubmatch(rest); m != nil {
 				written[m[1]] = true
 			}
 		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if b.wrote == nil {
+		b.wrote = map[string]map[string]bool{}
+	}
+	b.wrote[hash] = written
+	return written, nil
+}
+
+// joinLanded adds commit hash to every inherited entry that hash wrote a commit of into the committed ledger, and reports whether it found one. A squash merge replaces the commits of a pull request with one commit titled after the pull request. That commit carries the ledger the pull request regenerated, which names the pull request's own commits, so the squash commit is the landing of those entries, not a bug without one. Pull request checks run before the squash, so without this every fix-titled squash merge would fail the check of the branch it lands on.
+func (b *builder) joinLanded(hash string) (bool, error) {
+	written, err := b.ledgerHashes(hash)
+	if err != nil {
+		return false, err
 	}
 	if len(written) == 0 {
 		return false, nil
 	}
+	notes, err := b.landedNotes(hash, written)
+	if err != nil {
+		return false, err
+	}
 	joined := false
 	for _, e := range b.entries {
-		if b.kept[e] && slices.ContainsFunc(e.Commits, func(c Commit) bool { return written[c.Hash] }) {
+		if (b.kept[e] && slices.ContainsFunc(e.Commits, func(c Commit) bool { return written[c.Hash] })) || (e.Origin == "release note" && notes[e.Note]) {
 			if err := b.addCommit(e, hash); err != nil {
 				return false, err
 			}
@@ -997,10 +1116,30 @@ func (b *builder) joinLanded(hash string) (bool, error) {
 	return joined, nil
 }
 
+// landedNotes returns the release notes of the entries that commit hash landed: the entries of the ledger as the commit left it that name one of the commits it wrote and this history lacks, the commits a squash replaced. A commit that only commits the regenerated ledger beside its own change writes the hashes of fixes that are in the history, and lands none of them. An entry computed from its fix marker (see keptNote) no longer names the pull request's commit that the squash wrote, and is still the bug the squash landed, so the squash joins it by its note. The answer is read from the history alone: it must not change once the ledger is regenerated.
+func (b *builder) landedNotes(hash string, written map[string]bool) (map[string]bool, error) {
+	out, err := b.r.git("show", hash+":"+jsonPath)
+	if err != nil {
+		return nil, err
+	}
+	notes := map[string]bool{}
+	var landed Ledger
+	if json.Unmarshal([]byte(out), &landed) != nil {
+		return notes, nil // a ledger of another shape names no entry of this one
+	}
+	for _, e := range landed.Entries {
+		if e.Origin == "release note" && e.Note != "" && slices.ContainsFunc(e.Commits, func(c Commit) bool { return written[c.Hash] && !b.inHistory(c.Hash) }) {
+			notes[e.Note] = true
+		}
+	}
+	return notes, nil
+}
+
 func exemptReason(exempt map[string]string, hash, msg string) string {
-	for prefix, reason := range exempt {
+	// Sorted, so that two lines that fit one commit always give the same reason.
+	for _, prefix := range slices.Sorted(maps.Keys(exempt)) {
 		if strings.HasPrefix(hash, prefix) {
-			return reason
+			return exempt[prefix]
 		}
 	}
 	for _, m := range trailerRE.FindAllStringSubmatch(msg, -1) {
@@ -1011,9 +1150,17 @@ func exemptReason(exempt map[string]string, hash, msg string) string {
 	return ""
 }
 
+// named returns the commit that a "Bug-Ledger: see <commit>" trailer or an exempt.txt line names: the commit of HEAD's history it abbreviates, or else the name as written, which can still be the commit of a committed entry that this history lacks. Git is not asked what the name means: its answer depends on the commits of other branches the clone holds.
+func (b *builder) named(target string) string {
+	if full, ok := b.reach.find(target); ok {
+		return full
+	}
+	return target
+}
+
 // supersedes reports whether the commit hash corrects the commit target its "Bug-Ledger: see" trailer names, and exempt.txt joins target to hash in return ("<target> see <hash>"). Two commits that name each other have no entry to join, so the correction, which says what the fix is, becomes the entry and the earlier commit joins it: an entry is not titled by an approach the correction replaced.
 func (b *builder) supersedes(exempt map[string]string, target, hash string) bool {
-	full, ok := b.r.resolve(target)
+	full, ok := b.reach.find(target)
 	if !ok {
 		return false
 	}
@@ -1037,13 +1184,10 @@ func seeTrailer(msg string) (string, bool) {
 
 // linkCommit adds commit hash to the entry that lists the commit named target.
 func (b *builder) linkCommit(target, hash string) error {
-	full, ok := b.r.resolve(target)
-	if !ok {
-		return fmt.Errorf("commit %s: %q names no commit", hash[:10], target)
-	}
+	full := b.named(target)
 	for _, e := range b.entries {
 		for _, c := range e.Commits {
-			if strings.HasPrefix(full, c.Hash) {
+			if len(full) >= 7 && sameCommit(full, c.Hash) {
 				return b.addCommit(e, hash)
 			}
 		}
