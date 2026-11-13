@@ -3,7 +3,6 @@ package ai
 // pi: packages/ai/src/auth/oauth/github-copilot.ts
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -44,10 +43,7 @@ func TestAPIKeyProvidersMatchPinnedProviderDefinitions(t *testing.T) {
 	identity := regexp.MustCompile(`id: "([^"]+)",\s+name: "([^"]+)"`)
 	want := map[string]string{"radius": "Radius"}
 	for _, path := range paths {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
+		data := readPinnedMirror(t, filepath.ToSlash(path))
 		if !strings.Contains(string(data), "apiKey:") {
 			continue
 		}
@@ -126,8 +122,8 @@ func TestAPIKeyProvidersCoverCatalogEnvAuth(t *testing.T) {
 		"anthropic":                     "Anthropic",
 		"github-copilot":                "GitHub Copilot",
 		"meta":                          "Meta",
-		"qwen-token-plan":               "Qwen Token Plan",
-		"qwen-token-plan-cn":            "Qwen Token Plan CN",
+		"qwen-token-plan":               "Qwen Token Plan Team",
+		"qwen-token-plan-cn":            "Qwen Token Plan Team CN",
 		"qwen-token-plan-individual":    "Qwen Token Plan Individual",
 		"qwen-token-plan-individual-cn": "Qwen Token Plan Individual CN",
 	}

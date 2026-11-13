@@ -15,7 +15,8 @@
 // The same entries are applied to the installed Pi the parity tests compare with (`--packages name=dir ...`, from automation/pin/oracle.py), so the oracle is Pi with these fixes.
 // The source mirror (.upstream/current) stays the pinned build, which the sync ledger's delta audit compares with the earlier pin; the
 // tests that read the mirror's docs and schemas read them through `--read-mirror <mirror> <path>` (internal/upstreammirror.ReadPicked), the
-// pinned file plus the entries of packageFileBackports and backportPatches that cover it.
+// pinned file plus the entries of packageFileBackports and backportPatches that cover it, and the TypeScript sources a mirrorSource entry covers.
+// `--mirror-paths` lists the mirror files a backport covers (internal/upstreammirror.PickedPaths), so a test that reads many mirror files reads only those through `--read-mirror`.
 // `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned build's.
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -30,6 +31,10 @@ const messageThreadsDefault = ["Default: true for provider anthropic with a base
 const blocks = [];
 const patch = (id, key, patches) => blocks.push({ id, key, patches, table: "dist" });
 const packageFile = (id, key, patches) => blocks.push({ id, key, patches, table: "package" });
+// A Pi TypeScript source that tests read from the source mirror and that a backport of its compiled output changes, by path in the Pi
+// repository, with the same change as Pi's commit makes to the source. It stands in a block of its commit, so the bump that retires the
+// commit's entries retires it with them.
+const mirrorSource = (id, path, patches) => blocks.push({ id, key: path, patches, table: "mirror" });
 
 // BEGIN backport b3c2e4a6bef8
 // b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
@@ -475,6 +480,285 @@ patch("406e719a6bff", "pi-ai/api/constrained-sampling.js", [
 ]);
 // END backport 406e719a6bff
 
+// BEGIN backport 1397070024
+// 1397070024 (#12112, #11773): Qwen Token Plan uses the current gateways, per-plan key variables and the current Team and Individual model lists.
+// Pi's four provider modules, its env-api-keys table, its help text and its providers doc carry the change as source; the provider data
+// (providers/data/*.json, which Pi regenerates from models.dev at each build) carries it as the result of that generation over the release's
+// data: the new base URL on every record, the Team lists without the records models.dev marks deprecated (catalog skipDeprecated), and the
+// two records the Individual allowlist gains, which are the Team records of the same models.dev source under the Individual provider id.
+patch("1397070024", "pi-ai/providers/qwen-token-plan.js", [
+    [`        name: "Qwen Token Plan",
+        baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        auth: { apiKey: envApiKeyAuth("Qwen Token Plan API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+`, `        ${note("1397070024").trim()}
+        name: "Qwen Token Plan Team",
+        baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Team API key", [
+                "QWEN_TOKEN_PLAN_TEAM_API_KEY",
+                "QWEN_TOKEN_PLAN_API_KEY",
+            ]),
+        },
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/data/qwen-token-plan.json", [
+    ['"chat:deepseek-v3.2":{"id":"deepseek-v3.2","name":"DeepSeek V3.2","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":131072,"maxTokens":65536,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":false},"type":"chat"},', ""],
+    ['"chat:deepseek-v4-flash":{"id":"deepseek-v4-flash","name":"DeepSeek V4 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":"max"},"type":"chat"},', ""],
+    ['"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5":{"id":"glm-5","name":"GLM-5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5":{"id":"glm-5","name":"GLM-5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.1":{"id":"glm-5.1","name":"GLM-5.1","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.1":{"id":"glm-5.1","name":"GLM-5.1","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.5":{"id":"kimi-k2.5","name":"Kimi K2.5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.5":{"id":"kimi-k2.5","name":"Kimi K2.5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.6":{"id":"kimi-k2.6","name":"Kimi K2.6","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.6":{"id":"kimi-k2.6","name":"Kimi K2.6","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.7-code":{"id":"kimi-k2.7-code","name":"Kimi K2.7 Code","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.7-code":{"id":"kimi-k2.7-code","name":"Kimi K2.7 Code","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:MiniMax-M2.5":{"id":"MiniMax-M2.5","name":"MiniMax-M2.5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:MiniMax-M2.5":{"id":"MiniMax-M2.5","name":"MiniMax-M2.5","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-plus":{"id":"qwen3.6-plus","name":"Qwen3.6 Plus","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-plus":{"id":"qwen3.6-plus","name":"Qwen3.6 Plus","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/qwen-token-plan-cn.js", [
+    [`        name: "Qwen Token Plan CN",
+        baseUrl: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        auth: { apiKey: envApiKeyAuth("Qwen Token Plan CN API key", ["QWEN_TOKEN_PLAN_CN_API_KEY"]) },
+`, `        ${note("1397070024").trim()}
+        name: "Qwen Token Plan Team CN",
+        baseUrl: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Team CN API key", [
+                "QWEN_TOKEN_PLAN_TEAM_CN_API_KEY",
+                "QWEN_TOKEN_PLAN_CN_API_KEY",
+            ]),
+        },
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/data/qwen-token-plan-cn.json", [
+    ['"chat:deepseek-v3.2":{"id":"deepseek-v3.2","name":"DeepSeek V3.2","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":131072,"maxTokens":65536,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":false},"type":"chat"},', ""],
+    ['"chat:deepseek-v4-flash":{"id":"deepseek-v4-flash","name":"DeepSeek V4 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":"max"},"type":"chat"},', ""],
+    ['"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5":{"id":"glm-5","name":"GLM-5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5":{"id":"glm-5","name":"GLM-5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.1":{"id":"glm-5.1","name":"GLM-5.1","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.1":{"id":"glm-5.1","name":"GLM-5.1","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.5":{"id":"kimi-k2.5","name":"Kimi K2.5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.5":{"id":"kimi-k2.5","name":"Kimi K2.5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.6":{"id":"kimi-k2.6","name":"Kimi K2.6","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.6":{"id":"kimi-k2.6","name":"Kimi K2.6","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:kimi-k2.7-code":{"id":"kimi-k2.7-code","name":"Kimi K2.7 Code","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:kimi-k2.7-code":{"id":"kimi-k2.7-code","name":"Kimi K2.7 Code","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:MiniMax-M2.5":{"id":"MiniMax-M2.5","name":"MiniMax-M2.5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:MiniMax-M2.5":{"id":"MiniMax-M2.5","name":"MiniMax-M2.5","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-plus":{"id":"qwen3.6-plus","name":"Qwen3.6 Plus","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-plus":{"id":"qwen3.6-plus","name":"Qwen3.6 Plus","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/qwen-token-plan-individual.js", [
+    [`        name: "Qwen Token Plan Individual",
+        baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+        auth: { apiKey: envApiKeyAuth("Qwen Token Plan Individual API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+`, `        ${note("1397070024").trim()}
+        name: "Qwen Token Plan Individual",
+        baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Individual API key", [
+                "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
+                "QWEN_TOKEN_PLAN_API_KEY",
+            ]),
+        },
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/data/qwen-token-plan-individual.json", [
+    ['"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1","reasoning":true,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1","reasoning":true,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-individual","baseUrl":"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/qwen-token-plan-individual-cn.js", [
+    [`        name: "Qwen Token Plan Individual CN",
+        baseUrl: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        auth: { apiKey: envApiKeyAuth("Qwen Token Plan Individual CN API key", ["QWEN_TOKEN_PLAN_CN_API_KEY"]) },
+`, `        ${note("1397070024").trim()}
+        name: "Qwen Token Plan Individual CN",
+        baseUrl: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+        auth: {
+            apiKey: envApiKeyAuth("Qwen Token Plan Individual CN API key", [
+                "QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY",
+                "QWEN_TOKEN_PLAN_CN_API_KEY",
+            ]),
+        },
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+patch("1397070024", "pi-ai/providers/data/qwen-token-plan-individual-cn.json", [
+    ['"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-flash-0731":{"id":"deepseek-v4-flash-0731","name":"DeepSeek V4 Flash 0731","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro":{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4-pro-0813":{"id":"deepseek-v4-pro-0813","name":"DeepSeek V4 Pro 0813","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:glm-5.3":{"id":"glm-5.3","name":"GLM-5.3","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.6-flash":{"id":"qwen3.6-flash","name":"Qwen3.6 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-max":{"id":"qwen3.7-max","name":"Qwen3.7 Max","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.7-plus":{"id":"qwen3.7-plus","name":"Qwen3.7 Plus","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-flash":{"id":"qwen3.8-flash","name":"Qwen3.8 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:qwen3.8-max":{"id":"qwen3.8-max","name":"Qwen3.8 Max","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+    ['"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",', '"chat:deepseek-v4.1-flash":{"id":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1","reasoning":true,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},"chat:deepseek-v4.1-flash-1017":{"id":"deepseek-v4.1-flash-1017","name":"DeepSeek V4.1 Flash 1017","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1","reasoning":true,"input":["text","image"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"},"inputLimits":{"images":{"resize":{"maxWidth":2000,"maxHeight":2000,"maxBytes":4718592,"jpegQuality":80}}},"type":"chat"},"chat:glm-5.2":{"id":"glm-5.2","name":"GLM-5.2","api":"openai-completions","provider":"qwen-token-plan-individual-cn","baseUrl":"https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+// 1397070024: each Qwen Token Plan provider reads its per-plan variable first, then the region variable both plans used to share.
+patch("1397070024", "pi-ai/env-api-keys.js", [
+    [`        "ant-ling": "ANT_LING_API_KEY",
+        "qwen-token-plan": "QWEN_TOKEN_PLAN_API_KEY",
+        "qwen-token-plan-cn": "QWEN_TOKEN_PLAN_CN_API_KEY",
+        "qwen-token-plan-individual": "QWEN_TOKEN_PLAN_API_KEY",
+        "qwen-token-plan-individual-cn": "QWEN_TOKEN_PLAN_CN_API_KEY",
+`, `        "ant-ling": "ANT_LING_API_KEY",
+        ${note("1397070024").trim()}
+        // Qwen Token Plan: the per-plan variable first, then the region variable both plans used to share.
+        "qwen-token-plan": ["QWEN_TOKEN_PLAN_TEAM_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"],
+        "qwen-token-plan-cn": ["QWEN_TOKEN_PLAN_TEAM_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"],
+        "qwen-token-plan-individual": ["QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"],
+        "qwen-token-plan-individual-cn": ["QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"],
+`],
+    [`    const envVar = envMap[provider];
+    return envVar ? [envVar] : undefined;
+`, `    const envVars = envMap[provider];
+    return typeof envVars === "string" ? [envVars] : envVars;
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+// 1397070024: --help lists the four per-plan variables.
+patch("1397070024", "pi-coding-agent/cli/args.js", [
+    [`  QWEN_TOKEN_PLAN_API_KEY          - Qwen Token Plan API key (international region)
+  QWEN_TOKEN_PLAN_CN_API_KEY       - Qwen Token Plan API key (China region)
+`, `  QWEN_TOKEN_PLAN_TEAM_API_KEY     - Qwen Token Plan Team API key (international region)
+  QWEN_TOKEN_PLAN_TEAM_CN_API_KEY  - Qwen Token Plan Team API key (China region)
+  QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY - Qwen Token Plan Individual API key (international region)
+  QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY - Qwen Token Plan Individual API key (China region)
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+// 1397070024: the providers doc lists the four per-plan variables.
+patch("1397070024", "pi-coding-agent/docs/providers.md", [
+    [`| Qwen Token Plan and Individual | \`QWEN_TOKEN_PLAN_API_KEY\` |
+| Qwen Token Plan (China) and Individual (China) | \`QWEN_TOKEN_PLAN_CN_API_KEY\` |
+`, `| Qwen Token Plan Team | \`QWEN_TOKEN_PLAN_TEAM_API_KEY\` |
+| Qwen Token Plan Team (China) | \`QWEN_TOKEN_PLAN_TEAM_CN_API_KEY\` |
+| Qwen Token Plan Individual | \`QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY\` |
+| Qwen Token Plan Individual (China) | \`QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY\` |
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+// 1397070024: Pi's TypeScript sources of the four provider modules, which tests read from the source mirror (`--read-mirror`), by path in the Pi
+// repository, with the same change as Pi's commit makes to the source.
+mirrorSource("1397070024", "packages/ai/src/providers/qwen-token-plan.ts", [
+    [`		name: "Qwen Token Plan",
+		baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+		auth: { apiKey: envApiKeyAuth("Qwen Token Plan API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+`, `		name: "Qwen Token Plan Team",
+		baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+		auth: {
+			apiKey: envApiKeyAuth("Qwen Token Plan Team API key", [
+				"QWEN_TOKEN_PLAN_TEAM_API_KEY",
+				"QWEN_TOKEN_PLAN_API_KEY",
+			]),
+		},
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+mirrorSource("1397070024", "packages/ai/src/providers/qwen-token-plan-cn.ts", [
+    [`		name: "Qwen Token Plan CN",
+		baseUrl: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+		auth: { apiKey: envApiKeyAuth("Qwen Token Plan CN API key", ["QWEN_TOKEN_PLAN_CN_API_KEY"]) },
+`, `		name: "Qwen Token Plan Team CN",
+		baseUrl: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+		auth: {
+			apiKey: envApiKeyAuth("Qwen Token Plan Team CN API key", [
+				"QWEN_TOKEN_PLAN_TEAM_CN_API_KEY",
+				"QWEN_TOKEN_PLAN_CN_API_KEY",
+			]),
+		},
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+mirrorSource("1397070024", "packages/ai/src/providers/qwen-token-plan-individual.ts", [
+    [`		name: "Qwen Token Plan Individual",
+		baseUrl: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+		auth: { apiKey: envApiKeyAuth("Qwen Token Plan Individual API key", ["QWEN_TOKEN_PLAN_API_KEY"]) },
+`, `		name: "Qwen Token Plan Individual",
+		baseUrl: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+		auth: {
+			apiKey: envApiKeyAuth("Qwen Token Plan Individual API key", [
+				"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
+				"QWEN_TOKEN_PLAN_API_KEY",
+			]),
+		},
+`],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
+mirrorSource("1397070024", "packages/ai/src/providers/qwen-token-plan-individual-cn.ts", [
+    [`		name: "Qwen Token Plan Individual CN",
+		baseUrl: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+		auth: { apiKey: envApiKeyAuth("Qwen Token Plan Individual CN API key", ["QWEN_TOKEN_PLAN_CN_API_KEY"]) },
+`, `		name: "Qwen Token Plan Individual CN",
+		baseUrl: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+		auth: {
+			apiKey: envApiKeyAuth("Qwen Token Plan Individual CN API key", [
+				"QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY",
+				"QWEN_TOKEN_PLAN_CN_API_KEY",
+			]),
+		},
+`],
+]);
+// END backport 1397070024
+
 // BEGIN backport 49fe0a237
 // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
 packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
@@ -509,6 +793,8 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 const tableOf = (name) => Object.fromEntries(blocks.filter((b) => b.table === name).map((b) => [b.key, b.patches]));
 export const backportPatches = tableOf("dist");
 export const packageFileBackports = tableOf("package");
+// mirrorSourceBackports keys the mirrorSource entries by the path of the source in the Pi repository (packages/ai/src/providers/x.ts).
+export const mirrorSourceBackports = tableOf("mirror");
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
 
@@ -598,7 +884,8 @@ function firstDifference(before, text) {
 // asking whether the target contains the Pi commit.
 export function classifyBackports(packages) {
   const results = [];
-  for (const { id, key, patches } of blocks) {
+  // A mirror source is no file of an installed package: the compiled files of its commit decide the commit.
+  for (const { id, key, patches } of blocks.filter((block) => block.table !== "mirror")) {
     const [name, ...rest] = key.split("/");
     if (!(name in packages)) continue;
     const text = readFileSync(join(packages[name], packageLocation(name, rest)), "utf8");
@@ -620,27 +907,35 @@ export function classifyBackports(packages) {
   return results;
 }
 
-// mirrorKey is the backport key of a file of the Pi repository the source mirror holds (packages/coding-agent/docs/x.md), or undefined
-// for a file no backport table covers: the mirror's TypeScript sources stay Pi's, whose delta from the pin the sync ledger accounts for.
+// mirrorKey is the backport key of a file of the Pi repository the source mirror holds with the text of the installed package
+// (packages/coding-agent/docs/x.md, packages/ai/src/providers/data/x.json), or undefined for a file no backport table covers.
 const mirrorKey = (path) => {
   const match = /^packages\/coding-agent\/((?:docs|schemas)\/.+)$/.exec(path);
-  return match && `pi-coding-agent/${match[1]}`;
+  if (match) return `pi-coding-agent/${match[1]}`;
+  const data = /^packages\/ai\/src\/(providers\/data\/.+\.json)$/.exec(path);
+  return data ? `pi-ai/${data[1]}` : undefined;
 };
+const mirrorPathOf = (key) => key.replace(/^pi-coding-agent\//, "packages/coding-agent/").replace(/^pi-ai\//, "packages/ai/src/");
+
+// mirrorBackportPaths are the files of the source mirror a backport covers: those mirrorKey names, and the TypeScript sources of
+// mirrorSourceBackports. Every other mirror file is the pinned build's, whose delta from the pin the sync ledger accounts for.
+export const mirrorBackportPaths = () => [...packageBackportKeys().map(mirrorPathOf).filter((path) => mirrorKey(path) !== undefined && patchesOf(mirrorKey(path)).length > 0), ...Object.keys(mirrorSourceBackports)];
 
 // readMirrorFile returns the text of `path` (relative to the Pi repository) in the source mirror `mirror` with the backports applied:
 // the file of the pinned release plus the fixes the release line carries. The mirror itself stays the pinned release.
 export function readMirrorFile(mirror, path) {
-  const source = readFileSync(join(mirror, path), "utf8");
+  let source = readFileSync(join(mirror, path), "utf8");
+  for (const [before, after] of mirrorSourceBackports[path] ?? []) {
+    if (source.split(before).length !== 2) throw new Error(`Pi source changed in ${path}, a post-v1.5.2 backport no longer applies: ${before}`);
+    source = source.replace(before, () => after);
+  }
   const key = mirrorKey(path);
   return key === undefined ? source : patchBackports(key, source);
 }
 
 // verifyMirrorBackports throws when a mirror file a backport covers is not the pinned release's (the backport no longer applies once).
 export function verifyMirrorBackports(mirror) {
-  for (const key of packageBackportKeys()) {
-    const path = key.replace(/^pi-coding-agent\//, "packages/coding-agent/");
-    if (mirrorKey(path) === key) readMirrorFile(mirror, path);
-  }
+  for (const path of mirrorBackportPaths()) readMirrorFile(mirror, path);
 }
 
 const packagesOf = (args) => Object.fromEntries(args.map((arg) => arg.split(/=(.*)/s).slice(0, 2)));
@@ -652,5 +947,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   else if (mode === "--classify") process.stdout.write(JSON.stringify(classifyBackports(packagesOf(args))));
   else if (mode === "--read-mirror") process.stdout.write(readMirrorFile(args[0], args[1]));
   else if (mode === "--verify-mirror") verifyMirrorBackports(args[0]);
+  else if (mode === "--mirror-paths") process.stdout.write(mirrorBackportPaths().map((path) => `${path}\n`).join(""));
   else applyBackportPatches(mode);
 }
