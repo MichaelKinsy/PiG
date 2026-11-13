@@ -281,6 +281,7 @@ func payloadDiff(got, want string) string {
 			var am, bm []json.RawMessage
 			_ = json.Unmarshal(a, &am)
 			_ = json.Unmarshal(b, &bm)
+			found := false
 			for i := range max(len(am), len(bm)) {
 				var l, r string
 				if i < len(am) {
@@ -291,8 +292,13 @@ func payloadDiff(got, want string) string {
 				}
 				if l != r {
 					fmt.Fprintf(&out, "\n  %s[%d]:\n   PiG %.500s\n   Pi  %.500s", k, i, l, r)
+					found = true
 					break
 				}
+			}
+			if !found {
+				// The same items one by one, and the values still differ: null where the other side has an empty list, or a value that is no list.
+				fmt.Fprintf(&out, "\n  %s:\n   PiG %.300s\n   Pi  %.300s", k, norm(a), norm(b))
 			}
 			continue
 		}
