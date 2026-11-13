@@ -180,6 +180,17 @@ func TestRPCPromptOfTheReloadsChunkRunsOnTheReplacedExtension(t *testing.T) {
 	})
 }
 
+// A prompt written while the reloaded extension's factory awaits a timer. Pi's loop turns inside such a load (agent-session.ts:3838 `await this._resourceLoader.reload()`), reads the prompt there and runs it on the runner the reload has already invalidated: `extension_error command:ping: stale ctx`, `response c`, and only then `notify started g2`, `response b`. PiG holds the prompt to the end of the reload, as it does when the factory computes, and runs it on the reloaded extension (D630).
+func TestRPCPromptWrittenWhileAReloadedFactoryAwaitsRunsOnTheReloadedExtension(t *testing.T) {
+	f := startReloadRPC(t, "node", "RL_LOAD=await")
+	f.p.send(f.prompt("b", "/rl"))
+	f.reached("loading")
+	f.p.send(f.prompt("c", "/ping"))
+	f.open("load-gate")
+	f.expectStream("a prompt written while the reloaded factory awaits", "notify started g2", "response b success=true", "notify ping g2", "response c success=true")
+	f.finish()
+}
+
 // expectStream sends nothing: it requires the tokens up to last to be want.
 func (f *reloadRPC) expectStream(what string, want ...string) {
 	f.p.t.Helper()
@@ -297,7 +308,7 @@ func TestRPCReloadHoldEnds(t *testing.T) {
 			f.p.waitForExit("after the reload")
 		})
 	})
-	// Stdin ends while the reloaded extension's factory awaits a timer. Pi's loop turns inside such a load, reads the end and exits 0 at once, without the reload's response. PiG holds stdin's end to the end of the reload as it holds a prompt (D630, proposed): the reload finishes, its command answers and the process exits, bounded by the load's end.
+	// Stdin ends while the reloaded extension's factory awaits a timer. Pi's loop turns inside such a load, reads the end and exits 0 at once, without the reload's response. PiG holds stdin's end to the end of the reload as it holds a prompt (D630): the reload finishes, its command answers and the process exits, bounded by the load's end.
 	t.Run("stdin ends while the reloaded factory awaits", func(t *testing.T) {
 		f := startReloadRPC(t, "node", "RL_LOAD=await")
 		f.p.send(f.prompt("b", "/rl"))

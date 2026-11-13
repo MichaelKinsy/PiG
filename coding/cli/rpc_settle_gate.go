@@ -97,6 +97,7 @@ func (g *rpcSettleGate) openLocked() bool {
 }
 
 // holdReload holds stdin for a reload from its start and returns the function that ends the hold, once: the caller runs it when the command that awaited the reload has answered or awaits again.
+// pig divergence (D630): the hold also lasts while a reloaded extension's factory awaits a timer or I/O, where Pi's loop turns inside the reload and reads stdin: a prompt written then runs after the reload on the reloaded extension, not on the runner the reload has invalidated, and stdin's end is read after the reload.
 func (g *rpcSettleGate) holdReload() (release func()) {
 	g.mu.Lock()
 	g.reloads++
