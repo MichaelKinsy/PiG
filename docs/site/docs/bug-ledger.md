@@ -324,6 +324,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-308d280](#bf-308d280) | `chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-308d280-2](#bf-308d280-2) | `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed… | PiG's own defect | All platforms | Unreleased |
+| [BF-30a10ed](#bf-30a10ed) | chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended | PiG's own defect | All platforms | Unreleased |
 | [BF-30cdab4](#bf-30cdab4) | Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path… | PiG's own defect | Windows | Unreleased |
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
@@ -519,6 +520,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-486aee5](#bf-486aee5) | fix(sdk): the Go SDK ends the connection on a frame it cannot decode | PiG's own defect | All platforms | Unreleased |
 | [BF-488a47a](#bf-488a47a) | `chord/host`: `ProcessLock` no longer fails with `invalid argument` on macOS and the BSDs when the temporary… | PiG's own defect | macOS | 0.5.0 |
 | [BF-48a28fe](#bf-48a28fe) | Models an extension's provider object returns keep the member order the extension wrote them in, as Pi keeps… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-48ba73d](#bf-48ba73d) | chord: a worker's exit is no longer held by a process that outlives it | PiG's own defect | Windows, macOS | Unreleased |
 | [BF-4916f14](#bf-4916f14) | A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4924f3a](#bf-4924f3a) | `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more… | PiG's own defect | All platforms | Unreleased |
 | [BF-495e25b](#bf-495e25b) | Accepting an autocomplete popup of awaited command-argument completions after the cursor moved applies the… | PiG's own defect | All platforms | Unreleased |
@@ -683,6 +685,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-604e180](#bf-604e180) | `tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local… | PiG's own defect | All platforms | Unreleased |
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-60cc9c5](#bf-60cc9c5) | chord: a worker that fails right after it started now reports its reason | PiG's own defect | Windows | Unreleased |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb](#bf-61300bb) | MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb-2](#bf-61300bb-2) | Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists… | PiG's own defect | All platforms | 0.5.0 |
@@ -6297,6 +6300,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAMethodCalledWhileTheMirrorIsReadAgainAnswersAfterItsFrames`
 - **Release note:** `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed member on the slot of the first reload (the mirror stopped resyncing after it queued the reset, so an end of the next slot in between was lost), and a method called while the copy is read again answers after the frames of its commits were sent, so the plugin reads what it wrote.
 
+### BF-30a10ed
+
+**chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended.
+- **Root cause:** The channel's writer finished the channel when a write failed: a send to a worker that had just ended (EPIPE) closed the connection and dropped the listeners while the reader had not yet told what the worker wrote before it ended, its `fatal` among it.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `30a10edfb2` (2026-11-13)
+- **Tests:** `chord/nextnode/workers/workers_channel_write_unix_test.go::TestAChannelTellsWhatTheOtherEndWroteBeforeItClosedWhenASendFailedMeanwhile`
+- **Release note:** chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended. The failed write closed the connection under its reader, so messages not yet told (a `fatal` report with the worker's reason) were dropped. As Node's `send`, a failed write now only tells its sender; the reader ends the channel after it told what the worker wrote.
+
 ### BF-30cdab4
 
 **Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path…**
@@ -8986,6 +9003,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/native_provider_models_test.go::TestNativeProviderModelsKeepTheirMemberOrder`, `internal/codingagent/native_provider_filter_order_test.go::TestNativeProviderFilterAllModelsSeesTheProvidersOwnModels`
 - **Release note:** Models an extension's provider object returns keep the member order the extension wrote them in, as Pi keeps the returned objects, instead of being sorted by member name. A model without a `provider` gets the provider's id after its own members.
 
+### BF-48ba73d
+
+**chord: a worker's exit is no longer held by a process that outlives it**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a worker's exit is no longer held by a process that outlives it.
+- **Root cause:** A process the worker started in a session of its own survives the kill of the worker's process group; when it held the worker's stdout or stderr, the server waited for the stream's end and told the worker's exit only when that process ended, so the worker's session never learned that its worker had died (and since the fix of a worker's last messages, a holder of the worker's channel did the same).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** Windows, macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `48ba73df55` (2026-11-13)
+- **Tests:** `chord/nextnode/workers/workers_drain_unix_test.go::TestADrainSettlesWhenItsProcessEndsBetweenItsReadersLookAtItsStreamAndItsWaitForIt`, `chord/nextnode/workers/workers_fixture_test.go::TestMain`, `chord/nextnode/workers/workers_lingering_unix_test.go::TestCloseEndsWhatIsStillReadOfAnExitedWorkerWhoseStreamsAProcessOutsideItsTreeHolds`, `chord/nextnode/workers/workers_lingering_unix_test.go::TestWhatAnExitedWorkersStreamsTellLaterIsToldOfItNotOfTheWorkerThatFollowedIt`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsOutput`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsWhatAProcessOutsideItsTreeWritesToItsOutputAfterItsExit`
+- **Release note:** chord: a worker's exit is no longer held by a process that outlives it. A process the worker started in a session of its own survives the kill of the worker's process group; when it held the worker's stdout or stderr, the server waited for the stream's end and told the worker's exit only when that process ended, so the worker's session never learned that its worker had died (and since the fix of a worker's last messages, a holder of the worker's channel did the same). As Node, which emits `exit` when the process ended, after what it wrote, and `close` when its streams did, the exit is now told once everything the worker wrote before it ended was read and told, and waits for no stream's end. What such a process writes later is still told (output, the stderr tail, control messages, link frames) and is recorded on the worker that exited, never on a worker started after it. The server reads those streams on, three descriptors and goroutines per exited worker at most, until they end or the workers component closes, which now ends them. Limits: on Windows the exit is still told when the worker's streams ended (its pipes have no read that does not wait, and the worker's job object ends them with it): built and vetted, not run; not run on macOS.
+
 ### BF-4916f14
 
 **A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi…**
@@ -11247,6 +11278,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `60c4c6f887` (2026-10-14, #10944)
 - **Tests:** `ai/json_parse_upstream_test.go::TestParseToolCallArguments`, `ai/openai_responses_partial_json_cleanup_upstream_test.go::TestOpenAIResponsesMarksMalformedFinalArguments`, `ai/rpc33_provider_abort_test.go::TestOpenAIProviderAbortAfterAdmission`, `ai/rpc33_provider_abort_test.go::TestOpenAIProviderAbortAtParserReadBoundaries`, `ai/rpc33_provider_scratch_test.go::TestProviderScratchInterleavedTools`, `ai/validate_upstream_test.go::TestValidateToolArgumentsReportsArgumentsError`
 - **Release note:** A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its arguments are `{}` and `argumentsError` holds the reason and the text the model sent, which tool validation reports back to the model. Carried forward from Pi 87f9a364 (earendil-works/pi#10944, #10897), past the 1.2.0+3daa2028 pin.
+
+### BF-60cc9c5
+
+**chord: a worker that fails right after it started now reports its reason**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a worker that fails right after it started now reports its reason.
+- **Root cause:** WorkerProcess.ended closed the worker's channel and told Exited without waiting for the channel's reader. What the worker wrote before it ended and the reader had not taken yet, or had taken and not yet handed to its listeners, was dropped: its last link frames (the answer to a holder) and its `fatal`. A worker that failed right after `started` was then recorded with the fixed 'worker failed to start' instead of its reason.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `60cc9c5bd3` (2026-11-13)
+- **Tests:** `chord/nextnode/workers/workers_fixture_test.go::TestMain`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterItOpenedItsChannel`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessLinkClosedByThisSideWhileItsChannelsReaderIsHeldDoesNotWaitForIt`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsChannelsReaderTookWhatItsChildWrote`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsOutputWhenItsChannelsReaderEndedFirst`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterWhatItsChannelsReaderTookIsTold`
+- **Release note:** chord: a worker that fails right after it started now reports its reason. The server could handle a worker's exit before it had read, or before it had handed over, the last messages the worker wrote (its answer to a waiting holder and its `fatal` report); it then closed the connection and recorded the fixed `worker failed to start` (in p2, under load: a session whose worker dies at its start showed that text where Pi shows why, for example `Unknown model`). As in Node, which emits a child's messages before its `exit` event, the exit is now told after the channel's reader took and told everything the worker wrote. Limits: not run on Windows, where a worker that ends before the server accepted its pipe connection can still lose its last messages.
 
 ### BF-612955a
 
