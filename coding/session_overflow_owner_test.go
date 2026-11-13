@@ -1,7 +1,6 @@
 package coding
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -43,25 +42,19 @@ type overflowOwnerRecord struct {
 // overflowOwnerGolden reads the records the pinned Pi package wrote, by case name (testdata/overflow-owner-pi.jsonl).
 func overflowOwnerGolden(t *testing.T) map[string]string {
 	t.Helper()
-	file, err := os.Open("testdata/overflow-owner-pi.jsonl")
+	data, err := os.ReadFile("testdata/overflow-owner-pi.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
 	golden := map[string]string{}
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(nil, 1<<20)
-	for scanner.Scan() {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
 		var record struct {
 			Case string `json:"case"`
 		}
-		if err := json.Unmarshal(scanner.Bytes(), &record); err != nil {
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			t.Fatal(err)
 		}
-		golden[record.Case] = scanner.Text()
-	}
-	if err := scanner.Err(); err != nil {
-		t.Fatal(err)
+		golden[record.Case] = line
 	}
 	return golden
 }
