@@ -620,7 +620,11 @@ def cmd_check_oracle(_: argparse.Namespace) -> None:
             raise PinError("the installed dependency tree differs from the frozen closure:\n  " + "\n  ".join(problems[:20]))
     if data.get("backports", "") != oracle.backports_digest(pin):
         raise PinError("the installed Pi carries other post-release backports than automation/gen/pi-post-release-backports.mjs lists; rebuild with `pin.py install-oracle --force`")
-    print(f"check-oracle: Pi {pin.version} (source build of {pin.commit[:8]})")
+    problem = oracle.bundle_problem(oracle.SDK_TS / "node_modules", data)
+    if problem:
+        raise PinError(f"{problem}; rebuild with `pin.py install-oracle --force`")
+    carried = f"; backports {data['backports'][:12]} in the compiled output and in the pi bundle {data.get('bundle_sha256', '')[:12] or '(none: the bin is compiled output)'}" if data.get("backports") else ""
+    print(f"check-oracle: Pi {pin.version} (source build of {pin.commit[:8]}{carried})")
 
 
 def main() -> None:

@@ -95,11 +95,16 @@ class NpmLockedTest(unittest.TestCase):
                 for checkout in checkouts:
                     module.ensure(checkout)
                 self.assertEqual(len(installs), 1)
-                self.assertEqual(installs[0].parent, store)
-                targets = {(checkout / "node_modules").resolve() for checkout in checkouts}
-                self.assertEqual(len(targets), 1)
-                shared = targets.pop()
-                self.assertTrue(shared.is_relative_to(store))
+                # npm runs in the store and in no checkout: in a staging tree that holds the project at its position relative to the repository
+                # (a project outside it: under its own name) and becomes the entry only once the install is certified.
+                entry = store / f"sdk-ts-{module.manifest_digest(checkouts[0]).strip()[:24]}"
+                staging = installs[0].parent
+                self.assertEqual(installs[0].name, "sdk-ts")
+                self.assertEqual(staging.parent, store)
+                self.assertTrue(staging.name.startswith(f".{entry.name}."), staging.name)
+                self.assertFalse(staging.exists())
+                shared = entry / "sdk-ts" / "node_modules"
+                self.assertEqual({(checkout / "node_modules").resolve() for checkout in checkouts}, {shared})
                 self.assertEqual((shared / ".pig-deps-ready").read_text(), module.manifest_digest(checkouts[0]))
                 self.assertFalse((shared / "stale").exists())
                 module.ensure(checkouts[0])
@@ -109,7 +114,38 @@ class NpmLockedTest(unittest.TestCase):
                 self.assertEqual(len(installs), 2)
                 self.assertNotEqual((checkouts[1] / "node_modules").resolve(), shared)
                 self.assertEqual((checkouts[0] / "node_modules").resolve(), shared)
-            self.assertEqual(sorted(p.name for p in store.iterdir() if not p.name.startswith(".")), sorted({f"sdk-ts-{module.manifest_digest(c).strip()[:24]}" for c in checkouts}))
+            # Each manifest content leaves its entry and the entry's lock file: no staging tree outlives an install.
+            entries = {f"sdk-ts-{module.manifest_digest(c).strip()[:24]}" for c in checkouts}
+            self.assertEqual(sorted(p.name for p in store.iterdir()), sorted(entries | {f".{name}.lock" for name in entries}))
+
+    @unittest.skipIf(os.name == "nt", "the shared store is a POSIX host cache")
+    def test_shared_store_install_reaches_the_vendored_packs_of_its_checkout(self):
+        # A manifest names a vendored Pi pack by a path relative to its directory (file:../../third_party/pi-packs/x.tgz), so where npm runs
+        # that path must lead to the packs of the checkout, and the shared entry must keep no link into one checkout.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            store = root / "store"
+            repository = root / "checkout"
+            project = repository / "extensions" / "sdk-ts"
+            project.mkdir(parents=True)
+            for name in ("package.json", "package-lock.json"):
+                (project / name).write_text('{}')
+            (repository / module.VENDORED).mkdir(parents=True)
+            (repository / module.VENDORED / "pack.tgz").write_text("the checkout's pack")
+            read = []
+
+            def fake_npm(*args, **kwargs):
+                directory = Path(kwargs["cwd"])
+                read.append((directory / ".." / ".." / module.VENDORED / "pack.tgz").read_text())
+                (directory / "node_modules").mkdir()
+
+            with patch.object(module, "REPOSITORY", repository), patch.object(module.subprocess, "run", side_effect=fake_npm), patch.dict(os.environ, {"PIG_NODE_MODULES_STORE": str(store)}):
+                module.ensure(project)
+            self.assertEqual(read, ["the checkout's pack"])
+            entry = store / f"sdk-ts-{module.manifest_digest(project).strip()[:24]}"
+            self.assertEqual((project / "node_modules").resolve(), entry / "extensions" / "sdk-ts" / "node_modules")
+            self.assertFalse(os.path.lexists(entry / module.VENDORED))
+            self.assertEqual(sorted(p.name for p in store.iterdir()), sorted([entry.name, f".{entry.name}.lock"]))
 
     def test_failed_or_racing_install_does_not_certify(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -165,7 +165,7 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		t.Fatal("the bookkeeping job does not run make ci-bookkeeping")
 	}
 	got = append(got, leaves("ci-bookkeeping")...)
-	for _, waiting := range []string{"preflight", "linux", "node-runtime", "durable-cf-host", "durable-contract", "android"} {
+	for _, waiting := range []string{"preflight", "linux", "node-runtime", "chord", "durable-cf-host", "durable-contract", "android"} {
 		if !slices.Contains(jobs[waiting].Needs, "bookkeeping") {
 			t.Errorf("%s does not wait for the bookkeeping job, so a bookkeeping failure would not stop it", waiting)
 		}
@@ -883,6 +883,7 @@ func TestOSParallelJobsKeepTheCheapFirstOrderOnMain(t *testing.T) {
 		"preflight":        "bookkeeping",
 		"linux":            "bookkeeping",
 		"node-runtime":     "bookkeeping",
+		"chord":            "bookkeeping",
 		"durable-cf-host":  "bookkeeping",
 		"durable-contract": "bookkeeping",
 		"android":          "bookkeeping",

@@ -27,7 +27,7 @@ func TestPushedWidgetFrameFromOldWidthIsNeverPaintedAfterResize(t *testing.T) {
 	ui.SetLogDirectory(t.TempDir())
 	requested := make(chan int, 4)
 	ui.SetOnWidthChange(func(width int) { requested <- width })
-	proxy := NewPushProxy(func() {}, nil)
+	proxy := NewPushProxy(func() {})
 	ui.Add(proxy)
 	oldRow := "old:" + strings.Repeat("o", 86) // 90 cells, rendered for 100
 
@@ -92,7 +92,7 @@ func TestRenderProxyNeverServesStaleOverWideFrame(t *testing.T) {
 }
 
 func TestPushProxyFrameWidth(t *testing.T) {
-	p := NewPushProxy(nil, nil)
+	p := NewPushProxy(nil)
 	row := strings.Repeat("w", 35)
 	p.UpdateLinesAt([]string{row}, 40)
 	if got := p.Render(20); got != nil {
@@ -116,7 +116,7 @@ func TestReviewStaleFittingWidgetFrameIsNotPainted(t *testing.T) {
 	var out bytes.Buffer
 	ui := tui.NewWithOutput(&out, 100, 20)
 	ui.SetLogDirectory(t.TempDir())
-	proxy := NewPushProxy(func() {}, nil)
+	proxy := NewPushProxy(func() {})
 	ui.Add(proxy)
 	proxy.UpdateLinesAt([]string{"width=100"}, 100)
 	ui.Render()

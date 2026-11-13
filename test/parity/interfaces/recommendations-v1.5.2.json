@@ -152706,7 +152706,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "39 normalized-name Pig candidates are ambiguous."
+        "40 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -152725,6 +152725,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#mistralEventLoop.run",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesEventLoop.run",
         "go:github.com/MichaelKinsy/PiG/ai#piMessagesProvider.run",
+        "go:github.com/MichaelKinsy/PiG/ai#providerRefresh.run",
         "go:github.com/MichaelKinsy/PiG/ai#tslibAsyncGenerator.run",
         "go:github.com/MichaelKinsy/PiG/coding#GraphExtensionRunner.run",
         "go:github.com/MichaelKinsy/PiG/coding#PreparedPromptRun.Run",
@@ -152996,7 +152997,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "20 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -153014,12 +153015,18 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.Schema",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.schema"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -315460,7 +315467,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "9 normalized-name Pig candidates are ambiguous."
+        "10 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -315475,6 +315482,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#sessionToolRegistry.entry",
         "go:github.com/MichaelKinsy/PiG/coding#virtualModelStore.entry",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Entry",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.Entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#lazyTree.entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#treeNodeAdapter.entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#generator.entry",
@@ -317359,7 +317367,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "40 normalized-name Pig candidates are ambiguous."
+        "41 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -317407,6 +317415,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#oauthProxyWithStore.ID",
         "go:github.com/MichaelKinsy/PiG/coding/piglet/artifact#Component.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.ID",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.ID",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#parityOAuthProvider.ID"
       ],
@@ -383496,7 +383505,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "20 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -383514,12 +383523,18 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsTool.schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellTool.Schema",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.Schema",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool.schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.Schema",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteTool.schema"
       ],
       "missingClosure": [
         "candidate-disambiguation",

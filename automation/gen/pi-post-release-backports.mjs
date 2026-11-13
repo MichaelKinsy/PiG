@@ -13,6 +13,8 @@
 //
 // Run through vendor-pi-dist.sh after the identity patches and before the SDK and library bundles are compiled.
 // The same entries are applied to the installed Pi the parity tests compare with (`--packages name=dir ...`, from automation/pin/oracle.py), so the oracle is Pi with these fixes.
+// `pi` itself runs the package's bundle (dist/bundle, Pi's esbuild output over the compiled output), which no entry can patch as text: the oracle build applies
+// the entries to the source build's packages too (`--package-files` names the files, so the build can put them back) and has Pi's own bundler make the bundle again.
 // The source mirror (.upstream/current) stays the pinned build, which the sync ledger's delta audit compares with the earlier pin; the
 // tests that read the mirror's docs and schemas read them through `--read-mirror <mirror> <path>` (internal/upstreammirror.ReadPicked), the
 // pinned file plus the entries of packageFileBackports and backportPatches that cover it, and the TypeScript sources a mirrorSource entry covers.
@@ -896,6 +898,14 @@ export function applyPackageBackports(packages) {
   }
 }
 
+// packageBackportFiles lists the files applyPackageBackports rewrites under `packages`.
+export function packageBackportFiles(packages) {
+  return packageBackportKeys().flatMap((file) => {
+    const [name, ...rest] = file.split("/");
+    return name in packages ? [join(packages[name], packageLocation(name, rest))] : [];
+  });
+}
+
 const count = (text, part) => text.split(part).length - 1;
 
 // verifyPackageBackports throws when a file of `packages` does not carry each of its backports once: an installed Pi that was not
@@ -1006,6 +1016,7 @@ const packagesOf = (args) => Object.fromEntries(args.map((arg) => arg.split(/=(.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const [mode, ...args] = process.argv.slice(2);
   if (mode === "--packages") applyPackageBackports(packagesOf(args));
+  else if (mode === "--package-files") process.stdout.write(JSON.stringify(packageBackportFiles(packagesOf(args))));
   else if (mode === "--verify-packages") verifyPackageBackports(packagesOf(args));
   else if (mode === "--classify") process.stdout.write(JSON.stringify(classifyBackports(packagesOf(args))));
   else if (mode === "--read-mirror") process.stdout.write(readMirrorFile(args[0], args[1]));
