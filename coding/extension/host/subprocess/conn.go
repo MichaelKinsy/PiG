@@ -2305,6 +2305,8 @@ func (c *Conn) deliverResponse(id string, env *Envelope) {
 }
 
 // sendResponse puts env in the channel of the request id while the request is still registered, and reports whether it did: the request returns its channel for reuse only after it unregistered under pendingMu, so no response is sent to a channel that was reused.
+//
+//perf:hot
 func (c *Conn) sendResponse(id string, ch chan *Envelope, env *Envelope) bool {
 	c.pendingMu.Lock()
 	sent := false

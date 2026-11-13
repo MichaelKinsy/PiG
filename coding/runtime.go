@@ -237,6 +237,8 @@ func (rt *Runtime) Close() error {
 		// Pi's dispose waits for a started OAuth refresh to be saved, right after session.dispose and while the extensions are still running. PiG's own teardown below stops the extension processes and cancels the model tasks, which would cut an in-flight refresh request.
 		//portlint:allow ctxbackground Pi's dispose awaits settleCredentialWrites with no signal (agent-session-runtime.ts dispose); Close has no caller context
 		settleErr := rt.SettleCredentialWrites(context.Background())
+		// A settings write that a setter on another goroutine is performing finishes before the runtime is torn down.
+		icodingagent.FlushSettingsWrites()
 		current.retireResources("quit")
 		if rt.extCtx != nil && rt.extCtx.AbortFunc != nil {
 			rt.extCtx.AbortFunc()

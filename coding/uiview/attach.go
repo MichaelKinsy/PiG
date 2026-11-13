@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"slices"
 	"strconv"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // pig additive (D614): attachments. Every client that draws mounts holds one attachment. The registry resolves each
@@ -103,7 +105,7 @@ func (r *Registry) ordered() []ownerKey {
 	for k := range r.mounts {
 		keys = append(keys, k)
 	}
-	slices.SortFunc(keys, func(a, b ownerKey) int {
+	sortx.Func(keys, func(a, b ownerKey) int {
 		return int(int64(r.mounts[a].snap.Mount.Epoch) - int64(r.mounts[b].snap.Mount.Epoch))
 	})
 	return keys

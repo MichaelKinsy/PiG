@@ -1,0 +1,44 @@
+# Upstream evidence: theme.ts loadTheme (557-566) returns a registered theme, else loadThemeJson
+# (487-507) reads <agent directory>/themes/<name>.json: a theme file is found by its FILE name,
+# whatever name its JSON carries (the resource loader registers it under the JSON name only).
+# Measured, Pi build b4afdddf44e0 against PiG aef9474df0, tmux 100x35: settings
+# {"theme":"proto"}, themes/proto.json = a valid theme whose JSON name is "other".
+#   Pi:  no error line; the theme is active (ctx.ui.setTheme("proto") answers {"success":true}).
+#   PiG: Error: Failed to load theme "proto": Theme not found: proto, and the system theme.
+# The fixture theme changes the user message background and text, the thinking text and the text
+# color, so the escaped crop of the resumed conversation shows which theme is active.
+name = "73-theme-loads-by-file-name"
+description = "A valid theme file selected by its file name loads although its JSON carries another name."
+covers = [
+  "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts",
+  "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+]
+# Serial: the terminal color query has Pi's fixed 100 ms deadline, as in 31-stock-dark-256color.
+tags = ["fast", "hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/theme-load-file-name-agent", "TERM=screen-256color", "COLORTERM=", "COLORFGBG=15;0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/theme-load-file-name-agent", "PI_SKIP_VERSION_CHECK=1", "TERM=screen-256color", "COLORTERM=", "COLORFGBG=15;0"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+window_style = "bg=black"
+ready_pattern_pig = "Resume marker end"
+ready_pattern_pi = "Resume marker end"
+ready_timeout_seconds = 30
+cwd = "testdata/thinking-cwd"
+capture_start = "Pick a color"
+capture_end = "Resume marker end"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Resumed reasoning alpha", "Resumed answer charlie", "Resume marker end"]
+both_not_contain = ["Failed to load theme"]
+escaped_output_equal = true
+runs = 3

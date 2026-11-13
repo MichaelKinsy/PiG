@@ -732,6 +732,7 @@ func settingsHandlerTUI(sc *SlashContext, config SettingsConfig) error {
 		// applied reports a failed save and shows the row's saved value again; otherwise it applies the change's live effect. value is the row's value as the live effect reads it.
 		applied := func(id, value string, err error) bool {
 			if err != nil {
+				// pig divergence (D633): a failed save is reported here and its live effect is not applied; Pi's callbacks apply the effect and the failure shows only in the settings diagnostics (interactive-mode.ts:5154-5173).
 				showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: %v", err))
 				if fresh, freshErr := settingsConfig(sc); freshErr == nil {
 					for _, item := range NewSettingsSelectorComponent(fresh, SettingsCallbacks{}).GetSettingsList().Items() {

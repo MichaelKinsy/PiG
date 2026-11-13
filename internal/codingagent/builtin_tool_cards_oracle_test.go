@@ -52,11 +52,13 @@ type toolCardResult struct {
 }
 
 type toolCardProbe struct {
-	Tool     string          `json:"tool"`
-	Args     map[string]any  `json:"args"`
-	Result   *toolCardResult `json:"result"`
-	Partial  bool            `json:"partial"`
-	NoImages bool            `json:"noImages"`
+	Tool    string          `json:"tool"`
+	Args    map[string]any  `json:"args"`
+	Result  *toolCardResult `json:"result"`
+	Partial bool            `json:"partial"`
+	// Streaming draws the call while its arguments still arrive: no execution start and no completed arguments on either side.
+	Streaming bool `json:"streaming,omitempty"`
+	NoImages  bool `json:"noImages"`
 	// Images is the terminal image protocol the card sees ("" shows image fallback text only).
 	Images   string `json:"images,omitempty"`
 	Expanded bool   `json:"expanded"`
@@ -448,7 +450,13 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 			watcher = &renderRequestWatcher{TUI: f.mode.tuiInst, requests: make(chan struct{}, 1)}
 			f.mode.tuiInst = watcher
 		}
-		f.mode.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: f.id, ToolName: f.name, Args: raw})
+		if !probe.Streaming {
+			f.mode.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: f.id, ToolName: f.name, Args: raw})
+			if probe.Tool == "write" {
+				// The Pi probe completes the arguments of every call, and the write card draws a complete call unlike a streaming one for a path whose language lookup throws.
+				f.card.SetArgsComplete()
+			}
+		}
 		if probe.Settle {
 			f.card.SetArgsComplete()
 			// As the Pi probe does, wait for the preview before the result lands. A result drawn first would start the preview inside the event handler,

@@ -5441,7 +5441,8 @@
         "call:agent/agent.go#Agent.EffectiveStreamFunction"
       ],
       "evidence": [
-        "test:agent/stream_fn_descriptor_test.go#TestAgentEffectiveStreamFunction"
+        "test:agent/stream_fn_descriptor_test.go#TestAgentEffectiveStreamFunction",
+        "test:internal/codingagent/cache_warmer_async_session_test.go#TestCacheWarmingRequestFailuresRecordNoUsageAndStillReschedule"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -5462,7 +5463,8 @@
         "call:agent/agent.go#Agent.EffectiveStreamFunction"
       ],
       "evidence": [
-        "test:agent/stream_fn_descriptor_test.go#TestAgentEffectiveStreamFunction"
+        "test:agent/stream_fn_descriptor_test.go#TestAgentEffectiveStreamFunction",
+        "test:internal/codingagent/cache_warmer_async_session_test.go#TestCacheWarmingRequestFailuresRecordNoUsageAndStillReschedule"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -18321,7 +18323,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthConvertMessagesDetailed"
+        "call:ai/anthropic.go#anthImageBlock"
       ],
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
@@ -18343,7 +18345,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthConvertMessagesDetailed"
+        "call:ai/anthropic.go#anthImageBlock"
       ],
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
@@ -63760,7 +63762,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthConvertMessagesDetailed"
+        "call:ai/anthropic.go#anthImageBlock"
       ],
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
@@ -63782,7 +63784,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/anthropic.go#anthConvertMessagesDetailed"
+        "call:ai/anthropic.go#anthImageBlock"
       ],
       "evidence": [
         "test:agent/agent_prompt_upstream_test.go#TestAgentPromptBuildsATextThenImagesUserMessageAndSettles",
@@ -154810,7 +154812,7 @@
       "evidence": [
         "test:coding/session_settings_accessors_test.go#TestSessionReportsQueueModesAndTheAutoSettings",
         "test:coding/session_state_test.go#TestSessionQueueModesFollowTheAgent",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/settings_failed_save_d633_test.go#TestSessionQueueModeSettersReturnAFailedSave"
       ]
     },
     {
@@ -156224,7 +156226,8 @@
       ],
       "evidence": [
         "test:coding/session_cache_warming_test.go#TestSetCacheWarmingModeReconcilesActiveWarming",
-        "test:coding/session_supplied_agent_test.go#TestNewAgentSessionDrivesTheSuppliedCacheWarmer"
+        "test:coding/session_supplied_agent_test.go#TestNewAgentSessionDrivesTheSuppliedCacheWarmer",
+        "test:coding/settings_failed_save_d633_test.go#TestSetCacheWarmingModeReturnsAFailedSaveAndDoesNotTellTheWarmer"
       ]
     },
     {
@@ -156245,7 +156248,8 @@
       ],
       "evidence": [
         "test:coding/session_cache_warming_test.go#TestSetCacheWarmingModeReconcilesActiveWarming",
-        "test:coding/session_supplied_agent_test.go#TestNewAgentSessionDrivesTheSuppliedCacheWarmer"
+        "test:coding/session_supplied_agent_test.go#TestNewAgentSessionDrivesTheSuppliedCacheWarmer",
+        "test:coding/settings_failed_save_d633_test.go#TestSetCacheWarmingModeReturnsAFailedSaveAndDoesNotTellTheWarmer"
       ]
     },
     {
@@ -156622,7 +156626,7 @@
       "evidence": [
         "test:coding/session_settings_accessors_test.go#TestSessionReportsQueueModesAndTheAutoSettings",
         "test:coding/session_state_test.go#TestSessionQueueModesFollowTheAgent",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/settings_failed_save_d633_test.go#TestSessionQueueModeSettersReturnAFailedSave"
       ]
     },
     {
@@ -156688,7 +156692,7 @@
       "evidence": [
         "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryRequestAuth",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesBugReportSummaries",
-        "test:coding/session_summarization_test.go#TestSessionSummarizationRoutingAndThinkingLevel"
+        "test:coding/session_bug_report_async_session_test.go#TestSummarizeForBugReportCancelsTheInFlightRequestWithTheCaller"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -156711,7 +156715,7 @@
       "evidence": [
         "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryRequestAuth",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesBugReportSummaries",
-        "test:coding/session_summarization_test.go#TestSessionSummarizationRoutingAndThinkingLevel"
+        "test:coding/session_bug_report_async_session_test.go#TestSummarizeForBugReportCancelsTheInFlightRequestWithTheCaller"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -164140,7 +164144,7 @@
       "evidence": [
         "test:internal/codingagent/session_accounting_oracle_test.go#TestSessionInfoCommandMatchesPi",
         "test:coding/session_supplied_agent_test.go#TestNewAgentSessionDrivesTheSuppliedCacheWarmer",
-        "test:internal/codingagent/cache_warming_mode_union_test.go#TestCacheWarmingModeUnionAllKindsAreHandled"
+        "test:internal/codingagent/cache_warmer_async_session_test.go#TestCacheWarmingRequestFailuresRecordNoUsageAndStillReschedule"
       ]
     },
     {
@@ -164648,7 +164652,7 @@
       "evidence": [
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
         "test:coding/session_summarization_test.go#TestSummarizationRejectsIncompleteResponses",
-        "test:internal/codingagent/compaction/compaction_summary_reasoning_test.go#TestCompactSplitTurnPreservesPreviousSummaryWithoutHistoryRequest"
+        "test:internal/codingagent/compaction/compaction_async_session_test.go#TestCompactSignalReachesEverySplitTurnRequestAndAbortsTheSequence"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -164671,7 +164675,7 @@
       "evidence": [
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
         "test:coding/session_summarization_test.go#TestSummarizationRejectsIncompleteResponses",
-        "test:internal/codingagent/compaction/compaction_summary_reasoning_test.go#TestCompactSplitTurnPreservesPreviousSummaryWithoutHistoryRequest"
+        "test:internal/codingagent/compaction/compaction_async_session_test.go#TestCompactSignalReachesEverySplitTurnRequestAndAbortsTheSequence"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -167778,8 +167782,8 @@
       ],
       "evidence": [
         "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/services_extension_runtime_test.go#TestCreateAgentSessionServicesDrainsTheLoadedExtensionRuntime",
-        "test:coding/services_options_test.go#TestServicesLoadResourcesWithTheirOptionsAndTheSessionUsesTheLoader"
+        "test:coding/services_async_wcli2_test.go#TestServicesLocalRefreshAfterTheReloadOutlivesTheModelRuntimeSignal",
+        "test:coding/services_async_wcli2_test.go#TestServicesReloadOutlivesTheModelRuntimeSignal"
       ]
     },
     {
@@ -168589,8 +168593,8 @@
       ],
       "evidence": [
         "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
-        "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
-        "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths"
+        "test:coding/cli/package_async_ext_b_test.go#TestRefreshModelCatalogsAbortsAtFifteenSecondsAndReleasesTheTimer",
+        "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -168613,7 +168617,7 @@
       "evidence": [
         "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
         "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths",
-        "test:coding/virtual_models_upstream_test.go#TestGetBranchSelectionLooksUpOnlyTheLastModelChange"
+        "test:coding/model_runtime_create_async_modelsa_test.go#TestCreateModelRuntimeRefreshEndsWithTheCallerSignalOrTheTimeout"
       ]
     },
     {
@@ -168697,7 +168701,8 @@
         "call:coding/model_runtime_create.go#CreateModelRuntime"
       ],
       "evidence": [
-        "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
+        "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
+        "test:coding/model_runtime_create_async_modelsa_test.go#TestCreateModelRuntimeRefreshEndsWithTheCallerSignalOrTheTimeout"
       ]
     },
     {
@@ -168741,7 +168746,7 @@
       "evidence": [
         "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
         "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
-        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath"
+        "test:coding/model_runtime_create_async_modelsa_test.go#TestCreateModelRuntimeRefreshEndsWithTheCallerSignalOrTheTimeout"
       ]
     },
     {
@@ -168806,8 +168811,8 @@
       ],
       "evidence": [
         "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
-        "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
-        "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths"
+        "test:coding/cli/package_async_ext_b_test.go#TestRefreshModelCatalogsAbortsAtFifteenSecondsAndReleasesTheTimer",
+        "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -172435,9 +172440,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
+        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
       ]
     },
     {
@@ -172457,9 +172462,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
+        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
       ]
     },
     {
@@ -173362,7 +173367,7 @@
       "evidence": [
         "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
         "test:internal/codingagent/tool_builtin_renderers_args_cost_test.go#TestEditPreviewBoxDrawsWithoutRedrawingTheDiff",
-        "test:internal/codingagent/tools/tools_edit_port_test.go#TestComputeEditsDiffReturnsEitherAResultOrAnError"
+        "test:internal/codingagent/tool_builtin_renderers_edit_async_tools_test.go#TestEditRenderCallPreviewIsStartedOnceAndStalePreviewIsDiscarded"
       ]
     },
     {
@@ -173384,7 +173389,7 @@
       "evidence": [
         "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
         "test:internal/codingagent/tool_builtin_renderers_args_cost_test.go#TestEditPreviewBoxDrawsWithoutRedrawingTheDiff",
-        "test:internal/codingagent/tools/tools_edit_port_test.go#TestComputeEditsDiffReturnsEitherAResultOrAnError"
+        "test:internal/codingagent/tool_builtin_renderers_edit_async_tools_test.go#TestEditRenderCallPreviewIsStartedOnceAndStalePreviewIsDiscarded"
       ]
     },
     {
@@ -180773,8 +180778,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorResolvesCancelGloballyAndTheExternalKeyThroughItsOwnManager",
-        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
-        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow"
+        "test:internal/codingagent/extension_editor_async_modes_test.go#TestExtensionEditorLateExternalCompletionTouchesNothingButTheRepaint",
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce"
       ]
     },
     {
@@ -180924,9 +180929,9 @@
         "call:internal/codingagent/extension_editor.go#ExtensionEditorComponent.HandleInput"
       ],
       "evidence": [
+        "test:internal/codingagent/extension_editor_async_modes_test.go#TestExtensionEditorLateExternalCompletionTouchesNothingButTheRepaint",
         "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
-        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow",
-        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff"
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow"
       ],
       "behaviorContracts": [
         "coding-agent/extension-editor/cancel-before-external-editor",
@@ -180950,9 +180955,9 @@
         "call:internal/codingagent/extension_editor.go#ExtensionEditorComponent.HandleInput"
       ],
       "evidence": [
+        "test:internal/codingagent/extension_editor_async_modes_test.go#TestExtensionEditorLateExternalCompletionTouchesNothingButTheRepaint",
         "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
-        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow",
-        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff"
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow"
       ],
       "behaviorContracts": [
         "coding-agent/extension-editor/cancel-before-external-editor"
@@ -187502,8 +187507,8 @@
       ],
       "evidence": [
         "test:coding/cli/rpc_ui_response_upstream_test.go#TestRpcExtensionUIResponseResolvesItsRequestOnceUpstream",
-        "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextDismissedStartupDialogAnswersUndefined",
-        "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextFollowsCreateProjectTrustContext"
+        "test:coding/cli/project_trust_async_wcli_test.go#TestProjectTrustContextCallerCancellationPropagates",
+        "test:coding/cli/project_trust_async_wcli_test.go#TestProjectTrustContextDismissedConfirmAnswersFalse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -187525,8 +187530,8 @@
       ],
       "evidence": [
         "test:coding/cli/rpc_ui_response_upstream_test.go#TestRpcExtensionUIResponseResolvesItsRequestOnceUpstream",
-        "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextDismissedStartupDialogAnswersUndefined",
-        "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextFollowsCreateProjectTrustContext"
+        "test:coding/cli/project_trust_async_wcli_test.go#TestProjectTrustContextCallerCancellationPropagates",
+        "test:coding/cli/project_trust_async_wcli_test.go#TestProjectTrustContextDismissedConfirmAnswersFalse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -194884,7 +194889,7 @@
       "evidence": [
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer"
+        "test:coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go#TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure"
       ]
     },
     {
@@ -196621,8 +196626,8 @@
       ],
       "evidence": [
         "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
-        "test:coding/model_registry_namespace_test.go#TestExtensionOAuthCallbacksReceiveTheStoredOAuthCredentials",
-        "test:coding/model_registry_namespace_test.go#TestRegistryCrossEntryOAuthCallbacksRemainCallable"
+        "test:coding/model_registry_auth_async_modelsa_test.go#TestModelRegistryAuthFailuresBecomeValuesAsyncModelsA",
+        "test:coding/model_registry_namespace_test.go#TestExtensionOAuthCallbacksReceiveTheStoredOAuthCredentials"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -196644,8 +196649,8 @@
       ],
       "evidence": [
         "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
-        "test:coding/model_registry_namespace_test.go#TestExtensionOAuthCallbacksReceiveTheStoredOAuthCredentials",
-        "test:coding/model_registry_namespace_test.go#TestRegistryCrossEntryOAuthCallbacksRemainCallable"
+        "test:coding/model_registry_auth_async_modelsa_test.go#TestModelRegistryAuthFailuresBecomeValuesAsyncModelsA",
+        "test:coding/model_registry_namespace_test.go#TestExtensionOAuthCallbacksReceiveTheStoredOAuthCredentials"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -198010,6 +198015,7 @@
       ],
       "evidence": [
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyUpstream",
+        "test:coding/model_runtime_credential_queue_async_modelsa_test.go#TestModelRuntimeCredentialOperationsShareOneFIFOQueuePerProvider",
         "test:coding/model_registry_oracle_test.go#TestModelRegistryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -198032,6 +198038,7 @@
       ],
       "evidence": [
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyUpstream",
+        "test:coding/model_runtime_credential_queue_async_modelsa_test.go#TestModelRuntimeCredentialOperationsShareOneFIFOQueuePerProvider",
         "test:coding/model_registry_oracle_test.go#TestModelRegistryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -198979,7 +198986,7 @@
       "evidence": [
         "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
         "test:coding/model_availability_native_test.go#TestAvailabilityCredentialSynchronizationRejectsStalledFullPass",
-        "test:coding/model_runtime_credential_sync_test.go#TestModelRuntimeCredentialSynchronizationErrorRetainsCommit"
+        "test:coding/model_runtime_credential_queue_async_modelsa_test.go#TestModelRuntimeCredentialOperationsShareOneFIFOQueuePerProvider"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199002,7 +199009,7 @@
       "evidence": [
         "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
         "test:coding/model_availability_native_test.go#TestAvailabilityCredentialSynchronizationRejectsStalledFullPass",
-        "test:coding/model_runtime_credential_sync_test.go#TestModelRuntimeCredentialSynchronizationErrorRetainsCommit"
+        "test:coding/model_runtime_credential_queue_async_modelsa_test.go#TestModelRuntimeCredentialOperationsShareOneFIFOQueuePerProvider"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199197,7 +199204,7 @@
       "evidence": [
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyOperationErrorsUpstream",
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyUpstream",
-        "test:coding/model_runtime_credential_sync_test.go#TestModelRuntimeRuntimeAPIKeyOperationsReportSynchronizationFailure"
+        "test:coding/model_runtime_credential_queue_async_modelsa_test.go#TestModelRuntimeCredentialOperationsShareOneFIFOQueuePerProvider"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199220,7 +199227,7 @@
       "evidence": [
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyOperationErrorsUpstream",
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyUpstream",
-        "test:coding/model_runtime_credential_sync_test.go#TestModelRuntimeRuntimeAPIKeyOperationsReportSynchronizationFailure"
+        "test:coding/model_runtime_credential_queue_async_modelsa_test.go#TestModelRuntimeCredentialOperationsShareOneFIFOQueuePerProvider"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199320,7 +199327,7 @@
       "id": "pkg:coding-agent/.#ModelRuntime::property:settleCredentialWrites",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cf74952865eb0fc113595f12e41e356f78401a2c22cdc4385fa66329633507a7",
-      "rationale": "Derived by the interface gap detector: ModelRuntime::property:settleCredentialWrites is Go coding/services.go#ModelRuntime.SettleCredentialWrites (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ModelRuntime::property:settleCredentialWrites is Go coding/services.go#ModelRuntime.SettleCredentialWrites (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/services.go#ModelRuntime.SettleCredentialWrites"
       ],
@@ -199333,7 +199340,7 @@
         "call:coding/services.go#ModelRuntime.SettleCredentialWrites"
       ],
       "evidence": [
-        "reach:coding/services.go#ModelRuntime.SettleCredentialWrites"
+        "test:coding/session_summarization_auth_signal_async_session_test.go#TestSummaryAbortEndsARequestAuthStillBeingResolved"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199341,7 +199348,7 @@
       "id": "pkg:coding-agent/.#ModelRuntime::property:settleCredentialWrites::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
-      "rationale": "Derived by the interface gap detector: ModelRuntime::property:settleCredentialWrites::call:0 is Go coding/services.go#ModelRuntime.SettleCredentialWrites (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ModelRuntime::property:settleCredentialWrites::call:0 is Go coding/services.go#ModelRuntime.SettleCredentialWrites (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "coding/services.go#ModelRuntime.SettleCredentialWrites"
       ],
@@ -199354,7 +199361,7 @@
         "call:coding/services.go#ModelRuntime.SettleCredentialWrites"
       ],
       "evidence": [
-        "reach:coding/services.go#ModelRuntime.SettleCredentialWrites"
+        "test:coding/session_summarization_auth_signal_async_session_test.go#TestSummaryAbortEndsARequestAuthStillBeingResolved"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -200546,7 +200553,8 @@
       ],
       "evidence": [
         "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
-        "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow"
+        "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
+        "test:tui/oauth_selector_render_contract_test.go#TestOAuthSelectorRenderRebuildsTheSelectedPartnerRowForEachFrame"
       ]
     },
     {
@@ -200698,7 +200706,7 @@
       "evidence": [
         "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
         "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
-        "test:tui/component_width_table_test.go#TestSelectorDialogListComponentsNeverExceedRenderWidth"
+        "test:tui/oauth_selector_render_contract_test.go#TestOAuthSelectorRenderRebuildsTheSelectedPartnerRowForEachFrame"
       ]
     },
     {
@@ -200720,7 +200728,7 @@
       "evidence": [
         "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
         "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
-        "test:tui/component_width_table_test.go#TestSelectorDialogListComponentsNeverExceedRenderWidth"
+        "test:tui/oauth_selector_render_contract_test.go#TestOAuthSelectorRenderRebuildsTheSelectedPartnerRowForEachFrame"
       ]
     },
     {
@@ -201546,9 +201554,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
+        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
       ]
     },
     {
@@ -201568,9 +201576,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
         "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
-        "test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
+        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
       ]
     },
     {
@@ -202881,9 +202889,9 @@
         "call:coding/cli/print_mode_build.go#cliRuntimeBuilder.rebuild"
       ],
       "evidence": [
-        "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextDismissedStartupDialogAnswersUndefined",
-        "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextFollowsCreateProjectTrustContext",
-        "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextNotifyIsPlainWithoutColor"
+        "test:coding/cli/project_trust_async_wcli_test.go#TestProjectTrustContextCallerCancellationPropagates",
+        "test:coding/cli/project_trust_async_wcli_test.go#TestProjectTrustContextDismissedConfirmAnswersFalse",
+        "test:coding/cli/project_trust_context_test.go#TestProjectTrustContextDismissedStartupDialogAnswersUndefined"
       ]
     },
     {
@@ -205716,8 +205724,8 @@
       ],
       "evidence": [
         "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveReportsNoInstallFailureForASkippedSourceAndKeepsTheErrorDecision"
+        "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestResolveAsksOnMissingOneSourceAtATimeAfterTheInstallOfThePreviousOne",
+        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall"
       ]
     },
     {
@@ -205952,8 +205960,8 @@
       ],
       "evidence": [
         "test:coding/model_resolver_oracle_test.go#TestResolveCliModelAndScopeMatchPi",
-        "test:coding/model_resolver_test.go#TestResolveModelScopeReadsAvailableModelsOnly",
-        "test:coding/model_resolver_test.go#TestResolveModelScopeWithDiagnosticsOverModelRuntime"
+        "test:coding/model_resolver_async_modelsa_test.go#TestResolveModelScopeCancelledContextRejectsAsyncModelsA",
+        "test:coding/model_resolver_test.go#TestResolveModelScopeReadsAvailableModelsOnly"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -205975,8 +205983,8 @@
       ],
       "evidence": [
         "test:coding/model_resolver_oracle_test.go#TestResolveCliModelAndScopeMatchPi",
-        "test:coding/model_resolver_test.go#TestResolveModelScopeReadsAvailableModelsOnly",
-        "test:coding/model_resolver_test.go#TestResolveModelScopeWithDiagnosticsOverModelRuntime"
+        "test:coding/model_resolver_async_modelsa_test.go#TestResolveModelScopeCancelledContextRejectsAsyncModelsA",
+        "test:coding/model_resolver_test.go#TestResolveModelScopeReadsAvailableModelsOnly"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -210532,7 +210540,7 @@
       "evidence": [
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
         "test:internal/codingagent/compaction/compaction_oracle_test.go#TestCompactionMatchesPi",
-        "test:internal/codingagent/session_context_upstream_test.go#TestBuildSessionContextUpstream"
+        "test:internal/codingagent/resumed_tool_call_request_order_oracle_test.go#TestResumedSessionToolCallArgumentsReachEachProviderInTheStoredOrder"
       ]
     },
     {
@@ -211992,9 +212000,9 @@
         "call:internal/codingagent/session.go#Session.BuildSessionContext"
       ],
       "evidence": [
+        "test:internal/codingagent/resumed_tool_call_request_order_oracle_test.go#TestResumedSessionToolCallArgumentsReachEachProviderInTheStoredOrder",
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate",
-        "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
+        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate"
       ]
     },
     {
@@ -212014,9 +212022,9 @@
         "call:internal/codingagent/session.go#Session.BuildSessionContext"
       ],
       "evidence": [
+        "test:internal/codingagent/resumed_tool_call_request_order_oracle_test.go#TestResumedSessionToolCallArgumentsReachEachProviderInTheStoredOrder",
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate",
-        "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
+        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate"
       ]
     },
     {
@@ -220442,8 +220450,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
-        "test:internal/codingagent/interactive_settings_json_test.go#TestInteractiveBindsSettingsEncodingOncePerGeneration"
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings"
       ]
     },
     {
@@ -220464,8 +220472,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
-        "test:internal/codingagent/interactive_settings_json_test.go#TestInteractiveBindsSettingsEncodingOncePerGeneration"
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings"
       ]
     },
     {
@@ -220572,8 +220580,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack",
-        "test:internal/codingagent/settings_empty_strings_test.go#TestEmptyStringSettingsOverrideAndPersist"
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
       ]
     },
     {
@@ -220594,8 +220602,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack",
-        "test:internal/codingagent/settings_empty_strings_test.go#TestEmptyStringSettingsOverrideAndPersist"
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
+        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack"
       ]
     },
     {
@@ -221662,8 +221670,8 @@
       ],
       "evidence": [
         "test:coding/cli/package_resource_upstream_test.go#TestPackageResolveOriginalCases",
-        "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerProjectPathSettersWriteTheProjectFile"
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
+        "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi"
       ]
     },
     {
@@ -221684,8 +221692,8 @@
       ],
       "evidence": [
         "test:coding/cli/package_resource_upstream_test.go#TestPackageResolveOriginalCases",
-        "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerProjectPathSettersWriteTheProjectFile"
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
+        "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi"
       ]
     },
     {
@@ -221791,6 +221799,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetProjectSkillPaths"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
         "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
         "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerProjectPathSettersWriteTheProjectFile"
       ]
@@ -221812,6 +221821,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetProjectSkillPaths"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
         "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
         "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerProjectPathSettersWriteTheProjectFile"
       ]
@@ -221833,9 +221843,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetProjectThemePaths"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
         "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
-        "test:coding/cli/configured_resources_test.go#TestCollectThemePathsFollowsUpstreamPrecedence",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerProjectPathSettersWriteTheProjectFile"
+        "test:coding/cli/configured_resources_test.go#TestCollectThemePathsFollowsUpstreamPrecedence"
       ]
     },
     {
@@ -221855,9 +221865,9 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetProjectThemePaths"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi",
         "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
-        "test:coding/cli/configured_resources_test.go#TestCollectThemePathsFollowsUpstreamPrecedence",
-        "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerProjectPathSettersWriteTheProjectFile"
+        "test:coding/cli/configured_resources_test.go#TestCollectThemePathsFollowsUpstreamPrecedence"
       ]
     },
     {
@@ -222139,7 +222149,7 @@
       "evidence": [
         "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi",
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:internal/codingagent/settings_empty_strings_test.go#TestEmptyStringSettingIsNotRewrittenByAnotherSetter"
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi"
       ]
     },
     {
@@ -222161,7 +222171,7 @@
       "evidence": [
         "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi",
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:internal/codingagent/settings_empty_strings_test.go#TestEmptyStringSettingIsNotRewrittenByAnotherSetter"
+        "test:internal/codingagent/settings_write_queue_oracle_test.go#TestSettingsWriteQueueErrorPathMatchesPi"
       ]
     },
     {
@@ -222693,9 +222703,9 @@
         "call:internal/codingagent/extension_settings_graph.go#NewGraphSettingsManager"
       ],
       "evidence": [
-        "test:internal/codingagent/settings_create_options_test.go#TestSettingsManagerCreateOptionsProjectTrust",
-        "test:internal/codingagent/settings_wrong_type_test.go#TestSettingsWarnOnceForAProjectFileOfTheWrongType",
-        "test:coding/cli/package_file_url_identity_upstream_test.go#TestConfigSelectorRejectsInvalidSettingsFileURL"
+        "test:coding/cli/settings_write_exit_async_test.go#TestExitProcessWaitsForASettingsWriteInProgress",
+        "test:coding/runtime_close_settings_writes_async_test.go#TestRuntimeCloseWaitsForASettingsWriteInProgress",
+        "test:internal/codingagent/settings_create_options_test.go#TestSettingsManagerCreateOptionsProjectTrust"
       ]
     },
     {
@@ -274001,7 +274011,7 @@
       "evidence": [
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer"
+        "test:coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go#TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure"
       ]
     },
     {
@@ -274792,7 +274802,7 @@
       "evidence": [
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer"
+        "test:coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go#TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure"
       ]
     },
     {
@@ -275039,7 +275049,7 @@
       "evidence": [
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberForm",
         "test:coding/extension/mcp_servers_oracle_test.go#TestValidateMcpServerConfigMatchesPi",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer"
+        "test:coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go#TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure"
       ]
     },
     {
@@ -305876,8 +305886,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
+        "test:internal/latex/prototype_names_oracle_test.go#TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi"
       ]
     },
     {
@@ -305898,8 +305908,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
+        "test:internal/latex/prototype_names_oracle_test.go#TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi"
       ]
     },
     {
@@ -305920,8 +305930,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
+        "test:internal/latex/prototype_names_oracle_test.go#TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi"
       ]
     },
     {
