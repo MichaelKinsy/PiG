@@ -1494,6 +1494,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b5ebeb5](#bf-b5ebeb5) | A resumed session draws its `!` and `!!` command blocks, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b5fb4aa](#bf-b5fb4aa) | fix(tui): a streamed Markdown is not resumed past a paragraph that a later LaTeX closer clips; keep wraps… | PiG's own defect | All platforms | Unreleased |
 | [BF-b607c35](#bf-b607c35) | Started from a directory reached through a symlink (a `$PWD` naming a link), pig now uses the physical… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b637cd4](#bf-b637cd4) | A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the… | PiG's own defect | All platforms | Unreleased |
+| [BF-b637cd4-2](#bf-b637cd4-2) | When the selected theme's file exists but fails to load, the `Failed to load theme "<name>":` line and the… | PiG's own defect | All platforms | Unreleased |
 | [BF-b65e288](#bf-b65e288) | A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-b684b81](#bf-b684b81) | RPC and session JSON write an assistant message's members in the order Pi's providers assign them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b6c65b3](#bf-b6c65b3) | `!` command and RPC `bash` output no longer keeps fragments of color codes, such as a stray `m`, when an… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -22520,6 +22522,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b607c35564` (2026-10-13)
 - **Tests:** `coding/cli/startup_physical_cwd_test.go::TestStartupWorkingDirectoryIsThePhysicalPath`, `internal/codingagent/file_processor_oracle_test.go::TestProcessCLIFileArgumentsMatchesPi`
 - **Release note:** Started from a directory reached through a symlink (a `$PWD` naming a link), pig now uses the physical working directory as Pi does, so `@file` arguments are named by their physical path.
+
+### BF-b637cd4
+
+**A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the name inside the file differs (`themes/proto.json` with `"name": "other"`, selected as `"theme": "proto"`, `--use-theme proto` or an extension's `ctx.ui.setTheme("proto")`).
+- **Root cause:** Pi's setTheme reports the error thrown under loadTheme. For a name that is neither built in nor registered, theme.ts loadThemeJson reads <agent directory>/themes/<name>.json whenever that file exists: a valid file loads by its file name, whatever name its JSON carries, and a file that fails gives the loader's reason (fs.readFileSync's message, the parse error and the validator's message labelled with the name, or resolveVarRefs' message). Only a name without such a file is "Theme not found".
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b637cd4647` (2026-11-13)
+- **Tests:** `internal/codingagent/theme_load_failure_reason_test.go::TestExtensionSetThemeRepeatsTheLoadersReason`, `internal/codingagent/theme_load_failure_reason_test.go::TestStartupThemeLoadFailureRepeatsTheLoadersReason`, `internal/codingagent/theme_load_failure_reason_test.go::TestThemeLoadFailureReasonMatchesPi`, `tui/theme_unregistered_load_test.go::TestSetThemeByNameCheckedReportsWhyAnUnregisteredThemeFileFailed`
+- **Release note:** A theme file in the agent directory's `themes/` now loads when it is selected by its file name although the name inside the file differs (`themes/proto.json` with `"name": "other"`, selected as `"theme": "proto"`, `--use-theme proto` or an extension's `ctx.ui.setTheme("proto")`). PiG refused it with `Theme not found: proto` and fell back to the system theme, where Pi loads it.
+
+### BF-b637cd4-2
+
+**When the selected theme's file exists but fails to load, the `Failed to load theme "<name>":` line and the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** When the selected theme's file exists but fails to load, the `Failed to load theme "<name>":` line and the result of an extension's `ctx.ui.setTheme` now give the reason, as Pi does: for example `Variable reference not found: nosuchvar`, the JSON syntax error, the validator's list of missing color tokens, or the file-system error for a file that cannot be read.
+- **Root cause:** Pi's setTheme reports the error thrown under loadTheme. For a name that is neither built in nor registered, theme.ts loadThemeJson reads <agent directory>/themes/<name>.json whenever that file exists: a valid file loads by its file name, whatever name its JSON carries, and a file that fails gives the loader's reason (fs.readFileSync's message, the parse error and the validator's message labelled with the name, or resolveVarRefs' message). Only a name without such a file is "Theme not found".
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b637cd4647` (2026-11-13)
+- **Tests:** `internal/codingagent/theme_load_failure_reason_test.go::TestExtensionSetThemeRepeatsTheLoadersReason`, `internal/codingagent/theme_load_failure_reason_test.go::TestStartupThemeLoadFailureRepeatsTheLoadersReason`, `internal/codingagent/theme_load_failure_reason_test.go::TestThemeLoadFailureReasonMatchesPi`, `tui/theme_unregistered_load_test.go::TestSetThemeByNameCheckedReportsWhyAnUnregisteredThemeFileFailed`
+- **Release note:** When the selected theme's file exists but fails to load, the `Failed to load theme "<name>":` line and the result of an extension's `ctx.ui.setTheme` now give the reason, as Pi does: for example `Variable reference not found: nosuchvar`, the JSON syntax error, the validator's list of missing color tokens, or the file-system error for a file that cannot be read. PiG said `Theme not found: <name>` for every such file since 0.4.0; only a name without a file is still "Theme not found".
 
 ### BF-b65e288
 
