@@ -84,7 +84,7 @@ func main() {
 	defer func() { _ = rt.Close() }()
 
 	// 5. Resolve the model. coding.BuildModel handles provider switching
-	//    (github-copilot, openai, openrouter, groq, ollama, ...).
+	//    (github-copilot, openai, openrouter, groq, ...).
 	model, err := coding.BuildModel(modelID, svcs)
 	if err != nil {
 		log.Fatalf("BuildModel(%q): %v\n\n"+
