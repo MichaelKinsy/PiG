@@ -154,3 +154,8 @@ type InteractiveSessionHandle interface {
 type eventBarrier interface {
 	AcknowledgeEvent()
 }
+
+// eventRegionMarker is an eventBarrier that bounds a task of Pi's event loop on Events (coding.Session.RunAgentPrompt, jsloop.Task). The owner loop applies the events between an opening and a closing marker together, so no frame draws a part of what Pi draws in one.
+type eventRegionMarker interface {
+	EventRegion() (open, bounds bool)
+}

@@ -1,0 +1,30 @@
+from = "1.5.2+7ae9ff8c"
+to = "1.5.2+787005a4"
+
+[[files]]
+path = "packages/tui/src/terminal-image.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/overlay_terminal_image_upstream_test.go#TestGetImageLineExtentReadsTheCellsAnImageLineCovers", "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAnITerm2ImageWhenItCoversRowsAboveItsImageLine", "test:tui/image_line_extent_oracle_test.go#TestImageLineExtentAndStripMatchPi"]
+rationale = "787005a40 (#12109, issue #11584): getImageLineExtent reads the cells an image line draws over (a Kitty image starts at its line and extends down by its `r=` or registered rows, an iTerm2 image ends at its line and starts as many rows up as the cursor-up prefix says; the width is `c=`, the registered columns or iTerm2's plain `width=` cell count, else unbounded), and stripImageSequences removes the Kitty and iTerm2 sequences of a line with iTerm2's cursor-up prefix. tui/terminal_image.go ports both under Pi's names (unexported: Pi's index.ts does not export them); Pi's regular expressions are byte searches there, because the compositor reads every image line of the viewport each frame and an image line holds the payload, and the oracle test compares both functions with Pi's over random lines."
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/overlay_terminal_image_upstream_test.go#TestOverlayOverAKittyImageDeletesTheImageAndRedrawsItAfterTheOverlayCloses", "test:tui/overlay_terminal_image_upstream_test.go#TestLaterOverlayHidesAnImageInsideAnEarlierOverlay", "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem", "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle", "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"]
+rationale = "787005a40 (#12109): while the overlays are composited back to front, hideImagesUnderOverlay removes from the frame's lines every image placement the overlay overlaps by row and by column (from getMaxKittyImageRows above the viewport on), so the renderers' change detection deletes the image and draws it again once the overlay no longer covers it; an image beside the overlay stays, and the overlay still skips the row that holds such an image's sequence. composeOverlaySnapshotWithStats (tui/overlay_compositor.go) calls the ported hideImagesUnderOverlay before each overlay. The frame oracles agree because automation/gen/pi-post-release-backports.mjs applies the same change to pi-tui's compiled tui.js and terminal-image.js; both fixtures are re-recorded from that oracle."
+
+[[files]]
+path = "packages/tui/test/overlay-terminal-image.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/overlay_terminal_image_upstream_test.go#TestOverlayOverAKittyImageDeletesTheImageAndRedrawsItAfterTheOverlayCloses", "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayKeepsAnImageWhoseRowsItDoesNotTouch", "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayKeepsAnImageBesideItThatSharesItsRows", "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayKeepsAnImageBesideItThatSharesItsRows", "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAnImageOfUnknownWidthWhenItSharesItsRows", "test:tui/overlay_terminal_image_upstream_test.go#TestGetImageLineExtentReadsTheCellsAnImageLineCovers", "test:tui/overlay_terminal_image_upstream_test.go#TestLaterOverlayHidesAnImageInsideAnEarlierOverlay", "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAnITerm2ImageWhenItCoversRowsAboveItsImageLine", "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem"]
+rationale = "787005a40: new in Pi (sha256 6382f92de2696c2c9d63b26d62853a9d22c69e117d5a5681eb0ab49e07c95e10); the pin's test inventory does not hold it, so this row is its mapping. All nine cases are ported with Pi's inputs and assertions (:34, :62, :83, :116, :140, :161, :171, :194, :221), and each frame's bytes must equal the bytes Pi 787005a40 writes for it."
+
+[[files]]
+path = "packages/tui/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "787005a40: Pi's pi-tui changelog entry for #11584. PiG's user-visible change is its own changelog.d fragment."

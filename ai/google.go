@@ -140,6 +140,9 @@ func (request geminiRequest) parameters(model string) map[string]any {
 	if request.ToolConfig != nil {
 		config["toolConfig"] = request.ToolConfig
 	}
+	// Pi turns the SDK's automatic continuation off in both adapters (Pi f72f799a4: google-generative-ai.ts:397, google-vertex.ts:507), so an
+	// onPayload handler sees the member. It is an option of the SDK, not a request field: marshalGeminiParameters does not send it.
+	config["automaticContinuation"] = false
 	return map[string]any{"model": model, "contents": request.Contents, "config": config}
 }
 
@@ -180,10 +183,15 @@ func marshalGeminiParameters(payload any, api API) (string, []byte, error) {
 			return "", nil, err
 		}
 	}
-	for _, name := range []string{"tools", "toolConfig", "safetySettings", "cachedContent", "serviceTier", "labels", "modelArmorConfig"} {
+	for _, name := range []string{"tools", "toolConfig", "safetySettings", "cachedContent", "serviceTier", "labels", "modelArmorConfig", "continuationToken", "store"} {
 		if value := params.Config[name]; len(value) > 0 && string(value) != "null" {
 			body[name] = value
 		}
+	}
+	// The SDK sends the config's generationOutputConfig as the body's outputConfig (generateContentConfigToVertex; the Gemini API backend
+	// refuses the member, and its dialect has no place for it).
+	if value := params.Config["generationOutputConfig"]; len(value) > 0 && string(value) != "null" {
+		body["outputConfig"] = value
 	}
 	if value := params.Config["systemInstruction"]; len(value) > 0 && string(value) != "null" {
 		body["systemInstruction"] = value
@@ -269,7 +277,8 @@ func (call *geminiFunctionCall) generatedIDName() string {
 }
 
 // geminiFuncResponse writes the members in the order convertMessages creates them: name, response, parts, id (google-shared.ts:312-317).
-// The SDK passes a functionResponse through, so its image parts keep inlineData's mimeType before data.
+// The Gemini API backend passes a functionResponse through, so the body keeps this order and its image parts keep inlineData's mimeType
+// before data; the Vertex backend rebuilds it (google_wire.go: id, name, parts, response).
 type geminiFuncResponse struct {
 	Name     string         `json:"name"`
 	Response map[string]any `json:"response"`

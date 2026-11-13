@@ -24758,17 +24758,43 @@
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
-      "class": "own",
+      "class": "ahead-of-pi",
+      "divergence": "D631",
+      "removeWhen": "PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.",
       "fixedIn": "Unreleased",
-      "releaseNote": "`pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is signalled, as Pi does. PiG signalled first, so a command that was still writing always reported code 143; it now reports 141 when its next write met the closed pipe first (SIGPIPE) and 143 when the SIGTERM came first, as Pi does. A command that had already exited keeps its own code, 1 for a 0.",
+      "releaseNote": "`pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is signalled, as Pi does. PiG signalled first, so a command that was still writing always reported code 143; it now reports 141 when its next write met the closed pipe first (SIGPIPE) and 143 when the SIGTERM came first, as Pi does; the code 1 Pi can still report there is D631. A command that had already exited keeps its own code, 1 for a 0.",
       "origin": "release note",
       "commits": [
         {
+          "hash": "27686ebf32",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "4ea002437f",
+          "date": "2026-11-12"
+        },
+        {
           "hash": "6da170c870",
           "date": "2026-11-12"
+        },
+        {
+          "hash": "bc197ac2ba",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "e3a198a439",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "de77bce727",
+          "date": "2026-11-13"
         }
       ],
-      "tests": []
+      "tests": [
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_socket_linux_test.go::TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset",
+        "coding/extension/exec_socket_linux_test.go::TestExecCommandReopensItsOutputWherePiCannot"
+      ]
     },
     {
       "id": "BF-6debb12",
@@ -25088,6 +25114,30 @@
       ],
       "tests": [
         "telemetry/memory_events_test.go::TestInMemoryStoredSpanKeepsEachEventsOwnTime"
+      ]
+    },
+    {
+      "id": "BF-6f949d9",
+      "title": "A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first…",
+      "symptom": "A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first measured.",
+      "rootCause": "Pi (backported by the merge of follow/pi-main-13) makes pi-tui/terminal-image.js import visibleWidth from utils.js, for getImageLineExtent. This line's Node runtime loads terminal-image.js at every extension start: runtime.mjs imports it to hand pi-tui the host's terminal capabilities, and the vendored theme.js imports it because the theme's colour mode reads that capability cache in initTheme. So every start loaded utils.js, which TestNodeStartupDefersPresentationDependencies forbids before a presentation module is asked for: red on the merge, green here. Each side of the merge alone passes; no release had the import.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first measured. Cause: the Node runtime loads pi-tui's terminal-image module at every start (the runtime hands it the host's terminal capabilities, and the theme's colour mode reads them from it), and the backport of Pi 787005a40 made that module import the width module for its image-line extent, so the merge that brought the backport loaded the width tables at every start. No released PiG had this: the import arrives with that merge.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6f949d9716",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies",
+        "coding/extension/host/subprocess/runtime_node_terminal_image_width_test.go::TestNodeTerminalImageDefersTheWidthModule",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage"
       ]
     },
     {
@@ -27039,6 +27089,32 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-7838047",
+      "title": "`/resume` no longer selects an unrelated session while its list reloads after a session is deleted or…",
+      "symptom": "`/resume` no longer selects an unrelated session while its list reloads after a session is deleted or renamed: the selected session stays selected through the partial lists of the reload.",
+      "rootCause": "After a delete or a rename the picker reloads its list progressively, and the first partial list holds only the session that finished loading first. A touched selection that is missing from a partial list is now kept as the target (pendingSelectedPath) and selected again once it arrives, instead of becoming whichever session the clamped index points to. A complete list ends the wait, and so does a key that moves the selection or types a search; the scope toggle waits while the scope it switches to is loading or not yet loaded.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/resume` no longer selects an unrelated session while its list reloads after a session is deleted or renamed: the selected session stays selected through the partial lists of the reload.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7838047e30",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheReloadAfterADelete",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestSessionSelectorKeepsTheSelectedSessionWhenTheScopeToggledToHasNotLoadedYet",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestSessionSelectorMovingOrSearchingDuringAProgressiveReloadGivesUpTheAwaitedSession",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestUpstreamSessionSelectorKeepsTheNextSessionSelectedWhenAProgressiveReloadAfterDeleteStartsWithAnotherSession",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession"
+      ]
     },
     {
       "id": "BF-787c354",
@@ -34061,6 +34137,40 @@
       ]
     },
     {
+      "id": "BF-959646e",
+      "title": "Kitty and iTerm2 images no longer cover an overlay drawn over them",
+      "symptom": "Kitty and iTerm2 images no longer cover an overlay drawn over them.",
+      "rootCause": "An image under an overlay left a hole in it, and a Kitty image also covered the overlay's text on the rows below its image line. While the overlays are composited back to front, hideImagesUnderOverlay now removes from the frame's lines every image placement an overlay overlaps by row and by column; the renderers' change detection deletes the image and draws it again once the overlay no longer covers it. An image beside an overlay stays. Ports getImageLineExtent and stripImageSequences of packages/tui/src/terminal-image.ts, hideImagesUnderOverlay of packages/tui/src/tui.ts and the nine cases of packages/tui/test/overlay-terminal-image.test.ts; each frame of a case must equal the bytes Pi…",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Kitty and iTerm2 images no longer cover an overlay drawn over them. An image that an overlay overlaps by row and column is removed while the overlay is open and drawn again when it closes, on the main screen and in fullscreen mode; an image beside an overlay, such as a sidebar, stays visible.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "959646e66a",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "tui/image_line_extent_oracle_test.go::TestImageLineExtentAndStripMatchPi",
+        "tui/main_screen_oracle_test.go::TestMainScreenFramesMatchPiOracle",
+        "tui/overlay_terminal_image_upstream_test.go::TestFullscreenOverlayKeepsAnImageBesideItThatSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go::TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem",
+        "tui/overlay_terminal_image_upstream_test.go::TestGetImageLineExtentReadsTheCellsAnImageLineCovers",
+        "tui/overlay_terminal_image_upstream_test.go::TestLaterOverlayHidesAnImageInsideAnEarlierOverlay",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAKittyImageWhoseLineIsAboveTheViewport",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAnITerm2ImageWhenItCoversRowsAboveItsImageLine",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAnImageOfUnknownWidthWhenItSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayKeepsAnImageBesideItThatSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayKeepsAnImageWhoseRowsItDoesNotTouch",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayOverAKittyImageDeletesTheImageAndRedrawsItAfterTheOverlayCloses",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayThatRendersNoLineKeepsTheImageItsRowLiesIn"
+      ]
+    },
+    {
       "id": "BF-959a66e",
       "title": "fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no…",
       "symptom": "fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no unjoined WaitGroup",
@@ -34832,6 +34942,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-99faf66",
+      "title": "In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame…",
+      "symptom": "In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame timer fired before the clean-up at the end of the turn reached the screen loop.",
+      "rootCause": "The second cause of scenario interactive-rendering/68 failing for pig under CPU load (\"1 frame(s) began after the reply text\"): the frame that agent_end requested ran before the turn's cleanup reached the owner loop, and the cleanup then painted a frame that changed no row. The runner counts every CSI ? 2026 h after the reply text, so that frame failed the run. With only the fix for the first cause (the events of one task applied together), the scenario still failed at run 18 of 100 under load.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame timer fired before the clean-up at the end of the turn reached the screen loop. The clean-up now paints only a frame that is still owed or rows it changed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "99faf66401",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_turn_end_frame_test.go::TestInteractiveTurnCleanupDrawsNoFrameAfterTheFrameOfAgentEnd"
+      ]
     },
     {
       "id": "BF-9a9b153",
@@ -36922,7 +37054,7 @@
     },
     {
       "id": "BF-D619",
-      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
+      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are…",
       "symptom": "none; Pi's frame per step is correct, only costlier.",
       "rootCause": "while a reply or a tool call streams in, Pi draws a frame every 16-20 ms and the spinner step adds a frame of its own every 80 ms, about one frame in five. The frames dropped carry only a glyph of the spinner that the next frame draws anyway.",
       "rootCauseSource": "divergence record",
@@ -36949,6 +37081,14 @@
         {
           "hash": "e3373144bb",
           "date": "2026-11-11"
+        },
+        {
+          "hash": "440cb8b15a",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "c3fdda8351",
+          "date": "2026-11-12"
         }
       ],
       "tests": [
@@ -36959,6 +37099,7 @@
         "tui/render_within_test.go::TestFrameDrawnWithinTheDelayCarriesTheChange",
         "tui/render_within_test.go::TestLoaderAnimationStepAsksForItsFrameWithin",
         "tui/render_within_test.go::TestLoaderTickStepAsksForNoFrame",
+        "tui/render_within_test.go::TestRequestRenderWithinAsksAtOnceWhenNoFrameWasDrawnWithinTheDelay",
         "tui/render_within_test.go::TestRequestRenderWithinAsksForAFrameOnlyWhenNoneIsDrawn",
         "tui/render_within_test.go::TestRequestRenderWithinDuringAFrameAsksForTheNextFrame",
         "tui/render_within_test.go::TestRequestRenderWithinIsCoveredByAFrameAlreadyAskedFor"
@@ -37017,47 +37158,6 @@
         "coding/cli/rpc_prompt_one_chunk_pi_test.go::TestRPCPromptsWrittenInOneChunkDivergeFromPi",
         "coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder",
         "coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder"
-      ]
-    },
-    {
-      "id": "BF-D631",
-      "title": "A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs",
-      "symptom": "none. The socket pair is libuv's choice for every Node child; Pi does not ask for it.",
-      "rootCause": "a faithful port would make commands that work on Linux fail (`\u003e /dev/stdout`, `tee /dev/stderr`), which no PiG user gains from. The cost of keeping pipes is that a command which fails under Pi for that reason succeeds under PiG, and that an exit code 1 which Pi shows in a share of cut-off runs never appears.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D631",
-      "removeWhen": "PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "27686ebf32",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "4ea002437f",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "6da170c870",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "bc197ac2ba",
-          "date": "2026-11-12"
-        },
-        {
-          "hash": "e3a198a439",
-          "date": "2026-11-12"
-        }
-      ],
-      "tests": [
-        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
-        "coding/extension/exec_socket_linux_test.go::TestExecCommandCutOffWriterMeetsSIGPIPEWherePisMeetsAReset",
-        "coding/extension/exec_socket_linux_test.go::TestExecCommandReopensItsOutputWherePiCannot"
       ]
     },
     {
@@ -48768,6 +48868,37 @@
       ]
     },
     {
+      "id": "BF-db38fad",
+      "title": "In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second…",
+      "symptom": "In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second frame to take away, where Pi draws both in one frame: the 16 ms frame timer could fire between two events of the end of a response.",
+      "rootCause": "One cause: the 16 ms frame timer fired between two events of the end of a response, so one frame drew the reply with the Working indicator still shown and a second one took it away.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In interactive mode the frame that draws a reply could leave the Working indicator on screen for a second frame to take away, where Pi draws both in one frame: the 16 ms frame timer could fire between two events of the end of a response. The events that Pi's event loop handles in one task (the part of a response its provider delivered in one run, and behind it `message_end`, the tool starts, `turn_end` and `agent_end`) are now applied together, so a frame draws all of them or none. Print mode, RPC mode and SDK consumers of `Session.Events` receive the events they received before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "db38fad50e",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "agent/task_bounds_pacing_test.go::TestTaskFollowsThePacingOfTheProvider",
+        "agent/task_bounds_test.go::TestRunWithoutATaskReportsNone",
+        "agent/task_bounds_test.go::TestTaskEndsBeforeAFollowUpTurnIsPrepared",
+        "agent/task_bounds_test.go::TestTaskEndsWhereTheReaderWaitsForTheProvider",
+        "agent/task_bounds_test.go::TestTaskHoldsEveryToolStartAndEndsBeforeAToolRuns",
+        "agent/task_bounds_test.go::TestTaskSpansAResponseAndTheLoopEndEvents",
+        "internal/codingagent/interactive_reply_frame_test.go::TestInteractiveDrawsTheReplyWhileAnExtensionHandlerWaits",
+        "internal/codingagent/interactive_reply_frame_test.go::TestInteractiveReplyAndWorkingRemovalAreOneFrame",
+        "internal/codingagent/interactive_reply_frame_test.go::TestListenersReceiveATasksEventsBeforeItsClosingMarker",
+        "internal/codingagent/interactive_reply_frame_test.go::TestOnlyTheInteractiveRunPutsTaskMarkersOnEvents"
+      ]
+    },
+    {
       "id": "BF-db5d71f",
       "title": "fix(chord/nextnode/workers): a lock holder reads its waiters' connections and forgets one that closed",
       "symptom": "fix(chord/nextnode/workers): a lock holder reads its waiters' connections and forgets one that closed",
@@ -59676,7 +59807,7 @@
     },
     {
       "id": "D619",
-      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2), where Pi asks…",
+      "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are…",
       "entry": "BF-D619"
     },
     {
@@ -59692,7 +59823,7 @@
     {
       "id": "D631",
       "title": "A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs",
-      "entry": "BF-D631"
+      "entry": "BF-6da170c"
     }
   ],
   "exemptCommits": {
