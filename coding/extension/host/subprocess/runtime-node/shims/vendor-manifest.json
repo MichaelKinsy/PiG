@@ -7183,7 +7183,7 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/anthropic-messages.js",
-      "sourceSha256": "47cce5fb2770f6ffde0268cfb6549c4839af04129f776149bd60e04555c584dc",
+      "sourceSha256": "2a7fc26a6b16289950598051a59d249775ab278098575037b8b5c76921e57c94",
       "sha256": "0b5cce888cbcf17639b286528d422fdd7152bcf5250b569721c1d339d53e0f21",
       "rewrite": "D74 host API leaf"
     },
