@@ -5243,12 +5243,14 @@ export class Runtime {
           const {model, context, options} = request.args;
           // Pi's composer calls extension.streamSimple with the effective registered root as its receiver (provider-composer.ts:500-501).
           const stream = await callback.call(this.registeredProviderConfig(request.tool), model, context, {...options, signal:ctx[requestSignal]});
+          // Pi's consumer has no check of the signal (agent-loop.ts:424-478): what the author's stream gives after the abort of its signal, a signal-only cancel, is forwarded, and its result is the answer. An ordinary cancel ends the request.
+          const controller = this.activeRequests.get(id);
           for await (const event of stream) {
-            if (ctx[requestSignal].aborted) throw new Error("provider stream aborted");
+            if (cancelsHostCalls(controller)) throw new Error("provider stream aborted");
             const accepted = this.conn.send({type:"notify", notify:{method:"provider_stream_event",args:{request_id:id,result:event}}});
             if (!accepted) await new Promise((resolve,reject)=>{
               const finish=(error)=>{this.conn.socket.off("drain",drain);this.conn.socket.off("close",closed);ctx[requestSignal].removeEventListener("abort",aborted);error?reject(error):resolve();};
-              const drain=()=>finish();const closed=()=>finish(new Error("extension connection closed"));const aborted=()=>finish(new Error("provider stream aborted"));
+              const drain=()=>finish();const closed=()=>finish(new Error("extension connection closed"));const aborted=()=>{if(cancelsHostCalls(controller))finish(new Error("provider stream aborted"));};
               this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx[requestSignal].addEventListener("abort",aborted,{once:true});if(ctx[requestSignal].aborted)aborted();
             });
           }

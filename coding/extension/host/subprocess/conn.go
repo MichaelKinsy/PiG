@@ -993,6 +993,10 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				c.beforeCancel()
 			}
 			toolCall := env.Request != nil && env.Request.Method == MethodToolCall
+			// The requests whose handler Pi goes on awaiting after the abort: a native stream, a streamSimple stream and a user_bash exec, when the context ended by a cancel or a deadline.
+			awaitsAuthor := env.Request != nil && (env.Request.Method == MethodProviderStream || env.Request.Method == RequestProviderStream || env.Request.Method == RequestUserBashExec) && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded))
+			// A streamSimple stream's cancel is, like a tool_call's, the abort of its AbortSignal alone: Pi's consumer has no check of the signal and takes what the author's stream gives after the abort, its later events, its terminal event, its result or its error (agent-loop.ts:424-478). The author's events go on being forwarded and its calls answered until it answers.
+			streamSimple := awaitsAuthor && env.Request.Method == RequestProviderStream
 			// pig additive (D19): the cancel is queued before the request's calls are cancelled, so a call's cancellation result follows it on the wire. The extension cancels its own pending calls on the cancel, and the result finds none.
 			// A tool_call's cancel is the abort of its AbortSignal alone: Pi's executePreparedToolCall awaits tool.execute with the signal aborted and nothing else is cancelled (agent-loop.ts:817-853), so the tool's pending and later host calls are answered. Only its nested tool calls take the abort, as the signal they run with; the rest of the request's calls end with the request, when the grace period does.
 			_ = c.Send(&Envelope{
@@ -1001,15 +1005,15 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				Cancel: &CancelPayload{
 					RequestID:  env.ID,
 					Reason:     ctx.Err().Error(),
-					SignalOnly: toolCall,
+					SignalOnly: toolCall || streamSimple,
 				},
 			})
 			if toolCall {
 				c.abortNestedHostCalls(env.ID)
-			} else {
+			} else if !streamSimple {
 				c.cancelHostCalls(env.ID)
 			}
-			if env.Request != nil && (env.Request.Method == MethodProviderStream || env.Request.Method == RequestUserBashExec) && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
+			if awaitsAuthor {
 				// Pi forwards the native stream's own terminal event after signaling
 				// abort, and executeBashWithOperations awaits operations.exec until it
 				// settles after its signal aborts (bash-executor.ts:120-128). The
