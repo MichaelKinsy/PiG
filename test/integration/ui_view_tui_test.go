@@ -34,11 +34,16 @@ func (r *uiViewRun) clean(s string) string {
 // off.
 func startUIView(t *testing.T, piglet, mode string, mounts bool) *uiViewRun {
 	t.Helper()
+	return startUIViewAt(t, t.TempDir(), piglet, mode, mounts)
+}
+
+// startUIViewAt is startUIView with the run's home at home.
+func startUIViewAt(t *testing.T, home, piglet, mode string, mounts bool) *uiViewRun {
+	t.Helper()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
-	home := t.TempDir()
 	agentDir := filepath.Join(home, "agent")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatal(err)

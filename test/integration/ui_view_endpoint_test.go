@@ -23,6 +23,18 @@ import (
 
 const uiViewEndpointAbilities = `{"slots":["panel","widget-above","widget-below"],"nodes":["container","box","vstack","hstack","text","truncated-text","markdown","lines","spacer","dynamic-border","select-list","settings-list","input","editor","mouse-region","scroll-view"],"markdown":false,"imageFormats":[],"limits":{"nodes":2048,"depth":32,"snapshotBytes":1048576,"textBytes":65536,"mounts":32,"intentArgBytes":4096},"input":{"keyboard":true,"pointer":true,"text":true},"claims":[{"name":"client.kind","value":"test"}]}`
 
+// uiViewShortHome returns a home whose path leaves room for the socket's: a socket address holds 104 bytes on macOS and
+// 108 on Linux, and a test's own temporary directory carries the test's name.
+func uiViewShortHome(t *testing.T) string {
+	t.Helper()
+	home, err := os.MkdirTemp("/tmp", "pv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(home) })
+	return home
+}
+
 // uiViewSocket waits for the session's socket and returns its path and the pid it is named for.
 func uiViewSocket(t *testing.T, r *uiViewRun) (string, int) {
 	t.Helper()
@@ -31,7 +43,7 @@ func uiViewSocket(t *testing.T, r *uiViewRun) (string, int) {
 		found, _ = filepath.Glob(filepath.Join(r.home, "agent", "view-endpoint", "*.sock"))
 		return len(found) == 1
 	}) {
-		t.Fatalf("the session serves %d sockets, want 1: %v", len(found), found)
+		t.Fatalf("the session serves %d sockets, want 1: %v\n%s", len(found), found, r.capture())
 	}
 	pid, err := strconv.Atoi(strings.TrimSuffix(filepath.Base(found[0]), ".sock"))
 	if err != nil {
@@ -137,7 +149,7 @@ func (w *uiViewWire) pick(id string, event map[string]any, value string) {
 // One session, two clients: what the client on the socket picks the terminal shows, and what the terminal's keys pick
 // the client on the socket is sent.
 func TestUIViewEndpointAndTerminalShareOneSession(t *testing.T) {
-	run := startUIView(t, "shared.yaml", "fullscreen", true)
+	run := startUIViewAt(t, uiViewShortHome(t), "shared.yaml", "fullscreen", true)
 	wire := uiViewDial(t, run)
 	if snapshots := wire.attach(); len(snapshots) != 0 {
 		t.Fatalf("a session without a mount sent %d snapshots", len(snapshots))
@@ -172,7 +184,7 @@ func TestUIViewEndpointAndTerminalShareOneSession(t *testing.T) {
 
 // A client that attached and reads nothing does not hold the terminal: every pick made with the keys is drawn.
 func TestUIViewEndpointClientThatDoesNotReadDoesNotHoldTheTerminal(t *testing.T) {
-	run := startUIView(t, "shared.yaml", "fullscreen", true)
+	run := startUIViewAt(t, uiViewShortHome(t), "shared.yaml", "fullscreen", true)
 	stalled := uiViewDial(t, run)
 	stalled.attach()
 	run.send("/vmount\r")
@@ -195,7 +207,7 @@ func TestUIViewEndpointClientThatDoesNotReadDoesNotHoldTheTerminal(t *testing.T)
 // A reload and a new session end the registry the clients were attached to: each connection is closed, the socket is
 // removed, and the next extension host is served under the same path with a registry of its own.
 func TestUIViewEndpointReloadAndNewSessionCloseTheConnections(t *testing.T) {
-	run := startUIView(t, "shared.yaml", "fullscreen", true)
+	run := startUIViewAt(t, uiViewShortHome(t), "shared.yaml", "fullscreen", true)
 	path, _ := uiViewSocket(t, run)
 	for _, command := range []string{"reload", "new"} {
 		wire := uiViewDial(t, run)
@@ -236,7 +248,7 @@ func TestUIViewEndpointSocketIsRemovedAtExit(t *testing.T) {
 	}
 	for _, e := range ends {
 		t.Run(e.name, func(t *testing.T) {
-			run := startUIView(t, "shared.yaml", "fullscreen", true)
+			run := startUIViewAt(t, uiViewShortHome(t), "shared.yaml", "fullscreen", true)
 			wire := uiViewDial(t, run)
 			wire.attach()
 			path, pid := uiViewSocket(t, run)

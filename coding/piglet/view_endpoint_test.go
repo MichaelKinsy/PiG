@@ -11,7 +11,7 @@ import (
 func TestParse_ViewEndpoint(t *testing.T) {
 	for source, want := range map[string]bool{
 		"name: x\nviewEndpoint: socket\n": true,
-		"name: x\nviewEndpoint: none\n":     false,
+		"name: x\nviewEndpoint: none\n":   false,
 		"name: x\n":                       false,
 	} {
 		p, err := ParseBytes([]byte(source))
