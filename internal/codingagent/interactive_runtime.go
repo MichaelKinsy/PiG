@@ -110,6 +110,21 @@ func (m *InteractiveMode) resetWorkingStatus() {
 	}
 }
 
+// resetExtensionUI resets what extensions put on screen when a /reload begins, as Pi's resetExtensionUI does (interactive-mode.ts
+// handleReloadCommand): it disposes their dialogs, clears their widgets (clearExtensionWidgets), and restores the editor and its
+// autocomplete. The reloaded extensions set their own again; what an extension set before the reload and does not set again is gone.
+// It is the one list of the reset's steps: a surface that extensions own is reset here, and what the extension processes own by the
+// bridge's half (ResetExtensionUI). It runs on the owner loop.
+func (m *InteractiveMode) resetExtensionUI() {
+	m.resetExtensionDialogs()
+	m.clearExtensionWidgets()
+	m.setRemoteEditor(nil)
+	m.resetAutocompleteWrappers()
+	if bridge := m.opts.SubprocessUIBridge; bridge != nil {
+		bridge.ResetExtensionUI()
+	}
+}
+
 // resetExtensionUIForReplacement detaches what the outgoing Session's extensions put on screen before their contexts go stale.
 func (m *InteractiveMode) resetExtensionUIForReplacement() {
 	reset := func() {
