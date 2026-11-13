@@ -294,10 +294,21 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_ui_context.go#Select",
+        "tui/extension_selector.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
+        "test/parity/scenarios/selectors/12-extension-dialog-remapping.toml",
+        "tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
+        "tui/extension_dialog_contract_test.go#TestExtensionDialogCallbacksFireOncePerCompletingKey",
+        "tui/extension_dialog_contract_test.go#TestExtensionSelectorBranchOrderAndBoundariesMatchPi"
+      ],
+      "contracts": [
+        "coding-agent/extension-selector/empty-and-remapped-actions"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -322,10 +333,21 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/login_dialog.go#HandleInput",
+        "tui/login_dialog.go#showInput"
+      ],
+      "evidence": [
+        "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+        "tui/login_dialog_cancel_order_test.go#TestLoginDialogCancelAbortsBeforeEndingTheInput",
+        "tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensTheVerificationPageAndCopiesTheCodeOnceAfterConfirmation",
+        "tui/login_dialog_oracle_test.go#TestLoginDialogInputMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/login-dialog/cancel-copy-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -398,10 +420,23 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/oauth_selector.go#HandleInput",
+        "tui/oauth_selector.go#confirm"
+      ],
+      "evidence": [
+        "test/parity/scenarios/oauth/17-login-method-search.toml",
+        "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+        "tui/oauth_selector_contract_test.go#TestOAuthSelectorBranchOrderAndBoundariesMatchPi",
+        "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
+        "tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
+        "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"
+      ],
+      "contracts": [
+        "coding-agent/oauth-selector/boundary-transitions",
+        "coding-agent/oauth-selector/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2727,10 +2762,17 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts#RadiusLoginMenuComponent.render",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/radius_login_selector.go#Render"
+      ],
+      "evidence": [
+        "internal/codingagent/radius_login_oracle_test.go#TestRadiusLoginMenuRendersLikePi",
+        "test/parity/scenarios/oauth/27-login-radius-method-intro.toml"
+      ],
+      "contracts": [
+        "coding-agent/radius-login/menu-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
