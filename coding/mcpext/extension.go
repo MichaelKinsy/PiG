@@ -1828,7 +1828,7 @@ func (e *Extension) McpServersChange(ctx EventContext) {
 	e.ensureDiscoveryActive(ctx)
 	// Pi's handler awaits here for the first time (index.ts:1236): what precedes ran inside the registration that fired the event
 	// (runner.ts:465-468), and the Runner's listener goes on at this report.
-	stale := ctx.yield()
+	done := ctx.yield()
 	var closing sync.WaitGroup
 	for _, s := range removed {
 		e.mu.Lock()
@@ -1855,7 +1855,7 @@ func (e *Extension) McpServersChange(ctx EventContext) {
 	for _, ready := range readies {
 		select {
 		case <-ready:
-		case <-stale:
+		case <-done:
 			// The Runner that dispatched the event was invalidated, which makes ctx stale: the connections stay under the session,
 			// which closes them when it ends.
 			return
