@@ -309,6 +309,14 @@ declare module "@earendil-works/pi-coding-agent" {
      * later call replaces the handler.
      */
     onViewIntent(handler: (invocation: PiGViewIntentInvocation, ctx: ExtensionContext) => PiGViewIntentResult | unknown | Promise<PiGViewIntentResult | unknown>): void;
+    /**
+     * Run `handler` when what the attached client draws changed (D614): the first client attached, the abilities
+     * changed, or the last client left (`null`; a client that draws no slot is a record with no slots).
+     * `ctx.ui.viewAbilities()` already reports the new value, so a mount made in the handler is checked against that
+     * client. The state an extension starts in is not a change, and a session no client attaches to never runs the
+     * handler. Handlers run in registration order, one change at a time; the host does not wait for them.
+     */
+    onViewAbilities(handler: (abilities: PiGViewAbilities | null, ctx: ExtensionContext) => void | Promise<void>): void;
   }
   interface ExtensionContext {
     /** The provenance the loader stamped on this extension; undefined when the host holds none. */

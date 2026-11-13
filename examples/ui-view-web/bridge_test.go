@@ -211,7 +211,7 @@ func get(t *testing.T, url string, header ...string) (int, string) {
 // TestBridgeRelaysTheCarrier drives the bridge the way the page does, with an HTTP client: the page and its script are
 // served, a request without the token or from another origin is refused, a connected page gets its own pig, the
 // carrier's lines pass both ways unchanged (attach, a mount with every node kind that carries an id, an intent and its
-// answer, the update that follows), and closing the stream ends that pig.
+// answer, with the update its handler made written before the answer), and closing the stream ends that pig.
 func TestBridgeRelaysTheCarrier(t *testing.T) {
 	b := startBridge(t)
 	if status, body := get(t, b.base+"/"); status != 200 || !strings.Contains(body, `src="client.js"`) {
@@ -256,17 +256,32 @@ func TestBridgeRelaysTheCarrier(t *testing.T) {
 		t.Fatalf("mount event = %v", mounted)
 	}
 	plugin := snapshot["plugin"].(string)
-	intent := func(id, name, nodeKey, arg string, rev int) map[string]any {
-		return p.request(fmt.Sprintf(`{"id":%q,"type":"ui_view_intent","attachment":1,"plugin":%q,"mount":{"key":"demo","epoch":1,"rev":%d},"nodeKey":%q,"intent":%q,"arg":%s}`, id, plugin, rev, nodeKey, name, arg))
+	// intent raises one intent and returns its reply and the ui_view events the page was written before the reply.
+	intent := func(id, name, nodeKey, arg string, rev int) (reply map[string]any, before []map[string]any) {
+		if status := p.post(fmt.Sprintf(`{"id":%q,"type":"ui_view_intent","attachment":1,"plugin":%q,"mount":{"key":"demo","epoch":1,"rev":%d},"nodeKey":%q,"intent":%q,"arg":%s}`, id, plugin, rev, nodeKey, name, arg)); status != http.StatusNoContent {
+			t.Fatalf("POST %s = %d", name, status)
+		}
+		reply = p.until("the "+name+" reply", func(record map[string]any) bool {
+			if record["type"] == "ui_view" {
+				before = append(before, record)
+			}
+			return record["type"] == "response" && record["id"] == id && record["command"] == "ui_view_intent"
+		})
+		return reply, before
 	}
-	if r := intent("i1", "demo.pick", "colors", `{"value":"green"}`, 1); r["data"].(map[string]any)["outcome"] != "done" {
+	// The demo's handler redraws its mount and then answers: the intent is done, not stale, and the page holds the new
+	// view when it reads the reply.
+	r, before := intent("i1", "demo.pick", "colors", `{"value":"green"}`, 1)
+	if r["data"].(map[string]any)["outcome"] != "done" {
 		t.Fatalf("demo.pick = %v", r)
 	}
-	updated := p.until("the update after the intent", func(record map[string]any) bool { return record["type"] == "ui_view" })
-	if view, _ := json.Marshal(updated["snapshot"].(map[string]any)["view"]); updated["seq"] != 2.0 || !strings.Contains(string(view), "green, 0 taps") {
+	if len(before) != 1 {
+		t.Fatalf("the page was written %d ui_view events before the reply of demo.pick, want the redrawn view: %v", len(before), before)
+	}
+	if view, _ := json.Marshal(before[0]["snapshot"].(map[string]any)["view"]); before[0]["seq"] != 2.0 || !strings.Contains(string(view), "green, 0 taps") {
 		t.Fatalf("update event = %s", view)
 	}
-	if r := intent("i2", "demo.tap", "tap", `{}`, 2); fmt.Sprint(r["data"].(map[string]any)["answer"]) != "map[taps:1]" {
+	if r, _ := intent("i2", "demo.tap", "tap", `{}`, 2); fmt.Sprint(r["data"].(map[string]any)["answer"]) != "map[taps:1]" {
 		t.Fatalf("demo.tap = %v", r)
 	}
 	if status := p.post("{}\n{}"); status != http.StatusBadRequest {

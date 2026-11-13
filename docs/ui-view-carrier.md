@@ -34,6 +34,7 @@ Exact bytes of every message, its reply and each of its errors: one transcript p
 
 - The host numbers the `ui_view` events of an attachment 1, 2, 3 in the order the registry accepted the operations. Replies are not numbered.
 - An `ui_view_attach`, `ui_view_abilities` or `ui_view_resync` reply is written before any event numbered after it.
+- An `ui_view_intent` reply is written after every event the host queued for the attachment before the intent settled. A plugin whose handler redraws its mount and then answers gives the client the new view first and the reply second.
 - The host keeps at most 256 events and 4194304 bytes per attachment that the client has not been written. When a delivery does not fit, the host writes the queued events, then one `ui_view_gap` whose `seq` is the number of the refused delivery, and then nothing more for that attachment until the client sends `ui_view_resync`.
 - The client's rule: an event whose `seq` is not the last one plus 1, or a `ui_view_gap`, means resync. After a resync reply, drop every event whose `seq` is at or below the reply's `seq`, forget the mounts the reply lacks, and redraw only the snapshots whose `digest` differs from the one held. A snapshot without a digest is always redrawn.
 - A resync that arrives while events are still queued supersedes them: they are not written.
@@ -44,6 +45,8 @@ A client that stops reading costs the host a bounded queue and nothing else. No 
 
 `ui_view_intent` raises an intent a snapshot declares in `intents`, on the mount ref the client drew (`key`, `epoch`, `rev`) and, for an intent bound to a node, with that node's `nodeKey`. The response comes when the intent settled, so other commands and events pass in between. `outcome` is done, refused, failed, cancelled, timeout or stale; `answer` is the plugin's answer and `error` its or the host's text.
 
+- An update the plugin's handler makes to the mount while it answers belongs to the answer: the outcome is the handler's, and the `ui_view` event of that update precedes the response. A client that has read the response already holds the view the handler drew and raises its next intent on that `rev`.
+- A mount that another hand changed while the handler answered settles the intent `stale` (the plugin's background work, the handler of another intent on the same mount). Of two intents in flight on one mount, the one whose handler updates first is answered and the other is `stale`.
 - A ref that is not the mount's current one is `stale`. So is an intent under an attachment the connection does not hold, and one in flight when the attachment ends. These are results, not error responses.
 - To cancel, send `ui_view_intent_cancel` with the same `id` as the intent request. Its own response is written first, then the intent's response with `outcome: cancelled`. A cancellable intent's handler is cancelled in the extension.
 - An intent sent without an `id` settles like any other, its response has no `id`, and it cannot be cancelled. Two intents in flight cannot share an `id` (`invalid`).
@@ -101,7 +104,7 @@ An attachment belongs to one session's registry. When the session is replaced (`
 
 A program that speaks another protocol to its client and these lines to pig is a relay. Every message is self-contained and names its attachment (except `ui_view_attach`, which has none yet, and `ui_view_intent_cancel`, which names a request), so a relay keeps no state beyond the map of its own request ids. It must preserve three things:
 
-- Order per attachment. Deliver the events of one attachment in the order pig wrote them, and each attach, abilities or resync reply before the events that follow it.
+- Order per attachment. Deliver the events of one attachment in the order pig wrote them, each attach, abilities or resync reply before the events that follow it, and each intent reply after the events that precede it.
 - The gap rule. Do not drop, merge or renumber events. When the relay's client reads slower than pig writes, stop reading pig's output rather than buffering without bound: pig then applies its own queue bound and writes `ui_view_gap`. Pass the gap and the resync through unchanged.
 - Request ids for intents. The id of the request that carries `ui_view_intent` is the id `ui_view_intent_cancel` names. Map the other protocol's request cancel to that command, and report `cancelled` from the intent's own response.
 

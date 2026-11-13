@@ -4784,6 +4784,8 @@ class Extension:
         self._views = kit._ViewLedger()
         # D614 plugin UI mounts: the replicated client abilities and the intent handler.
         self._view_state = _ui_view.ViewState()
+        # A change of the replicated client abilities reaches the on_view_abilities handlers on a worker of its own (StateFeed).
+        self._view_abilities_feed = StateFeed(self, "view abilities")
         self._shutdown = ProviderSignal()
         self._shutdown_noted = False
         # The replicated signal of the run in progress: (host run number, signal), None while no run is active (Context.signal).
@@ -5834,6 +5836,17 @@ class Extension:
             raise TypeError("on_view_intent requires a callable handler")
         self._view_state.handler = handler
 
+    def on_view_abilities(self, handler: "Callable[[ViewAbilities | None, Context], Any]") -> None:
+        """Run ``handler(abilities, ctx)`` when what the attached client draws changed (D614): the first client attached, the abilities changed, or the last client left (``abilities`` is ``None``; a client that draws no slot is a record with no slots).
+
+        It is where an extension mounts its views for a client that arrives while the session is idle, and stops work no client can see. The handler receives the abilities of the change it is delivered for, and :meth:`Context.view_abilities` already reports them when it runs, so a mount it makes is checked against that client. The state an extension starts in is not a change: an extension loaded while a client is attached reads :meth:`Context.view_abilities` at ``session_start``. A session no client attaches to never runs the handler.
+
+        Handlers run in registration order on a worker thread, one change at a time in the order the changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call. The host does not wait for them. A handler that raises is reported in the extension's log and does not stop the others.
+        """
+        if not callable(handler):
+            raise TypeError("on_view_abilities requires a callable handler")
+        self._view_abilities_feed.subscribe(lambda abilities: handler(abilities, Context(self)))
+
     def on_loaded(self, handler: "Callable[[Context], Any]") -> None:
         """Run ``handler(ctx)`` once the extension is registered with the host and has received its state, before it serves any request (session_start included).
 
@@ -6134,7 +6147,9 @@ class Extension:
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
         """Record the snapshot's replicated values: hasUI, theme, settings, MCP servers, the model and the session name. The ready state and every state_update pass through here. Caller holds _state_lock."""
         self._views.apply_state(state)
-        self._view_state.apply_state(state)
+        abilities_changed, abilities = self._view_state.apply_state(state)
+        if abilities_changed:
+            self._view_abilities_feed.publish(abilities)
         if "model" in state:
             # An absent key keeps the replica; an explicit null clears it (the Session holds no model). A push that repeats the model derives nothing.
             model = state["model"]

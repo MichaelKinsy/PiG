@@ -8,6 +8,78 @@
 
 (defun kp-bool (value) (if value "true" "false"))
 
+;;; ---------------------------------------------------------------- the redraw panel and the abilities watcher
+;;; D614: the same way in every SDK fixture (conformance TestConformance_UIViewAnswerRedraw and TestConformance_UIViewAbilitiesEvent).
+
+(defvar *kp-redraw-command* nil
+  "The context of the command that mounted the redraw panel: an update made through it is the extension's, not an intent handler's.")
+(defvar *kp-watch-armed* nil)
+(defvar *kp-watch-block* nil)
+(defvar *kp-watch-released* nil)
+(defvar *kp-watch-events* 0)
+
+(defun kp-text-view (text) (pig:kit-view (pig:kit-text text 0 0)))
+
+(defun kp-redraw-intents ()
+  (let ((int (pig:view-shape "integer")))
+    (loop for name in '("fx.redraw" "fx.foreign")
+          collect (pig:view-intent name (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n"))
+                                   :answer (pig:view-shape "object" :properties (list (cons "rev" int)) :required '("rev"))))))
+
+(defun kp-describe-abilities (ab)
+  (if ab
+      (format nil "slots=~{~A~^+~},mounts=~D" (coerce (pig:jget ab "slots") 'list) (pig:jref ab "limits" "mounts"))
+      "none"))
+
+(defun kp-redraw-intent (ctx inv)
+  "Answer fx.redraw and fx.foreign: both replace the view of the mount the intent came from and answer done with the new rev. fx.redraw
+updates through the handler's context; fx.foreign through the context of the command that mounted the panel."
+  (let* ((own (equal (pig:jget inv "intent") "fx.redraw"))
+         (ab (pig:ctx-view-abilities ctx))
+         (n (+ (pig:jget (pig:jget inv "arg") "n") (if ab (pig:jref ab "limits" "intentArgBytes") 0)))
+         (mount (pig:view-ref (pig:jref inv "mount" "key") (pig:jref inv "mount" "epoch") (pig:jget inv "rev"))))
+    (handler-case
+        (let ((st (pig:ctx-update-view (if own ctx *kp-redraw-command*) mount
+                                       (kp-text-view (format nil "fixture-~A-~D" (if own "redraw" "foreign") n))
+                                       :intents (kp-redraw-intents))))
+          (pig:view-intent-result "done" :answer (pig:obj "rev" (pig:view-ref-rev (pig:view-status-mount st)))))
+      (pig:host-call-error (e) (pig:view-intent-result "failed" :error (pig:host-call-error-code e))))))
+
+(defun kp-register-view-rows (ext)
+  (pig:command ext "ui_view_redraw" "Mount the panel whose intents redraw it"
+               (lambda (ctx args) (declare (ignore args))
+                 (let ((st (pig:ctx-mount-view ctx "redraw" "panel" (kp-text-view "fixture-redraw-0") :intents (kp-redraw-intents))))
+                   (setf *kp-redraw-command* ctx)
+                   (kp-notify ctx (format nil "view-redraw:rev=~D" (pig:view-ref-rev (pig:view-status-mount st)))))))
+  (pig:on-view-abilities
+   ext
+   (lambda (ctx ab)
+     (incf *kp-watch-events*)
+     (when *kp-watch-armed*
+       (when *kp-watch-block*
+         (setf *kp-watch-block* nil)
+         (kp-notify ctx "view-event-blocked")
+         (loop until *kp-watch-released* do (sleep 0.01))
+         (setf *kp-watch-released* nil)
+         (kp-notify ctx "view-event-released"))
+       (cond ((null ab) (kp-notify ctx "view-event:none"))
+             (t (kp-notify ctx (format nil "view-event:~A,same=~A" (kp-describe-abilities ab)
+                                       (kp-bool (equal (kp-describe-abilities ab) (kp-describe-abilities (pig:ctx-view-abilities ctx))))))
+                (kp-notify ctx (format nil "view-arrived:~A"
+                                       (handler-case
+                                           (pig:view-status-state
+                                            (pig:ctx-mount-view ctx "arrived" "panel"
+                                                                (kp-text-view (format nil "fixture-arrived-~D" (pig:jref ab "limits" "mounts")))))
+                                         (pig:host-call-error (e) (pig:host-call-error-code e))))))))))
+  (pig:command ext "ui_view_watch" "Arm the abilities watcher"
+               (lambda (ctx args) (declare (ignore args)) (setf *kp-watch-armed* t) (kp-notify ctx "view-watch:armed")))
+  (pig:command ext "ui_view_block" "Block the abilities watcher on its next event"
+               (lambda (ctx args) (declare (ignore args)) (setf *kp-watch-released* nil *kp-watch-block* t) (kp-notify ctx "view-block:set")))
+  (pig:command ext "ui_view_release" "Release the blocked abilities watcher"
+               (lambda (ctx args) (declare (ignore args)) (setf *kp-watch-released* t) (kp-notify ctx "view-release:done")))
+  (pig:command ext "ui_view_events" "Report how often the abilities watcher ran"
+               (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "view-events:~D" *kp-watch-events*)))))
+
 ;;; ---------------------------------------------------------------- kit-probe and mouse-probe
 
 (defun kp-probe-view ()
@@ -717,11 +789,13 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                    (lambda (ctx args) (declare (ignore args))
                      (let ((st (pig:ctx-view-state ctx "probe2")))
                        (kp-notify ctx (format nil "view-state:~A:~A" (pig:view-status-state st) (pig:view-status-reason st))))))
+      (kp-register-view-rows ext)
       (pig:on-view-intent
        ext
        (lambda (ctx inv)
          (let ((intent (pig:jget inv "intent")) (arg (pig:jget inv "arg")))
-           (cond ((equal intent "fx.add")
+           (cond ((member intent '("fx.redraw" "fx.foreign") :test #'equal) (kp-redraw-intent ctx inv))
+                 ((equal intent "fx.add")
                   (let ((ab (pig:ctx-view-abilities ctx)))
                     (pig:view-intent-result "done" :answer (pig:obj "sum" (+ (* 2 (pig:jget arg "n")) (if ab (pig:jref ab "limits" "intentArgBytes") 0))))))
                  ((equal intent "fx.wait")

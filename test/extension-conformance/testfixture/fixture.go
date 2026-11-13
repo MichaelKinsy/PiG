@@ -1427,8 +1427,11 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("view-x-state:%s,picked=%d", cur.State, picked(cur)), "info")
 		return nil
 	})
+	redrawIntent := registerViewRows(ext)
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
 		switch in.Intent {
+		case "fx.redraw", "fx.foreign":
+			return redrawIntent(in)
 		case "fx.add":
 			var arg struct {
 				N int `json:"n"`
