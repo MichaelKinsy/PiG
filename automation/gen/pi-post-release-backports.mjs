@@ -358,29 +358,35 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
-// The patches of every block of a key apply in the order the blocks are written (two Pi commits can change one file); classification stays
-// per block. What cannot work fails here, when the script loads, naming both blocks: two patches that replace the same text of a key (the
-// second would find nothing to replace), and a key that one block calls compiled output and another a package file (patchesOf reads one table).
-const tables = { dist: {}, package: {} };
-const keyOwners = new Map();
-const textOwners = new Map();
-for (const { id, key, patches, table } of blocks) {
-  const owner = keyOwners.get(key);
-  if (owner !== undefined && owner.table !== table) {
-    throw new Error(`backport blocks ${owner.id} and ${id} disagree on ${key}: one names it with patch (compiled output), the other with packageFile`);
-  }
-  keyOwners.set(key, { id, table });
-  for (const [before] of patches) {
-    const place = `${key}\n${before}`;
-    if (textOwners.has(place)) {
-      throw new Error(`backport blocks ${textOwners.get(place)} and ${id} both replace the same text of ${key}: ${JSON.stringify(before.slice(0, 80))}`);
+const tableOf = (name) => {
+  // The table of the blocks whose table is `name`: key -> patches. The patches of every block of a key are joined in the order the blocks
+  // are written (two Pi commits can change one file); classification stays per block. Blocks of other tables are not read, so a block of
+  // another kind need not have patches. What cannot work fails here, when the script loads, naming both blocks: two patches that replace
+  // the same text of a key (the second would find nothing to replace), and a key that one block names with patch and another with
+  // packageFile (patchesOf reads one of those two tables).
+  const table = {};
+  const owners = new Map();
+  const twin = name === "dist" ? "package" : name === "package" ? "dist" : undefined;
+  for (const block of blocks.filter((b) => b.table === name)) {
+    const { id, key, patches } = block;
+    const other = blocks.find((b) => b.table === twin && b.key === key);
+    if (other !== undefined) {
+      const [first, second] = blocks.indexOf(other) < blocks.indexOf(block) ? [other.id, id] : [id, other.id];
+      throw new Error(`backport blocks ${first} and ${second} disagree on ${key}: one names it with patch (compiled output), the other with packageFile`);
     }
-    textOwners.set(place, id);
+    for (const [before] of patches) {
+      const place = `${key}\n${before}`;
+      if (owners.has(place)) {
+        throw new Error(`backport blocks ${owners.get(place)} and ${id} both replace the same text of ${key}: ${JSON.stringify(before.slice(0, 80))}`);
+      }
+      owners.set(place, id);
+    }
+    (table[key] ??= []).push(...patches);
   }
-  (tables[table][key] ??= []).push(...patches);
-}
-export const backportPatches = tables.dist;
-export const packageFileBackports = tables.package;
+  return table;
+};
+export const backportPatches = tableOf("dist");
+export const packageFileBackports = tableOf("package");
 
 const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
 

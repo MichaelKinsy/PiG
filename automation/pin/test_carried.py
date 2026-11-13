@@ -103,13 +103,13 @@ console.log(JSON.stringify({{ ...backportPatches, ...packageFileBackports }}));'
         self.assertIn("8081", entry["detail"])
         self.assertIn("line 1", entry["detail"])
 
-    def blocks_script(self, directory: Path, entries: str) -> Path:
-        """The committed machinery with `entries` as its only blocks."""
+    def blocks_script(self, directory: Path, entries: str, tail: str = "") -> Path:
+        """The committed machinery with `entries` as its only blocks, and `tail` as its last statements."""
         committed = SCRIPT.read_text(encoding="utf-8")
         bare = carried.retire_backport_blocks(committed, oracle.backport_ids(committed))
         anchor = re.search(r"^const packageFile = .*\n", bare, re.M)
         path = directory / "blocks.mjs"
-        path.write_text(bare[:anchor.end()] + entries + bare[anchor.end():], encoding="utf-8")
+        path.write_text(bare[:anchor.end()] + entries + bare[anchor.end():] + tail, encoding="utf-8")
         return path
 
     def test_two_blocks_of_one_key_both_apply_in_the_order_written(self):
@@ -180,6 +180,49 @@ packageFile("ccccccccc", "pi-ai/api/x.js", [["two();\\n", "two(2);\\n"]]);
             done = subprocess.run(["node", str(self.blocks_script(Path(directory), entries)), "--package-files"], capture_output=True, text=True, check=False)
         self.assertNotEqual(done.returncode, 0)
         self.assertIn("backport blocks aaaaaaaaa and ccccccccc disagree on pi-ai/api/x.js", done.stderr)
+
+    def test_a_table_is_built_without_reading_the_blocks_of_other_tables(self):
+        # A block of a table nobody builds, and a block of another kind that has no patches at all, even for the same key.
+        entries = '''
+// BEGIN backport ddddddddd
+blocks.push({ id: "ddddddddd", key: "pi-ai/api/x.js", table: "dependency" });
+// END backport ddddddddd
+// BEGIN backport eeeeeeeee
+blocks.push({ id: "eeeeeeeee", table: "nobody", patches: 7 });
+// END backport eeeeeeeee
+// BEGIN backport aaaaaaaaa
+packageFile("aaaaaaaaa", "pi-ai/api/x.js", [["one();\\n", "one(1);\\n"]]);
+// END backport aaaaaaaaa
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            script = self.blocks_script(Path(directory), entries)
+            api = Path(directory) / "pi-ai" / "dist" / "api"
+            api.mkdir(parents=True)
+            (api / "x.js").write_text("one();\n", encoding="utf-8")
+            tables = subprocess.run(["node", "--input-type=module", "-e", f'''
+import {{ backportPatches, packageFileBackports }} from {json.dumps(script.as_uri())};
+console.log(JSON.stringify([backportPatches, packageFileBackports]));'''], capture_output=True, text=True, check=True)
+            subprocess.run(["node", str(script), "--packages", f"pi-ai={Path(directory) / 'pi-ai'}"], capture_output=True, text=True, check=True)
+            self.assertEqual((api / "x.js").read_text(encoding="utf-8"), "one(1);\n")
+        self.assertEqual(json.loads(tables.stdout), [{}, {"pi-ai/api/x.js": [["one();\n", "one(1);\n"]]}])
+
+    def test_a_table_of_any_name_joins_in_block_order_and_refuses_the_same_text_twice(self):
+        block = '''
+// BEGIN backport {id}
+blocks.push({{ id: "{id}", key: "packages/x.ts", table: "made-up", patches: {patches} }});
+// END backport {id}
+'''
+        first = block.format(id="aaaaaaaaa", patches='[["one", "1"]]')
+        tail = '\nexport const madeUp = tableOf("made-up");\n'
+        read = 'import {{ madeUp, backportPatches, packageFileBackports }} from {}; console.log(JSON.stringify([madeUp, backportPatches, packageFileBackports]));'
+        with tempfile.TemporaryDirectory() as directory:
+            joined = self.blocks_script(Path(directory), first + block.format(id="ccccccccc", patches='[["two", "2"], ["three", "3"]]'), tail)
+            done = subprocess.run(["node", "--input-type=module", "-e", read.format(json.dumps(joined.as_uri()))], capture_output=True, text=True, check=True)
+            self.assertEqual(json.loads(done.stdout), [{"packages/x.ts": [["one", "1"], ["two", "2"], ["three", "3"]]}, {}, {}])
+            twice = self.blocks_script(Path(directory), first + block.format(id="ccccccccc", patches='[["two", "2"], ["one", "uno"]]'), tail)
+            done = subprocess.run(["node", "--input-type=module", "-e", read.format(json.dumps(twice.as_uri()))], capture_output=True, text=True, check=False)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("backport blocks aaaaaaaaa and ccccccccc both replace the same text of packages/x.ts", done.stderr)
 
     def test_the_script_without_blocks_is_valid_exports_nothing_and_applies_nothing(self):
         text = carried.retire_backport_blocks(SCRIPT.read_text(encoding="utf-8"), oracle.backport_ids(SCRIPT.read_text(encoding="utf-8")))
