@@ -324,6 +324,26 @@ func TestSessionEntryNullMembersMatchPi(t *testing.T) {
 	setLabel("empty", `,"label":""`)
 	setLabel("value", `,"label":"x"`)
 
+	// A usage an extension wrote in another member order and with members ai.Usage has no field for: Pi stores the author's object.
+	const usageReordered = `{"cost":{"total":0,"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"totalTokens":3,"output":2,"input":1,"cacheRead":0,"cacheWrite":0}`
+	usageAuthored := `,"usage":` + strings.TrimSuffix(usageReordered, "}") + `,"extra":1}`
+	draft("draft compaction usage in another member order", `[{"type":"compaction","summary":"draft-compaction","usage":`+usageReordered+`}]`)
+	draft("draft compaction usage with extra members", `[{"type":"compaction","summary":"draft-compaction","usage":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0,"extra":2},"extra":1}}]`)
+	row("session_before_compact result usage as its author wrote it", func() error {
+		prompt()
+		compactionMembers = &usageAuthored
+		defer func() { compactionMembers = nil }()
+		_, err := h.session.Compact(context.Background(), "")
+		return err
+	})
+	row("session_before_tree summary usage as its author wrote it", func() error {
+		prompt()
+		summaryMembers = &usageAuthored
+		defer func() { summaryMembers = nil }()
+		_, err := h.session.NavigateTree(context.Background(), boundaryLastUser(t, h), NavigateTreeOptions{Summarize: true})
+		return err
+	})
+
 	entries, err := icodingagent.LoadEntriesFromFile(path)
 	if err != nil {
 		t.Fatal(err)

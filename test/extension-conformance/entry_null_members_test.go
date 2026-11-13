@@ -171,7 +171,7 @@ func TestEntryMemberNullAndOmittedAcrossSDKs(t *testing.T) {
 				case extension.SessionBoundaryDraftCustomMessage:
 					_, err = session.AppendCustomMessageEntry(draft.CustomType, draft.Content, draft.Display, draft.Details)
 				case extension.SessionBoundaryDraftCompaction:
-					_, err = session.AppendCompactionEntry(icodingagent.CompactionEntry{Summary: draft.Summary, TokensBefore: 1, Details: draft.Details, Usage: draft.Usage, UsageNull: draft.UsageNull, FromHook: true})
+					_, err = session.AppendCompactionEntry(icodingagent.CompactionEntry{Summary: draft.Summary, TokensBefore: 1, Details: draft.Details, Usage: draft.Usage, UsageNull: draft.UsageNull, UsageRaw: draft.UsageRaw, FromHook: true})
 				}
 				if err != nil {
 					t.Fatal(err)

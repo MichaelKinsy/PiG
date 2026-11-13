@@ -64,6 +64,14 @@ func IsNullMember(data []byte, name string) bool {
 	return isNullText(raw[0])
 }
 
+// ContainerMember is the top-level member name of the object in data, which is valid JSON, when its value is an object or an array: the container as [Value] holds it, JSON.stringify(JSON.parse(raw)). An absent member and any other value are nil. Of several members with that name the last counts, as JSON.parse keeps it.
+func ContainerMember(data []byte, name string) json.RawMessage {
+	var raw [1][]byte
+	lastMembers(data, []string{name}, raw[:])
+	container, _ := Value(raw[0]).(json.RawMessage)
+	return container
+}
+
 // HasMember reports whether the top-level object in data, which is valid JSON, has a member name. It allocates nothing unless a key holds an escape.
 func HasMember(data []byte, name string) bool {
 	var raw [1][]byte

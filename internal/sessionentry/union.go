@@ -163,7 +163,7 @@ func (e CompactionEntry) MarshalJSON() ([]byte, error) {
 		Usage            any             `json:"usage,omitempty"`
 		FromHook         any             `json:"fromHook,omitempty"`
 		SystemMessage    json.RawMessage `json:"systemMessage,omitempty"`
-	}{e.SessionEntryBase, e.Summary, e.FirstKeptEntryID, e.TokensBefore, e.Details, optionalMember(e.Usage, e.UsageNull), presentMember(e.FromHook, e.FromHookAbsent), e.SystemMessage})
+	}{e.SessionEntryBase, e.Summary, e.FirstKeptEntryID, e.TokensBefore, e.Details, usageMember(e.Usage, e.UsageRaw, e.UsageNull), presentMember(e.FromHook, e.FromHookAbsent), e.SystemMessage})
 }
 
 func (e BranchSummaryEntry) Base() SessionEntryBase { return e.withoutRecord() }
@@ -184,7 +184,7 @@ func (e BranchSummaryEntry) MarshalJSON() ([]byte, error) {
 		Details  any    `json:"details,omitempty"`
 		Usage    any    `json:"usage,omitempty"`
 		FromHook any    `json:"fromHook,omitempty"`
-	}{e.SessionEntryBase, e.FromID, e.Summary, e.Details, optionalMember(e.Usage, e.UsageNull), presentMember(e.FromHook, e.FromHookAbsent)})
+	}{e.SessionEntryBase, e.FromID, e.Summary, e.Details, usageMember(e.Usage, e.UsageRaw, e.UsageNull), presentMember(e.FromHook, e.FromHookAbsent)})
 }
 
 func (e CustomEntry) Base() SessionEntryBase { return e.withoutRecord() }
@@ -302,6 +302,15 @@ func optionalMember[T any](value *T, null bool) any {
 		return orderedjson.Null()
 	}
 	return nil
+}
+
+// usageMember is what the usage member of a compaction or a branch summary encodes: the object its author wrote when the entry holds one beside the
+// decoded usage, and optionalMember's answer otherwise.
+func usageMember[T any](usage *T, raw json.RawMessage, null bool) any {
+	if usage != nil && raw != nil {
+		return raw
+	}
+	return optionalMember(usage, null)
 }
 
 // presentMember is what the field of a member encodes that its writer may have left undefined: the value, or no member when absent is set.

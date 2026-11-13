@@ -125,3 +125,37 @@ func TestExtensionWrittenMembersKeepNullApartFromAbsent(t *testing.T) {
 		t.Errorf("a summary without usage: Usage %v, UsageNull %t", summary.Usage, summary.UsageNull)
 	}
 }
+
+// The three decoders that see an extension's usage keep the object as written beside the decoded usage: a compaction draft, which also hands it to the next
+// handler as written, and the summary of a session_before_tree result. Numbers are written as JSON.stringify writes them.
+func TestExtensionUsageKeepsTheAuthorsObject(t *testing.T) {
+	const authored = `{"cost":{"total":0,"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"totalTokens":3,"output":2,"input":1,"cacheRead":0,"cacheWrite":0,"extra":1}`
+	const spaced = `{ "cost": {"total": 0.0, "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "totalTokens": 3, "output": 2, "input": 1e0, "cacheRead": 0, "cacheWrite": 0, "extra": 1 }`
+	for _, written := range []string{authored, spaced} {
+		var draft SessionBoundaryDraft
+		if err := json.Unmarshal([]byte(`{"type":"compaction","summary":"s","firstKeptEntryId":null,"usage":`+written+`}`), &draft); err != nil {
+			t.Fatal(err)
+		}
+		if draft.Usage == nil || draft.Usage.Input != 1 || draft.Usage.Output != 2 || draft.Usage.TotalTokens != 3 || string(draft.UsageRaw) != authored {
+			t.Errorf("draft usage = %+v, raw %s; want the decoded usage and %s", draft.Usage, draft.UsageRaw, authored)
+		}
+		encoded, err := json.Marshal(draft)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := `{"type":"compaction","summary":"s","firstKeptEntryId":null,"usage":` + authored + `}`; string(encoded) != want {
+			t.Errorf("the next handler is handed %s, want %s", encoded, want)
+		}
+		var summary SessionBeforeTreeResultSummary
+		if err := json.Unmarshal([]byte(`{"summary":"s","usage":`+written+`}`), &summary); err != nil {
+			t.Fatal(err)
+		}
+		if summary.Usage == nil || summary.Usage.Input != 1 || string(summary.UsageRaw) != authored {
+			t.Errorf("summary usage = %+v, raw %s; want the decoded usage and %s", summary.Usage, summary.UsageRaw, authored)
+		}
+	}
+	var draft SessionBoundaryDraft
+	if err := json.Unmarshal([]byte(`{"type":"compaction","summary":"s","firstKeptEntryId":null,"usage":null}`), &draft); err != nil || draft.UsageRaw != nil || !draft.UsageNull {
+		t.Errorf("a null usage decodes as raw %s, null %v, err %v", draft.UsageRaw, draft.UsageNull, err)
+	}
+}

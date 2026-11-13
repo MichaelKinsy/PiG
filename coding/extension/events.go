@@ -199,15 +199,22 @@ type SessionBeforeTreeResultSummary struct {
 	// UsageNull marks a nil Usage as an explicit null: Pi's branchWithSummary stores the null and the entry holds `"usage":null`
 	// (session-manager.ts:1611-1630). `details` holds a null in the value itself: json.RawMessage("null").
 	UsageNull bool `json:"-"`
+	// UsageRaw is the usage object as the extension wrote it, which Pi stores in the entry (agent-session.ts navigateTree
+	// `summaryUsage = extensionSummary.usage`): its member order and the members Usage has no field for. Set by the decode of a result that has a usage.
+	UsageRaw json.RawMessage `json:"-"`
 }
 
-// UnmarshalJSON keeps the member order of the `details` object the extension wrote, and a null `details` or `usage` apart from an absent one.
+// UnmarshalJSON keeps the member order of the `details` object the extension wrote, a null `details` or `usage` apart from an absent one, and the usage object as written.
 func (s *SessionBeforeTreeResultSummary) UnmarshalJSON(data []byte) error {
 	type plain SessionBeforeTreeResultSummary
 	if err := orderedjson.UnmarshalFields(data, (*plain)(s), "details"); err != nil {
 		return err
 	}
 	s.UsageNull = s.Usage == nil && orderedjson.IsNullMember(data, "usage")
+	s.UsageRaw = nil
+	if s.Usage != nil {
+		s.UsageRaw = orderedjson.ContainerMember(data, "usage")
+	}
 	return nil
 }
 
@@ -555,6 +562,9 @@ type SessionBoundaryDraft struct {
 	// UsageNull marks a compaction draft's nil Usage as an explicit null: Pi's appendCompaction stores the null and the entry holds `"usage":null`
 	// (session-manager.ts:1283-1295). `data` and `details` hold a null in the value itself: json.RawMessage("null").
 	UsageNull bool `json:"-"`
+	// UsageRaw is a compaction draft's usage object as the extension wrote it, which Pi's appendCompaction stores: its member order and the members
+	// Usage has no field for. Set by the decode of a draft that has a usage.
+	UsageRaw json.RawMessage `json:"-"`
 }
 
 // MarshalJSON preserves each upstream union member's required fields,
@@ -599,7 +609,7 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 			FirstKeptEntryID *string                  `json:"firstKeptEntryId"`
 			Details          any                      `json:"details,omitempty"`
 			Usage            any                      `json:"usage,omitempty"`
-		}{d.Type, d.Summary, d.FirstKeptEntryID, d.Details, draftUsage(d.Usage, d.UsageNull)})
+		}{d.Type, d.Summary, d.FirstKeptEntryID, d.Details, draftUsage(d.Usage, d.UsageRaw, d.UsageNull)})
 	default:
 		type plain SessionBoundaryDraft
 		return json.Marshal(plain(d))
@@ -614,9 +624,12 @@ func draftDisplay(display, absent bool) any {
 	return display
 }
 
-// draftUsage is what a compaction draft's usage member encodes: the usage, null for one written as null, and no member otherwise.
-func draftUsage(usage *ai.Usage, null bool) any {
+// draftUsage is what a compaction draft's usage member encodes: the usage, as its author wrote it when the draft holds that object, null for one
+// written as null, and no member otherwise.
+func draftUsage(usage *ai.Usage, raw json.RawMessage, null bool) any {
 	switch {
+	case usage != nil && raw != nil:
+		return raw
 	case usage != nil:
 		return usage
 	case null:
@@ -635,6 +648,10 @@ func (d *SessionBoundaryDraft) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	d.UsageNull = d.Usage == nil && orderedjson.IsNullMember(data, "usage")
+	d.UsageRaw = nil
+	if d.Usage != nil {
+		d.UsageRaw = orderedjson.ContainerMember(data, "usage")
+	}
 	d.DisplayAbsent = d.Type == SessionBoundaryDraftCustomMessage && !d.Display && !orderedjson.HasMember(data, "display")
 	if d.Type != SessionBoundaryDraftContextEdit || len(d.Replacement) > 0 {
 		return nil

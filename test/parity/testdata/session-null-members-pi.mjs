@@ -131,6 +131,13 @@ await setLabel("omitted");
 await setLabel("null", null);
 await setLabel("empty", "");
 await setLabel("value", "x");
+// A usage an extension wrote in another member order and with members Pi's Usage does not declare: Pi stores the author's object.
+const usageReordered = {cost: {total: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0}, totalTokens: 3, output: 2, input: 1, cacheRead: 0, cacheWrite: 0};
+const usageAuthored = {...usageReordered, extra: 1};
+await draft("draft compaction usage in another member order", [{type: "compaction", summary: "draft-compaction", usage: usageReordered}]);
+await draft("draft compaction usage with extra members", [{type: "compaction", summary: "draft-compaction", usage: {...usage, extra: 1, cost: {...usage.cost, extra: 2}}}]);
+await row("session_before_compact result usage as its author wrote it", file, async () => { await prompt(); compaction = {usage: usageAuthored}; try { await h.session.compact(); } finally { compaction = undefined; } });
+await row("session_before_tree summary usage as its author wrote it", file, async () => { await prompt(); summary = {usage: usageAuthored}; try { await h.session.navigateTree(lastUser(), {summarize: true}); } finally { summary = undefined; } });
 // JavaScript rows: values the declarations do not allow, and JSON.stringify's rules.
 await row("js api compaction fromHook null", file, () => sm.appendCompaction("api-compaction", userId, 10, undefined, null), true);
 await row("js api branch_summary fromHook null", file, () => sm.branchWithSummary(sm.getLeafId(), "api-branch", undefined, null), true);
@@ -141,7 +148,6 @@ await row("js api toolResult details null", file, () => sm.appendMessage({role: 
 await draft("js draft custom_message display null", [{type: "custom_message", customType: "draft-message", content: "x", display: null}], true);
 await draft("js draft custom_message content null", [{type: "custom_message", customType: "draft-message", content: null, display: true}], true);
 await draft("js draft custom data NaN", [{type: "custom", customType: "draft-custom", data: NaN}], true);
-await draft("js draft compaction usage in another member order", [{type: "compaction", summary: "draft-compaction", usage: {cost: {total: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0}, totalTokens: 3, output: 2, input: 1, cacheRead: 0, cacheWrite: 0, extra: 1}}], true);
 await row("js extension sendMessage display null", file, async () => { pi.sendMessage({customType: "extension-message", content: "x", display: null}); await idle(); }, true);
 await row("js extension setSessionName null", file, () => pi.setSessionName(null), true);
 await row("js extension setSessionName undefined", file, () => pi.setSessionName(undefined), true);

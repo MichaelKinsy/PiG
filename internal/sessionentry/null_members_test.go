@@ -2,8 +2,11 @@ package sessionentry
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -114,5 +117,46 @@ func TestOptionalMembersKeepNullApartFromAbsent(t *testing.T) {
 				t.Errorf("an entry built from the fields writes %s, want %s", encoded, tc.record)
 			}
 		})
+	}
+}
+
+// Pi stores the usage object an extension supplies (agent-session.ts compact, navigateTree, _applyBoundaryDrafts) and JSON.stringify writes it member for
+// member; a usage PiG built is written from the typed Usage, and a null one as null.
+func TestUsageMemberIsWrittenAsItsAuthorWroteIt(t *testing.T) {
+	const authored = `{"cost":{"total":0,"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"totalTokens":3,"output":2,"input":1,"cacheRead":0,"cacheWrite":0,"extra":1}`
+	const typed = `{"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}`
+	var usage ai.Usage
+	if err := json.Unmarshal([]byte(authored), &usage); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name  string
+		usage *ai.Usage
+		raw   json.RawMessage
+		null  bool
+		want  string
+	}{
+		{"authored object", &usage, json.RawMessage(authored), false, `"usage":` + authored},
+		{"built usage", &usage, nil, false, `"usage":` + typed},
+		{"null", nil, nil, true, `"usage":null`},
+		{"absent", nil, nil, false, ""},
+		{"an authored object without a usage is not written", nil, json.RawMessage(authored), false, ""},
+	} {
+		for kind, entry := range map[string]json.Marshaler{
+			"compaction":     CompactionEntry{SessionEntryBase: SessionEntryBase{Type: "compaction", ID: "a"}, Usage: tc.usage, UsageRaw: tc.raw, UsageNull: tc.null},
+			"branch_summary": BranchSummaryEntry{SessionEntryBase: SessionEntryBase{Type: "branch_summary", ID: "a"}, Usage: tc.usage, UsageRaw: tc.raw, UsageNull: tc.null},
+		} {
+			encoded, err := entry.MarshalJSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == "" {
+				if strings.Contains(string(encoded), `"usage"`) {
+					t.Errorf("%s, %s: %s has a usage member", tc.name, kind, encoded)
+				}
+			} else if !strings.Contains(string(encoded), tc.want+`,"fromHook"`) {
+				t.Errorf("%s, %s: %s does not hold %s", tc.name, kind, encoded, tc.want)
+			}
+		}
 	}
 }

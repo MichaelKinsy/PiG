@@ -82,7 +82,11 @@ type CompactionEntry struct {
 	Usage   *ai.Usage `json:"usage,omitempty"`
 	// UsageNull marks a nil Usage as an explicit null: an extension wrote usage: null, which JSON.stringify writes as `"usage":null`. Without it a nil Usage is left out.
 	UsageNull bool `json:"-"`
-	FromHook  bool `json:"fromHook"`
+	// UsageRaw is the usage object as the extension that supplied it wrote it. Pi stores the author's object (agent-session.ts compact
+	// `usage = extensionCompaction.usage`, _applyBoundaryDrafts `draft.usage`), so its member order and the members Usage has no field for reach the
+	// file. Usage holds the same object decoded, for the readers. Nil for a usage PiG built, which is written from Usage.
+	UsageRaw json.RawMessage `json:"-"`
+	FromHook bool            `json:"fromHook"`
 	// FromHookAbsent leaves the fromHook member out when the entry is written: Pi's `fromHook?: boolean` left undefined by an extension's appendCompaction.
 	FromHookAbsent bool `json:"-"`
 	// SystemMessage is the complete prompt and tool state at this compaction
@@ -112,7 +116,10 @@ type BranchSummaryEntry struct {
 	Usage   *ai.Usage `json:"usage,omitempty"`
 	// UsageNull marks a nil Usage as an explicit null, which JSON.stringify writes as `"usage":null`. Without it a nil Usage is left out.
 	UsageNull bool `json:"-"`
-	FromHook  bool `json:"fromHook"`
+	// UsageRaw is the usage object as the extension that supplied it wrote it (agent-session.ts navigateTree `summaryUsage = extensionSummary.usage`):
+	// its member order and the members Usage has no field for reach the file. Nil for a usage PiG built, which is written from Usage.
+	UsageRaw json.RawMessage `json:"-"`
+	FromHook bool            `json:"fromHook"`
 
 	// FromHookAbsent leaves the fromHook member out when the entry is written: Pi's `fromHook?: boolean` left undefined by a caller of
 	// SessionManager.branchWithSummary (session-manager.ts:1604). A decoded entry has it set when its record has no fromHook member.

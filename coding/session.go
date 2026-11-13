@@ -2953,7 +2953,7 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 	}
 
 	s.mu.Lock()
-	entryID, err := s.inner.Load().AppendCompactionEntry(icodingagent.CompactionEntry{Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, FromHook: fromExtension})
+	entryID, err := s.inner.Load().AppendCompactionEntry(icodingagent.CompactionEntry{Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, UsageRaw: result.UsageRaw, FromHook: fromExtension})
 	if err != nil {
 		s.mu.Unlock()
 		return fail(fmt.Errorf("coding: Compact: persist: %w", err), false)
@@ -3554,7 +3554,7 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 	in := s.inner.Load()
 	var entryID string
 	if err == nil {
-		entryID, err = in.AppendCompactionEntry(icodingagent.CompactionEntry{Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, FromHook: fromExtension})
+		entryID, err = in.AppendCompactionEntry(icodingagent.CompactionEntry{Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, UsageRaw: result.UsageRaw, FromHook: fromExtension})
 	}
 	if err != nil {
 		aborted := compactCtx.Err() != nil || cancelledByExtension

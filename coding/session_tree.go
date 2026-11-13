@@ -67,7 +67,9 @@ type treeBranchSummary struct {
 	Details any
 	Usage   *ai.Usage
 	// UsageNull marks a nil Usage an extension wrote as null (agent-session.ts navigateTree: `summaryUsage = extensionSummary.usage`).
-	UsageNull     bool
+	UsageNull bool
+	// UsageRaw is the usage object as an extension wrote it, which the entry holds as Pi's does.
+	UsageRaw      json.RawMessage
 	FromExtension bool
 }
 
@@ -78,7 +80,7 @@ type treeBranchSummary struct {
 // The caller holds s.mu.
 func (s *Session) moveTreeLeaf(targetID string, newLeafID *string, summary *treeBranchSummary, label string) (string, error) {
 	if summary != nil && summary.Summary != "" {
-		summaryID, err := s.inner.Load().BranchWithSummaryEntry(newLeafID, icodingagent.BranchSummaryEntry{Summary: summary.Summary, Details: summary.Details, Usage: summary.Usage, UsageNull: summary.UsageNull, FromHook: summary.FromExtension})
+		summaryID, err := s.inner.Load().BranchWithSummaryEntry(newLeafID, icodingagent.BranchSummaryEntry{Summary: summary.Summary, Details: summary.Details, Usage: summary.Usage, UsageNull: summary.UsageNull, UsageRaw: summary.UsageRaw, FromHook: summary.FromExtension})
 		if err != nil {
 			return "", err
 		}
@@ -162,7 +164,7 @@ func (s *Session) emitSessionBeforeTree(ctx context.Context, preparation TreePre
 
 // extensionTreeSummary converts an extension-provided summary. Its details keep the member order the extension wrote ([extension.SessionBeforeTreeResultSummary] decodes them through orderedjson).
 func extensionTreeSummary(result *extension.SessionBeforeTreeResultSummary) *treeBranchSummary {
-	return &treeBranchSummary{Summary: result.Summary, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, FromExtension: true}
+	return &treeBranchSummary{Summary: result.Summary, Details: result.Details, Usage: result.Usage, UsageNull: result.UsageNull, UsageRaw: result.UsageRaw, FromExtension: true}
 }
 
 // emitSessionTree runs session_tree handlers after a navigation. summaryID
