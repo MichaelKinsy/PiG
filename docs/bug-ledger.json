@@ -33304,6 +33304,28 @@
       ]
     },
     {
+      "id": "BF-bddbf4c",
+      "title": "A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project…",
+      "symptom": "A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project trust decision.",
+      "rootCause": "A Piglet with discovery.extensions: [] ran the user's extension factories anyway, and a closed Piglet Binary without the Node runtime failed to start. The pass now reads ambientScopes(false): [\"user\"] for stock pig, as Pi does; the Piglet's trusted scopes otherwise; none for a closed Binary.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project trust decision. When the project had config that needs one (for example `.pig/mcp.json`), the pre-trust pass loaded `~/.pig/agent/extensions` with a fixed user scope, so an ambient extension's factory ran in a Piglet that discovers none (it did not join the session), and a closed Piglet Binary built without the Node runtime failed to start. The pre-trust pass now reads the scopes the Piglet's discovery allows for an untrusted project; stock pig still loads user extensions there, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bddbf4c888",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "coding/cli/piglet_pretrust_discovery_test.go::TestPreTrustPassFollowsPigletDiscovery"
+      ]
+    },
+    {
       "id": "BF-be2920a",
       "title": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request…",
       "symptom": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request with `Tool \"\u003cname\u003e\" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi.",
