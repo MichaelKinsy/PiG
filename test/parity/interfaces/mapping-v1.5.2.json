@@ -203862,9 +203862,9 @@
         "call:internal/codingagent/model_registry.go#providerConfigFromRegistration"
       ],
       "evidence": [
+        "test:coding/cli/custom_model_fallback_test.go#TestStartupCustomModelIDIsACopyOfTheProvidersModel",
         "test:coding/model_refresh_metadata_test.go#TestRegisteredModelSessionHeadersAssembleBeforeHook",
-        "test:coding/model_registry_namespace_test.go#TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks",
-        "test:coding/model_registry_namespace_test.go#TestRegistryLegacyMetadataUpdateRetainsRuntimeCallbacks"
+        "test:coding/model_registry_namespace_test.go#TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks"
       ]
     },
     {
