@@ -329,3 +329,40 @@ func TestIPCLinksToAChild(t *testing.T) {
 		}
 	})
 }
+
+// A message that arrives while the queued ones are being handed to a new listener comes after them, as the transport delivered
+// it: the relay worker's reader goroutine runs while the worker sets its channel's listener, and a hold ahead of the hello
+// ends the link.
+func TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver(t *testing.T) {
+	port := newFakePort()
+	end := link.IpcLink(port)
+	port.receive([]byte{1})
+	var received recorder[byte]
+	inFirst, release := make(chan struct{}), make(chan struct{})
+	setting := make(chan struct{})
+	go func() {
+		defer close(setting)
+		end.OnMessage(func(message []byte) {
+			if message[0] == 1 {
+				close(inFirst)
+				<-release
+			}
+			received.add(message[0])
+		})
+	}()
+	<-inFirst
+	arrived := make(chan struct{})
+	go func() {
+		defer close(arrived)
+		port.receive([]byte{2})
+	}()
+	<-arrived
+	if got := received.all(); len(got) != 0 {
+		t.Fatalf("received %v while the first message was still being handled", got)
+	}
+	close(release)
+	<-setting
+	if got := received.all(); !slices.Equal(got, []byte{1, 2}) {
+		t.Fatalf("received = %v, want [1 2]", got)
+	}
+}
