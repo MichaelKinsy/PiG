@@ -19658,42 +19658,44 @@
       "id": "pkg:ai/.#isRetryableAssistantError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
       "id": "pkg:ai/.#isRetryableAssistantError::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:99b171668f56dfaa6264fe8caef6d9d43dcdd9932da32ede5971bbd864d9a634",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError::call:0 is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
@@ -65240,42 +65242,44 @@
       "id": "pkg:ai/compat#isRetryableAssistantError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
       "id": "pkg:ai/compat#isRetryableAssistantError::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:99b171668f56dfaa6264fe8caef6d9d43dcdd9932da32ede5971bbd864d9a634",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError::call:0 is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
@@ -99568,9 +99572,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
+        "test:ai/assistant_retry_socket_codes_upstream_test.go#TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm",
         "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
-        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
-        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError"
       ]
     },
     {
@@ -99590,9 +99594,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
+        "test:ai/assistant_retry_socket_codes_upstream_test.go#TestSocketCodeTransportErrorsAreRetriedInTheirNodeForm",
         "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
-        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
-        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError"
       ]
     },
     {
@@ -102324,42 +102328,44 @@
       "id": "pkg:ai/utils/retry#isRetryableAssistantError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {
       "id": "pkg:ai/utils/retry#isRetryableAssistantError::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:99b171668f56dfaa6264fe8caef6d9d43dcdd9932da32ede5971bbd864d9a634",
-      "rationale": "isRetryableAssistantError: Go IsRetryableAssistantError has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: isRetryableAssistantError::call:0 is Go ai/assistant_retry.go#IsRetryableAssistantError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/auto_recovery.go#IsRetryableError"
+        "call:ai/assistant_retry.go#IsRetryableAssistantError"
       ],
       "evidence": [
-        "test:ai/assistant_retry_test.go#TestConnectionResetTextIsNotRetryable",
-        "test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"
+        "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle",
+        "test:ai/providers/bedrock/bedrock_error_metadata_upstream_test.go#TestBedrockRefusedConnectIsNodesErrorLikePi",
+        "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes"
       ]
     },
     {

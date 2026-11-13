@@ -957,6 +957,9 @@ static RETRYABLE_PROVIDER_ERROR_PATTERN: LazyLock<Pattern> = LazyLock::new(|| {
         "fetch failed",
         r"request to \S+ failed, reason:",
         "getaddrinfo",
+        // Pi 4699b5b26 (#12128): bare Node socket error codes, e.g. "read ECONNRESET", "write EPIPE", or "connect ETIMEDOUT 1.2.3.4:443", not part of a longer identifier.
+        "(?<![a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?![a-z0-9_])",
+        "connection reset by peer",
         "ENOTFOUND",
         "EAI_AGAIN",
         "upstream.?connect",
