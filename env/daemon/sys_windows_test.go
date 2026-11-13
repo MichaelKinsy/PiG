@@ -22,21 +22,20 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const argvHelper = "PIG_DAEMON_ARGV_HELPER"
+// argvHelper is the helper mode that reports how the test binary was started.
+const argvHelper = "argv"
 
-// TestMain lets the test binary act as the child that reports how it was started.
-func TestMain(m *testing.M) {
-	if os.Getenv(argvHelper) == "1" {
-		report := struct {
-			Args []string `json:"args"`
-			Line string   `json:"line"`
-		}{os.Args[1:], windows.UTF16PtrToString(syscall.GetCommandLine())}
-		if json.NewEncoder(os.Stdout).Encode(report) != nil {
-			os.Exit(2)
-		}
-		os.Exit(0)
+func init() { helperModes[argvHelper] = reportHowStarted }
+
+// reportHowStarted is the child that reports how it was started: the arguments and the command line CreateProcessW gave it.
+func reportHowStarted() {
+	report := struct {
+		Args []string `json:"args"`
+		Line string   `json:"line"`
+	}{os.Args[1:], windows.UTF16PtrToString(syscall.GetCommandLine())}
+	if json.NewEncoder(os.Stdout).Encode(report) != nil {
+		os.Exit(2)
 	}
-	os.Exit(m.Run())
 }
 
 // quoteVectors are the arguments of Pi's test with the text quote_argument returns for each.
@@ -65,7 +64,7 @@ func childReport(t *testing.T, p *peer, id uint32, args []string) (received []st
 	for _, argument := range args {
 		argv = append(argv, argument)
 	}
-	p.request(id, Object{"op": "exec", "cwd": t.TempDir(), "argv": argv, "env": Object{argvHelper: "1"}}, nil)
+	p.request(id, Object{"op": "exec", "cwd": t.TempDir(), "argv": argv, "env": Object{helperEnv: argvHelper}}, nil)
 	var stdout strings.Builder
 	for {
 		frame := p.next()

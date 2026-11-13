@@ -6,7 +6,7 @@ import { syncTerminalGeometry } from "./terminal-geometry.mjs";
 import { mountedOverlayHandle, overlayFocusTarget } from "./overlay-handle.mjs";
 import { disposeIndependentSessions } from "./independent-session-owner.mjs";
 import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
-import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
+import { dispatchProviderObjectSync, dispatchProviderObjectCallback, refreshModelsContext, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
 import { diagnose } from "./diagnostic.mjs";
 import { constants as bufferConstants } from "node:buffer";
@@ -148,6 +148,15 @@ process.on("unhandledRejection", (reason) => {
 });
 
 const USER_BLOCKING_CALLS = new Set(["ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"]);
+// A request's controller aborts its signal. An ordinary cancel also ends the request's host calls; a signal-only cancel (session_before_compact, session_before_tree: Pi's abort fires event.signal and nothing else) does not, and its handler's host calls, pending and later, are answered. signalOnly marks a controller whose only abort was that one; a later ordinary cancel clears it.
+function abortSignalOnly(controller, reason) {
+  if (!controller) return;
+  if (!controller.signal.aborted) controller.signalOnly = true;
+  controller.abort(reason);
+}
+function cancelsHostCalls(controller) {
+  return controller?.signal.aborted === true && controller.signalOnly !== true;
+}
 const MAX_FRAME_SIZE = 128 * 1024 * 1024;
 // A process keeps this many of the message objects its events carried (messageObjects), and this many message entries the host named that no log it holds has shown yet (Runtime.entrySeqs).
 const MESSAGE_OBJECT_LIMIT = 128;
@@ -1464,7 +1473,16 @@ export class Connection {
     }
     // The host needs this process's event loop for any other request, and for shutdown: a wait for its own turn ends (awaitTurnTaken).
     if (env.type === "request" || env.type === "shutdown") turnWait.turn = 0;
-    if (env.type === "cancel") this.cancelParent(env.cancel?.request_id || env.id || "", true);
+    if (env.type === "cancel") {
+      const requestId = env.cancel?.request_id || env.id || "";
+      // A signal-only cancel (session_before_compact, session_before_tree: Pi's abort fires event.signal and nothing else) cancels no host call, and its signal aborts here, where the frame is read: a synchronous call of the handler settles in this reader at once, and the handler must find event.signal aborted when that call returns, as the cancel frame precedes the result on the wire.
+      if (env.cancel?.signal_only) abortSignalOnly(this.owner?.activeRequests.get(requestId), env.cancel.reason || "cancelled");
+      else {
+        const controller = this.owner?.activeRequests.get(requestId);
+        if (controller) controller.signalOnly = false;
+        this.cancelParent(requestId, true);
+      }
+    }
     if (env.type === "notify" && env.notify?.method === "model_stream_event" && env.notify.args?.started) {
       this.streamStarts.get(env.notify.args.streamId)?.();
       return;
@@ -1572,7 +1590,7 @@ export class Connection {
       this.pending.set(id, { resolve, reject, parentRequestId, method });
       refreshQuitDrain(drainFor(this.owner?.group));
       try {
-        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}), ...(originTool !== undefined ? { origin_tool_call_id: originTool } : {}) } });
+        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(COMMAND_ONLY_CALLS.has(method) ? { command_context: true } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}), ...(originTool !== undefined ? { origin_tool_call_id: originTool } : {}) } });
       } catch (error) {
         this.pending.delete(id);
         reject(error);
@@ -1834,22 +1852,35 @@ class RuntimeContext {
     }
     return operation;
   }
-  newSession(options = {}) {
-    this.runtime.extensionRuntime.assertActive();
-    const { withSession, setup, ...rest } = options ?? {};
-    return this.runtime.callNewSession(rest, setup, withSession);
+}
+
+// COMMAND_ONLY_CALLS are the host calls of the members addCommandContextMembers adds. Only a command context sends them, so the call frame says so (the host refuses them without it).
+const COMMAND_ONLY_CALLS = new Set(["newSession", "fork", "navigateTree", "switchSession", "reload"]);
+
+// addCommandContextMembers gives target the members only Pi's command context has (runner.ts createCommandContext:1004-1038): newSession, fork, navigateTree, switchSession and reload. Pi's createContext() object, which every event, tool and shortcut handler receives, has none of them, so a call through it throws the TypeError of a missing function, and `typeof` says "undefined", whenever it is made. A request's context is a command context only for a command handler and a withSession callback (startRequest, createReplacedSessionContext); the other contexts never get the members, so a context an event handler kept cannot gain them later.
+// pig divergence (D617): the Go, Python, Rust and Lisp SDKs have one static Context type with these methods on it and answer a call from another context with a not_a_command_context error; this runtime has Pi's dynamic shape and never sends one.
+function addCommandContextMembers(target, context) {
+  const members = {
+    newSession(options = {}) {
+      this.runtime.extensionRuntime.assertActive();
+      const { withSession, setup, ...rest } = options ?? {};
+      return this.runtime.callNewSession(rest, setup, withSession);
+    },
+    fork(entryId, options = {}) {
+      this.runtime.extensionRuntime.assertActive();
+      const { withSession, ...rest } = options ?? {};
+      return this.runtime.callReplacement("fork", { ...rest, entryId }, withSession);
+    },
+    navigateTree(targetId, options = {}) { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("navigateTree", { ...options, targetId }); },
+    switchSession(sessionPath, options = {}) {
+      this.runtime.extensionRuntime.assertActive();
+      return this.runtime.callReplacement("switchSession", { sessionPath }, options?.withSession);
+    },
+    reload() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("reload", {}); },
+  };
+  for (const [name, member] of Object.entries(members)) {
+    Object.defineProperty(target, name, { value: member.bind(context), writable: true, enumerable: true, configurable: true });
   }
-  fork(entryId, options = {}) {
-    this.runtime.extensionRuntime.assertActive();
-    const { withSession, ...rest } = options ?? {};
-    return this.runtime.callReplacement("fork", { ...rest, entryId }, withSession);
-  }
-  navigateTree(targetId, options = {}) { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("navigateTree", { ...options, targetId }); }
-  switchSession(sessionPath, options = {}) {
-    this.runtime.extensionRuntime.assertActive();
-    return this.runtime.callReplacement("switchSession", { sessionPath }, options?.withSession);
-  }
-  reload() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("reload", {}); }
 }
 
 // Ports packages/coding-agent/src/core/extensions/runner.ts: noOpUIContext.
@@ -1891,7 +1922,24 @@ function createNoOpUI(ui) {
     onThemeChange: ui.onThemeChange,
     onToolsExpandedChange: ui.onToolsExpandedChange,
     bell: ui.bell,
+    // pig additive (D614): plugin UI mounts go to the host, which answers by what the attached client draws.
+    viewAbilities: ui.viewAbilities,
+    mountView: ui.mountView,
+    updateView: ui.updateView,
+    hideView: ui.hideView,
+    showView: ui.showView,
+    finishView: ui.finishView,
+    removeView: ui.removeView,
+    viewState: ui.viewState,
+    viewDiagnostics: ui.viewDiagnostics,
   };
+}
+
+// viewArgs builds the argument of a ui.view.mount or ui.view.update call, leaving out the members the caller did not give.
+function viewArgs(head, content) {
+  const args = {};
+  for (const [name, value] of Object.entries({ ...head, ...content })) if (value !== undefined) args[name] = value;
+  return args;
 }
 
 class RuntimeUI {
@@ -2019,6 +2067,35 @@ class RuntimeUI {
   async setLogin(definition) { return this.runtime.call("ui.setLogin", definition); }
   // pig divergence (D2): an extension's sprite joins /sprite.
   async registerSprite(definition) { return this.runtime.call("ui.registerSprite", definition); }
+  // pig additive (D614): plugin UI mounts. A view is the D107 wire view ({ root: { kind: "text", text } }); the host checks it
+  // against what the attached client draws. A failed operation rejects with an Error whose code is invalid, unsupported,
+  // limit, stale, terminal or not_found. The reply is { mount: { key, epoch, rev }, state, reason? }.
+  viewAbilities() {
+    const abilities = this.runtime.viewAbilities;
+    return abilities ? structuredClone(abilities) : null;
+  }
+  // The amendment members ride beside the view: alternatives ([{ when, view, drawing? }], the first whose `when` holds for a
+  // client's claims is what that client draws), drawing, a11y and focus. The host checks every bound and answers invalid.
+  // title is the short text a client labels the mount with; an update replaces it like the rest of the content.
+  mountView({ key, slot, target, title, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
+    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  }
+  updateView(mount, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus } = {}) {
+    return this.runtime.call("ui.view.update", viewArgs({ mount }, { title, view, intents, assets, fallback, alternatives, drawing, a11y, focus }));
+  }
+  hideView(mount) { return this.runtime.call("ui.view.hide", { mount }); }
+  showView(mount) { return this.runtime.call("ui.view.show", { mount }); }
+  // A result (any JSON value, at most 65536 encoded bytes) is the extension's last word on the mount; the reply and
+  // viewState carry it back as `result`.
+  finishView(mount, result) { return this.runtime.call("ui.view.finish", result === undefined ? { mount } : { mount, result }); }
+  removeView(mount) { return this.runtime.call("ui.view.remove", { mount }); }
+  viewState(key) { return this.runtime.call("ui.view.state", { key }); }
+  // The notices of a mount, oldest first: what the host rejected or ended and what a client could not draw.
+  async viewDiagnostics(key) {
+    const reply = await this.runtime.call("ui.view.diagnostics", { key });
+    if (!reply || !Array.isArray(reply.notices)) throw new Error("ui.view.diagnostics: malformed reply");
+    return reply.notices;
+  }
   setTitle(title) { this.runtime.fireAndForget("ui.setTitle", { title }); }
   async custom(factory, options = {}) {
     // rpc-mode.ts custom(): RPC mode has no custom UI, so it resolves undefined and the factory never runs; the host call keeps the ui_prompt scope.
@@ -2337,6 +2414,13 @@ export class Runtime {
     this.themeSignature = undefined;
     this.toolsExpandedKnown = false;
     this.loadedHandlers = [];
+    this.viewIntentHandler = undefined;
+    this.viewAbilities = null;
+    // viewAbilitiesSignature is the JSON of the replicated abilities ("" for none) and viewAbilitiesKnown says the host sent a state, so a later different value is a change for the pi.onViewAbilities handlers.
+    this.viewAbilitiesSignature = "";
+    this.viewAbilitiesKnown = false;
+    this.viewAbilitiesHandlers = [];
+    this.viewAbilitiesDelivery = Promise.resolve();
     this.loadedPromise = undefined;
     this.commands = new Map();
     this.shortcuts = new Map();
@@ -2479,6 +2563,22 @@ export class Runtime {
       onLoaded: (handler) => {
         if (typeof handler !== "function") throw new TypeError("onLoaded requires a handler function");
         this.loadedHandlers.push(handler);
+      },
+      // pig additive (D614): answers the intents of this extension's mounts. handler({ mount, rev, nodeKey, intent, arg, ticket, signal }, ctx)
+      // returns { outcome: "done" | "refused" | "failed", answer?, error? } (a bare value is the answer of a done outcome). signal aborts
+      // when the host cancels a cancellable intent; an answer after that is dropped.
+      onViewIntent: (handler) => {
+        if (typeof handler !== "function") throw new TypeError("onViewIntent requires a handler function");
+        this.viewIntentHandler = handler;
+      },
+      // pig additive (D614): handler(abilities, ctx) runs when what the attached client draws changed: the first client attached, the
+      // abilities changed, or the last client left (abilities is null; a client that draws no slot is a record with no slots). ctx.ui.viewAbilities()
+      // already reports the new value, so a mount made in the handler is checked against that client. The state the extension starts in is not a
+      // change, and a session no client attaches to never runs the handler. Handlers run in registration order, one change at a time; the host
+      // does not wait for them.
+      onViewAbilities: (handler) => {
+        if (typeof handler !== "function") throw new TypeError("onViewAbilities requires a handler function");
+        this.viewAbilitiesHandlers.push(handler);
       },
       registerMessageRenderer: (customType, handler) => this.registerMessageRenderer(customType, handler),
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
@@ -3242,6 +3342,8 @@ export class Runtime {
     if (env.request?.stream) (this.eventReplicas ??= new EventReplicas()).apply(env.request);
     this.conn.requestState(env.id, "started");
     const controller = new AbortController();
+    // A session_before_compact or session_before_tree handler dispatched after the event's signal aborted starts with event.signal aborted (runner.ts emit awaits it so): the signal is that of the request, as a cancel frame queued ahead of the request would leave it.
+    if (env.request?.signal_aborted) abortSignalOnly(controller, "context canceled");
     this.activeRequests.set(env.id, controller);
     // Pi's context getters are enumerable own properties. Forward reads to the live context instead of snapshotting values or hiding them on a prototype; extensions can spread a context and retain ui/session/model access.
     const requestCtx = Object.create(Object.getPrototypeOf(this.ctx));
@@ -3252,6 +3354,8 @@ export class Runtime {
     }
     // The request's own cancellation is not ctx.signal, which is the run's. The runtime's internals read it through this key, which no extension can enumerate or collide with.
     Object.defineProperty(requestCtx, requestSignal, { value: controller.signal });
+    // Only a command handler's and a withSession callback's context has the session-replacing members (addCommandContextMembers); an event, tool or shortcut context, kept or not, has none.
+    if (env.request?.method === "command" || env.request?.method === "with_session") addCommandContextMembers(requestCtx, this.ctx);
     // Dispatch concurrently so long-running interactive calls
     // (e.g. ui.custom blocking on done()) don't starve incoming
     // notifications such as ui.custom.input. The handler will
@@ -3271,7 +3375,7 @@ export class Runtime {
         await this.handleRequest(env.id, env.request || {}, requestCtx);
       } finally {
         if (env.request?.method === "event") this.loadHighlightLanguagesAfterStartup(env.request.event);
-        request.cancelled ||= !request.settled && controller.signal.aborted;
+        request.cancelled ||= !request.settled && cancelsHostCalls(controller);
         request.settled = true;
         this.activeRequests.delete(env.id);
         this.requestRecords.delete(env.id);
@@ -3313,8 +3417,9 @@ export class Runtime {
           this.contextValues.cwd = this.ready.cwd || this.contextValues.cwd;
           this.contextValues.mode = this.ready.mode || this.contextValues.mode;
           if (env.ready?.state) {
-            // StatePayload is whole here, so an absent frontend is false.
+            // StatePayload is whole here, so an absent frontend is false and an absent uiAbilities is no client.
             this.setFrontend(env.ready.state.frontend === true);
+            this.setViewAbilities(env.ready.state.uiAbilities);
             this.applyState(env.ready.state);
           }
           this.readyStateApplied = true;
@@ -3339,8 +3444,14 @@ export class Runtime {
         if (env.type === "shutdown") return;
         if (env.type === "cancel") {
           const requestId = env.cancel?.request_id || env.id || "";
-          (this.activeRequests.get(requestId) ?? this.retainedController(requestId))?.abort(env.cancel?.reason || "cancelled");
-          this.conn.cancelParent(requestId);
+          const controller = this.activeRequests.get(requestId) ?? this.retainedController(requestId);
+          // A signal-only cancel aborts the request's signal alone: the handler's host calls, pending and later, are answered and its reply is delivered. An ordinary cancel ends the request's host calls, also after a signal-only one.
+          if (env.cancel?.signal_only) abortSignalOnly(controller, env.cancel?.reason || "cancelled");
+          else {
+            if (controller) controller.signalOnly = false;
+            controller?.abort(env.cancel?.reason || "cancelled");
+            this.conn.cancelParent(requestId);
+          }
           continue;
         }
         if (env.type === "request") this.startRequest(env);
@@ -4763,7 +4874,10 @@ export class Runtime {
         try {
           const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
           const state = args?.state ?? args;
-          if (state && typeof state === "object") this.setFrontend(state.frontend === true);
+          if (state && typeof state === "object") {
+            this.setFrontend(state.frontend === true);
+            this.setViewAbilities(state.uiAbilities);
+          }
           this.applyState(state);
         } catch {}
         return;
@@ -4975,21 +5089,13 @@ export class Runtime {
   async runProviderRefreshModels(id, name, context, signal) {
     const refresh = this.providerRefreshModels.get(name);
     if (typeof refresh !== "function") throw new Error(`Provider ${name} has no refreshModels`);
-    const { credential, stored, force, ...rest } = context;
-    const input = {
-      ...rest,
-      ...(credential == null ? {} : { credential }),
-      ...(stored == null ? {} : { stored }),
-      ...(force == null ? {} : { force }),
-      signal,
-      publish: async publication => {
-        const { update, ...value } = publication;
-        const token = randomUUID();
-        if (update) this.providerUpdates.set(token, update);
-        try { return await this.call("provider.callback", { provider: name, method: "publish", params: { publication: value, token: update ? token : undefined } }, { parent: id }); }
-        finally { this.providerUpdates.delete(token); }
-      },
-    };
+    const input = refreshModelsContext(context, async publication => {
+      const { update, ...value } = publication;
+      const token = randomUUID();
+      if (update) this.providerUpdates.set(token, update);
+      try { return await this.call("provider.callback", { provider: name, method: "publish", params: { publication: value, token: update ? token : undefined } }, { parent: id }); }
+      finally { this.providerUpdates.delete(token); }
+    }, signal);
     return (await refresh.call(this.registeredProviderConfig(name), input)) ?? null;
   }
 
@@ -5475,6 +5581,19 @@ export class Runtime {
           await this.respond(id, result);
           return;
         }
+        case "ui.view.intent": {
+          const handler = this.viewIntentHandler;
+          if (!handler) {
+            await this.respond(id, { outcome: "refused", error: "no intent handler" });
+            return;
+          }
+          const { mount, rev, nodeKey, intent, arg, ticket } = request.args ?? {};
+          const answer = await handler({ mount, rev, nodeKey: nodeKey ?? "", intent, arg, ticket, signal: ctx[requestSignal] }, ctx);
+          const outcomes = ["done", "refused", "failed"];
+          const reply = answer && typeof answer === "object" && outcomes.includes(answer.outcome) ? answer : { outcome: "done", answer };
+          await this.respond(id, reply.answer === undefined ? { outcome: reply.outcome, ...(reply.error ? { error: String(reply.error) } : {}) } : reply);
+          return;
+        }
         case "shortcut": {
           const shortcut = this.shortcuts.get(request.tool);
           if (!shortcut) throw new Error(`unknown shortcut: ${request.tool}`);
@@ -5604,7 +5723,7 @@ export class Runtime {
   async respond(id, result = null, error = null) {
     const owner = this.requestContext.getStore();
     if (owner?.id === id) {
-      owner.cancelled ||= !owner.settled && owner.controller.signal.aborted;
+      owner.cancelled ||= !owner.settled && cancelsHostCalls(owner.controller);
       owner.settled = true;
       if (owner.pendingHostCalls.size > 0) await Promise.all([...owner.pendingHostCalls]);
       owner.responded = true;
@@ -5712,7 +5831,7 @@ export class Runtime {
     const current = this.connection();
     const connection = owner?.connection ?? ambient?.connection ?? current;
     if (!connection || connection.closed || connection !== current) throw new Error("extension connection closed or replaced");
-    if (!detached && (owner?.cancelled || (!owner?.settled && owner?.controller.signal.aborted))) {
+    if (!detached && (owner?.cancelled || (!owner?.settled && cancelsHostCalls(owner?.controller)))) {
       throw hostCancelled("host call cancelled with its parent request");
     }
     // A callback the Host declared for one request belongs to that request even when
@@ -5801,6 +5920,7 @@ export class Runtime {
       session: { sessionId: session.sessionId, sessionName: session.sessionName, sessionFile: session.sessionFile, leafId: session.leafId, info: session.info, entries: [] },
     };
     const context = new RuntimeContext(runtime);
+    addCommandContextMembers(context, context);
     // The host drops without an answer a call whose parent request has ended, so a synchronous read that named the settled with_session request would block this process for good. Once the callback settles, a read of a context the extension kept goes out like any other call of the code that runs it.
     const owner = this.requestContext.getStore();
     const parent = () => (owner?.id === requestId && !owner.settled ? requestId : this.activeRequest()?.id ?? "");
@@ -5842,6 +5962,35 @@ export class Runtime {
     this.ui.theme.setPalette(palette);
     this.themeSignature = signature;
     if (changed) this.fireChangeHandlers(this.themeChangeHandlers, this.ui.theme);
+  }
+
+  // setViewAbilities applies StatePayload.uiAbilities (D614) of a whole state: an absent value is no client and clears the replica. A value that
+  // differs from the one the state before carried is delivered to the pi.onViewAbilities handlers; the first state is where the extension starts.
+  setViewAbilities(value) {
+    const abilities = value && typeof value === "object" ? value : null;
+    const signature = abilities ? JSON.stringify(abilities) : "";
+    const changed = this.viewAbilitiesKnown && this.viewAbilitiesSignature !== signature;
+    this.viewAbilities = abilities;
+    this.viewAbilitiesSignature = signature;
+    this.viewAbilitiesKnown = true;
+    if (changed) this.deliverViewAbilities(abilities);
+  }
+
+  // deliverViewAbilities queues one change for the handlers registered now: in registration order, each awaited, one change at a time in the
+  // order the changes arrived. The message loop does not wait, so a handler's host calls are answered; a handler that throws or rejects is
+  // reported in the extension's log and does not stop the others.
+  deliverViewAbilities(abilities) {
+    const handlers = [...this.viewAbilitiesHandlers];
+    if (handlers.length === 0) return;
+    this.viewAbilitiesDelivery = this.viewAbilitiesDelivery.then(async () => {
+      for (const handler of handlers) {
+        try {
+          await handler(abilities ? structuredClone(abilities) : null, this.ctx);
+        } catch (error) {
+          diagnose(`extension: ${this.name}: onViewAbilities handler failed: ${error?.stack ?? error}\n`);
+        }
+      }
+    });
   }
 
   // fireChangeHandlers calls the handlers subscribed now, in order; a throw or a rejection of one does not stop the others.
@@ -6083,4 +6232,4 @@ export function reportLoadFailure(sockPath, failure) {
 }
 
 // pig additive (D232): the per-group state the shared-process tests read.
-export { busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup, siblingToolPending };
+export { addCommandContextMembers, busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup, siblingToolPending };

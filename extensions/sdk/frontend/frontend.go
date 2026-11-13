@@ -105,6 +105,24 @@ type Env struct {
 	// (see [Click.Count]). While the run is not in fullscreen mode, where a
 	// terminal reports no mouse, it does nothing.
 	Click func(click Click)
+
+	// Wheel turns the mouse wheel over a cell of an extension's view, as a
+	// terminal's wheel report does in Pi's fullscreen mode: PiG offers the
+	// component that drew the view a wheel event, at the cell it names,
+	// carrying Wheel.Delta as the event's wheelDelta
+	// (tui-alt-screen.ts handleViewportInput offers a wheel event to the
+	// component under the pointer first). A scroll view, list or other
+	// component that takes the wheel then acts on it; one that leaves it
+	// does nothing, since PiG draws no scroll view of its own in a frontend
+	// run: a session scrolls what it draws. Like Click, it may be called
+	// from any goroutine and never blocks, PiG runs it on its owner loop, and
+	// after Close it does nothing. A wheel over a node that is no extension's
+	// view, a cell outside it, or while the run is not in fullscreen mode,
+	// where a terminal reports no mouse, does nothing.
+	//
+	// pig additive (D91): Pi has no frontend; this is the wheel counterpart
+	// of Click on an extension's view.
+	Wheel func(wheel Wheel)
 }
 
 // ActionKind is what an [Action] does.
@@ -191,6 +209,24 @@ type Click struct {
 	// the component with that clickCount unless the click PiG counted
 	// last at that cell already reached it: that was this click.
 	Count int
+}
+
+// Wheel is a turn of the mouse wheel over cell Row, Column of the lines of
+// node Node, counted from 0, as a terminal reports it at that cell. Node,
+// Row, Column and ViewPath name the cell exactly as they do in [Click].
+type Wheel struct {
+	Node        string
+	Row, Column int
+	// ViewPath names a node of Node's [View] by the index of each child
+	// from the root, as in [Click.ViewPath]; the wheel lands on that view
+	// node's first cell, at its Row and Column. Nil: Row and Column count in
+	// Node's lines.
+	ViewPath []int
+	// Delta is the lines to scroll, in the unit and with the sign of Pi's
+	// wheelDelta (TuiMouseEvent.wheelDelta): positive scrolls down, negative
+	// up. It is the member's own count, such as the lines of one notch or of
+	// an accelerated spin; PiG applies none, and a Delta of 0 does nothing.
+	Delta int
 }
 
 // Session draws one interactive run. PiG calls every method on its owner

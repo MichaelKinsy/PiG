@@ -112,11 +112,12 @@ pub struct EditToolOptions {
     pub operations: Option<EditOperations>,
 }
 
-/// Pi's `GrepOperations`. `is_directory` fails when the path does not exist. Pi main (8da141c2a) takes grep's context lines from ripgrep and no longer has a
-/// `readFile` member, so there is none here.
+/// Pi's `GrepOperations`. `is_directory` fails when the path does not exist. `read_file` is Pi's deprecated `readFile`: accepted and ignored. Grep takes its
+/// context lines from ripgrep, so the host never calls it and it is not sent to the host.
 #[derive(Clone)]
 pub struct GrepOperations {
     pub is_directory: PathOperation<bool>,
+    pub read_file: Option<PathOperation<String>>,
 }
 
 /// Pi's `GrepToolOptions`.
@@ -957,6 +958,12 @@ fn run_call(
     }
     let reply = reply?;
     if let Some(error) = reply.error {
+        if let Some(shell_exit) = error.shell_exit {
+            return Err(io::Error::other(HostShellTimeout {
+                message: host_error_message(error),
+                shell_exit,
+            }));
+        }
         return Err(io::Error::other(host_error_message(error)));
     }
     reply.result.ok_or_else(|| {
@@ -966,6 +973,21 @@ fn run_call(
         )
     })
 }
+
+/// The host's error reply of a local command that timed out after its shell had exited (Pi's `ShellTimeoutError` with a `shellExit`).
+#[derive(Debug)]
+struct HostShellTimeout {
+    message: String,
+    shell_exit: crate::protocol::ShellExit,
+}
+
+impl std::fmt::Display for HostShellTimeout {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for HostShellTimeout {}
 
 /// Runs one function of a call's options for the host's `builtin_tool_callback`. An `Err` is the callback's throw.
 pub(crate) fn dispatch_callback(args: &Value) -> Result<Value, String> {
@@ -1001,7 +1023,8 @@ pub struct LocalBashOperationsOptions {
 fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations {
     BashOperations {
         exec: Arc::new(move |command, cwd, options| {
-            let conn = host_helpers::running_connection().map_err(|error| error.to_string())?;
+            let conn = host_helpers::running_connection()
+                .map_err(|error| crate::BashExecError::from(error.to_string()))?;
             let execute_id = format!("x{}", conn.execute_seq.fetch_add(1, Ordering::Relaxed));
             // A throw in onData (a panic) ends the command with it, as Pi's would reject the exec.
             let failure: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
@@ -1047,9 +1070,24 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
             );
             registry(|registry| registry.exec_data.remove(&execute_id));
             if let Some(message) = locked(&failure).clone() {
-                return Err(message);
+                return Err(message.into());
             }
-            let reply = outcome.map_err(|error| error.to_string())?;
+            let reply = match outcome {
+                Ok(reply) => reply,
+                Err(error) => {
+                    let shell_exit = error
+                        .get_ref()
+                        .and_then(|inner| inner.downcast_ref::<HostShellTimeout>())
+                        .map(|timeout| timeout.shell_exit);
+                    let message = error.to_string();
+                    return Err(match shell_exit {
+                        Some(shell_exit) => {
+                            crate::BashExecError::shell_timeout(message, shell_exit)
+                        }
+                        None => message.into(),
+                    });
+                }
+            };
             Ok(reply.get("exitCode").and_then(Value::as_i64))
         }),
     }
@@ -1208,6 +1246,27 @@ pub fn create_read_only_tools(
 mod tests {
     use super::*;
 
+    // The shell's exit is a private field of the error: it survives a move, a clone and a thread hop, and a message alone (from a String, a &str, or the error's
+    // own text) does not carry it.
+    #[test]
+    fn the_shell_exit_belongs_to_the_error_and_not_to_its_message() {
+        let exit = crate::protocol::ShellExit {
+            exit_code: 7,
+            after_seconds: 0.5,
+        };
+        let error = crate::BashExecError::shell_timeout("timeout:2".to_string(), exit);
+        let moved = std::thread::spawn(move || error.clone()).join().unwrap();
+        assert_eq!(moved.clone().into_parts().1, Some(exit));
+        assert_eq!(
+            crate::BashExecError::from(moved.to_string()).into_parts().1,
+            None
+        );
+        assert_eq!(
+            crate::BashExecError::from(moved.message()).into_parts().1,
+            None
+        );
+    }
+
     // The behavior of the tools is the shared conformance row TestConformance_BuiltinToolDelegationAcrossSDKs; these cases pin what the SDK does before and after
     // the host call: which options cross the wire, which functions stay, and the tool-result shape of a host result.
 
@@ -1324,6 +1383,7 @@ mod tests {
             Some(GrepToolOptions {
                 operations: Some(GrepOperations {
                     is_directory: Arc::new(|_| Ok(true)),
+                    read_file: Some(Arc::new(|_| panic!("read_file is never called"))),
                 }),
             }),
         );

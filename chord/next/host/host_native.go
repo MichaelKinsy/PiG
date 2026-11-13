@@ -218,10 +218,9 @@ func (n *nativeHandle[T]) opened(value T) {
 func (n *nativeHandle[T]) closeValue(value T, reason NativeCloseReason) *closeFailed {
 	owner := n.owner
 	at := HostError{Object: owner.object, Native: Position{Kind: PositionNative, Position: owner.position}}
-	// The object's context, aborted at the close timeout: Pi's `withAbortSignal(timeout.signal, context)`. A close that settled
-	// needs no more abort; one that timed out was aborted with its cause already.
+	// The object's context, aborted at the close timeout only: Pi's `withAbortSignal(timeout.signal, context)`. A close that
+	// settled in time leaves its context live, as Pi leaves `timeout.signal` unaborted.
 	closeCtx, abort := chordctx.WithCancel(owner.context)
-	defer abort(nil)
 	// Its `chord.close` root span on the host's adapter, when something records.
 	var span *chordtelemetry.OpenSpan
 	if !chordtelemetry.Untraced(owner.telemetry) {

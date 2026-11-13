@@ -40,6 +40,11 @@ import (
 // the code of the host's own sources does; a file event enters one through the batch's section (state.Batch.UseSection),
 // as a timer does. close does not wait for the goroutine (it may run in a section the goroutine is waiting to enter): join
 // does, after the section.
+//
+// Pi's libuv watches a path with FSEvents on macOS, so the watch of a directory moved away and back goes on; fsnotify's kqueue
+// watches the directory itself, ends that watch with the rename, and holds the directory again, when it is back, for its own
+// removal and rename alone (a "partial" watch: the notifier's PartialWatches). keepWatches adds such a directory again (one
+// `Add`), when an event names it.
 
 // PluginsState is the marks: plugins to rebuild, plugins to install, whether to discover again, whether base code changed.
 // Its value as a JSON watchable is the object `{ dirty, install, set, base }`.
@@ -85,6 +90,8 @@ type watcherOptions struct {
 	// Failed is called when the watcher cannot watch (the system's limit): reported once, after which the app builds on
 	// demand. It runs in a section of the host.
 	Failed func(error)
+	// Notifier makes the system's file watcher (nil: fsnotify's); a test's stands for another system's.
+	Notifier func() (notifier, error)
 }
 
 // sourceExtensions are the files of a base directory that are code: one added there marks `base` (a swap file or a note does
@@ -115,8 +122,8 @@ type usedFiles struct {
 type pluginWatcher struct {
 	state.Source
 	options watcherOptions
-	// closeFS closes the fsnotify watcher that close lets go of (a test holds it back to see that close does not wait for it).
-	closeFS func(*fsnotify.Watcher)
+	// closeFS closes the notifier that close lets go of (a test holds it back to see that close does not wait for it).
+	closeFS func(notifier)
 	roots   []string
 	// baseDirs are the base directories (watched as trees): a source file new in one marks `base`.
 	baseDirs []string
@@ -150,7 +157,7 @@ type pluginWatcher struct {
 	watched map[string]struct{}
 	// fs is the one fsnotify watcher the watches are on, made with the first (nil before it and after close); running joins
 	// the goroutine that reads its events.
-	fs      *fsnotify.Watcher
+	fs      notifier
 	running sync.WaitGroup
 	// reported is set once a failure to watch was reported.
 	reported bool
@@ -176,7 +183,7 @@ var _ state.SourceImpl = (*pluginWatcher)(nil)
 func newPluginWatcher(options watcherOptions, batch *state.Batch) *pluginWatcher {
 	w := &pluginWatcher{
 		options:     options,
-		closeFS:     func(watcher *fsnotify.Watcher) { _ = watcher.Close() },
+		closeFS:     func(watcher notifier) { _ = watcher.Close() },
 		trees:       map[string]struct{}{},
 		watched:     map[string]struct{}{},
 		recorded:    map[string]struct{}{},
@@ -470,6 +477,22 @@ func (w *pluginWatcher) watchTree(dir string) {
 	w.watchDirs(dir)
 }
 
+// alsoWatch watches the tree at dir (watchTree) and returns the directories watched then; false when nothing is watched (no
+// system watcher: it failed to start, or the watcher was closed).
+func (w *pluginWatcher) alsoWatch(dir string) ([]string, bool) {
+	if w.fs == nil {
+		return nil, false
+	}
+	w.watchTree(dir)
+	return slices.Collect(maps.Keys(w.watched)), true
+}
+
+// watches reports whether dir has a watch.
+func (w *pluginWatcher) watches(dir string) bool {
+	_, ok := w.watched[dir]
+	return ok
+}
+
 // unwatchTree stops watching the tree at dir.
 func (w *pluginWatcher) unwatchTree(dir string) {
 	delete(w.trees, dir)
@@ -504,7 +527,11 @@ func (w *pluginWatcher) watchDirs(dir string) {
 // addWatch puts a watch on dir, starting the watcher and the goroutine that reads its events with the first.
 func (w *pluginWatcher) addWatch(dir string) error {
 	if w.fs == nil {
-		watcher, err := fsnotify.NewWatcher()
+		newNotifier := w.options.Notifier
+		if newNotifier == nil {
+			newNotifier = newSystemNotifier
+		}
+		watcher, err := newNotifier()
 		if err != nil {
 			return err
 		}
@@ -517,18 +544,18 @@ func (w *pluginWatcher) addWatch(dir string) error {
 
 // readEvents is the goroutine of a watcher: the events that are queued together enter the host as one section, which then
 // renews what the burst replaced.
-func (w *pluginWatcher) readEvents(watcher *fsnotify.Watcher) {
+func (w *pluginWatcher) readEvents(watcher notifier) {
 	var burst []fsnotify.Event
 	for {
 		burst = burst[:0]
 		//portlint:allow golifetime the loop ends when close closes the fsnotify watcher, which closes both channels
 		select {
-		case event, ok := <-watcher.Events:
+		case event, ok := <-watcher.Events():
 			if !ok {
 				return
 			}
 			burst = append(burst, event)
-		case err, ok := <-watcher.Errors:
+		case err, ok := <-watcher.Errors():
 			if !ok {
 				return
 			}
@@ -548,7 +575,7 @@ func (w *pluginWatcher) readEvents(watcher *fsnotify.Watcher) {
 	queued:
 		for len(burst) < maxEventBurst {
 			select {
-			case event, ok := <-watcher.Events:
+			case event, ok := <-watcher.Events():
 				if !ok {
 					break queued
 				}
@@ -567,7 +594,7 @@ func (w *pluginWatcher) readEvents(watcher *fsnotify.Watcher) {
 }
 
 // event handles an event of the watch on watcher's directories, unless the watcher was closed since (close sets fs nil).
-func (w *pluginWatcher) event(watcher *fsnotify.Watcher, event fsnotify.Event) {
+func (w *pluginWatcher) event(watcher notifier, event fsnotify.Event) {
 	if w.fs != watcher {
 		return
 	}
@@ -993,40 +1020,81 @@ func (w *pluginWatcher) baseEvent(path string, op fsnotify.Op) {
 
 // keepWatches puts back the watches at and under path that the watcher no longer holds, those alone and those of a base
 // directory's tree, for the directory there is the one they watched, moved away and back: libuv's watch follows it (inotify) or
-// its path (FSEvents), and some of fsnotify's end with the move (kqueue removes the watch of a directory that is renamed).
-// Nothing is compared: as Pi, it renewed nothing.
+// its path (FSEvents), and some of fsnotify's end with the move (kqueue removes the watch of a directory that is renamed) or
+// with the removal of the directory (inotify). Nothing is compared: as Pi, it renewed nothing. A watch it cannot put back (its
+// directory is missing for now) takes its identity with it, as `reconcile` and `unwatchDirs` do: the directory made again is
+// then another one, and its watches are renewed. A record of the identity of a directory not watched would call it the same,
+// as a file system that reuses the inode and stamps the birth time in coarse ticks (ext4) gives it that identity, and nothing
+// would watch it again.
+//
+// Where a held watch may see less than it was added for (notifier.PartialWatches: kqueue holds a directory that is back, after
+// the rename that ended its watch, for its own removal or rename alone, with no event for its entries), the directory at path
+// itself is added again: it is the one the event named, so the one whose watch the notifier may have put back that way (the
+// watches of its tree below it were not ended by its rename). One `Add`, never one per directory under path.
 func (w *pluginWatcher) keepWatches(path string) {
 	if w.fs == nil {
 		return
 	}
-	held := w.fs.WatchList()
+	held := make(map[string]struct{})
+	for _, dir := range w.fs.WatchList() {
+		held[dir] = struct{}{}
+	}
+	isLost := func(dir string) bool {
+		if dir != path && !under(path, dir) {
+			return false
+		}
+		_, ok := held[dir]
+		return !ok
+	}
 	var lost []string
 	for dir := range w.baseWatched {
-		if (dir == path || under(path, dir)) && !slices.Contains(held, dir) {
+		if isLost(dir) {
 			lost = append(lost, dir)
 		}
 	}
 	for _, dir := range lost {
 		delete(w.baseWatched, dir)
+		delete(w.identities, dir)
 		w.watchAlone(dir)
 	}
 	var lostTree []string
 	for dir := range w.watched {
-		if (dir == path || under(path, dir)) && !slices.Contains(held, dir) {
+		if isLost(dir) {
 			lostTree = append(lostTree, dir)
 		}
 	}
 	for _, dir := range lostTree {
 		delete(w.watched, dir)
+		delete(w.identities, dir)
 	}
 	for _, dir := range lostTree {
 		w.watchDirs(dir)
+	}
+	w.renewPartialWatch(path, held)
+}
+
+// renewPartialWatch adds the watch of path again when the watcher watches it, the notifier still holds one (held: before the
+// watches were put back) and the notifier's held watches may be partial. An error is as watchAlone takes it.
+func (w *pluginWatcher) renewPartialWatch(path string, held map[string]struct{}) {
+	if w.fs == nil || !w.fs.PartialWatches() {
+		return
+	}
+	if _, ok := held[path]; !ok {
+		return
+	}
+	_, alone := w.baseWatched[path]
+	_, tree := w.watched[path]
+	if !alone && !tree {
+		return
+	}
+	if err := w.fs.Add(path); err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, fs.ErrPermission) {
+		w.failed(err)
 	}
 }
 
 // renewRenamed renews the watches under the entries on the way to base code replaced in this burst of events (the outermost
 // renamed path covers those under it).
-func (w *pluginWatcher) renewRenamed(watcher *fsnotify.Watcher) {
+func (w *pluginWatcher) renewRenamed(watcher notifier) {
 	if len(w.renamed) == 0 {
 		return
 	}

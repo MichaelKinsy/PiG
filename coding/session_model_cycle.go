@@ -95,9 +95,6 @@ func (s *Session) beginModelCycle(ctx context.Context, direction string, deferTh
 
 // nextCycleIndex is the index of the model to cycle to, or -1 when there is nothing to switch to. When the current model is not in the
 // list (currentIndex -1), forward picks the first entry and backward the last, so a one-entry list still selects its only model.
-//
-// pig divergence (D258): Pi 1.5.0 returns early for a list of at most one entry and counts a missing current model as index 0; Pi main
-// 5732bac06 (#11832) selects the only model and the first/last entry from outside the list.
 func nextCycleIndex(currentIndex, length int, backward bool) int {
 	switch {
 	case length == 0:

@@ -4571,7 +4571,7 @@ impl Context {
     ///
     /// When `options.signal` is cancelled the host terminates the command, as Pi does: the command alone receives SIGTERM (the
     /// process is killed on Windows), no descendant is signalled, and the call returns the output written so far with `killed`
-    /// set and `exit_code` 0, which is what a command that a signal ended reports. A signal that is cancelled before the call
+    /// set and `exit_code` 143 (128 + SIGTERM), which is what a command that a signal ended reports. A signal that is cancelled before the call
     /// starts the command and ends it at once. SIGKILL follows the SIGTERM five seconds later if the command has not exited, for a
     /// timeout and a `max_buffer` overflow too. Without a signal the command ends when the calling request is cancelled; a signal replaces that
     /// cancellation, so cancelling the request then leaves the command running and the call waits for its result.
@@ -6586,6 +6586,7 @@ mod login_call_tests {
                         code: Some("invalid_sprite".to_string()),
                         message: "invalid sprite definition mascot: must contain exactly 14 rows"
                             .to_string(),
+                        shell_exit: None,
                     }),
                 }),
                 ..Default::default()
@@ -6823,6 +6824,7 @@ mod sdk_surface_call_tests {
                 error: Some(ErrorInfo {
                     code: None,
                     message: "yield failed".to_string(),
+                    shell_exit: None,
                 }),
             },
         );
@@ -6865,6 +6867,7 @@ mod sdk_surface_call_tests {
                 error: Some(ErrorInfo {
                     code: None,
                     message: "yield failed".to_string(),
+                    shell_exit: None,
                 }),
             },
         );
@@ -7107,6 +7110,7 @@ mod sdk_surface_call_tests {
             error: Some(ErrorInfo {
                 code: None,
                 message: "Nothing to compact".to_string(),
+                shell_exit: None,
             }),
         });
         assert_eq!(call.parent_request_id, None);
@@ -7124,6 +7128,7 @@ mod sdk_surface_call_tests {
                 error: Some(ErrorInfo {
                     code: None,
                     message: "spawn EINVAL".to_string(),
+                    shell_exit: None,
                 }),
             }
         }
@@ -7150,6 +7155,7 @@ mod sdk_surface_call_tests {
             error: Some(ErrorInfo {
                 code: Some("host_failed".to_string()),
                 message: "boom".to_string(),
+                shell_exit: None,
             }),
         }
     }

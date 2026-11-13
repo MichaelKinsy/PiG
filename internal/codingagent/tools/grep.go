@@ -51,6 +51,10 @@ type GrepTool struct {
 type GrepOperations struct {
 	// IsDirectory reports whether the path is a directory and fails when it does not exist.
 	IsDirectory func(absolutePath string) (bool, error)
+	// ReadFile is upstream's optional readFile.
+	//
+	// Deprecated: Ignored. Context lines come directly from ripgrep, so the tool never calls it. Wrap the tool's Execute to search a remote system.
+	ReadFile func(absolutePath string) (string, error)
 }
 
 func (t *GrepTool) operations() GrepOperations {
@@ -71,7 +75,12 @@ func (t *GrepTool) operations() GrepOperations {
 func (t *GrepTool) Name() string  { return "grep" }
 func (t *GrepTool) Label() string { return "" }
 
-func (t *GrepTool) Schema() ai.ToolSchema {
+func (t *GrepTool) Schema() ai.ToolSchema { return t.schema(false) }
+
+// BorrowedSchema is Schema with the parameters shared, not copied: the caller reads them and never modifies them.
+func (t *GrepTool) BorrowedSchema() ai.ToolSchema { return t.schema(true) }
+
+func (t *GrepTool) schema(borrow bool) ai.ToolSchema {
 	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:        "grep",
 		Description: "Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to 100 matches or 50KB (whichever is hit first). Long lines are truncated to 500 chars.",
@@ -83,7 +92,7 @@ func (t *GrepTool) Schema() ai.ToolSchema {
 		"literal":{"type":"boolean","description":"Treat pattern as literal string instead of regex (default: false)"},
 		"context":{"type":"number","description":"Number of lines to show before and after each match (default: 0)"},
 		"limit":{"type":"number","description":"Maximum number of matches to return (default: 100)"}
-	}}`)
+	}}`, borrow)
 }
 
 func (t *GrepTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }

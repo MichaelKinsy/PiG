@@ -21,7 +21,7 @@ import (
 // every entry that is no regular file or directory, a path that is absolute, holds `..`, a backslash or NUL, or names an
 // empty segment, and a header whose checksum does not hold.
 //
-// Go forced differences (D455): an async iterable of chunks is an io.Reader, and a generator of entries a push or a pull:
+// Go forced differences (language mechanics): an async iterable of chunks is an io.Reader, and a generator of entries a push or a pull:
 // WriteTar takes an iter.Seq of entries and writes to an io.Writer; ReadTar calls visit with each entry (a file's Data is a
 // reader to consume within the call; what it leaves unread is skipped after it returns).
 

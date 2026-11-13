@@ -29,21 +29,21 @@ func TestSessionHandlerRendersCacheWarmingSection(t *testing.T) {
 	}{
 		{
 			name: "no warmer", status: nil,
-			want: header + line("Mode:", "streaming") + line("Status:", "Inactive (cache warming unavailable)"),
+			want: header + line("Mode:", "idle") + line("Status:", "Inactive (cache warming unavailable)"),
 		},
 		{
-			name: "waiting", mode: `{"cacheWarming":"idle"}`,
+			name: "waiting", mode: `{"cacheWarming":"streaming"}`,
 			status: func() *CacheWarmingStatus {
 				return &CacheWarmingStatus{State: "inactive", Reason: "waiting for first request"}
 			},
-			want: header + line("Mode:", "idle") + line("Status:", "Inactive (waiting for first request)"),
+			want: header + line("Mode:", "streaming") + line("Status:", "Inactive (waiting for first request)"),
 		},
 		{
 			name: "refreshing",
 			status: func() *CacheWarmingStatus {
 				return &CacheWarmingStatus{State: "refreshing", NextWarmAt: 1, Decision: decision}
 			},
-			want: header + line("Mode:", "streaming") +
+			want: header + line("Mode:", "idle") +
 				line("Status:", "Warming cache (100% continuation probability while agent is running, expected savings $0.525 >= $0.050 -> warm)") +
 				line("Cache miss penalty:", "$0.575") + line("Refresh cost:", "$0.050"),
 		},

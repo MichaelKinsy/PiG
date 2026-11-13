@@ -18,6 +18,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -36,9 +37,24 @@ type exclusiveConn struct {
 	// overlaps counts the refused calls; calls counts the calls that reached the driver.
 	overlaps atomic.Int64
 	calls    atomic.Int64
-	// hold, when set, is signalled once a call is inside the driver and then blocks that call until it is closed.
-	hold chan struct{}
-	held chan struct{}
+	// hold is the pending holdNextCall, taken by the first call that gets inside the driver.
+	hold atomic.Pointer[holdPoint]
+}
+
+// holdPoint is a call parked inside the driver: entered is closed once the call is there, and the call stays until
+// release is closed.
+type holdPoint struct {
+	entered chan struct{}
+	release <-chan struct{}
+}
+
+// holdNextCall makes the next call that gets inside the driver stay there until release is closed, and returns a channel
+// that is closed once that call is inside. The signal is a close, not a send, so a receiver that is not waiting yet when
+// the call arrives cannot miss it; the hold is spent by that one call and later calls are not held.
+func (conn *exclusiveConn) holdNextCall(release <-chan struct{}) <-chan struct{} {
+	point := &holdPoint{entered: make(chan struct{}), release: release}
+	conn.hold.Store(point)
+	return point.entered
 }
 
 // enter records the start of a driver call: the function that records its end, or errOverlap.
@@ -48,12 +64,9 @@ func (conn *exclusiveConn) enter() (func(), error) {
 		return nil, errOverlap
 	}
 	conn.calls.Add(1)
-	if hold := conn.hold; hold != nil {
-		select {
-		case conn.held <- struct{}{}:
-			<-hold
-		default:
-		}
+	if point := conn.hold.Swap(nil); point != nil {
+		close(point.entered)
+		<-point.release
 	}
 	return func() { conn.inside.Store(0) }, nil
 }
@@ -387,11 +400,10 @@ func TestExclusiveConnRefusesOverlappingUse(t *testing.T) {
 	database, err := NewDatabaseSync(":memory:", DatabaseSyncOptions{})
 	mustDo(t, err)
 	conn := seen.conns[0]
-	hold := make(chan struct{})
-	conn.hold, conn.held = hold, make(chan struct{})
+	release := make(chan struct{})
+	entered := conn.holdNextCall(release)
 	first := startErr(func() error { return database.Exec("SELECT 1") })
-	<-conn.held // the first call is now inside the driver
-	conn.hold = nil
+	<-entered // the first call is now inside the driver
 	callsBefore := conn.calls.Load()
 	_, err = startErr(func() error { return database.Exec("SELECT 2") }).await()
 	if !errors.Is(err, errOverlap) {
@@ -400,7 +412,34 @@ func TestExclusiveConnRefusesOverlappingUse(t *testing.T) {
 	if conn.overlaps.Load() != 1 || conn.calls.Load() != callsBefore {
 		t.Fatalf("overlaps = %d, calls = %d (was %d): the refused call must be counted and not forwarded", conn.overlaps.Load(), conn.calls.Load(), callsBefore)
 	}
-	close(hold)
+	close(release)
 	_, err = first.await()
 	mustDo(t, err)
+}
+
+// The hold TestExclusiveConnRefusesOverlappingUse relies on must reach a receiver that arrives after the held call is
+// already inside the driver: the test goroutine is not guaranteed to be waiting first, and a signal that needs a waiting
+// receiver is lost, which hung the test for its whole 10 minute timeout in CI. synctest.Wait returns once the call is
+// either parked in the hold or has run to the end, so the receive below is always the late one.
+func TestExclusiveConnHoldSignalIsNotLostToALateReceiver(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		conn := &exclusiveConn{}
+		release := make(chan struct{})
+		entered := conn.holdNextCall(release)
+		returned := make(chan struct{})
+		go func() {
+			defer close(returned)
+			if exit, err := conn.enter(); err == nil {
+				exit()
+			}
+		}()
+		synctest.Wait()
+		select {
+		case <-entered:
+		default:
+			t.Fatal("the call went through the driver without anyone being told it was inside: the signal was lost to a receiver that was not waiting yet")
+		}
+		close(release)
+		<-returned
+	})
 }

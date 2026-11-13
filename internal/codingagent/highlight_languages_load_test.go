@@ -21,11 +21,18 @@ type repaintRecorder struct {
 func (r *repaintRecorder) Invalidate()           { r.calls = append(r.calls, "invalidate") }
 func (r *repaintRecorder) RequestRender(...bool) { r.calls = append(r.calls, "requestRender") }
 
-// Pi's init loads the remaining grammars off the event loop after the startup frame; its continuation, back on the loop, invalidates and requests a render unless the mode has stopped (interactive-mode.ts:init).
+// Pi's init loads the remaining grammars off the event loop after the startup frame; its continuation, back on the loop, invalidates and requests a render unless the mode has stopped (interactive-mode.ts:init). pig divergence (D618): PiG does so only when a highlight lookup made before the load answers differently now. The grammar load runs once per process, so each test runs in a process of its own.
 func TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop(t *testing.T) {
+	if !testenv.InOwnProcess(t) {
+		return
+	}
 	ctx := t.Context()
 	renderer := &repaintRecorder{}
 	m := &InteractiveMode{tuiInst: renderer, uiTaskCh: make(chan func(), 1), backgroundCtx: ctx}
+	// A code block drawn before the load asked for a language only the load registers.
+	if tui.SupportsLanguage("ada") {
+		t.Fatal("ada is registered before the load; the test needs a language only the load adds")
+	}
 	m.loadRemainingHighlightLanguages()
 
 	var task func()
@@ -47,11 +54,42 @@ func TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop(t *testing.T) {
 	m.backgroundTasks.Wait()
 }
 
+// A start that looked up no language the load adds has nothing to redraw: the load posts no repaint, so no frame follows the first (D618; Pi writes
+// a 29-byte cursor-only frame there, see parity scenario 69).
+func TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers(t *testing.T) {
+	if !testenv.InOwnProcess(t) {
+		return
+	}
+	renderer := &repaintRecorder{}
+	m := &InteractiveMode{tuiInst: renderer, uiTaskCh: make(chan func(), 1), backgroundCtx: t.Context()}
+	// Looking up an eager language is the same answer before and after the load.
+	if !tui.SupportsLanguage("javascript") {
+		t.Fatal("javascript is not an eager language")
+	}
+	m.loadRemainingHighlightLanguages()
+	m.backgroundTasks.Wait()
+	select {
+	case <-m.uiTaskCh:
+		t.Fatal("the grammar load posted a repaint although no earlier lookup differs")
+	default:
+	}
+	if !tui.SupportsLanguage("ada") {
+		t.Fatal("the load did not register the remaining languages")
+	}
+	if len(renderer.calls) != 0 {
+		t.Fatalf("the load repainted: %v", renderer.calls)
+	}
+}
+
 func TestLoadRemainingHighlightLanguagesSkipsTheRepaintAfterStop(t *testing.T) {
+	if !testenv.InOwnProcess(t) {
+		return
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	renderer := &repaintRecorder{}
 	m := &InteractiveMode{tuiInst: renderer, uiTaskCh: make(chan func()), backgroundCtx: ctx}
+	tui.SupportsLanguage("ada") // an earlier lookup the load changes: a running mode would repaint
 	m.loadRemainingHighlightLanguages()
 	m.backgroundTasks.Wait()
 	select {

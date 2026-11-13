@@ -344,7 +344,7 @@ func pasteInto(t *testing.T, editor *tui.Editor, text string) {
 	}
 }
 
-// pi main 51313540a test/interactive-mode-paste.test.ts "around non-overlay custom UI" (#9809; D251).
+// pi main 51313540a test/interactive-mode-paste.test.ts "around non-overlay custom UI" (#9809).
 func TestExtUIContextCustomKeepsCollapsedPasteContent(t *testing.T) {
 	t.Run("after it closes", func(t *testing.T) {
 		r := newCustomRig(t)
@@ -376,7 +376,7 @@ func TestExtUIContextCustomKeepsCollapsedPasteContent(t *testing.T) {
 	})
 }
 
-// pi main 51313540a "when queued messages are restored above it" (D251).
+// pi main 51313540a "when queued messages are restored above it".
 func TestRestoreQueuedMessagesKeepsCollapsedPasteContent(t *testing.T) {
 	m := statusBorderMode(t, false)
 	draft := pastedDraft("draft")
@@ -388,7 +388,7 @@ func TestRestoreQueuedMessagesKeepsCollapsedPasteContent(t *testing.T) {
 	}
 }
 
-// pi main 51313540a "between the default and a replacement editor" (D251).
+// pi main 51313540a "between the default and a replacement editor".
 func TestSetRemoteEditorKeepsCollapsedPasteContent(t *testing.T) {
 	mode, _ := newCustomEditorDispatchMode(t)
 	draft := pastedDraft("into replacement")
@@ -409,7 +409,7 @@ func TestSetRemoteEditorKeepsCollapsedPasteContent(t *testing.T) {
 }
 
 // pi main 51313540a "between the default and a replacement editor", the second half: a draft pasted into the replacement and carried back to the
-// default editor by setCustomEditorComponent(undefined) submits intact (D251). The replacement reports its text with the marker and the expanded paste.
+// default editor by setCustomEditorComponent(undefined) submits intact. The replacement reports its text with the marker and the expanded paste.
 func TestSetRemoteEditorBackToTheDefaultKeepsCollapsedPasteContent(t *testing.T) {
 	mode, _ := newCustomEditorDispatchMode(t)
 	custom := &fakeRemoteEditor{}

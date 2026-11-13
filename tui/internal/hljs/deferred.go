@@ -3,9 +3,11 @@ package hljs
 import (
 	"fmt"
 	"slices"
+
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
-// Pi's loadAllHighlightLanguages registers every highlight.js language, and most sessions highlight code in a few of them. The full snapshot (grammars_all.json.gz) is therefore not materialized when LoadAllLanguages runs. The first lookup that misses the eager languages inflates it once and indexes it: the byte offset of every grammar node, and each language's registration (name, aliases, root node), which is all registration order, the alias table and Languages need. A language's grammar objects are decoded when it is first looked up, together with the nodes they reach that are not decoded yet; auto-detection over every language decodes the rest.
+// Pi's loadAllHighlightLanguages registers every highlight.js language, and most sessions highlight code in a few of them. The full snapshot (grammars_all.json.zst) is therefore not materialized when LoadAllLanguages runs. The first lookup that misses the eager languages inflates it once and indexes it: the byte offset of every grammar node, and each language's registration (name, aliases, root node), which is all registration order, the alias table and Languages need. A language's grammar objects are decoded when it is first looked up, together with the nodes they reach that are not decoded yet; auto-detection over every language decodes the rest.
 //
 // The snapshot's grammars are almost disjoint (one node is reachable from two languages) and the objects they share with the eager languages are the eager nodes, so a language decoded alone is the object graph decoding the whole snapshot builds, and the registry keeps one object for a shared node as highlight.js does.
 //
@@ -27,13 +29,15 @@ func (r *Registry) indexDeferred() {
 		return
 	}
 	r.indexed = true
-	raw, err := gunzip(allGrammars)
+	raw, err := zstdblob.Decode(allGrammars)
 	if err != nil {
 		panic("hljs: grammar snapshot: " + err.Error())
 	}
 	g := &deferredGrammars{decoder: snapshotDecoder{data: raw, keys: map[string]string{}}, roots: map[string]int{}}
 	d := &g.decoder
 	var registrations []snapshotRegistration
+	// A node of the full snapshot is about 290 bytes of its JSON (3,443 nodes in 991,984 B), so the index is sized from the text at 256 bytes a node and does not grow by appending: that garbage was 120 KB of the first use of a language. A regenerated snapshot with more nodes than this expects still works; the index grows.
+	g.nodeAt = make([]int, 0, len(raw)/256)
 	d.object(func(key []byte) {
 		switch string(key) {
 		case "firstNode":

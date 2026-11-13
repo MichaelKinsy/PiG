@@ -1,5 +1,7 @@
 package sdk
 
+// pi: packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts (Type and StringEnum against the pinned extension view)
+
 import (
 	"context"
 	"encoding/json"
@@ -285,6 +287,20 @@ func TestZhipuUsageLimit1308IsNotRetryable(t *testing.T) {
 		`429 {"error":{"code":"1308","message":"Usage limit reached for 5 hour."}}`: false,
 		`429 {"error":{"code":1308,"message":"Usage limit reached"}}`:               false,
 		`429 {"error":{"code":"13081","message":"Too many requests"}}`:              true,
+	} {
+		if got := IsRetryableAssistantError(map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": text}); got != want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", text, got, want)
+		}
+	}
+}
+
+// Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading "Connection closed.".
+func TestConnectionClosedIsRetryable(t *testing.T) {
+	for text, want := range map[string]bool{
+		`{"type":"error","error":{"type":"api_error","message":"Connection closed."}}`:                    true,
+		"Connection closed by proxy server before the response completed":                                 true,
+		`{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}`: false,
+		"The connection was closed by the user":                                                           false,
 	} {
 		if got := IsRetryableAssistantError(map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": text}); got != want {
 			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", text, got, want)

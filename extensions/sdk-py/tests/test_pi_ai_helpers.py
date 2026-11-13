@@ -110,6 +110,17 @@ def test_zhipu_usage_limit_1308_is_not_retryable():
         assert helpers.is_retryable_assistant_error({"role": "assistant", "stopReason": "error", "errorMessage": text}) is want, text
 
 
+def test_connection_closed_is_retryable():
+    # Pi 9b88b94e2 packages/ai/test/retry.test.ts:106 (#12064): a gateway ends the stream with an Anthropic-style api_error event reading "Connection closed.".
+    for text, want in (
+        ('{"type":"error","error":{"type":"api_error","message":"Connection closed."}}', True),
+        ("Connection closed by proxy server before the response completed", True),
+        ('{"type":"error","error":{"type":"api_error","message":"Connection closed. insufficient_quota"}}', False),
+        ("The connection was closed by the user", False),
+    ):
+        assert helpers.is_retryable_assistant_error({"role": "assistant", "stopReason": "error", "errorMessage": text}) is want, text
+
+
 def test_the_golden_file_covers_every_helper():
     called = {case["fn"] for case in GOLDEN["cases"]}
     assert set(CALLS) <= called

@@ -1,6 +1,6 @@
 {
- "pin": "1.5.0+c23b9ec1",
- "package": "pi-ai@1.5.0",
+ "pin": "1.5.2",
+ "package": "pi-ai@1.5.2",
  "module": "pi-ai",
  "export": "createInitialSystemMessage",
  "cases": [

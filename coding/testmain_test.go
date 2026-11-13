@@ -57,6 +57,11 @@ func TestMain(m *testing.M) {
 		_ = os.RemoveAll(testRoot)
 		os.Exit(2)
 	}
+	if err := trustTestCertificateAuthority(testRoot); err != nil {
+		fmt.Fprintln(os.Stderr, "trust the test certificate authority:", err)
+		_ = os.RemoveAll(testRoot)
+		os.Exit(2)
+	}
 	code := testenv.RunWithoutGoroutineLeaks(m)
 	if err := os.RemoveAll(testRoot); err != nil {
 		fmt.Fprintln(os.Stderr, "remove isolated test config root:", err)

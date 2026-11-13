@@ -29,7 +29,7 @@ export const vi = {fn(impl=()=>{}) { const calls=[]; const fn=(...args)=>{calls.
 export function expect(value) {
   const test=(invert=false)=>({
     get not(){return test(!invert);},
-    get rejects(){return {async toThrow(message){await assert.rejects(value, error=>error.message.includes(message));}};},
+    get rejects(){return {async toThrow(message){await assert.rejects(value, error=>error.message.includes(message));},async toBeInstanceOf(type){await assert.rejects(value, error=>error instanceof type);}};},
     toBe(expected){state.observations.push(value);if(invert)assert.notStrictEqual(value,expected);else assert.strictEqual(value,expected);},
     toEqual(expected){if(invert)assert.notDeepStrictEqual(value,expected);else assert.deepStrictEqual(value,expected);},
     toContain(expected){state.observations.push(value.includes(expected));assert.equal(value.includes(expected),!invert);},

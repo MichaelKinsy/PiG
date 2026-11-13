@@ -57,7 +57,7 @@ func (h *queuingSessionHandle) QueuedUserMessage(text string, images []ai.ImageC
 	return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: text}}}}
 }
 
-// pi main 4cf69332c (#11782; D249): the interactive mode queues streaming Enter, Alt+Enter, extension sendUserMessage and the
+// pi main 4cf69332c (#11782): the interactive mode queues streaming Enter, Alt+Enter, extension sendUserMessage and the
 // compaction-queued flush on the Agent itself, so it builds the message through the Session that normalizes its images at delivery.
 func TestInteractiveQueuedMessagesAreBuiltBySessionForImageNormalization(t *testing.T) {
 	m, _ := newTickRenderProbe(t, "regular")

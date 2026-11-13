@@ -5,9 +5,9 @@ import "testing"
 // packages/ai/src/api/google-shared.ts:441-472 mapStopReason over the FinishReason enum and :474-481 mapStopReasonString: STOP is
 // "stop", MAX_TOKENS is "length", and every other reason (the 16 error members of the SDK enum, an unknown string, empty) is "error".
 func TestMapStopReasonStringIsStopLengthOrError(t *testing.T) {
-	want := map[string]StopReason{"STOP": StopReasonStop, "MAX_TOKENS": StopReasonLength}
+	want := map[string]StopReason{"STOP": StopReasonStop, "MAX_TOKENS": StopReasonLength, "CONTINUATION": StopReasonLength}
 	for _, reason := range []string{
-		"STOP", "MAX_TOKENS", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT",
+		"STOP", "MAX_TOKENS", "CONTINUATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "SAFETY", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT",
 		"IMAGE_RECITATION", "IMAGE_OTHER", "RECITATION", "FINISH_REASON_UNSPECIFIED", "OTHER", "LANGUAGE", "MALFORMED_FUNCTION_CALL",
 		"UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE", "stop", "NEW_REASON", "",
 	} {

@@ -38,23 +38,25 @@ const ArchiveFormat int64 = 1
 type ArchivePart = StoreWrite
 
 // ManifestPart is the first part: the format, the store's schema version, its `lastSeq` and the allocator's next id
-// (rule 24, D3).
+// (rule 24, D3); Host in a host's data archive (`ExportHostData`): the address key whose records and rows it holds.
 type ManifestPart struct {
 	Format  int64
 	Schema  int64
 	LastSeq int64
 	NextID  int64
+	Host    *string
 }
 
 // StoreWriteKind is "manifest".
 func (*ManifestPart) StoreWriteKind() string { return "manifest" }
 
 type manifestJSON struct {
-	Kind    string `json:"kind"`
-	Format  int64  `json:"format"`
-	Schema  int64  `json:"schema"`
-	LastSeq int64  `json:"lastSeq"`
-	NextID  int64  `json:"nextId"`
+	Kind    string  `json:"kind"`
+	Format  int64   `json:"format"`
+	Schema  int64   `json:"schema"`
+	LastSeq int64   `json:"lastSeq"`
+	NextID  int64   `json:"nextId"`
+	Host    *string `json:"host,omitempty"`
 }
 
 // MarshalJSON is the manifest in Pi's key order.
@@ -62,7 +64,7 @@ func (part *ManifestPart) MarshalJSON() ([]byte, error) { return part.AppendStri
 
 // AppendStringify appends the manifest's JSON.stringify text to dst.
 func (part *ManifestPart) AppendStringify(dst []byte) ([]byte, error) {
-	return jsstring.AppendMarshalJSON(dst, manifestJSON{"manifest", part.Format, part.Schema, part.LastSeq, part.NextID})
+	return jsstring.AppendMarshalJSON(dst, manifestJSON{"manifest", part.Format, part.Schema, part.LastSeq, part.NextID, part.Host})
 }
 
 // EndPart is the last part: the count of the parts between the manifest and it.
@@ -103,6 +105,8 @@ var (
 		contracts.Prop("default", contracts.Opt(contracts.Union([]contracts.Schema{contracts.Str(), contracts.Num(), contracts.Bool()}))),
 		contracts.Prop("version", contracts.Opt(archiveVersion)),
 		contracts.Prop("fingerprint", contracts.Opt(contracts.Str())),
+		// A `host(...)` column's kind.
+		contracts.Prop("host", contracts.Opt(contracts.Str())),
 	)
 
 	archiveVersions = contracts.Map(archiveVersion)
@@ -143,6 +147,7 @@ var (
 		contracts.Prop("createdAt", safe(1)),
 		contracts.Prop("retiredAt", contracts.Opt(safe(1))),
 		contracts.Prop("meta", contracts.Opt(contracts.Str())),
+		contracts.Prop("host", contracts.Opt(contracts.Str())),
 		contracts.Prop("revision", safe(1)),
 		contracts.Prop("version", archiveVersion),
 		contracts.Prop("fingerprint", contracts.Str()),
@@ -174,6 +179,7 @@ var (
 			contracts.Prop("schema", safe(1)),
 			contracts.Prop("lastSeq", safe(0)),
 			contracts.Prop("nextId", safe(1)),
+			contracts.Prop("host", contracts.Opt(contracts.Str())),
 		),
 		archiveTable,
 		archivePut,
@@ -321,10 +327,14 @@ func decodeArchivePart(checked any) (ArchivePart, error) {
 	}
 	switch jsonText(object, "kind") {
 	case "manifest":
-		return &ManifestPart{
+		manifest := &ManifestPart{
 			Format: jsonInt(object, "format"), Schema: jsonInt(object, "schema"),
 			LastSeq: jsonInt(object, "lastSeq"), NextID: jsonInt(object, "nextId"),
-		}, nil
+		}
+		if host, present := object.Value("host").(string); present {
+			manifest.Host = &host
+		}
+		return manifest, nil
 	case "end":
 		return &EndPart{Writes: jsonInt(object, "writes")}, nil
 	}
@@ -440,6 +450,9 @@ func documentRecordOf(record *delta.JsonObject) DocumentRecord {
 	}
 	if meta, present := record.Value("meta").(string); present {
 		out.Meta = &meta
+	}
+	if host, present := record.Value("host").(string); present {
+		out.Host = &host
 	}
 	return out
 }

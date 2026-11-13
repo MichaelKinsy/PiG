@@ -48,6 +48,9 @@ const TableFormVersion = 1
 // IndexName is the index name rule.
 var IndexName = regexp.MustCompile(`^[a-z0-9_]+$`)
 
+// HostIndex is the name of the index a table's `host(...)` column gets (unless the key starts with it).
+const HostIndex = "host"
+
 // Evolution is how a version came about: the version before it and the migration from there, for one `EvolveTable`.
 type Evolution struct {
 	Previous  *TableDefinition
@@ -74,6 +77,8 @@ type TableDefinition struct {
 	Refs ColumnRefs
 	// Evolution is the version before this one and the migration from it; nil for a base.
 	Evolution *Evolution
+	// HostColumn is its `host(...)` column, if it has one: its rows belong to hosts of that column's kind.
+	HostColumn *Column
 }
 
 // NewTableDefinition is the checked and materialized definition of name (declaration policy: JavaScript callers
@@ -116,6 +121,10 @@ func NewTableDefinition(name string, options TableOptions, evolution *Evolution)
 		}
 		indexes = append(indexes, IndexRecord{Name: index.Name, Columns: checked})
 	}
+	host, indexes, err := hostColumnOf(columns, key, indexes, name)
+	if err != nil {
+		return nil, err
+	}
 	record := make(ColumnRecords, len(columns))
 	for i, column := range columns {
 		record[i] = ColumnRecordEntry{Name: column.Name, Record: ColumnRecordOf(column)}
@@ -137,7 +146,36 @@ func NewTableDefinition(name string, options TableOptions, evolution *Evolution)
 		Rows:        NewRowCodec(columns, key, name),
 		Refs:        columnRefs(columns),
 		Evolution:   evolution,
+		HostColumn:  host,
 	}, nil
+}
+
+// hostColumnOf is the table's `host(...)` column (at most one, declaration policy) and indexes with its index `host`
+// added unless the key starts with it; a declared index of that name must be exactly that index (an `EvolveTable`
+// carries it over so).
+func hostColumnOf(columns []Column, key []string, indexes IndexRecords, table string) (*Column, IndexRecords, error) {
+	var host *Column
+	for i := range columns {
+		if columns[i].Host == nil {
+			continue
+		}
+		if host != nil {
+			return nil, nil, fmt.Errorf("%s: more than one host(...) column", table)
+		}
+		host = &columns[i]
+	}
+	declared, isDeclared := indexes.Get(HostIndex)
+	var index []string
+	if host != nil && key[0] != host.Name {
+		index = []string{host.Name}
+	}
+	if isDeclared && (index == nil || len(declared) != 1 || declared[0] != host.Name) {
+		return nil, nil, fmt.Errorf("%s: index %s is the host(...) column's own", table, quote(HostIndex))
+	}
+	if index != nil && !isDeclared {
+		indexes = append(indexes, IndexRecord{Name: HostIndex, Columns: index})
+	}
+	return host, indexes, nil
 }
 
 // Column is the column name; an unknown one is an error (what names the use).

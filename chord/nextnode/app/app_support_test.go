@@ -157,6 +157,18 @@ func testOptions(t testing.TB, edit func(*AppOptions)) (AppOptions, *appErrors) 
 	return options, errs
 }
 
+// closeAndWait closes app and joins its builds and scan (Wait): a build the test left stalled fails the test after a minute instead of
+// hanging it. A close that fails is not reported here (the test that made it fail did).
+func closeAndWait(t testing.TB, app *App) {
+	t.Helper()
+	_ = app.Close(background)
+	ctx, cancel := context.WithTimeout(background, time.Minute)
+	defer cancel()
+	if err := app.Wait(ctx); err != nil {
+		t.Errorf("the app's builds did not end: %v", err)
+	}
+}
+
 // startTestApp starts an app with testOptions, its bases built (BasesBuilt: most tests get the app as its first requests see it);
 // it is closed when the test ends unless a test closed it.
 func startTestApp(t testing.TB, plugins map[string]map[string]string, edit func(*AppOptions)) started {
@@ -177,11 +189,11 @@ func startUnbuilt(t testing.TB, plugins map[string]map[string]string, edit func(
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Registered first, so it runs after the close: no goroutine of the app, its HTTP component, its workers or its plugins outlives it.
+	// Registered first, so it runs after the close and the join: no goroutine of the app, its HTTP component, its workers or its plugins outlives it.
 	t.Cleanup(func() {
 		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
 	})
-	t.Cleanup(func() { _ = app.Close(background) })
+	t.Cleanup(func() { closeAndWait(t, app) })
 	// Runs before the close: a started app that ran its test reported nothing. An app the test closed itself is not asked: a close
 	// reports what it ends (a call in flight, a hold that could not resolve), as the reload rows with a link in flight have it.
 	t.Cleanup(func() {
@@ -223,12 +235,12 @@ export default defineFacet((host) => host.serve(Echo, () => ({ text: constant("e
 
 var echo = mustLocal("test.echo", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("text", contracts.Str())}})
 
-// notesPlugin is the notes plugin of the worker tests: on each project's worker a persisted document, a table, and its WorkerInfo
-// start, reached from the server through the remote `Notes`.
+// notesPlugin is the notes plugin of the worker tests (Pi's NOTES_PLUGIN, test/node/app/support.ts): on each project's worker a persisted
+// document, a table, its WorkerInfo start and its files, reached from the server through the remote `Notes`.
 var notesPlugin = map[string]string{
-	"worker.ts": `import { defineFacet, defineState, defineTable, hostKind, int, local, method, obj, remote, str, unknown, WorkerInfo } from "@test/app/v1";
+	"worker.ts": `import { defineFacet, defineState, defineTable, Files, hostKind, int, local, method, obj, remote, str, unknown, WorkerInfo } from "@test/app/v1";
 const Project = hostKind("project", { id: str() });
-const Notes = remote("test.notes", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), variants: { main: { state: { text: str(), start: unknown() }, methods: { write: method(str()), visit: method(str(), int()) } } } });
+const Notes = remote("test.notes", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), variants: { main: { state: { text: str(), start: unknown() }, methods: { write: method(str()), visit: method(str(), int()), attach: method(str(), str()), file: method(str(), str()) } } } });
 const Text = defineState("test.text", { schema: obj({ text: str() }), version: 1, initial: () => ({ text: "" }), persist: true, checkpointWhen: () => false });
 const Visits = defineTable("test.visits", { version: 1, columns: { page: str(), count: int() }, key: ["page"] });
 const Store = local("test.store", { version: 1, params: {}, members: { text: str(), write: method(str()), visit: method(str(), int()) } });
@@ -245,11 +257,15 @@ export default defineFacet((host) => {
 	host.serve(Notes, (_params, _principal, self) => {
 		const store = self.get(Store, {});
 		const info = self.get(WorkerInfo, {});
+		const files = self.get(Files, {});
+		const decoder = new TextDecoder();
 		return { variant: "main", members: {
 			text: self.derive([store.text], ([value]) => value),
 			start: self.derive([info.start], ([value]) => value),
 			write: (next, ctx) => store.write(next, ctx),
 			visit: (page, ctx) => store.visit(page, ctx),
+			attach: async (body, ctx) => (await files.put({ space: "notes", path: "note.txt", mime: "text/plain", source: "test", bytes: new TextEncoder().encode(body) }, ctx)).id,
+			file: async (id, ctx) => decoder.decode(await files.read({ id, offset: 0, length: 1024 }, ctx)),
 		} };
 	});
 });`,
@@ -263,8 +279,11 @@ var notes = func() *contracts.Contract {
 			return project.Address(delta.JsonObjectOf("id", params.Value("id"))), nil
 		},
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("text", contracts.Str()), contracts.Prop("start", contracts.Unknown())},
-			Methods: []contracts.MethodEntry{contracts.Meth("write", contracts.NewMethod(contracts.Str())), contracts.Meth("visit", contracts.NewMethod(contracts.Str(), contracts.Int()))},
+			State: []contracts.Property{contracts.Prop("text", contracts.Str()), contracts.Prop("start", contracts.Unknown())},
+			Methods: []contracts.MethodEntry{
+				contracts.Meth("write", contracts.NewMethod(contracts.Str())), contracts.Meth("visit", contracts.NewMethod(contracts.Str(), contracts.Int())),
+				contracts.Meth("attach", contracts.NewMethod(contracts.Str(), contracts.Str())), contracts.Meth("file", contracts.NewMethod(contracts.Str(), contracts.Str())),
+			},
 		})},
 	})
 	if err != nil {

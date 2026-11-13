@@ -78,7 +78,7 @@ func TestMissingSessionCwdMessagesMatchPi(t *testing.T) {
 	if got, want := FormatMissingSessionCwdError(issue), "Stored session working directory does not exist: /gone\nCurrent working directory: /here"; got != want {
 		t.Errorf("error without a session file = %q, want %q", got, want)
 	}
-	if got, want := FormatMissingSessionCwdPrompt(issue), "cwd from session file does not exist\n/gone\n\ncontinue in current cwd\n/here"; got != want {
+	if got, want := FormatMissingSessionCwdPrompt(issue), "Session cwd does not exist: /gone"; got != want {
 		t.Errorf("prompt = %q, want %q", got, want)
 	}
 	if got := (&MissingSessionCwdError{Issue: issue}).Error(); got != FormatMissingSessionCwdError(issue) {

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // CompactionModelOverride is one entry of modelOverrides: the exact "provider/modelId" and the fields it sets.
@@ -81,12 +83,12 @@ func (set CompactionOverrides) MarshalJSON() ([]byte, error) {
 			out.WriteByte(',')
 		}
 		//perf:ok cold: compaction settings are encoded when a conversation is configured, not per turn
-		key, err := json.Marshal(entry.Model)
+		key, err := jsstring.MarshalKeepingSurrogates(entry.Model)
 		if err != nil {
 			return nil, err
 		}
 		//perf:ok cold: compaction settings are encoded when a conversation is configured, not per turn
-		value, err := json.Marshal(entry.Override)
+		value, err := jsstring.MarshalKeepingSurrogates(entry.Override)
 		if err != nil {
 			return nil, err
 		}
@@ -114,13 +116,18 @@ func (set *CompactionOverrides) UnmarshalJSON(data []byte) error {
 	}
 	decoded := CompactionOverrides{entries: []CompactionModelOverride{}}
 	for decoder.More() {
+		start := decoder.InputOffset()
 		key, err := decoder.Token()
 		if err != nil {
 			return err
 		}
-		model, ok := key.(string)
-		if !ok {
+		if _, ok := key.(string); !ok {
 			return errors.New("modelOverrides has a key that is not a string")
+		}
+		// Token reads a lone-surrogate escape as U+FFFD; the key's own text is read again as JSON.parse reads it.
+		var model string
+		if err := jsstring.UnmarshalKeepingSurrogates(quotedAfter(data, start, decoder.InputOffset()), &model); err != nil {
+			return err
 		}
 		var override CompactionPolicyOverride
 		if err := decoder.Decode(&override); err != nil {
@@ -130,4 +137,10 @@ func (set *CompactionOverrides) UnmarshalJSON(data []byte) error {
 	}
 	*set = decoded
 	return nil
+}
+
+// quotedAfter is the string literal that ends at end, the first one at or after start: the text of the key the decoder just read.
+func quotedAfter(data []byte, start, end int64) []byte {
+	open := bytes.IndexByte(data[start:end], '"')
+	return data[start+int64(open) : end]
 }

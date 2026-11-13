@@ -119,7 +119,6 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		for outputBytes > maxOutputBytes && len(outputChunks) > 1 {
 			outputBytes -= jsLength(outputChunks[0])
 			outputChunks = outputChunks[1:]
-			// pig divergence (D244): Pi main 66c655677 reports discarded chunks as truncation.
 			discardedOutput = true
 		}
 		if opts.OnChunk != nil {

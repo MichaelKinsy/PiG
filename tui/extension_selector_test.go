@@ -422,7 +422,7 @@ func selectorOptionRows(selector *ExtensionSelectorComponent) (rows []string, ou
 	return rows, output
 }
 
-// pi main 3b57ed7e2 test/extension-selector.test.ts "windows long option lists around the selection" (#6688; D257).
+// pi main 3b57ed7e2 test/extension-selector.test.ts "windows long option lists around the selection" (#6688).
 func TestExtensionSelectorWindowsLongOptionListsAroundTheSelection(t *testing.T) {
 	options := make([]string, 15)
 	for i := range options {

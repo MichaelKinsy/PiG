@@ -56,7 +56,12 @@ func (t *EditTool) operations() EditOperations {
 func (t *EditTool) Name() string  { return "edit" }
 func (t *EditTool) Label() string { return "" }
 
-func (t *EditTool) Schema() ai.ToolSchema {
+func (t *EditTool) Schema() ai.ToolSchema { return t.schema(false) }
+
+// BorrowedSchema is Schema with the parameters shared, not copied: the caller reads them and never modifies them.
+func (t *EditTool) BorrowedSchema() ai.ToolSchema { return t.schema(true) }
+
+func (t *EditTool) schema(borrow bool) ai.ToolSchema {
 	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:                "edit",
 		Description:         "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
@@ -71,7 +76,7 @@ func (t *EditTool) Schema() ai.ToolSchema {
 			"oldText":{"type":"string","description":"Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call."},
 			"newText":{"type":"string","description":"Replacement text for this targeted edit."}
 		}},"description":"One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead."}
-	}}`)
+	}}`, borrow)
 }
 
 // ExecutionMode is parallel: upstream's edit definition sets no

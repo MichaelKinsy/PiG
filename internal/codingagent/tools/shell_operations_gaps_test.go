@@ -157,7 +157,7 @@ func TestLocalShellOperationsWrapCommandBeforeTheShellRuns(t *testing.T) {
 	ops := &LocalShellOperations{
 		ShellName:    "sh",
 		ResolveShell: func() (ShellConfig, error) { return ShellConfig{Path: "/bin/sh", Args: []string{"-c"}}, nil },
-		WrapCommand:  func(command string) string { return "printf wrapped-;" + command },
+		WrapCommand:  func(command string, _ ShellConfig) string { return "printf wrapped-;" + command },
 	}
 	out, _, err := execCollect(t, ops, "printf end", t.TempDir(), BashOperationsExecOptions{})
 	if err != nil || out != "wrapped-end" {

@@ -1,6 +1,8 @@
 import { Container, fuzzyFilter, getKeybindings, getSelectPageIndex, Input, Spacer, TruncatedText, } from "../../../../../pi-tui.mjs";
+import { isPreferredProvider } from "../../../core/preferred-providers.js";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
+import { getProviderBrandStyle, startBrandAnimation } from "./provider-brand.js";
 export function formatAuthSelectorProviderType(authType, subscription) {
     if (authType === "api_key")
         return "API key";
@@ -26,7 +28,8 @@ export function formatAuthSelectorProviderStatus(provider) {
 }
 const MAX_VISIBLE = 8;
 /**
- * Component that renders an auth provider selector
+ * Component that renders an auth provider selector. With `tui`, the selected row of a preferred partner provider
+ * shows its animated brand style.
  */
 export class OAuthSelectorComponent extends Container {
     capturesViewportInput = true;
@@ -48,7 +51,9 @@ export class OAuthSelectorComponent extends Container {
     onSelectCallback;
     onCancelCallback;
     showAuthTypeLabels;
-    constructor(mode, providers, onSelect, onCancel, initialSearchInput) {
+    animationStart = performance.now();
+    stopAnimation;
+    constructor(mode, providers, onSelect, onCancel, initialSearchInput, tui) {
         super();
         this.mode = mode;
         this.allProviders = providers;
@@ -83,6 +88,23 @@ export class OAuthSelectorComponent extends Container {
         this.addChild(new DynamicBorder());
         // Initial render
         this.filterProviders(initialSearchInput ?? "");
+        if (tui)
+            this.stopAnimation = startBrandAnimation(tui, () => this.getSelectedBrandStyle() !== undefined);
+    }
+    render(width) {
+        // The list is built from styled text, so an animated row needs a rebuild for each frame.
+        if (this.stopAnimation && this.getSelectedBrandStyle())
+            this.updateList();
+        return super.render(width);
+    }
+    /** Stops the brand animation. */
+    dispose() {
+        this.stopAnimation?.();
+        this.stopAnimation = undefined;
+    }
+    getSelectedBrandStyle() {
+        const selectedProvider = this.filteredProviders[this.selectedIndex];
+        return selectedProvider && getProviderBrandStyle(selectedProvider.id);
     }
     filterProviders(query) {
         this.filteredProviders = query
@@ -101,18 +123,23 @@ export class OAuthSelectorComponent extends Container {
                 continue;
             const isSelected = i === this.selectedIndex;
             const statusIndicator = formatAuthSelectorProviderStatus(provider);
+            // U+2726 is single-width in every terminal, unlike star emoji or ambiguous-width symbols such as U+2605.
+            const partnerMarker = isPreferredProvider(provider.id) ? theme.fg("muted", " ✦") : "";
             const authTypeLabel = this.showAuthTypeLabels
                 ? theme.fg("muted", ` [${formatAuthSelectorProviderType(provider.authType, provider.subscription)}]`)
                 : "";
             let line = "";
             if (isSelected) {
                 const prefix = theme.fg("accent", "→ ");
-                const text = theme.fg("accent", provider.name);
-                line = prefix + text + authTypeLabel + statusIndicator;
+                const brandStyle = this.stopAnimation && getProviderBrandStyle(provider.id);
+                const text = brandStyle
+                    ? brandStyle(provider.name, performance.now() - this.animationStart)
+                    : theme.fg("accent", provider.name);
+                line = prefix + text + partnerMarker + authTypeLabel + statusIndicator;
             }
             else {
                 const text = `  ${theme.fg("text", provider.name)}`;
-                line = text + authTypeLabel + statusIndicator;
+                line = text + partnerMarker + authTypeLabel + statusIndicator;
             }
             this.listContainer.addChild(new TruncatedText(line, 1, 0));
         }

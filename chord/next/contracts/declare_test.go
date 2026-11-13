@@ -184,3 +184,38 @@ func TestKeyedMembers(t *testing.T) {
 		}
 	})
 }
+
+func TestHostKeyedMembers(t *testing.T) {
+	meta := func() contracts.Schema { return contracts.Obj(contracts.Prop("n", contracts.Int())) }
+
+	t.Run("carry their host kind in the data and the fingerprint; string-keyed ones carry none", func(t *testing.T) {
+		byAddress := local(t, "store", 1, noParams(), contracts.Mem("meta", contracts.Keyed(meta(), session)))
+		byString := local(t, "store", 1, noParams(), contracts.Mem("meta", contracts.Keyed(meta())))
+		member := func(contract *contracts.Contract) *contracts.KeyedSnapshot {
+			return currentVariants(t, contract).Value(contracts.LocalVariant).Keyed.Value("meta")
+		}
+		if member(byAddress).Key != session {
+			t.Fatal("the host-keyed member does not carry its kind")
+		}
+		if member(byString).Key != nil {
+			t.Fatal("the string-keyed member carries a kind")
+		}
+		if byAddress.Fingerprint == byString.Fingerprint {
+			t.Fatal("a host-keyed and a string-keyed member share a fingerprint")
+		}
+	})
+
+	t.Run("keep the fingerprint of a string-keyed member as it was before host keys", func(t *testing.T) {
+		byString := local(t, "store", 1, noParams(), contracts.Mem("notes", contracts.Keyed(contracts.Obj(contracts.Prop("text", contracts.Str())))))
+		if byString.Fingerprint != "bf6ff30e1483251d" {
+			t.Fatalf("fingerprint = %s", byString.Fingerprint)
+		}
+	})
+
+	t.Run("refuse a kind that was not declared", func(t *testing.T) {
+		_, err := contracts.Local("store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("meta", contracts.Keyed(contracts.Obj(), &contracts.HostKind{Kind: "x"})),
+		}})
+		wantError(t, err, "x: not a declared host kind")
+	})
+}

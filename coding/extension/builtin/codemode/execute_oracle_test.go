@@ -31,7 +31,7 @@ func TestExecuteOutputMatchesPi(t *testing.T) {
 		`text("a\n"); text("b")`, `text(""); text("x")`, `text("   "); text("y")`, `text("a"); text(""); text("")`,
 		`image("data:image/png;base64,` + png + `"); text("t")`, `text("t"); image("data:image/png;base64,` + png + `"); text("u")`,
 		`image({ type: "image", data: "` + png + `", mimeType: "image/png" }); image({ type: "image", data: "` + png + `", mimeType: "image/png" })`,
-		`text("x".repeat(50000))`, `text("x".repeat(200000))`, `text("line\n".repeat(30000))`, `text("éé😀".repeat(30000))` /* pig divergence (D252): was "é😀"; Pi 1.5.0 keeps half of a pair at the cut, Pi main drops the pair, so the script is chosen to cut at pair boundaries (TestTruncateOutputKeepsSurrogatePairsWhole covers the split) */, `for (let i = 0; i < 3000; i++) console.log("log line " + i)`,
+		`text("x".repeat(50000))`, `text("x".repeat(200000))`, `text("line\n".repeat(30000))`, `text("é😀".repeat(30000))`, `for (let i = 0; i < 3000; i++) console.log("log line " + i)`,
 		`text("a".repeat(30000)); text("b".repeat(30000)); text("c".repeat(30000))`, `console.log("x".repeat(100000)); return "y".repeat(100000)`,
 		`return "x".repeat(41000)`, `return "x".repeat(40000)`, `return "x".repeat(39999)`, `text("😀".repeat(20001))`, `text("\ud800".repeat(40001))`,
 		`image("data:image/png;base64,` + png + `"); text("x".repeat(200000))`, `text("x".repeat(200000)); throw new Error("late")`,
@@ -144,7 +144,7 @@ emit(JSON.parse(child.stdout));
 	}
 }
 
-// execute.ts truncateText is `sliceHead(text, maxChars - 3) + "..."` (Pi main 9e870f6f0, D252): a cut inside a surrogate pair drops the pair.
+// execute.ts truncateText is `sliceHead(text, maxChars - 3) + "..."` (Pi 9e870f6f0): a cut inside a surrogate pair drops the pair.
 func TestTruncateTextCutsAtCodeUnits(t *testing.T) {
 	text := "aaaaa😀bbbb"
 	for _, tc := range []struct {
@@ -164,7 +164,7 @@ func TestTruncateTextCutsAtCodeUnits(t *testing.T) {
 	}
 }
 
-// Pi main 9e870f6f0 (D252): truncateOutput's head and tail never end in half of a surrogate pair. A budget of 1000 tokens keeps 2000 units at each end; a
+// Pi 9e870f6f0: truncateOutput's head and tail never end in half of a surrogate pair. A budget of 1000 tokens keeps 2000 units at each end; a
 // leading "x" puts the head cut inside an emoji, a trailing "x" puts the tail cut inside one, and the plain text cuts at pair boundaries.
 func TestTruncateOutputKeepsSurrogatePairsWhole(t *testing.T) {
 	emoji := strings.Repeat("😀", 30000)

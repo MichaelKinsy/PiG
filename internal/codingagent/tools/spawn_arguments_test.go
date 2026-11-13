@@ -77,13 +77,13 @@ func TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes(t *testing.T) {
 	cwd := t.TempDir()
 	pattern := "it's a\x00b"
 	limit := findDefaultLimit
-	// grep.ts:163-167 and find.ts:181-213 argument lists for a plain pattern.
+	// grep.ts:163-167 and find.ts:181-240 argument lists for a plain pattern.
 	grepArgs := []string{"--no-config", "--json", "--line-number", "--color=never", "--hidden", "--", pattern, cwd}
-	findArgs := []string{"--glob", "--color=never", "--hidden"}
+	findArgs := []string{"--color=never", "--hidden"}
 	if !insideGitRepo(cwd) {
 		findArgs = append(findArgs, "--no-require-git")
 	}
-	findArgs = append(findArgs, "--max-results", strconv.Itoa(limit), "--", pattern, cwd)
+	findArgs = append(findArgs, "--glob", "--max-results", strconv.Itoa(limit), "--", pattern, cwd)
 	want := nodeSpawnErrors(t, []spawnCall{
 		{File: "rg", Args: grepArgs},
 		{File: "fd", Args: findArgs},

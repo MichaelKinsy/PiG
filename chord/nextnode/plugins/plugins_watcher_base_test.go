@@ -161,6 +161,7 @@ func TestARecordedBaseAfterTheCloseWatchesNothing(t *testing.T) {
 
 // Ports watcher.test.ts "watches a base directory removed and recreated, and compares its files".
 func TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles(t *testing.T) {
+	skipWhereAWatchedTreeCannotMove(t)
 	parent := realOf(t, tempRoot(t))
 	base := filepath.Join(parent, "app")
 	writeFiles(t, base, map[string]string{"core.ts": "v1", "sub/inner.ts": "inner"})
@@ -192,6 +193,7 @@ func TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles(
 
 // Ports watcher.test.ts "follows an ancestor of a recorded file moved away and its subtree made again: edit, revert".
 func TestTheBaseMarkFollowsAnAncestorOfARecordedFileMovedAwayAndItsSubtreeMadeAgainEditRevert(t *testing.T) {
+	skipWhereAWatchedTreeCannotMove(t)
 	_, f := based(t, nil)
 	root := realOf(t, tempRoot(t))
 	file := filepath.Join(root, "parent", "child", "entry.ts")

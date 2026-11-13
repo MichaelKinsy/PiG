@@ -1,10 +1,9 @@
 // Copy Pi's own chord sources the client surfaces run (the page's and the terminal's runtimes, the React bindings: chord/nextnode/surfaces/client/pi) and write
 // the manifest that records the Pi commit and the hash of every copied file.
 //
-//   node vendor-chord-surfaces-client.mjs <pi tree root> <pi commit> <pi-telemetry package dir> <out node dir> <pin commit>
+//   node vendor-chord-surfaces-client.mjs <pi tree root> <pi commit> <pi-telemetry package dir> <out node dir> <pin commit> [<carried commits, comma-separated>]
 //
-// The manifest records the pin the copy was made against; when the copied commit is not the pin's, it names that commit as
-// `catchup` (the commit the manifest may differ from the pin by: the Go test accepts exactly it, while the pin stays put).
+// The manifest's provenance (commit, pin, `catchup`, `carried`) is vendor-chord-provenance.mjs's, shared with the plugins component's copy.
 //
 // packages/chord/src is copied byte for byte, keeping its layout, for the import closure of the entries the subprocess
 // loads (Node strips the types of the copies; nothing is transpiled). The closure is found on the type-stripped source,
@@ -19,8 +18,9 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { provenance } from "./vendor-chord-provenance.mjs";
 
-const [piTree, commit, telemetryDir, outDir, pin] = process.argv.slice(2);
+const [piTree, commit, telemetryDir, outDir, pin, carriedList = ""] = process.argv.slice(2);
 if (pin === undefined) throw new Error("usage: vendor-chord-surfaces-client.mjs <pi tree> <commit> <pi-telemetry> <out> <pin>");
 
 const ENTRIES = [
@@ -137,7 +137,9 @@ const reactVersions = {};
 	const pack = (name) => {
 		const pinned = lock[`node_modules/${name}`];
 		if (!pinned?.version || !pinned.integrity) throw new Error(`Pi's package-lock.json does not pin ${name}`);
-		const [packed] = JSON.parse(execFileSync("npm", ["pack", `${name}@${pinned.version}`, "--json", "--pack-destination", work], { encoding: "utf8" }));
+		// npm's pack --json is an array of packs, or an object of them by package name (npm 12).
+		const packs = JSON.parse(execFileSync("npm", ["pack", `${name}@${pinned.version}`, "--json", "--pack-destination", work], { encoding: "utf8" }));
+		const [packed] = Array.isArray(packs) ? packs : Object.values(packs);
 		if (packed.integrity !== pinned.integrity) throw new Error(`${name}@${pinned.version}: npm's tarball integrity ${packed.integrity} is not the lock's ${pinned.integrity}`);
 		const target = join(work, packed.filename.replace(/\.tgz$/, ""));
 		mkdirSync(target);
@@ -175,9 +177,7 @@ const reactVersions = {};
 }
 
 const manifest = {
-	commit,
-	pin,
-	...(commit === pin ? {} : { catchup: commit }),
+	...provenance(commit, pin, carriedList),
 	piSchema: JSON.parse(readFileSync(join(schemaDir, "package.json"), "utf8")).version,
 	piTelemetry: JSON.parse(readFileSync(join(telemetryDir, "package.json"), "utf8")).version,
 	react: reactVersions,

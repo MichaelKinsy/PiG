@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring"
@@ -100,10 +101,11 @@ const (
 )
 
 var (
-	// bmpProps caches the properties of every Basic Multilingual Plane code
-	// point (all property bits fit in 16 bits), so the per-rune lookup on the
-	// segmentation and width paths is one load instead of a binary search.
-	bmpProps [0x10000]uint16
+	// bmpBlocks caches the properties of the Basic Multilingual Plane (all property bits fit in 16 bits) in blocks of 256 code points, so the
+	// per-rune lookup on the segmentation and width paths is two loads instead of a binary search. A block is built by the first lookup that
+	// lands in it rather than for all 256 at process start: a first frame reads a handful of blocks, and a process that never measures a
+	// string reads none. Racing builders produce equal blocks; the first one stored wins.
+	bmpBlocks [0x100]atomic.Pointer[[0x100]uint16]
 
 	// rgiSet holds the multi-code-point RGI emoji sequences. Only a segment of several code points reads it, so it is built on first use rather than at process start.
 	rgiSet = sync.OnceValue(func() map[string]struct{} {
@@ -117,19 +119,20 @@ var (
 	})
 )
 
-func init() {
-	for i := 0; i+2 < len(propRanges); i += 3 {
-		lo, hi, p := propRanges[i], propRanges[i+1], propRanges[i+2]
+// loadBMPBlock builds and publishes the cached block of the 256 code points that start at block<<8.
+func loadBMPBlock(block rune) *[0x100]uint16 {
+	b := new([0x100]uint16)
+	for i := range b {
+		p := lookupProps(block<<8 | rune(i))
 		if p > 0xFFFF {
 			panic("widthx: property bits exceed the 16-bit BMP cache")
 		}
-		if lo > 0xFFFF {
-			break
-		}
-		for cp := lo; cp <= min(hi, 0xFFFF); cp++ {
-			bmpProps[cp] = uint16(p)
-		}
+		b[i] = uint16(p)
 	}
+	if bmpBlocks[block].CompareAndSwap(nil, b) {
+		return b
+	}
+	return bmpBlocks[block].Load()
 }
 
 func lookupProps(r rune) uint32 {
@@ -143,7 +146,11 @@ func lookupProps(r rune) uint32 {
 
 func props(r rune) uint32 {
 	if r >= 0 && r < 0x10000 {
-		return uint32(bmpProps[r])
+		b := bmpBlocks[r>>8].Load()
+		if b == nil {
+			b = loadBMPBlock(r >> 8)
+		}
+		return uint32(b[r&0xFF])
 	}
 	return lookupProps(r)
 }

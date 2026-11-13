@@ -102,6 +102,27 @@
       {\"kind\":\"dynamic-border\",\"color\":\"border\"},{\"kind\":\"loader\",\"message\":\"Loading...\"},{\"kind\":\"text\",\"text\":\"\",\"paddingX\":1,\"paddingY\":1}]}"
               (kt-node-json (pig:kit-container (list (pig:kit-box) (pig:kit-spacer) (pig:kit-dynamic-border) (pig:kit-loader) (pig:kit-text))))))
 
+;; The grid node (D614): columns is always sent, and an optional member left unset is absent, not null, zero or empty.
+(deftest kit-grid-holds-exactly-the-members-set
+  (kt-check-json "{\"kind\":\"container\",\"children\":[
+      {\"kind\":\"grid\",\"id\":\"month\",\"columns\":7,\"chipRows\":2,\"head\":[\"Mo\",\"Tu\",\"We\",\"Th\",\"Fr\",\"Sa\",\"Su\"],\"cells\":[
+        {\"label\":\"30\",\"dim\":true},
+        {\"value\":\"d1\",\"label\":\"1\",\"chips\":[{\"text\":\"standup\",\"color\":\"#3366cc\"},{\"text\":\"lunch\"}],\"more\":2},
+        {\"value\":\"d2\",\"label\":\"2\",\"mark\":\"current\",\"color\":\"accent\"},
+        {\"value\":\"d3\"},
+        {}],\"selected\":\"d2\"},
+      {\"kind\":\"grid\",\"id\":\"bare\",\"columns\":1}]}"
+              (kt-node-json (pig:kit-container
+                             (list (pig:kit-grid "month" 7
+                                                 (list (pig:kit-grid-cell :label "30" :dim t)
+                                                       (pig:kit-grid-cell :value "d1" :label "1" :more 2
+                                                                          :chips (list (pig:kit-grid-chip "standup" "#3366cc") (pig:kit-grid-chip "lunch")))
+                                                       (pig:kit-grid-cell :value "d2" :label "2" :mark "current" :color "accent")
+                                                       (pig:kit-grid-cell :value "d3")
+                                                       (pig:kit-grid-cell))
+                                                 :head '("Mo" "Tu" "We" "Th" "Fr" "Sa" "Su") :chip-rows 2 :selected "d2")
+                                   (pig:kit-grid "bare" 1 nil))))))
+
 (deftest kit-editor-input-scroll-view-and-mouse-region-encode-their-fields
   (kt-check-json "{\"kind\":\"editor\",\"id\":\"e\",\"value\":\"one\\ntwo\",\"paddingX\":2,\"autocompleteMaxVisible\":3,\"borderColor\":\"accent\",\"disableSubmit\":true,
       \"history\":[\"a\",\"b\"],\"autocomplete\":{\"commands\":[{\"name\":\"help\",\"description\":\"Show help\"},{\"name\":\"model\",\"argumentHint\":\"<name>\"}],\"basePath\":\"/work\"}}"

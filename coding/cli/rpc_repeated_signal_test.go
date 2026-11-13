@@ -90,3 +90,26 @@ func TestRPCRepeatedSignalDuringShutdownExitsAtOnce(t *testing.T) {
 		})
 	}
 }
+
+// rpc-mode.ts gives SIGTERM and SIGHUP each its own handler, and each exits with the code it closes over (143, 129). A second signal of the other kind during the shutdown the first one started therefore ends the process with the second's code, at once and without the shutdown handler's end. The second is sent once the handler has reported that it started, which is after the process took the first signal in.
+func TestRPCRepeatedSignalOfAnotherKindExitsWithTheRepeatsCode(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		first, second syscall.Signal
+		code          int
+	}{
+		{"SIGTERM then SIGHUP", syscall.SIGTERM, syscall.SIGHUP, 129},
+		{"SIGHUP then SIGTERM", syscall.SIGHUP, syscall.SIGTERM, 143},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p, report := startSlowShutdownFixture(t)
+			signalRPC(t, p, tc.first)
+			awaitRPCShutdownStarted(p)
+			signalRPC(t, p, tc.second)
+			requireExited(t, waitForRPCTermination(t, p), tc.code)
+			if events := readRPCShutdownReport(t, report); slices.Contains(events, "session_shutdown:done") {
+				t.Fatalf("extension events = %v, want the handler cut off", events)
+			}
+		})
+	}
+}

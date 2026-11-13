@@ -143,7 +143,7 @@ func (c *consolePipe) ack(seq uint64) {
 	}
 }
 
-// flush returns once everything the process wrote before the call is in the sink, after consoleFlushWait, or when the pipe has ended. A nil pipe has nothing to wait for.
+// flush returns once everything the process wrote before the call is in the sink, after consoleFlushWait, or when the pipe has ended. A nil pipe has nothing to wait for. After finish has closed the write end no marker can follow, but the copy may still be forwarding what the process wrote before it exited: flush then waits for the copy to end, as it does for a marker it cannot write.
 func (c *consolePipe) flush() {
 	if c == nil {
 		return
@@ -151,6 +151,13 @@ func (c *consolePipe) flush() {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
+		// A runner that fails its only member exits right after it wrote the cause and closed the member's socket, so the reaper's finish and the host's read of the cause can run in either order.
+		timer := time.NewTimer(consoleFlushWait)
+		defer timer.Stop()
+		select {
+		case <-c.done:
+		case <-timer.C:
+		}
 		return
 	}
 	c.seq++

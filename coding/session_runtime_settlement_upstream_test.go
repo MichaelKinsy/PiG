@@ -27,9 +27,9 @@ func (tool runtimeAbortTool) Execute(ctx context.Context, _ string, _ json.RawMe
 	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "tool aborted"}}, Details: map[string]any{}}, nil
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:166.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:167.
 func TestRuntimeOriginalSettlesActiveResponse(t *testing.T) {
-	recordRuntimeOriginal(t, 166)
+	recordRuntimeOriginal(t, 167)
 	started := make(chan struct{})
 	var h *runtimeTestHarness
 	switching, settledBeforeShutdown := false, false

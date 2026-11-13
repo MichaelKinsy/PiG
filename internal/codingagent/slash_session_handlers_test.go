@@ -1072,6 +1072,8 @@ type importCommandFixture struct {
 	prompts   []string
 	answers   []string
 	imports   [][2]string
+	forks     [][2]string
+	forkErr   error
 	results   []error
 	cancelled bool
 	status    []string
@@ -1099,6 +1101,10 @@ func (f *importCommandFixture) context(args string) *SlashContext {
 				f.results = f.results[1:]
 			}
 			return f.cancelled, err
+		},
+		ForkSession: func(sourcePath, cwd string) (string, bool, error) {
+			f.forks = append(f.forks, [2]string{sourcePath, cwd})
+			return "Forked into new session s in " + cwd, f.cancelled, f.forkErr
 		},
 		ShowStatus: func(message string) { f.status = append(f.status, message) },
 		FatalRuntimeError: func(prefix string, err error) error {
@@ -1184,7 +1190,7 @@ func TestImportHandlerUsageAndCancellation(t *testing.T) {
 		"declined":      {answers: []string{"No"}},
 		"escaped":       {},
 		"before_switch": {answers: []string{"Yes"}, cancelled: true},
-		"cwd prompt no": {answers: []string{"Yes", "No"}, results: []error{&MissingSessionCwdError{Issue: SessionCwdIssue{SessionCwd: "/gone", FallbackCwd: "/here"}}}},
+		"cwd prompt no": {answers: []string{"Yes", "Cancel"}, results: []error{&MissingSessionCwdError{Issue: SessionCwdIssue{SessionCwd: "/gone", FallbackCwd: "/here"}}}},
 	} {
 		if err := importHandler(fx.context("session.jsonl")); err != nil {
 			t.Fatalf("%s: %v", name, err)
@@ -1195,15 +1201,15 @@ func TestImportHandlerUsageAndCancellation(t *testing.T) {
 	}
 }
 
-// Upstream promptForMissingSessionCwd offers the current cwd and retries
-// importFromJsonl with it.
+// Upstream promptForMissingSessionCwd offers Continue, Fork and Cancel; Continue
+// retries importFromJsonl with the current cwd.
 func TestImportHandlerRetriesWithOfferedCwd(t *testing.T) {
 	issue := SessionCwdIssue{SessionFile: "/sessions/moved.jsonl", SessionCwd: "/gone", FallbackCwd: "/here"}
-	f := &importCommandFixture{answers: []string{"Yes", "Yes"}, results: []error{&MissingSessionCwdError{Issue: issue}, nil}}
+	f := &importCommandFixture{answers: []string{"Yes", "Continue in /here (asks again next time)"}, results: []error{&MissingSessionCwdError{Issue: issue}, nil}}
 	if err := importHandler(f.context("moved.jsonl")); err != nil {
 		t.Fatal(err)
 	}
-	if want := "Session cwd not found\n" + FormatMissingSessionCwdPrompt(issue) + " Yes/No"; len(f.prompts) != 2 || f.prompts[1] != want {
+	if want := "Session cwd does not exist: /gone Continue in /here (asks again next time)/Fork into /here (new session ID, original kept)/Cancel"; len(f.prompts) != 2 || f.prompts[1] != want {
 		t.Fatalf("prompts = %q", f.prompts)
 	}
 	if !slices.Equal(f.imports, [][2]string{{"moved.jsonl", ""}, {"moved.jsonl", "/here"}}) {
@@ -1211,6 +1217,27 @@ func TestImportHandlerRetriesWithOfferedCwd(t *testing.T) {
 	}
 	if !slices.Equal(f.status, []string{"Session imported from: moved.jsonl"}) {
 		t.Fatalf("status = %q", f.status)
+	}
+}
+
+// Pi handleImportCommand: Fork switches to a fork of the source in the current cwd (switchToForkedSession), which shows its own status, and no
+// second import happens.
+func TestImportHandlerForksIntoTheCurrentCwd(t *testing.T) {
+	issue := SessionCwdIssue{SessionFile: "/sessions/moved.jsonl", SessionCwd: "/gone", FallbackCwd: "/here"}
+	f := &importCommandFixture{answers: []string{"Yes", "Fork into /here (new session ID, original kept)"}, results: []error{&MissingSessionCwdError{Issue: issue}}}
+	if err := importHandler(f.context("moved.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(f.imports, [][2]string{{"moved.jsonl", ""}}) || !slices.Equal(f.forks, [][2]string{{"moved.jsonl", "/here"}}) {
+		t.Fatalf("imports = %q, forks = %q", f.imports, f.forks)
+	}
+	if !slices.Equal(f.status, []string{"Forked into new session s in /here"}) {
+		t.Fatalf("status = %q", f.status)
+	}
+	// A switch an extension vetoed reports Import cancelled.
+	cancelled := &importCommandFixture{answers: []string{"Yes", "Fork into /here (new session ID, original kept)"}, results: []error{&MissingSessionCwdError{Issue: issue}}, cancelled: true}
+	if err := importHandler(cancelled.context("moved.jsonl")); err != nil || !slices.Equal(cancelled.status, []string{"Import cancelled"}) {
+		t.Fatalf("cancelled fork: status = %q, err = %v", cancelled.status, err)
 	}
 }
 
@@ -1315,7 +1342,7 @@ func TestShareHandlerUploadsJSONLArtifact(t *testing.T) {
 }
 
 // The cache-warming row sits between http-idle-timeout and hide-thinking, as
-// in settings-selector.ts, defaults to Pi's "streaming", and writes the global
+// in settings-selector.ts, defaults to Pi's "idle", and writes the global
 // cacheWarming key.
 func TestSettingsItems_CacheWarmingRow(t *testing.T) {
 	rows, ids := settingsRowsFor(t, NewSettingsManager(t.TempDir(), t.TempDir()))
@@ -1330,10 +1357,10 @@ func TestSettingsItems_CacheWarmingRow(t *testing.T) {
 	if want := []string{"off", "streaming", "idle"}; !slices.Equal(row.Values, want) {
 		t.Fatalf("values = %v, want %v", row.Values, want)
 	}
-	if row.CurrentValue != "streaming" {
-		t.Fatalf("default = %q, want streaming", row.CurrentValue)
+	if row.CurrentValue != "idle" {
+		t.Fatalf("default = %q, want idle", row.CurrentValue)
 	}
-	// Cycling streaming -> idle -> off reaches the callback, and the saved value is the global cacheWarming key.
+	// Cycling idle -> off -> streaming reaches the callback, and the saved value is the global cacheWarming key.
 	sm := NewSettingsManager(t.TempDir(), t.TempDir())
 	var modes []CacheWarmingMode
 	sc := &SlashContext{SettingsManager: sm, Append: func(string) {}, ShowStatus: func(string) {}}
@@ -1348,11 +1375,11 @@ func TestSettingsItems_CacheWarmingRow(t *testing.T) {
 	if err := settingsHandler(sc); err != nil {
 		t.Fatal(err)
 	}
-	if want := []CacheWarmingMode{"idle", "off"}; !slices.Equal(modes, want) {
+	if want := []CacheWarmingMode{"off", "streaming"}; !slices.Equal(modes, want) {
 		t.Fatalf("saved modes = %v, want %v", modes, want)
 	}
-	if sm.GetGlobalSettings().CacheWarming != "off" {
-		t.Fatalf("CacheWarming = %q, want off", sm.GetGlobalSettings().CacheWarming)
+	if sm.GetGlobalSettings().CacheWarming != "streaming" {
+		t.Fatalf("CacheWarming = %q, want streaming", sm.GetGlobalSettings().CacheWarming)
 	}
 }
 

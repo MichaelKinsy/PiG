@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -134,6 +135,15 @@ func startWorker() {
 	})
 }
 
+// closeServer closes the app, then waits (bounded) for the builds and the scan it started to end: none outlives the run, even when
+// ctx ended (the interrupt that stops a served run).
+func closeServer(ctx context.Context, server *app.App) {
+	_ = server.Close(ctx)
+	waited, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	defer cancel()
+	_ = server.Wait(waited)
+}
+
 // run is the tutorial's steps, printing what each does to out; with serve it then keeps the app running until interrupted. The data
 // directory and the plugins root are new directories in base.
 func run(ctx context.Context, base string, out io.Writer, serve bool) error {
@@ -154,7 +164,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = server.Close(ctx) }()
+	defer closeServer(ctx, server)
 	link, err := url.Parse(server.OwnerLink())
 	if err != nil {
 		return err

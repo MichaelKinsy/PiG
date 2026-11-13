@@ -18,11 +18,11 @@
 "ai.stream.toolcall_delta.bytes" = 3600
 
 # ai: bytes per SSE delta record through the HTTP client, decoder, builder and event stream (TestProviderStreamPerFrameAllocationGate); the allocation count per record is TestStreamFrameAllocationCeilings'.
-"ai.provider_frame.openai-completions-text.bytes" = 3660
-"ai.provider_frame.openai-completions-toolcall.bytes" = 7920
-"ai.provider_frame.openai-responses-text.bytes" = 3250
-"ai.provider_frame.anthropic-text.bytes" = 3800
-"ai.provider_frame.anthropic-toolcall.bytes" = 6580
+"ai.provider_frame.openai-completions-text.bytes" = 1300
+"ai.provider_frame.openai-completions-toolcall.bytes" = 2950
+"ai.provider_frame.openai-responses-text.bytes" = 1420
+"ai.provider_frame.anthropic-text.bytes" = 1280
+"ai.provider_frame.anthropic-toolcall.bytes" = 2800
 
 # ai: bytes of one short streamed openai-completions request and response through the real HTTP client (TestProviderResponseAllocationGate); a body read costs the bytes it carries, not the 64 KiB read size.
 "ai.provider_response.openai-completions.bytes" = 45400
@@ -64,15 +64,16 @@
 # gc_cycles lowered to 0 by D175 (print runs collect at GOGC 400 unless GOGC is set): 0 GC cycles and 107 goroutines created in every run at fb18cdb01b + F1b on the Linux lab host, against 2 GC cycles and 107 at GOGC=100. goroutines_created stays: with no GC cycle it rose to 191 until refresh signals shared one forwarder per caller (4f9ee731bd).
 # goroutines_created raised 114 -> 118 with the owner's approval (2026-10-25): PIG_TEST_FAUX registers the harness's test-faux provider through the model registry, as Pi's parity harness registers it from an extension, so the run carries one more registered provider and its deferred registration refresh pass (the pass goroutine plus the new provider's refresh and auth-check operations). Measured on the Linux lab host, print_tools: 114 -> 118, allocs 47,225 and bytes 8,291,424 stay under their ceilings. Production runs (no PIG_TEST_FAUX) are unchanged. Profiles: alloc_objects diff of a warm print run, branch fix/faux-footer-prefix against main (xd670 ~/tern-v5/trees/faux-reg/tmp/prof1, ~/tern-v5/trees/faux-main/tmp/prof0).
 # goroutines_created raised 118 -> 119 (2026-10-31, for a measured intended cost): Pi 31ade0e0 (#10947), carried by da12a5a16b (merged by 6cf713c20b), reads the saved project trust decision before auto-trusting a project without trust-requiring resources (`trustStore.get(cwd) ?? !hasTrustRequiringResources`), which the print run's folder is. The read takes the trust.json directory lock (codingagent.ProjectTrustStore.GetEntry -> pilock.AcquireSync), and a held lock runs one heartbeat goroutine (internal/pilock/lock.go `go lock.heartbeat`), as proper-lockfile arms one update timer for the same lock in Pi. Measured on the Linux amd64 CI host, print_tools: 118 -> 119 between a59abb7e5 and da12a5a16b with the commits before and after bisected one by one; allocs 56,741 and bytes 9,831,880 stay under their ceilings.
+# goroutines_created raised 119 -> 120 (2026-11-10, owner-approved, for a measured intended cost): the D175 live-heap watcher. A print run's fallback to GOGC 100 past 64 MiB live now reads /gc/heap/live:bytes from one goroutine (internal/gcpolicy watchLiveHeap, started by gcpolicy.Apply) instead of a runtime.AddCleanup chain, because a cleanup runs at sweep and the collection that found a large heap could be skipped (TestPrintModeGCTargetFallsBackOnLargeHeap exited at GC percent 400 in CI run 42725996591, and in 6 of 80 runs under load at 2212c78d91). The cleanup chain added no goroutine of its own: the run already has the runtime's cleanup goroutine from other AddCleanup users. Measured on the Linux amd64 lab host, print_tools: 119 at cb96ec94dce and 120 with the watcher, 3 of 3 runs each (RevGogcFallback, test/perfgate TestPrintReadToolsProcessGate); allocs and bytes are unchanged and gc_cycles stays 0.
 "process.print_tools.allocs" = 70500
 "process.print_tools.bytes" = 10110000
 "process.print_tools.gc_cycles" = 0
-"process.print_tools.goroutines_created" = 119
+"process.print_tools.goroutines_created" = 120
 "process.print_tools.auth_stats" = 16
-"ai.provider_frame.google-text.bytes" = 4460
-"ai.provider_frame.mistral-text.bytes" = 4460
-# Codex Responses over SSE (its own decoder, continuation iterator and per-event clones): measured 4548-4656 B per frame on linux/amd64.
-"ai.provider_frame.openai-codex-responses-text.bytes" = 4900
+"ai.provider_frame.google-text.bytes" = 1960
+"ai.provider_frame.mistral-text.bytes" = 1560
+# Codex Responses over SSE (its own decoder, continuation iterator and per-event clones): measured 1906-2004 B per frame on linux/amd64.
+"ai.provider_frame.openai-codex-responses-text.bytes" = 2050
 
 # coding: goroutine wake-ups (a parked goroutine made runnable through the scheduler, runtime/trace; an iter.Pull coroutine switch is not one) per 16-byte tool-call arguments delta of a write streamed through a Session in -p text mode, marginal between 1k and 2k deltas, at GOMAXPROCS=1 (TestStreamWakesPerDelta). "text" streams from the faux provider, "extension" adds one in-process message_update handler, "openai_text" streams openai-completions from a local HTTP server, one flushed SSE record per delta. Measured at 4cfaf24153: 5.36, 5.36, 11.9; LW roadmap S1, S2 and S3 take them to at most 1.
 "coding.pipeline.text.wakes_per_delta" = 5.5
@@ -110,15 +111,23 @@
 "tui.stream_frame.allocs_growth_per_100_tokens" = 142
 
 # session: loading a persisted session, per JSONL line (TestSessionLoadPerLineAllocationGate).
-"session.load_line.allocs" = 94
-"session.load_line.bytes" = 6800
-"session.load_line.retained_bytes" = 2000
+"session.load_line.allocs" = 6.5
+"session.load_line.bytes" = 440
+"session.load_line.retained_bytes" = 96
 
 # session: one turn (two appends and one context build), and what each existing entry adds to it (TestSessionTurnAllocationGate).
-"session.turn.allocs" = 3140
-"session.turn.bytes" = 500000
-"session.turn.allocs_per_existing_entry" = 5.2
-"session.turn.bytes_per_existing_entry" = 900
+"session.turn.allocs" = 76
+"session.turn.bytes" = 23000
+"session.turn.allocs_per_existing_entry" = 0.05
+"session.turn.bytes_per_existing_entry" = 36
+"session.context_copy.allocs_per_entry" = 3.2
+"session.context_copy.bytes_per_entry" = 640
+"session.long.resume_allocs_per_line" = 12.5
+"session.long.resume_heap_bytes" = 2900000
+"session.long.first_turn_heap_bytes" = 15200000
+"session.long.turn_allocs" = 76
+"session.long.turn_allocs_growth" = 1
+"session.long.turn_bytes_per_existing_entry" = 37
 
 # coding: a later Session turn at history N, 10N, 100N (TestSessionTurnScalingExponents): allocations independent of the history, bytes linear (copies of the context slice).
 "coding.session_turn.allocs_exponent" = 0.05
@@ -134,8 +143,8 @@
 "mcp.tool_call_over_servers.bytes_exponent" = 0.05
 
 # extension host: one event request to an extension and its response, host side (TestExtensionEventRoundTripAllocationGate).
-"extension.event_roundtrip.allocs" = 21
-"extension.event_roundtrip.bytes" = 1550
+"extension.event_roundtrip.allocs" = 2.5
+"extension.event_roundtrip.bytes" = 420
 
 # extension host: goroutine wake-ups per event dispatch (state push + event request + the runtime's started/completed/response), host
 # goroutines only (TestConnDispatchReadsAndWakesPerEvent). The fake runtime's wakes are the harness's and depend on OS scheduling
@@ -144,8 +153,8 @@
 "extension.dispatch.host_wakes" = 2.5
 
 # process: whole-process counts from PIG_PROFILE=metrics under GOMAXPROCS=1 (test/perfgate). Allocation counts vary a few percent with goroutine interleaving; the ceilings carry that margin.
-"process.print.allocs" = 17000
-"process.print.bytes" = 2280000
+"process.print.allocs" = 15300
+"process.print.bytes" = 2200000
 "process.print.gc_cycles" = 2
 "process.print.heap_live_bytes" = 1100000
 "process.print.max_rss_bytes" = 50000000
@@ -153,14 +162,14 @@
 "process.print.fds_left_open" = 2
 "process.print.children_at_exit" = 0
 "process.print.temp_entries_at_exit" = 0
-"process.rpc_startup.allocs" = 14700
-"process.rpc_startup.bytes" = 1960000
+"process.rpc_startup.allocs" = 13000
+"process.rpc_startup.bytes" = 1850000
 "process.rpc_startup.children_at_exit" = 0
 "process.rpc_startup.temp_entries_at_exit" = 0
 "process.rpc_turn.allocs" = 3150
 "process.rpc_turn.bytes" = 335000
-"process.rpc_ext10_turn.allocs" = 16000
-"process.rpc_ext10_turn.bytes" = 3620000
+"process.rpc_ext10_turn.allocs" = 4900
+"process.rpc_ext10_turn.bytes" = 780000
 "process.rpc_ext10_turn.allocs_growth" = 1.12
 # process: the same turn at one and three extensions (TestRPCExtensionTurnProcessGateByExtensionCount), so the per-extension and the fixed cost are gated apart. Each ceiling is the measured maximum of four runs plus about 6%.
 "process.rpc_ext1_turn.allocs" = 4200
@@ -170,6 +179,12 @@
 "process.rpc_ext0_turn.allocs" = 3100
 "process.rpc_ext0_turn.bytes" = 305000
 "process.rpc_ext0_turn.allocs_growth" = 1.3
+
+# process: what one streamed message_update costs the host per subscribing TypeScript extension, over a 24-delta faux stream to one and to four extensions less the same turn with agent_end subscribers, per update and subscriber (TestRPCMessageUpdateProcessGate). The shared encoding of the update is paid once, so the cost per subscriber falls as subscribers are added. Measured on go1.27.4: 122 / 23,920 at one subscriber and 55 / 9,005 at four; the ceilings add about 6%.
+"process.rpc_message_update_ext1.allocs" = 130
+"process.rpc_message_update_ext1.bytes" = 25500
+"process.rpc_message_update_ext4.allocs" = 59
+"process.rpc_message_update_ext4.bytes" = 9600
 "fused.dispatch_k1.allocs" = 1330
 "fused.dispatch_k3.allocs" = 3010
 "fused.dispatch_k10.allocs" = 8560
@@ -227,7 +242,7 @@
 "compaction.prepare_entry.allocs" = 7.3
 "compaction.prepare_entry.bytes" = 1150
 
-# process: anonymous memory (smaps_rollup Anonymous: heap, stacks, written data) when RPC mode has answered its first command (TestRPCReadyMemoryGate; rpi's "RSS at ready"). The ceiling is the owner's choice of gated figure over RSS and PSS, which also count the binary's page-cache pages and so moved 42.5-47.4 MB between runs of one binary on one idle host (5 of 24 runs over the old 46 MB ceiling). Measured on the Linux lab host (linux/amd64, 4-CPU container, kernel THP policy "madvise", go1.27.3, PIG_TEST_FAUX, GOMAXPROCS=1): 40 idle runs 3,903,488-4,014,080 B and 40 runs beside 12 busy loops 3,883,008-4,026,368 B; the ceiling is the largest of them plus 12%, rounded up to 0.5 MB. The test process turns transparent huge pages off for the processes it starts (perfgate.DisableTransparentHugePages), because GitHub's ubuntu-24.04 runners (kernel 6.17 azure, AMD EPYC 7763, 4 vCPU) use THP "always", where the same binary held 6.3 MB of its anonymous memory in huge pages and measured 5.65-7.82 MB (the ceiling failure in CI: 7,770,112 B); with THP off there, 50 gate runs (20 idle, 20 beside 4 busy loops, 10 beside a module-wide go vet) measured 3,948,544-4,034,560 B, and the lab host measured 3,878,912-4,014,080 B (20 + 20 runs) with the setting too. The ceiling did not change: the difference was the host's page size policy, not the code. A measured process that still has AnonHugePages fails the gate instead of being compared. RSS, PSS and peak RSS are still logged and recorded (scoreboard-measured.json), not gated.
+# process: anonymous memory (smaps_rollup Anonymous: heap, stacks, written data) when RPC mode has answered its first command (TestRPCReadyMemoryGate; rpi's "RSS at ready"). The ceiling is the owner's choice of gated figure over RSS and PSS, which also count the binary's page-cache pages and so moved 42.5-47.4 MB between runs of one binary on one idle host (5 of 24 runs over the old 46 MB ceiling). Measured on the Linux lab host (linux/amd64, 4-CPU container, kernel THP policy "madvise", Go 1.27.3, PIG_TEST_FAUX, GOMAXPROCS=1): 40 idle runs 3,903,488-4,014,080 B and 40 runs beside 12 busy loops 3,883,008-4,026,368 B; the ceiling is the largest of them plus 12%, rounded up to 0.5 MB. The test process turns transparent huge pages off for the processes it starts (perfgate.DisableTransparentHugePages), because GitHub's ubuntu-24.04 runners (kernel 6.17 azure, AMD EPYC 7763, 4 vCPU) use THP "always", where the same binary held 6.3 MB of its anonymous memory in huge pages and measured 5.65-7.82 MB (the ceiling failure in CI: 7,770,112 B); with THP off there, 50 gate runs (20 idle, 20 beside 4 busy loops, 10 beside a module-wide go vet) measured 3,948,544-4,034,560 B, and the lab host measured 3,878,912-4,014,080 B (20 + 20 runs) with the setting too. The ceiling did not change: the difference was the host's page size policy, not the code. A measured process that still has AnonHugePages fails the gate instead of being compared. RSS, PSS and peak RSS are still logged and recorded (scoreboard-measured.json), not gated.
 "process.rpc_ready.anon_bytes" = 4500000
 # process: anonymous memory at the first ready frame of an interactive start under tmux (TestInteractiveFirstFrameProcessGate), second start in the same home. Measured on the same host, 30 runs 6,725,632-6,823,936 B (RSS 47.6-54.2 MB, peak 47.9-54.5 MB), and on a GitHub ubuntu-24.04 runner with THP disabled for the tmux server and its pane (see process.rpc_ready.anon_bytes), 4 runs 6,828,032-6,852,608 B; the ceiling is the largest plus 10%, rounded up to 0.5 MB. RSS, PSS and peak RSS are logged, not gated.
 "process.interactive_first_frame.anon_bytes_at_ready" = 7500000

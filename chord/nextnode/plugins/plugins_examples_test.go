@@ -27,6 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/pluginstest"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
@@ -246,7 +247,7 @@ func exUntil(t *testing.T, plugins *Plugins, what string, ready func(PluginsStat
 	t.Helper()
 	eventually(t, 15*time.Second, what, func() bool { return ready(plugins.Marks()) })
 	// What the edit also raised has arrived too: the next build starts from the marks the edit left.
-	settle(t, plugins)
+	pluginstest.Settle(t, plugins)
 }
 
 // exDirty is `dirty(...names)`.
@@ -1466,7 +1467,8 @@ func TestExample50PluginImports(t *testing.T) {
 	if err := os.WriteFile(stats, text, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	printed := []string{"1. @bob/stats depends on " + strings.Replace(manifest.Dependencies["@bob/words"], dir, "…", 1)}
+	// The example prints the repository's path with `/`; filepath.Join gives `\` on Windows.
+	printed := []string{"1. @bob/stats depends on " + strings.Replace(filepath.ToSlash(manifest.Dependencies["@bob/words"]), filepath.ToSlash(dir), "…", 1)}
 
 	// 2. The component: the app's root required, the user's not; the app's API (example 49's) for both kinds.
 	plugins, collected := exAcmeComponent(t, []model.PluginRoot{{Path: filepath.Join(dir, "plugins"), Required: true}, {Path: filepath.Join(dir, "user")}}, cache, []string{"v3"}, nil)

@@ -116,10 +116,11 @@ func tierRows(t *testing.T) []tierRow {
 type workflowFile struct {
 	On   any
 	Jobs map[string]struct {
-		Name  string
-		If    string
-		Needs any
-		Steps []struct {
+		Name           string
+		If             string
+		Needs          any
+		TimeoutMinutes int `yaml:"timeout-minutes"`
+		Steps          []struct {
 			Name string
 			If   string
 			Uses string
@@ -522,7 +523,7 @@ func TestPlannerRejectsAMalformedTable(t *testing.T) {
 }
 
 // lightPlanResults are the job results of a light run that planned only the pr rows and found them green.
-var lightPlanResults = map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
+var lightPlanResults = map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_CHORD": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "CHORD": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
 
 // merge returns the union of the sets, later sets overriding earlier ones.
 func merge(sets ...map[string]string) map[string]string {
@@ -550,8 +551,8 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 	values := map[string]string{
 		"EVENT": "merge_group", "PRODUCT": "true", "FULL": "true", "FULL_REQUIRED": "false",
 		"PR_NUMBER": "", "PR_HEAD_SHA": "", "REPO": "MichaelKinsy/PiG", "GH_TOKEN": "token",
-		"RUN_NODE_RUNTIME": "true", "RUN_NODE_LOADER": "true", "RUN_ANDROID": "true", "RUN_DURABLE_CF_HOST": "true", "RUN_DURABLE_CONTRACT": "true",
-		"CHANGES": "success", "DOCS": "skipped", "BOOKKEEPING": "success", "VERIFY": "success", "NODE_RUNTIME": "success",
+		"RUN_NODE_RUNTIME": "true", "RUN_CHORD": "true", "RUN_NODE_LOADER": "true", "RUN_ANDROID": "true", "RUN_DURABLE_CF_HOST": "true", "RUN_DURABLE_CONTRACT": "true",
+		"CHANGES": "success", "DOCS": "skipped", "BOOKKEEPING": "success", "VERIFY": "success", "NODE_RUNTIME": "success", "CHORD": "success",
 		"WINDOWS": "success", "MACOS": "success", "ANDROID": "success", "NODE_LOADER": "success",
 		"DURABLE_CF_HOST": "success", "DURABLE_CONTRACT": "success", "PREFLIGHT": "success",
 	}
@@ -595,11 +596,13 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 	}{
 		{"merge group with every job", nil, true},
 		{"merge group skipped queue-only job", map[string]string{"NODE_RUNTIME": "skipped"}, false},
+		{"merge group skipped chord surfaces", map[string]string{"CHORD": "skipped"}, false},
+		{"merge group failed chord surfaces", map[string]string{"CHORD": "failure"}, false},
 		{"merge group skipped durable host", map[string]string{"DURABLE_CF_HOST": "skipped"}, false},
 		{"merge group skipped durable contract", map[string]string{"DURABLE_CONTRACT": "skipped"}, false},
 		{"merge group failed Windows", map[string]string{"WINDOWS": "failure"}, false},
 		{"merge group that planned the light run", lightPlanResults, false},
-		{"merge group without a plan", map[string]string{"FULL": "", "RUN_NODE_RUNTIME": ""}, false},
+		{"merge group without a plan", map[string]string{"FULL": "", "RUN_NODE_RUNTIME": "", "RUN_CHORD": ""}, false},
 		{"push skipped queue-only job", map[string]string{"EVENT": "push", "NODE_RUNTIME": "skipped"}, false},
 		{"push with every job", map[string]string{"EVENT": "push"}, true},
 		{"full pull request", pullRequest, true},
@@ -609,7 +612,7 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"light pull request whose bookkeeping failed", merge(pullRequest, lightPlanResults, map[string]string{"BOOKKEEPING": "failure"}), false},
 		{"full pull request whose bookkeeping failed and stopped the jobs behind it", merge(pullRequest, map[string]string{"BOOKKEEPING": "failure", "PREFLIGHT": "skipped", "VERIFY": "failure", "WINDOWS": "skipped", "MACOS": "skipped"}), false},
 		{"merge group whose bookkeeping was skipped", map[string]string{"BOOKKEEPING": "skipped"}, false},
-		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "NODE_RUNTIME": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}, true},
+		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "NODE_RUNTIME": "skipped", "CHORD": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := ciResultRun(t, tc.set, "")
@@ -634,7 +637,7 @@ func TestLightRunCannotSatisfyCIResultWithoutAMergeQueue(t *testing.T) {
 	// Each way a light run's jobs can look green, including all of them skipped as for a change with no product files.
 	for name, set := range map[string]map[string]string{
 		"planned light, every light job green": lightPlanResults,
-		"no plan":                              {"FULL": "", "RUN_NODE_RUNTIME": "", "RUN_DURABLE_CF_HOST": "", "RUN_DURABLE_CONTRACT": ""},
+		"no plan":                              {"FULL": "", "RUN_NODE_RUNTIME": "", "RUN_CHORD": "", "RUN_DURABLE_CF_HOST": "", "RUN_DURABLE_CONTRACT": ""},
 	} {
 		if output, err := ciResultRun(t, merge(labelPR, set), "aaaa"); err == nil {
 			t.Errorf("%s: satisfied CI result\n%s", name, output)
@@ -673,7 +676,7 @@ func TestFullRunOnAnOlderHeadDoesNotCountForANewerHead(t *testing.T) {
 		t.Errorf("a run that could not read the pull request's head satisfied CI result\n%s", output)
 	}
 	// The run for the newer head is its own run: without the full plan it fails, whatever ran on the older head.
-	lightOnNew := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
+	lightOnNew := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_CHORD": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "CHORD": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
 	if output, err := ciResultRun(t, lightOnNew, "newhead"); err == nil {
 		t.Fatalf("a light run on newhead satisfied CI result\n%s", output)
 	}
@@ -865,7 +868,7 @@ func TestAgentsDocRendersTheTierTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	singles := map[string]string{"Node extensions": "node-runtime", "Durable Cloudflare host": "durable-cf-host", "Durable contract": "durable-contract", "Android build": "android", "Node loader": "node-loader"}
+	singles := map[string]string{"Node extensions": "node-runtime", "Chord surfaces": "chord", "Durable Cloudflare host": "durable-cf-host", "Durable contract": "durable-contract", "Android build": "android", "Node loader": "node-loader"}
 	prefixes := map[string]string{"Linux / ": "linux", "Windows ": "windows", "macOS ": "macos"}
 	documented := map[[2]string]string{}
 	for line := range strings.SplitSeq(string(data), "\n") {

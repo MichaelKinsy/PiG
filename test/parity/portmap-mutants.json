@@ -1201,6 +1201,13 @@
    "new": "\t\tif hash == \"\" {\n\t\t\thash = \"unreadable\"\n\t\t}\n\t\tif hash != \"\" {\n\t\t\trecord[files[i]] = hash"
   }
  ],
+ "packages/chord/src/node/surfaces/published.ts": [
+  {
+   "file": "chord/nextnode/surfaces/surfaces_published.go",
+   "old": "slices.SortFunc(changes.Removed, compareUTF16)\n",
+   "new": "slices.Sort(changes.Removed)\n"
+  }
+ ],
  "packages/chord/src/node/workers/control.ts": [
   {
    "file": "chord/nextnode/workers/workers_control.go",
@@ -1405,6 +1412,13 @@
    "file": "chord/next/host/host_destination.go",
    "old": "from.role == linkRoleParent ||",
    "new": "from.role != linkRoleParent ||"
+  }
+ ],
+ "packages/chord/src/host/host-data.ts": [
+  {
+   "file": "chord/next/host/host_host_data.go",
+   "old": "Admit: func() bool { return ctx.Err() == nil },",
+   "new": "Admit: func() bool { return ctx.Err() != nil },"
   }
  ],
  "packages/chord/src/host/members.ts": [
@@ -2366,11 +2380,89 @@
    "new": "return matches[a].covered < matches[c].covered"
   }
  ],
+ "packages/durable/src/session/cached-storage.ts": [
+  {
+   "file": "durable/session/cached_storage.go",
+   "old": "\t\t\tcached.keepTask(&record)\n\t\tcase durable.SubmissionWrite",
+   "new": "\t\tcase durable.SubmissionWrite"
+  },
+  {
+   "file": "durable/session/cached_storage.go",
+   "old": "conversationCapacity = 4096",
+   "new": "conversationCapacity = 4097"
+  },
+  {
+   "file": "durable/session/cached_storage.go",
+   "old": "\tif scope := ScopeOf(cached.storage); scope != nil {",
+   "new": "\tif scope := ScopeOf(cached.storage); scope != nil && false {"
+  },
+  {
+   "file": "durable/session/cached_storage.go",
+   "old": "\treturn cached.storage.MintId()",
+   "new": "\treturn 0, nil"
+  }
+ ],
+ "packages/durable/src/session/conversation-tails.ts": [
+  {
+   "file": "durable/session/conversation_tails.go",
+   "old": "\t\t\tcopied := detach.Entry(*found)\n\t\t\tkept = &copied",
+   "new": "\t\t\tkept = found"
+  },
+  {
+   "file": "durable/session/conversation_tails.go",
+   "old": "latest.id <= *atOrBefore)) {",
+   "new": "latest.id < *atOrBefore)) {"
+  },
+  {
+   "file": "durable/session/conversation_tails.go",
+   "old": "\tknown, ok := tails.latest.peek(conversationId)\n\tswitch {",
+   "new": "\tknown, ok := tails.latest.get(conversationId)\n\tswitch {"
+  }
+ ],
  "packages/durable/src/session/forks.ts": [
   {
    "file": "durable/session/forks.go",
    "old": "source.Fork != policy",
    "new": "source.Fork == policy"
+  }
+ ],
+ "packages/durable/src/session/writer.ts": [
+  {
+   "file": "durable/session/writer.go",
+   "old": "failure = &PublishFailure{Kind: PublishAdoption, Err: panicError(recovered)}",
+   "new": "failure = &PublishFailure{Kind: PublishListener, Err: panicError(recovered)}"
+  },
+  {
+   "file": "durable/session/writer.go",
+   "old": "case result != nil && index == result.Stored && result.Refused != nil:",
+   "new": "case result != nil && index != result.Stored && result.Refused != nil:"
+  },
+  {
+   "file": "durable/session/writer.go",
+   "old": "if published > 0 {\n\t\t\twriter.host.Hop()",
+   "new": "if published > 1 {\n\t\t\twriter.host.Hop()"
+  },
+  {
+   "file": "durable/session/writer.go",
+   "old": "failedOutcome{own: true, err: rejected}, published: true})",
+   "new": "failedOutcome{err: rejected}, published: true})"
+  }
+ ],
+ "packages/durable/src/session/keys.ts": [
+  {
+   "file": "durable/session/keys.go",
+   "old": "ConversationKey(id)); err != nil {",
+   "new": "AllKeys); err != nil {"
+  },
+  {
+   "file": "durable/session/keys.go",
+   "old": "gated.storage.Task(ctx, id)",
+   "new": "gated.storage.Task(ctx, id+1)"
+  },
+  {
+   "file": "durable/session/keys.go",
+   "old": "SubmissionKey(id)); err != nil {",
+   "new": "AllKeys); err != nil {"
   }
  ],
  "packages/durable/src/session/transaction.ts": [
@@ -3202,8 +3294,8 @@
  "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts": [
   {
    "file": "internal/codingagent/radius_login_selector.go",
-   "old": "\"#f1be57\"",
-   "new": "\"#f1be58\""
+   "old": "animated := theme.Fg(\"accent\", \"→ \") + shimmer + r.label[len(r.text):]",
+   "new": "animated := theme.Fg(\"accent\", \"→ \") + shimmer + r.label"
   }
  ],
  "packages/coding-agent/src/modes/interactive/components/themed-text.ts": [
@@ -5910,6 +6002,13 @@
    "new": "length < 4 || length > MaxPipeFrame*2 {"
   }
  ],
+ "packages/chord/src/store/import-migration.ts": [
+  {
+   "file": "chord/next/store/import_migration.go",
+   "old": "\tstate.version = v\n\treturn nil\n}",
+   "new": "\tstate.version = v + 1\n\treturn nil\n}"
+  }
+ ],
  "packages/chord/src/store/live-query.ts": [
   {
    "file": "chord/next/store/live_query.go",
@@ -6350,6 +6449,23 @@
    "new": "\t\t\t\tif typed.Content.Kind != durable.ContentDelta {\n"
   }
  ],
+ "packages/durable/src/storage/sqlite/rows.ts": [
+  {
+   "file": "durable/storage/sqlite/commit.go",
+   "old": "\t\tretired = int64(*record.RetiredAt)\n",
+   "new": "\t\tretired = int64(record.CreatedAt)\n"
+  },
+  {
+   "file": "durable/storage/sqlite/storage.go",
+   "old": "\treturn record.Scope.Kind != durable.ScopeConversation || record.History == durable.HistoryLatest\n",
+   "new": "\treturn record.Scope.Kind == durable.ScopeConversation || record.History == durable.HistoryLatest\n"
+  },
+  {
+   "file": "durable/storage/sqlite/storage.go",
+   "old": "\t\tparts.family = 1\n",
+   "new": "\t\tparts.family = 0\n"
+  }
+ ],
  "packages/durable/src/storage/sqlite/statements.ts": [
   {
    "file": "durable/storage/sqlite/statements.go",
@@ -6418,6 +6534,68 @@
    "file": "chord/nextnode/surfaces/surfaces_current.go",
    "old": "\t\tif err != nil {\n",
    "new": "\t\tif err == nil {\n"
+  }
+ ],
+ "packages/coding-agent/src/cli/auth-terminal.ts": [
+  {
+   "file": "coding/cli/auth_terminal.go",
+   "old": "case char == 0x7f || char == '\\b':",
+   "new": "case char == 0x7f:"
+  }
+ ],
+ "packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts": [
+  {
+   "file": "extensions/sdk/type_schema.go",
+   "old": "update(schema, map[string]any{\"~optional\": true}, nil)",
+   "new": "update(schema, map[string]any{\"~optional\": false}, nil)"
+  }
+ ],
+ "packages/coding-agent/src/utils/web-url.ts": [
+  {
+   "file": "internal/weburl/weburl.go",
+   "old": "return parsed.Href, true",
+   "new": "return parsed.Href + \"/\", true"
+  }
+ ],
+ "packages/chord/src/host/parked.ts": [
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if float64(p.loop.Now()) >= call.due {",
+   "new": "if float64(p.loop.Now()) > call.due {"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "p.expire(call)\n\t\t\tcontinue\n",
+   "new": "p.expire(call)\n\t\t\tbreak\n"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if call.cancel != nil {\n\t\tcall.cancel()\n\t}\n",
+   "new": "if call.cancel != nil {\n\t}\n"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if p.walking == 0 && p.removed > 16 &&",
+   "new": "if p.removed > 16 &&"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/provider-brand.ts": [
+  {
+   "file": "tui/provider_brand.go",
+   "old": "\"#f1be57\"",
+   "new": "\"#f1be58\""
+  }
+ ],
+ "packages/coding-agent/src/core/preferred-providers.ts": [
+  {
+   "file": "ai/preferred_providers.go",
+   "old": "[]string{RadiusProviderID, \"openrouter\"}",
+   "new": "[]string{\"openrouter\", RadiusProviderID}"
+  },
+  {
+   "file": "internal/codingagent/preferred_providers.go",
+   "old": "return rankA - rankB",
+   "new": "return rankB - rankA"
   }
  ]
 }

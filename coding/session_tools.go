@@ -32,11 +32,11 @@ func (s *Session) SetActiveToolsByName(names []string) {
 	defer s.toolRegistryMu.Unlock()
 	previous := s.ActiveToolNames()
 	s.setActiveToolsByName(names)
-	// A loadout that deactivates a tool replaces the restored one, whose pending tools are dropped. One that only adds tools, like activating tool_search, keeps them.
+	// A loadout that deactivates a tool of the restored one replaces it, and its pending tools are dropped. One that only adds tools, like activating tool_search, keeps them, and so does one that only deactivates tools outside the restored loadout, such as an extension's own tool that the restore or reload activated as newly registered.
 	// upstream: agent-session.ts setActiveToolsByName
 	active := s.ActiveToolNames()
 	for _, name := range previous {
-		if !slices.Contains(active, name) {
+		if !slices.Contains(active, name) && slices.Contains(s.restoredToolNames, name) {
 			s.pendingToolNames = nil
 			break
 		}
@@ -214,6 +214,7 @@ func (s *Session) applyTranscriptTools(messages []agent.AgentMessage, modifiers 
 	s.toolRegistryMu.Lock()
 	defer s.toolRegistryMu.Unlock()
 	s.pendingToolNames = nil
+	s.restoredToolNames = nil
 	if len(systems) == 0 {
 		return
 	}
@@ -221,6 +222,8 @@ func (s *Session) applyTranscriptTools(messages []agent.AgentMessage, modifiers 
 	for _, tool := range ai.GetCurrentTools(systems) {
 		names = append(names, tool.Name)
 	}
+	// The loadout the branch recorded, which the pending tools belong to (upstream: agent-session.ts _restoredToolNames).
+	s.restoredToolNames = icodingagent.ApplyToolModifiers(slices.Clone(names), modifiers)
 	base := map[string]struct{}{}
 	for _, entry := range s.toolRegistry.base {
 		base[entry.tool.Name()] = struct{}{}

@@ -8,6 +8,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -139,6 +140,22 @@ func (queries *LiveQueries) On(table string) []*LiveQuery {
 	return append([]*LiveQuery(nil), queries.byTable[table]...)
 }
 
+// OnHostKind are the live queries over tables with a `host(...)` column of host kind kind: what a host data change
+// re-runs.
+func (queries *LiveQueries) OnHostKind(kind string) []*LiveQuery {
+	queries.mu.Lock()
+	defer queries.mu.Unlock()
+	var found []*LiveQuery
+	for _, list := range queries.byTable {
+		for _, query := range list {
+			if host := query.handle.Definition.HostColumn; host != nil && host.Host.Kind.Kind == kind {
+				found = append(found, query)
+			}
+		}
+	}
+	return found
+}
+
 // RefreshOf is the re-run of the live queries over the tables a transaction writes (handles, in the order it first wrote
 // them), nil when none has one (the common case: a map lookup per written table, nothing more). ctx is the
 // transaction's: the runs count through it.
@@ -221,8 +238,6 @@ var noValue = &struct{}{}
 // whose stored columns changed and keeps the others the same objects, so its frame, the diff from the rows its watches had,
 // compares unchanged rows by identity (a window shifted by one row: one insert and one removal, not a comparison of every
 // row with every other).
-//
-// pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
 type LiveQuery struct {
 	state.Source
 	handle    *TableHandle
@@ -476,7 +491,7 @@ func sameStored(a, b sqlite.SqliteRow, physical []string) bool {
 }
 
 // rowJSON is a decoded row as a JSON object in the table's column order (absent optional columns left out; integers as JSON
-// numbers).
+// numbers; a `host(...)` cell as the address's object).
 func rowJSON(definition *TableDefinition, row Row) *delta.JsonObject {
 	object := delta.NewJsonObject(len(definition.Columns))
 	for _, column := range definition.Columns {
@@ -484,8 +499,12 @@ func rowJSON(definition *TableDefinition, row Row) *delta.JsonObject {
 		if !present || value == nil {
 			continue
 		}
-		if number, isInt := value.(int64); isInt {
-			value = float64(number)
+		switch typed := value.(type) {
+		case int64:
+			value = float64(typed)
+		case contracts.Address:
+			// A `host(...)` cell is the address's plain object (a JSON value cannot hold the struct).
+			value = delta.JsonObjectOf("kind", typed.Kind, "params", typed.Params, "key", typed.Key)
 		}
 		object.Set(column.Name, value)
 	}

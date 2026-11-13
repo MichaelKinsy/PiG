@@ -121,7 +121,7 @@ func (c *RuntimeCredentials) Modify(ctx context.Context, providerID string, fn f
 	if c.store == nil {
 		return nil, errors.New("runtime credentials: no base credential store")
 	}
-	// pig divergence (D237): Pi main b2cb62923 tracks every modification so process exit can wait for an OAuth refresh to be saved.
+	// Every modification is tracked so process exit can wait for an OAuth refresh to be saved.
 	done := make(chan struct{})
 	c.pendingMu.Lock()
 	if c.pending == nil {

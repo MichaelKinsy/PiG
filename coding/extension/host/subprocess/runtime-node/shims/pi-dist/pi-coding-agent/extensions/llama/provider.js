@@ -4,7 +4,7 @@ import { typesafeSystemOneApi } from "../../../pi-ai/api/typesafe-system-one.laz
 import { stream, streamSimple } from "../../../pi-ai/sdk-bundle/compat.js";
 import { LlamaClient, llamaInferenceUrl, normalizeLlamaServerUrl, } from "./client.js";
 export const LLAMA_PROVIDER_ID = "llama.cpp";
-export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";
+export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:9931";
 function credentialServerUrl(credential) {
     const value = credential?.env?.LLAMA_BASE_URL;
     return typeof value === "string" && value.trim() ? normalizeLlamaServerUrl(value) : undefined;

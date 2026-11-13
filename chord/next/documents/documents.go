@@ -153,7 +153,7 @@ func (d *Documents) Declare(definition AnyDefinition, token *SealToken, declarer
 	}
 	var persistence *Persistence
 	if slot == nil && definition.Persist {
-		persistence = d.persistence(definition.Name)
+		persistence = d.persistence(definition)
 	}
 	// The definition's `keyed` decides the slot's class and the handle's.
 	if definition.Keyed {
@@ -180,8 +180,19 @@ func (d *Documents) Check(definition AnyDefinition) error {
 // Hydrate takes an attempt's declarations once its factory returned: its `at(key)` pins replace the previous factory's,
 // the slots it no longer declares are dropped (their watches end; persisted ones load again when declared again),
 // every declared one hydrated (`initial()`, migrations; a failure fails the activation). declared is in declaration
-// order. A section.
+// order. Documents that ended while the attempt waited for the host data gate (its object ended: a reload no longer
+// serving its type, a close) hold none of its declared slots: Pi's `slots.get(name)!` is undefined there and `.hydrate`
+// throws a TypeError, which `#activate`'s catch hands to `#broken`; that returns the abandonment (`#abandoned ?? failed`), and the
+// object was sealed before its documents ended, so the caller sees the abandonment (ended). Go returns `released` for that,
+// which the attempt's `broken` turns into the same abandonment (`released` is never surfaced), and releases the pins the attempt took,
+// which End's release of the previous ones passed over. A section.
 func (d *Documents) Hydrate(declared []AnyDefinition, pins []func(), ctx context.Context) error {
+	if d.state == documentsEnded && len(declared) > 0 {
+		for _, release := range pins {
+			release()
+		}
+		return d.Released()
+	}
 	previous := d.pins
 	d.pins = pins
 	for _, release := range previous {
@@ -431,6 +442,19 @@ func (d *Documents) Settled() {
 	d.line.Acquire(context.Background())()
 }
 
+// HostSlots is the persisted slots keyed by addresses of host kind kind: the documents of this object belonging to such
+// hosts, in declaration order. A section.
+func (d *Documents) HostSlots(kind string) []*KeyedSlot {
+	var slots []*KeyedSlot
+	for _, name := range d.order {
+		slot, keyed := d.slots[name].(*KeyedSlot)
+		if keyed && slot.persistence != nil && hostKindName(slot.definition.current.Host) == kind {
+			slots = append(slots, slot)
+		}
+	}
+	return slots
+}
+
 // End drops every document and pin; watches end `ended`, and every later use returns `released`. A section.
 func (d *Documents) End() {
 	d.state = documentsEnded
@@ -464,8 +488,8 @@ func (d *Documents) add(slot DeclaredSlot) DeclaredSlot {
 	return slot
 }
 
-// persistence is the store side of persisted documents named name; the attempt checked the store first (P3).
-func (d *Documents) persistence(name string) *Persistence {
+// persistence is the store side of persisted definition's documents; the attempt checked the store first (P3).
+func (d *Documents) persistence(definition AnyDefinition) *Persistence {
 	chordStore, owner, _ := d.owner.Store()
-	return NewPersistence(chordStore, owner, "chord", name)
+	return NewPersistence(chordStore, owner, "chord", definition.Name, definition.Host)
 }

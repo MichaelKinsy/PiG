@@ -59,6 +59,10 @@
     "go": "ai/identity.go#UserAgentMode",
     "reason": "Pi utils/identity.ts:11 declares UserAgentMode = \"short\" | \"detailed\" | { custom: string }. Go has no sum type, so ai.UserAgentMode is a struct with an unexported kind and the three constructors/values UserAgentShort, UserAgentDetailed and UserAgentCustom(value), and encodes to exactly Pi's three JSON forms (`\"short\"`, `\"detailed\"`, `{\"custom\":...}`; MarshalJSON/UnmarshalJSON, TestClientIdentityJSON). FormatUserAgent switches on the mode as formatUserAgent does (TestFormatUserAgentForms), and ClientIdentity.UserAgent is a pointer so nil is the omitted `\"detailed\"` default."
   },
+  "pkg:ai/.#getCacheWarmingRequestOptions::call:0": {
+    "go": "ai/cache_warming.go#GetCacheWarmingRequestOptions",
+    "reason": "Pi getCacheWarmingRequestOptions<T extends SimpleStreamOptions>(options: T, signal: AbortSignal): T (packages/ai/src/cache-warming.ts:50) returns the request's options capped at one output token, with `maxRetries: 0` and `signal` set in the options object. Go carries the signal as the leading context.Context (S1) and the no-retry budget on that context (ai.WithProviderMaxRetries, which Go passes beside the options where upstream sets it in the object), so GetCacheWarmingRequestOptions(signal, options) returns (context.Context, StreamOptions): the context that carries the abort and maxRetries 0, and the options with MaxTokens 1 and DisableContinuation. Its one caller, internal/codingagent/cache_warmer.go refresh, passes both on to the stream; TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions in internal/codingagent/cache_warmer_test.go asserts the refresh request."
+  },
   "pkg:ai/.#withClientIdentity::call:0": {
     "go": "ai/identity_models.go#WithClientIdentity",
     "reason": "Pi utils/identity.ts withClientIdentity(models: MutableModels, identity): MutableModels is the first overload: it returns a Proxy over models that adds identity to every request. Go has no Proxy, so ai.WithClientIdentity takes the ClientIdentityModels interface (the request surface both Models and the Model Runtime implement) and returns a typed view with the optional ModelsLister and ModelsCatalog surfaces its argument has (ai/identity_models.go, TestWithClientIdentityKeepsTheOptionalSurfacesItsModelsHave); mutation of a mutable models goes through the original, which the view delegates to unchanged."
@@ -154,6 +158,10 @@
   "pkg:ai/compat#UserAgentMode": {
     "go": "ai/identity.go#UserAgentMode",
     "reason": "Pi utils/identity.ts:11 declares UserAgentMode = \"short\" | \"detailed\" | { custom: string }. Go has no sum type, so ai.UserAgentMode is a struct with an unexported kind and the three constructors/values UserAgentShort, UserAgentDetailed and UserAgentCustom(value), and encodes to exactly Pi's three JSON forms (`\"short\"`, `\"detailed\"`, `{\"custom\":...}`; MarshalJSON/UnmarshalJSON, TestClientIdentityJSON). FormatUserAgent switches on the mode as formatUserAgent does (TestFormatUserAgentForms), and ClientIdentity.UserAgent is a pointer so nil is the omitted `\"detailed\"` default."
+  },
+  "pkg:ai/compat#getCacheWarmingRequestOptions::call:0": {
+    "go": "ai/cache_warming.go#GetCacheWarmingRequestOptions",
+    "reason": "Pi getCacheWarmingRequestOptions<T extends SimpleStreamOptions>(options: T, signal: AbortSignal): T (packages/ai/src/cache-warming.ts:50) returns the request's options capped at one output token, with `maxRetries: 0` and `signal` set in the options object. Go carries the signal as the leading context.Context (S1) and the no-retry budget on that context (ai.WithProviderMaxRetries, which Go passes beside the options where upstream sets it in the object), so GetCacheWarmingRequestOptions(signal, options) returns (context.Context, StreamOptions): the context that carries the abort and maxRetries 0, and the options with MaxTokens 1 and DisableContinuation. Its one caller, internal/codingagent/cache_warmer.go refresh, passes both on to the stream; TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions in internal/codingagent/cache_warmer_test.go asserts the refresh request."
   },
   "pkg:ai/compat#withClientIdentity::call:0": {
     "go": "ai/identity_models.go#WithClientIdentity",
@@ -321,7 +329,7 @@
   },
   "pkg:chord/.#MessageValue": {
     "go": "chord/next/surfaces/surfaces_messages.go#MessageValue",
-    "reason": "Pi packages/chord/src/surfaces/messages.ts:16 `MessageValue = string | ((...args: never[]) => string)`: a text, or a function of its arguments returning one. Go has no unions, so surfaces.MessageValue is `any` holding a string or a MessageFunc (a function of the language and its arguments returning the text and the error a JavaScript message would throw; D450), which DefineMessages checks (surfaces_messages.go)."
+    "reason": "Pi packages/chord/src/surfaces/messages.ts:16 `MessageValue = string | ((...args: never[]) => string)`: a text, or a function of its arguments returning one. Go has no unions, so surfaces.MessageValue is `any` holding a string or a MessageFunc (a function of the language and its arguments returning the text and the error a JavaScript message would throw; language mechanics), which DefineMessages checks (surfaces_messages.go)."
   },
   "pkg:chord/.#OwnerTable::property:get::call:0": {
     "go": "chord/next/store/adapter.go#OwnerTable.Get",

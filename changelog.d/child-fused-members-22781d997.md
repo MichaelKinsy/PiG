@@ -1,0 +1,3 @@
+### Added
+
+- An extension can give a child session a member fused into the Piglet Binary by listing `builtin:<member>` in the child's additional extension paths (`AdditionalExtensionPaths`), the form of Pi's `-e builtin:<name>`. A child session never had the Binary's fused members, because they have no path to discover. The path is opt-in: a child that does not list it gets none, so a member that creates children is not loaded in each of them, and a child's child has it only when it lists the path again. `resources.extensionNames` selects the member by its name. A Binary that fuses no member of that name, stock PiG included, reports `Unknown built-in extension` as before.

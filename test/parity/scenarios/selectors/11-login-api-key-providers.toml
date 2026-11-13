@@ -20,6 +20,10 @@
 #
 # Pi 1.5.0+c23b9ec1 (the pin) lists 42 API-key providers, one more than Pi 1.0.0's 41, in both binaries (probed 2026-11-08), so the counter reads (1/42).
 #
+# Pi 1.5.1 (provider-brand.ts, oauth-selector.ts isPreferredProvider) lists the preferred partners Radius and OpenRouter first, each marked
+# " ✦", before the alphabetical providers (probed with both binaries): the first page is Radius, OpenRouter, Amazon Bedrock, Ant Ling,
+# Anthropic, Azure, Baseten, Cerebras, so Cloudflare Workers AI no longer shows on it.
+#
 # Pi 1.0.3 names the Azure provider "Azure" instead of "Azure OpenAI"
 # (packages/ai/src/providers/azure.ts:47); both binaries print
 # "Azure • not configured" on the first page.
@@ -52,7 +56,7 @@ settle_seconds = 1
 
 [[tmux.steps]]
 keys = ["Down", "Enter"]
-wait_contains = ["Select provider to configure:", "Cloudflare Workers AI"]
+wait_contains = ["Select provider to configure:", "Radius ✦ • not configured", "OpenRouter ✦ • not configured"]
 wait_timeout_seconds = 10
 settle_seconds = 1
 
@@ -67,10 +71,11 @@ both_reach_ready = true
 output_normalized_equal = true
 both_contain = [
   "Select provider to configure",
+  "Radius ✦ • not configured",
+  "OpenRouter ✦ • not configured",
   "Ant Ling • not configured",
   "Anthropic • not configured",
   "Azure • not configured",
-  "Cloudflare Workers AI • not configured",
   "(1/42)",
 ]
 runs = 3

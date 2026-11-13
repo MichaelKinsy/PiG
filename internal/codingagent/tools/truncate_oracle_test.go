@@ -127,12 +127,6 @@ func TestTruncateMatchesPi(t *testing.T) {
 		if err := json.Unmarshal(expected[i], want); err != nil {
 			t.Fatal(err)
 		}
-		if line, ok := want.(*lineOutcome); ok && !strings.Contains(c.Content, "\uFFFD") {
-			// pig divergence (D252): the pinned Pi keeps the high surrogate of a pair its cut splits, which decodes as U+FFFD; Pi main 9e870f6f0 and PiG drop the pair.
-			if head, ok := strings.CutSuffix(line.Text, "\uFFFD"+truncatedLineSuffix); ok {
-				line.Text = head + truncatedLineSuffix
-			}
-		}
 		if !reflect.DeepEqual(got, reflect.ValueOf(want).Elem().Interface()) {
 			fail("%s(%q, lines=%v bytes=%v n=%d):\n  PiG %+v\n  Pi  %+v", c.Fn, c.Content, optInt(c.MaxLines), optInt(c.MaxBytes), c.N, got, want)
 		}

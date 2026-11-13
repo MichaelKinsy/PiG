@@ -293,7 +293,7 @@ func (s *FileModelsStore) withLockRoot(ctx context.Context, fn func([]storedMode
 		}
 	}
 	if !pathExists(s.path) {
-		// A symlink whose target is missing gets its target created, as Pi's writeFileSync does, because the lock follows the link to the real file (D236).
+		// A symlink whose target is missing gets its target created, as Pi's writeFileSync does, because the lock follows the link to the real file.
 		file, err := createNewFollowingLinks(s.path, func(path string) (*os.File, error) {
 			return os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 		})

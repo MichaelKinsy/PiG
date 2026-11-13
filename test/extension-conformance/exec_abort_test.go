@@ -23,8 +23,8 @@ const execAbortHelperLifetime = 90 * time.Second
 const execAbortCallTimeout = 30 * time.Second
 
 // execAbortWant is what pi.exec resolves with when its signal aborts a running command (core/exec.ts): the output written so far,
-// killed, and code 0, because a command that a signal ended has no exit code and `code ?? 0` resolves it as 0.
-const execAbortWant = "exec-abort:killed=true;code=0;stdout=started"
+// killed, and code 143, because a command that a signal ended has no exit code and Pi reports 128 + the signal number (SIGTERM is 15), as a shell does.
+const execAbortWant = "exec-abort:killed=true;code=143;stdout=started"
 
 // TestExecAbortHelperProcess is the command the tests below run through pi.exec. It writes "started", records its pid, then waits for a
 // signal. Run as an ordinary test it returns at once.
@@ -74,12 +74,12 @@ func readExecAbortPid(pidFile string) int {
 }
 
 // Pi's pi.exec(command, args, { signal }) kills the running command when the signal aborts (core/exec.ts:46-52): SIGTERM to the
-// command alone, and the call resolves, never rejects, with the output so far, killed set and code 0. The abort comes from the
+// command alone, and the call resolves, never rejects, with the output so far, killed set and code 143 (128 + SIGTERM; a result with code 0 would read as success). The abort comes from the
 // extension's own AbortSignal, not from the request, so every SDK must carry it to the host, and the command must be gone when the
 // call returns: an SDK that does not forward the abort leaves the call waiting for the command's whole lifetime.
 //
 // The `pre` rows pass a signal that is aborted before the call. Pi spawns the command and kills it at once (exec.ts:42-48),
-// so the call resolves killed with code 0 and the command is gone, and nothing is left running.
+// so the call resolves killed with code 143 and the command is gone, and nothing is left running.
 func TestExecAbortAcrossSDKs(t *testing.T) {
 	t.Run("reference", func(t *testing.T) {
 		pidFile := filepath.Join(t.TempDir(), "pid")
@@ -159,8 +159,8 @@ func TestExecAbortAcrossSDKs(t *testing.T) {
 				}
 				if pre {
 					// Pi spawns the command and kills it at once, so what it wrote before the kill is not fixed.
-					if !strings.HasPrefix(got, "exec-abort:killed=true;code=0;stdout=") {
-						t.Errorf("%s: outcome = %q, want killed with code 0", name, *h.notify)
+					if !strings.HasPrefix(got, "exec-abort:killed=true;code=143;stdout=") {
+						t.Errorf("%s: outcome = %q, want killed with code 143", name, *h.notify)
 					}
 				} else if !slices.Equal(*h.notify, []string{execAbortWant + ":info"}) {
 					t.Errorf("%s: outcome = %q, want %q", name, *h.notify, execAbortWant)

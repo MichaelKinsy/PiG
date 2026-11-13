@@ -17,6 +17,17 @@ pig piglet build piglets/standard/pig-standard.yaml \
   --out ./pig-standard
 ```
 
+Each PiG release also publishes this Binary as its own archive,
+`pig-standard-<version>-<os>-<arch>.tar.gz` (`.zip` on Windows), for Linux, macOS
+and Windows on `amd64` and `arm64`. It is separate from the Stock `pig-<version>-<os>-<arch>`
+archive and has its own checksums, SBOMs, vulnerability scan and build-provenance
+attestation in the release. Run `pig-standard version`: it prints the release
+version, and `pig-standard status` names `pig-standard` as the active Piglet.
+Termux has no Standard archive. The build-provenance attestation covers the
+archive, so check it with `pig verify --provenance <archive>` on the downloaded
+archive, not on the extracted Binary. The Binary reports `build: dev`; the release
+ships a `-build-record.json` per archive with the source commit it was built from.
+
 The current composition selects `extensions/piglogin`, `extensions/pigrunner`,
 `extensions/angrypigs` and `extensions/bunruntime`. The login extension owns the PiG login, sprite
 catalogue, `/sprite` command, and selected-sprite state. The composition strips Stock PiG's built-in `pig-login` extension, which registers `/sprite` as well (`strip.extensions`, D92). The default sprite is
@@ -39,6 +50,8 @@ the two HUD lines with score and high score, and the pixel-font title and
 game-over cards.
 The Bun runtime extension in `extensions/bunruntime` owns `/bun-runtime`. `/bun-runtime install` downloads stock Bun 1.4.2 for this platform from the Bun GitHub release, verifies the OpenPGP signature of `SHASUMS256.txt.asc` with the pinned Robobun key, checks the archive and the extracted executable against the digests pinned in `lock.go`, and installs it into PiG's TypeScript runtime slot (`<agent dir>/runtimes/typescript/bun`). `/bun-runtime verify`, `/bun-runtime remove` and `/bun-runtime status` check, delete or report it. Install, remove, verify and status take an advisory lock (`.bun-install.lock` in the slot root), so two processes never replace or check `<slot>/bun` at the same time, and an install removes the `bun.old-*` directory a killed install left. Selecting it is a separate step: `"extensionsTypescriptRuntime": "bun"` or `PIG_TS_RUNTIME=bun`. See `docs/site/docs/typescript-runtimes.md`. Bun is MIT-licensed; its executable bundles JavaScriptCore (LGPL-2.1) and other components that Bun's own license file lists.
 Stock PiG only supplies generic extension UI contracts.
+
+The composition sets `viewClient: terminal`, so the TUI draws the views its extensions mount (`ui.view`, D614). Stock PiG attaches no view client.
 
 PiG Standard sets `build.extensionRealization: fused`. A Binary build fails if
 any selected extension is not a fuse-compatible Go factory. The build does not

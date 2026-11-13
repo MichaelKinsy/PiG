@@ -427,6 +427,15 @@ func (r *taskRuntime) MemoCandidate(ctx context.Context, name string, candidate 
 	return value, r.ended(err)
 }
 
+// ReadSignalErased is the signal read of the invocation, which the core cannot answer (CONTRACT.md section 8).
+func (r *taskRuntime) ReadSignalErased(ctx context.Context, token durable.AnySignalSource, key string) (*durable.ErasedSignalState, error) {
+	if err := r.check(); err != nil {
+		return nil, err
+	}
+	state, err := r.invocation.ReadSignalErased(ctx, token, key)
+	return state, r.ended(err)
+}
+
 func (r *taskRuntime) GetTask(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
 	if err := r.check(); err != nil {
 		return nil, err
@@ -683,6 +692,9 @@ func (r *taskRuntime) Commit(ctx context.Context, change func(tx durable.Tx, cur
 		}
 		var err error
 		next, err = change(proxy, current)
+		if err == nil {
+			err = checkNextState(next)
+		}
 		return err
 	})
 	if err == nil {

@@ -1,6 +1,8 @@
 package surfaces
 
 import (
+	"context"
+
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
@@ -23,6 +25,8 @@ type TuiSurfaceOptions struct {
 	Entry string
 	// Conditions are the conditions the base bundle's packages resolve with: the server process's by default (nil).
 	Conditions []string
+	// Tsconfig is a tsconfig.json whose `paths` the base bundle's packages resolve through, as the server's loader does (BaseResolution).
+	Tsconfig string
 }
 
 // TuiStart is what a launcher downloads at its start (`GET /_chord/tui/start`): the base bundle and the combined plugin file.
@@ -51,11 +55,17 @@ func (s *TuiSurface) Build() SurfaceBuilt { return s.building.build() }
 // Built is how the build ended, once it did (nil before).
 func (s *TuiSurface) Built() *SurfaceBuilt { return s.building.built() }
 
+// Close ends the terminal surface's build without waiting for it, as Pi's `#close` leaves it unawaited: one not started never starts,
+// one in flight goes on and its result is dropped.
+func (s *TuiSurface) Close() { s.building.close() }
+
+// Wait returns once the terminal surface's build, if started, ended, or with ctx's error when ctx ends first (the build goes on). Go's
+// ownership of the build's goroutine: Pi has no counterpart.
+func (s *TuiSurface) Wait(ctx context.Context) error { return s.building.wait(ctx) }
+
 // TuiPrefix is where the terminal surface's files live (Pi's `TUI_PREFIX`).
 const TuiPrefix = "/_chord/tui/"
 
-// pig divergence (D608): Pi's `tuiSurface` awaits the build; this returns at once and Build builds after the listen.
-//
 // NewTuiSurface is the terminal surface on server: its facet serves the launcher's start and the surface's files once Build built
 // the base bundle (503 when it failed). The build is not started here.
 func NewTuiSurface(server host.Host, options TuiSurfaceOptions) *TuiSurface {
@@ -63,7 +73,7 @@ func NewTuiSurface(server host.Host, options TuiSurfaceOptions) *TuiSurface {
 	if kind == "" {
 		kind = "tui"
 	}
-	building := newSurfaceBuild(Tui, PlatformSandbox, TuiPrefix, surfaceBuildOptions{kind: kind, entry: options.Entry, conditions: options.Conditions, plugins: options.Plugins}, server)
+	building := newSurfaceBuild(Tui, PlatformSandbox, TuiPrefix, surfaceBuildOptions{kind: kind, entry: options.Entry, resolution: BaseResolution{Conditions: options.Conditions, Tsconfig: options.Tsconfig}, plugins: options.Plugins}, server)
 	serve := func(request http.HttpRequest, ctx host.Ctx) (http.HttpResponse, error) {
 		return building.file(request.Path(), ctx)
 	}

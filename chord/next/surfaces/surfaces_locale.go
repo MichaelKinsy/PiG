@@ -6,18 +6,25 @@ import (
 )
 
 // Locale tags as Node's Intl treats them (Pi's canonicalLocale is `Intl.getCanonicalLocales(locale)[0]`, its direction `new
-// Intl.Locale(locale).maximize().script`). Forced Go difference (D458): Go has no ICU; the well-formedness grammar (ECMA-402
-// IsStructurallyValidLanguageTag: the `unicode_locale_id` of UTS 35, which refuses `en_US`, `i-klingon`, `zh-min-nan`, a four
-// letter language) is code, and CLDR's alias and likely-script data is the table of surfaces_locale_tables.go, generated from the
-// pinned Node by testdata/locale_tables.mjs and checked against it by TestLocaleTablesMatchIntl. Not ported: the value aliases of
-// `-u-` keywords (`ca-islamicc`), and the alias rules that need more than the language, region and variant subtags.
+// Intl.Locale(locale).maximize().script`). Go has no ICU: the well-formedness grammar (ECMA-402 IsStructurallyValidLanguageTag: the
+// `unicode_locale_id` of UTS 35, which refuses `en_US`, `i-klingon`, `zh-min-nan`, a four letter language) is code, and CLDR's alias and
+// likely-script data is the tables of surfaces_locale_tables.go, generated from the pinned Node by testdata/locale_tables.mjs and checked
+// against it by TestLocaleTablesMatchIntl: the aliases of a language, of a region, of a variant and of a script, those of a language that
+// apply only with another subtag or not in lower case (`tw-AA`, `TW`, `en-t-tw`), those of a language and a region together (`sgn-BR`),
+// and the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc`, `tz-hongkong`). Asked of Node when the tables are generated:
+// every `-u-` value of three letters or digits (every key), of four for the keys that have aliases, of five letters for time zones and
+// subdivisions, the words of CLDR's lists and of the zones' names, and every six letters that begin with a region for a time zone; a
+// `-u-` or `-t-` value of seven or eight letters that is in none of those lists is not asked, so an alias of one is not in the tables.
+// Equality with Intl is proved over the corpus of the test, which includes every alias the tables have and the classes above.
 
 //go:generate sh -c "node testdata/locale_tables.mjs | gofmt > surfaces_locale_tables.go"
 
 // localeTag is a structurally valid tag taken apart.
 type localeTag struct {
 	language, script, region string
-	variants                 []string
+	// nonLowercase is whether the language was not written all in lower case.
+	nonLowercase bool
+	variants     []string
 	// extensions are the singleton extensions in canonical order (u and t sorted inside), the private use last.
 	extensions []string
 }
@@ -45,6 +52,7 @@ func parseLocaleTag(tag string) (localeTag, bool) {
 		return parsed, false
 	}
 	parsed.language = strings.ToLower(language)
+	parsed.nonLowercase = language != parsed.language
 	index := 1
 	if index < len(parts) && len(parts[index]) == 4 && isAlpha(parts[index]) {
 		script := strings.ToLower(parts[index])
@@ -134,12 +142,34 @@ func parseLocaleTag(tag string) (localeTag, bool) {
 	}
 	slices.Sort(keys)
 	for _, key := range keys {
-		parsed.extensions = append(parsed.extensions, string(key)+"-"+strings.Join(extensions[key], "-"))
+		parsed.extensions = append(parsed.extensions, singletonText(string(key), extensions[key]))
 	}
 	if private != nil {
-		parsed.extensions = append(parsed.extensions, "x-"+strings.Join(private, "-"))
+		parsed.extensions = append(parsed.extensions, singletonText("x", private))
 	}
 	return parsed, true
+}
+
+// singletonText is the extension singleton with its subtags; one that is only `true` or `yes` is the bare singleton (`en-x-true` is
+// `en-x`, `uz-a-yes` is `uz-a`), the one value of a `-u-` keyword that Intl drops wherever a lone one is. The `u` singleton keeps
+// them (`en-u-true` is an attribute, as it is in Intl): canonicalUnicodeExtension drops the `true` of a keyword.
+func singletonText(singleton string, subtags []string) string {
+	if len(subtags) == 0 || singleton != "u" && len(subtags) == 1 && (subtags[0] == "true" || subtags[0] == yesSubtag) {
+		return singleton
+	}
+	return singleton + "-" + strings.Join(subtags, "-")
+}
+
+// yesSubtag is the value of a `-u-` keyword that is `true` for every key (`kb-yes` is `kb`; testdata/locale_tables.mjs asks Intl of every key).
+const yesSubtag = "yes"
+
+// aliasedValues is the canonical form of the keyword or field key with values (subtags): the table's value for key and values joined by `-`
+// (the table's are lower case, a value of several subtags too), else values.
+func aliasedValues(table map[string]string, key string, values []string) []string {
+	if replacement, ok := table[key+"-"+strings.Join(values, "-")]; ok {
+		return strings.Split(replacement, "-")
+	}
+	return values
 }
 
 // canonicalUnicodeExtension is the subtags of a `-u-` extension (lower case): attributes, then keywords by key, a `true` value
@@ -177,10 +207,15 @@ func canonicalUnicodeExtension(subtags []string) ([]string, bool) {
 	out := attributes
 	for _, each := range keywords {
 		out = append(out, each.key)
-		if len(each.values) == 1 && each.values[0] == "true" {
+		values := each.values
+		if len(values) == 1 && values[0] == yesSubtag {
+			values = []string{"true"}
+		}
+		values = aliasedValues(unicodeValueAliases, each.key, values)
+		if len(values) == 1 && values[0] == "true" {
 			continue
 		}
-		out = append(out, each.values...)
+		out = append(out, values...)
 	}
 	return out, true
 }
@@ -195,6 +230,8 @@ func canonicalTransformedExtension(subtags []string) ([]string, bool) {
 		if !ok {
 			return nil, false
 		}
+		// The source language is aliased as a language that is not all lower case is.
+		language.nonLowercase = true
 		out = append(out, strings.ToLower(language.canonicalize().String()))
 		index = len(takeLanguageID(subtags))
 	}
@@ -226,7 +263,7 @@ func canonicalTransformedExtension(subtags []string) ([]string, bool) {
 	slices.SortStableFunc(fields, func(a, b field) int { return strings.Compare(a.key, b.key) })
 	for _, each := range fields {
 		out = append(out, each.key)
-		out = append(out, each.values...)
+		out = append(out, aliasedValues(transformedValueAliases, each.key, each.values)...)
 	}
 	return out, true
 }
@@ -269,6 +306,21 @@ func (tag localeTag) regionAlias() (string, bool) {
 	return replacement, ok
 }
 
+// mergeLanguage is the tag with its language replaced by replacement, a language id: its script and region fill what the tag has none of.
+func (tag *localeTag) mergeLanguage(replacement string) {
+	parsed, ok := parseLocaleTag(replacement)
+	if !ok {
+		return
+	}
+	tag.language = parsed.language
+	if tag.script == "" {
+		tag.script = parsed.script
+	}
+	if tag.region == "" {
+		tag.region = parsed.region
+	}
+}
+
 // canonicalize applies CLDR's aliases to the tag.
 func (tag localeTag) canonicalize() localeTag {
 	// A language with one variant and nothing else that has an alias of its own (`art-lojban` is `jbo`).
@@ -280,16 +332,24 @@ func (tag localeTag) canonicalize() localeTag {
 			}
 		}
 	}
+	// A language and a region that are one language of their own, the region gone (`sgn-BR` is `bzs`).
+	rules := languageRegionRules
+	if tag.script != "" {
+		rules = scriptedLanguageRegionRules
+	}
+	if replacement, ok := rules[tag.language+"-"+tag.region]; ok {
+		tag.language, tag.region = replacement, ""
+	}
 	if replacement, ok := languageAliases[tag.language]; ok {
-		if parsed, ok := parseLocaleTag(replacement); ok {
-			tag.language = parsed.language
-			if tag.script == "" {
-				tag.script = parsed.script
-			}
-			if tag.region == "" {
-				tag.region = parsed.region
-			}
-		}
+		tag.mergeLanguage(replacement)
+	} else if replacement, ok := nonLowercaseLanguageAliases[tag.language]; ok && tag.nonLowercase {
+		tag.mergeLanguage(replacement)
+	} else if replacement, ok := qualifiedLanguageAliases[tag.language]; ok && (tag.script != "" || tag.region != "" || len(tag.variants) > 0 || len(tag.extensions) > 0) {
+		// `tw` alone stays `tw`; with anything after it, it is `ak`.
+		tag.language = replacement
+	}
+	if replacement, ok := scriptAliases[tag.script]; ok {
+		tag.script = replacement
 	}
 	if tag.region != "" {
 		if replacement, ok := tag.regionAlias(); ok {
@@ -342,11 +402,15 @@ func (tag localeTag) sortedExtensions() localeTag {
 	merged := map[string][]string{}
 	var private string
 	for _, extension := range tag.extensions {
-		if strings.HasPrefix(extension, "x-") {
+		if extension == "x" || strings.HasPrefix(extension, "x-") {
 			private = extension
 			continue
 		}
-		merged[extension[:1]] = append(merged[extension[:1]], strings.Split(extension[2:], "-")...)
+		if len(extension) > 2 {
+			merged[extension[:1]] = append(merged[extension[:1]], strings.Split(extension[2:], "-")...)
+		} else if _, present := merged[extension[:1]]; !present {
+			merged[extension[:1]] = nil
+		}
 	}
 	keys := make([]string, 0, len(merged))
 	for key := range merged {
@@ -361,7 +425,7 @@ func (tag localeTag) sortedExtensions() localeTag {
 				subtags = canonical
 			}
 		}
-		tag.extensions = append(tag.extensions, key+"-"+strings.Join(subtags, "-"))
+		tag.extensions = append(tag.extensions, singletonText(key, subtags))
 	}
 	if private != "" {
 		tag.extensions = append(tag.extensions, private)

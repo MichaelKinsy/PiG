@@ -17,6 +17,12 @@ const fixtureEnv = "CHORD_WORKERS_FIXTURE"
 // fixtureReportExecutable, when set, has a worker fixture write the path of the executable it runs from to its stdout.
 const fixtureReportExecutable = "CHORD_WORKERS_FIXTURE_REPORT_EXECUTABLE"
 
+// fixtureReportArgs, when set, has a worker fixture write the arguments it was started with to its stdout.
+const fixtureReportArgs = "CHORD_WORKERS_FIXTURE_REPORT_ARGS"
+
+// fixtureReportCompileCache, when set, has a worker fixture write its NODE_COMPILE_CACHE to its stdout.
+const fixtureReportCompileCache = "CHORD_WORKERS_FIXTURE_REPORT_COMPILE_CACHE"
+
 func TestMain(m *testing.M) {
 	switch os.Getenv(fixtureEnv) {
 	case "":

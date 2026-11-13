@@ -193,6 +193,11 @@ func serializeConversationCases() []serializeCase {
 		c.lone = true
 		return c
 	}
+	loneWant := func(name string, want map[string]any, messages ...any) serializeCase {
+		c := conv(name, want, messages...)
+		c.lone = true
+		return c
+	}
 
 	cases := []serializeCase{
 		conv("pinned conversation", result("[User]: hi\n\n[Assistant]: ok\n\n[Assistant tool calls]: read(1=\"x\\n\", 2=[1.5,null], b=1, a={\"9\":3,\"10\":2,\"z\":1})"),
@@ -235,8 +240,13 @@ func serializeConversationCases() []serializeCase {
 		lone("an unpaired surrogate in a user message", message("user", json.RawMessage(`"a\ud800b\udc00c"`))),
 		lone("a reversed pair is two unpaired units", message("user", json.RawMessage(`"\ude00\ud83d"`))),
 		lone("an unpaired surrogate in a tool call name, a string argument and a string member", message("assistant", []any{call("n", json.RawMessage(`"x\ud83d"`)), ordered{{"type", "toolCall"}, {"name", json.RawMessage(`"n\udc00"`)}, {"arguments", ordered{{"s", json.RawMessage(`"\ud800"`)}}}}})),
-		lone("the cut of a pair leaves its high surrogate", message("toolResult", strings.Repeat("a", 1999)+"😀😀")),
-		lone("the cut of a pair after an unpaired unit", message("toolResult", json.RawMessage(`"\udc00`+strings.Repeat("b", 1998)+`😀😀"`))),
+		// Pi 1.5.1 truncateForSummary slices with sliceHead (core/tools/truncate.ts): a cut between the halves of a pair drops the high half too, so the text holds 1999
+		// units where Pi 1.5.0 kept the high surrogate (2000), and a cut after an unpaired high surrogate keeps it. The want values are what Pi 1.5.1 prints, so an SDK
+		// that keeps the high surrogate fails here, and so does a Node reference that reverted to slice. markLoneSurrogates writes an unpaired unit as <lone XXXX>.
+		loneWant("the cut of a pair drops its high surrogate", result("[Tool result]: "+strings.Repeat("a", 1999)+"\n\n[... 3 more characters truncated]"), message("toolResult", strings.Repeat("a", 1999)+"😀😀")),
+		loneWant("the cut of a pair after an unpaired unit drops its high surrogate", result("[Tool result]: <lone dc00>"+strings.Repeat("b", 1998)+"\n\n[... 3 more characters truncated]"), message("toolResult", json.RawMessage(`"\udc00`+strings.Repeat("b", 1998)+`😀😀"`))),
+		loneWant("a cut that ends a pair keeps the pair", result("[Tool result]: "+strings.Repeat("a", 1998)+"😀\n\n[... 1 more characters truncated]"), message("toolResult", strings.Repeat("a", 1998)+"😀x")),
+		loneWant("a cut after an unpaired high surrogate keeps it", result("[Tool result]: "+strings.Repeat("a", 1999)+"<lone d83d>\n\n[... 1 more characters truncated]"), message("toolResult", json.RawMessage(`"`+strings.Repeat("a", 1999)+`\ud83dx"`))),
 		conv("multi-unit truncation counts UTF-16 units", nil, message("toolResult", strings.Repeat("é", 2500)), message("toolResult", strings.Repeat("a", 1990)+"😀😀😀")),
 	)
 	random := rand.New(rand.NewPCG(3, 5))

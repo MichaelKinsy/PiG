@@ -36,7 +36,8 @@ const CallBuiltinToolExecute = "builtinTool.execute"
 // CallBuiltinToolLocalExec (ext→host) is `exec` of the BashOperations createLocalBashOperations(options) or createLocalPowerShellOperations() returns: the
 // command runs through the host's shell tool implementation, its output reaches the extension in order as RequestBuiltinToolExecData requests before the
 // reply, and the reply is Pi's `{ exitCode }`. Args is a BuiltinToolLocalExecArgs. A command Pi's exec rejects is an error reply with Pi's message
-// ("aborted", "timeout:<seconds>", a missing working directory). CallExecuteToolCancel, naming ExecuteID, is the exec's AbortSignal.
+// ("aborted", "timeout:<seconds>", a missing working directory). A timeout after the shell had already exited (background processes held the output pipes,
+// Pi #11613) carries Pi's `shellExit` in the reply's ErrorInfo.ShellExit. CallExecuteToolCancel, naming ExecuteID, is the exec's AbortSignal.
 const CallBuiltinToolLocalExec = "builtinTool.localExec"
 
 // RequestBuiltinToolCallback (host→ext) calls one of the callbacks of a running CallBuiltinToolExecute: Args is a BuiltinToolCallback and the response is the

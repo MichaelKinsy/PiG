@@ -198,7 +198,7 @@ func TestAnthropicRequestAuthShapes(t *testing.T) {
 		{
 			name:          "oauth token",
 			cfg:           AnthropicConfig{APIKey: "sk-ant-oat01-test"},
-			authorization: "Bearer sk-ant-oat01-test", userAgent: "claude-cli/2.1.280", xApp: "cli", beta: oauthBetas,
+			authorization: "Bearer sk-ant-oat01-test", userAgent: "claude-cli/2.1.322", xApp: "cli", beta: oauthBetas,
 			system: []string{claudeCodeSystemPrompt, "System prompt."}, tools: []string{"Read", "TodoWrite"},
 		},
 		{
@@ -206,7 +206,7 @@ func TestAnthropicRequestAuthShapes(t *testing.T) {
 			name:          "oauth token wins over ANTHROPIC_AUTH_TOKEN once resolved as the key",
 			cfg:           AnthropicConfig{APIKey: "sk-ant-oat-test"},
 			env:           map[string]string{"ANTHROPIC_AUTH_TOKEN": "auth-token"},
-			authorization: "Bearer sk-ant-oat-test", userAgent: "claude-cli/2.1.280", xApp: "cli", beta: oauthBetas,
+			authorization: "Bearer sk-ant-oat-test", userAgent: "claude-cli/2.1.322", xApp: "cli", beta: oauthBetas,
 			system: []string{claudeCodeSystemPrompt, "System prompt."}, tools: []string{"Read", "TodoWrite"},
 		},
 		{
@@ -462,7 +462,7 @@ func TestAnthropicOnPayloadReplacesBetas(t *testing.T) {
 // TestAnthropicClientUserAgent covers createClient's header merge: an API-key
 // request seeds User-Agent from the client identity (D65) below the model and
 // request headers, and an OAuth request sends the Claude Code identity
-// (claude-cli/2.1.280, Q3) instead of the client identity. The identity's
+// (claude-cli/2.1.322, Q3) instead of the client identity. The identity's
 // user-agent key is the lowest source, so a configured header of any case
 // replaces it, as under Pi 1.3.0 adc5fa9f.
 func TestAnthropicClientUserAgent(t *testing.T) {
@@ -473,7 +473,7 @@ func TestAnthropicClientUserAgent(t *testing.T) {
 		want    string
 	}{
 		{name: "api key defaults to the identity User-Agent", apiKey: "kimi-key", want: FormatUserAgent(nil)},
-		{name: "oauth identity defaults to the Claude Code identity", apiKey: "sk-ant-oat-test", want: "claude-cli/2.1.280"},
+		{name: "oauth identity defaults to the Claude Code identity", apiKey: "sk-ant-oat-test", want: "claude-cli/2.1.322"},
 		// anthropic-auth-token.test.ts: lets explicit headers override the default Anthropic Messages User-Agent.
 		{name: "api key keeps a request User-Agent", apiKey: "kimi-key", headers: ProviderHeaders{"User-Agent": new("custom-client")}, want: "custom-client"},
 		{name: "an exact-case User-Agent replaces the oauth identity", apiKey: "sk-ant-oat-test", headers: ProviderHeaders{"User-Agent": new("custom-client")}, want: "custom-client"},

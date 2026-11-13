@@ -34,7 +34,18 @@ type sessionBoundTool struct {
 //
 // upstream: agent-session.ts:1551-1557 (declared = { ...tool, description })
 func (tool *sessionBoundTool) Schema() ai.ToolSchema {
-	schema := tool.AgentTool.Schema()
+	return tool.withDescription(tool.AgentTool.Schema())
+}
+
+// BorrowedSchema is Schema with the wrapped tool's parameters shared where it can share them; see agent.schemaBorrower.
+func (tool *sessionBoundTool) BorrowedSchema() ai.ToolSchema {
+	if borrower, ok := tool.AgentTool.(interface{ BorrowedSchema() ai.ToolSchema }); ok {
+		return tool.withDescription(borrower.BorrowedSchema())
+	}
+	return tool.Schema()
+}
+
+func (tool *sessionBoundTool) withDescription(schema ai.ToolSchema) ai.ToolSchema {
 	if tool.description != nil {
 		schema.Description = *tool.description
 	}
@@ -528,6 +539,7 @@ func (s *Session) refreshTools(includeAllExtensionTools bool) error {
 	if includeAllExtensionTools {
 		// The active tools become pending under the same locks as the rebuild, as reload() marks them and calls _buildRuntime without yielding, so no loadout change or registry refresh runs in between.
 		s.addPendingTools(s.ActiveToolNames())
+		s.restoredToolNames = s.ActiveToolNames()
 	}
 	// upstream: agent-session.ts:3457-3459: only tools that were already activated on registration count as known, so a tool whose exposure changes to `direct` or `model-only` is activated like a new tool.
 	previous := make(map[string]struct{}, len(s.tools))

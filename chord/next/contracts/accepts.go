@@ -46,6 +46,14 @@ type KeyedMapping struct {
 	Refuse bool
 }
 
+// EventMapping is an event member's mapping (decision "Events: fire-and-forget members"): a function mapping each current
+// value back to the older version's, or "refuse" (the version's binding is refused). A removed or an added event needs
+// none (an older consumer receives none of it).
+type EventMapping struct {
+	Func   Mapping
+	Refuse bool
+}
+
 // VersionMappings is the mappings of one accepted older version.
 type VersionMappings struct {
 	// State maps a local contract's state members by member.
@@ -56,6 +64,10 @@ type VersionMappings struct {
 	Methods []Entry[MethodMapping]
 	// Keyed maps a local contract's keyed members by member.
 	Keyed []Entry[KeyedMapping]
+	// Events maps a local contract's event members by member.
+	Events []Entry[EventMapping]
+	// VariantEvents maps a remote contract's event members by variant, then member.
+	VariantEvents []Entry[[]Entry[EventMapping]]
 }
 
 // AcceptsTable holds, per accepted older version (by its number as text), exactly the mappings its later edits require
@@ -110,6 +122,25 @@ const (
 	stateRemoved
 )
 
+// keyedNeed is a keyed member's need: a changed key kind (keyedRekeyed: strings and addresses, or another kind) is only
+// refused.
+type keyedNeed int
+
+const (
+	keyedChanged keyedNeed = iota + 1
+	keyedRemoved
+	keyedRekeyed
+)
+
+// keyKind is the name of the host kind a keyed member's keys are addresses of; "" for string keys (kind names are never
+// empty).
+func keyKind(snapshot *KeyedSnapshot) string {
+	if snapshot.Key == nil {
+		return ""
+	}
+	return snapshot.Key.Kind
+}
+
 type methodNeed struct {
 	removed, args, result bool
 }
@@ -120,7 +151,9 @@ type needs struct {
 	state   *NamedMap[*NamedMap[stateNeed]]
 	methods *NamedMap[methodNeed]
 	// keyed is per keyed member (local contracts).
-	keyed *NamedMap[stateNeed]
+	keyed *NamedMap[keyedNeed]
+	// events is per variant, per event member still declared and changed since: a mapping or "refuse".
+	events *NamedMap[*NamedMap[struct{}]]
 }
 
 func needsOf(data *ContractData, index int) needs {
@@ -134,14 +167,29 @@ func needsOf(data *ContractData, index int) needs {
 	}
 	state := NewNamedMap[*NamedMap[stateNeed]](0)
 	collected := NewNamedMap[methodNeed](0)
-	keyed := NewNamedMap[stateNeed](0)
+	keyed := NewNamedMap[keyedNeed](0)
+	events := NewNamedMap[*NamedMap[struct{}]](0)
 	for variant, oldVariant := range old.Variants.All() {
 		now := current.Variants.Value(variant)
-		for member := range oldVariant.Keyed.All() {
-			if !now.Keyed.Has(member) {
-				keyed.Set(member, stateRemoved)
-			} else if changes[Change{variant, member, SideKeyed}] {
-				keyed.Set(member, stateChanged)
+		// A removed event needs no mapping: an older consumer receives none of it.
+		eventNeeds := NewNamedMap[struct{}](0)
+		for member := range oldVariant.Events.All() {
+			if now.Events.Has(member) && changes[Change{variant, member, SideEvent}] {
+				eventNeeds.Set(member, struct{}{})
+			}
+		}
+		if eventNeeds.Len() > 0 {
+			events.Set(variant, eventNeeds)
+		}
+		for member, oldKeyed := range oldVariant.Keyed.All() {
+			current, kept := now.Keyed.Get(member)
+			switch {
+			case !kept:
+				keyed.Set(member, keyedRemoved)
+			case keyKind(current) != keyKind(oldKeyed):
+				keyed.Set(member, keyedRekeyed)
+			case changes[Change{variant, member, SideKeyed}]:
+				keyed.Set(member, keyedChanged)
 			}
 		}
 		variantNeeds := NewNamedMap[stateNeed](0)
@@ -169,7 +217,18 @@ func needsOf(data *ContractData, index int) needs {
 			methods.Set(member, need)
 		}
 	}
-	return needs{state: state, methods: methods, keyed: keyed}
+	return needs{state: state, methods: methods, keyed: keyed, events: events}
+}
+
+func checkEvents(variantMappings []Entry[EventMapping], variantNeeds *NamedMap[struct{}], at string) error {
+	return checkSection(variantMappings, variantNeeds, at, checkEventMapping)
+}
+
+func checkEventMapping(mapping EventMapping, _ struct{}, path string) error {
+	if mapping.Func == nil && !mapping.Refuse {
+		return fail(`%s: expected a function or "refuse"`, path)
+	}
+	return nil
 }
 
 func checkMappings(mappings VersionMappings, needs needs, kind Kind, path string) error {
@@ -184,11 +243,23 @@ func checkMappings(mappings VersionMappings, needs needs, kind Kind, path string
 		if err := checkVariant(mappings.State, needs.state.Value(LocalVariant), path+".state"); err != nil {
 			return err
 		}
+		if mappings.VariantEvents != nil {
+			return fail("%s.variantEvents: a local table has no variants (Events)", path)
+		}
+		if err := checkEvents(mappings.Events, needs.events.Value(LocalVariant), path+".events"); err != nil {
+			return err
+		}
 	} else {
 		if mappings.State != nil {
 			return fail("%s.state: a remote table maps state per variant (VariantState)", path)
 		}
 		if err := checkSection(mappings.VariantState, needs.state, path+".state", checkVariant); err != nil {
+			return err
+		}
+		if mappings.Events != nil {
+			return fail("%s.events: a remote table maps events per variant (VariantEvents)", path)
+		}
+		if err := checkSection(mappings.VariantEvents, needs.events, path+".events", checkEvents); err != nil {
 			return err
 		}
 	}
@@ -232,14 +303,18 @@ func checkStateMapping(mapping StateMapping, need stateNeed, path string) error 
 	return fail("%s: expected a function", path)
 }
 
-func checkKeyedMapping(mapping KeyedMapping, need stateNeed, path string) error {
-	if mapping.Refuse || need == stateChanged && mapping.Func != nil {
+func checkKeyedMapping(mapping KeyedMapping, need keyedNeed, path string) error {
+	if mapping.Refuse || need == keyedChanged && mapping.Func != nil {
 		return nil
 	}
-	if need == stateChanged {
+	because := ""
+	if need == keyedRekeyed {
+		because = " (its key kind changed: a value mapping cannot map keys)"
+	}
+	if need == keyedChanged {
 		return fail(`%s: expected a function or "refuse"`, path)
 	}
-	return fail(`%s: expected "refuse"`, path)
+	return fail(`%s: expected "refuse"%s`, path, because)
 }
 
 func checkMethodMapping(mapping MethodMapping, need methodNeed, path string) error {

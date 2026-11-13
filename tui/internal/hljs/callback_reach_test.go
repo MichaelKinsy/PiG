@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"io"
 	"maps"
 	"slices"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 // callbackReadsPastTheMatch classifies every language-definition callback by whether it reads the input past the match. patternReach sees only patterns, so a language whose modes call such a callback must have an unbounded pattern too, or a check of its own (the angle guard of the JSX tag callback), or a resume point could precede text that changes the callback's decision.
@@ -29,17 +32,25 @@ func TestCallbacksReadingPastTheMatchHaveNoResumePoints(t *testing.T) {
 	}
 	var nodes []grammarNode
 	var registrations [][2]json.RawMessage
-	for _, data := range [][]byte{eagerGrammars, allGrammars} {
-		reader, err := gzip.NewReader(bytes.NewReader(data))
-		if err != nil {
-			t.Fatal(err)
-		}
+	eagerReader, err := gzip.NewReader(bytes.NewReader(eagerGrammars))
+	if err != nil {
+		t.Fatal(err)
+	}
+	eagerJSON, err := io.ReadAll(eagerReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allJSON, err := zstdblob.Decode(allGrammars)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, data := range [][]byte{eagerJSON, allJSON} {
 		var document struct {
 			FirstNode     int                  `json:"firstNode"`
 			Nodes         []grammarNode        `json:"nodes"`
 			Registrations [][2]json.RawMessage `json:"registrations"`
 		}
-		if err := json.NewDecoder(reader).Decode(&document); err != nil {
+		if err := json.Unmarshal(data, &document); err != nil {
 			t.Fatal(err)
 		}
 		if document.FirstNode != len(nodes) {

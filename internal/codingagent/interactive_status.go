@@ -66,6 +66,10 @@ func (m *InteractiveMode) clearStatusIndicator(kind string) {
 	}
 	m.reconfigureRemoteEditor()
 	m.resetSpinnerInterval()
+	// pig divergence (D619): the removed indicator's step frame, if still waiting, would be drawn after the frame that removed it.
+	if ui, ok := m.tuiInst.(tui.FrameWithinCanceler); ok && previous != nil && len(m.bashOrder) == 0 {
+		ui.CancelRenderWithin()
+	}
 }
 
 func (m *InteractiveMode) statusCancelHint() string {

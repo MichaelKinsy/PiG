@@ -68,6 +68,9 @@ class BuiltinToolOptionsTest(unittest.TestCase):
     def test_grep_announces_only_is_directory(self) -> None:
         grep = builtin_tool._grep_spec("/c", pig_sdk.GrepToolOptions(operations=pig_sdk.GrepOperations(is_directory=lambda path: True)))
         self.assertEqual(grep.options["operations"], ["isDirectory"])
+        # The deprecated read_file is accepted and neither announced nor registered.
+        grep = builtin_tool._grep_spec("/c", pig_sdk.GrepToolOptions(operations=pig_sdk.GrepOperations(is_directory=lambda path: True, read_file=lambda path: "x")))
+        self.assertEqual(grep.options["operations"], ["isDirectory"])
         self.assertNotIn("operations.readFile", grep.callbacks)
 
     def test_an_operations_object_missing_a_member_is_refused(self) -> None:

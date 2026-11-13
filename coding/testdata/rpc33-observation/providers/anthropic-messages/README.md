@@ -22,7 +22,7 @@ A delivery that puts several HTTP chunks into one socket write is not an oracle:
 
 ## Findings the Go model relies on
 
-- Node 24.19.0 and 26.7.0 produce identical `cases` for every delivery above.
+- Node 24.14.1 through 24.21.0 produce identical `cases` for every delivery above (five recordings each). From Node 24.22.0 the `buffered-then-pending`, `pending-per-record`, `buffered-cr-split`, `buffered-byte-split` and `buffered-mid-line` deliveries differ: records written separately reach Pi's consumer in one macrotask (four text events at ticks 17, 22, 27, 32 of one epoch, as for `pending`), where earlier Node releases give one macrotask per write. Node 26.12.1 differs from both in 224 of the 228 cases. The fixture is therefore recorded on the oracle Node, 24.19.0 (`ai/testdata/node-microtasks/oracle-node-version`), which `automation/gen/regenerate-observation-oracles.sh` requires, and not on `.node-version`.
 - A body that arrived with the headers settles its first `reader.read()` two reactions after the call. Data that arrives in a later macrotask settles three reactions after the macrotask starts. The end of the body settles one reaction after its macrotask when the last bytes were buffered with the headers, two when they waited for the transport.
 - Each SSE record then costs four reactions: `iterateSseMessages` yields (an await), `iterateAnthropicEvents` awaits that result, yields (an await), and the provider's `for await` awaits the result. A record `iterateAnthropicEvents` skips costs two.
 - A throw in the provider's loop body closes `iterateAnthropicEvents`, which closes `iterateSseMessages`: four more reactions before the catch block runs. A throw inside `iterateAnthropicEvents` costs three; one from `iterateSseMessages` costs two.
@@ -34,8 +34,8 @@ A delivery that puts several HTTP chunks into one socket write is not an oracle:
 export PI_PACKAGE_ROOT="$(realpath extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent)"
 # Node 24.19.0 on PATH
 node probe.mjs --rpc "$PI_PACKAGE_ROOT/dist/cli.js" pi.json inputs.json
-# Trace only, for a second Node version; the cases must equal pi.json's
-node probe.mjs /tmp/pi-node26.json
+# Trace only, for a second Node release in 24.14.1..24.21.0: the cases must equal pi.json's (24.22.0 and later differ, see Findings)
+node probe.mjs /tmp/pi-node24.21.json
 # PiG through the same RPC fixtures
 node probe.mjs --rpc <pig-binary> /tmp/pig.json
 go test ./ai -run TestAnthropicMicrotaskTrace -count=3 -race

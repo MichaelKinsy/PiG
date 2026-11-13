@@ -39,7 +39,8 @@ type heldRevision struct {
 }
 
 // WithFileReadSnapshot starts one model operation's file-read snapshot: its auth.json and models-store.json reads stat once while no write
-// replaces what they read. Only an operation that runs no extension code between its reads may carry one.
+// replaces what they read. An operation that runs extension code between its reads does not see a rewrite of the files that this code makes on
+// disk until its next operation (D628); a write through the stores ends the view at once.
 func WithFileReadSnapshot(ctx context.Context) context.Context {
 	return withFileReadSnapshot(ctx, false)
 }

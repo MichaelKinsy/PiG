@@ -55,6 +55,7 @@ type strictFallbackHarness struct {
 
 func newStrictFallbackHarness(t *testing.T, respond func(attempt int) strictFallbackReply) *strictFallbackHarness {
 	t.Helper()
+	t.Cleanup(func() { _ = CleanupSessionResources("") })
 	h := &strictFallbackHarness{}
 	h.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
@@ -341,7 +342,7 @@ func TestAnthropicPreferredStrictToolFallbackUpstream(t *testing.T) {
 		}
 	})
 
-	t.Run("does not disable strict sampling on later requests", func(t *testing.T) {
+	t.Run("does not disable strict sampling on later requests without a session", func(t *testing.T) {
 		h := newStrictFallbackHarness(t, func(attempt int) strictFallbackReply {
 			if attempt == 1 {
 				return strictFallbackReply{http.StatusBadRequest, strictFallbackErrorBody(strictFallbackGrammarError, "invalid_request_error")}
@@ -358,6 +359,77 @@ func TestAnthropicPreferredStrictToolFallbackUpstream(t *testing.T) {
 		}
 		if !reflect.DeepEqual(strict, []any{true, nil, true}) {
 			t.Fatalf("strict per request = %v", strict)
+		}
+	})
+
+	// Regression tests for https://github.com/earendil-works/pi/issues/11626.
+	t.Run("sends preferred tools non-strict right away on later requests of a rejected session", func(t *testing.T) {
+		h := newStrictFallbackHarness(t, func(attempt int) strictFallbackReply {
+			if attempt == 1 {
+				return strictFallbackReply{http.StatusBadRequest, strictFallbackErrorBody(strictFallbackGrammarError, "invalid_request_error")}
+			}
+			return strictFallbackReply{http.StatusOK, strictFallbackSuccess()}
+		})
+		provider := h.provider("test-key", ModelCompat{})
+		transcript := strictFallbackContext(strictFallbackTool(t, "lookup", "prefer"), strictFallbackTool(t, "required", "require"))
+		first, _ := strictFallbackRun(t, provider, transcript, StreamOptions{SessionID: "rejected"})
+		second, _ := strictFallbackRun(t, provider, transcript, StreamOptions{SessionID: "rejected"})
+		strictFallbackRun(t, provider, transcript, StreamOptions{SessionID: "other"})
+		if len(first.Diagnostics) == 0 || first.Diagnostics[0].Type != "anthropic_strict_tools_fallback" {
+			t.Fatalf("first diagnostics = %#v", first.Diagnostics)
+		}
+		if second.StopReason != StopReasonStop || second.Diagnostics != nil {
+			t.Fatalf("second stop = %s, diagnostics = %#v", second.StopReason, second.Diagnostics)
+		}
+		var strict [][]any
+		for _, payload := range h.requests() {
+			var flags []any
+			for _, tool := range strictFallbackTools(payload) {
+				flags = append(flags, tool["strict"])
+			}
+			strict = append(strict, flags)
+		}
+		if want := [][]any{{true, true}, {nil, true}, {nil, true}, {true, true}}; !reflect.DeepEqual(strict, want) {
+			t.Fatalf("strict per request = %v, want %v", strict, want)
+		}
+	})
+
+	t.Run("tries strict sampling again after the session's resources are cleaned up", func(t *testing.T) {
+		h := newStrictFallbackHarness(t, func(attempt int) strictFallbackReply {
+			if attempt == 1 {
+				return strictFallbackReply{http.StatusBadRequest, strictFallbackErrorBody(strictFallbackGrammarError, "invalid_request_error")}
+			}
+			return strictFallbackReply{http.StatusOK, strictFallbackSuccess()}
+		})
+		provider := h.provider("test-key", ModelCompat{})
+		transcript := strictFallbackContext(strictFallbackTool(t, "lookup", "prefer"))
+		strictFallbackRun(t, provider, transcript, StreamOptions{SessionID: "cleaned"})
+		if err := CleanupSessionResources("cleaned"); err != nil {
+			t.Fatal(err)
+		}
+		strictFallbackRun(t, provider, transcript, StreamOptions{SessionID: "cleaned"})
+		var strict []any
+		for _, payload := range h.requests() {
+			strict = append(strict, strictFallbackTools(payload)[0]["strict"])
+		}
+		if !reflect.DeepEqual(strict, []any{true, nil, true}) {
+			t.Fatalf("strict per request = %v", strict)
+		}
+	})
+
+	t.Run("surfaces a rejection of a remembered session's required tools without retrying", func(t *testing.T) {
+		h := newStrictFallbackHarness(t, func(attempt int) strictFallbackReply {
+			if attempt == 2 {
+				return strictFallbackReply{http.StatusOK, strictFallbackSuccess()}
+			}
+			return strictFallbackReply{http.StatusBadRequest, strictFallbackErrorBody(strictFallbackGrammarError, "invalid_request_error")}
+		})
+		provider := h.provider("test-key", ModelCompat{})
+		transcript := strictFallbackContext(strictFallbackTool(t, "lookup", "prefer"), strictFallbackTool(t, "required", "require"))
+		strictFallbackRun(t, provider, transcript, StreamOptions{SessionID: "required"})
+		result, _ := strictFallbackRun(t, provider, transcript, StreamOptions{SessionID: "required"})
+		if result.StopReason != StopReasonError || !strings.Contains(result.ErrorMessage, strictFallbackGrammarError) || len(h.requests()) != 3 {
+			t.Fatalf("stop = %s, error = %q, payloads = %d", result.StopReason, result.ErrorMessage, len(h.requests()))
 		}
 	})
 

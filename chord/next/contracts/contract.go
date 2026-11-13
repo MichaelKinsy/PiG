@@ -64,6 +64,7 @@ const (
 	MemberKindState  MemberKind = "state"
 	MemberKindMethod MemberKind = "method"
 	MemberKindKeyed  MemberKind = "keyed"
+	MemberKindEvent  MemberKind = "event"
 )
 
 // HostAddress is a `hostAddress` as Chord calls it: with checked params (a *delta.JsonObject of the param fields).
@@ -84,7 +85,16 @@ type VariantData struct {
 	State   *NamedMap[*Snapshot]
 	Methods *NamedMap[*MethodData]
 	// Keyed holds keyed state members (slice 6a §12): only a local contract has any.
-	Keyed *NamedMap[*Snapshot]
+	Keyed *NamedMap[*KeyedSnapshot]
+	// Events holds event members: their values' schemas (JSON only).
+	Events *NamedMap[*Snapshot]
+}
+
+// KeyedSnapshot is a keyed member's schema snapshot and, for a host-keyed one, the host kind its keys are addresses of
+// (nil: string keys).
+type KeyedSnapshot struct {
+	Snapshot
+	Key *HostKind
 }
 
 // MethodData is a method's argument and result snapshots.
@@ -138,10 +148,12 @@ func VariantsAt(contract *Contract, version int) (*NamedMap[*VariantData], error
 	return nil, fail("%s: no version %d", data.Name, version)
 }
 
-// VariantNames is a variant's names as links index them (2b): its state members and its methods, each sorted.
+// VariantNames is a variant's names as links index them (2b): its state members, its methods and its event members,
+// each sorted.
 type VariantNames struct {
 	State   []string
 	Methods []string
+	Events  []string
 }
 
 // VariantOrder is the current version's variant names in the order links index them: sorted.
@@ -153,11 +165,18 @@ func VariantOrder(contract *Contract) ([]string, error) {
 	return sortStrings(variants.Keys()), nil
 }
 
-// VariantNamesOf is a variant's state members and methods in the order links index them: each sorted (upstream's
-// `variantNames`).
+// VariantNamesOf is a variant's state members, methods and event members in the order links index them: each sorted; a
+// variant without event members shares one empty list (contracts without events pay nothing for them per binding)
+// (upstream's `variantNames`).
 func VariantNamesOf(variant *VariantData) VariantNames {
-	return VariantNames{State: sortStrings(variant.State.Keys()), Methods: sortStrings(variant.Methods.Keys())}
+	names := VariantNames{State: sortStrings(variant.State.Keys()), Methods: sortStrings(variant.Methods.Keys()), Events: noNames}
+	if variant.Events.Len() > 0 {
+		names.Events = sortStrings(variant.Events.Keys())
+	}
+	return names
 }
+
+var noNames = []string{}
 
 // CreateContract is a new contract handle for data.
 func CreateContract(data ContractData) *Contract {
@@ -172,12 +191,47 @@ func CreateContract(data ContractData) *Contract {
 // (TakesNoArgs); the Go function always takes it, nil then. A thrown Error is a returned error.
 type MethodFunction func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error)
 
-// VariantImplementation is one variant's members: a Watchable per state member, a function per method and, in a local
-// contract, a KeyedWatchable per keyed member.
+// VariantImplementation is one variant's members: a Watchable per state member, a function per method, an EventMember
+// per event member (an object's own EventSource, or a reference's member it re-exposes) and, in a local contract, a
+// KeyedWatchable per keyed member.
 type VariantImplementation struct {
 	State   map[string]chord.Watchable[delta.JsonValue]
 	Methods map[string]MethodFunction
 	Keyed   map[string]KeyedWatchable[delta.JsonValue]
+	Events  map[string]EventMember[delta.JsonValue]
+}
+
+// EventSubscription is a subscription to an event member (EventMember.On): it lives until Stop, its context's abort or
+// its reference's release.
+type EventSubscription interface {
+	// Stop ends the subscription; its listener is not called again, a call already due included. Idempotent.
+	Stop()
+}
+
+// EventDelivery is what an event listener gets: the emitted value and At, the emitting host's `Date.now()` at the emit
+// (unix milliseconds). Upstream's anonymous `{ readonly value: T; readonly at: number }`.
+type EventDelivery[T any] struct {
+	Value T
+	At    int64
+}
+
+// EventMember is an event member as its readers have it (decision "Events: fire-and-forget members"): a reference's,
+// which receives the values its object emits while it is bound to an instance whose variant has the member, never one
+// emitted before it bound, never replayed. Not a Watchable: no value, no derive or routine source.
+type EventMember[T any] interface {
+	// On subscribes listener at once, bound or not: it gets every event delivered to this member from now on, At the
+	// emitting host's `Date.now()` at the emit. It returns the `released` error for a released reference and the abort
+	// cause of an aborted ctx.
+	On(listener func(EventDelivery[T]), ctx context.Context) (EventSubscription, error)
+}
+
+// EventSource is an event member as its object owns it (`self.events<T>()`): it emits.
+type EventSource[T any] interface {
+	EventMember[T]
+	// Emit emits value now, outside any transaction: delivered after every state change published before the event
+	// flush (a microtask), to the references bound before this emit. It returns the `released` error after its attempt's
+	// seal (upstream throws).
+	Emit(value T) error
 }
 
 // Implementation is what a factory returns: for a local contract Members alone (Variant is empty), for a remote one
@@ -188,12 +242,14 @@ type Implementation struct {
 }
 
 // KeyedWatchable is a keyed state member (slice 6a §12): documents by key, each watchable on its own; a keyed document
-// handle provides it. At is valid only in a factory (it pins the key while that attempt lives).
+// handle provides it. At is valid only in a factory (it pins the key while that attempt lives). A key is a string, or an
+// Address of the member's host kind when the member is host-keyed (Pi's `KeyedWatchable<T, Key>`, whose Key parameter is
+// designed out).
 type KeyedWatchable[T any] interface {
 	// Get is the document at key; found is false when absent.
-	Get(ctx context.Context, key string) (value T, found bool, err error)
+	Get(ctx context.Context, key any) (value T, found bool, err error)
 	// Watch is a watch of the document at key that follows its address; the handle is nil when absent.
-	Watch(ctx context.Context, key string) (chord.WatchHandle[T], error)
+	Watch(ctx context.Context, key any) (chord.WatchHandle[T], error)
 	// At is, in a factory only, the document at key as a watchable, initial() while absent.
-	At(key string) chord.Watchable[T]
+	At(key any) chord.Watchable[T]
 }

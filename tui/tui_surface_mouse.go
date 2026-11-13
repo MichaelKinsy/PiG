@@ -31,39 +31,81 @@ type mouseTarget struct {
 	view     *frontend.View
 }
 
-// clickExtension hands a click on an extension's overlay or on a dock blob
-// with a view to the component under it, and reports whether the click named
-// one. A fullscreen overlay, PiG's own, is left to Click.
-func (t *TuiSurface) clickExtension(click frontend.Click) bool {
+// extensionCell resolves the cell of an extension's overlay or of a dock
+// blob with a view that click names, for Click and Wheel. named reports that
+// click.Node is such a node; reached, that the run takes mouse events (a
+// terminal outside fullscreen mode reports none) and the cell is inside the
+// node, so target and cell are valid. A fullscreen overlay, PiG's own, is no
+// extension's view.
+func (t *TuiSurface) extensionCell(click frontend.Click) (target mouseTarget, cell viewCell, named, reached bool) {
 	row := click.Row
 	if click.ViewPath != nil {
 		row = -1 // the view names the row
 	}
 	target, ok := t.extensionMouseTarget(click.Node, row)
 	if !ok {
-		return false
+		return mouseTarget{}, viewCell{}, false, false
 	}
 	if t.hooks.Mouse == nil || !t.hooks.Mouse() {
-		// A terminal outside fullscreen mode reports no mouse.
-		return true
+		return target, viewCell{}, true, false
 	}
-	cell, ok := resolveViewClick(target.view, click, target.nodeRows, target.width)
+	cell, ok = resolveViewClick(target.view, click, target.nodeRows, target.width)
 	if !ok {
-		return true
+		return target, viewCell{}, true, false
 	}
 	if click.ViewPath != nil {
 		if target, ok = t.extensionMouseTarget(click.Node, cell.row); !ok {
-			return true
+			return target, viewCell{}, true, false
 		}
 	}
-	event := func(row, column int) TuiMouseEvent {
-		local := row - target.top
-		return TuiMouseEvent{
-			Button: MouseButtonLeft, X: column, Y: local,
-			ScreenX: target.column + column, ScreenY: target.row + row,
-			Width: target.width, Height: target.height,
-		}
+	return target, cell, true, true
+}
+
+// event is a mouse event at row, column of the node's lines, left button
+// unless the caller changes it: its local cell is the component's, its screen
+// cell the one the node has in Pi's fullscreen layout.
+func (m mouseTarget) event(row, column int) TuiMouseEvent {
+	local := row - m.top
+	return TuiMouseEvent{
+		Button: MouseButtonLeft, X: column, Y: local,
+		ScreenX: m.column + column, ScreenY: m.row + row,
+		Width: m.width, Height: m.height,
 	}
+}
+
+// Wheel hands a wheel turn over an extension's overlay or a dock blob with a
+// view to the component under the cell, as Pi's fullscreen renderer offers a
+// terminal's wheel report to the component under the pointer first
+// (tui-alt-screen.ts:719-733): one wheel event at the cell's local
+// coordinates, button none, WheelDelta the session's Delta. Nothing runs in
+// the extension while it dispatches: the event is offered through
+// DispatchMouseEvent on the owner loop, as Click's are, and a component that
+// lives in the extension answers from its last description (a kit view) or
+// leaves it (renderProxyComponent.HandleMouse), so no IPC waits on the input
+// loop. A node that is no extension's view, a cell outside it, a Delta of 0
+// and a run outside fullscreen mode do nothing.
+func (t *TuiSurface) Wheel(wheel frontend.Wheel) {
+	if wheel.Delta == 0 {
+		return
+	}
+	target, cell, _, reached := t.extensionCell(frontend.Click{Node: wheel.Node, Row: wheel.Row, Column: wheel.Column, ViewPath: wheel.ViewPath})
+	if !reached {
+		return
+	}
+	event := target.event(cell.row, cell.column)
+	event.Type, event.Button, event.WheelDelta = MouseWheel, MouseButtonNone, wheel.Delta
+	DispatchMouseEvent(target.component, event)
+}
+
+// clickExtension hands a click on an extension's overlay or on a dock blob
+// with a view to the component under it, and reports whether the click named
+// one. A fullscreen overlay, PiG's own, is left to Click.
+func (t *TuiSurface) clickExtension(click frontend.Click) bool {
+	target, cell, named, reached := t.extensionCell(click)
+	if !reached {
+		return named
+	}
+	event := target.event
 	for range max(cell.wheel, -cell.wheel) {
 		wheel := event(cell.wheelRow, cell.wheelColumn)
 		wheel.Type, wheel.Button, wheel.WheelDelta = MouseWheel, MouseButtonNone, 1

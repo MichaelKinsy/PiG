@@ -163,6 +163,9 @@ func (m *InteractiveMode) finishPreflight(submission inputPreflight, result inpu
 		// Upstream prompt() rejects and the input is not sent; the error is
 		// shown, or handed to the caller that submitted the prompt.
 		m.rejectPrompt(submission.ctx, result.err)
+	case promptRejected(submission.ctx):
+		// A prompt submitted beside this one under the same rejection handler was rejected: the handler restores the queue this message came from and
+		// clears the Session's queues, so the message is neither queued nor starts a run that the same cause would reject again.
 	case !result.handled:
 		text := result.text
 		if submission.expand {
@@ -233,7 +236,7 @@ func (m *InteractiveMode) runHeldPrompts() {
 	next := m.heldPrompts[0]
 	m.heldPrompts[0] = heldPrompt{}
 	m.heldPrompts = m.heldPrompts[1:]
-	if next.session == m.opts.SessionHandle {
+	if next.session == m.opts.SessionHandle && !promptRejected(next.ctx) {
 		m.runPromptTurnWithImages(next.ctx, next.text, next.images)
 	}
 	m.runHeldPrompts()

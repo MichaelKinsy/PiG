@@ -82,7 +82,7 @@ func NewToolRendererCard(ctx context.Context, name, toolCallId, cwd string, args
 	if renderers.RenderResult != nil {
 		var last extension.Component
 		definition.Result = func(input tui.ToolRenderInput) (tui.Component, bool) {
-			value, ok := toolResultOf(component.ResultValue())
+			value, ok := toolResultForRenderer(component.ResultValue(), renderers.RenderResult)
 			if !ok {
 				value = agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: component.Output}}, IsError: input.IsError}
 			}
@@ -111,6 +111,8 @@ func (card *ToolRendererCard) Dispose() {
 			close(card.state.stopTick)
 			card.state.stopTick = nil
 		}
+		// A write call that never completed leaves the units its last warm-up kept for the next one; a warm-up that still runs releases its own when it ends.
+		card.state.releaseWarmUnitsOfAFinishedCall()
 		card.state.mu.Unlock()
 		card.state.tasks.Wait()
 	})

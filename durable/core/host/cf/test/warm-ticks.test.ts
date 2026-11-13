@@ -61,16 +61,17 @@ async function warmTurns(storageProfile: "node-sqlite" | "gate-capsql"): Promise
   return out
 }
 
-// Pi c23b9ec1: `submit (turn N)` and `wait (turn N)` of F-ticks-warm-node. The first turn's wait is 19 more than a warm one's (the cold conversation's reads).
+// Pi v1.5.1: `submit (turn N)` and `wait (turn N)` of F-ticks-warm-node (6,939 and 6,920 at c23b9ec1: the reservation pass of v1.5.1 spends one pass more through
+// scheduler.ts #planCandidates, 51 in a turn), measured through Pi's Harness over the Node SQLite storage by the same count: [6990, 6971, 6971, 6971, 6971]. The first turn's wait is 19 more than a warm one's (the cold conversation's reads).
 test("a warm turn of eight lookups spends the passes Pi's turn spends (node SQLite profile)", async () => {
   const { submit, wait } = await warmTurns("node-sqlite")
   assert.deepEqual(submit, [104, 104, 104, 104, 104])
-  assert.deepEqual(wait, [6939, 6920, 6920, 6920, 6920])
+  assert.deepEqual(wait, [6990, 6971, 6971, 6971, 6971])
 })
 
-// Pi c23b9ec1: F-ticks-warm-gate (SqliteStorage over the contract gate's capsql facade, the profile "gate-capsql" as ticks.test.ts counts it).
+// Pi v1.5.1 (6,878 and 6,853 at c23b9ec1, 51 passes fewer: #planCandidates): F-ticks-warm-gate (SqliteStorage over the contract gate's capsql facade, the profile "gate-capsql" as ticks.test.ts counts it).
 test("a warm turn of eight lookups spends the passes Pi's turn spends (gate profile)", async () => {
   const { submit, wait } = await warmTurns("gate-capsql")
   assert.deepEqual(submit, [106, 106, 106, 106, 106])
-  assert.deepEqual(wait, [6878, 6853, 6853, 6853, 6853])
+  assert.deepEqual(wait, [6929, 6904, 6904, 6904, 6904])
 })

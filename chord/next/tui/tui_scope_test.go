@@ -24,7 +24,7 @@ var (
 	Notes = mustContract(contracts.Local("test.notes", contracts.LocalDeclaration{
 		Params:  contracts.Params{},
 		Version: 1,
-		Members: []contracts.LocalEntry{contracts.Mem("text", contracts.Str()), contracts.Mem("write", contracts.NewMethod(contracts.Str()))},
+		Members: []contracts.LocalEntry{contracts.Mem("text", contracts.Str()), contracts.Mem("write", contracts.NewMethod(contracts.Str())), contracts.Mem("written", contracts.Event(contracts.Str()))},
 	}))
 	Panels = mustRegistry("test.panels")
 )
@@ -59,13 +59,18 @@ func newHost(t testing.TB) host.Host {
 	facet := host.DefineFacet(func(fh host.FacetHost, self host.FacetSelf) error {
 		err := fh.Serve(Notes, func(_ *delta.JsonObject, object host.Self) (contracts.Implementation, error) {
 			text := object.Writable("first")
+			written := object.Events()
 			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Events: map[string]contracts.EventMember[delta.JsonValue]{"written": written},
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"text": object.Derive([]any{text}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 				},
 				Methods: map[string]contracts.MethodFunction{
 					"write": func(next delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
-						return nil, text.Set(next)
+						if err := text.Set(next); err != nil {
+							return nil, err
+						}
+						return nil, written.Emit(next)
 					},
 				},
 			}}, nil
@@ -182,10 +187,184 @@ func TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispo
 		t.Errorf("state after dispose = %s, want ended", kind)
 	}
 	after := changes.Load()
-	// A change arriving after Dispose reports nothing (a delivery already past the check may still land: D452).
+	// A change arriving after Dispose reports nothing.
 	scope.redraw()
 	if got := changes.Load(); got != after {
 		t.Errorf("changed called after dispose: %d -> %d", after, got)
+	}
+}
+
+// A change being delivered when Dispose runs is not left landing after Dispose returned: Dispose waits for the delivery in flight
+// (Pi's scope is one thread, so a `changed` never runs while, or after, `dispose` does).
+func TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns(t *testing.T) {
+	entered := make(chan struct{})
+	gate := make(chan struct{})
+	var landed atomic.Bool
+	scope := scopeOn(newHost(t), func() {
+		close(entered)
+		<-gate
+		landed.Store(true)
+	})
+	go scope.redraw()
+	<-entered
+	disposed := make(chan struct{})
+	go func() {
+		scope.Dispose()
+		close(disposed)
+	}()
+	select {
+	case <-disposed:
+		t.Fatal("Dispose returned while a change was still being delivered")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(gate)
+	<-disposed
+	if !landed.Load() {
+		t.Error("Dispose returned before the delivery in flight ended")
+	}
+}
+
+// A `changed` that disposes its own scope returns normally, as Pi's does (sync JS: `dispose` inside the callback only stops later
+// deliveries), and nothing is delivered afterwards; two scopes' callbacks that dispose their scopes from other goroutines at once
+// wait for no one.
+func TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows(t *testing.T) {
+	var scope *TuiScope
+	var calls atomic.Int64
+	scope = scopeOn(newHost(t), func() {
+		calls.Add(1)
+		scope.Dispose()
+	})
+	done := make(chan struct{})
+	go func() {
+		scope.redraw()
+		scope.redraw()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("a changed that disposes its own scope never returned")
+	}
+	if got := calls.Load(); got != 1 {
+		t.Errorf("changed ran %d times, want once (nothing after the dispose)", got)
+	}
+}
+
+func TestChangedsThatDisposeTheirScopeFromOtherGoroutinesAtOnceWaitForNoOne(t *testing.T) {
+	var scope *TuiScope
+	var inside sync.WaitGroup
+	inside.Add(2)
+	scope = scopeOn(newHost(t), func() {
+		inside.Done()
+		inside.Wait()
+		scope.Dispose()
+	})
+	done := make(chan struct{}, 2)
+	for range 2 {
+		go func() { scope.redraw(); done <- struct{}{} }()
+	}
+	for range 2 {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("two changed that dispose their scope waited for each other")
+		}
+	}
+}
+
+// Dispose called outside a delivery does not return while a `changed` runs on another goroutine, even one that is itself in
+// Dispose (a self-disposing `changed` is exempt only for another delivery's Dispose, never for a caller outside).
+func TestADisposeFromOutsideWaitsForAChangedThatDisposesItsOwnScopeAndIsStillRunning(t *testing.T) {
+	for range 100 {
+		var calls atomic.Int64
+		var scope *TuiScope
+		cIn, gateC := make(chan struct{}), make(chan struct{})
+		var finished atomic.Bool
+		scope = scopeOn(newHost(t), func() {
+			if calls.Add(1) == 1 {
+				// C: a delivery that keeps A's Dispose waiting.
+				close(cIn)
+				<-gateC
+				return
+			}
+			// A: disposes its own scope (waits for C), then goes on for a moment.
+			scope.Dispose()
+			time.Sleep(2 * time.Millisecond)
+			finished.Store(true)
+		})
+		go scope.redraw()
+		<-cIn
+		go scope.redraw()
+		// A is in Dispose, waiting for C.
+		for {
+			scope.delivery.Lock()
+			in := len(scope.disposing) == 1
+			scope.delivery.Unlock()
+			if in {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
+		returned := make(chan bool, 1)
+		go func() {
+			scope.Dispose()
+			returned <- finished.Load()
+		}()
+		close(gateC)
+		select {
+		case done := <-returned:
+			if !done {
+				t.Fatal("Dispose from outside returned while a changed was still running")
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("Dispose from outside never returned")
+		}
+	}
+}
+
+// Ports 'a scope's event subscriptions (decision "Events: fire-and-forget members") › call the listener for each event,
+// never changed by themselves, until dispose'.
+func TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose(t *testing.T) {
+	h := newHost(t)
+	var changes atomic.Int64
+	scope := scopeOn(h, func() { changes.Add(1) })
+	notes, err := scope.Hold(Notes, delta.NewJsonObject(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return notes.State().Value().Kind == host.RefStateLive })
+	var mu sync.Mutex
+	var seen []string
+	scope.On(notes.Events("written"), func(e contracts.EventDelivery[delta.JsonValue]) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, e.Value.(string))
+	})
+	count := func() int { mu.Lock(); defer mu.Unlock(); return len(seen) }
+	settle(&changes)
+	before := changes.Load()
+	if _, err := notes.Call("write", "a", bg); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return count() == 1 })
+	// The event called its listener only (the text is not followed here: nothing else changed).
+	settle(&changes)
+	if got := changes.Load(); got != before {
+		t.Fatalf("changed called %d times, want %d", got, before)
+	}
+	scope.Dispose()
+	again, err := h.Get(bg, Notes, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := again.Call("write", "b", bg); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) != 1 || seen[0] != "a" {
+		t.Fatalf("seen = %v, want [a]", seen)
 	}
 }
 

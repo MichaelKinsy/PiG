@@ -216,7 +216,7 @@ func TestExtractFileOpsFromMessage_NonAssistant(t *testing.T) {
 	}
 }
 
-// Pi main 9e870f6f0 (D252): truncateForSummary does not split a surrogate pair at the cut.
+// Pi 9e870f6f0: truncateForSummary does not split a surrogate pair at the cut.
 func TestTruncateForSummaryDropsASplitSurrogatePair(t *testing.T) {
 	text := strings.Repeat("a", 1999) + "😀" + "tail"
 	want := strings.Repeat("a", 1999) + "\n\n[... 5 more characters truncated]"

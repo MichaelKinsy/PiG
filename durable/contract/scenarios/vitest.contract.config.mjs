@@ -48,7 +48,7 @@ export default {
 	plugins: [candidatePlugin],
 	// pool forks, 4 workers: vitest otherwise starts one worker per core of the host, which starves a shared machine (load 194 from
 	// one reference run). The cap lives here so the gate, gate.sh and every manual run inherit it.
-	test: { environment: "node", pool: "forks", maxWorkers: 4, ...(setupFiles.length ? { setupFiles } : {}), include: process.env.CONTRACT_TEST_INCLUDE ? process.env.CONTRACT_TEST_INCLUDE.split(",") : ["test/**/*.test.ts"] },
+	test: { environment: "node", pool: "forks", maxWorkers: 4, ...(setupFiles.length ? { setupFiles } : {}), include: process.env.CONTRACT_TEST_INCLUDE ? process.env.CONTRACT_TEST_INCLUDE.split(",") : ["test/**/*.test.ts"], ...(process.env.CONTRACT_TEST_NAME ? { testNamePattern: process.env.CONTRACT_TEST_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") } : {}) },
 	resolve: { conditions: ["source"], alias: aliases },
 	ssr: { resolve: { conditions: ["source"] } },
 }

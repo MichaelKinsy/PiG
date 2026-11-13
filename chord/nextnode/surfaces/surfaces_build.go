@@ -2,6 +2,7 @@ package surfaces
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -17,26 +18,39 @@ import (
 // every request for the page or a surface file waits for it (and starts it when nothing did). A base that does not build fails only
 // what needs it: those requests answer 503, the server runs on. Built from the real files at every start.
 //
-// Forced Go difference: Pi's `Promise<Outcome>` stored and awaited by several parties is a once-started goroutine and a channel
+// Forced Go differences: Pi's `Promise<Outcome>` stored and awaited by several parties is a once-started goroutine and a channel
 // closed when the outcome is set; a waiter's context ends only its own wait (Pi's awaits take none, but a request's abort and a
-// rollout's are Go's contexts). The goroutine is not joined by anything: a build in esbuild cannot be cancelled, and, as in Pi, what
-// it finishes after the server closed is dropped.
+// rollout's are Go's contexts). A build in esbuild cannot be cancelled, and, as in Pi, what it finishes after the server closed is
+// dropped. Where Pi leaves the build's Promise unawaited, the goroutine is owned: the app's close does not wait for it (close, which
+// only stops a build not started yet from starting), and the app's Wait joins it (wait), bounded by its context.
 
 // SurfaceBuilt is how a surface's build ended: built (its base bundle's hash and the files it read), or failed (esbuild's failure,
 // or the first set's).
 type SurfaceBuilt struct {
+	// Kind is `built` or `failed` (Pi's discriminator `kind`): Error is set exactly when it is failed.
+	Kind SurfaceBuiltKind
 	// Base is the base bundle's hash; Inputs the files it was built from, with their bytes' hashes.
 	Base   string
 	Inputs model.BaseInputs
-	// Err is why it failed: none built.
-	Err error
+	// Error is why it failed: none built.
+	Error error
 }
 
-// surfaceBuildOptions is what a surface builds: its kind, entry, conditions and the plugins component.
+// SurfaceBuiltKind is how a surface's build ended.
+type SurfaceBuiltKind string
+
+const (
+	// SurfaceBuiltKindBuilt is a build that made the base bundle and published the first set.
+	SurfaceBuiltKindBuilt SurfaceBuiltKind = "built"
+	// SurfaceBuiltKindFailed is a build that did not.
+	SurfaceBuiltKindFailed SurfaceBuiltKind = "failed"
+)
+
+// surfaceBuildOptions is what a surface builds: its kind, entry, how its base resolves and the plugins component.
 type surfaceBuildOptions struct {
 	kind       string
 	entry      string
-	conditions []string
+	resolution BaseResolution
 	plugins    *plugins.Plugins
 }
 
@@ -55,12 +69,14 @@ type surfaceBuild struct {
 	options  surfaceBuildOptions
 	server   host.Host
 
-	started sync.Once
 	// done is closed once the outcome is set.
 	done chan struct{}
 
-	mu      sync.Mutex
-	outcome *buildOutcome
+	mu sync.Mutex
+	// running is set once the build started (its goroutine, or its failed outcome after the close); closed once close ran: a
+	// build not started by then never starts.
+	running, closed bool
+	outcome         *buildOutcome
 	// live is the published scripts once they took the first set (before it is published: the scripts object starts there).
 	live *PublishedScripts
 }
@@ -100,18 +116,59 @@ func (b *surfaceBuild) build() SurfaceBuilt {
 	return *b.built()
 }
 
-// start starts the build when nothing did.
+// errClosed is why a build that was not started when the surface closed failed.
+var errClosed = errors.New("the surface was closed before its build started")
+
+// start starts the build when nothing did; after close, a build not started fails at once, with no goroutine.
 func (b *surfaceBuild) start() {
-	b.started.Do(func() {
-		//portlint:allow golifetime the build is shared by every waiter and ends with the base bundle's; esbuild cannot be cancelled and the server's close does not wait for it (what it finishes after the close is dropped, as upstream's)
-		go func() {
-			outcome := b.run(chordctx.Background())
-			b.mu.Lock()
-			b.outcome = outcome
-			b.mu.Unlock()
-			close(b.done)
-		}()
-	})
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.running {
+		return
+	}
+	b.running = true
+	if b.closed {
+		b.outcome = &buildOutcome{err: errClosed}
+		close(b.done)
+		return
+	}
+	//portlint:allow golifetime the build is shared by every waiter and ends with the base bundle's; esbuild cannot be cancelled, so the goroutine ends when the build does: wait joins it, bounded by its context
+	go func() {
+		outcome := b.run(chordctx.Background())
+		b.mu.Lock()
+		b.outcome = outcome
+		b.mu.Unlock()
+		close(b.done)
+	}()
+}
+
+// close ends the surface's builds without waiting: one not started never starts (a later request answers 503), one in flight goes on
+// (its result dropped as the server's close fails its publication).
+func (b *surfaceBuild) close() {
+	b.mu.Lock()
+	b.closed = true
+	b.mu.Unlock()
+}
+
+// wait returns once the build, if started, ended, or with ctx's error when ctx ends first (the goroutine is left to finish).
+func (b *surfaceBuild) wait(ctx context.Context) error {
+	b.mu.Lock()
+	running := b.running
+	b.mu.Unlock()
+	if !running {
+		return nil
+	}
+	select {
+	case <-b.done:
+		return nil
+	default:
+	}
+	select {
+	case <-b.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // ready waits for the build (started when nothing did) as long as ctx lasts.
@@ -172,7 +229,7 @@ func (b *surfaceBuild) step(name string) plugins.RolloutStep {
 
 // run builds the base bundle, takes the kind's current set as the first and publishes it.
 func (b *surfaceBuild) run(ctx context.Context) *buildOutcome {
-	base, err := BuildBase(b.options.entry, b.platform, b.prefix, b.options.conditions)
+	base, err := BuildBase(b.options.entry, b.platform, b.prefix, b.options.resolution)
 	if err != nil {
 		return &buildOutcome{err: err}
 	}
@@ -192,7 +249,7 @@ func (b *surfaceBuild) run(ctx context.Context) *buildOutcome {
 // publicOutcome is outcome as callers see it.
 func publicOutcome(outcome *buildOutcome) *SurfaceBuilt {
 	if outcome.err != nil {
-		return &SurfaceBuilt{Err: outcome.err}
+		return &SurfaceBuilt{Kind: SurfaceBuiltKindFailed, Error: outcome.err}
 	}
-	return &SurfaceBuilt{Base: outcome.base.Hash, Inputs: outcome.base.Inputs}
+	return &SurfaceBuilt{Kind: SurfaceBuiltKindBuilt, Base: outcome.base.Hash, Inputs: outcome.base.Inputs}
 }

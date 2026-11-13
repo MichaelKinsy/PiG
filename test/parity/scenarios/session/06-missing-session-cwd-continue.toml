@@ -21,8 +21,8 @@ driver = "interactive-tmux"
 [tmux]
 width = 100
 height = 35
-ready_pattern_pig = "cwd from session file does not exist"
-ready_pattern_pi = "cwd from session file does not exist"
+ready_pattern_pig = "Session cwd does not exist"
+ready_pattern_pi = "Session cwd does not exist"
 ready_timeout_seconds = 25
 keys = ["Enter"]
 settle_seconds = 2

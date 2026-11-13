@@ -2,10 +2,13 @@
 """Reject private coordination paths and infrastructure references in tracked source.
 
 Default: tracked working files (for source-hygiene). --ref: immutable Git tree
-(for publication). This supplements, and does not replace, secret scanning and
-review of third-party redistribution rights.
+(for publication). --range BASE..REF: the commit messages of the range and every
+line it adds, in any path, against the provenance rules of the plugin UI work.
+This supplements, and does not replace, secret scanning and review of
+third-party redistribution rights.
 """
 import argparse
+import hashlib
 from pathlib import Path
 import re
 import subprocess
@@ -19,11 +22,79 @@ PRIVATE = re.compile(
     + "pig" + r"-staging|(?:~/|\$HOME/)pig" + r"-lanes|"
     + r"\.dev" + r"cache/scratch|(?:/Users|/home)/[^/\s]+/PiG-launch"
 )
+# Provenance of the plugin UI work (D614): inside GUI_PATHS only, since the legacy SDK upgrade path legitimately names
+# an old module path elsewhere. Another organization's name, an event label, employer names outside copyright headers
+# and listed names (SHA-256 of each word and of each compound of words against gui-name-hashes.txt, so the list
+# publishes nothing) never enter them. --range applies the same rules to what a range of commits adds, wherever it adds
+# it: its commit messages, and every added line and path (code, tests and their names, fixtures, docs, changelog fragments).
+# Terms are assembled so this file does not match itself.
+PROVENANCE = re.compile(
+    "main" + r"st(?:ai|\.ai)|hack" + r"athon|cdi" + r"-eig|\bf" + r"tc\b|\bc" + r"xo\b|github\.h" + r"pe", re.IGNORECASE
+)
+EMPLOYER = re.compile(r"hew" + r"lett|\bh" + r"pe\b", re.IGNORECASE)
+GUI_PATHS = re.compile(
+    r"^(?:coding/uiview/|extensions/pig-ui/|extensions/sdk/(?:ui|view)|extensions/sdk-py/pig_sdk/ui|"
+    r"extensions/sdk-rs/src/ui|coding/presentation/|coding/extension/presentation|schema/ui-view/|cmd/pig/rpc_gui|cmd/pig/testdata/ui-present|"
+    r"coding/extension/host/subprocess/(?:uiview|ui_view|view_|presentation_bridge|ui_present)|"
+    r"extensions/sdk-lisp/(?:src|tests)/ui-view|test/extension-conformance/ui_view|"
+    r"internal/viewcarrier/|internal/chordview/|changelog\.d/gui|coding/cli/(?:testdata/)?rpc[_-]ui[_-]view|examples/ui-view-web/|"
+    r"coding/extension/host/subprocess/runtime-node/shims/pig-ui|docs/ui-)"
+)
+WORD = re.compile(r"[A-Za-z]{3,}")
+# A compound is words and numbers joined by -, _ or . (a project or product name written as one token).
+COMPOUND = re.compile(r"[A-Za-z0-9]+(?:[-_.][A-Za-z0-9]+)+")
+NAME_HASHES = frozenset(
+    line.strip() for line in (Path(__file__).with_name('gui-name-hashes.txt').read_text().splitlines())
+    if line.strip() and not line.startswith('#')
+)
 LANE = re.compile(r"(^|/)(REVIEW[^/]*|QUESTIONS|REPORT|NATIVE-PROOF-REQUEST[^/]*|[^/]*-REPORT|TASK|[^/]*\.TASK)\.md$")
 ENV = re.compile(r"(^|/)(\.env(\.[^/]*)?|[^/]+\.env)$")
 PRIVATE_DIR = re.compile(r"(^|/)(\.dev" + r"cache|pig-handoff)/")
 # Launch-video production files are not part of the public tree.
 UNCLEARED = re.compile(r"^docs/media/demo/")
+
+
+def provenance(line):
+    """The provenance findings of one line of plugin UI work."""
+    if PROVENANCE.search(line):
+        yield "forbidden provenance term"
+    if EMPLOYER.search(line) and 'SPDX-FileCopyrightText' not in line:
+        yield "employer name outside a copyright header"
+    for word in WORD.findall(line) + COMPOUND.findall(line):
+        if hashlib.sha256(word.lower().encode()).hexdigest() in NAME_HASHES:
+            yield "listed name"
+            break
+
+
+def range_findings(command, base, ref):
+    """What the commits of base..ref add: their messages, and each added path and line, by the provenance rules."""
+    log = subprocess.check_output(command + ['log', '--format=%H%x00%B%x01', f'{base}..{ref}'])
+    for record in log.split(b'\x01'):
+        sha, _, message = record.strip(b'\n').partition(b'\0')
+        if not sha:
+            continue
+        for number, line in enumerate(message.decode('utf-8', errors='replace').splitlines(), 1):
+            where = f"commit {sha.decode()[:12]}: message line {number}"
+            if PRIVATE.search(line):
+                yield f"{where}: private infrastructure or operator path"
+            for finding in provenance(line):
+                yield f"{where}: {finding}"
+    names = subprocess.check_output(command + ['diff', '--name-only', '--no-renames', '--diff-filter=AM', '-z', base, ref])
+    for raw in names.split(b'\0'):
+        if not raw:
+            continue
+        path = raw.decode('utf-8')
+        for finding in provenance(path):
+            yield f"{path}: path: {finding}"
+        diff = subprocess.check_output(command + ['diff', '--unified=0', '--no-color', '--no-renames', base, ref, '--', path])
+        number = 0
+        for line in diff.decode('utf-8', errors='replace').splitlines():
+            if line.startswith('@@'):
+                number = int(line.split('+', 1)[1].split(' ', 1)[0].split(',', 1)[0])
+            elif line.startswith('+') and not line.startswith('+++') and number:
+                for finding in provenance(line[1:]):
+                    yield f"{path}:{number}: {finding}"
+                number += 1
 
 
 def findings(path, data):
@@ -36,16 +107,25 @@ def findings(path, data):
         if PRIVATE.search(line):
             # Do not echo possibly sensitive line contents into CI logs.
             yield f"{path}:{number}: private infrastructure or operator path"
+        if GUI_PATHS.search(path):
+            for finding in provenance(line):
+                yield f"{path}:{number}: {finding}"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ref', help='scan committed blobs at this Git ref, not working files')
+    parser.add_argument('--range', metavar='BASE..REF', help='scan the commit messages and the added lines of this range by the provenance rules')
     args = parser.parse_args()
     root = Path(subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True).strip())
     command = ['git', '-C', str(root)]
     failures = []
-    if args.ref:
+    if args.range:
+        base, separator, ref = args.range.partition('..')
+        if not base or not separator or not ref or ref.startswith('.'):
+            parser.error('--range takes BASE..REF')
+        failures.extend(range_findings(command, base, ref))
+    elif args.ref:
         tree = subprocess.check_output(command + ['rev-parse', args.ref + '^{tree}'], text=True).strip()
         entries = subprocess.check_output(command + ['ls-tree', '-r', '-z', tree])
         # One batch process, not a Git subprocess per file in a release tree.

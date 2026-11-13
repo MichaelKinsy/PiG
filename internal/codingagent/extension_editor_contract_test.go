@@ -12,6 +12,7 @@ import (
 // extension-editor.ts handleInput always consumes the app.editor.external key: it starts handleOpenExternalEditor and returns, so the key never reaches the
 // Editor. A host that has bound no handoff therefore still swallows the key; it is not typed into the text.
 func TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff(t *testing.T) {
+	restoreTUIKeybindings(t)
 	c := newExtensionEditorProbe(t, "Edit", "draft", map[string][]string{"app.editor.external": {"x"}}, nil)
 	c.HandleInput("x")
 	if got := c.editor.Text(); got != "draft" || c.done {
@@ -25,6 +26,7 @@ func TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff(t *testing.T) {
 
 // Every press of the external key opens the handoff once with the Editor's current text, and no press reaches the Editor.
 func TestExtensionEditorExternalKeyOpensTheHandoffOncePerPress(t *testing.T) {
+	restoreTUIKeybindings(t)
 	c := newExtensionEditorProbe(t, "Edit", "", map[string][]string{"app.editor.external": {"x"}}, nil)
 	var contents []string
 	c.SetExternalEditor(func(_, content string, _ func(string), _ func(string)) { contents = append(contents, content) })
@@ -42,6 +44,7 @@ func TestExtensionEditorExternalKeyOpensTheHandoffOncePerPress(t *testing.T) {
 
 // extension-editor.ts handleOpenExternalEditor: a failed edit shows `theme.fg("warning", message)` on the status row and a later completed edit clears it.
 func TestExtensionEditorExternalEditorStatusRow(t *testing.T) {
+	restoreTUIKeybindings(t)
 	c := newExtensionEditorProbe(t, "Edit", "draft", map[string][]string{"app.editor.external": {"ctrl+x"}}, nil)
 	var apply func(string)
 	var report func(string)

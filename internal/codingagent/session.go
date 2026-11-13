@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
@@ -151,6 +152,11 @@ type Session struct {
 	// slots holds every entry in append order; byID maps an id to its newest slot (session-manager.ts byId).
 	slots []entrySlot
 	byID  idIndex
+	// ids holds the id of each slot (entrySlot.idRef), and resident the decoded entry of each slot that has one.
+	ids      idArena
+	resident residentStore
+	// searchRefs holds, by cold part, the reference of each slot's search text (searchAtOf); it is empty until a search first needs one.
+	searchRefs []uint32
 	// danglingParents holds the parentId of each slot whose parent no slot had when it was added (entrySlot.parent).
 	danglingParents map[int32]string
 	// factArena holds the /tree facts of assistant messages (entrySlot.facts, storeFactsLocked).
@@ -174,6 +180,10 @@ type Session struct {
 	projView    *sessionProjector
 	projGen     uint64
 	projCovered int
+	// ctxEntries holds the entries of ctxPath's first len(ctxEntries) slots, resident, at generation ctxEntriesGen: a read of the current branch (GetContextBranch)
+	// decodes each entry once and extends the list as the leaf's children are appended. mu held for writing guards both.
+	ctxEntries    []SessionEntry
+	ctxEntriesGen uint64
 	// firstKept holds each compaction slot's firstKeptEntryId.
 	firstKept map[int]string
 	// labels is the label each entry carries, from the latest label entry that targets it (session-manager.ts labelsById,
@@ -376,6 +386,14 @@ func compactionWithoutRecord(entry SessionEntry, raw []byte) SessionEntry {
 // write that fails leaves memory as the file is (session-manager.ts _appendEntry): the entry is not kept and is not the parent of a later one.
 func (s *Session) appendEntryRecordOf(se SessionEntry, raw []byte, ownMessage bool) error {
 	base := se.Base()
+	if raw == nil && !s.fileless() {
+		// A session that gained a file since the caller left the record out writes it here.
+		encoded, err := marshalSessionLine(se)
+		if err != nil {
+			return fmt.Errorf("session: marshal entry: %w", err)
+		}
+		raw = encoded
+	}
 	if isUndescribed(se) {
 		var strict SessionEntryBase
 		if err := json.Unmarshal(raw, &strict); err != nil {
@@ -725,6 +743,13 @@ func (s *Session) appendMessageEntry(msg agent.AgentMessage) (string, error) {
 		Timestamp: RFC3339NowNano(),
 		Message:   msg,
 	}
+	// pig additive (D112): a session without a file writes no record, so a message entry that is held as appended and whose encoding cannot fail is not encoded at all.
+	if s.holdsWithoutRecord(entry) {
+		if err := s.appendEntryRecordOf(entry, nil, true); err != nil {
+			return "", err
+		}
+		return id, nil
+	}
 	// The entry is encoded once: its record is what the session stores, counts, decodes and writes. A message that cannot be encoded is reported as the message's own error.
 	raw, err := marshalSessionLine(entry)
 	if err != nil {
@@ -744,6 +769,45 @@ func (s *Session) appendMessageEntry(msg agent.AgentMessage) (string, error) {
 		return "", err
 	}
 	return id, nil
+}
+
+// fileless reports whether the session has no file to write: a session made with no path (--no-session, an in-memory manager).
+func (s *Session) fileless() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.path == ""
+}
+
+// holdsWithoutRecord reports whether the session of no file holds entry exactly as appended, with no record to write, and with the entry
+// encoding without error, which is what heldMessageEntry decides from a record's decode. It is the case heldMessageEntry returns entry for
+// (its decoded form is proven equal to entry), minus the encoding that only the file needs. A message whose Details are a Go value encodes
+// them once here, because only the encoding says whether they can be encoded; the other members are proven by decodedFormBesideDetails.
+// pig additive (D112): Pi appends the object and stringifies it only to persist (session-manager.ts _persist returns without a session file).
+func (s *Session) holdsWithoutRecord(entry MessageEntry) bool {
+	if !s.fileless() {
+		return false
+	}
+	if form, ok := entry.Message.DecodedForm(); ok {
+		decoded, ok := sessionentry.NewDecodedMessageEntry(entry.SessionEntryBase, form, nil)
+		return ok && reflect.DeepEqual(SessionEntry(decoded), SessionEntry(entry))
+	}
+	form, ok := decodedFormBesideDetails(entry.Message)
+	if !ok {
+		return false
+	}
+	decoded, ok := sessionentry.NewDecodedMessageEntry(entry.SessionEntryBase, form, nil)
+	if !ok {
+		return false
+	}
+	result := *entry.Message.ToolResult
+	result.Details = nil
+	stripped := entry
+	stripped.Message.ToolResult = &result
+	if !reflect.DeepEqual(SessionEntry(decoded), SessionEntry(stripped)) {
+		return false
+	}
+	_, err := jsstring.MarshalJSON(entry.Message.ToolResult.Details)
+	return err == nil
 }
 
 // heldMessageEntry returns the entry the session holds for entry, whose record is raw, and whether that is entry itself (with raw as its
@@ -1302,7 +1366,7 @@ func (s *Session) BuildSessionProjection() SessionProjection {
 		return buildSessionProjection(nil, s.messageFor, true)
 	}
 	entries := s.entriesAtLocked(indexes)
-	if s.branchLeaf >= 0 && s.slots[s.branchLeaf].id == *s.leafID && s.slotOrZero(*s.leafID) == s.branchLeaf {
+	if s.branchLeaf >= 0 && s.idAt(s.branchLeaf) == *s.leafID && s.slotOrZero(*s.leafID) == s.branchLeaf {
 		s.retainReadLocked(indexes, entries)
 	}
 	return buildSessionProjection(entries, s.messageFor, true)
@@ -1319,7 +1383,7 @@ func (s *Session) BuildSessionProjectionView() SessionProjection {
 	if s.leafID == nil {
 		return SessionProjection{ThinkingLevel: "off"}
 	}
-	if s.branchLeaf < 0 || s.slots[s.branchLeaf].id != *s.leafID || s.slotOrZero(*s.leafID) != s.branchLeaf {
+	if s.branchLeaf < 0 || s.idAt(s.branchLeaf) != *s.leafID || s.slotOrZero(*s.leafID) != s.branchLeaf {
 		return buildSessionProjection(s.contextPathToLocked(*s.leafID), s.messageFor, false)
 	}
 	s.projMu.Lock()
@@ -1367,12 +1431,39 @@ func (s *Session) BuildContextEntries() []SessionEntry {
 // API. buildSessionProjection, getSessionContextSettings, prepareCompaction, the newest assistant usage and the newest compaction or model
 // selection read the same from it as from GetBranch, without reading history the context no longer holds. Nil when there is no leaf.
 func (s *Session) GetContextBranch() []SessionEntry {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.leafID == nil {
 		return nil
 	}
+	if s.branchLeaf >= 0 && s.idAt(s.branchLeaf) == *s.leafID && s.slotOrZero(*s.leafID) == s.branchLeaf {
+		return slices.Clone(s.currentContextEntriesLocked())
+	}
 	return s.contextPathToLocked(*s.leafID)
+}
+
+// currentContextEntriesLocked returns the entries of ctxPath, the current branch's context path. An entry is read from the backing file and made
+// resident the first time the branch is read, as a prompt's projection does (retainReadLocked), and the list is extended by the entries appended
+// to the leaf, so a turn on a resumed session reads only its own entries and not every record of the history again. The result is the cache's
+// own list, valid until s.mu is released. The caller holds s.mu for writing.
+func (s *Session) currentContextEntriesLocked() []SessionEntry {
+	if s.ctxEntriesGen != s.ctxGen || len(s.ctxEntries) > len(s.ctxPath) {
+		s.ctxEntries, s.ctxEntriesGen = nil, s.ctxGen
+	}
+	covered := len(s.ctxEntries)
+	if covered == len(s.ctxPath) {
+		return s.ctxEntries
+	}
+	indexes := s.ctxPath[covered:]
+	entries := s.entriesAtLocked(indexes)
+	s.retainReadLocked(indexes, entries)
+	for k, idx := range indexes {
+		if resident := s.resident.get(int(idx)); resident != nil {
+			entries[k] = resident
+		}
+	}
+	s.ctxEntries = append(s.ctxEntries, entries...)
+	return s.ctxEntries
 }
 
 // contextPathToLocked returns the entries of contextPathIn for the path ending at leafID. The caller holds s.mu.
@@ -1420,10 +1511,10 @@ func (s *Session) treeOfLocked(entries []SessionEntry) []*SessionTreeNode {
 	start := make([]int32, len(entries)+1)
 	var roots []*SessionTreeNode
 	for i := range entries {
-		slot := &s.slots[i]
-		node[i], parent[i] = int32(s.slotOrZero(slot.id)), -1
+		id := s.idAt(i)
+		node[i], parent[i] = int32(s.slotOrZero(id)), -1
 		parentID, has := s.parentIDLocked(i)
-		if !has || parentID == slot.id {
+		if !has || parentID == id {
 			roots = append(roots, &all[node[i]])
 			continue
 		}

@@ -31,10 +31,6 @@ func decodeJSONModelGroupV1(data []byte, seen map[string]string) ([]jsonModel, e
 		if err := decoder.Decode(&encoded); err != nil {
 			return nil, fmt.Errorf("%s: %w", key, err)
 		}
-		encoded, err = applyD240SonnetFiveTemperature(encoded)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", key, err)
-		}
 		model, err := decodeJSONModel(encoded)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", key, err)

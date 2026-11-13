@@ -215,8 +215,11 @@ func TestBuiltinToolOperationsMissingAMemberAreRefused(t *testing.T) {
 	if _, err := bashSpec("/c", &BashToolOptions{Operations: &BashOperations{}}); err == nil || !strings.Contains(err.Error(), "operations.exec is required") {
 		t.Fatalf("err = %v", err)
 	}
-	// detectImageMimeType is optional; grep has only isDirectory (Pi main 8da141c2a removed its readFile).
-	spec, err := grepSpec("/c", &GrepToolOptions{Operations: &GrepOperations{IsDirectory: func(string) (bool, error) { return true, nil }}})
+	// detectImageMimeType is optional; grep's deprecated readFile is accepted and ignored: not announced, never called.
+	spec, err := grepSpec("/c", &GrepToolOptions{Operations: &GrepOperations{
+		IsDirectory: func(string) (bool, error) { return true, nil },
+		ReadFile:    func(string) (string, error) { t.Fatal("ReadFile was called"); return "", nil },
+	}})
 	if err != nil || strings.Join(spec.options.Operations, ",") != "isDirectory" {
 		t.Fatalf("grep spec = %+v, %v", spec.options, err)
 	}

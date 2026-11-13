@@ -190,9 +190,9 @@ func TestCoreRunsTheTasksAnAfterRunHookAsksFor(t *testing.T) {
 	if err := registry.Install(&durable.Extension{
 		Name:  "after-run",
 		Tasks: []durable.AnyTask{tests.Erased()},
-		Hooks: []durable.HookRegistration{harness.Hook(harness.GenerationTask, &harness.GenerationHooks{AfterRun: func(_ context.Context, run harness.RunSummary, _ harness.HookApi) (*harness.RunEndTasks, error) {
+		Hooks: []durable.HookRegistration{harness.Hook(harness.GenerationTask, &harness.GenerationHooks{AfterRun: func(_ context.Context, run harness.RunSummary, _ harness.HookApi) (*harness.HookTasks, error) {
 			asked <- run
-			return &harness.RunEndTasks{Tasks: []harness.RunEndTask{harness.RunEndTaskOf(tests, arInput{Label: "run 1"})}}, nil
+			return &harness.HookTasks{Tasks: []harness.HookTask{harness.HookTaskOf(tests, arInput{Label: "run 1"})}}, nil
 		}})},
 	}); err != nil {
 		t.Fatal(err)

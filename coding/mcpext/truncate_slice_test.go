@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Pi main 9e870f6f0 (D252): packages/coding-agent/src/extensions/mcp/index.ts `sliceHead(text, max - 1).trimEnd()` drops an astral
+// Pi 9e870f6f0: packages/coding-agent/src/extensions/mcp/index.ts `sliceHead(text, max - 1).trimEnd()` drops an astral
 // character a cut would split, and runtime.ts `sliceTail` does the same for the stderr tail.
 func TestTruncateDropsASplitSurrogatePair(t *testing.T) {
 	text := strings.Repeat("a", 8) + "\U0001F600" + "zz"

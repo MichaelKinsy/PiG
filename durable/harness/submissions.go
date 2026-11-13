@@ -394,7 +394,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 				return Admission{}, err
 			}
 			id := entry.Id
-			record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionDone, Entry: &id})
+			record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Notify: draft.Notify, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionDone, Entry: &id})
 			if err != nil {
 				return Admission{}, err
 			}
@@ -434,7 +434,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 		if err != nil {
 			return Admission{}, err
 		}
-		record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Type: durable.SubmissionTypeContinue, Status: durable.SubmissionPlaced})
+		record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Notify: draft.Notify, Type: durable.SubmissionTypeContinue, Status: durable.SubmissionPlaced})
 		if err != nil {
 			return Admission{}, err
 		}
@@ -471,7 +471,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 		queuedItems = items != nil && items.Len() > 0
 	}
 	if boundary == nil || queuedItems {
-		record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Type: draft.Type, Status: durable.SubmissionQueued})
+		record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Notify: draft.Notify, Type: draft.Type, Status: durable.SubmissionQueued})
 		if err != nil {
 			return Admission{}, err
 		}
@@ -531,7 +531,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 	if draft.Type == durable.SubmissionTypeWrite {
 		if IsStale(boundary, *draft.Entry) {
 			reason := "stale"
-			record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionUnanswered, Reason: &reason})
+			record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Notify: draft.Notify, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionUnanswered, Reason: &reason})
 			if err != nil {
 				return Admission{}, err
 			}
@@ -542,7 +542,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 			return Admission{}, err
 		}
 		id := entry.Id
-		record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionDone, Entry: &id})
+		record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Notify: draft.Notify, Type: durable.SubmissionTypeWrite, Status: durable.SubmissionDone, Entry: &id})
 		if err != nil {
 			return Admission{}, err
 		}
@@ -553,7 +553,7 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 		return Admission{}, err
 	}
 	entryId := entry.Id
-	record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Type: durable.SubmissionTypeInput, Status: durable.SubmissionPlaced, Entry: &entryId})
+	record, err := tx.CreateSubmission(durable.SubmissionCreate{Trace: trace, ConversationId: conversationId, RequestId: draft.RequestId, Notify: draft.Notify, Type: durable.SubmissionTypeInput, Status: durable.SubmissionPlaced, Entry: &entryId})
 	if err != nil {
 		return Admission{}, err
 	}

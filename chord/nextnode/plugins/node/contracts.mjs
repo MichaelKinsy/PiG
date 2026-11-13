@@ -3,31 +3,34 @@
 // fingerprint, and `contractOf` declares the Pi contract of it with Pi's own `local`/`remote`. The rebuilt contract hashes to
 // the fingerprint it crossed with, or `contractOf` throws: a type that differs from what the other side declared is refused
 // as Pi refuses a contract of another fingerprint.
-import { keyed, local, method, remote } from "@earendil-works/chord";
+import { event, keyed, local, method, remote } from "@earendil-works/chord";
 
 /**
- * A local contract's members as its declaration: `{ state }` is a state schema, `{ keyed }` a keyed member and
- * `{ args, result }` a method.
+ * A local contract's members as its declaration: `{ state }` is a state schema, `{ event }` an event member (the local
+ * marker `event(...)`), `{ keyed }` a keyed member and `{ args, result }` a method.
  */
 function localMembers(members) {
 	return Object.fromEntries(
 		Object.entries(members).map(([name, node]) => {
 			if (Object.hasOwn(node, "state")) return [name, node.state];
+			if (Object.hasOwn(node, "event")) return [name, event(node.event)];
 			if (Object.hasOwn(node, "keyed")) return [name, keyed(node.keyed)];
 			return [name, method(node.args, node.result)];
 		}),
 	);
 }
 
-/** A remote variant's declaration: its state schemas and its methods. */
+/** A remote variant's declaration: its state schemas, its event members' schemas (when it has any) and its methods. */
 function remoteVariant(members) {
 	const state = {};
+	const events = {};
 	const methods = {};
 	for (const [name, node] of Object.entries(members)) {
 		if (Object.hasOwn(node, "state")) state[name] = node.state;
+		else if (Object.hasOwn(node, "event")) events[name] = node.event;
 		else methods[name] = method(node.args, node.result);
 	}
-	return { state, methods };
+	return Object.keys(events).length === 0 ? { state, methods } : { state, events, methods };
 }
 
 /**

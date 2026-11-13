@@ -263,6 +263,9 @@ type Extension struct {
 	// instead of fetching the entire log over IPC.
 	session sessionMirror
 
+	// views is the D614 mount state: what the attached client draws and the intent handler. It carries its own lock, so it
+	// stands before mu and the replicated fields mu guards; applyAbilities takes every state snapshot.
+	views viewState
 	// session info from host (set after ready message).
 	mu          sync.RWMutex
 	sessionName string
@@ -302,9 +305,11 @@ type Extension struct {
 	themeFeed    stateFeed[UITheme]
 	expandedFeed stateFeed[bool]
 	branchFeed   stateFeed[struct{}]
+	// viewAbilitiesFeed delivers a change of the replicated client abilities (D614) to the OnViewAbilities handlers.
+	viewAbilitiesFeed stateFeed[*ViewAbilities]
 
 	requestsMu sync.Mutex
-	requests   map[string]context.CancelCauseFunc
+	requests   map[string]requestCancel
 	requestWG  sync.WaitGroup
 	runCtx     context.Context
 	runCancel  context.CancelFunc
@@ -734,6 +739,7 @@ func New(name string) *Extension {
 		themeFeed:                stateFeed[UITheme]{what: "theme"},
 		expandedFeed:             stateFeed[bool]{what: "tools expanded"},
 		branchFeed:               stateFeed[struct{}]{what: "footer branch"},
+		viewAbilitiesFeed:        stateFeed[*ViewAbilities]{what: "view abilities"},
 		toolFuncs:                make(map[string]ToolFunc),
 		toolPrepareFuncs:         make(map[string]ToolPrepareArgumentsFunc),
 		commandFuncs:             make(map[string]CommandFunc),
@@ -745,7 +751,7 @@ func New(name string) *Extension {
 		messageViewRendererFuncs: make(map[string]MessageViewRendererFunc),
 		entryViewRendererFuncs:   make(map[string]EntryViewRendererFunc),
 		flagDefaults:             make(map[string]any),
-		requests:                 make(map[string]context.CancelCauseFunc),
+		requests:                 make(map[string]requestCancel),
 		modelStreams:             make(map[string]*ModelEventStream),
 		modelStreamCallbacks:     make(map[string]*modelStreamCallbacks),
 		overlays:                 make(map[string]*remoteOverlay),
@@ -1329,6 +1335,10 @@ func (e *Extension) loop() error {
 				e.applyEventStream(env.Request)
 			}
 			ctx, scope := e.armRequestScope(env.ID)
+			if env.Request != nil && env.Request.SignalAborted {
+				// The event's signal is aborted before its handler starts, as a signal-only cancel queued ahead of the request would leave it: the handler's first line sees the abort (runner.ts emit awaits a handler dispatched after the signal aborted), and its host calls run.
+				scope.signal.fire(cancelReason(context.Canceled.Error()))
+			}
 			if env.Request != nil && env.Request.Method == "tool_call" {
 				ctx.start = e.toolBatches.reserve(env.Request.Batch)
 			}
@@ -1377,6 +1387,7 @@ func (e *Extension) stopRequests() error {
 	e.themeFeed.stop()
 	e.expandedFeed.stop()
 	e.branchFeed.stop()
+	e.viewAbilitiesFeed.stop()
 	// The sessions end with the connection, as the host disposes them: no listener runs after it.
 	e.children.closeAll()
 	if e.runCancel != nil {
@@ -1409,7 +1420,15 @@ type requestScope struct {
 	e      *Extension
 	id     string
 	cancel context.CancelCauseFunc
+	// signal is the request's signal (Context.Done and Err), which a signal-only cancel aborts without ending the request the host calls wait on. It is held here, and its context made when the handler first uses it, so a request that never asks for it costs no allocation for it.
+	signal requestSignal
 	place  jsloop.Place
+}
+
+// requestCancel is what a cancel frame of an active request reaches: the request, and the signal its handler holds.
+type requestCancel struct {
+	request context.CancelCauseFunc
+	signal  *requestSignal
 }
 
 func (s *requestScope) end() {
@@ -1424,17 +1443,27 @@ func (e *Extension) armRequest(id string) (Context, func()) {
 	return ctx, scope.end
 }
 
+// armRequestScope arms a request with two contexts: the request's, which the host calls of its handler wait on, and the signal's, a child of it, which is Context.Done and Err. An ordinary cancel ends the request and with it the signal; a signal-only cancel (a tool_call, and session_before_compact and session_before_tree, whose AbortSignal aborts while the handler goes on, as Pi's in-process host calls never fail with it) ends the signal alone. The signal's context is made when something first asks for it (requestSignal), so a tool_call round trip does not pay five allocations for one it never reads.
 func (e *Extension) armRequestScope(id string) (Context, *requestScope) {
 	requestRoot := e.runCtx
 	if requestRoot == nil {
 		requestRoot = context.Background()
 	}
 	reqCtx, cancel := context.WithCancelCause(requestRoot)
-	parent := e.conn.armParent(id, requestRoot, reqCtx)
+	scope := &requestScope{e: e, id: id, cancel: cancel}
+	scope.signal.parent = reqCtx
+	parent, queued := e.conn.armParentWithSignal(id, requestRoot, reqCtx, &scope.signal)
+	// The cancel frames the read loop read before this arming (queuedCancel) are applied here, as if the loop had taken them first: the handler starts with its signal aborted and, after an ordinary cancel, its request ended.
+	if queued.signal {
+		scope.signal.fire(queued.signalCause)
+	}
+	if queued.request {
+		cancel(queued.requestCause)
+	}
 	e.requestsMu.Lock()
-	e.requests[id] = cancel
+	e.requests[id] = requestCancel{request: cancel, signal: &scope.signal}
 	e.requestsMu.Unlock()
-	return Context{ext: e, requestID: id, parent: parent, ctx: reqCtx}, &requestScope{e: e, id: id, cancel: cancel}
+	return Context{ext: e, requestID: id, parent: parent, ctx: &scope.signal}, scope
 }
 
 func (e *Extension) handleRequest(id string, req *requestMsg) {
@@ -1448,6 +1477,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	if req == nil {
 		_ = e.conn.respond(id, nil, fmt.Errorf("nil request"))
 		return
+	}
+	if ctx.parent != nil && (req.Method == "command" || req.Method == requestWithSession) {
+		ctx.parent.markCommand()
 	}
 
 	// A handler runs on its own goroutine (see loop: `go handleRequest`). Without
@@ -1698,6 +1730,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		req.keyMu.Lock()
 		req.keyOrder, req.Args = nil, nil
 		req.keyMu.Unlock()
+
+	case "ui.view.intent":
+		result, err := e.handleViewIntent(ctx, req.Args)
+		_ = e.conn.respond(id, result, err)
 
 	case "shortcut":
 		e.toolMu.RLock()
@@ -1960,6 +1996,8 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				Settings      json.RawMessage `json:"settings"`
 				McpServers    json.RawMessage `json:"mcpServers"`
 				FooterData    *footerDataWire `json:"footerData"`
+				// UIAbilities (D614) is absent while no client is attached; every state is a full snapshot, so absent clears it.
+				UIAbilities json.RawMessage `json:"uiAbilities"`
 			} `json:"state"`
 		}
 		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil {
@@ -1982,6 +2020,9 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.hasUI = *payload.State.HasUI
 		}
 		e.frontend = payload.State.Frontend
+		if changed, abilities := e.views.applyAbilities(payload.State.UIAbilities); changed {
+			e.viewAbilitiesFeed.publish(e, abilities)
+		}
 		if sessionState.SessionFile != "" {
 			e.sessionFile = sessionState.SessionFile
 		}
@@ -2145,17 +2186,24 @@ func (e *Extension) cancelRequest(env envelope) {
 		return
 	}
 	e.requestsMu.Lock()
-	cancel := e.requests[id]
+	cancel, armed := e.requests[id]
 	e.requestsMu.Unlock()
+	var cause error
+	if env.Cancel != nil && env.Cancel.Reason != "" {
+		cause = cancelReason(env.Cancel.Reason)
+	}
+	if env.Cancel != nil && env.Cancel.SignalOnly {
+		// Only the request's signal ended: no host call is cancelled and the request is not marked cancelled, so the handler's calls, pending and later, are answered and its reply is delivered.
+		if armed {
+			cancel.signal.fire(cause)
+		}
+		return
+	}
 	if e.conn != nil {
 		e.conn.cancelParentCalls(id)
 	}
-	if cancel != nil {
-		var cause error
-		if env.Cancel != nil && env.Cancel.Reason != "" {
-			cause = cancelReason(env.Cancel.Reason)
-		}
-		cancel(cause)
+	if armed {
+		cancel.request(cause)
 	}
 }
 
@@ -2163,9 +2211,9 @@ func (e *Extension) cancelAllRequests() {
 	e.requestsMu.Lock()
 	cancels := make([]context.CancelCauseFunc, 0, len(e.requests))
 	for _, cancel := range e.requests {
-		cancels = append(cancels, cancel)
+		cancels = append(cancels, cancel.request)
 	}
-	e.requests = make(map[string]context.CancelCauseFunc)
+	e.requests = make(map[string]requestCancel)
 	e.requestsMu.Unlock()
 	for _, cancel := range cancels {
 		cancel(nil)

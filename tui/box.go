@@ -28,6 +28,9 @@ type Box struct {
 	PaddingY int
 	BgFn     func(string) string
 	cache    *boxRenderCache
+	// last is the last render, which Clear, AddChild and RemoveChild keep while they drop cache; Invalidate drops it. Its key (width, padding,
+	// background sample) is checked when it serves rows.
+	last *boxRenderCache
 	// mouseLayout records child heights from the last render for mouse
 	// dispatch. Mirrors upstream Box.mouseLayout.
 	mouseLayout *mouseLayout
@@ -80,7 +83,7 @@ func (b *Box) SetPaddingX(paddingX int) {
 
 func (b *Box) Invalidate() {
 	b.invalidatable.Invalidate()
-	b.cache = nil
+	b.cache, b.last = nil, nil
 	for _, child := range b.children {
 		child.Invalidate()
 	}
@@ -124,17 +127,36 @@ func (b *Box) Render(width int) []string {
 	if b.matchCache(width, childLines, b.BgFn != nil, bgSample) {
 		return b.cache.lines
 	}
+	// A row whose child line is the one the last render drew keeps the last render's row: the cache above is dropped by every
+	// change of the children, but a card that draws again after each streamed update changes one line of the many it holds.
+	prev := b.last
+	if prev != nil && (b.PaddingY < 0 || prev.width != width || prev.paddingX != b.PaddingX || prev.paddingY != b.PaddingY || prev.hasBg != (b.BgFn != nil) || prev.bgSample != bgSample) {
+		prev = nil
+	}
 	result := make([]string, 0, capHint(len(childLines), 2*b.PaddingY))
-	for range b.PaddingY {
-		result = append(result, b.applyBg("", width))
+	for i := range b.PaddingY {
+		if prev != nil {
+			result = append(result, prev.lines[i])
+		} else {
+			result = append(result, b.applyBg("", width))
+		}
 	}
-	for _, line := range childLines {
-		result = append(result, b.applyBg(leftPad+line, width))
+	for i, line := range childLines {
+		if prev != nil && i < len(prev.childLines) && prev.childLines[i] == line {
+			result = append(result, prev.lines[prev.paddingY+i])
+		} else {
+			result = append(result, b.applyBg(leftPad+line, width))
+		}
 	}
-	for range b.PaddingY {
-		result = append(result, b.applyBg("", width))
+	for i := range b.PaddingY {
+		if prev != nil {
+			result = append(result, prev.lines[prev.paddingY+len(prev.childLines)+i])
+		} else {
+			result = append(result, b.applyBg("", width))
+		}
 	}
 	b.cache = &boxRenderCache{childLines: childLines, width: width, paddingX: b.PaddingX, paddingY: b.PaddingY, hasBg: b.BgFn != nil, bgSample: bgSample, lines: result}
+	b.last = b.cache
 	return result
 }
 

@@ -18,7 +18,7 @@ import (
 // through `Sessions`; tokens kept only as hashes; the authenticator taking a bearer token or the signed session cookie; ephemeral
 // sessions dropped when the server starts.
 //
-// Go forced differences (D457): the server is the kit's facets on a host (kitServer), not the whole app; Pi's fake `Date` is
+// Go forced differences (language mechanics): the server is the kit's facets on a host (kitServer), not the whole app; Pi's fake `Date` is
 // jsclock's mock (the cookies' clock follows it); the test of a cookie's signed expiry past 400 days is the cookie component's
 // (cookies_test.go in nextnode/http).
 

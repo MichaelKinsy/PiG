@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 
@@ -371,8 +373,8 @@ func TestKeysBeginWithAKeyTheFileWrittenWithItOrTheUploadUnderWayWithIt(t *testi
 
 func TestMetadataQueriesKeepSourceRefKeyMimeAndMetaFindVersionsByIDRefAndKey(t *testing.T) {
 	f := filesOf(t)
-	a := f.put("a.png", "a", "mime", "image/png", "source", "guest:g1", "ref", "msg-1", "meta", delta.JsonObjectOf("w", float64(2)))
-	b := f.put("b.png", "b", "source", "owner", "ref", "msg-1", "key", "k")
+	a := f.put("a.png", "a", "mime", "image/png", "source", "guest:g1", "ref", "msg-1", "meta", delta.JsonObjectOf("w", float64(2)), "created", float64(1000))
+	b := f.put("b.png", "b", "source", "owner", "ref", "msg-1", "key", "k", "created", float64(2000))
 	f.put("c.png", "c", "ref", "msg-2")
 	if got := jsonOf(t, a); !strings.HasPrefix(got, `{"id":"`+str(a, "id")+`","space":"shared","path":"a.png","version":1,"size":1,"mime":"image/png","source":"guest:g1","ref":"msg-1","created":`) ||
 		!strings.HasSuffix(got, `,"meta":{"w":2}}`) {
@@ -394,6 +396,45 @@ func TestMetadataQueriesKeepSourceRefKeyMimeAndMetaFindVersionsByIDRefAndKey(t *
 	}
 	if got := f.must("byKey", "space", "shared", "key", "k"); jsonOf(t, got) != jsonOf(t, b) {
 		t.Fatalf("byKey = %s", jsonOf(t, got))
+	}
+	f.close()
+}
+
+func TestMetadataQueriesOrderEqualCreationTimesByIDInPagesAndSummariesIncludingAfterRemoval(t *testing.T) {
+	f := filesOf(t)
+	var oldest []*delta.JsonObject
+	for _, path := range []string{"a.txt", "b.txt", "c.txt"} {
+		oldest = append(oldest, f.put(path, path, "created", float64(1000), "ref", "same-time"))
+	}
+	sort.Slice(oldest, func(i, j int) bool { return str(oldest[i], "id") < str(oldest[j], "id") })
+	var after delta.JsonValue
+	for _, file := range oldest {
+		args := []any{"space", "shared", "ref", "same-time", "limit", float64(1)}
+		if after != nil {
+			args = append(args, "after", after)
+		}
+		page := f.must("byRef", args...).(*delta.JsonObject)
+		if got := jsonOf(t, page.Value("items")); got != "["+jsonOf(t, file)+"]" {
+			t.Fatalf("page = %s, want [%s]", got, jsonOf(t, file))
+		}
+		after = page.Value("next")
+	}
+	if after != nil {
+		t.Fatalf("last page next = %v, want none", after)
+	}
+	newest := func(files []*delta.JsonObject) string {
+		var parts []string
+		for _, file := range slices.Backward(files) {
+			parts = append(parts, jsonOf(t, file))
+		}
+		return "[" + strings.Join(parts, ",") + "]"
+	}
+	if got := jsonOf(t, f.summary("shared").Value("newest")); got != newest(oldest) {
+		t.Fatalf("newest = %s, want %s", got, newest(oldest))
+	}
+	f.mustRaw("remove", str(oldest[0], "id"))
+	if got := jsonOf(t, f.summary("shared").Value("newest")); got != newest(oldest[1:]) {
+		t.Fatalf("newest after removal = %s, want %s", got, newest(oldest[1:]))
 	}
 	f.close()
 }

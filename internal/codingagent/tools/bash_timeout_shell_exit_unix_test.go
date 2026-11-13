@@ -37,12 +37,12 @@ func TestBashTimeoutAfterShellExit11613(t *testing.T) {
 		}
 		// The shell has exited when Wait asks for its grace timer. The deadline falls later, so the seconds reported must be the shell's run time
 		// (at most exitedBy, which starts before and ends after the product's own measurement), not the deadline's. The grace never elapses.
-		testHookStdioGraceTimer = func() childwait.IdleTimer {
+		restoreGrace := SetStdioGraceTimerForTest(func() childwait.IdleTimer {
 			exitedBy = time.Since(spawned)
 			time.AfterFunc(300*time.Millisecond, fire)
 			return childwait.IdleTimer{Expired: make(chan time.Time), Rearm: func() {}, Stop: func() {}}
-		}
-		t.Cleanup(func() { testHookAfterShellStart, testHookTimeoutTimer, testHookStdioGraceTimer = nil, nil, nil })
+		})
+		t.Cleanup(func() { testHookAfterShellStart, testHookTimeoutTimer = nil, nil; restoreGrace() })
 		result := runFileTool(t, &BashTool{CWD: t.TempDir()}, t.Context(), map[string]any{
 			"command": "(while true; do echo tick; sleep 0.02; done) & sleep 0.2; echo boom >&2; exit 3",
 			"timeout": 1,

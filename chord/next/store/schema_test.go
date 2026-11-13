@@ -51,15 +51,15 @@ func TestStoreSchemaOfANewDatabase(t *testing.T) {
 	noError(t, err)
 	// The metadata row starts at seq 0, the allocator's next id 2 (id 1 is Durable's root conversation), no outbox, floor 0.
 	qEqual(t, meta, MetaRow{LastSeq: 0, NextID: 2, Outbox: 0, OutboxFloor: 0})
-	qEqual(t, StoreSchema, int64(2))
+	qEqual(t, StoreSchema, int64(3))
 	qEqual(t, []string{TableMeta, TableTables, TableDocuments, TableRevisions, TableOutbox},
 		[]string{"chord_meta", "chord_tables", "chord_documents", "chord_revisions", "chord_outbox"})
 	qEqual(t, schemaNames(t, db, "table"), []string{"chord_documents", "chord_meta", "chord_outbox", "chord_revisions", "chord_store_schema", "chord_tables"})
-	// Entry 1 has the partial unique index of live records; entry 2 the indexes of reads at a point.
-	qEqual(t, schemaNames(t, db, "index"), []string{"chord_documents_address", "chord_documents_live", "chord_documents_scope", "chord_revisions_bases"})
+	// Entry 1 has the partial unique index of live records; entry 2 the indexes of reads at a point; entry 3 the host's.
+	qEqual(t, schemaNames(t, db, "index"), []string{"chord_documents_address", "chord_documents_host", "chord_documents_live", "chord_documents_scope", "chord_revisions_bases"})
 	version, err := db.Get(`SELECT version FROM chord_store_schema WHERE singleton = 1`)
 	noError(t, err)
-	qEqual(t, version["version"], int64(2))
+	qEqual(t, version["version"], int64(3))
 }
 
 func TestStoreSchemaOfAStoreAlreadyThereIsReadWithoutAWriteTransaction(t *testing.T) {
@@ -85,16 +85,17 @@ func TestStoreSchemaMigratesAnOlderVersionToTheNewest(t *testing.T) {
 	db := schemaDatabase(t)
 	_, err := ApplyStoreSchema(db)
 	noError(t, err)
-	// A store at entry 1 only (no indexes of entry 2) is brought to the newest entry, keeping its metadata.
-	for _, index := range []string{"chord_documents_address", "chord_documents_scope", "chord_revisions_bases"} {
+	// A store at entry 1 only (no indexes of entry 2, no host column of entry 3) is brought to the newest entry, keeping its metadata.
+	for _, index := range []string{"chord_documents_address", "chord_documents_scope", "chord_revisions_bases", "chord_documents_host"} {
 		noError(t, db.Exec(`DROP INDEX `+index))
 	}
+	noError(t, db.Exec(`ALTER TABLE chord_documents DROP COLUMN host`))
 	noError(t, db.Run(`UPDATE chord_store_schema SET version = 1`))
 	noError(t, db.Run(`UPDATE chord_meta SET last_seq = 4`))
 	meta, err := ApplyStoreSchema(db)
 	noError(t, err)
 	qEqual(t, meta.LastSeq, int64(4))
-	qEqual(t, schemaNames(t, db, "index"), []string{"chord_documents_address", "chord_documents_live", "chord_documents_scope", "chord_revisions_bases"})
+	qEqual(t, schemaNames(t, db, "index"), []string{"chord_documents_address", "chord_documents_host", "chord_documents_live", "chord_documents_scope", "chord_revisions_bases"})
 }
 
 func TestStoreSchemaRefusesADatabaseThatIsNotUTF8(t *testing.T) {

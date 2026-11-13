@@ -17,6 +17,7 @@ try {
     ['ls','ls',{}], ['ls fractional','ls',{limit:1.5}], ['ls limited','ls',{limit:1}], ['find','find',{pattern:'a.txt'}], ['find limited','find',{pattern:'a.txt',limit:1}],
     ['grep','grep',{pattern:'hello',path:'a.txt'}], ['grep fractional','grep',{pattern:'.',path:'a.txt',limit:1.5}], ['grep limited','grep',{pattern:'hello',path:'a.txt',limit:1}],
     ['bash','bash',{command:'printf hello'}], ['bash truncated','bash',{command:"printf '%060000d' 0"}],
+    ['bash over-long last line','bash',{command:"printf 'first line\\n'; head -c 219000 /dev/zero | tr '\\0' y; printf 'END\\n'"}],
   ]) {
     const factory = 'create' + tool[0].toUpperCase() + tool.slice(1) + 'Tool';
     let update;
@@ -29,6 +30,8 @@ try {
       for (const block of result.content) if (block.type === 'text') block.text = block.text.replaceAll(path,'OUTPUT_FILE');
       result.details.fullOutputPath = 'OUTPUT_FILE';
     }
+    // D153: the output ends with a newline, so Pi's notice names 0B where PiG names the long line's size; every other byte stays compared.
+    if (name === 'bash over-long last line') for (const block of result.content) if (block.type === 'text') block.text = block.text.replace(/\(line is [^)]*\)/, '(line is SIZE)');
     if (result.structuredContent && typeof result.structuredContent === 'object') {
       // bash.ts:392 measures the wall clock; the probe keeps only its type on both sides.
       assert.equal(typeof result.structuredContent.wall_time_seconds, 'number');

@@ -320,3 +320,25 @@ func TestEventBusErrorPaths(t *testing.T) {
 	}
 	stopBusExtension(t, host, done)
 }
+
+// A request the factory pump serves while the factory runs never reaches the main loop's arming, so the read loop's queue entry for it is dropped when it is served.
+func TestFactoryPumpServedRequestsLeaveNothingQueuedForTheArming(t *testing.T) {
+	host := factoryHost(t)
+	ext := New("bus")
+	on, result := onInFactory(t, host, ext, "ch", func(Context, any) error { return nil })
+	if err := awaitResult(t, result); err != nil {
+		t.Fatalf("On = %v", err)
+	}
+	if msg := dispatchTo(t, host, "d1", on.HandlerID, "ch", "early"); msg != "" {
+		t.Fatalf("dispatch answered with error %q", msg)
+	}
+	ext.eventMu.Lock()
+	loading := ext.loading
+	ext.eventMu.Unlock()
+	if loading == nil {
+		t.Fatal("the factory has no connection")
+	}
+	if got := unarmedRequests(loading); got != 0 {
+		t.Fatalf("requests queued and not armed after the pump answered = %d, want none", got)
+	}
+}

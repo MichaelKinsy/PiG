@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -566,6 +567,58 @@ func TestEngineEntries(t *testing.T) {
 		}
 		if absent := read(99); absent != nil {
 			t.Fatalf("entry 99 = %+v, want none", absent)
+		}
+	})
+}
+
+func TestEngineHostRecords(t *testing.T) {
+	t.Run("keep their host, are listed by it (live only, by id), and round-trip through an archive", func(t *testing.T) {
+		kit := newEngine(t)
+		hosted := func(key, host string) StagedWrite {
+			address := kit.at(key)
+			address.Host = &host
+			return CreateDocument(address, engineBase(delta.JsonObjectOf("n", float64(1)), 1), `{"n":1}`, nil)
+		}
+		a := kit.mustCommit(hosted("session|S1", "session|S1"))[0]
+		kit.mustCommit(hosted("session|S2", "session|S2"), CreateDocument(kit.at("session|S1x"), engineBase(delta.JsonObjectOf("n", float64(2)), 1), `{"n":2}`, nil))
+		other := DocumentAddress{Owner: engineOwner.Owner, Namespace: engineOwner.Namespace, Kind: "other"}
+		key, host := "session|S1", "session|S1"
+		other.Key, other.Host = &key, &host
+		b := kit.mustCommit(CreateDocument(other, engineBase(emptyObject(), 1), "{}", nil))[0]
+		list := func(after int64) [][2]any {
+			records, err := Read(kit.store, func(executor sqlite.SqliteExecutor) ([]DocumentRecord, error) {
+				return ListHostRecords(executor, "session|S1", after, 10)
+			}, background)
+			noError(t, err)
+			ids := [][2]any{}
+			for _, record := range records {
+				ids = append(ids, [2]any{record.ID, *record.Host})
+			}
+			return ids
+		}
+		qEqual(t, list(0), [][2]any{{a, "session|S1"}, {b, "session|S1"}})
+		qEqual(t, list(a), [][2]any{{b, "session|S1"}})
+		if plain := engineFind(t, kit.store, kit.at("session|S1x"), CurrentPoint); plain == nil || plain.Host != nil {
+			t.Fatalf("a record created without a host = %+v", plain)
+		}
+		kit.mustCommit(RetireDocument(a, 1))
+		qEqual(t, list(0), [][2]any{{b, "session|S1"}})
+		copyOf := reimported(t, kit.store, func(parts []ArchivePart) []ArchivePart { return parts })
+		qEqual(t, nexttest.JSONText(t, exported(t, copyOf, background)), nexttest.JSONText(t, exported(t, kit.store, background)))
+	})
+
+	t.Run("have an indexed host column", func(t *testing.T) {
+		kit := newEngine(t)
+		var names []string
+		for _, row := range engineRows(t, kit.store, `SELECT name FROM pragma_table_info('`+TableDocuments+`')`) {
+			names = append(names, row["name"].(string))
+		}
+		if !slices.Contains(names, "host") {
+			t.Fatalf("columns = %v, want host", names)
+		}
+		rows := engineRows(t, kit.store, `SELECT sql FROM sqlite_master WHERE name = 'chord_documents_host'`)
+		if len(rows) != 1 || !strings.Contains(rows[0]["sql"].(string), "WHERE host IS NOT NULL") {
+			t.Fatalf("index = %v", rows)
 		}
 	})
 }

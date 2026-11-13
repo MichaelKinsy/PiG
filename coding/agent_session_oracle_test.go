@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 
@@ -161,44 +160,6 @@ func agentSessionScenarios() []agentSessionScenario {
 	return scenarios
 }
 
-// cycleDiffersFromPinnedPi reports whether a cycle in the given direction would start from a model outside its candidate list in a way
-// the pinned Pi 1.5.0 and Pi main 5732bac06 (D258) cycle differently: forward from outside any non-empty list (1.5.0 skips the first
-// entry), or any direction from outside a one-entry list (1.5.0 finds nothing to cycle to). A backward cycle from outside a list of two
-// or more entries selects the last entry in both, so it stays compared, and so does a forward cycle whose first two entries are the
-// same model with the same thinking level: 1.5.0's second entry is main's first.
-func cycleDiffersFromPinnedPi(session *Session, direction string) bool {
-	available := session.modelRuntime.GetAvailableSnapshot()
-	scoped := session.ScopedModels()
-	inList := func(model *ai.Model) bool {
-		return slices.ContainsFunc(available, func(m *ai.Model) bool { return providerID(m) == providerID(model) && m.ID == model.ID })
-	}
-	current := session.Model()
-	var candidates []ScopedModel
-	if len(scoped) > 0 {
-		for _, entry := range scoped {
-			if entry.Model != nil && inList(entry.Model) {
-				candidates = append(candidates, entry)
-			}
-		}
-	} else {
-		for _, model := range available {
-			candidates = append(candidates, ScopedModel{Model: model})
-		}
-	}
-	outside := len(candidates) > 0 && !slices.ContainsFunc(candidates, func(entry ScopedModel) bool {
-		return current != nil && entry.Model.ID == current.ID && providerID(entry.Model) == providerID(current)
-	})
-	if !outside {
-		return false
-	}
-	if direction == "backward" {
-		return len(candidates) == 1
-	}
-	first, second := candidates[0], candidates[1%len(candidates)]
-	sameEntry := len(candidates) > 1 && first.Model.ID == second.Model.ID && providerID(first.Model) == providerID(second.Model) && first.ThinkingLevel == second.ThinkingLevel
-	return !sameEntry
-}
-
 func pick2(rng *rand.Rand, items []any) any { return items[rng.IntN(len(items))] }
 
 func pick3(rng *rand.Rand, items []*int) *int { return items[rng.IntN(len(items))] }
@@ -208,8 +169,8 @@ type agentSessionRecord struct {
 	Outs    []map[string]any `json:"outs"`
 }
 
-// runAgentSessionWithPig replays the scenario and reports whether it stopped before a cycle that differs from the pinned Pi (D258).
-func runAgentSessionWithPig(t *testing.T, scenario agentSessionScenario, dir string) (record agentSessionRecord, stoppedForD258 bool) {
+// runAgentSessionWithPig replays the scenario.
+func runAgentSessionWithPig(t *testing.T, scenario agentSessionScenario, dir string) (record agentSessionRecord) {
 	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
 	if err != nil {
 		t.Fatal(err)
@@ -342,11 +303,6 @@ func runAgentSessionWithPig(t *testing.T, scenario agentSessionScenario, dir str
 	}
 	record = agentSessionRecord{Initial: snapshot()}
 	for _, op := range scenario.Ops {
-		if op.Op == "cycleModel" && cycleDiffersFromPinnedPi(session, op.Direction) {
-			// pig divergence (D258): Pi main 5732bac06 cycles into the list from outside it; pinned Pi 1.5.0 counts the active model as index 0 or finds nothing to cycle to. Replay stops here and the comparison covers the ops before it.
-			stoppedForD258 = true
-			break
-		}
 		var result any
 		thrown := func(err error) {
 			if err != nil {
@@ -515,7 +471,7 @@ func runAgentSessionWithPig(t *testing.T, scenario agentSessionScenario, dir str
 		}
 		record.Outs = append(record.Outs, map[string]any{"result": result, "state": snapshot()})
 	}
-	return record, stoppedForD258
+	return record
 }
 
 // AgentSession (agent-session.ts) against pinned Pi over 600 seeded scenarios that make no model call: the start model and thinking level, scoped models with their own thinking levels, enabled-models settings, then model and thinking-level changes (persisted or not), model cycling in both directions over the scope or every available model, steering and follow-up queues and their modes, session name, context usage, auto-compaction and auto-retry flags, custom messages (nextTurn, deferred, immediate) and bash executions and records with their session entries and messages. After every op the result, the model, thinking level, queue contents, settings and session entries must agree.
@@ -539,30 +495,15 @@ func TestAgentSessionMatchesPi(t *testing.T) {
 	}
 	root := t.TempDir()
 	failures := 0
-	var totalOps, comparedOps, stoppedScenarios int
-	defer func() {
-		t.Logf("D258 replay stops: %d of %d scenarios stopped; %d of %d ops compared with Pi", stoppedScenarios, len(scenarios), comparedOps, totalOps)
-	}()
 	for i, scenario := range scenarios {
 		dir := filepath.Join(root, fmt.Sprint(i))
 		if err := os.Mkdir(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		got, stopped := runAgentSessionWithPig(t, scenario, dir)
-		totalOps += len(scenario.Ops)
-		comparedOps += len(got.Outs)
-		if stopped {
-			stoppedScenarios++
-		}
+		got := runAgentSessionWithPig(t, scenario, dir)
 		gotJSON, _ := json.Marshal(got)
 		var normalized agentSessionRecord
 		_ = json.Unmarshal(gotJSON, &normalized)
-		if stopped {
-			expected[i].Outs = expected[i].Outs[:len(normalized.Outs)] // replay stopped before a D258 cycle
-			if len(expected[i].Outs) == 0 {
-				expected[i].Outs = nil
-			}
-		}
 		if reflect.DeepEqual(normalized, expected[i]) {
 			continue
 		}

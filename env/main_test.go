@@ -21,13 +21,16 @@ func TestMain(m *testing.M) {
 	}
 	if len(os.Args) >= 2 && os.Args[1] == "never-ready" {
 		// remote-abort.test.ts NEVER_READY: a "daemon" that never gets ready, like `ssh` to a host that is down: no sync line, no exit.
-		select {}
+		blockUntilKilled()
 	}
 	if len(os.Args) >= 5 && os.Args[1] == "silent-after-hello" && os.Args[2] == "serve" && os.Args[3] == "--token" {
 		os.Exit(runSilentAfterHello(os.Stdin, os.Stdout, os.Args[4]))
 	}
 	if len(os.Args) >= 5 && os.Args[1] == "old-daemon" && os.Args[2] == "serve" && os.Args[3] == "--token" {
 		os.Exit(runOldDaemon(os.Stdin, os.Stdout, os.Args[4]))
+	}
+	if len(os.Args) >= 5 && os.Args[1] == "vanishing-entry-daemon" && os.Args[2] == "serve" && os.Args[3] == "--token" {
+		os.Exit(runVanishingEntryDaemon(os.Stdin, os.Stdout, os.Args[4]))
 	}
 	if len(os.Args) >= 4 && os.Args[1] == "serve" && os.Args[2] == "--token" {
 		options := daemon.Options{Version: "test"}

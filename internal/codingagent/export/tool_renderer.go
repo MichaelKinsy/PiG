@@ -7,8 +7,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -102,12 +100,9 @@ func (r *toolHTMLRenderer) renderContext(toolCallID string, lastComponent extens
 	}
 }
 
-var ansiEscapeRegex = lazyregexp.New(`\x1b\[[\d;]*m`)
-
 func isBlankRenderedLine(line string) bool {
-	// ECMAScript WhiteSpace and LineTerminator include BOM but not NEL; only SGR sequences are stripped.
-	const whitespace = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
-	return strings.Trim(ansiEscapeRegex.ReplaceAllString(line, ""), whitespace) == ""
+	// ECMAScript WhiteSpace and LineTerminator include BOM but not NEL; every escape sequence ansiToHTML converts is stripped.
+	return strings.Trim(stripAnsiEscapes(line), jsWhitespace) == ""
 }
 
 func trimRenderedResultLines(lines []string) []string {

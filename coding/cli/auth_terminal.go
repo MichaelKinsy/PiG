@@ -82,7 +82,7 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 		_, _ = io.WriteString(output, "\n")
 	}
 	go func() {
-		var value []rune
+		var entry secretEntry
 		buf := make([]byte, 4096)
 		for {
 			n, err := input.Read(buf)
@@ -94,35 +94,18 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 			default:
 			}
 			if n > 0 {
-				chunk := string(buf[:n])
-				// Ignore escape sequences such as arrow keys.
-				if chunk[0] == 0x1b {
-					continue
+				ended, interrupted := entry.handle(string(buf[:n]))
+				if interrupted {
+					onInterrupt()
 				}
-				for _, char := range chunk {
-					switch {
-					case char == '\r' || char == '\n':
-						done <- result{value: string(value)}
-						return
-					case char == 0x03:
-						onInterrupt()
-					case char == 0x7f || char == '\b':
-						if len(value) > 0 {
-							value = value[:len(value)-1]
-						}
-					case char >= ' ':
-						value = append(value, char)
-					}
+				if ended {
+					done <- result{value: string(entry.value)}
+					return
 				}
 			}
 			if err != nil {
 				done <- result{err: err}
 				return
-			}
-			select {
-			case <-stop:
-				return
-			default:
 			}
 		}
 	}()
@@ -135,4 +118,33 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 		finish()
 		return "", errLoginCancelled
 	}
+}
+
+// secretEntry is the line a secret prompt has collected: the `onData` handler of Pi's readSecret.
+type secretEntry struct {
+	value []rune
+}
+
+// handle applies one chunk of typed input. A chunk that starts with an escape (an arrow key, say) is ignored whole. Enter ends the entry, dropping the rest of the
+// chunk; Ctrl+C reports an interrupt, also dropping the rest of the chunk, without ending the entry; DEL and backspace remove the last code point; other control
+// characters are ignored.
+func (e *secretEntry) handle(chunk string) (ended, interrupted bool) {
+	if chunk[0] == 0x1b {
+		return false, false
+	}
+	for _, char := range chunk {
+		switch {
+		case char == '\r' || char == '\n':
+			return true, false
+		case char == 0x03:
+			return false, true
+		case char == 0x7f || char == '\b':
+			if len(e.value) > 0 {
+				e.value = e.value[:len(e.value)-1]
+			}
+		case char >= ' ':
+			e.value = append(e.value, char)
+		}
+	}
+	return false, false
 }

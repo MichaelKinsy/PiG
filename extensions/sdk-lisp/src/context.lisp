@@ -38,6 +38,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
           (setf (gethash id (extension-pending ext)) slot))
         (let ((call (obj "method" method "args" args)))
           (when (plusp (length request-id)) (setf (gethash "parent_request_id" call) request-id))
+          (when (and parent (request-command parent)) (setf (gethash "command_context" call) t))
           (when timer (setf (gethash "timer" call) t))
           (setf frame (obj "type" "call" "id" id "call" call))))
       (handler-case (send-frame-locked conn frame)
@@ -60,8 +61,11 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
            (error 'host-call-error :message "extension shut down during host call"))
           ((and (hash-table-p result) (hash-table-p (jget result "error")))
            (let ((err (jget result "error")))
-             (error 'host-call-error :message (frame-error-message err)
-                                     :code (let ((code (jget err "code"))) (and (stringp code) code)))))
+             (if (hash-table-p (jget err "shellExit"))
+                 (error 'shell-timeout-error :message (frame-error-message err) :shell-exit (jget err "shellExit")
+                                             :code (let ((code (jget err "code"))) (and (stringp code) code)))
+                 (error 'host-call-error :message (frame-error-message err)
+                                         :code (let ((code (jget err "code"))) (and (stringp code) code))))))
           (t (let ((value (and (hash-table-p result) (jget result "result"))))
                (if (eq value :null) nil value))))))
 
@@ -72,7 +76,9 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 
 (defun deliver-call-result (ext env)
   (let ((slot (sb-thread:with-mutex ((extension-state-lock ext))
-                (let ((slot (gethash (jget env "id" "") (extension-pending ext))))
+                (let* ((id (jget env "id" "")) (slot (gethash id (extension-pending ext))))
+                  ;; An answered call is no longer the request's: a cancel that arrives before the waiting thread wakes must not cancel it (Python drops the parent on delivery).
+                  (when slot (remhash id (extension-pending ext)))
                   slot))))
     ;; Pi resumes the handlers whose dialogs were answered in the order the answers arrived: this reader reads them in that order
     (when slot
@@ -94,8 +100,8 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
         (when reason (setf (gethash "reason" payload) reason))
         (send-frame-locked conn (obj "type" "request_state" "request_state" payload))))))
 
-(defun respond (ext request-id result error-message)
-  "Answer request REQUEST-ID: a result, or an error message."
+(defun respond (ext request-id result error-message &optional shell-exit)
+  "Answer request REQUEST-ID: a result, or an error message (with SHELL-EXIT, the wire object of Pi's shellExit, for a local shell command's timeout)."
   (let ((conn (extension-conn ext)))
     (sb-thread:with-mutex ((conn-write-lock conn))
       (sb-thread:with-mutex ((extension-state-lock ext))
@@ -111,7 +117,11 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
       (send-frame-locked conn (obj "type" "request_state" "request_state" (obj "request_id" request-id "state" "completed")))
       (send-frame-locked conn (obj "type" "response" "id" request-id
                                    "response" (obj "result" result
-                                                   "error" (if error-message (obj "message" error-message) nil)))))))
+                                                   "error" (if error-message
+                                                               (let ((error-object (obj "message" error-message)))
+                                                                 (when shell-exit (setf (gethash "shellExit" error-object) shell-exit))
+                                                                 error-object)
+                                                               nil)))))))
 
 ;;; ---------------------------------------------------------------- the context
 
@@ -301,7 +311,7 @@ MAX-BUFFER caps the bytes of stdout and stderr together (default 256 MiB, capped
 result reports TRUNCATED and KILLED with a nonzero code; a character the cap cuts is dropped whole. It must be an integer from 0 to the runtime string limit: the
 host fails the call for a fraction, a negative value or one above the limit, and a NaN or infinity signals a host-call-error here, as it cannot cross the wire.
 SIGNAL, an abort-signal, ends the command when it is set (SIGTERM to the command alone, SIGKILL five seconds later if it has not exited): the call returns the output
-so far, killed, code 0. It replaces the cancellation of the calling request."
+so far, killed, code 143 (128 + SIGTERM). It replaces the cancellation of the calling request."
   (let ((call-args (obj "command" command "args" (coerce args 'simple-vector)))
         (options (obj)))
     (when timeout (setf (gethash "timeout" options) timeout))

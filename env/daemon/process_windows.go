@@ -27,6 +27,8 @@ func killTree(pid int) {
 	}
 	//nolint:gosec // G204 (class a): the program is System32\taskkill.exe under SystemRoot, with fixed arguments and the pid of a program the daemon started.
 	command := exec.Command(filepath.Join(systemRoot, "System32", "taskkill.exe"), "/F", "/T", "/PID", strconv.Itoa(pid))
+	// taskkill inherits an empty SystemRoot as empty and cannot run with it: it is given the root its path was built from (Go keeps the last of a variable named twice, ignoring case).
+	command.Env = append(os.Environ(), "SystemRoot="+systemRoot)
 	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Ignore, nodespawn.Ignore)
 	if command.Start() != nil {
 		return

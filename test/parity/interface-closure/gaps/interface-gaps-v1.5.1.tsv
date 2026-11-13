@@ -1,0 +1,2 @@
+pkg:chord/workers#WorkersBuilt	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersBuilt
+pkg:chord/workers#WorkersOptions	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersOptions

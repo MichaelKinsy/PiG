@@ -127,7 +127,7 @@ func TestSessionModelExtensionCyclesUpstream(t *testing.T) {
 			t.Fatal("scoped thinking preference was lost")
 		}
 	})
-	// pi main 5732bac06 agent-session-model-extension.test.ts "cycles to the only scoped model and to the first scoped model from outside the scope" (D258)
+	// pi main 5732bac06 agent-session-model-extension.test.ts "cycles to the only scoped model and to the first scoped model from outside the scope"
 	t.Run("cycles to the only scoped model and to the first scoped model from outside the scope", func(t *testing.T) {
 		h := newModelExtensionHarness(t, []bool{true, true, true}, "", true, extension.Extension{}, nil)
 		h.session.SetScopedModels([]ScopedModel{{Model: h.models[1]}})

@@ -61,7 +61,7 @@ allocs = 75151
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkParallelToolBatch/settled"
-allocs = 604
+allocs = 603
 
 [[benchmark]]
 package = "./agent"
@@ -101,7 +101,7 @@ allocs = 30
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAnthropicNativeOAuthLogin"
-allocs = 631
+allocs = 630
 
 [[benchmark]]
 package = "./ai"
@@ -1361,12 +1361,12 @@ allocs = 0
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionSendLongTurnEvents/discarded"
-allocs = 38170
+allocs = 38159
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionSendLongTurnEvents/drained"
-allocs = 120849
+allocs = 120846
 
 [[benchmark]]
 package = "./coding"
@@ -1426,7 +1426,7 @@ allocs = 1539
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkConfiguredPackageResources"
-allocs = 8693
+allocs = 7252
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1466,7 +1466,7 @@ allocs = 1885
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPackageAutoloadResolution/1000"
-allocs = 200524
+allocs = 182523
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1551,7 +1551,7 @@ allocs = 606210
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPrintPipelineDeltas/print/text/deltas=1000"
-allocs = 23043
+allocs = 23042
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1726,7 +1726,7 @@ allocs = 570
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSkillResourceMetadata/1000"
-allocs = 239520
+allocs = 221520
 
 [[benchmark]]
 package = "./coding/cli"
@@ -2371,7 +2371,7 @@ allocs = 166
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCopilotAccountAvailability"
-allocs = 910
+allocs = 364
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2626,7 +2626,7 @@ allocs = 75
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRequestAuthProviderProjection"
-allocs = 736
+allocs = 598
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2651,7 +2651,7 @@ allocs = 48984
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeModelsSelection"
-allocs = 694
+allocs = 595
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2661,12 +2661,12 @@ allocs = 108
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionClone"
-allocs = 26213
+allocs = 25710
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionOpen"
-allocs = 60408
+allocs = 35469
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3267,6 +3267,16 @@ allocs = 99875
 package = "./tui"
 benchmark = "BenchmarkLongStreamingAssistantMessage/foreign"
 allocs = 3378634
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLongStreamingAssistantMessage/default"
+allocs = 122545
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLongStreamingAssistantMessage/foreign"
+allocs = 4814365
 
 [[benchmark]]
 package = "./tui"

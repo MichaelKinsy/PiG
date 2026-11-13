@@ -215,12 +215,12 @@ Add the keyword `pig-package` and a description to `package.json`, then run `npm
 
 ## Editors and ACP: pig-acp
 
-`pig install npm:@pi-in-go/pigpen-acp` installs the Package, whose `/acp` command prints the editor settings. It does not install the `pig-acp` executable. An editor that speaks the Agent Client Protocol (Zed, JetBrains) starts `pig-acp`, and `pig-acp` starts `pig --mode rpc` for each session. No prebuilt `pig-acp` download exists yet, so one command builds it from the source the Package ships. It has no dependencies and needs Go 1.26 or later (`pig setup go` installs one).
+`pig install npm:@pi-in-go/pigpen-acp` installs the Package, whose `/acp` command prints the editor settings. It does not install the `pig-acp` executable. An editor that speaks the Agent Client Protocol (Zed, JetBrains) starts `pig-acp`, and `pig-acp` starts `pig --mode rpc` for each session. From PiG 0.8.0 on, each PiG release attaches prebuilt `pig-acp` archives, one per target: `pig-acp-<version>-<os>-<arch>.tar.gz` (`.zip` on Windows) for `linux`, `darwin` and `windows` on `amd64` and `arm64`, each with the `pig` of the same release beside `pig-acp`. Extract an archive into a directory of your choosing; it has no top-level folder. To build `pig-acp` yourself from the source the Package ships (for an earlier PiG, or any other target), one command does it; it has no dependencies and needs Go 1.26 or later (`pig setup go` installs one).
 
 ```sh
 pig install npm:@pi-in-go/pigpen-acp
 pig acp install
-pig-acp --version        # pig-acp 0.1.0 (ACP protocol version 1)
+pig-acp --version        # pig-acp 0.2.3 (ACP protocol version 1)
 ```
 
 `pig acp install` works offline from the installed Package's files, builds with the local Go toolchain, and writes `pig-acp` (`pig-acp.exe` on Windows) next to `pig`: in the directory of `$PIG_BIN`, else `~/.local/bin`. It prints the path, and says so when that directory is not on your `PATH`; use the full path as the editor command then.
@@ -240,7 +240,7 @@ Then point the editor at it. In Zed `settings.json`:
 }
 ```
 
-`--pig` names the `pig` executable (or a built Piglet Binary) to drive; without it `pig-acp` uses its own override variable (see `pig-acp --help`), then `pig` on `PATH`. If pig has no model or key yet, the editor shows an authentication error with `pig-acp --terminal-login`, which starts pig in the editor's terminal so you can sign in. Installing the Package or building the `acp` Piglet does not turn a Piglet Binary into an ACP server; the editor always runs `pig-acp`.
+`--pig` names the `pig` executable (or a built Piglet Binary) to drive. A relative path with a separator (`./pig`, `bin/pig`) resolves against the directory of `pig-acp`, not the session's working directory; an absolute path is used as is; a bare name (`pig`) is looked up on `PATH`. Without `--pig`, `pig-acp` tries its own override variable (see `pig-acp --help`), then the `pig` beside the `pig-acp` executable, then `pig` on `PATH`. If pig has no model or key yet, the editor shows an authentication error with `pig-acp --terminal-login`, which starts pig in the editor's terminal so you can sign in. Installing the Package or building the `acp` Piglet does not turn a Piglet Binary into an ACP server; the editor always runs `pig-acp`.
 
 ## Manage installed Packages
 

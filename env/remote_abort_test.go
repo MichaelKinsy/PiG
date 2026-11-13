@@ -9,13 +9,25 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"testing"
 	"time"
 
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/env/daemon"
 )
+
+// blockUntilKilled parks the fake daemon until the connection kills it, as `ssh` to a host that is down stays until it is killed. A bare `select {}` is
+// a deadlock to Go's detector in a binary built without cgo (the macOS runners'): it ends the process with "all goroutines are asleep" and exit code 2.
+// A process that waits for a signal has a goroutine in the signal queue, which the detector counts as running.
+func blockUntilKilled() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM, os.Interrupt)
+	<-signals
+	os.Exit(1)
+}
 
 // runSilentAfterHello is SILENT_AFTER_HELLO: a daemon that answers `hello` and then nothing, like one behind a connection that died unnoticed (a rebooting
 // host): it neither answers requests nor exits.
@@ -27,7 +39,8 @@ func runSilentAfterHello(input io.Reader, output io.Writer, token string) int {
 	for {
 		request, err := daemon.ReadFrame(input)
 		if err != nil || request == nil {
-			select {}
+			blockUntilKilled()
+			return 1
 		}
 		if answered || request.Kind != daemon.FrameRequest {
 			continue

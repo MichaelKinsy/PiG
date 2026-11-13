@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -305,15 +307,19 @@ func TestNodeTreeIsExtractedOncePerContent(t *testing.T) {
 // pin's (`.upstream/pin`), unless the manifest names it as an explicit `catchup`, which the script writes when it vendors a
 // commit other than the pin's; the manifest also records the pin it was made against, so a pin that moved since fails here
 // until the copy is regenerated (`make pin-bump` does it).
+// A manifest that lists `carried` Pi commits was vendored from the pin's tree with exactly those commits cherry-picked onto
+// it (PI_CARRIED of automation/gen/vendor-chord-common.sh, as the client surfaces' copy records them): each is a full Pi commit
+// id, and `make vendor-chord-carried-check` rebuilds that tree and compares what it vendors with this manifest.
 func TestNodeVendoredFilesAreExactlyTheManifests(t *testing.T) {
 	text, err := nodeFiles.ReadFile("node/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var manifest struct {
-		Commit  string `json:"commit"`
-		Pin     string `json:"pin"`
-		Catchup string `json:"catchup"`
+		Commit  string   `json:"commit"`
+		Pin     string   `json:"pin"`
+		Catchup string   `json:"catchup"`
+		Carried []string `json:"carried"`
 		Files   []struct {
 			Path   string `json:"path"`
 			Sha256 string `json:"sha256"`
@@ -343,6 +349,11 @@ func TestNodeVendoredFilesAreExactlyTheManifests(t *testing.T) {
 	}
 	if manifest.Commit != pin && manifest.Catchup != manifest.Commit {
 		t.Errorf("the copy is Pi %s, the pin %s, and the manifest names no catch-up for it (catchup = %q)", manifest.Commit, pin, manifest.Catchup)
+	}
+	for _, carried := range manifest.Carried {
+		if _, err := hex.DecodeString(carried); err != nil || len(carried) != 40 {
+			t.Errorf("carried commit %q is not a full Pi commit id", carried)
+		}
 	}
 	if manifest.Commit == pin && manifest.Catchup != "" {
 		t.Errorf("the copy is the pin's, yet the manifest names the catch-up %s", manifest.Catchup)
@@ -503,10 +514,25 @@ func compileCacheFiles(t *testing.T, dir string) int {
 // writes on its exit path, where each took long enough on Windows under load that together they outlasted the stop grace after
 // its link closed: the Go side killed the process after it had run its exit handlers
 // (TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat, "its link closed and it did not exit within 5s", exit
-// status 1). The process writes the cache once it is up, so its exit has none left to write.
+// status 1). The process writes the cache once it is up and after each load and reload, so its exit has none left to write.
+//
+// host.mjs replies to a load before it writes the load's cache entries (the reply is out first, so the Go side is not held for the write), so the
+// count that follows Load must wait for them: a request after the load is handled only once the write is done. Counting right after Load took the
+// entry of the probe's own module, compiled by the load and written after its reply, for a write on the exit path (#426, Linux test-fast: 16
+// entries before the exit, 17 after). The probe here loads 300 modules, so the write after the reply is long and a count that does not wait for it
+// fails on every run, not on the loaded ones.
 func TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits(t *testing.T) {
 	cache := t.TempDir()
-	runtime, node := probeNode(t, `echo: async (args) => args`, NodeOptions{CacheDir: cache}, nil)
+	modules := t.TempDir()
+	var imports []string
+	for i := range 300 {
+		file := filepath.Join(modules, "m"+strconv.Itoa(i)+".mjs")
+		if err := os.WriteFile(file, []byte("export const n = "+strconv.Itoa(i)+";\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		imports = append(imports, strconv.Quote((&url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(file), "/")}).String()))
+	}
+	runtime, node := probeNode(t, `loaded: await Promise.all([`+strings.Join(imports, ",")+`].map((module) => import(module))), echo: async (args) => args`, NodeOptions{CacheDir: cache}, nil)
 	// The load's reply precedes the write of its cache; a request after it is handled only once that write is done.
 	if _, err := runtime.Reload(node, nil, background); err != nil {
 		t.Fatal(err)

@@ -4,13 +4,13 @@ ARG GO_BUILDER=cgr.dev/chainguard/go:latest-dev@sha256:72f9b391f511f88e7154aaaa5
 ARG WOLFI_BASE=cgr.dev/chainguard/wolfi-base:latest@sha256:81211e15a86ea1d5357f284482af45730c51de45eaf10ad9ce205d6bfc2df323
 
 # GO_VERSION must equal .go-version; make compliance checks it.
-ARG GO_VERSION=1.27.3
+ARG GO_VERSION=1.27.4
 
 FROM ${GO_BUILDER} AS go-toolchain
 ARG TARGETARCH
 ARG GO_VERSION
-ARG GO_SHA256_AMD64=65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40
-ARG GO_SHA256_ARM64=a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49
+ARG GO_SHA256_AMD64=7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840
+ARG GO_SHA256_ARM64=3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92
 RUN case "${TARGETARCH}" in \
       amd64) checksum="${GO_SHA256_AMD64}" ;; \
       arm64) checksum="${GO_SHA256_ARM64}" ;; \
@@ -45,8 +45,8 @@ RUN apk update \
 FROM toolchain-base AS pi-oracle
 # PI_VERSION must equal the pin's package version and PI_COMMIT the pin's commit when the pin is a commit
 # (empty for a release tag); `make pin-sync` writes both and make compliance checks them.
-ARG PI_VERSION=1.5.0
-ARG PI_COMMIT=c23b9ec1ef12a63573d739d4c294f81a377b7d57
+ARG PI_VERSION=1.5.2
+ARG PI_COMMIT=
 COPY automation/images/ci-parity/package.json automation/images/ci-parity/package-lock.json /opt/pig/pi/
 RUN test -z "${PI_COMMIT}" || { echo "this image installs the published Pi ${PI_VERSION}; it cannot be the build of Pi commit ${PI_COMMIT} yet (a commit pin needs the oracle built from source, automation/pin/oracle.py)" >&2; exit 1; } \
   && npm ci --prefix /opt/pig/pi --omit=dev --ignore-scripts --no-audit --no-fund \

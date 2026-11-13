@@ -13,9 +13,10 @@ import (
 
 // Ports packages/chord/src/store/columns.ts
 //
-// Table columns (decisions "Flat columns", "Nullable columns and the `set` form", "Restricted names"): the
-// restricted subset of L1's helpers a table's `columns` take (`Str Int Num Bool`, `Opt(...)` of them, `Json(...)`,
-// defaults), and the column descriptors and records the store keeps.
+// Table columns (decisions "Flat columns", "Nullable columns and the `set` form", "Restricted names", "Documents and
+// table rows can belong to a host"): the restricted subset of L1's helpers a table's `columns` take (`Str Int Num
+// Bool`, `Opt(...)` of them, `Json(...)`, `Host(...)`, defaults), and the column descriptors and records the store
+// keeps; a `Host(...)` column is a non-`Opt` `str` column with its Host definition (a row holds an address).
 //
 // Go forced differences: the type-level machinery (Columns' mapped types, ColumnTypeOf, ValueOf, RowOf, PutRowOf,
 // OrderColumn) is designed out; a row is `Row = map[string]any` (str string, int int64, num float64, bool bool, json
@@ -33,6 +34,8 @@ type ColumnSchema struct {
 	Schema   contracts.Schema
 	Optional bool
 	Json     *JsonColumn
+	// Host is set for a `host(...)` column.
+	Host *HostColumn
 }
 
 // ColumnProp is one column of a table's `columns`, in declaration order.
@@ -90,6 +93,8 @@ type Column struct {
 	Default Scalar
 	// Json is a `json(...)` column's definition.
 	Json *JsonColumn
+	// Host is a `host(...)` column's definition: a non-`opt` `str` column without a default.
+	Host *HostColumn
 }
 
 // ColumnRecord is a column as the `table` write records it (slice 6a §5): what a replica needs without the plugin's
@@ -101,6 +106,8 @@ type ColumnRecord struct {
 	// Version and Fingerprint are a `json(...)` column's version and schema fingerprint.
 	Version     *int   `json:"version,omitempty"`
 	Fingerprint string `json:"fingerprint,omitempty"`
+	// Host is a `host(...)` column's host kind (a `str` column holding its address keys).
+	Host *string `json:"host,omitempty"`
 }
 
 // ColumnRecordEntry is a column's name and record.
@@ -224,6 +231,9 @@ func ColumnRecordFromJSON(value any) (ColumnRecord, error) {
 	if fingerprint, ok := object.Value("fingerprint").(string); ok {
 		record.Fingerprint = fingerprint
 	}
+	if host, ok := object.Value("host").(string); ok {
+		record.Host = &host
+	}
 	return record, nil
 }
 
@@ -272,6 +282,12 @@ var scalarTypes = map[string]ColumnType{"string": ColStr, "integer": ColInt, "nu
 func describeColumn(name string, schema ColumnSchema, what string) (Column, error) {
 	if schema.Json != nil {
 		return Column{Name: name, Type: ColJson, Optional: schema.Optional, Json: schema.Json}, nil
+	}
+	if schema.Host != nil {
+		if schema.Optional {
+			return Column{}, fmt.Errorf("%s: a host(...) column is not opt(...)", what)
+		}
+		return Column{Name: name, Type: ColStr, Host: schema.Host}, nil
 	}
 	// Declaration policy: a JavaScript caller may pass any schema, so its fields are read as unknown data.
 	object, _ := schema.Schema.Node.(*delta.JsonObject)
@@ -346,6 +362,9 @@ func ColumnRecordOf(column Column) ColumnRecord {
 	if column.Type == ColJson {
 		version := column.Json.Version
 		return ColumnRecord{Type: ColJson, Optional: column.Optional, Version: &version, Fingerprint: column.Json.Fingerprint}
+	}
+	if column.Host != nil {
+		return ColumnRecord{Type: ColStr, Host: &column.Host.Kind.Kind}
 	}
 	return ColumnRecord{Type: column.Type, Optional: column.Optional, Default: column.Default}
 }

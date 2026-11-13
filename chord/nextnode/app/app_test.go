@@ -88,6 +88,9 @@ func TestAppRefusesASecondServerOnTheSameDataDirectoryWhileTheFirstRuns(t *testi
 	if err := third.Close(background); err != nil {
 		t.Fatal(err)
 	}
+	if err := third.Wait(background); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink(t *testing.T) {
@@ -150,7 +153,7 @@ func TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThr
 		options, _ := testOptions(t, func(o *AppOptions) { o.DataDir = dir })
 		app, err := StartServer(options, background)
 		if err == nil {
-			_ = app.Close(background)
+			closeAndWait(t, app)
 		}
 		return err
 	}
@@ -183,7 +186,7 @@ func TestAppNamesTheAddressListenedOnInTheOwnerLink(t *testing.T) {
 	if err != nil {
 		t.Skipf("no IPv6 loopback: %v", err)
 	}
-	defer func() { _ = app.Close(background) }()
+	defer closeAndWait(t, app)
 	if !regexp.MustCompile(`^http://\[::1\]:\d+/_chord/owner#`).MatchString(app.OwnerLink()) {
 		t.Fatalf("owner link = %q", app.OwnerLink())
 	}

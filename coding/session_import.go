@@ -61,6 +61,10 @@ func (s *Session) ImportFromJsonl(ctx context.Context, inputPath, cwdOverride st
 		return extension.CancelledResult{}, err
 	}
 	if err := icodingagent.AssertSessionCwdExists(next, s.services.CWD()); err != nil {
+		// The import did not happen; drop the copy so a retry with a cwd override or a fork leaves no stray file (Pi #11060).
+		if !sourceAlreadyStored {
+			_ = os.Remove(destinationPath)
+		}
 		return extension.CancelledResult{}, err
 	}
 	return s.finishExtensionReplacement(ctx, next, "resume")

@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 )
+
+var lineSizeNotice = regexp.MustCompile(`\(line is [^)]*\)`)
 
 // The paired oracle executes Pi 0.87.1's published create*Tool functions with the same fixtures and arguments.
 func TestBuiltinToolDetailsParityProbe(t *testing.T) {
@@ -40,6 +43,8 @@ func TestBuiltinToolDetailsParityProbe(t *testing.T) {
 		{"grep limited", &GrepTool{CWD: cwd}, `{"pattern":"hello","path":"a.txt","limit":1}`},
 		{"bash", &BashTool{CWD: cwd}, `{"command":"printf hello"}`},
 		{"bash truncated", &BashTool{CWD: cwd}, `{"command":"printf '%060000d' 0"}`},
+		// Pi 935f0ac0ccfc (#12092): a short line, then one line far past the limit, then a newline.
+		{"bash over-long last line", &BashTool{CWD: cwd}, `{"command":"printf 'first line\\n'; head -c 219000 /dev/zero | tr '\\0' y; printf 'END\\n'"}`},
 	} {
 		var update map[string]any
 		r, err := tc.tool.Execute(t.Context(), "call", json.RawMessage(tc.args), func(partial agent.AgentToolResult) {
@@ -62,6 +67,10 @@ func TestBuiltinToolDetailsParityProbe(t *testing.T) {
 			}
 			r.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: strings.ReplaceAll(r.Text(), d.FullOutputPath, "OUTPUT_FILE")}}
 			d.FullOutputPath = "OUTPUT_FILE"
+		}
+		if tc.name == "bash over-long last line" {
+			// D153: the output ends with a newline, so Pi's notice names 0B where PiG names the long line's size; every other byte stays compared.
+			r.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: lineSizeNotice.ReplaceAllString(r.Text(), "(line is SIZE)")}}
 		}
 		result := map[string]any{"content": r.Content}
 		if r.Details != nil {

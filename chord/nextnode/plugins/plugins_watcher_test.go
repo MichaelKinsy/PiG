@@ -5,24 +5,20 @@ package plugins
 import (
 	"context"
 	"errors"
-	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"slices"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/fsnotify/fsnotify"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/pluginstest"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -41,10 +37,6 @@ type watcherFixture struct {
 	scheduler *chord.DeliveryScheduler
 	mu        sync.Mutex
 	failures  []error
-	// barrier is a directory outside the root and the base code that the watcher watches too, where settle makes the
-	// directories that tell it the events of everything before them were handled; sentinels counts them.
-	barrier   string
-	sentinels int
 }
 
 // run runs work as a section of the loop: what the host's callers of the watcher do.
@@ -108,6 +100,12 @@ func watcherOn(t *testing.T, root, base string) *watcherFixture {
 // test ends.
 func watcherOver(t *testing.T, roots []string, base string) *watcherFixture {
 	t.Helper()
+	return watcherOverNotifier(t, roots, base, nil)
+}
+
+// watcherOverNotifier is watcherOver on the system watcher makeNotifier makes (nil: fsnotify's).
+func watcherOverNotifier(t *testing.T, roots []string, base string, makeNotifier func() (notifier, error)) *watcherFixture {
+	t.Helper()
 	root := ""
 	if len(roots) > 0 {
 		root = roots[0]
@@ -115,7 +113,7 @@ func watcherOver(t *testing.T, roots []string, base string) *watcherFixture {
 	f := &watcherFixture{t: t, root: root, base: base, loop: host.NewLoop(), scheduler: chord.NewDeliveryScheduler()}
 	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(f.scheduler).UseMicrotasks(f.loop.Queue).UseSection(f.loop.Run, f.loop.InSection)
 	f.watcher = newPluginWatcher(watcherOptions{
-		Roots: roots, Base: []string{base}, Kinds: kinds,
+		Roots: roots, Base: []string{base}, Kinds: kinds, Notifier: makeNotifier,
 		Failed: func(err error) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
@@ -165,43 +163,25 @@ func watched(t *testing.T) *watcherFixture {
 	return f
 }
 
-// settle returns once the watcher handled the events of every file operation made before the call: a directory made in the
-// barrier's directory, which the watcher watches, is watched when its event was handled, and the events of one file system
-// arrive in order (see settle, the barrier of a component's watcher). On Windows each watched directory is opened and closed
-// first, which has the file system report the last-write time of the directories whose entries changed before the barrier
-// does (see settleDirectoryStamps).
+// settle returns once the watcher handled the events of every file operation made before the call (pluginstest.Settle, the
+// barrier a component's watcher has too).
 func (f *watcherFixture) settle() {
 	f.t.Helper()
-	if f.barrier == "" {
-		f.barrier = f.t.TempDir()
-	}
+	pluginstest.Settle(f.t, f)
+}
+
+// WatchTree and Watches are the barrier's two questions (pluginstest.Watcher), asked in a section of the loop.
+func (f *watcherFixture) WatchTree(dir string) ([]string, bool) {
+	var watched []string
 	var watching bool
-	var directories []string
-	f.run(func() {
-		if f.watcher.fs == nil {
-			return
-		}
-		watching = true
-		// A discovery drops the trees that are no root's, base's or linked plugin's: the barrier's is put back each time.
-		f.watcher.watchTree(f.barrier)
-		directories = slices.Collect(maps.Keys(f.watcher.watched))
-	})
-	if !watching {
-		return
-	}
-	if runtime.GOOS == "windows" {
-		settleDirectoryStamps(directories)
-	}
-	f.sentinels++
-	sentinel := filepath.Join(f.barrier, "sentinel-"+strconv.Itoa(f.sentinels))
-	if err := os.Mkdir(sentinel, 0o755); err != nil {
-		f.t.Fatal(err)
-	}
-	eventually(f.t, 15*time.Second, "the watcher to handle a directory made after the edits", func() bool {
-		var reached bool
-		f.run(func() { _, reached = f.watcher.watched[sentinel] })
-		return reached
-	})
+	f.run(func() { watched, watching = f.watcher.alsoWatch(dir) })
+	return watched, watching
+}
+
+func (f *watcherFixture) Watches(dir string) bool {
+	var watches bool
+	f.run(func() { watches = f.watcher.watches(dir) })
+	return watches
 }
 
 // forget clears every mark the watcher holds: what a case sees is what it does from here.
@@ -541,7 +521,7 @@ func TestTheWatcherClosesTheSystemWatcherOutsideTheHostsLockAndJoinWaitsForIt(t 
 	base := realOf(t, tempRoot(t))
 	f := watcherOver(t, nil, base)
 	closing, release, closed := make(chan struct{}), make(chan struct{}), make(chan struct{})
-	f.watcher.closeFS = func(watcher *fsnotify.Watcher) {
+	f.watcher.closeFS = func(watcher notifier) {
 		close(closing)
 		<-release
 		_ = watcher.Close()

@@ -128,7 +128,7 @@ def log(line):
     path = os.environ.get("RELOAD_PROBE_LOG")
     if not path:
         return  # the build that loads the module to find its factory has no log
-    with open(path, "a", encoding="utf-8") as file:
+    with open(path, "a", encoding="utf-8", newline="\n") as file:
         file.write(line + "\n")
 
 
@@ -394,7 +394,7 @@ func TestExtensionReloadIsWiredInEveryHeadlessMode(t *testing.T) {
 					t.Fatal(err)
 				}
 				logPath := filepath.Join(t.TempDir(), "reload.log")
-				env := []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_OFFLINE=1", "RELOAD_PROBE_LOG=" + logPath}
+				env := []string{rustHome("CARGO_HOME", ".cargo"), rustHome("RUSTUP_HOME", ".rustup"), "HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_OFFLINE=1", "RELOAD_PROBE_LOG=" + logPath}
 				args := []string{"--no-extensions", "--model", "test-faux/faux-1", "--session-dir", sessionDir, "-e", extension}
 				switch mode {
 				case "rpc":

@@ -928,6 +928,207 @@ fn kit_event_name(kind: EventKind) -> &'static str {
     }
 }
 
+/// The tag of the last ui.view.intent whose handler saw its request cancelled.
+static VIEW_CANCELLED_TAG: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+// D614: the redraw panel and the abilities watcher, the same way in every SDK fixture (conformance
+// TestConformance_UIViewAnswerRedraw and TestConformance_UIViewAbilitiesEvent).
+
+/// The context of the command that mounted the redraw panel: an update made through it is the extension's, not an
+/// intent handler's.
+static VIEW_REDRAW_COMMAND: std::sync::Mutex<Option<pig_sdk::Context>> =
+    std::sync::Mutex::new(None);
+static VIEW_WATCH_ARMED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static VIEW_WATCH_BLOCK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static VIEW_WATCH_RELEASED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+static VIEW_WATCH_EVENTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+fn row_text_view(text: String) -> pig_sdk::kit::View {
+    pig_sdk::kit::View::new(pig_sdk::kit::Text::new(text, 0, 0))
+}
+
+fn row_panel_mount(
+    key: &str,
+    view: pig_sdk::kit::View,
+    intents: Vec<pig_sdk::ViewIntent>,
+) -> pig_sdk::ViewMount {
+    pig_sdk::ViewMount {
+        key: key.into(),
+        slot: "panel".into(),
+        title: String::new(),
+        target: None,
+        view,
+        intents,
+        assets: vec![],
+        fallback: None,
+        alternatives: vec![],
+        drawing: None,
+        a11y: vec![],
+        focus: vec![],
+    }
+}
+
+fn redraw_intents() -> Vec<pig_sdk::ViewIntent> {
+    let int = pig_sdk::ViewShape::new("integer");
+    ["fx.redraw", "fx.foreign"]
+        .iter()
+        .map(|name| pig_sdk::ViewIntent {
+            name: (*name).into(),
+            arg: pig_sdk::ViewShape::object(&[("n", int.clone())], &["n"]),
+            answer: Some(pig_sdk::ViewShape::object(
+                &[("rev", int.clone())],
+                &["rev"],
+            )),
+            ..Default::default()
+        })
+        .collect()
+}
+
+fn describe_abilities(abilities: &Option<pig_sdk::ViewAbilities>) -> String {
+    match abilities {
+        Some(a) => format!("slots={},mounts={}", a.slots.join("+"), a.limits.mounts),
+        None => "none".to_string(),
+    }
+}
+
+/// Answers fx.redraw and fx.foreign: both replace the view of the mount the intent came from and answer done with the
+/// new rev. fx.redraw updates through the handler's context; fx.foreign through the context of the command that mounted
+/// the panel.
+fn redraw_intent(inv: &pig_sdk::ViewIntentInvocation) -> pig_sdk::ViewIntentResult {
+    let own = inv.intent == "fx.redraw";
+    let n = inv
+        .arg
+        .get("n")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or(0);
+    let limit = inv
+        .context
+        .view_abilities()
+        .map(|a| a.limits.intent_arg_bytes as i64)
+        .unwrap_or(0);
+    let ctx = if own {
+        inv.context.clone()
+    } else {
+        match VIEW_REDRAW_COMMAND.lock().unwrap().clone() {
+            Some(ctx) => ctx,
+            None => return pig_sdk::ViewIntentResult::failed("ui_view_redraw has not run"),
+        }
+    };
+    let name = if own { "redraw" } else { "foreign" };
+    match ctx.update_view(pig_sdk::ViewUpdate {
+        mount: pig_sdk::ViewRef {
+            key: inv.mount.key.clone(),
+            epoch: inv.mount.epoch,
+            rev: inv.rev,
+        },
+        title: String::new(),
+        view: row_text_view(format!("fixture-{name}-{}", n + limit)),
+        intents: redraw_intents(),
+        assets: vec![],
+        fallback: None,
+        alternatives: vec![],
+        drawing: None,
+        a11y: vec![],
+        focus: vec![],
+    }) {
+        Ok(st) => pig_sdk::ViewIntentResult::done(serde_json::json!({"rev": st.mount.rev})),
+        Err(e) => pig_sdk::ViewIntentResult::failed(&e.to_string()),
+    }
+}
+
+fn register_view_rows(ext: &mut pig_sdk::Extension) {
+    use std::sync::atomic::Ordering::SeqCst;
+    ext.command(
+        "ui_view_redraw",
+        "Mount the panel whose intents redraw it",
+        |ctx, _args| match ctx.mount_view(row_panel_mount(
+            "redraw",
+            row_text_view("fixture-redraw-0".to_string()),
+            redraw_intents(),
+        )) {
+            Ok(st) => {
+                *VIEW_REDRAW_COMMAND.lock().unwrap() = Some(ctx.clone());
+                ctx.notify(&format!("view-redraw:rev={}", st.mount.rev), "info");
+                CommandResult::Ok
+            }
+            Err(e) => CommandResult::Error(e.to_string()),
+        },
+    );
+    ext.on_view_abilities(|ctx, abilities| {
+        VIEW_WATCH_EVENTS.fetch_add(1, SeqCst);
+        if !VIEW_WATCH_ARMED.load(SeqCst) {
+            return;
+        }
+        if VIEW_WATCH_BLOCK.swap(false, SeqCst) {
+            ctx.notify("view-event-blocked", "info");
+            while !VIEW_WATCH_RELEASED.swap(false, SeqCst) {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            ctx.notify("view-event-released", "info");
+        }
+        let Some(arrived) = abilities.clone() else {
+            ctx.notify("view-event:none", "info");
+            return;
+        };
+        let shown = describe_abilities(&abilities);
+        ctx.notify(
+            &format!(
+                "view-event:{shown},same={}",
+                shown == describe_abilities(&ctx.view_abilities())
+            ),
+            "info",
+        );
+        match ctx.mount_view(row_panel_mount(
+            "arrived",
+            row_text_view(format!("fixture-arrived-{}", arrived.limits.mounts)),
+            vec![],
+        )) {
+            Ok(st) => ctx.notify(&format!("view-arrived:{}", st.state), "info"),
+            Err(e) => ctx.notify(&format!("view-arrived:{}", e.code), "info"),
+        };
+    });
+    ext.command(
+        "ui_view_watch",
+        "Arm the abilities watcher",
+        |ctx, _args| {
+            VIEW_WATCH_ARMED.store(true, SeqCst);
+            ctx.notify("view-watch:armed", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_block",
+        "Block the abilities watcher on its next event",
+        |ctx, _args| {
+            VIEW_WATCH_RELEASED.store(false, SeqCst);
+            VIEW_WATCH_BLOCK.store(true, SeqCst);
+            ctx.notify("view-block:set", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_release",
+        "Release the blocked abilities watcher",
+        |ctx, _args| {
+            VIEW_WATCH_RELEASED.store(true, SeqCst);
+            ctx.notify("view-release:done", "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_events",
+        "Report how often the abilities watcher ran",
+        |ctx, _args| {
+            ctx.notify(
+                &format!("view-events:{}", VIEW_WATCH_EVENTS.load(SeqCst)),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+}
+
 fn main() {
     let mut ext = Extension::new("rust-sdk-fixture");
     // factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
@@ -2229,6 +2430,73 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended.
+    let kept_event_ctx: Arc<Mutex<Option<pig_sdk::Context>>> = Arc::new(Mutex::new(None));
+    let report_session_actions = |ctx: &pig_sdk::Context| {
+        let describe = |name: &str, result: std::io::Result<Option<serde_json::Value>>| match result
+        {
+            Ok(_) => format!("{name}=allowed"),
+            Err(err) if err.to_string().contains("is not a function") => {
+                format!("{name}=rejected")
+            }
+            Err(err) => format!("{name}=error:{err}"),
+        };
+        [
+            describe("new", ctx.new_session(serde_json::json!({}))),
+            describe("fork", ctx.fork("entry", serde_json::json!({}))),
+            describe(
+                "navigate",
+                ctx.navigate_tree("entry", serde_json::json!({})),
+            ),
+            describe(
+                "switch",
+                ctx.switch_session("/s.jsonl", serde_json::json!({})),
+            ),
+            describe("reload", ctx.reload().map(|()| None)),
+        ]
+        .join(",")
+    };
+    let event_session_actions_subscriber = ext.event_subscriber();
+    let event_session_actions_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    let kept_on_event = kept_event_ctx.clone();
+    ext.command(
+        "event_session_actions_on",
+        "Subscribe to the event named by the argument with a handler that calls the session actions",
+        move |_ctx, args| {
+            let kept = kept_on_event.clone();
+            let subscription = subscribe(
+                &event_session_actions_subscriber,
+                args.trim(),
+                move |ctx, _data| {
+                    *kept.lock().unwrap() = Some(ctx.clone());
+                    ctx.notify(&format!("event_actions:{}", report_session_actions(ctx)), "info");
+                    Ok(None)
+                },
+            );
+            event_session_actions_subscriptions
+                .lock()
+                .unwrap()
+                .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "event_session_actions_stored",
+        "Call the session actions through the context an event handler kept",
+        move |ctx, _| {
+            let kept = kept_event_ctx
+                .lock()
+                .unwrap()
+                .clone()
+                .expect("no event context was kept");
+            ctx.notify(
+                &format!("stored_actions:{}", report_session_actions(&kept)),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "session_actions_unbound",
         "Report what unbound session actions answer",
@@ -2775,6 +3043,44 @@ fn main() {
             ));
             thread::sleep(Duration::from_secs(8));
             ToolResult::text("late")
+        },
+    );
+    // signal_host_probe: the host keeps answering a tool's host calls after the abort, as Pi's in-process calls are.
+    ext.tool(
+        "signal_host_probe",
+        "Await host dialogs across the abort",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let dialog = |title: &str| match ctx.input(title, "p") {
+                Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                Err(error) => format!("failed: {error}"),
+            };
+            let first = dialog("tool_signal:first");
+            let aborted = ctx.is_cancelled();
+            let second = dialog("tool_signal:later");
+            ToolResult::text(format!("tool_signal:{aborted}:{first}:{second}"))
+        },
+    );
+    // signal_nested_probe: a nested tool call keeps working after the abort, as Pi's in-process calls do.
+    ext.tool(
+        "signal_nested_probe",
+        "Run abort_tool as a nested tool call",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let text = match ctx.execute_tool(
+                "abort_tool",
+                json!({}),
+                pig_sdk::ExecuteToolOptions::default(),
+            ) {
+                Ok(outcome) => outcome
+                    .result
+                    .content
+                    .iter()
+                    .filter_map(|block| block["text"].as_str())
+                    .collect::<String>(),
+                Err(error) => format!("failed: {error}"),
+            };
+            ToolResult::text(format!("tool_signal_nested:{text}"))
         },
     );
     ext.command(
@@ -3543,6 +3849,637 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
+    fn view_text(ctx: &pig_sdk::Context, suffix: &str) -> kit::View {
+        let n = ctx
+            .view_abilities()
+            .map(|a| a.limits.intent_arg_bytes)
+            .unwrap_or(0);
+        kit::View::new(kit::Text::new(format!("fixture-view-{n}{suffix}"), 0, 0))
+    }
+    fn view_mount(
+        key: &str,
+        view: kit::View,
+        intents: Vec<pig_sdk::ViewIntent>,
+    ) -> pig_sdk::ViewMount {
+        pig_sdk::ViewMount {
+            key: key.into(),
+            slot: "panel".into(),
+            title: String::new(),
+            target: None,
+            view,
+            intents,
+            assets: vec![],
+            fallback: None,
+            alternatives: vec![],
+            drawing: None,
+            a11y: vec![],
+            focus: vec![],
+        }
+    }
+    ext.command(
+        "ui_view_abilities",
+        "Report the replicated client abilities",
+        |ctx, _args| {
+            match ctx.view_abilities() {
+                None => ctx.notify("view-abilities:none", "info"),
+                Some(ab) => ctx.notify(
+                    &format!(
+                        "view-abilities:mounts={},argbytes={},slots={},nodes={},markdown={}",
+                        ab.limits.mounts,
+                        ab.limits.intent_arg_bytes,
+                        ab.slots.join("+"),
+                        ab.nodes.join("+"),
+                        ab.markdown
+                    ),
+                    "info",
+                ),
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_probe",
+        "Mount, update, hide, show, finish and remove a view",
+        |ctx, _args| {
+            let code = |r: Result<pig_sdk::ViewStatus, pig_sdk::ViewError>| match r {
+                Ok(_) => "none".to_string(),
+                Err(e) => e.code,
+            };
+            let st = match ctx.mount_view(view_mount("probe", view_text(ctx, ""), vec![])) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(
+                &format!(
+                    "view-mounted:epoch={},rev={},state={}",
+                    st.mount.epoch, st.mount.rev, st.state
+                ),
+                "info",
+            );
+            let first = st.mount.clone();
+            let st = match ctx.update_view(pig_sdk::ViewUpdate {
+                mount: first.clone(),
+                title: String::new(),
+                view: view_text(ctx, "-2"),
+                intents: vec![],
+                assets: vec![],
+                fallback: None,
+                alternatives: vec![],
+                drawing: None,
+                a11y: vec![],
+                focus: vec![],
+            }) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-updated:rev={}", st.mount.rev), "info");
+            let stale = ctx.update_view(pig_sdk::ViewUpdate {
+                mount: first,
+                title: String::new(),
+                view: view_text(ctx, "-stale"),
+                intents: vec![],
+                assets: vec![],
+                fallback: None,
+                alternatives: vec![],
+                drawing: None,
+                a11y: vec![],
+                focus: vec![],
+            });
+            ctx.notify(&format!("view-stale:{}", code(stale)), "info");
+            let cur = st.mount.clone();
+            for (op, label) in [
+                ("hide", "view-hidden"),
+                ("show", "view-shown"),
+                ("finish", "view-finished"),
+            ] {
+                let r = match op {
+                    "hide" => ctx.hide_view(&cur),
+                    "show" => ctx.show_view(&cur),
+                    _ => ctx.finish_view(&cur),
+                };
+                match r {
+                    Ok(st) => ctx.notify(&format!("{label}:{}", st.state), "info"),
+                    Err(e) => return CommandResult::Error(e.to_string()),
+                }
+            }
+            ctx.notify(
+                &format!("view-terminal:{}", code(ctx.remove_view(&cur))),
+                "info",
+            );
+            match ctx.view_state("probe") {
+                Ok(st) => ctx.notify(&format!("view-final:{}", st.state), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            let int = pig_sdk::ViewShape::new("integer");
+            let intents = vec![
+                pig_sdk::ViewIntent {
+                    name: "fx.add".into(),
+                    arg: pig_sdk::ViewShape::object(&[("n", int.clone())], &["n"]),
+                    answer: Some(pig_sdk::ViewShape::object(&[("sum", int)], &["sum"])),
+                    ..Default::default()
+                },
+                pig_sdk::ViewIntent {
+                    name: "fx.wait".into(),
+                    arg: pig_sdk::ViewShape::object(
+                        &[("tag", pig_sdk::ViewShape::new("string"))],
+                        &["tag"],
+                    ),
+                    cancellable: true,
+                    timeout_ms: 5000,
+                    ..Default::default()
+                },
+            ];
+            match ctx.mount_view(view_mount("probe2", view_text(ctx, "-live"), intents)) {
+                Ok(st) => ctx.notify(
+                    &format!("view-second:epoch={},rev={}", st.mount.epoch, st.mount.rev),
+                    "info",
+                ),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_cancelled",
+        "Report the intent whose handler was cancelled",
+        |ctx, _args| {
+            let tag = VIEW_CANCELLED_TAG.lock().unwrap().clone();
+            ctx.notify(&format!("intent-cancelled:{tag}"), "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_state",
+        "Report the state of the second mount",
+        |ctx, _args| match ctx.view_state("probe2") {
+            Ok(st) => {
+                ctx.notify(&format!("view-state:{}:{}", st.state, st.reason), "info");
+                CommandResult::Ok
+            }
+            Err(e) => CommandResult::Error(e.to_string()),
+        },
+    );
+    // D614 amendment: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewExtras).
+    fn x_claim<'a>(claims: &'a [pig_sdk::ViewClaim], name: &str) -> Option<&'a Value> {
+        claims.iter().find(|c| c.name == name).map(|c| &c.value)
+    }
+    fn x_picked(ab: &pig_sdk::ViewAbilities) -> i64 {
+        ab.slot_claims
+            .iter()
+            .find(|s| s.slot == "panel")
+            .and_then(|s| x_claim(&s.claims, "display.colors"))
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+    }
+    fn x_list(id: &str, label: &str) -> kit::View {
+        kit::View::new(kit::SelectList::new(
+            id,
+            vec![kit::SelectItem::new(id, label)],
+            5,
+        ))
+    }
+    fn x_rects(n: u64) -> Vec<pig_sdk::ViewDrawShape> {
+        (0..n)
+            .map(|_| pig_sdk::ViewDrawShape {
+                kind: "rect".into(),
+                width: 1.0,
+                height: 1.0,
+                ..Default::default()
+            })
+            .collect()
+    }
+    fn x_scene(shapes: Vec<pig_sdk::ViewDrawShape>) -> Option<pig_sdk::ViewDrawing> {
+        Some(pig_sdk::ViewDrawing {
+            profile: "scene".into(),
+            shapes,
+            ..Default::default()
+        })
+    }
+    fn x_code<T>(r: Result<T, pig_sdk::ViewError>) -> String {
+        match r {
+            Ok(_) => "none".into(),
+            Err(e) => e.code,
+        }
+    }
+    fn x_update(mount: &pig_sdk::ViewRef) -> pig_sdk::ViewUpdate {
+        pig_sdk::ViewUpdate {
+            mount: mount.clone(),
+            title: String::new(),
+            view: x_list("base", "fixture-x-base"),
+            intents: vec![],
+            assets: vec![],
+            fallback: None,
+            alternatives: vec![],
+            drawing: None,
+            a11y: vec![],
+            focus: vec![],
+        }
+    }
+    fn x_when(claim: &str, op: &str, value: Option<Value>) -> pig_sdk::ViewWhen {
+        pig_sdk::ViewWhen {
+            any: vec![pig_sdk::ViewWhenAll {
+                all: vec![pig_sdk::ViewClause {
+                    claim: claim.into(),
+                    op: op.into(),
+                    value,
+                }],
+            }],
+        }
+    }
+    ext.command(
+        "ui_view_extras",
+        "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds",
+        |ctx, _args| {
+            let Some(ab) = ctx.view_abilities() else { return CommandResult::Error("no client".into()) };
+            let Some(drawing) = ab.drawing.clone() else { return CommandResult::Error("no drawing abilities".into()) };
+            let picked = x_picked(&ab);
+            let text = |name: &str| x_claim(&ab.claims, name).map(|v| v.as_str().map(str::to_owned).unwrap_or_else(|| v.to_string())).unwrap_or_default();
+            let gestures: Vec<String> =
+                x_claim(&ab.claims, "input.gestures").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect()).unwrap_or_default();
+            ctx.notify(
+                &format!(
+                    "view-x-claims:colors={},kind={},gestures={},hover={},panel.colors={},profiles={},shapes={},pixels={}",
+                    text("display.colors"),
+                    text("display.kind"),
+                    gestures.join("+"),
+                    text("display.hover"),
+                    picked,
+                    drawing.profiles.join("+"),
+                    drawing.shapes,
+                    drawing.pixels
+                ),
+                "info",
+            );
+            let mut alt_drawing = x_scene(x_rects(drawing.shapes - 1));
+            if let Some(d) = alt_drawing.as_mut() {
+                d.regions = vec![pig_sdk::ViewRegion {
+                    key: "r".into(),
+                    shape: pig_sdk::ViewDrawShape { kind: "rect".into(), width: 4.0, height: 4.0, ..Default::default() },
+                    gestures: vec!["activate".into()],
+                    intent: "fx.tap".into(),
+                    name: "Tap".into(),
+                    ..Default::default()
+                }];
+            }
+            let st = match ctx.mount_view(pig_sdk::ViewMount {
+                key: "extras".into(),
+                slot: "panel".into(),
+                title: String::new(),
+                target: None,
+                view: x_list("base", "fixture-x-base"),
+                intents: vec![pig_sdk::ViewIntent { name: "fx.tap".into(), arg: pig_sdk::ViewShape::new("object"), ..Default::default() }],
+                assets: vec![],
+                fallback: None,
+                alternatives: vec![pig_sdk::ViewAlternative {
+                    when: x_when("display.colors", "equals", Some(json!(picked))),
+                    view: x_list("alt", &format!("fixture-x-alt-{picked}")),
+                    drawing: alt_drawing,
+                }],
+                drawing: None,
+                a11y: vec![
+                    pig_sdk::ViewA11y {
+                        node: "alt".into(),
+                        name: format!("Extras {picked}"),
+                        role: "button".into(),
+                        checked: Some(true),
+                        relations: vec![pig_sdk::ViewRelation { kind: "describedBy".into(), target: "base".into() }],
+                        ..Default::default()
+                    },
+                    pig_sdk::ViewA11y { node: "base".into(), name: "Base".into(), ..Default::default() },
+                ],
+                focus: vec![pig_sdk::ViewFocus { node: "alt".into(), request: "mount".into(), restore: "previous".into() }],
+            }) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-x-mounted:{}", st.state), "info");
+            let attempt = |label: &str, update: pig_sdk::ViewUpdate| ctx.notify(&format!("view-x-{label}:{}", x_code(ctx.update_view(update))), "info");
+            let mut update = x_update(&st.mount);
+            update.alternatives = (0..9).map(|_| pig_sdk::ViewAlternative { when: x_when("display.hover", "present", None), view: x_list("base", "fixture-x-base"), drawing: None }).collect();
+            attempt("alts", update);
+            let mut nested = pig_sdk::ViewDrawShape { kind: "rect".into(), width: 1.0, height: 1.0, ..Default::default() };
+            for _ in 0..8 {
+                nested = pig_sdk::ViewDrawShape { kind: "group".into(), children: vec![nested], ..Default::default() };
+            }
+            let mut update = x_update(&st.mount);
+            update.drawing = x_scene(vec![nested]);
+            attempt("nest", update);
+            let mut update = x_update(&st.mount);
+            update.drawing = x_scene(vec![pig_sdk::ViewDrawShape {
+                kind: "polyline".into(),
+                points: (0..1025).map(|i| pig_sdk::ViewPoint { x: f64::from(i), y: f64::from(i) }).collect(),
+                ..Default::default()
+            }]);
+            attempt("points", update);
+            let mut update = x_update(&st.mount);
+            update.drawing = x_scene(x_rects(4097));
+            attempt("shapes", update);
+            let mut update = x_update(&st.mount);
+            update.a11y = (0..257).map(|i| pig_sdk::ViewA11y { node: format!("n{i}"), ..Default::default() }).collect();
+            attempt("a11y", update);
+            let mut update = x_update(&st.mount);
+            update.drawing = x_scene(x_rects(drawing.shapes + 1));
+            attempt("over", update);
+            let mut update = x_update(&st.mount);
+            update.drawing = Some(pig_sdk::ViewDrawing {
+                profile: "pixels".into(),
+                pixels: Some(pig_sdk::ViewPixels { width: 2, height: 2, asset: "img".into(), scaling: "nearest".into() }),
+                ..Default::default()
+            });
+            update.assets = vec![pig_sdk::ViewAsset { id: "img".into(), mime: "image/png".into(), size: 4, sha256: "a".repeat(64), delivery: "inline".into() }];
+            attempt("pixels", update);
+            let mut old = st.mount.clone();
+            old.rev += 50;
+            let mut stale = String::from("none");
+            for _ in 0..3 {
+                stale = x_code(ctx.update_view(x_update(&old)));
+            }
+            ctx.notify(&format!("view-x-stale:{stale}"), "info");
+            let notices = match ctx.view_diagnostics("extras") {
+                Ok(n) => n,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            let count = |code: &str| notices.iter().filter(|n| n.code == code && n.path == "update").map(|n| n.count).sum::<u64>();
+            ctx.notify(&format!("view-x-diag:invalid={},limit={},unsupported={},stale={}", count("invalid"), count("limit"), count("unsupported"), count("stale")), "info");
+            ctx.notify(&format!("view-x-bigresult:{}", x_code(ctx.finish_view_with(&st.mount, json!("r".repeat(65536))))), "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_extras_end",
+        "Read the notices of the extras mount and finish it with a result",
+        |ctx, _args| {
+            let Some(ab) = ctx.view_abilities() else {
+                return CommandResult::Error("no client".into());
+            };
+            let picked_of = |st: &pig_sdk::ViewStatus| {
+                st.result
+                    .as_ref()
+                    .and_then(|r| r.get("picked"))
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+            };
+            let run = || -> Result<(), pig_sdk::ViewError> {
+                let st = ctx.view_state("extras")?;
+                let notices = ctx.view_diagnostics("extras")?;
+                ctx.notify(
+                    &format!(
+                        "view-x-diag2:n={},last={}",
+                        notices.len(),
+                        notices.last().map(|n| n.path.as_str()).unwrap_or("")
+                    ),
+                    "info",
+                );
+                let done = ctx.finish_view_with(&st.mount, json!({"picked": x_picked(&ab)}))?;
+                ctx.notify(
+                    &format!("view-x-finished:{},picked={}", done.state, picked_of(&done)),
+                    "info",
+                );
+                let cur = ctx.view_state("extras")?;
+                ctx.notify(
+                    &format!("view-x-state:{},picked={}", cur.state, picked_of(&cur)),
+                    "info",
+                );
+                Ok(())
+            };
+            match run() {
+                Ok(()) => CommandResult::Ok,
+                Err(e) => CommandResult::Error(e.to_string()),
+            }
+        },
+    );
+    register_view_rows(&mut ext);
+    // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
+    // shows it and updates it with a focus request, the same way in every SDK fixture (conformance
+    // TestConformance_UIViewToolShowsAndFocuses).
+    ext.command(
+        "ui_view_tool",
+        "Register the tool that shows a titled view",
+        |ctx, _args| {
+            let tool = ToolDefinition::new(
+                "view_show",
+                "view_show",
+                "Mount, show and focus a titled view",
+                json!({"type": "object"}),
+                |ctx, params| {
+                    let text = |name: &str| {
+                        params
+                            .get(name)
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_string()
+                    };
+                    let (title, node) = (text("title"), text("node"));
+                    let run = || -> Result<String, pig_sdk::ViewError> {
+                        if text("op") == "hide" {
+                            let st = ctx.hide_view(&ctx.view_state("shown")?.mount)?;
+                            return Ok(format!("view-tool:{}", st.state));
+                        }
+                        let intents = || {
+                            vec![
+                                pig_sdk::ViewIntent {
+                                    name: "fx.reopen".into(),
+                                    arg: pig_sdk::ViewShape::new("object"),
+                                    when_hidden: true,
+                                    ..Default::default()
+                                },
+                                pig_sdk::ViewIntent {
+                                    name: "fx.tap".into(),
+                                    arg: pig_sdk::ViewShape::new("object"),
+                                    ..Default::default()
+                                },
+                            ]
+                        };
+                        let focus = |request: &str| {
+                            vec![pig_sdk::ViewFocus {
+                                node: node.clone(),
+                                request: request.into(),
+                                ..Default::default()
+                            }]
+                        };
+                        let st = ctx.mount_view(pig_sdk::ViewMount {
+                            key: "shown".into(),
+                            slot: "panel".into(),
+                            title: title.clone(),
+                            target: None,
+                            view: x_list(&node, "fixture-shown"),
+                            intents: intents(),
+                            assets: vec![],
+                            fallback: None,
+                            alternatives: vec![],
+                            drawing: None,
+                            a11y: vec![],
+                            focus: focus(""),
+                        })?;
+                        let st = ctx.hide_view(&st.mount)?;
+                        let st = ctx.show_view(&st.mount)?;
+                        let st = ctx.update_view(pig_sdk::ViewUpdate {
+                            mount: st.mount,
+                            title: format!("{title}/2"),
+                            view: x_list(&node, "fixture-shown"),
+                            intents: intents(),
+                            assets: vec![],
+                            fallback: None,
+                            alternatives: vec![],
+                            drawing: None,
+                            a11y: vec![],
+                            focus: focus("update"),
+                        })?;
+                        Ok(format!("view-tool:{},rev={}", st.state, st.mount.rev))
+                    };
+                    match run() {
+                        Ok(text) => ToolResult::text(text),
+                        Err(e) => ToolResult::Error(e.to_string()),
+                    }
+                },
+            );
+            match ctx.register_tool(tool) {
+                Ok(()) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
+    // D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The
+    // argument is the row's token: the cell values, the selection and one chip text are built from it.
+    fn g_mount(tok: &str, grid: kit::Grid) -> pig_sdk::ViewMount {
+        pig_sdk::ViewMount {
+            fallback: Some(kit::Text::new(format!("grid-fallback {tok}"), 0, 0).into()),
+            ..view_mount(
+                "grid",
+                kit::View::new(
+                    Container::new()
+                        .child(kit::Text::new(format!("Month {tok}"), 0, 0))
+                        .child(grid),
+                ),
+                vec![pig_sdk::ViewIntent {
+                    name: "fx.pick".into(),
+                    node_key: "month".into(),
+                    arg: pig_sdk::ViewShape::object(
+                        &[("value", pig_sdk::ViewShape::new("string"))],
+                        &["value"],
+                    ),
+                    ..Default::default()
+                }],
+            )
+        }
+    }
+    ext.command(
+        "ui_view_grid",
+        "Mount a month as a grid and probe the bounds of the grid",
+        |ctx, args| {
+            let tok = args.trim();
+            let mut cells = vec![
+                kit::GridCell::new().label("30").dim(true),
+                kit::GridCell::new().label("31").dim(true),
+            ];
+            for d in 1..=28 {
+                let cell = kit::GridCell::new().value(format!("{tok}-{d}"));
+                let cell = if d == 28 {
+                    cell
+                } else {
+                    cell.label(d.to_string())
+                };
+                cells.push(match d {
+                    1 => cell
+                        .chip(kit::GridChip::new(format!("{tok} standup")).color("#3366cc"))
+                        .chip(kit::GridChip::new("lunch").color("accent"))
+                        .more(2),
+                    2 => cell.mark("current").color("#ff000080"),
+                    3 => cell.chip(kit::GridChip::new("plain")),
+                    _ => cell,
+                });
+            }
+            let month = kit::Grid::new("month", 7, cells)
+                .head(["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"])
+                .chip_rows(2)
+                .selected(format!("{tok}-2"));
+            let st = match ctx.mount_view(g_mount(tok, month)) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-g-mounted:{}", st.state), "info");
+            let attempt = |label: &str, columns: u32, cells: Vec<kit::GridCell>| {
+                let m = g_mount(tok, kit::Grid::new("month", columns, cells));
+                let update = pig_sdk::ViewUpdate {
+                    mount: st.mount.clone(),
+                    title: String::new(),
+                    view: m.view,
+                    intents: m.intents,
+                    assets: vec![],
+                    fallback: m.fallback,
+                    alternatives: vec![],
+                    drawing: None,
+                    a11y: vec![],
+                    focus: vec![],
+                };
+                ctx.notify(
+                    &format!("view-g-{label}:{}", x_code(ctx.update_view(update))),
+                    "info",
+                );
+            };
+            attempt("cells", 7, vec![kit::GridCell::new().label("x"); 129]);
+            let mut crowded = kit::GridCell::new().value("a");
+            for _ in 0..9 {
+                crowded = crowded.chip(kit::GridChip::new("c"));
+            }
+            attempt("chips", 7, vec![crowded]);
+            attempt("columns", 17, vec![kit::GridCell::new().value("a")]);
+            attempt("mark", 7, vec![kit::GridCell::new().value("a").mark(tok)]);
+            match ctx.view_state("grid") {
+                Ok(cur) => ctx.notify(
+                    &format!("view-g-state:{},rev={}", cur.state, cur.mount.rev),
+                    "info",
+                ),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.on_view_intent(|inv| match inv.intent.as_str() {
+        "fx.redraw" | "fx.foreign" => redraw_intent(&inv),
+        // The user opened the hidden view: its handler shows it.
+        "fx.reopen" => {
+            let shown = inv.context.show_view(&pig_sdk::ViewRef {
+                key: inv.mount.key.clone(),
+                epoch: inv.mount.epoch,
+                rev: inv.rev,
+            });
+            match shown {
+                Ok(_) => pig_sdk::ViewIntentResult::done(json!({})),
+                Err(e) => pig_sdk::ViewIntentResult::failed(&e.to_string()),
+            }
+        }
+        "fx.pick" => pig_sdk::ViewIntentResult::done(json!({
+            "node": inv.node_key,
+            "picked": inv.arg.get("value").and_then(Value::as_str).unwrap_or(""),
+        })),
+        "fx.add" => {
+            let n = inv.arg.get("n").and_then(Value::as_i64).unwrap_or(0);
+            let extra = inv
+                .context
+                .view_abilities()
+                .map(|a| a.limits.intent_arg_bytes as i64)
+                .unwrap_or(0);
+            pig_sdk::ViewIntentResult::done(json!({"sum": n * 2 + extra}))
+        }
+        "fx.wait" => {
+            let tag = inv
+                .arg
+                .get("tag")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            inv.context.notify(&format!("intent-started:{tag}"), "info");
+            while !inv.context.is_cancelled() {
+                thread::sleep(Duration::from_millis(10));
+            }
+            // A call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled.
+            *VIEW_CANCELLED_TAG.lock().unwrap() = tag;
+            pig_sdk::ViewIntentResult::done(json!({}))
+        }
+        _ => pig_sdk::ViewIntentResult::refused("unknown intent"),
+    });
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",
@@ -4187,6 +5124,43 @@ fn main() {
                 .lock()
                 .unwrap()
                 .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    // event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that returns the state of its event signal (the request's cancellation) on its first line and after a dialog it opened was answered, and the dialog's answer: the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer.
+    let event_signal_subscriber = ext.event_subscriber();
+    let event_signal_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_signal_probe",
+        "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let event = name.clone();
+            let subscription = subscribe(&event_signal_subscriber, &name, move |hctx, data| {
+                let source: &serde_json::Value = if event == "session_before_tree" {
+                    data.get("preparation").unwrap_or(&serde_json::Value::Null)
+                } else {
+                    &*data
+                };
+                let mode = source
+                    .get("customInstructions")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let before = hctx.is_cancelled();
+                let answer = match hctx.input(&format!("event_signal:{event}:{mode}:pending"), "p") {
+                    Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                    Err(error) => format!("failed: {error}"),
+                };
+                let state = format!("event_signal:{mode}:{before}:{}:{answer}", hctx.is_cancelled());
+                if event == "session_before_compact" {
+                    Ok(Some(serde_json::json!({"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}})))
+                } else {
+                    Ok(Some(serde_json::json!({"label": state})))
+                }
+            });
+            event_signal_subscriptions.lock().unwrap().push(subscription);
             CommandResult::Ok
         },
     );
@@ -6516,9 +7490,9 @@ fn conformance_bash_operations() -> pig_sdk::BashOperations {
                 (options.on_data)(b"waiting");
                 options.signal.wait();
                 (options.on_data)(b"stopped");
-                Err("aborted".to_string())
+                Err("aborted".into())
             }
-            other => Err(format!("exec failed: {other}")),
+            other => Err(format!("exec failed: {other}").into()),
         }),
     }
 }
@@ -6965,6 +7939,37 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
             })
         }));
     }
+    if case["ops"].as_str() == Some("localThread") {
+        // The local operations run on another thread and their error comes back unchanged: the shell's exit belongs to the error, not to the thread.
+        let inner = pig_sdk::create_local_bash_operations(None).exec;
+        options.bash.operations = Some(pig_sdk::BashOperations {
+            exec: Arc::new(move |command, cwd, exec_options| {
+                let inner = inner.clone();
+                let (command, cwd) = (command.to_string(), cwd.to_string());
+                std::thread::spawn(move || inner(&command, &cwd, exec_options))
+                    .join()
+                    .unwrap_or_else(|_| Err("the local operations panicked".into()))
+            }),
+        });
+        return options;
+    }
+    if matches!(case["ops"].as_str(), Some("local" | "localWrapped")) {
+        // The bash tool runs on the local operations. "local" returns their error unchanged; "localWrapped" returns a new error with the same message, which is not the
+        // backend's error and keeps nothing of it (Pi matches the backend's class, bash.ts).
+        let wrapped = case["ops"].as_str() == Some("localWrapped");
+        let inner = pig_sdk::create_local_bash_operations(None).exec;
+        options.bash.operations = Some(pig_sdk::BashOperations {
+            exec: Arc::new(move |command, cwd, exec_options| {
+                let result = inner(command, cwd, exec_options);
+                if wrapped {
+                    result.map_err(|error| pig_sdk::BashExecError::from(error.message()))
+                } else {
+                    result
+                }
+            }),
+        });
+        return options;
+    }
     if case["ops"].as_str() == Some("globlimit") {
         // Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
         let glob_log = log.clone();
@@ -6984,6 +7989,7 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
     if case["ops"].as_str() == Some("grepdir") {
         options.grep.operations = Some(pig_sdk::GrepOperations {
             is_directory: path_op(log, "isDirectory", |_| Ok(true)),
+            read_file: Some(path_op(log, "readFile", |_| Ok(String::new()))),
         });
         return options;
     }
@@ -7041,6 +8047,7 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
         is_directory: path_op(log, "isDirectory", |_| {
             Err("no such path for the probe".to_string())
         }),
+        read_file: None,
     });
     let glob_log = log.clone();
     options.find.operations = Some(pig_sdk::FindOperations {
@@ -7298,7 +8305,7 @@ fn builtin_local(case: &Value) -> Value {
         options,
     ) {
         Ok(code) => report["exitCode"] = json!(code),
-        Err(message) => report["error"] = json!(message),
+        Err(error) => report["error"] = json!(error.message()),
     }
     report["output"] = json!(chunks.lock().unwrap().join(""));
     report

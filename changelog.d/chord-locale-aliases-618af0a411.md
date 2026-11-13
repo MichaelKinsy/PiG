@@ -1,0 +1,3 @@
+### Fixed
+
+- `chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc` is `ca-islamic-civil`, `ks-primary` is `ks-level1`, `kb-yes` is `kb`, `m0-names` is `m0-prprname`) and for the alias rules of several subtags (a language with a region or script, such as `sgn-BR`; `Qaai` is `Zinh`), so the `lang` and `dir` of a page and the locale chosen for a client no longer differ from Pi's for those tags. The tables are generated from the pinned Node by `testdata/locale_tables.mjs` and checked against its Intl. <!-- fix: fbd59e3aff, 618af0a411, 7ddb7c1a27 -->

@@ -181,3 +181,47 @@ func TestCompilingSets(t *testing.T) {
 		qFails(t, err, "plain values")
 	})
 }
+
+func TestHostColumnExpressions(t *testing.T) {
+	session := hostColKind(t, "session")
+	P := qDefine(t, "p", TableOptions{
+		Version: 1,
+		Columns: []ColumnProp{Col("id", Str()), Col("session", Host(session))},
+		Key:     []string{"id"},
+	})
+	h := P.Refs
+	S1 := hostColAddress(session, "S1")
+
+	t.Run("compare with addresses by eq, ne and inArray, compiled to keys", func(t *testing.T) {
+		got, err := CompileWhere(P, Eq(h["session"], S1), "where")
+		must(t, err)
+		qEqual(t, got, whereCmp(WhereEq, "session", "session|S1"))
+		got, err = CompileWhere(P, Ne(h["session"], S1), "where")
+		must(t, err)
+		qEqual(t, got, whereCmp(WhereNe, "session", "session|S1"))
+		got, err = CompileWhere(P, InArray(h["session"], []any{S1, hostColAddress(session, "S2")}), "where")
+		must(t, err)
+		qEqual(t, got, WhereNode{Op: WhereInArray, Column: "session", Values: []Scalar{"session|S1", "session|S2"}})
+		_, err = CompileWhere(P, Eq(h["session"], "session|S1"), "where")
+		qFails(t, err, "expected an address of session")
+	})
+
+	t.Run("refuse order comparisons, isNull and prefix", func(t *testing.T) {
+		_, err := CompileWhere(P, Lt(h["session"], S1), "where")
+		qFails(t, err, "eq, ne, inArray only")
+		_, err = CompileWhere(P, IsNull(h["session"]), "where")
+		qFails(t, err, "eq, ne, inArray only")
+		_, err = CompileWhere(P, Prefix(h["session"], "session"), "where")
+		qFails(t, err, "eq, ne, inArray only")
+	})
+
+	t.Run("take addresses in a set, never an expression", func(t *testing.T) {
+		got, err := CompileSet(P, SetOf{Assign("session", S1)}, "set")
+		must(t, err)
+		qEqual(t, got, SetNode{{Column: "session", Node: litNode("session|S1")}})
+		_, err = CompileSet(P, SetOf{Assign("session", Concat("a", "b"))}, "set")
+		qFails(t, err, "host(...) columns take plain values")
+		_, err = CompileSet(exprTable(t), SetOf{Assign("path", h["session"])}, "set")
+		qFails(t, err, `no column "session"`)
+	})
+}

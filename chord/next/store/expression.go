@@ -333,6 +333,9 @@ func CompileWhere(table *TableDefinition, condition any, what string) (WhereNode
 		return WhereNode{Op: WhereNot, Nodes: []WhereNode{node}}, nil
 	case WhereIsNull:
 		column, err := scalarColumn(table, argAt(c.Args, 0), what)
+		if err == nil {
+			column, err = ordered(table, column, c.Op, what)
+		}
 		if err != nil {
 			return WhereNode{}, err
 		}
@@ -340,6 +343,9 @@ func CompileWhere(table *TableDefinition, condition any, what string) (WhereNode
 	case WherePrefix:
 		column, err := scalarColumn(table, argAt(c.Args, 0), what)
 		if err != nil {
+			return WhereNode{}, err
+		}
+		if column, err = ordered(table, column, c.Op, what); err != nil {
 			return WhereNode{}, err
 		}
 		if column.Type != ColStr {
@@ -373,6 +379,11 @@ func CompileWhere(table *TableDefinition, condition any, what string) (WhereNode
 		column, err := scalarColumn(table, argAt(c.Args, 0), what)
 		if err != nil {
 			return WhereNode{}, err
+		}
+		if c.Op != WhereEq && c.Op != WhereNe {
+			if column, err = ordered(table, column, c.Op, what); err != nil {
+				return WhereNode{}, err
+			}
 		}
 		value, err := operand(column, argAt(c.Args, 1), what)
 		if err != nil {
@@ -459,8 +470,12 @@ func CompileSet(table *TableDefinition, set any, what string) (SetNode, error) {
 			// A row never holds an explicit `null` (decision "Nullable columns and the set form"); a JSON `null` is a value.
 			return nil, invalidArgs("%s: %s: null is no %s value (undefined clears)", table.Name, where, column.Type)
 		case isExpression:
-			if column.Type == ColJson {
-				return nil, invalidArgs("%s: %s: json(...) columns take plain values", table.Name, where)
+			if column.Type == ColJson || column.Host != nil {
+				kind := "host"
+				if column.Type == ColJson {
+					kind = "json"
+				}
+				return nil, invalidArgs("%s: %s: %s(...) columns take plain values", table.Name, where, kind)
 			}
 			compiled, err := compileExpr(table, expression, column.Type, where)
 			if err != nil {
@@ -477,7 +492,7 @@ func CompileSet(table *TableDefinition, set any, what string) (SetNode, error) {
 			}
 			entry = ExprNode{Op: ExprJSON, Json: cell.Stored}
 		default:
-			scalar, err := CheckScalar(column.Type, value, fmt.Sprintf("%s: %s", table.Name, where))
+			scalar, err := encodeScalar(column, value, fmt.Sprintf("%s: %s", table.Name, where))
 			if err != nil {
 				return nil, err
 			}
@@ -531,6 +546,9 @@ func compileExpr(table *TableDefinition, value any, typ ColumnType, what string)
 		}
 		if column.Type != typ {
 			return refuse(fmt.Sprintf("column %s is %s, not %s", quote(column.Name), column.Type, typ))
+		}
+		if column.Host != nil {
+			return refuse(fmt.Sprintf("host(...) column %s holds addresses", quote(column.Name)))
 		}
 		return compiled{node: ExprNode{Op: ExprCol, Column: column.Name}, nullable: column.Optional}, nil
 	case ExprAdd, ExprSub, ExprMax, ExprMin, ExprConcat:
@@ -633,7 +651,17 @@ func scalarColumn(table *TableDefinition, ref any, what string) (Column, error) 
 	return column, nil
 }
 
-// operand is an operand compared with column, made storable; `Undefined` and nil are refused (rule 16).
+// ordered is column for a comparison by order, `IsNull` or `Prefix`: a `host(...)` column compares only with Eq, Ne and
+// InArray.
+func ordered(table *TableDefinition, column Column, op WhereOp, what string) (Column, error) {
+	if column.Host != nil {
+		return Column{}, invalidArgs("%s: %s: %s on host(...) column %s (eq, ne, inArray only)", table.Name, what, op, quote(column.Name))
+	}
+	return column, nil
+}
+
+// operand is an operand compared with column, made storable (an address as its key for a `host(...)` column);
+// `Undefined` and nil are refused (rule 16).
 func operand(column Column, value any, what string) (Scalar, error) {
 	if value == nil || value == Undefined {
 		text := "null"
@@ -643,7 +671,7 @@ func operand(column Column, value any, what string) (Scalar, error) {
 		return nil, invalidArgs("%s: column %s compared with %s; ask with isNull", what, quote(column.Name), text)
 	}
 	// scalarColumn refused json columns.
-	return CheckScalar(column.Type, value, fmt.Sprintf("%s: column %s", what, quote(column.Name)))
+	return encodeScalar(column, value, fmt.Sprintf("%s: column %s", what, quote(column.Name)))
 }
 
 // ---------------------------------------------------------------------------------------------------------------

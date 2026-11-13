@@ -7,7 +7,7 @@ autofix-check: ## Unit-test the derived-file autofix tool that the bookkeeping j
 	@python3 -B -m unittest discover -s automation/ci -p test_autofix.py
 
 # ci-bookkeeping is the fail-fast job every other job waits for: the committed derived files, ledgers and policy gates that need only Go, Python and the Pi source mirror (no oracle build, no npm install, no test binaries). A stale ledger or a missing sign-off stops the run in minutes instead of after the 30-minute shards. CI runs it with make -k -j, so one failing gate does not hide the others; automation/ci/autofix-gates.txt names the gates whose remedy is make generate.
-ci-bookkeeping: autofix-check divergences-drift piglet-strip-ids-drift sdk-bundles-drift known-gaps-drift custom-factory-ledger-drift lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check race-coverage perf-scoreboard-check go-fix-clean
+ci-bookkeeping: autofix-check divergences-drift piglet-strip-ids-drift sdk-bundles-drift known-gaps-drift custom-factory-ledger-drift lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard gui-import-guard source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check race-coverage perf-scoreboard-check go-fix-clean
 ci-startup: startup-proxies
 ci-build: module-publication lint
 # The light pull-request run (automation/ci/ci-tiers.txt) lints the whole changed files (CI sets LINT_BASE=origin/main); the full run keeps the repository-wide lint.
@@ -86,7 +86,8 @@ portmap-check-8:
 # Run after upstream-mirror under each selected Node runtime. Do not reinstall
 # npm dependencies here: the qualified npm requires a newer Node than Pi does.
 # The matrix selects extension hosting/runtime tests. Go URL-conversion oracle
-# tests stay in the full suite on the qualified Node pin.
+# tests stay in the full suite on the qualified Node pin; so does TestNodePiAiExtensionViewMatchesThePinnedView, which compares against
+# Pi's view under testenv.RequireQualifiedNode and so refuses the engine-floor and current Node (-skip).
 # ci-chord-tui runs the terminal surface's tests under the Node on the PATH, which must be 26.5.1 or later (the sandbox's floor): CI sets
 # CHORD_REQUIRE_TUI_NODE, so a Node that is too old fails them rather than skipping them (Pi skips; the Go suite must not hide them).
 ci-chord-tui:
@@ -100,7 +101,7 @@ ci-chord-web:
 	go test -count=1 ./chord/nextnode/surfaces -run '^TestReact'
 
 ci-node-runtime:
-	go test -tags=parity -count=1 ./coding/extension/host/subprocess -run '^Test(Node|EmbeddedNode|ResolveNode|EnsureNode|Host.*Node|Builder.*Node|BuildExtCommand_Node|PiDiff|PiScrollView|PiTui|VendoredCrossSpawn|TerminalInputNode)'
+	go test -tags=parity -count=1 ./coding/extension/host/subprocess -skip '^TestNodePiAiExtensionViewMatchesThePinnedView$$' -run '^Test(Node|EmbeddedNode|ResolveNode|EnsureNode|Host.*Node|Builder.*Node|BuildExtCommand_Node|PiDiff|PiScrollView|PiTui|VendoredCrossSpawn|TerminalInputNode)'
 	go test -tags=parity -count=1 ./coding/cli -run '^TestRPCStartupMalformedPackageManifests$$'
 	@mkdir -p $(dir $(PARITY_PIG_BIN))
 	go build -o $(PARITY_PIG_BIN) ./cmd/pig

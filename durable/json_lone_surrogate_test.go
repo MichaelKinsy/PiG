@@ -33,3 +33,18 @@ func TestToJsonValueAndFromJsonValueKeepALoneSurrogate(t *testing.T) {
 		t.Errorf("round trip = %+v, want the unit kept in every string", back)
 	}
 }
+
+// A DocumentRecord's text is what JSON.stringify writes for it: a lone surrogate of its kind or key is the escape \udXXX, not U+FFFD
+// (SqliteStorage stores this text as the `record` column and StoreStorage as the document's meta).
+func TestDocumentRecordMarshalJSONKeepsALoneSurrogate(t *testing.T) {
+	key := "k\xed\xb0\x80"
+	record := DocumentRecord{Id: 3, Kind: "\xed\xa0\x80", Key: &key, Scope: DocumentRecordScope{Kind: ScopeSession}, CreatedAt: 2}
+	text, err := record.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = `{"id":3,"kind":"\ud800","key":"k\udc00","scope":{"kind":"session"},"createdAt":2}`
+	if string(text) != want {
+		t.Fatalf("MarshalJSON = %s, want %s", text, want)
+	}
+}

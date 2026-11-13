@@ -259,7 +259,6 @@ func jsLength(text string) int {
 	return n
 }
 
-// pig divergence (D252): Pi main 9e870f6f0 does not split a surrogate pair at the cut.
 // truncateChars is `truncate` of index.ts: text of at most max UTF-16 code units, else its start cut to max-1 units, without trailing white space, and an ellipsis.
 func truncateChars(text string, max int) string {
 	if jsLength(text) <= max {

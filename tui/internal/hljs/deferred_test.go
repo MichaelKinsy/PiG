@@ -11,7 +11,7 @@ import (
 func eagerRegistry() *Registry {
 	r := NewRegistry()
 	r.allLoaded, r.indexed = true, true
-	r.registerSnapshot(decodeSnapshot(allGrammars, snapshotGrammars))
+	r.registerSnapshot(decodeSnapshot(allGrammarsGzip(), snapshotGrammars))
 	return r
 }
 

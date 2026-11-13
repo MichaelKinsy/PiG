@@ -5,6 +5,7 @@ package codingagent
 import (
 	"context"
 	"io"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -240,6 +241,26 @@ func TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings(t *testing.
 				}
 			})
 		}
+	}
+}
+
+// The model selector refreshes the model catalogs on goroutines the mode does not join, and the refresh outlives the key that opened the selector. A registry
+// backed by the rig's agent directory creates auth.json and models-store.json there, and the refresh still running recreates them while the test's cleanup removes
+// the directory: "TempDir RemoveAll cleanup: unlinkat ...: directory not empty" in 3 of 120 runs of
+// TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings on a loaded machine, always in a subtest of app.model.select. The rig keeps the registry in
+// memory, so no refresh can write a directory a cleanup removes.
+func TestKeyRigModelSelectorTouchesNoFileInTheAgentDirectory(t *testing.T) {
+	r := newKeyRig(t, nil)
+	r.press(t, "\x0c")
+	if !r.world.ModelSelector {
+		t.Fatal("the default model selector key did not open the selector")
+	}
+	entries, err := os.ReadDir(r.m.opts.AgentDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		t.Errorf("opening the model selector left %q in the rig's agent directory", entry.Name())
 	}
 }
 

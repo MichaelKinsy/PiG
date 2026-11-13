@@ -1,30 +1,34 @@
 package app
 
 import (
+	"context"
+
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 )
 
-// Ports the `web` and `tui` options of packages/chord/src/node/app/app.ts and its `surfacesOf`.
+// Ports packages/chord/src/node/app/app.ts: its `web` and `tui` options and its `surfacesOf`.
 
 // AppWeb is the kit's web surface options (WebSurfaceOptions without its kind `web` and the kit's plugins): the app's web entry
 // (the base bundle's), its page template, the paths serving the page (`["/"]` by default), whether it is public, and the
-// conditions its packages resolve with.
+// conditions and tsconfig its packages resolve with.
 type AppWeb struct {
 	Entry      string
 	Page       func(request chordhttp.HttpRequest, assets nodesurfaces.PageAssets) (string, error)
 	Paths      []string
 	Public     bool
 	Conditions []string
+	Tsconfig   string
 }
 
 // AppTui is the kit's terminal surface options: the app's terminal entry and the conditions its packages resolve with (the
-// server process's by default).
+// server process's by default) and the tsconfig whose `paths` they resolve through.
 type AppTui struct {
 	Entry      string
 	Conditions []string
+	Tsconfig   string
 }
 
 // AppSurface is a running client surface (Pi's `app.web` / `app.tui`): its base bundle's hash once built (BasesBuilt).
@@ -34,7 +38,7 @@ type AppSurface struct {
 
 // Base is the base bundle's hash once built (BasesBuilt); "" before, and when its build failed.
 func (s *AppSurface) Base() string {
-	if built := s.built(); built != nil && built.Err == nil {
+	if built := s.built(); built != nil && built.Error == nil {
 		return built.Base
 	}
 	return ""
@@ -47,6 +51,10 @@ type surface struct {
 	step   func(name string) plugins.RolloutStep
 	build  func() nodesurfaces.SurfaceBuilt
 	built  func() *nodesurfaces.SurfaceBuilt
+	// close ends the surface's build without waiting: one not started never starts, one in flight goes on (its result dropped).
+	close func()
+	// wait returns once the surface's build, if started, ended, or with ctx's error when ctx ends first.
+	wait func(ctx context.Context) error
 }
 
 // surfacesOf is the app's client surfaces, in order: the web's, the terminal's (their base bundles built after the listen).
@@ -55,15 +63,15 @@ func surfacesOf(h host.Host, options AppOptions, p *plugins.Plugins) []surface {
 	if options.Web != nil {
 		web := nodesurfaces.NewWebSurface(h, nodesurfaces.WebSurfaceOptions{
 			Plugins: p, Entry: options.Web.Entry, Page: options.Web.Page, Paths: options.Web.Paths, Public: options.Web.Public,
-			Conditions: options.Web.Conditions,
+			Conditions: options.Web.Conditions, Tsconfig: options.Web.Tsconfig,
 		})
-		surfaces = append(surfaces, surface{"web", []host.HostFacet{{Name: "chord.web", Facet: web.Facet}, {Name: "chord.web.scripts", Facet: web.Scripts}}, web.Step, web.Build, web.Built})
+		surfaces = append(surfaces, surface{"web", []host.HostFacet{{Name: "chord.web", Facet: web.Facet}, {Name: "chord.web.scripts", Facet: web.Scripts}}, web.Step, web.Build, web.Built, web.Close, web.Wait})
 	}
 	if options.Tui != nil {
 		tui := nodesurfaces.NewTuiSurface(h, nodesurfaces.TuiSurfaceOptions{
-			Plugins: p, Entry: options.Tui.Entry, Conditions: options.Tui.Conditions,
+			Plugins: p, Entry: options.Tui.Entry, Conditions: options.Tui.Conditions, Tsconfig: options.Tui.Tsconfig,
 		})
-		surfaces = append(surfaces, surface{"tui", []host.HostFacet{{Name: "chord.tui", Facet: tui.Facet}, {Name: "chord.tui.scripts", Facet: tui.Scripts}}, tui.Step, tui.Build, tui.Built})
+		surfaces = append(surfaces, surface{"tui", []host.HostFacet{{Name: "chord.tui", Facet: tui.Facet}, {Name: "chord.tui.scripts", Facet: tui.Scripts}}, tui.Step, tui.Build, tui.Built, tui.Close, tui.Wait})
 	}
 	return surfaces
 }

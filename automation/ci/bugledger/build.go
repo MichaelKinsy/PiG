@@ -422,12 +422,22 @@ func (b *builder) releaseNoteEntries(cur []bullet, first map[string]intro) error
 		}
 	}
 	for _, bl := range uniq {
-		if e := b.inherit(func(p Entry) bool {
+		kept := b.inherit(func(p Entry) bool {
 			return p.Origin == "release note" && p.Note == bl.Text && p.FixedIn == bl.Version
-		}); e != nil {
-			b.entries = append(b.entries, e)
-			b.kept[e] = true
-			b.rank[e] = keptRank(e)
+		})
+		// The fold of a fragment into CHANGELOG.md moves the bullet from "Unreleased" to its release, and a marker re-pointed at the squash that replaced the fix commits names a commit of dozens of files. Neither the squash nor the new version says which tests guard this fix, so the entry the fragment had keeps its own.
+		if kept == nil && bl.Version != "Unreleased" {
+			kept = b.inherit(func(p Entry) bool {
+				return p.Origin == "release note" && p.Note == bl.Text && p.FixedIn == "Unreleased"
+			})
+			if kept != nil {
+				kept.FixedIn = bl.Version
+			}
+		}
+		if kept != nil {
+			b.entries = append(b.entries, kept)
+			b.kept[kept] = true
+			b.rank[kept] = keptRank(kept)
 			continue
 		}
 		e := &Entry{Note: bl.Text, Origin: "release note", FixedIn: bl.Version, Commits: []Commit{}, Tests: []string{}}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +47,17 @@ import (
 // `idleMs` is a time.Duration. `Close` waits for the goroutines the component owns, a start's call into the app's `start`
 // excepted: an app hook that ignores its context and never returns is the app's, abandoned when Close aborts the wait.
 
+// workersEnvironment is the workers' environment: Env, with NODE_COMPILE_CACHE from CompileCache unless Env sets it
+// (`compileCache === undefined ? env : { NODE_COMPILE_CACHE: compileCache, ...env }`).
+func workersEnvironment(options WorkersOptions) map[string]string {
+	if options.CompileCache == "" {
+		return options.Env
+	}
+	environment := map[string]string{"NODE_COMPILE_CACHE": options.CompileCache}
+	maps.Copy(environment, options.Env)
+	return environment
+}
+
 // WorkersOptions is what CreateWorkers takes. Kind, Entry, ExecArgv and Env are bootstrap; the functions are called per use.
 type WorkersOptions struct {
 	// Kind is the facet kind its workers load ("worker"), shipped by the plugins component.
@@ -58,6 +70,10 @@ type WorkersOptions struct {
 	// it is open (emptied first, removed at Close, never touched after it, so a later start may own it then); none: a new temporary
 	// directory. One that stays the same between starts is the kit's (`cache/workers/<kind>/`).
 	BaseDir string
+	// CompileCache is Node's compile cache for the workers (`NODE_COMPILE_CACHE` in their environment unless Env sets it): none, the
+	// server's environment decides. A Go worker is no Node module; the variable reaches the Node processes it starts (its plugins'
+	// host), which inherit its environment (Pi's `compileCache`: forks load the base and its packages from compiled code).
+	CompileCache string
 	// Authorize is the route's `authorize`: whether principal may reach address.
 	Authorize func(principal data.Principal, address contracts.Address) (bool, error)
 	// Principal is who the worker at address is (stamped on its link).
@@ -150,49 +166,111 @@ func (WorkerExitedError) workersError()    {}
 func (WorkerLinkLostError) workersError()  {}
 func (BatchWorkersError) workersError()    {}
 
-// WorkersBuilt is how a worker kind's base build ended: built (the file it was built from with its bytes' hash), or failed. A
-// Go worker's base is a private copy of its own executable, which holds its code already (no bundle: see the worker base note in
-// doc.go); its build checks that Entry is a program that can be started and copies it.
-type WorkersBuilt struct {
-	// Inputs is the file the base was built from with the hash of the bytes copied: the app's base code for its workers, an edit
-	// of it outdates the base. Nil when it failed.
-	Inputs model.BaseInputs
-	// Err is why it did not build.
-	Err error
+// WorkersBuilt is how a worker kind's base build ended, Pi's `{ kind: "built"; inputs } | { kind: "failed"; error }`
+// (workers.ts:103-105): a WorkersBuiltBuilt (the file it was built from with its bytes' hash) or a WorkersBuiltFailed (why it
+// did not build). A Go worker's base is a private copy of its own executable, which holds its code already (no bundle: see the
+// worker base note in doc.go); its build checks that Entry is a program that can be started and copies it. Switch on the
+// variant: nil is Pi's `undefined`, a build that did not end (`Built`) or a wait a close ended (awaitBuild).
+type WorkersBuilt interface {
+	workersBuilt()
+	// Kind is Pi's `kind`: "built" or "failed".
+	Kind() string
 }
+
+// WorkersBuiltBuilt is `{ kind: "built"; inputs }`: the base was built.
+type WorkersBuiltBuilt struct {
+	// Inputs is the file the base was built from with the hash of the bytes copied: the app's base code for its workers, an edit
+	// of it outdates the base.
+	Inputs model.BaseInputs
+}
+
+// WorkersBuiltFailed is `{ kind: "failed"; error }`: the base did not build; every start fails while it did.
+type WorkersBuiltFailed struct {
+	// Error is why it did not build (Pi's `unknown`).
+	Error error
+}
+
+func (WorkersBuiltBuilt) workersBuilt()  {}
+func (WorkersBuiltFailed) workersBuilt() {}
+
+// Kind is "built".
+func (WorkersBuiltBuilt) Kind() string { return "built" }
+
+// Kind is "failed".
+func (WorkersBuiltFailed) Kind() string { return "failed" }
 
 // Build copies the worker's entry into the base's private directory and records its bytes, once (a start waits for it, and starts
 // it when nothing did); Pi's `build` bundles the worker base in memory and writes it at the first fork. A program cannot be held in
 // memory: the copy is the base, and what an edit of the entry afterwards does is what Pi's edit of a bundled source does, nothing
-// to a worker. A component that closed copies nothing (what its build finishes after the close is dropped: the kit releases the
-// data directory's lock after its close, and a later start owns the directory then). It returns how it ended: every start fails
-// while it failed.
+// to a worker. It returns how it ended: every start fails while it failed.
+//
+// The copy is shared by every waiter and owned by no caller: a caller's wait ends with the caller, a start's with the component's
+// close (`start`), and `Close` does not wait for it, as Pi's does not wait for the bundle's build. What the copy finishes after the
+// close is dropped: it is written beside the base's directory and becomes the base only while the component is open (commitBase),
+// so a close never leaves it holding a directory the kit's next start owns (the kit releases the data directory's lock after the
+// close).
 func (c *Workers) Build() WorkersBuilt {
-	c.buildOnce.Do(func() {
-		built := WorkersBuilt{}
-		found, hash, err := c.snapshot("")
-		if err != nil {
-			built.Err = err
-		} else {
-			c.entryPath = found
-			built.Inputs = model.BaseInputs{found: hash}
-		}
-		c.built.Store(&built)
-	})
+	c.startBuild()
+	<-c.buildDone
 	return *c.built.Load()
 }
 
-// Built is how the build ended, once it did (nil before).
-func (c *Workers) Built() *WorkersBuilt { return c.built.Load() }
+// startBuild starts the build when nothing did.
+func (c *Workers) startBuild() {
+	c.buildOnce.Do(func() {
+		//portlint:allow golifetime the build is shared by every waiter and ends with the copy of the entry, which cannot be cancelled (a read of a program on a slow or stalled file system); Close does not wait for it and what it finishes after the close is dropped, as upstream's
+		go func() { //portlint:allow asyncorder Pi's `#built()` is one shared Promise: its ordering point is buildDone, closed once the outcome is stored, which Build and awaitBuild wait on
+			var built WorkersBuilt
+			// A component that closed copies nothing; a named directory's staged leftovers of an earlier process go first.
+			found, staged, err := c.stageBase("")
+			if err == nil {
+				err = c.commitBase(staged)
+			}
+			if err != nil {
+				built = WorkersBuiltFailed{Error: err}
+			} else {
+				c.entryPath = found
+				built = WorkersBuiltBuilt{Inputs: model.BaseInputs{found: staged.hash}}
+			}
+			c.built.Store(&built)
+			close(c.buildDone)
+		}()
+	})
+}
 
-// snapshot copies the entry (resolved from Options.Entry, or the resolved path given) into the component's private directory: the
-// directory emptied first (the files of an earlier build go), or a new temporary one without BaseDir. It returns the resolved entry
-// and the hash of the bytes copied.
-func (c *Workers) snapshot(resolved string) (found, hash string, err error) {
-	c.baseMu.Lock()
-	defer c.baseMu.Unlock()
+// Built is how the build ended, once it did (nil before: Pi's `undefined`).
+func (c *Workers) Built() WorkersBuilt {
+	if built := c.built.Load(); built != nil {
+		return *built
+	}
+	return nil
+}
+
+// awaitBuild waits for the base's build, started when nothing did, as long as the component is open (Pi's
+// `awaitWithContext(this.#built(), this.#closingContext)` in a start): false when the close ended the wait.
+func (c *Workers) awaitBuild() (WorkersBuilt, bool) {
+	c.startBuild()
+	select {
+	case <-c.buildDone:
+		// Pi's closing re-check after the await: both ready at once is a close.
+		return *c.built.Load(), !c.isClosing()
+	case <-c.closingCtx.Done():
+		return nil, false
+	}
+}
+
+// stagedBase is a copy of the entry written and not yet the component's base: the directory holding it, the copy in it, and the
+// hash of the bytes written.
+type stagedBase struct {
+	dir, copied, hash string
+}
+
+// stageBase copies the entry (resolved from Options.Entry, or the resolved path given) into a new private directory: beside
+// Options.BaseDir when there is one (the same file system: the commit is a rename), else a new temporary directory, which is the
+// base's own. It takes no lock and touches nothing that is not its own new directory. It returns the resolved entry.
+func (c *Workers) stageBase(resolved string) (found string, staged stagedBase, err error) {
 	if c.isClosing() {
-		return "", "", closed()
+		return "", stagedBase{}, closed()
 	}
 	found = resolved
 	if found == "" {
@@ -200,15 +278,46 @@ func (c *Workers) snapshot(resolved string) (found, hash string, err error) {
 			found, err = filepath.Abs(found)
 		}
 		if err != nil {
-			return "", "", fmt.Errorf("workers: the worker entry cannot be started: %w", err)
+			return "", stagedBase{}, fmt.Errorf("workers: the worker entry cannot be started: %w", err)
 		}
 	}
-	dir, copied, hash, err := writeWorkerBase(found, c.options.BaseDir)
+	if resolved == "" {
+		removeStaleStages(c.options.BaseDir)
+	}
+	staged, err = stageWorkerBase(found, c.options.BaseDir)
 	if err != nil {
-		return "", "", fmt.Errorf("workers: the worker base cannot be made from %s: %w", found, err)
+		return "", stagedBase{}, fmt.Errorf("workers: the worker base cannot be made from %s: %w", found, err)
+	}
+	return found, staged, nil
+}
+
+// commitBase makes staged the component's base, while the component is open: in the named directory, emptied first (the files of
+// an earlier build go), or the temporary one it was written in. A component that closed drops it: nothing but staged's own
+// directory is touched then.
+func (c *Workers) commitBase(staged stagedBase) error {
+	c.baseMu.Lock()
+	defer c.baseMu.Unlock()
+	if c.isClosing() {
+		_ = os.RemoveAll(staged.dir)
+		return closed()
+	}
+	dir, copied := staged.dir, staged.copied
+	if named := c.options.BaseDir; named != "" {
+		dir, copied = named, filepath.Join(named, filepath.Base(staged.copied))
+		if err := os.RemoveAll(named); err != nil {
+			_ = os.RemoveAll(staged.dir)
+			return fmt.Errorf("workers: the worker base cannot be made in %s: %w", named, err)
+		}
+		if err := os.Rename(staged.dir, named); err != nil {
+			_ = os.RemoveAll(staged.dir)
+			return fmt.Errorf("workers: the worker base cannot be made in %s: %w", named, err)
+		}
+	} else if c.baseDir != "" && c.baseDir != dir {
+		// The copy this one replaces (a cleaner of temporary files removed it): its directory goes too.
+		_ = os.RemoveAll(c.baseDir)
 	}
 	c.baseDir, c.baseCopy = dir, copied
-	return found, hash, nil
+	return nil
 }
 
 // baseFile is the file every worker is forked from: the base's copy, made again from the entry when it is gone (a cleaner of
@@ -222,14 +331,18 @@ func (c *Workers) baseFile() (string, error) {
 			return copied, nil
 		}
 	}
-	built := c.built.Load()
-	_, hash, err := c.snapshot(c.entryPath)
+	built, _ := (*c.built.Load()).(WorkersBuiltBuilt)
+	_, staged, err := c.stageBase(c.entryPath)
 	if err != nil {
 		return "", err
 	}
-	if want := built.Inputs[c.entryPath]; hash != want {
+	if want := built.Inputs[c.entryPath]; staged.hash != want {
+		_ = os.RemoveAll(staged.dir)
 		c.removeBase()
 		return "", fmt.Errorf("workers: the worker base is gone and %s changed since it was built", c.entryPath)
+	}
+	if err := c.commitBase(staged); err != nil {
+		return "", err
 	}
 	c.baseMu.Lock()
 	defer c.baseMu.Unlock()
@@ -246,24 +359,53 @@ func (c *Workers) removeBase() {
 	c.baseDir, c.baseCopy = "", ""
 }
 
-// writeWorkerBase copies the executable at path into a private directory (mode 0700, the copy 0700): dir, emptied first, or a new
-// temporary one when dir is empty. It returns the directory, the copy and the hash of the bytes written.
-func writeWorkerBase(path, dir string) (written, copied, hash string, err error) {
+// stagePrefix is the name a staged directory beside base starts with: `.<base>+build-`. `+` is the separator no kind name has (names
+// are `[a-z0-9@/._~-]`, contracts.CheckName), so another kind's staging directory (`-` can be in a name: kind `a-build-x` beside
+// kind `a`) never looks like a leftover of this one.
+func stagePrefix(base string) string { return "." + filepath.Base(base) + "+build-" }
+
+// removeStaleStages removes the staged directories (`.<base>+build-*`) an earlier start left beside the named base directory: a
+// build that outlived its component's close and the process ended before it dropped its copy. The first build of a component does
+// it, once the app holds the data directory's lock (nothing else writes there). Nothing without a named directory.
+func removeStaleStages(base string) {
+	if base == "" {
+		return
+	}
+	// The directory's entries, not a glob: the path can hold `[`, `*` and `?`.
+	parent, prefix := filepath.Dir(base), stagePrefix(base)
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		return
+	}
+	for _, each := range entries {
+		if strings.HasPrefix(each.Name(), prefix) {
+			_ = os.RemoveAll(filepath.Join(parent, each.Name()))
+		}
+	}
+}
+
+// stageWorkerBase copies the executable at path into a new private directory (mode 0700, the copy 0700): beside base when it is
+// not empty, else in a new temporary one. The program is opened first: a read that waits leaves nothing on disk.
+func stageWorkerBase(path, base string) (staged stagedBase, err error) {
 	source, err := os.Open(path)
 	if err != nil {
-		return "", "", "", err
+		return stagedBase{}, err
 	}
 	defer func() { _ = source.Close() }()
-	if dir == "" {
+	var dir string
+	if base == "" {
 		dir, err = os.MkdirTemp("", "chord-workers-base-")
-	} else if err = os.RemoveAll(dir); err == nil {
-		err = os.MkdirAll(dir, 0o700)
+	} else if parent := filepath.Dir(base); true {
+		if err = os.MkdirAll(parent, 0o700); err == nil {
+			dir, err = os.MkdirTemp(parent, stagePrefix(base))
+		}
 	}
 	if err != nil {
-		return "", "", "", err
+		return stagedBase{}, err
 	}
-	copied = filepath.Join(dir, "worker"+filepath.Ext(path))
+	copied := filepath.Join(dir, "worker"+filepath.Ext(path))
 	target, err := os.OpenFile(copied, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o700)
+	var hash string
 	if err == nil {
 		sum := sha256.New()
 		_, err = io.Copy(io.MultiWriter(target, sum), source)
@@ -274,9 +416,9 @@ func writeWorkerBase(path, dir string) (written, copied, hash string, err error)
 	}
 	if err != nil {
 		_ = os.RemoveAll(dir)
-		return "", "", "", err
+		return stagedBase{}, err
 	}
-	return dir, copied, hash, nil
+	return stagedBase{dir: dir, copied: copied, hash: hash}, nil
 }
 
 // CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`). Its worker base is not
@@ -392,8 +534,10 @@ type Workers struct {
 	route   host.RouteHandle
 	state   *workersState
 	options WorkersOptions
-	loop    *host.Loop
-	clock   clock
+	// environment is the workers' environment: Env, with NODE_COMPILE_CACHE from CompileCache unless Env sets it (Pi's `#environment`).
+	environment map[string]string
+	loop        *host.Loop
+	clock       clock
 
 	// addresses is Pi's `Map<string, Routed>`, in insertion order; guarded by the loop.
 	addresses map[string]*routed
@@ -406,8 +550,10 @@ type Workers struct {
 	idleTimer host.Timer
 	tasks     taskGroup
 	// built is how the build ended, once it did; buildOnce runs it; entryPath is the entry it resolved.
+	// buildDone closes when it did.
 	built     atomic.Pointer[WorkersBuilt]
 	buildOnce sync.Once
+	buildDone chan struct{}
 	entryPath string
 	// baseMu guards the base copy: baseDir is the directory this component wrote it into, baseCopy the copy ("" before the
 	// Build and after the removal).
@@ -417,7 +563,11 @@ type Workers struct {
 }
 
 func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
-	c := &Workers{options: options, loop: host.NewLoop(), addresses: map[string]*routed{}}
+	// One spelling of the named directory: its staging directory is made beside it (`Dir`, `Base`) and the commit replaces it.
+	if options.BaseDir != "" {
+		options.BaseDir = filepath.Clean(options.BaseDir)
+	}
+	c := &Workers{options: options, environment: workersEnvironment(options), loop: host.NewLoop(), addresses: map[string]*routed{}, buildDone: make(chan struct{})}
 	c.clock = options.clock
 	if c.clock == nil {
 		c.clock = c.loop
@@ -436,7 +586,10 @@ func (c *Workers) State() chord.Watchable[delta.JsonValue] { return host.Expose(
 // Inputs are the files its worker base was built from, with their bytes' hashes: the app's base code for its workers (Pi's
 // `inputs`, `base.inputs` of the base `createWorkers` built before it returned). Go builds the base lazily (Build): it is built
 // here when nothing did, and none when the build failed (Pi's `createWorkers` rejects then).
-func (c *Workers) Inputs() model.BaseInputs { return c.Build().Inputs }
+func (c *Workers) Inputs() model.BaseInputs {
+	built, _ := c.Build().(WorkersBuiltBuilt)
+	return built.Inputs
+}
 
 // isClosing reports whether `Close` was called.
 func (c *Workers) isClosing() bool { return c.closingCtx.Err() != nil }
@@ -685,8 +838,12 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 		return host.ResolvedLink{}, closed()
 	}
 	// The kind's worker base: a start builds it when nothing did, and fails while it failed.
-	if built := c.Build(); built.Err != nil {
-		return host.ResolvedLink{}, c.failLocked(record, cause{err: built.Err, public: &startFailed}, "")
+	built, open := c.awaitBuild()
+	if !open {
+		return host.ResolvedLink{}, closed()
+	}
+	if failed, ok := built.(WorkersBuiltFailed); ok {
+		return host.ResolvedLink{}, c.failLocked(record, cause{err: failed.Error, public: &startFailed}, "")
 	}
 	// The start's context ends with the route's or with Close, and its registrations on both end with the start.
 	own, release := chordctx.WithCancel(routing)
@@ -796,7 +953,7 @@ func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValu
 func (c *Workers) fork(record *routed, entry string) (*child, error) {
 	address := record.address
 	var spawned *child
-	options := ForkOptions{Entry: entry, ExecArgv: c.options.ExecArgv, Env: c.options.Env}
+	options := ForkOptions{Entry: entry, ExecArgv: c.options.ExecArgv, Env: c.environment}
 	if output := c.options.OnOutput; output != nil {
 		options.OnOutput = func(stream string, chunk []byte) { output(address, stream, chunk) }
 	}

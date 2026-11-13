@@ -33,7 +33,7 @@ func TestExtensionReloadResolvesInInteractiveMode(t *testing.T) {
 				t.Fatal(err)
 			}
 			logPath := filepath.Join(t.TempDir(), "reload.log")
-			env := []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_OFFLINE=1", "RELOAD_PROBE_LOG=" + logPath, "TERM=xterm-256color"}
+			env := []string{rustHome("CARGO_HOME", ".cargo"), rustHome("RUSTUP_HOME", ".rustup"), "HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_OFFLINE=1", "RELOAD_PROBE_LOG=" + logPath, "TERM=xterm-256color"}
 			master, slave := openPTY(t, 40, 160)
 			ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 			defer cancel()

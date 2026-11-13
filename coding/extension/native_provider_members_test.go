@@ -41,3 +41,13 @@ func TestNativeProviderOfRoundTripsProviderHeaders(t *testing.T) {
 		t.Fatalf("a null header was not preserved: %v", back.Headers)
 	}
 }
+
+// models.ts Provider.refreshModelsAuth survives the carrier round trip a compiled-in extension's provider takes into the registry.
+func TestNativeProviderOfRoundTripsRefreshModelsAuth(t *testing.T) {
+	for _, mode := range []ai.RefreshModelsAuthMode{"", ai.RefreshModelsAuthCredential, ai.RefreshModelsAuthConfigured} {
+		back := extension.NativeProviderOf(&ai.ModelsProvider{ID: "p", RefreshModelsAuth: mode}).ProviderObject()
+		if back.RefreshModelsAuth != mode {
+			t.Fatalf("round-tripped refreshModelsAuth = %q, want %q", back.RefreshModelsAuth, mode)
+		}
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
@@ -15,7 +16,8 @@ import (
 // Ports packages/chord/src/store/export.ts
 //
 // `store.Export(ctx)` (slice 6a §13, rule 26): the store's state after its `lastSeq` as archive parts, read page by
-// page with plain reads while the export holds the commit queue (no commit can interleave, no long read transaction).
+// page with plain reads while the export holds the commit queue (no commit can interleave, no long read transaction);
+// or, for one host address (`ExportHostData`), only the records and rows belonging to it, in the same format.
 // The queue is taken at the first `Next` and given back when the iteration ends, fails, is closed or `ctx` aborts; an
 // abort while the consumer is suspended gives it back at once and drops the pages and records the export held, and an
 // abort while it waits for the queue ends the wait. Closing the store ends it too (`released`).
@@ -32,6 +34,31 @@ import (
 
 // ExportPage is the rows and documents an export reads per page.
 const ExportPage int64 = 100
+
+// The kinds of ExportSelection.
+const (
+	SelectAll  = "all"
+	SelectHost = "host"
+)
+
+// ExportSelection is what an export holds: the whole store (Kind SelectAll), or the data belonging to the host with
+// address key Key (Kind SelectHost): the tables with a `host(...)` column of its kind, only its rows; the records
+// whose `host` is the key.
+type ExportSelection struct {
+	Kind string
+	Key  string
+}
+
+// HostColumnName is the name of the `host(...)` column of host kind kind among columns (a recorded table's or a
+// `table` write's); false when there is none. Pi's `hostColumn`.
+func HostColumnName(columns ColumnRecords, kind string) (string, bool) {
+	for _, entry := range columns {
+		if entry.Record.Host != nil && *entry.Record.Host == kind {
+			return entry.Name, true
+		}
+	}
+	return "", false
+}
 
 // PartIterator is a stream of archive parts: Next blocks for the next part (`ok` false at the end), Close ends the
 // stream (Pi's `return()`). StoreExport implements it.
@@ -67,10 +94,16 @@ type StoreExport struct {
 
 var _ PartIterator = (*StoreExport)(nil)
 
-// NewStoreExport is an export of store under ctx; it takes the commit queue at the first Next.
+// NewStoreExport is an export of the whole of store under ctx; it takes the commit queue at the first Next.
 func NewStoreExport(store *ChordStore, ctx context.Context) *StoreExport {
+	return NewSelectionExport(store, ctx, ExportSelection{Kind: SelectAll})
+}
+
+// NewSelectionExport is an export of store's selection under ctx (Pi's `new StoreExport(store, context, selection)`);
+// it takes the commit queue at the first Next.
+func NewSelectionExport(store *ChordStore, ctx context.Context, selection ExportSelection) *StoreExport {
 	export := &StoreExport{ctx: ctx}
-	export.parts = &exportParts{store: store, export: export, ctx: ctx}
+	export.parts = &exportParts{store: store, export: export, ctx: ctx, selection: selection}
 	return export
 }
 
@@ -194,6 +227,8 @@ type exportParts struct {
 	store  *ChordStore
 	export *StoreExport
 	ctx    context.Context
+	// selection is what the export holds.
+	selection ExportSelection
 
 	stage exportStage
 	// pending are the parts read and not yet returned (a page).
@@ -285,10 +320,19 @@ func (parts *exportParts) start() error {
 		return exportAbortedError(parts.ctx)
 	}
 	lastSeq, nextID := parts.store.LastSeq(), parts.store.NextID()
-	parts.pending = []ArchivePart{&ManifestPart{Format: ArchiveFormat, Schema: StoreSchema, LastSeq: lastSeq, NextID: nextID}}
+	manifest := &ManifestPart{Format: ArchiveFormat, Schema: StoreSchema, LastSeq: lastSeq, NextID: nextID}
+	if parts.selection.Kind == SelectHost {
+		manifest.Host = &parts.selection.Key
+	}
+	parts.pending = []ArchivePart{manifest}
 	tables := parts.store.Tables()
 	parts.tables = make([]*TableRecord, 0, len(tables))
 	for _, record := range tables {
+		if parts.selection.Kind == SelectHost {
+			if _, held := HostColumnName(record.Columns, contracts.KindOfKey(parts.selection.Key)); !held {
+				continue
+			}
+		}
 		parts.tables = append(parts.tables, record)
 	}
 	slices.SortFunc(parts.tables, func(a, b *TableRecord) int { return CompareText(a.Table, b.Table) })
@@ -328,12 +372,24 @@ func (parts *exportParts) putsPage(record *TableRecord) error {
 	physical, _ := RecordedPut(record.Table, record.Columns)
 	selected := strings.Join(quoteAll(physical), ", ")
 	order := strings.Join(quoteAll(record.Key), ", ")
-	from := ""
+	var conditions []string
+	var params []sqlite.SqliteValue
+	if parts.selection.Kind == SelectHost {
+		// The selected tables have a host column of the key's kind.
+		column, _ := HostColumnName(record.Columns, contracts.KindOfKey(parts.selection.Key))
+		conditions = append(conditions, Quote(column)+" = ?")
+		params = append(params, parts.selection.Key)
+	}
 	if parts.after != nil {
-		from = " WHERE (" + order + ") > (" + strings.TrimSuffix(strings.Repeat("?, ", len(parts.after)), ", ") + ")"
+		conditions = append(conditions, "("+order+") > ("+strings.TrimSuffix(strings.Repeat("?, ", len(parts.after)), ", ")+")")
+		params = append(params, parts.after...)
+	}
+	from := ""
+	if len(conditions) > 0 {
+		from = " WHERE " + strings.Join(conditions, " AND ")
 	}
 	sql := "SELECT " + selected + " FROM " + Quote(record.Table) + from + " ORDER BY " + order + " LIMIT ?"
-	params := append(slices.Clone(parts.after), ExportPage)
+	params = append(params, ExportPage)
 	rows, err := Read(parts.store, func(executor sqlite.SqliteExecutor) ([]sqlite.SqliteRow, error) {
 		return executor.All(sql, params...)
 	}, parts.ctx)
@@ -428,6 +484,9 @@ func (parts *exportParts) advanceDocuments() error {
 	}
 	after := parts.recordsAfter
 	records, err := Read(parts.store, func(executor sqlite.SqliteExecutor) ([]DocumentRecord, error) {
+		if parts.selection.Kind == SelectHost {
+			return ListHostRecords(executor, parts.selection.Key, after, ExportPage)
+		}
 		return ListRecords(executor, after, ExportPage)
 	}, parts.ctx)
 	if err != nil {

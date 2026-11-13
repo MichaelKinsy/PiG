@@ -149,7 +149,6 @@ func truncatedLineBytes(line []byte, maxChars int) (int, bool) {
 		rest = rest[size:]
 		width := utf16.RuneLen(r)
 		if units+width > maxChars {
-			// pig divergence (D252): a pair the cut would split is dropped whole.
 			break
 		}
 		n += utf8.RuneLen(r)

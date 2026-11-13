@@ -40,8 +40,10 @@ func TestPowerShellToolCallsCustomOperations(t *testing.T) {
 // createLocalPowerShellOperations wraps each command with the UTF-8 output switch and resolves PowerShell by name.
 func TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch(t *testing.T) {
 	ops := NewLocalPowerShellOperations()
-	if ops.ShellName != "PowerShell" || ops.WrapCommand("x") != powerShellUTF8OutputPrefix+"x" {
-		t.Fatalf("ops = %+v, wrapped = %q", ops, ops.WrapCommand("x"))
+	// pwsh.exe commands are unchanged apart from the prefix.
+	pwsh := ShellConfig{Path: `C:\Program Files\PowerShell\7\pwsh.exe`}
+	if ops.ShellName != "PowerShell" || ops.WrapCommand("x", pwsh) != powerShellUTF8OutputPrefix+"x" {
+		t.Fatalf("ops = %+v, wrapped = %q", ops, ops.WrapCommand("x", pwsh))
 	}
 }
 

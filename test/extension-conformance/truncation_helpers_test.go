@@ -3,7 +3,6 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
-	"maps"
 	"math/rand/v2"
 	"reflect"
 	"strings"
@@ -63,7 +62,7 @@ func TestConformance_TruncationHelpersAgreeAcrossSDKs(t *testing.T) {
 		// 10 emoji are 10 code points but 20 UTF-16 units: a limit of 16 cuts after 8 of them, which a code-point count would not.
 		{"fn": "line", "content": strings.Repeat("😀", 10), "maxChars": 16},
 		{"fn": "line", "content": strings.Repeat("😀", 10), "maxChars": 8},
-		// A cut inside a surrogate pair: the pinned Pi (the Node reference) keeps the lone high surrogate, which the host reads as U+FFFD; every PiG SDK drops the pair (Pi main 9e870f6f0, pig divergence (D252)), which expectedFor applies to the reference.
+		// A cut inside a surrogate pair: Pi's sliceHead (the Node reference) and every PiG SDK drop the whole pair.
 		{"fn": "line", "content": strings.Repeat("😀", 10), "maxChars": 7},
 		{"fn": "line", "content": "日本語日本語", "maxChars": 3},
 		{"fn": "line", "content": "abc", "maxChars": 0},
@@ -156,21 +155,6 @@ func TestConformance_TruncationHelpersAgreeAcrossSDKs(t *testing.T) {
 		}
 	}
 
-	// pig divergence (D252): Pi main 9e870f6f0 truncateLine does not split a surrogate pair, but the pinned Pi (the Node reference) keeps the lone
-	// high surrogate, which the host decodes as U+FFFD. The expected value drops that character. No corpus line holds a real U+FFFD.
-	expectedFor := func(i int) map[string]any {
-		want := reference[i]
-		if cases[i]["fn"] != "line" || strings.Contains(cases[i]["content"].(string), "\uFFFD") {
-			return want
-		}
-		if text, ok := want["text"].(string); ok && strings.HasSuffix(text, "\uFFFD... [truncated]") {
-			adjusted := map[string]any{}
-			maps.Copy(adjusted, want)
-			adjusted["text"] = strings.TrimSuffix(text, "\uFFFD... [truncated]") + "... [truncated]"
-			return adjusted
-		}
-		return want
-	}
 	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		if tc.name == "subprocess-node" {
 			continue
@@ -188,9 +172,6 @@ func TestConformance_TruncationHelpersAgreeAcrossSDKs(t *testing.T) {
 			for i, c := range cases {
 				got := run(t, h, c)
 				want := reference[i]
-				if !strings.HasPrefix(tc.name, "subprocess-node") {
-					want = expectedFor(i)
-				}
 				if !reflect.DeepEqual(got, want) {
 					args, _ := json.Marshal(c)
 					t.Errorf("case %d %.80s: got %v, Node (Pi) reports %v", i, args, got, want)

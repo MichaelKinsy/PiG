@@ -228,6 +228,8 @@ type SlashContext struct {
 	// reports whether session_before_switch cancelled the switch. Mirrors
 	// upstream runtimeHost.importFromJsonl.
 	ImportSession func(inputPath, cwdOverride string) (cancelled bool, err error)
+	// ForkSession forks the session at sourcePath into cwd and switches to the fork (Pi switchToForkedSession); it returns the status Pi shows, and whether an extension vetoed the switch.
+	ForkSession func(sourcePath, cwd string) (status string, cancelled bool, err error)
 
 	// Manual context compaction.
 	// CompactSession triggers a manual compact on the current session.

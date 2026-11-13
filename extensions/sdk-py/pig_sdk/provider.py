@@ -177,6 +177,8 @@ class Provider:
     # ``(model, request, options: ProviderOperationOptions) -> dict``: the provider's image generation, and its classification (``request`` is ``{"state", "questions"}``).
     generate_images: Callable[[dict, dict, ProviderOperationOptions], dict] | None = None
     classify: Callable[[dict, dict, ProviderOperationOptions], dict] | None = None
+    # Pi ``Provider.refreshModelsAuth``: ``"credential"`` (the default) or ``"configured"``, which runs the network phase of a catalog refresh without the credential and without an OAuth refresh first.
+    refresh_models_auth: str | None = None
 
 
 def _method(provider, method):
@@ -205,6 +207,8 @@ def declaration(provider, key):
         result["baseUrl"] = provider.base_url
     if provider.headers is not None:
         result["headers"] = provider.headers
+    if provider.refresh_models_auth is not None:
+        result["refreshModelsAuth"] = provider.refresh_models_auth
     if provider.auth.api_key:
         result["auth"]["apiKey"] = {"name": provider.auth.api_key.name}
     if provider.auth.oauth:
@@ -326,7 +330,10 @@ def dispatch_operation(extension, ctx, request):
         refresh = (extension._provider_operations.get(provider) or {}).get("refreshModels")
         if refresh is None:
             raise RuntimeError(f"Provider {provider} has no refreshModels")
-        callback = lambda method, params: ctx._call("provider.callback", {"provider": provider, "method": method, "params": params}).get("result")
+
+        def callback(method, params):
+            return ctx._call("provider.callback", {"provider": provider, "method": method, "params": params}).get("result")
+
         return refresh(refresh_context(extension, callback, args.get("context") or {}, ctx._cancelled))
     if kind not in ("images", "classifiers"):
         raise RuntimeError(f"Unknown provider operation {kind!r}")
@@ -433,6 +440,7 @@ def remote_provider(context, decl):
     for wire, field_name in (("generateImages", "generate_images"), ("classify", "classify")):
         if wire in methods:
             setattr(provider, field_name, lambda model, request, options=None, wire=wire: invoke(wire, {"model": model, "context": request, "options": options.values if options else {}}, signal=options.signal if options else None))
+    provider.refresh_models_auth = decl.get("refreshModelsAuth")
     if "getAllModels" in methods:
         provider.get_all_models = lambda: invoke("getAllModels")
     for wire, field_name in (("filterModels", "filter_models"), ("filterAllModels", "filter_all_models")):

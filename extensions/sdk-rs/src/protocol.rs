@@ -34,6 +34,10 @@ mod request_lifetime_tests;
 /// MaxFrameSize constants.
 pub const MAX_FRAME_SIZE: u32 = 128 * 1024 * 1024;
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 fn is_zero(value: &u32) -> bool {
     *value == 0
 }
@@ -361,6 +365,8 @@ pub struct RequestMsg {
     pub stream_error: Option<String>,
     /// On `tool_call`: the call's position among the tool calls of the assistant message that issued it (the host's `tool_call_index`).
     pub tool_call_index: Option<u32>,
+    /// On `session_before_compact` and `session_before_tree`: the event's AbortSignal had already aborted when the host dispatched the handler (the host's `signal_aborted`).
+    pub signal_aborted: bool,
     /// On `tool_call`: the JSON text of `args` as the host wrote it.
     pub args_raw: Option<String>,
     /// Why the arguments were not decoded: they nest deeper than `MAX_NESTING_DEPTH`, which is Pi's `RangeError` (`Maximum call stack size exceeded`) and not a reason to end the connection. The request is answered with this error.
@@ -411,6 +417,8 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     batch: Option<String>,
     tool_call_index: Option<u32>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    signal_aborted: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     args: Option<Box<serde_json::value::RawValue>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -524,6 +532,7 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
             stream,
             stream_error: None,
             tool_call_index: raw.tool_call_index,
+            signal_aborted: raw.signal_aborted,
             args_raw,
             args_error,
             deep_args,
@@ -549,6 +558,7 @@ impl From<RequestMsg> for RawRequestMsg {
             tool_call_id: req.tool_call_id,
             batch: req.batch,
             tool_call_index: req.tool_call_index,
+            signal_aborted: req.signal_aborted,
             args,
             child_session: req.child_session,
             stream: req.stream.map(|stream| RawEventStream {
@@ -703,6 +713,9 @@ pub struct CancelMsg {
     pub request_id: String,
     #[serde(default)]
     pub reason: String,
+    /// Only the request's AbortSignal ended (`session_before_compact`, `session_before_tree`) and the request goes on: the signal the handler holds aborts and no host call is cancelled.
+    #[serde(default)]
+    pub signal_only: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -712,6 +725,9 @@ pub struct CallMsg {
     pub args: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_request_id: Option<String>,
+    /// Set on a call made through a command context (a command handler's or a withSession callback's), kept with the context after its request ended: Pi gives `newSession`, `fork`, `navigateTree`, `switchSession` and `reload` to no other context, and the host refuses them from any call that does not carry this mark.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub command_context: bool,
     /// Set on a call made through a request's scope after its handler returned: deferred work, which the host runs once Pi's loop turns.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub timer: bool,
@@ -766,6 +782,18 @@ pub struct ErrorInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
     pub message: String,
+    /// Pi's `ShellTimeoutError.shellExit`: on the error of a local shell command that timed out after its shell had exited.
+    #[serde(default, rename = "shellExit", skip_serializing_if = "Option::is_none")]
+    pub shell_exit: Option<ShellExit>,
+}
+
+/// The shell's own exit code and the seconds it ran, rounded to a tenth as Pi rounds them.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub struct ShellExit {
+    #[serde(rename = "exitCode")]
+    pub exit_code: i64,
+    #[serde(rename = "afterSeconds")]
+    pub after_seconds: f64,
 }
 
 // ─── Connection ──────────────────────────────────────────────────────────────
@@ -775,6 +803,8 @@ pub(crate) struct RequestParent {
     id: String,
     state: AtomicU8,
     finished: AtomicBool,
+    /// Set when the request hands its handler a command context (a command handler, a withSession callback). The context keeps the kind after the request ended.
+    command: AtomicBool,
     /// A `tool_call` request's place in the batch orders (`ToolStartOrder`), set once by the read loop. Its host calls are awaits of
     /// the handler, so the ones carrying this request's id keep the place.
     start: std::sync::OnceLock<Arc<crate::tool_start_order::ToolStart>>,
@@ -786,6 +816,14 @@ impl RequestParent {
     }
     pub(crate) fn cancelled(&self) -> bool {
         self.state.load(Ordering::Acquire) == 2
+    }
+    // pig divergence (D617): the Rust SDK has one static Context type, so the method exists on every context; the host answers a command-only call from a context that did not send this mark with not_a_command_context.
+    /// Marks the request as one whose handler receives a command context. The read loop calls it once, before the request's thread starts.
+    pub(crate) fn mark_command(&self) {
+        self.command.store(true, Ordering::Release);
+    }
+    pub(crate) fn command(&self) -> bool {
+        self.command.load(Ordering::Acquire)
     }
 
     /// Gives the request its place in the batch orders. The read loop calls it once, before the request's thread starts.
@@ -837,6 +875,8 @@ pub struct Connection {
     pub(crate) with_sessions: crate::replaced_session::WithSessionRegistry,
     /// The frontend flag, the image refs sent, and the live widget, header and footer views (D107).
     pub(crate) views: crate::kit::ViewLedger,
+    /// D614: the replicated client abilities.
+    pub(crate) view_state: crate::ui_view::ViewState,
     /// The setup callbacks of this connection's newSession calls in flight.
     pub(crate) setups: crate::setup_session::SetupRegistry,
     /// The functions passed in options of session graph objects (DefaultResourceLoader's overrides), by the name the host runs them under.
@@ -974,6 +1014,7 @@ impl Connection {
             bash_operations: Default::default(),
             with_sessions: Default::default(),
             views: Default::default(),
+            view_state: Default::default(),
             setups: Default::default(),
             graph_callbacks: Default::default(),
             children: Default::default(),
@@ -992,6 +1033,7 @@ impl Connection {
             id: id.to_owned(),
             state: AtomicU8::new(0),
             finished: AtomicBool::new(false),
+            command: AtomicBool::new(false),
             start: std::sync::OnceLock::new(),
         });
         self.request_parents
@@ -1073,6 +1115,7 @@ impl Connection {
                                 code: None,
                                 message: "the extension has not registered with the host yet"
                                     .to_string(),
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -1196,6 +1239,7 @@ impl Connection {
                         error: Some(ErrorInfo {
                             code: None,
                             message: err.to_string(),
+                            shell_exit: None,
                         }),
                     },
                 })
@@ -1368,6 +1412,7 @@ impl Connection {
             Some(parent) => Some(parent.id.as_str()),
             None => parent_request_id,
         };
+        let command_context = scope.is_some_and(RequestParent::command);
         let id = format!(
             "c{}",
             self.call_id
@@ -1391,6 +1436,8 @@ impl Connection {
             #[serde(skip_serializing_if = "Option::is_none")]
             parent_request_id: Option<&'a str>,
             #[serde(skip_serializing_if = "std::ops::Not::not")]
+            command_context: bool,
+            #[serde(skip_serializing_if = "std::ops::Not::not")]
             timer: bool,
         }
         #[derive(Serialize)]
@@ -1409,6 +1456,7 @@ impl Connection {
                     method,
                     args,
                     parent_request_id,
+                    command_context,
                     timer,
                 },
             },

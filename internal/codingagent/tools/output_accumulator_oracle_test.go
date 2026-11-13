@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
@@ -80,6 +81,37 @@ func TestOutputAccumulatorMatchesPi(t *testing.T) {
 			stream = stream[n:]
 		}
 		probes = append(probes, p)
+	}
+	// Output whose last line alone fills the rolling tail (Pi 935f0ac0ccfc, #12092): at Pi's default limits in 8 KiB chunks, and at tiny limits
+	// where the same clipping happens within a few bytes. Pi's patched build (pi-post-release-backports.mjs) is the oracle.
+	for _, stream := range []string{
+		"first line\n" + strings.Repeat("y", 219_000) + "END\n",
+		"first line\r\n" + strings.Repeat("y", 219_000) + "END\r\n",
+		strings.Repeat("y", 219_000) + "END\n",
+		"first line\n" + strings.Repeat("y", 219_000) + "END",
+		strings.Repeat(strings.Repeat("y", 150_000)+"\n", 3),
+		"first line\n" + strings.Repeat("€", 70_000) + "END\n",
+		"first line\n" + strings.Repeat("😀", 55_000) + "END\n",
+		strings.Repeat("filler line\n", 20_000) + strings.Repeat("y", 102_399) + "\n",
+		strings.Repeat("filler line\n", 20_000) + strings.Repeat("y", 102_400) + "\n",
+		strings.Repeat("filler line\n", 20_000) + strings.Repeat("y", 102_401) + "\n",
+	} {
+		p := accumulatorProbe{MaxLines: 2000, MaxBytes: 51200, Persist: true, FullMax: 1 << 20}
+		for i := 0; i < len(stream); i += 8192 {
+			p.Chunks = append(p.Chunks, hex.EncodeToString([]byte(stream[i:min(i+8192, len(stream))])))
+			p.SnapshotAt = append(p.SnapshotAt, i%(8192*8) == 0)
+		}
+		probes = append(probes, p)
+	}
+	for _, stream := range []string{"ab\n" + strings.Repeat("y", 60) + "END\n", strings.Repeat("y", 60) + "END\n", "ab\n" + strings.Repeat("é", 40) + "\n", "a\n" + strings.Repeat("y", 30) + "\n\n"} {
+		for _, maxBytes := range []int{1, 2, 3, 5, 8} {
+			p := accumulatorProbe{MaxLines: 2000, MaxBytes: maxBytes, Persist: true, FullMax: 1 << 20}
+			for i := 0; i < len(stream); i += 5 {
+				p.Chunks = append(p.Chunks, hex.EncodeToString([]byte(stream[i:min(i+5, len(stream))])))
+				p.SnapshotAt = append(p.SnapshotAt, true)
+			}
+			probes = append(probes, p)
+		}
 	}
 	var want []accumulatorResult
 	pioracle.Run(t, `

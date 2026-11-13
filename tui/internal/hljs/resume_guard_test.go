@@ -127,7 +127,7 @@ func guardedText(random *rand.Rand, pieces int) string {
 // run resumed over more text, with a fresh run over that text.
 func checkResumedFromEveryPoint(t *testing.T, r *Registry, lang, code string, cut int, extensions []int) (points int) {
 	t.Helper()
-	prefixHTML, offered, err := r.HighlightResumable(code[:cut], lang, true, ResumePoint{})
+	prefixHTML, offered, err := r.HighlightResumable(NewText(code[:cut]), lang, true, ResumePoint{})
 	if err != nil {
 		t.Fatalf("%s: %v", lang, err)
 	}
@@ -137,7 +137,7 @@ func checkResumedFromEveryPoint(t *testing.T, r *Registry, lang, code string, cu
 			t.Fatalf("%s: %v", lang, err)
 		}
 		for _, p := range offered {
-			suffix, _, err := r.HighlightResumable(code[:end], lang, true, p)
+			suffix, _, err := r.HighlightResumable(NewText(code[:end]), lang, true, p)
 			if err != nil {
 				continue
 			}
@@ -263,7 +263,7 @@ func TestGuardedResumeKeepsPointsOfCode(t *testing.T) {
 		fmt.Fprintf(&code, "export function step%d(input: number[]): number { return input.reduce((a, b) => a + b * %d, %d); }\n", n, n%97, n)
 	}
 	for _, lang := range []string{"typescript", "javascript"} {
-		_, points, err := r.HighlightResumable(code.String(), lang, true, ResumePoint{})
+		_, points, err := r.HighlightResumable(NewText(code.String()), lang, true, ResumePoint{})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -265,8 +265,8 @@ func (t anthTool) wire() (anthToolWire, error) {
 // anthLegacyInputSchemaOrder is the member order of the literal { type, properties, required } (anthropic-messages.ts:1589-1593, :207).
 var anthLegacyInputSchemaOrder = []string{"type", "properties", "required"}
 
-// anthLegacyDefinitionKeys are the root members the legacy literal appends after required, in order, when present (anthropic-messages.ts convertTools).
-var anthLegacyDefinitionKeys = []string{"$defs", "definitions"}
+// anthLegacyOptionalRootKeys are the root members the legacy literal appends after required, in order, when present: additionalProperties, $defs and definitions (anthropic-messages.ts convertTools).
+var anthLegacyOptionalRootKeys = []string{"additionalProperties", "$defs", "definitions"}
 
 // deferredToolPlaceholder mirrors upstream DEFERRED_TOOL_PLACEHOLDER: a stable
 // deferred tool declared whenever native tool changes are in use. Anthropic adds
@@ -872,12 +872,12 @@ func anthConvertTools(tools []ToolSchema, isOAuthToken, supportsEagerToolInputSt
 	return out, nil
 }
 
-// anthKeepsLegacySchemaOrder reports whether the object at path survives into the legacy input_schema: properties and the root definitions.
+// anthKeepsLegacySchemaOrder reports whether the object at path survives into the legacy input_schema: properties, additionalProperties and the root definitions.
 func anthKeepsLegacySchemaOrder(path string) bool {
 	if anthIsOrIsUnder(path, "properties") {
 		return true
 	}
-	for _, key := range anthLegacyDefinitionKeys {
+	for _, key := range anthLegacyOptionalRootKeys {
 		if anthIsOrIsUnder(path, key) {
 			return true
 		}
@@ -919,11 +919,12 @@ func anthInputSchema(parameters map[string]any, parameterOrder schemaObjectOrder
 		}
 		order[""] = root
 	} else {
-		// Shared definitions stay so property $refs resolve; other root keywords stay out because Anthropic rejects root
-		// anyOf/oneOf/allOf with a 400 (Pi 4a6a58eb5, #9557). A key the schema lacks is omitted, not written as null.
-		schema = make(map[string]any, len(anthLegacyInputSchemaOrder)+len(anthLegacyDefinitionKeys))
+		// Shared definitions stay so property $refs resolve, and additionalProperties stays so the model knows whether extra arguments are allowed.
+		// Other root keywords stay out because Anthropic rejects root
+		// anyOf/oneOf/allOf with a 400 (Pi 4a6a58eb5, #9557; aa47cedce, #12100). A key the schema lacks is omitted, not written as null.
+		schema = make(map[string]any, len(anthLegacyInputSchemaOrder)+len(anthLegacyOptionalRootKeys))
 		root := slices.Clone(anthLegacyInputSchemaOrder)
-		for _, key := range anthLegacyDefinitionKeys {
+		for _, key := range anthLegacyOptionalRootKeys {
 			if definitions, ok := parameters[key]; ok {
 				schema[key] = definitions
 				root = append(root, key)
@@ -1218,7 +1219,7 @@ func (p *anthropicProvider) prepareStream(ctx context.Context, transcript Transc
 		lease.release()
 		return nil, AbortReason(ctx)
 	}
-	params, err := p.buildParams(model, transcript, client.isOAuthToken, modelHeaders, optionsHeaders, opts, requestEnv, false)
+	params, err := p.buildParams(model, transcript, client.isOAuthToken, modelHeaders, optionsHeaders, opts, requestEnv, hasExceededStrictToolLimits(opts.SessionID))
 	if err != nil {
 		lease.release()
 		return nil, fmt.Errorf("anthropic: build params: %w", err)
@@ -1288,6 +1289,7 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 				Error:     &DiagnosticErrorInfo{Message: strictLimitMessage},
 				Details:   map[string]any{"reason": "strict_tool_limits_exceeded"},
 			})
+			markStrictToolLimitsExceeded(opts.SessionID)
 			retry, err = request.withoutStrict()
 		case resp.StatusCode == http.StatusBadRequest && isThinkingSignatureError(b):
 			request.params.request.Messages, err = request.params.convertMessages(stripThinkingSignatures(request.params.conversation), request.client.isOAuthToken)
@@ -1496,13 +1498,13 @@ func anthSystemBlocks(systemPrompt string, isOAuthToken bool, cc *anthCacheContr
 }
 
 // supportsMessageThreads reports whether the endpoint supports message threads. Gateways that drop unknown request fields would silently turn a
-// continue into a request without the earlier conversation, so the default is limited to Anthropic's own endpoint (anthropic-messages.ts
+// continue into a request without the earlier conversation, so the default is limited to Anthropic's own endpoint, whatever the provider id (anthropic-messages.ts
 // getAnthropicCompat). Widen or remove this restriction once proxies generally forward the thread field.
 func (p *anthropicProvider) supportsMessageThreads(model *Model) bool {
 	if compat := model.ProviderMeta.Compat; compat != nil && compat.SupportsMessageThreads != nil {
 		return *compat.SupportsMessageThreads
 	}
-	return p.cfg.ProviderID == "anthropic" && strings.Contains(p.cfg.BaseURL, "api.anthropic.com")
+	return strings.Contains(p.cfg.BaseURL, "api.anthropic.com")
 }
 
 // anthropicCompatFlag reads an opt-in model compat flag (default false).
@@ -2205,13 +2207,13 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 				if block, ok := output.Content[index].(TextContent); ok {
 					block.Text = builder.appendContent(index, block.Text, ev.Delta.Text)
 					output.Content[index] = block
-					builder.push(TextDeltaEvent{ContentIndex: index, Delta: ev.Delta.Text, Partial: output})
+					builder.pushView(TextDeltaEvent{ContentIndex: index, Delta: ev.Delta.Text, Partial: builder.publishedView()})
 				}
 			case "thinking_delta":
 				if block, ok := output.Content[index].(ThinkingContent); ok {
 					block.Thinking = builder.appendContent(index, block.Thinking, ev.Delta.Thinking)
 					output.Content[index] = block
-					builder.push(ThinkingDeltaEvent{ContentIndex: index, Delta: ev.Delta.Thinking, Partial: output})
+					builder.pushView(ThinkingDeltaEvent{ContentIndex: index, Delta: ev.Delta.Thinking, Partial: builder.publishedView()})
 				}
 			case "input_json_delta":
 				if block, ok := output.Content[index].(ToolCall); ok && open.args != nil {
@@ -2222,7 +2224,7 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 					arguments, order := open.args.Append(ev.Delta.PartialJSON)
 					builder.showStreamedArguments(index, &block, open.args, arguments, order)
 					output.Content[index] = block
-					builder.push(ToolCallDeltaEvent{ContentIndex: index, Delta: ev.Delta.PartialJSON, Partial: output})
+					builder.pushView(ToolCallDeltaEvent{ContentIndex: index, Delta: ev.Delta.PartialJSON, Partial: builder.publishedView()})
 				}
 			case "signature_delta":
 				if block, ok := output.Content[index].(ThinkingContent); ok {

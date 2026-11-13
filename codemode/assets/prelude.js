@@ -141,6 +141,8 @@
 	function format(value) {
 		if (typeof value === "string") return value;
 		if (value instanceof ErrorCtor) return errorText(value);
+		// JSON.stringify turns NaN and Infinity into "null".
+		if (typeof value === "number") return String(value);
 		try {
 			const json = stringify(value, errorReplacer);
 			return json === undefined ? String(value) : json;

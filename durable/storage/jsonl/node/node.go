@@ -22,7 +22,7 @@ import (
 )
 
 // OpenNodeJsonlStorage opens or creates a JSONL storage directory on the local file system, resolving a relative
-// directory against the process working directory.
+// directory against the process working directory; options.ReadOnly opens one without writing.
 func OpenNodeJsonlStorage(
 	ctx context.Context, directory string, options jsonl.JsonlStorageOptions,
 ) (*jsonl.JsonlStorage, error) {
@@ -254,6 +254,33 @@ func (fileSystem *NodeFileSystem) RenameFile(ctx context.Context, sourcePath, de
 		return toFileError(err, source)
 	}
 	return nil
+}
+
+// FileInfo describes a path without following a symbolic link (NodeExecutionEnv.fileInfo: lstat); a path that is none of a
+// file, directory, or symbolic link fails as invalid.
+func (fileSystem *NodeFileSystem) FileInfo(ctx context.Context, path string) (env.FileInfo, error) {
+	resolved, err := fileSystem.resolve(path)
+	if err != nil {
+		return env.FileInfo{}, err
+	}
+	if err := aborted(ctx, resolved); err != nil {
+		return env.FileInfo{}, err
+	}
+	info, err := os.Lstat(resolved)
+	if err != nil {
+		return env.FileInfo{}, toFileError(err, resolved)
+	}
+	kind, ok := fileKind(info)
+	if !ok {
+		return env.FileInfo{}, env.NewFileError(env.FileErrorInvalid, "Unsupported file type", resolved, nil)
+	}
+	return env.FileInfo{
+		Name:    filepath.Base(resolved),
+		Path:    resolved,
+		Kind:    kind,
+		Size:    info.Size(),
+		MtimeMs: float64(info.ModTime().UnixNano()) / 1e6,
+	}, nil
 }
 
 // ListDir lists a directory's entries without following symbolic links.

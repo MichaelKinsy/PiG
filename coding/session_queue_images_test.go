@@ -61,7 +61,7 @@ func TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery(t *testing.T) {
 	}
 }
 
-// pi: agent-session-queued-images.test.ts "resizes images in steering, follow-up, and streaming prompt messages" (Pi main 4cf69332c, #11782; D249).
+// pi: agent-session-queued-images.test.ts "resizes images in steering, follow-up, and streaming prompt messages" (Pi 4cf69332c, #11782).
 func TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages(t *testing.T) {
 	waiting := createQueueWaitingHarness(t, extension.Extension{})
 	h := waiting.h
@@ -124,7 +124,7 @@ func TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages(t *testing.T) {
 	}
 }
 
-// pi main 4cf69332c (#11782; D249): the interactive mode queues on the Agent with a message built by QueuedUserMessage; delivery resizes it.
+// pi main 4cf69332c (#11782): the interactive mode queues on the Agent with a message built by QueuedUserMessage; delivery resizes it.
 func TestSessionQueuedUserMessageBuiltForAgentQueueIsResizedAtDelivery(t *testing.T) {
 	waiting := createQueueWaitingHarness(t, extension.Extension{})
 	h := waiting.h

@@ -3,12 +3,17 @@ package hljs
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 // jsonSnapshot decodes a snapshot with encoding/json into the snapshot the decoder builds, as the oracle for it.
@@ -104,8 +109,8 @@ func TestSnapshotDecodesAsEncodingJSON(t *testing.T) {
 	}{
 		{"eager grammars", eagerGrammars, snapshotGrammars},
 		{"eager tables", eagerGrammars, snapshotTables},
-		{"all grammars", allGrammars, snapshotGrammars},
-		{"all, every section", allGrammars, snapshotGrammars | snapshotTables},
+		{"all grammars", allGrammarsGzip(), snapshotGrammars},
+		{"all, every section", allGrammarsGzip(), snapshotGrammars | snapshotTables},
 	} {
 		got := decodeSnapshot(tc.data, tc.sections)
 		want := jsonSnapshot(t, tc.data, tc.sections)
@@ -117,6 +122,35 @@ func TestSnapshotDecodesAsEncodingJSON(t *testing.T) {
 		}
 	}
 }
+
+// The embedded frame holds exactly the text the generator writes: grammars_all.json.zst decodes to the bytes that grammars_all.json.gz held (the output of automation/gen/generate-highlight-grammars.mjs for the pinned Pi package, SHA-256 below, taken from the gzip stream at the commit before the frame replaced it). `make highlight-grammars` rewrites the frame from a new generator output; update the digest from the diff of that run.
+func TestFullSnapshotFrameHoldsTheGeneratorsText(t *testing.T) {
+	const want = "91333bae351ca12b46704940712406e21edf1e7b9ab8e42e46cc3836e9578792"
+	raw, err := zstdblob.Decode(allGrammars)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sum := sha256.Sum256(raw); hex.EncodeToString(sum[:]) != want {
+		t.Errorf("grammars_all.json.zst decodes to SHA-256 %x, want %s", sum, want)
+	}
+}
+
+// allGrammarsGzip is the full snapshot, which the binary embeds as a zstd frame, as the gzip stream decodeSnapshot reads: the same JSON, so the decoder's tests cover it as they cover the eager snapshot.
+var allGrammarsGzip = sync.OnceValue(func() []byte {
+	raw, err := zstdblob.Decode(allGrammars)
+	if err != nil {
+		panic(err)
+	}
+	var out bytes.Buffer
+	writer := gzip.NewWriter(&out)
+	if _, err := writer.Write(raw); err != nil {
+		panic(err)
+	}
+	if err := writer.Close(); err != nil {
+		panic(err)
+	}
+	return out.Bytes()
+})
 
 func gzipText(t *testing.T, text string) []byte {
 	t.Helper()

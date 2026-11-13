@@ -60,6 +60,14 @@ type HostOptions struct {
 	ReloadDrainTimeout *time.Duration
 	// Heartbeat is the heartbeat of every link.
 	Heartbeat *HeartbeatOptions
+	// CallWindow is how many concurrent calls of one origin this host accepts on a link it was not given as trusted (its call
+	// window, announced in `hello`); nil is 10,000, a positive integer. On a trusted link it announces none (decision "Call
+	// windows only for untrusted links"): the app's own hosts never queue calls behind each other.
+	CallWindow *int
+	// EventWindow is how many `event` messages of its own this host leaves unacknowledged per link and origin (decision
+	// "Events: fire-and-forget members"); nil is 32. A flush finding the window full drops that origin's events (counted):
+	// nothing waits for a slow consumer.
+	EventWindow *int
 	// RevokedBy is what revokes a principal (§4): `host.Revoke(r)` ends the objects and closes the child links of every
 	// principal `p` whose RevokedBy(p) holds `r` (compared as canonical JSON). The same function on every host.
 	RevokedBy RevokedBy[delta.JsonValue]
@@ -262,6 +270,19 @@ type Host interface {
 	// context is sealed: its signal aborted, `ctx.Get` refused `released`, every reference it took released; an abort returns
 	// at once. `host.Close` seals the open ones; after it, Root returns `released`.
 	Root(fn func(ctx Ctx) (any, error), ctx context.Context, options RootOptions) (any, error)
+	// ExportHostData is the records and rows of this host's store belonging to address (host-keyed documents, `host(...)`
+	// cells) as a store archive with `host` in its manifest, holding the store's commit queue while it is read. It returns
+	// `invalid/args` without a store.
+	ExportHostData(address contracts.Address, ctx context.Context) (*store.StoreExport, error)
+	// ImportHostData imports a host's data archive (ExportHostData's) into this host's store in one commit, under
+	// options.Address (a copy) or the archive's; data of that address refused, or replaced with Existing "replace";
+	// older tables' rows migrated through their owners' histories. One operation at a time; activations wait while one
+	// runs; the live owners' lines are held and what they hold of the address is adopted in one batch (spec
+	// `docs/host-keyed/spec.md` §5). It returns `invalid/args` without a store, for a refused archive or existing data;
+	// `released` once ctx aborted before the commit was admitted.
+	ImportHostData(parts store.PartSource, ctx context.Context, options store.HostImportOptions) (store.HostDataCounts, error)
+	// DeleteHostData deletes the records and rows belonging to address in one commit, coordinated as ImportHostData.
+	DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error)
 	// Close closes its links, seals its root scopes, then ends every object at once, then drains and closes them one by one,
 	// the last to go live first (reason `close`). It returns an error joining the closes that failed.
 	Close(ctx context.Context) error
@@ -300,6 +321,8 @@ const (
 	defaultReloadDrainTimeout = 5 * time.Second
 	defaultPing               = 15 * time.Second
 	defaultHeartbeat          = 30 * time.Second
+	defaultCallWindow         = 10_000
+	defaultEventWindow        = 32
 )
 
 // hostState is where a host stands.
@@ -382,10 +405,16 @@ type intervalLoop interface {
 
 // chordHost is the host: its served types, its objects by identity, its batch, backoff and endings.
 type chordHost struct {
-	batch     *state.Batch
-	events    sectionLoop
-	scheduler *chord.DeliveryScheduler
-	timeouts  hostTimeouts
+	batch  *state.Batch
+	events sectionLoop
+	// eventFlow is its events: the emit counter, the list waiting for the event flush, the flush (Pi's `events`).
+	eventFlow *hostEvents
+	// callWindow is the call window it announces on links it was not given as trusted (`HostOptions.callWindow`).
+	callWindow int
+	// eventWindow is its own `event` messages unacknowledged per link and origin at most (`HostOptions.eventWindow`).
+	eventWindow int
+	scheduler   *chord.DeliveryScheduler
+	timeouts    hostTimeouts
 	// oldWork is its old work during reloads (whether a context runs under it): see host_old_work.go.
 	oldWork oldWork
 	// reloadCycles are the waits of old work on objects that are not live, cut at once when they cycle through their own drain.
@@ -408,6 +437,8 @@ type chordHost struct {
 	compression link.Compression
 	// store is the host's store, if it has one.
 	store *store.ChordStore
+	// hostData is its host data gate: host data operations one at a time, activations' load phases kept out while one runs.
+	hostData *hostDataGate
 	// unplaced are remote references failed for a part past a link's limits: on no link's path (no reconnect holds them,
 	// no route resolves for them) until `ref.retry()` places them anew; ended at `close` like the others.
 	unplaced *path
@@ -519,6 +550,17 @@ func createHost(options HostOptions) (*chordHost, error) {
 	h.revocationKeys = newRevocationKeys(options.RevokedBy.erased())
 	closeTimeout := durationOr(options.CloseTimeout, defaultCloseTimeout)
 	h.timeouts = hostTimeouts{close: closeTimeout, ready: durationOr(options.ReadyTimeout, defaultReadyTimeout), reload: min(closeTimeout, durationOr(options.ReloadDrainTimeout, defaultReloadDrainTimeout))}
+	h.callWindow, h.eventWindow = defaultCallWindow, defaultEventWindow
+	if options.CallWindow != nil {
+		h.callWindow = *options.CallWindow
+	}
+	if options.EventWindow != nil {
+		h.eventWindow = *options.EventWindow
+	}
+	h.eventFlow = newHostEvents(events, h.metrics, func(err error) {
+		h.report(BatchHostError(state.BatchError{Kind: state.BatchListenerError, Error: err}))
+	})
+	h.eventFlow.window = h.eventWindow
 	h.heartbeat.ping, h.heartbeat.close = defaultPing, defaultHeartbeat
 	if options.Heartbeat != nil {
 		h.heartbeat.ping = durationOr(options.Heartbeat.Ping, defaultPing)
@@ -529,6 +571,7 @@ func createHost(options HostOptions) (*chordHost, error) {
 	h.unplaced = newPath(func(pathEvent) {})
 	h.destination = newDestination(h.address, h.routes, h.parent, func(name string) bool { return h.served(name) != nil })
 	h.roots = newRootScopes(h)
+	h.hostData = newHostDataGate(events)
 	if options.Store != nil {
 		// Chord's own: `openStore` made it.
 		chordStore, ok := options.Store.(*store.ChordStore)
@@ -955,6 +998,10 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 		timer    Timer
 		stopWake func() bool
 		last     error
+		// looked is whether the wait has checked the registry's value once, since the publication; overdue is a deadline that
+		// elapsed after the publication and before that look (both set and read in sections).
+		looked, overdue bool
+		expireNow       func()
 	)
 	timeout := durationOr(options.ReadyTimeout, h.timeouts.ready)
 	h.enter(func() {
@@ -969,12 +1016,22 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 		}
 		expired, expire := chordctx.WithCancel(chordctx.Background())
 		waiting = withLinkedAbortSignal(expired, ctx)
-		timer = h.events.AfterFunc(timeout, func() {
+		expireNow = func() {
 			if last != nil {
 				expire(last)
 				return
 			}
 			expire(notLive("registry "+r.Name, timeout))
+		}
+		timer = h.events.AfterFunc(timeout, func() {
+			// In Pi the continuation of `await publication`, the lookup and the first `usable()` are microtasks, run before
+			// any timer: a deadline that finds the host published and the look not yet made is later than the look, not
+			// earlier, however long the goroutine of the wait was kept from running (a loaded machine, a 5 ms deadline).
+			if !looked && h.publishedOnce {
+				overdue = true
+				return
+			}
+			expireNow()
 		})
 		// The host's close ends the wait at once, `released/closed` (its timer with it).
 		stopWake = context.AfterFunc(h.routing, func() { expire(h.closedError()) })
@@ -1015,7 +1072,13 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 		return false
 	}
 	var ready bool
-	h.enter(func() { ready = usable() })
+	h.enter(func() {
+		ready = usable()
+		looked = true
+		if overdue {
+			expireNow()
+		}
+	})
 	if !ready {
 		if err := untilUsable(h.events, value, usable, waiting.context); err != nil {
 			return nil, err
@@ -1070,6 +1133,67 @@ func (h *chordHost) counted(ctx context.Context) context.Context {
 		return ctx
 	}
 	return chordctx.WithTelemetry(ctx, h.counting)
+}
+
+// ExportHostData implements Host.
+func (h *chordHost) ExportHostData(address contracts.Address, ctx context.Context) (*store.StoreExport, error) {
+	site, err := h.dataSite("exportHostData")
+	if err != nil {
+		return nil, err
+	}
+	return store.ExportHostData(site.store, address, ctx)
+}
+
+// ImportHostData implements Host. It blocks.
+func (h *chordHost) ImportHostData(parts store.PartSource, ctx context.Context, options store.HostImportOptions) (store.HostDataCounts, error) {
+	site, err := h.dataSite("importHostData")
+	if err != nil {
+		return store.HostDataCounts{}, err
+	}
+	parking.Park(ctx)
+	return importInto(site, parts, ctx, options)
+}
+
+// DeleteHostData implements Host. It blocks.
+func (h *chordHost) DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error) {
+	site, err := h.dataSite("deleteHostData")
+	if err != nil {
+		return store.HostDataCounts{}, err
+	}
+	parking.Park(ctx)
+	return deleteFrom(site, address, ctx)
+}
+
+// dataSite is what a host data operation needs of this host; `invalid/args` without a store, `invalid/reentrant` inside a
+// batch.
+func (h *chordHost) dataSite(what string) (hostDataSite, error) {
+	var err error
+	h.enter(func() { err = h.batch.AssertOutside(what) })
+	if err != nil {
+		return hostDataSite{}, err
+	}
+	if h.store == nil {
+		return hostDataSite{}, data.Invalid(data.ReasonArgs, what+": the host has no store")
+	}
+	return hostDataSite{
+		store:   h.store,
+		batch:   h.batch,
+		gate:    h.hostData,
+		enter:   h.enter,
+		objects: h.objectList,
+		activate: func(owner string, ctx context.Context) (func(), error) {
+			var entry *served
+			h.enter(func() { entry = h.served(owner) })
+			if entry == nil || entry.kind != servedLocal {
+				return nil, nil
+			}
+			reference, err := h.Get(ctx, entry.contract, delta.NewJsonObject(0), GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			return reference.Release, nil
+		},
+	}, nil
 }
 
 // Serves implements Host.
@@ -1611,7 +1735,7 @@ func (h *chordHost) waitUnbound(b *binding, name string, cause *data.FailureCaus
 
 // newBindingFor is a new reference's binding made by from; its parked calls wait its `readyTimeout`.
 func (h *chordHost) newBindingFor(typ *contracts.Contract, dependent *chordObject, from caller, options GetOptions) *binding {
-	return newBinding(typ, h, h.batch, dependent, from, durationOr(options.ReadyTimeout, h.timeouts.ready))
+	return newBinding(typ, h, h.batch, dependent, from, durationOr(options.ReadyTimeout, h.timeouts.ready), h.eventFlow)
 }
 
 // own is this host as the maker of its own references: its principal and incarnation.

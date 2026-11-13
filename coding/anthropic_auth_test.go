@@ -92,7 +92,7 @@ func TestBuildModelAnthropicEnvAuthRequestShapes(t *testing.T) {
 		{
 			name:          "oauth token takes the Claude Code identity",
 			env:           map[string]string{"ANTHROPIC_OAUTH_TOKEN": "sk-ant-oat-env", "ANTHROPIC_API_KEY": "api-key"},
-			authorization: "Bearer sk-ant-oat-env", userAgent: "claude-cli/2.1.280", systemBlocks: 2,
+			authorization: "Bearer sk-ant-oat-env", userAgent: "claude-cli/2.1.322", systemBlocks: 2,
 		},
 		{
 			name:   "api key",
@@ -103,12 +103,12 @@ func TestBuildModelAnthropicEnvAuthRequestShapes(t *testing.T) {
 			name:          "stored subscription login outranks ANTHROPIC_AUTH_TOKEN",
 			env:           map[string]string{"ANTHROPIC_AUTH_TOKEN": "auth-token"},
 			storedAccess:  "sk-ant-oat01-stored",
-			authorization: "Bearer sk-ant-oat01-stored", userAgent: "claude-cli/2.1.280", systemBlocks: 2,
+			authorization: "Bearer sk-ant-oat01-stored", userAgent: "claude-cli/2.1.322", systemBlocks: 2,
 		},
 		{
 			name:          "stored subscription login without env auth",
 			storedAccess:  "sk-ant-oat01-stored",
-			authorization: "Bearer sk-ant-oat01-stored", userAgent: "claude-cli/2.1.280", systemBlocks: 2,
+			authorization: "Bearer sk-ant-oat01-stored", userAgent: "claude-cli/2.1.322", systemBlocks: 2,
 		},
 		{
 			name:      "stored API key outranks ambient auth",

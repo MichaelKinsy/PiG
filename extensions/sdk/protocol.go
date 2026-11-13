@@ -204,6 +204,8 @@ type requestMsg struct {
 	ChildSession string `json:"child_session,omitempty"`
 	// ToolCallIndex, on tool_call, is the call's position in its assistant message's batch (Context.ToolCallIndex).
 	ToolCallIndex *int `json:"tool_call_index,omitempty"`
+	// SignalAborted, on session_before_compact and session_before_tree, reports that the event's AbortSignal had already aborted when the host dispatched the handler: the request's signal starts aborted, so Context.Done is closed in the handler's first line (its host calls run), as event.signal.aborted is true in Pi.
+	SignalAborted bool `json:"signal_aborted,omitempty"`
 
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any
@@ -227,6 +229,8 @@ type callMsg struct {
 	Method          string          `json:"method"`
 	Args            json.RawMessage `json:"args,omitempty"`
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
+	// CommandContext marks a call made through a command context (a command handler's or a withSession callback's), kept with the context after its request ended: Pi gives newSession, fork, navigateTree, switchSession and reload to no other context, and the host refuses them without it.
+	CommandContext bool `json:"command_context,omitempty"`
 	// Timer marks a call made through a request's context after the request's handler returned: deferred work, which Pi runs from a timer, an immediate or a later continuation, once the loop turns (D189).
 	Timer bool `json:"timer,omitempty"`
 }
@@ -262,6 +266,8 @@ func (m widgetPushMsg) MarshalJSON() ([]byte, error) {
 type cancelMsg struct {
 	RequestID string `json:"request_id,omitempty"`
 	Reason    string `json:"reason,omitempty"`
+	// SignalOnly reports that only the request's AbortSignal ended (session_before_compact, session_before_tree) and the request goes on: the signal its handler holds (Context.Done, Err) aborts and no host call is cancelled, as Pi's in-process calls never fail with the abort.
+	SignalOnly bool `json:"signal_only,omitempty"`
 }
 
 type pingMsg struct {
@@ -283,6 +289,13 @@ type shutdownMsg struct {
 type errorInfo struct {
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
+	// ShellExit is Pi's ShellTimeoutError.shellExit: on the error of a local shell command that timed out after its shell had exited.
+	ShellExit *shellExitInfo `json:"shellExit,omitempty"`
+}
+
+type shellExitInfo struct {
+	ExitCode     int     `json:"exitCode"`
+	AfterSeconds float64 `json:"afterSeconds"`
 }
 
 // conn manages the socket connection with read/write goroutines and
@@ -301,6 +314,8 @@ type conn struct {
 	pending        map[string]chan *callResultMsg
 	pendingParents map[string]string
 	requestParents map[string]*requestParent
+	// unarmed holds the requests the read loop queued for the main loop and the main loop has not armed yet, with the cancel frames the read loop read for each (queuedCancel).
+	unarmed map[string]queuedCancel
 	// pendingSlots maps a dialog call to the response slot of the tool handler that waits for it. The read loop settles the slot when it reads the answer.
 	pendingSlots map[string]*settleSlot
 
@@ -364,6 +379,7 @@ func (c *conn) readLoop() {
 		clear(c.pending)
 		clear(c.pendingParents)
 		clear(c.requestParents)
+		clear(c.unarmed)
 		c.pendingMu.Unlock()
 		close(c.done)
 	}()
@@ -436,9 +452,26 @@ func (c *conn) readLoop() {
 			}
 			continue
 		}
+		if env.Type == msgCancel {
+			id := env.ID
+			if id == "" && env.Cancel != nil {
+				id = env.Cancel.RequestID
+			}
+			signalOnly := env.Cancel != nil && env.Cancel.SignalOnly
+			var cause error
+			if env.Cancel != nil && env.Cancel.Reason != "" {
+				cause = cancelReason(env.Cancel.Reason)
+			}
+			if c.routeCancel(id, signalOnly, cause) {
+				continue
+			}
+		}
 		// Everything else goes to the main loop.
 		if env.Type == msgNotify {
 			c.notifications.Add(1)
+		}
+		if env.Type == msgRequest {
+			c.queueRequest(env.ID)
 		}
 		c.incoming <- env
 	}
@@ -669,6 +702,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	default:
 	}
 	timer := false
+	commandContext := false
 	if parent != nil {
 		parentRequestID, err = c.parentIDLocked(parent)
 		if err != nil {
@@ -680,6 +714,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 			callCtx = parent.runtime
 			timer = true
 		}
+		commandContext = parent.command
 	}
 	c.pending[id] = ch
 	c.pendingParents[id] = parentRequestID
@@ -691,7 +726,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	if err := c.sendLocked(envelope{
 		Type: msgCall,
 		ID:   id,
-		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID, Timer: timer},
+		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID, CommandContext: commandContext, Timer: timer},
 	}); err != nil {
 		c.pendingMu.Lock()
 		delete(c.pending, id)
@@ -832,6 +867,11 @@ func encodeResponse(id string, result any, respErr error) ([]byte, error) {
 	resp := &responseMsg{}
 	if respErr != nil {
 		resp.Error = &errorInfo{Message: respErr.Error()}
+		// Pi's bash tool tells the error of the local backend by class, so only that error, rethrown unchanged, keeps the shell's exit.
+		var timeout *shellTimeoutError
+		if errors.As(respErr, &timeout) {
+			resp.Error.ShellExit = &shellExitInfo{ExitCode: timeout.exitCode, AfterSeconds: timeout.afterSeconds}
+		}
 	}
 	if result != nil {
 		var data []byte

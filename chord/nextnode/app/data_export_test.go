@@ -202,7 +202,7 @@ func TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten(t *testing.T)
 	var first, last int64
 	for n := range exports {
 		out := filepath.Join(t.TempDir(), "out.tar")
-		if err := PackRunning(context.Background(), dir, kitStore, archiveManifest, out); err != nil {
+		if err := PackRunning(context.Background(), dir, kitStore, archiveManifest, serverPart(t, filepath.Dir(dir)), kitServerPart(t, filepath.Dir(dir)), out); err != nil {
 			t.Fatalf("export %d: %v", n, err)
 		}
 		inPlugins, inKit := archivesOf(t, out)

@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// #11655's setup before the shared file exists: the agent directory's auth.json is a symlink to a file that has not been created. Pi's ensureFileExists is writeFileSync(path, "{}"), which follows the link and creates the target, so the lock (which follows the link, D236) finds the real file. Red without the link-following create: every access fails with `lstat …/shared/auth.json: no such file or directory` and nothing is written; the base wrote the target.
+// #11655's setup before the shared file exists: the agent directory's auth.json is a symlink to a file that has not been created. Pi's ensureFileExists is writeFileSync(path, "{}"), which follows the link and creates the target, so the lock (which follows the link) finds the real file. Red without the link-following create: every access fails with `lstat …/shared/auth.json: no such file or directory` and nothing is written; the base wrote the target.
 func TestAuthStorageCreatesTheTargetOfADanglingSymlinkedAuthFile(t *testing.T) {
 	root := t.TempDir()
 	shared, agent := filepath.Join(root, "shared"), filepath.Join(root, "agent")

@@ -964,7 +964,10 @@ def new_extension() -> pig_sdk.Extension:
                 def listed_directory(path):
                     log.append("isDirectory:" + path)
                     return True
-                ops = pig_sdk.GrepOperations(is_directory=listed_directory)
+                def ignored_read_file(path):
+                    log.append("readFile:" + path)
+                    return ""
+                ops = pig_sdk.GrepOperations(is_directory=listed_directory, read_file=ignored_read_file)
             return pig_sdk.GrepToolOptions(operations=ops)
         if tool == "find":
             ops = None
@@ -995,6 +998,39 @@ def new_extension() -> pig_sdk.Extension:
                 log.append("spawnHook:" + spawn["command"])
                 return {"command": "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", "cwd": spawn["cwd"], "env": {**spawn["env"], "HOOK_VAR": "hook-env"}}
         ops = None
+        if case.get("ops") == "localThread":
+            # The local operations run on another thread and their error comes back unchanged.
+            local = pig_sdk.create_local_bash_operations()
+
+            def local_thread_exec(command, cwd, options):
+                outcome = {}
+
+                def run():
+                    try:
+                        outcome["result"] = local.exec(command, cwd, options)
+                    except BaseException as error:  # noqa: BLE001
+                        outcome["error"] = error
+
+                worker = threading.Thread(target=run)
+                worker.start()
+                worker.join()
+                if "error" in outcome:
+                    raise outcome["error"]
+                return outcome["result"]
+            ops = pig_sdk.BashOperations(exec=local_thread_exec)
+        if case.get("ops") in ("local", "localWrapped"):
+            # The bash tool runs on the local operations. "local" raises their error unchanged; "localWrapped" raises a new one with the same message, which is not the
+            # backend's error and keeps nothing of it (Pi matches the backend's class, bash.ts).
+            local = pig_sdk.create_local_bash_operations()
+
+            def local_exec(command, cwd, options):
+                try:
+                    return local.exec(command, cwd, options)
+                except Exception as error:  # noqa: BLE001
+                    if case["ops"] == "localWrapped":
+                        raise RuntimeError(str(error)) from None
+                    raise
+            ops = pig_sdk.BashOperations(exec=local_exec)
         if custom:
             def exec_(command, cwd, options):
                 log.append("exec:%s|cwd=%s" % (command, cwd))
@@ -1691,6 +1727,31 @@ def new_extension() -> pig_sdk.Extension:
             parts.append("reload=error:%s" % error)
         ctx.notify("unbound:" + ",".join(parts), "info")
 
+    # event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended.
+    kept_event_ctx = []
+
+    def report_session_actions(hctx):
+        parts = []
+        for name, call in (("new", lambda: hctx.new_session()), ("fork", lambda: hctx.fork("entry")), ("navigate", lambda: hctx.navigate_tree("entry")), ("switch", lambda: hctx.switch_session("/s.jsonl")), ("reload", lambda: hctx.reload())):
+            try:
+                call()
+                parts.append("%s=allowed" % name)
+            except Exception as error:
+                parts.append("%s=rejected" % name if "is not a function" in str(error) else "%s=error:%s" % (name, error))
+        return ",".join(parts)
+
+    def event_session_actions_on(ctx, args):
+        def handler(hctx, _data):
+            kept_event_ctx.append(hctx)
+            hctx.notify("event_actions:" + report_session_actions(hctx), "info")
+
+        ext.on_event(args.strip(), handler)
+
+    def event_session_actions_stored(ctx, _args):
+        ctx.notify("stored_actions:" + report_session_actions(kept_event_ctx[-1]), "info")
+
+    ext.command("event_session_actions_on", "Subscribe to the event named by the argument with a handler that calls the session actions", event_session_actions_on)
+    ext.command("event_session_actions_stored", "Call the session actions through the context an event handler kept", event_session_actions_stored)
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
     # provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
@@ -1886,6 +1947,28 @@ def new_extension() -> pig_sdk.Extension:
         time.sleep(8)
         return {"content": "late"}
 
+    # signal_host_probe shows that the host keeps answering a tool's host calls after its abort, as Pi's in-process calls are.
+    def signal_host_probe(ctx, _params):
+        def ask(title):
+            try:
+                return ctx.input(title, "p")[0]
+            except Exception as error:
+                return "failed: %s" % error
+
+        first = ask("tool_signal:first")
+        aborted = str(ctx.is_cancelled()).lower()
+        second = ask("tool_signal:later")
+        return {"content": "tool_signal:%s:%s:%s" % (aborted, first, second)}
+
+    # signal_nested_probe shows that the host keeps answering a nested tool call's host calls after the abort, as Pi's in-process calls are.
+    def signal_nested_probe(ctx, _params):
+        try:
+            result = ctx.execute_tool("abort_tool", {})["result"]
+            text = "".join(block.get("text", "") for block in result["content"]) if isinstance(result["content"], list) else result["content"]
+        except Exception as error:
+            text = "failed: %s" % error
+        return {"content": "tool_signal_nested:" + text}
+
     ext.tool("big_out", "Return text of the size in the argument", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "a" * int(params["n"])}]})
     ext.tool("echo_params", "Return the arguments as the result details", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "echoed"}], "details": params})
     ext.tool("nan_out", "Return details holding NaN and Infinity", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "nan"}], "details": {"n": float("nan"), "i": float("-inf"), "l": [float("nan"), 2, {"d": float("inf")}], "ok": 1}})
@@ -1894,6 +1977,8 @@ def new_extension() -> pig_sdk.Extension:
     ext.tool("ordered_result", "Return a result whose members are not in the declared order", {"type": "object", "properties": {}}, ordered_result)
     ext.tool("abort_tool", "Wait for the abort signal", {"type": "object", "properties": {}}, abort_tool)
     ext.tool("hang_tool", "Ignore the abort signal", {"type": "object", "properties": {}}, hang_tool)
+    ext.tool("signal_host_probe", "Await host dialogs across the abort", {"type": "object", "properties": {}}, signal_host_probe)
+    ext.tool("signal_nested_probe", "Run abort_tool as a nested tool call", {"type": "object", "properties": {}}, signal_nested_probe)
     ext.command(
         "abort_probe",
         "Report whether abort_tool saw its abort signal",
@@ -2264,6 +2349,326 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_probe_subscribe", "Subscribe to turn_end after connecting", event_probe_subscribe)
     ext.command("event_probe_unsubscribe", "Remove the turn_end handler registered after connecting", event_probe_unsubscribe)
+    # D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
+    def view_text(ctx, suffix):
+        ab = ctx.view_abilities()
+        n = ab.limits.intent_arg_bytes if ab else 0
+        return kit.View(kit.Text(f"fixture-view-{n}{suffix}"))
+
+    def view_abilities_probe(ctx, _args):
+        ab = ctx.view_abilities()
+        if ab is None:
+            ctx.notify("view-abilities:none", "info")
+            return
+        ctx.notify(f"view-abilities:mounts={ab.limits.mounts},argbytes={ab.limits.intent_arg_bytes},slots={'+'.join(ab.slots)},nodes={'+'.join(ab.nodes)},markdown={str(ab.markdown).lower()}", "info")
+
+    def view_probe(ctx, _args):
+        st = ctx.mount_view("probe", "panel", view_text(ctx, ""))
+        ctx.notify(f"view-mounted:epoch={st.mount.epoch},rev={st.mount.rev},state={st.state}", "info")
+        first = st.mount
+        st = ctx.update_view(first, view_text(ctx, "-2"))
+        ctx.notify(f"view-updated:rev={st.mount.rev}", "info")
+        try:
+            ctx.update_view(first, view_text(ctx, "-stale"))
+            code = "none"
+        except pig_sdk.ViewError as err:
+            code = err.code
+        ctx.notify(f"view-stale:{code}", "info")
+        cur = st.mount
+        ctx.notify(f"view-hidden:{ctx.hide_view(cur).state}", "info")
+        ctx.notify(f"view-shown:{ctx.show_view(cur).state}", "info")
+        ctx.notify(f"view-finished:{ctx.finish_view(cur).state}", "info")
+        try:
+            ctx.remove_view(cur)
+            code = "none"
+        except pig_sdk.ViewError as err:
+            code = err.code
+        ctx.notify(f"view-terminal:{code}", "info")
+        ctx.notify(f"view-final:{ctx.view_state('probe').state}", "info")
+        obj = pig_sdk.ViewShape
+        intents = [
+            pig_sdk.ViewIntent("fx.add", obj("object", properties={"n": obj("integer")}, required=("n",)), answer=obj("object", properties={"sum": obj("integer")}, required=("sum",))),
+            pig_sdk.ViewIntent("fx.wait", obj("object", properties={"tag": obj("string")}, required=("tag",)), cancellable=True, timeout_ms=5000),
+        ]
+        st = ctx.mount_view("probe2", "panel", view_text(ctx, "-live"), intents=intents)
+        ctx.notify(f"view-second:epoch={st.mount.epoch},rev={st.mount.rev}", "info")
+
+    view_cancelled: list = []
+
+    def view_cancelled_probe(ctx, _args):
+        ctx.notify("intent-cancelled:" + (view_cancelled[-1] if view_cancelled else ""), "info")
+
+    def view_state_probe(ctx, _args):
+        st = ctx.view_state("probe2")
+        ctx.notify(f"view-state:{st.state}:{st.reason}", "info")
+
+    # D614: the redraw panel and the abilities watcher, the same way in every SDK fixture (conformance TestConformance_UIViewAnswerRedraw and
+    # TestConformance_UIViewAbilitiesEvent).
+    def redraw_intents():
+        shape = pig_sdk.ViewShape
+        n = shape("object", properties={"n": shape("integer")}, required=("n",))
+        rev = shape("object", properties={"rev": shape("integer")}, required=("rev",))
+        return [pig_sdk.ViewIntent("fx.redraw", n, answer=rev), pig_sdk.ViewIntent("fx.foreign", n, answer=rev)]
+
+    # The context of the command that mounted the redraw panel: an update made through it is the extension's, not an intent handler's.
+    redraw_command: list = []
+
+    def view_redraw_probe(ctx, _args):
+        st = ctx.mount_view("redraw", "panel", kit.View(kit.Text("fixture-redraw-0")), intents=redraw_intents())
+        redraw_command.append(ctx)
+        ctx.notify(f"view-redraw:rev={st.mount.rev}", "info")
+
+    def view_redraw_intent(inv):
+        own = inv.intent == "fx.redraw"
+        ab = inv.context.view_abilities()
+        text = f"fixture-{'redraw' if own else 'foreign'}-{inv.arg['n'] + (ab.limits.intent_arg_bytes if ab else 0)}"
+        ctx = inv.context if own else redraw_command[-1]
+        try:
+            st = ctx.update_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev), kit.View(kit.Text(text)), intents=redraw_intents())
+        except pig_sdk.ViewError as err:
+            return pig_sdk.ViewIntentResult("failed", error=str(err))
+        return pig_sdk.ViewIntentResult("done", {"rev": st.mount.rev})
+
+    view_watch = {"armed": False, "block": False, "events": 0}
+    view_watch_release = threading.Event()
+
+    def describe_abilities(ab):
+        return f"slots={'+'.join(ab.slots)},mounts={ab.limits.mounts}" if ab else "none"
+
+    def view_abilities_changed(ab, ctx):
+        view_watch["events"] += 1
+        if not view_watch["armed"]:
+            return
+        if view_watch["block"]:
+            view_watch["block"] = False
+            ctx.notify("view-event-blocked", "info")
+            view_watch_release.wait()
+            view_watch_release.clear()
+            ctx.notify("view-event-released", "info")
+        if ab is None:
+            ctx.notify("view-event:none", "info")
+            return
+        same = describe_abilities(ab) == describe_abilities(ctx.view_abilities())
+        ctx.notify(f"view-event:{describe_abilities(ab)},same={'true' if same else 'false'}", "info")
+        try:
+            st = ctx.mount_view("arrived", "panel", kit.View(kit.Text(f"fixture-arrived-{ab.limits.mounts}")))
+            ctx.notify(f"view-arrived:{st.state}", "info")
+        except pig_sdk.ViewError as err:
+            ctx.notify(f"view-arrived:{err.code}", "info")
+
+    def view_watch_probe(ctx, _args):
+        view_watch["armed"] = True
+        ctx.notify("view-watch:armed", "info")
+
+    def view_block_probe(ctx, _args):
+        view_watch["block"] = True
+        ctx.notify("view-block:set", "info")
+
+    def view_release_probe(ctx, _args):
+        view_watch_release.set()
+        ctx.notify("view-release:done", "info")
+
+    def view_events_probe(ctx, _args):
+        ctx.notify(f"view-events:{view_watch['events']}", "info")
+
+    def view_intent(inv):
+        if inv.intent in ("fx.redraw", "fx.foreign"):
+            return view_redraw_intent(inv)
+        if inv.intent == "fx.reopen":
+            # The user opened the hidden view: its handler shows it.
+            inv.context.show_view(pig_sdk.ViewRef(inv.mount.key, inv.mount.epoch, inv.rev))
+            return pig_sdk.ViewIntentResult("done")
+        if inv.intent == "fx.pick":
+            return pig_sdk.ViewIntentResult("done", {"node": inv.node_key, "picked": inv.arg["value"]})
+        if inv.intent == "fx.add":
+            ab = inv.context.view_abilities()
+            total = inv.arg["n"] * 2 + (ab.limits.intent_arg_bytes if ab else 0)
+            return pig_sdk.ViewIntentResult("done", {"sum": total})
+        if inv.intent == "fx.wait":
+            inv.context.notify("intent-started:" + inv.arg["tag"], "info")
+            while not inv.context.is_cancelled():
+                time.sleep(0.01)
+            # A call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled.
+            view_cancelled.append(inv.arg["tag"])
+            return pig_sdk.ViewIntentResult("done", {})
+        return pig_sdk.ViewIntentResult("refused", error="unknown intent")
+
+    # D614 amendment: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewExtras).
+    def x_claim(claims, name):
+        return next((c.value for c in claims if c.name == name), None)
+
+    def x_picked(ab):
+        return next((x_claim(sc.claims, "display.colors") for sc in ab.slot_claims if sc.slot == "panel"), None)
+
+    def x_list(node_id, label):
+        return kit.View(kit.SelectList(node_id, [kit.SelectItem(node_id, label)]))
+
+    def x_rects(n):
+        return [{"kind": "rect", "width": 1, "height": 1} for _ in range(n)]
+
+    def x_code(call):
+        try:
+            call()
+            return "none"
+        except pig_sdk.ViewError as err:
+            return err.code
+
+    def view_extras_probe(ctx, _args):
+        ab = ctx.view_abilities()
+        picked = x_picked(ab)
+        ctx.notify(
+            f"view-x-claims:colors={x_claim(ab.claims, 'display.colors')},kind={x_claim(ab.claims, 'display.kind')},"
+            f"gestures={'+'.join(x_claim(ab.claims, 'input.gestures'))},hover={str(x_claim(ab.claims, 'display.hover')).lower()},"
+            f"panel.colors={picked},profiles={'+'.join(ab.drawing.profiles)},shapes={ab.drawing.shapes},pixels={ab.drawing.pixels}",
+            "info",
+        )
+        when = {"any": [{"all": [{"claim": "display.colors", "op": "equals", "value": picked}]}]}
+        region = {"key": "r", "shape": {"kind": "rect", "width": 4, "height": 4}, "gestures": ["activate"], "intent": "fx.tap", "name": "Tap"}
+        st = ctx.mount_view(
+            "extras",
+            "panel",
+            x_list("base", "fixture-x-base"),
+            intents=[pig_sdk.ViewIntent(name="fx.tap", arg=pig_sdk.ViewShape("object"))],
+            alternatives=[{"when": when, "view": x_list("alt", f"fixture-x-alt-{picked}"), "drawing": {"profile": "scene", "shapes": x_rects(ab.drawing.shapes - 1), "regions": [region]}}],
+            a11y=[
+                {"node": "alt", "name": f"Extras {picked}", "role": "button", "checked": True, "relations": [{"kind": "describedBy", "target": "base"}]},
+                {"node": "base", "name": "Base"},
+            ],
+            focus=[{"node": "alt", "request": "mount", "restore": "previous"}],
+        )
+        ctx.notify(f"view-x-mounted:{st.state}", "info")
+
+        def attempt(label, **content):
+            ctx.notify(f"view-x-{label}:{x_code(lambda: ctx.update_view(st.mount, x_list('base', 'fixture-x-base'), **content))}", "info")
+
+        def scene(shapes):
+            return {"profile": "scene", "shapes": shapes}
+
+        present = {"any": [{"all": [{"claim": "display.hover", "op": "present"}]}]}
+        nested = {"kind": "rect", "width": 1, "height": 1}
+        for _ in range(8):
+            nested = {"kind": "group", "children": [nested]}
+        attempt("alts", alternatives=[{"when": present, "view": x_list("base", "fixture-x-base")} for _ in range(9)])
+        attempt("nest", drawing=scene([nested]))
+        attempt("points", drawing=scene([{"kind": "polyline", "points": [{"x": i, "y": i} for i in range(1025)]}]))
+        attempt("shapes", drawing=scene(x_rects(4097)))
+        attempt("a11y", a11y=[{"node": f"n{i}"} for i in range(257)])
+        attempt("over", drawing=scene(x_rects(ab.drawing.shapes + 1)))
+        attempt(
+            "pixels",
+            drawing={"profile": "pixels", "pixels": {"width": 2, "height": 2, "asset": "img", "scaling": "nearest"}},
+            assets=[pig_sdk.ViewAsset(id="img", mime="image/png", size=4, sha256="a" * 64, delivery="inline")],
+        )
+        old = pig_sdk.ViewRef(st.mount.key, st.mount.epoch, st.mount.rev + 50)
+        stale = "none"
+        for _ in range(3):
+            stale = x_code(lambda: ctx.update_view(old, x_list("base", "fixture-x-base")))
+        ctx.notify(f"view-x-stale:{stale}", "info")
+        notices = ctx.view_diagnostics("extras")
+
+        def count(code):
+            return sum(n.count for n in notices if n.code == code and n.path == "update")
+
+        ctx.notify(f"view-x-diag:invalid={count('invalid')},limit={count('limit')},unsupported={count('unsupported')},stale={count('stale')}", "info")
+        ctx.notify(f"view-x-bigresult:{x_code(lambda: ctx.finish_view(st.mount, result='r' * 65536))}", "info")
+
+    def view_extras_end_probe(ctx, _args):
+        picked = x_picked(ctx.view_abilities())
+        st = ctx.view_state("extras")
+        notices = ctx.view_diagnostics("extras")
+        ctx.notify(f"view-x-diag2:n={len(notices)},last={notices[-1].path if notices else ''}", "info")
+        done = ctx.finish_view(st.mount, result={"picked": picked})
+        ctx.notify(f"view-x-finished:{done.state},picked={done.result['picked']}", "info")
+        cur = ctx.view_state("extras")
+        ctx.notify(f"view-x-state:{cur.state},picked={cur.result['picked']}", "info")
+
+    # D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
+    # updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+    def view_show(ctx, params):
+        if params.get("op") == "hide":
+            return f"view-tool:{ctx.hide_view(ctx.view_state('shown').mount).state}"
+        title, node = params["title"], params["node"]
+
+        def content(title, request):
+            return {
+                "title": title,
+                "intents": [
+                    pig_sdk.ViewIntent("fx.reopen", pig_sdk.ViewShape("object"), when_hidden=True),
+                    pig_sdk.ViewIntent("fx.tap", pig_sdk.ViewShape("object")),
+                ],
+                "focus": [{"node": node, "request": request} if request else {"node": node}],
+            }
+
+        st = ctx.mount_view("shown", "panel", x_list(node, "fixture-shown"), **content(title, ""))
+        st = ctx.hide_view(st.mount)
+        st = ctx.show_view(st.mount)
+        st = ctx.update_view(st.mount, x_list(node, "fixture-shown"), **content(title + "/2", "update"))
+        return f"view-tool:{st.state},rev={st.mount.rev}"
+
+    def view_tool_probe(ctx, _args):
+        ctx.register_tool(pig_sdk.ToolDefinition(
+            name="view_show",
+            label="view_show",
+            description="Mount, show and focus a titled view",
+            parameters={"type": "object"},
+            execute=view_show,
+        ))
+
+    ext.command("ui_view_tool", "Register the tool that shows a titled view", view_tool_probe)
+
+    # D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is
+    # the row's token: the cell values, the selection and one chip text are built from it.
+    def view_grid_probe(ctx, args):
+        tok = args.strip()
+        cells = [kit.GridCell(label="30", dim=True), kit.GridCell(label="31", dim=True)]
+        for d in range(1, 29):
+            cell = kit.GridCell(value=f"{tok}-{d}", label=str(d))
+            if d == 1:
+                cell.chips = [kit.GridChip(f"{tok} standup", "#3366cc"), kit.GridChip("lunch", "accent")]
+                cell.more = 2
+            elif d == 2:
+                cell.mark, cell.color = "current", "#ff000080"
+            elif d == 3:
+                cell.chips = [kit.GridChip("plain")]
+            elif d == 28:
+                cell.label = None
+            cells.append(cell)
+
+        def content(grid):
+            return {
+                "view": kit.View(kit.Container([kit.Text(f"Month {tok}", 0, 0), grid])),
+                "intents": [pig_sdk.ViewIntent("fx.pick", pig_sdk.ViewShape("object", properties={"value": pig_sdk.ViewShape("string")}, required=("value",)), node_key="month")],
+                "fallback": kit.Text(f"grid-fallback {tok}", 0, 0),
+            }
+
+        month = kit.Grid("month", 7, cells, head=["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], chip_rows=2, selected=f"{tok}-2")
+        st = ctx.mount_view("grid", "panel", **content(month))
+        ctx.notify(f"view-g-mounted:{st.state}", "info")
+
+        def attempt(label, columns, cells):
+            ctx.notify(f"view-g-{label}:{x_code(lambda: ctx.update_view(st.mount, **content(kit.Grid('month', columns, cells))))}", "info")
+
+        attempt("cells", 7, [kit.GridCell(label="x") for _ in range(129)])
+        attempt("chips", 7, [kit.GridCell(value="a", chips=[kit.GridChip("c") for _ in range(9)])])
+        attempt("columns", 17, [kit.GridCell(value="a")])
+        attempt("mark", 7, [kit.GridCell(value="a", mark=tok)])
+        cur = ctx.view_state("grid")
+        ctx.notify(f"view-g-state:{cur.state},rev={cur.mount.rev}", "info")
+
+    ext.command("ui_view_grid", "Mount a month as a grid and probe the bounds of the grid", view_grid_probe)
+    ext.command("ui_view_extras", "Mount a view with alternatives, a drawing, a11y and focus, and probe the bounds", view_extras_probe)
+    ext.command("ui_view_extras_end", "Read the notices of the extras mount and finish it with a result", view_extras_end_probe)
+    ext.command("ui_view_abilities", "Report the replicated client abilities", view_abilities_probe)
+    ext.command("ui_view_probe", "Mount, update, hide, show, finish and remove a view", view_probe)
+    ext.command("ui_view_cancelled", "Report the intent whose handler was cancelled", view_cancelled_probe)
+    ext.command("ui_view_state", "Report the state of the second mount", view_state_probe)
+    ext.on_view_intent(view_intent)
+    ext.command("ui_view_redraw", "Mount the panel whose intents redraw it", view_redraw_probe)
+    ext.command("ui_view_watch", "Arm the abilities watcher", view_watch_probe)
+    ext.command("ui_view_block", "Block the abilities watcher on its next event", view_block_probe)
+    ext.command("ui_view_release", "Release the blocked abilities watcher", view_release_probe)
+    ext.command("ui_view_events", "Report how often the abilities watcher ran", view_events_probe)
+    ext.on_view_abilities(view_abilities_changed)
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",
@@ -2516,6 +2921,27 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, lambda hctx, data: result)
 
     ext.command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", event_result_probe)
+
+    def event_signal_probe(ctx, args):
+        # Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal (the request's cancellation) on its first line and after a dialog it opened was answered, and the dialog's answer: the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer.
+        name = args.strip()
+
+        def handler(hctx, data):
+            source = data.get("preparation", {}) if name == "session_before_tree" else data
+            mode = source.get("customInstructions", "")
+            before = hctx.is_cancelled()
+            try:
+                answer = hctx.input("event_signal:%s:%s:pending" % (name, mode), "p")[0]
+            except Exception as error:
+                answer = "failed: %s" % error
+            state = "event_signal:%s:%s:%s:%s" % (mode, str(before).lower(), str(hctx.is_cancelled()).lower(), answer)
+            if name == "session_before_compact":
+                return {"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}
+            return {"label": state}
+
+        ext.on_event(name, handler)
+
+    ext.command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", event_signal_probe)
 
     def event_ordered_result_probe(ctx, args):
         # A Python dict keeps its members in the order they were written, so this is event_result_probe.

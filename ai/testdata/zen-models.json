@@ -9,6 +9,10 @@
   },
   {
     "provider": "opencode",
+    "id": "claude-fable-5-2"
+  },
+  {
+    "provider": "opencode",
     "id": "claude-haiku-4-5"
   },
   {
@@ -173,6 +177,10 @@
   },
   {
     "provider": "opencode",
+    "id": "longcat-2.5-free"
+  },
+  {
+    "provider": "opencode",
     "id": "mimo-v2.6-flash-free"
   },
   {
@@ -189,6 +197,10 @@
   },
   {
     "provider": "opencode",
+    "id": "minimax-m3.1-flash-free"
+  },
+  {
+    "provider": "opencode",
     "id": "mistral-large-4"
   },
   {
@@ -202,10 +214,6 @@
   {
     "provider": "opencode",
     "id": "qwen3.8-max"
-  },
-  {
-    "provider": "opencode",
-    "id": "crouton-alpha-free"
   },
   {
     "provider": "opencode",
@@ -317,6 +325,10 @@
   },
   {
     "provider": "opencode",
+    "id": "muse-ember-1.0"
+  },
+  {
+    "provider": "opencode",
     "id": "muse-spark-1.2"
   },
   {
@@ -409,6 +421,10 @@
   },
   {
     "provider": "opencode-go",
+    "id": "longcat-2.5-free"
+  },
+  {
+    "provider": "opencode-go",
     "id": "mimo-v2.5"
   },
   {
@@ -430,10 +446,6 @@
   {
     "provider": "opencode-go",
     "id": "step-5-preview"
-  },
-  {
-    "provider": "opencode-go",
-    "id": "crouton-alpha-free"
   },
   {
     "provider": "opencode-go",

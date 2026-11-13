@@ -11,7 +11,7 @@ import (
 
 // A holder releasing its own reference before the scope's watch of its state started: the watch has ended, so there is nothing to
 // follow. Pi's `watch.start` throws "Watch is stopped" there, an unhandled rejection that ends a Node process (run against c23b9ec1);
-// D452 records the difference.
+// (language mechanics: Go has no unhandled rejection).
 func TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly(t *testing.T) {
 	h := newHost(t)
 	for range 100 {

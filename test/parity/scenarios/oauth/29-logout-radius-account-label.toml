@@ -1,6 +1,7 @@
 # Upstream evidence: Pi 1.0.0 interactive-mode.ts:5747-5759 sets subscription from provider.auth.oauth.isSubscription for each stored credential, and oauth-selector.ts:27-33 labels an OAuth sign-in without a subscription "account". The Radius OAuth method sets no isSubscription; OpenAI's API key keeps "API key". The labels show because the list mixes auth types (oauth-selector.ts:92).
 # Probe (Pi 1.0.0, this fixture): /logout lists "OpenAI [API key] ✓ configured" and "Radius [account] ✓ configured". Pi 0.99.2 labeled Radius "[subscription]".
 # The fixture stores a synthetic OpenAI key and a far-future Radius OAuth credential; --offline prevents catalog and refresh requests.
+# Pi 1.5.1 (provider-brand.ts, oauth-selector.ts) marks the preferred partner Radius with " ✦" and lists it first, ahead of OpenAI; the capture therefore ends at the OpenAI row, and the selected Radius name is animated (masked below).
 name = "29-logout-radius-account-label"
 description = "Logout labels a non-subscription OAuth sign-in as an account"
 covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"]
@@ -15,13 +16,13 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
 capture_start = "Select provider to logout:"
-capture_end_regex = 'Radius[^\n]*configured'
+capture_end_regex = 'OpenAI[^\n]*configured'
 settle_seconds = 1
 cwd = "../selectors/testdata/login-empty-project"
 
 [[tmux.steps]]
 keys = ["/logout", "Enter"]
-wait_contains = ["Select provider to logout:", "OpenAI [API key] ✓ configured", "Radius ["]
+wait_contains = ["Select provider to logout:", "OpenAI [API key] ✓ configured", "Radius ✦ ["]
 
 [env]
 pig = ["PIG_CODING_AGENT_DIR=testdata/logout-radius-account", "PI_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
@@ -31,6 +32,12 @@ pi_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["Select provider to logout:", "OpenAI [API key] ✓ configured", "Radius [account] ✓ configured"]
+both_contain = ["Select provider to logout:", "OpenAI [API key] ✓ configured", "Radius ✦ [account] ✓ configured"]
 escaped_output_equal = true
 runs = 3
+
+# normalize-rationale: The selected row shows the animated provider brand (provider-brand.ts, driven by each process's own clock since the selector opened), so the two binaries sample different phases of the shimmer. Only the 24-bit foreground colours of the six animated letters of the provider name are masked; the letters, the escapes that close them, the partner glyph, every other escape and all layout stay compared. Pig's colour per elapsed time is covered by Go tests of tui/provider_brand.go.
+[[assert.normalize_replace]]
+pattern = '\x1b\[38;2;\d+;\d+;\d+m(R)\x1b\[38;2;\d+;\d+;\d+m(a)\x1b\[38;2;\d+;\d+;\d+m(d)\x1b\[38;2;\d+;\d+;\d+m(i)\x1b\[38;2;\d+;\d+;\d+m(u)\x1b\[38;2;\d+;\d+;\d+m(s)'
+with = "<radius-shimmer>${1}${2}${3}${4}${5}${6}"
+reason = "The shimmer phase is the selector age, which differs per process; the colours are the only masked part of the row."

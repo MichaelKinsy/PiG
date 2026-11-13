@@ -54,9 +54,11 @@ on:
 permissions:
   contents: read
 
+# A newer push supersedes a pull request's run. Nothing else is cancelled: a dispatch from main publishes the CI images (a cancelled publish would leave a
+# half-pushed set), and a push to main or the schedule builds the digests the next pin proposal records.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY: ghcr.io/michaelkinsy

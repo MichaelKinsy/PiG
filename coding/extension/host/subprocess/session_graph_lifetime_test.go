@@ -40,7 +40,10 @@ func (*lifetimeSession) BindExtensions(context.Context) error             { retu
 func (*lifetimeSession) EmitExtensionEvent(context.Context, json.RawMessage) (json.RawMessage, bool, error) {
 	return nil, false, nil
 }
-func (*lifetimeSession) RefreshContext()                          {}
+func (*lifetimeSession) RefreshContext() {}
+func (*lifetimeSession) Op(context.Context, string, json.RawMessage) (json.RawMessage, error) {
+	return nil, nil
+}
 func (*lifetimeSession) SessionManagerObject() SessionGraphObject { return nil }
 func (*lifetimeSession) State() ChildSessionState                 { return ChildSessionState{} }
 func (*lifetimeSession) Messages() (json.RawMessage, error)       { return json.RawMessage("[]"), nil }

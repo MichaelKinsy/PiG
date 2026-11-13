@@ -417,9 +417,9 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 lisp = "pig:ctx-is-cancelled|pig:ctx-is-cancelled-p|pig:ctx-cancelled-p"
-wire = "none"
-partial = "the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary"
-node_partial = "event.signal is the handler request's AbortSignal, aborted when the host cancels the request"
+wire = "subprocess.RequestPayload.signal_aborted"
+partial = "the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary: the host sends a signal-only cancel (CancelPayload.signal_only) when the signal ends while the handler runs and keeps its reply; the abort aborts the handler signal and cancels no host call, as Pi's in-process calls never fail with it, and a handler dispatched after the abort starts with it aborted (signal_aborted)"
+node_partial = "event.signal is the handler request's AbortSignal, aborted by the signal-only cancel (CancelPayload.signal_only), which cancels no host call, and already aborted for a handler dispatched after the abort (signal_aborted)"
 
 [[row]]
 key = "session_before_tree event.signal"
@@ -428,9 +428,9 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 lisp = "pig:ctx-is-cancelled|pig:ctx-is-cancelled-p|pig:ctx-cancelled-p"
-wire = "none"
-partial = "the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary"
-node_partial = "event.signal is the handler request's AbortSignal, aborted when the host cancels the request"
+wire = "subprocess.RequestPayload.signal_aborted"
+partial = "the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary: the host sends a signal-only cancel (CancelPayload.signal_only) when the signal ends while the handler runs and keeps its reply; the abort aborts the handler signal and cancels no host call, as Pi's in-process calls never fail with it, and a handler dispatched after the abort starts with it aborted (signal_aborted)"
+node_partial = "event.signal is the handler request's AbortSignal, aborted by the signal-only cancel (CancelPayload.signal_only), which cancels no host call, and already aborted for a handler dispatched after the abort (signal_aborted)"
 
 [[row]]
 key = "input return.action"
@@ -1085,8 +1085,8 @@ partial = "reaches the host's tool definition, but PiG's system prompt does not 
 
 [[row]]
 key = "tool.execute"
-partial = "params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation"
-node_partial = "the AbortSignal is the tool request's, aborted when the host cancels it"
+partial = "params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation: the host aborts it with a signal-only cancel (CancelPayload.signal_only), which cancels none of the tool's host calls, as in Pi; only its nested executeTool calls take the abort, and the ordinary cancel follows when D111's grace period ends"
+node_partial = "the AbortSignal is the tool request's, aborted by the signal-only cancel, which cancels none of the tool's host calls; the ordinary cancel follows when D111's grace period ends"
 
 [[row]]
 key = "tool.renderCall"

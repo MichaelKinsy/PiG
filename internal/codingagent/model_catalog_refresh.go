@@ -19,7 +19,7 @@ type modelCatalogRefreshCoordinator struct {
 
 var modelCatalogRefreshes modelCatalogRefreshCoordinator
 
-// RefreshModelCatalogs shares concurrent interactive all-catalog refreshes for a registry while keeping each caller's cancellation independent. The last departing caller cancels the operation; a later caller can start a new refresh without waiting for abandoned work to settle.
+// RefreshModelCatalogs shares concurrent interactive all-catalog refreshes for a registry while keeping each caller's cancellation independent. The last departing caller cancels the operation; a later caller can start a new refresh without waiting for abandoned work to settle. The operation belongs to the registry's model tasks: a registry that has been closed refuses it and the call returns an aborted result, and CloseModelTasks waits for an abandoned operation to settle.
 func RefreshModelCatalogs(ctx context.Context, registry *ModelRegistry) (CatalogRefreshResult, error) {
 	return modelCatalogRefreshes.refresh(ctx, registry)
 }
@@ -40,7 +40,13 @@ func (c *modelCatalogRefreshCoordinator) refresh(ctx context.Context, registry *
 			c.activeByRuntime = make(map[*ModelRegistry]*activeModelCatalogRefresh)
 		}
 		c.activeByRuntime[registry] = active
-		go c.run(operationCtx, registry, active)
+		// The operation is background work of the registry: CloseModelTasks cancels it and joins it, so no store or credential write it started outlives Close.
+		if !registry.StartModelTask(operationCtx, func(ctx context.Context) { c.run(ctx, registry, active) }) {
+			delete(c.activeByRuntime, registry)
+			cancel()
+			c.mu.Unlock()
+			return CatalogRefreshResult{Aborted: true, Errors: map[string]error{}}, nil
+		}
 	}
 	active.waiters++
 	c.mu.Unlock()
@@ -62,17 +68,20 @@ func (c *modelCatalogRefreshCoordinator) refresh(ctx context.Context, registry *
 }
 
 func (c *modelCatalogRefreshCoordinator) run(ctx context.Context, registry *ModelRegistry, active *activeModelCatalogRefresh) {
+	// The waiters settle however the operation ends. A panic reaches the uncaught handler (RecoverUncaught) and leaves the aborted result.
+	defer func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if c.activeByRuntime[registry] == active {
+			delete(c.activeByRuntime, registry)
+		}
+		close(active.done)
+	}()
+	defer RecoverUncaught()
 	defer active.cancel()
+	active.result = CatalogRefreshResult{Aborted: true, Errors: map[string]error{}}
 	registry.YieldToRegistrationRefresh(ctx)
-	if registry.refreshContext(ctx, nil).Aborted {
-		active.result = CatalogRefreshResult{Aborted: true, Errors: map[string]error{}}
-	} else {
+	if !registry.refreshContext(ctx, nil).Aborted {
 		active.result = registry.RefreshCatalogs(ctx, CatalogRefreshOptions{AllowNetwork: ModelNetworkEnabled()})
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.activeByRuntime[registry] == active {
-		delete(c.activeByRuntime, registry)
-	}
-	close(active.done)
 }

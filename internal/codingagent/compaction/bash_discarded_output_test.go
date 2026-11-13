@@ -18,7 +18,7 @@ func (o discardingBashOperations) Exec(ctx context.Context, _, _ string, opts to
 	return tools.BashOperationsResult{ExitCode: &code}, nil
 }
 
-// Pi main 66c655677 test/bash-executor-truncation.test.ts (D244): the model-facing text of a user bash result whose head the window dropped names the complete log.
+// Pi 66c655677 test/bash-executor-truncation.test.ts: the model-facing text of a user bash result whose head the window dropped names the complete log.
 func TestBashExecutionToTextNamesTheLogOfDiscardedOutput(t *testing.T) {
 	result, err := tools.ExecuteBashWithOperations(t.Context(), "cat build.log", t.TempDir(), discardingBashOperations{}, tools.BashExecOptions{})
 	if err != nil {

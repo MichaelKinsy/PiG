@@ -75,7 +75,7 @@ func TestUpstreamTerminalImageCapabilities(t *testing.T) {
 		{"enables hyperlinks for iTerm2", map[string]string{"TERM_PROGRAM": "iterm.app"}, false, TerminalCapabilities{Images: ImageProtocolITerm2, TrueColor: true, Hyperlinks: true}},
 		// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:397
 		{"enables hyperlinks for VSCode", map[string]string{"TERM_PROGRAM": "vscode"}, false, TerminalCapabilities{TrueColor: true, Hyperlinks: true}},
-		// pi main 2af8a42f5 packages/tui/test/terminal-image.test.ts "enables hyperlinks for Alacritty without TERM_PROGRAM" (D259)
+		// pi main 2af8a42f5 packages/tui/test/terminal-image.test.ts "enables hyperlinks for Alacritty without TERM_PROGRAM"
 		{"enables hyperlinks for Alacritty by TERM", map[string]string{"TERM": "alacritty", "COLORTERM": "truecolor"}, false, TerminalCapabilities{TrueColor: true, Hyperlinks: true}},
 		{"enables hyperlinks for Alacritty by ALACRITTY_WINDOW_ID", map[string]string{"TERM": "xterm-256color", "COLORTERM": "truecolor", "ALACRITTY_WINDOW_ID": "1"}, false, TerminalCapabilities{TrueColor: true, Hyperlinks: true}},
 		{"tmux with ALACRITTY_WINDOW_ID keeps hyperlinks off", map[string]string{"TMUX": "/tmp/tmux-1000/default,1234,0", "TERM": "tmux-256color", "ALACRITTY_WINDOW_ID": "1"}, false, TerminalCapabilities{}},

@@ -2,7 +2,7 @@
 
 PiG reads these variables at startup. Each one has a setting or a default that covers the normal case, so set a variable only when you need to change PiG from outside its configuration: in a container, in CI, or while debugging.
 
-Variables named `PI_*` are read for compatibility with Pi 1.5.0 ([Pi's environment variable reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/environment-variables.md)). Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings. Provider credential variables, such as `ANTHROPIC_API_KEY`, are listed in [Providers](/docs/latest/providers) and in `pig --help`.
+Variables named `PI_*` are read for compatibility with Pi 1.5.2 ([Pi's environment variable reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/environment-variables.md)). Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings. Provider credential variables, such as `ANTHROPIC_API_KEY`, are listed in [Providers](/docs/latest/providers) and in `pig --help`.
 
 ## Location
 
@@ -83,7 +83,7 @@ Offline mode, from `--offline`, `PIG_OFFLINE` or `PI_OFFLINE`, sets `PI_OFFLINE=
 | `PI_TUI_DEBUG_REDRAW` | Log why the screen was fully repainted. Needs the exact value `1` |
 | `PI_TUI_WRITE_LOG` | Record the bytes PiG writes to the terminal. A file path is appended to. An existing directory gets one `tui-<date>_<time>-<pid>.log` file per process. Cursor, title, progress, start and stop sequences are not logged. Pi reads the same variable |
 | `PIG_STARTUP_TRACE` | Time each startup step |
-| `PIG_PROFILE` | Write Go runtime profiles when PiG exits. Takes a comma-separated list of `cpu`, `heap`, `allocs`, `block`, `mutex`, `goroutine`, `trace`, `metrics` and `flight`. `heap` and the live heap in `metrics` are measured after two garbage collections, so buffers that pools keep for reuse do not count as live. `metrics` writes `pig-<pid>-metrics.json`: allocation and GC counts for the whole run, live heap, peak RSS, and the goroutines, open files and child processes left at exit. `flight` keeps the last 10 seconds of the execution trace in memory and writes it as `<agent dir>/crash-output/<pid>.flight.trace` (mode 0600) when the session ends without a user request, beside the crash output file; it writes nothing at a normal exit |
+| `PIG_PROFILE` | Write Go runtime profiles when PiG exits. Takes a comma-separated list of `cpu`, `heap`, `allocs`, `block`, `mutex`, `goroutine`, `trace`, `metrics` and `flight`. `heap` and the live heap in `metrics` are measured after two garbage collections, so buffers that pools keep for reuse do not count as live. `metrics` writes `pig-<pid>-metrics.json`: allocation and GC counts for the whole run, live heap, peak RSS, and the goroutines, open files and child processes left at exit. `flight` keeps the last 10 seconds of the execution trace in memory and writes it as `<agent dir>/crash-output/<pid>.flight.trace` (mode 0600) when the session ends without a user request, beside the crash output file; it writes nothing at a normal exit. Heap-profile sampling is off unless the process asks for it (D627): a heap profile that another tool takes from a default run is empty, while `heap` and `allocs` here, or `GODEBUG=memprofilerate=N`, keep it on from the start of the process. |
 | `PIG_PROFILE_DIR` | Directory for `PIG_PROFILE` output. Default: the working directory |
 
 Set `PIG_DEBUG=1` and `PIG_DEBUG_KEYS=1` when a keybinding does not respond. The log shows whether the key reaches PiG and uses the active keybinding manager. Diagnostic logging preserves user overrides. See [terminal setup](/docs/latest/terminal-setup).
@@ -99,7 +99,7 @@ When a session ends without you asking it to, look in the agent directory (`~/.p
 | Variable | Effect |
 |---|---|
 | `GOMAXPROCS` | Number of processors the Go runtime schedules on. When it is not set, PiG uses at most 2 (fewer when the runtime default is lower), which lowers CPU use during streamed turns. Opening or resuming a session, the `/resume` listing, a batch of parallel tool calls and extension builds still run at the full default width. A value you set is used unchanged. Pi has no such setting, because Node runs JavaScript on one thread (D174) |
-| `GOGC` | Go garbage collector target. When it is not set, a print (`-p`), JSON (`--mode json`) or RPC (`--mode rpc`) run collects at 400 until more than 64 MiB of heap is live, then at the default 100 for the rest of the run (D175). Interactive runs keep the default. A value you set is used unchanged |
+| `GOGC` | Go garbage collector target. When it is not set, a print (`-p`), JSON (`--mode json`) or RPC (`--mode rpc`) run collects at 400 until more than 64 MiB of heap is live, then at the default 100 for the rest of the run (D175). An interactive run keeps a heap goal of at least 16 MiB, at 150 until more than 8 MiB of heap is live and at 100 from then on, and only when `GOMEMLIMIT` is not set either (D621). A value you set is used unchanged |
 
 ## Sessions
 

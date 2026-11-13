@@ -369,3 +369,77 @@ func TestStagedWritesSerializeAtStagingAValueJSONCannotEncodeFailsThereNeverInTh
 		t.Errorf("writes = %d, want none staged", len(writes))
 	}
 }
+
+func persistSession(t *testing.T) *contracts.HostKind {
+	t.Helper()
+	session, err := contracts.NewHostKind("session", contracts.Prop("id", contracts.Str()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return session
+}
+
+// TestHostKeyedDocumentsStoreTheirKeyAsTheRecordsHostStringKeyedOnesStoreNone runs `it("store their key as the
+// record's host; string-keyed ones store none")` of the `describe("host-keyed documents")` of
+// packages/chord/test/documents/persistence.test.ts.
+func TestHostKeyedDocumentsStoreTheirKeyAsTheRecordsHostStringKeyedOnesStoreNone(t *testing.T) {
+	f := newPersistFixture(t)
+	hosted := NewPersistence(f.store, "app.store", "chord", "notes.note", persistSession(t))
+	var writes []store.StagedWrite
+	tracker := delta.Track(obj("title", "x", "n", 1.0))
+	draft := tracker.BeginChange()
+	setN(2)(draft.State())
+	prepared, err := draft.Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hosted.Stage("session|S1", f.note, nil, DocumentChange{Prepared: prepared}, &writes, nil); err != nil {
+		t.Fatal(err)
+	}
+	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
+	if _, err := f.store.Commit(writes, fence, background); err != nil {
+		t.Fatal(err)
+	}
+	f.change("session|S2", nil, setTitle("y"), nil)
+	document, err := hosted.Read("session|S1", background)
+	if err != nil || document == nil || document.Record.Host == nil || *document.Record.Host != "session|S1" {
+		t.Fatalf("host-keyed record = %+v, %v, want host session|S1", document, err)
+	}
+	document, err = f.notes.Read("session|S2", background)
+	if err != nil || document == nil || document.Record.Host != nil {
+		t.Fatalf("string-keyed record = %+v, %v, want no host", document, err)
+	}
+}
+
+// TestTheHostDiscriminatorRefusesARecordStoredWithStringKeysToAHostKeyedDefinitionAndTheReverse runs `it("refuses a
+// record stored with string keys to a host-keyed definition, and the reverse")` of the `describe("the host
+// discriminator")` of the same file.
+func TestTheHostDiscriminatorRefusesARecordStoredWithStringKeysToAHostKeyedDefinitionAndTheReverse(t *testing.T) {
+	f := newPersistFixture(t)
+	hosted := NewPersistence(f.store, "app.store", "chord", "notes.note", persistSession(t))
+	f.change("session|S1", nil, setTitle("plain"), nil)
+	stored, err := hosted.Read("session|S1", background)
+	if err != nil || stored == nil {
+		t.Fatalf("read = %v, %v", stored, err)
+	}
+	_, err = hosted.Decode(stored, f.note, background)
+	if want := "notes.note: stored with string keys, declared with addresses of session (convert it explicitly)"; err == nil || err.Error() != want {
+		t.Fatalf("decode error = %v, want %q", err, want)
+	}
+	found, err := hosted.Find("session|S1", background)
+	if err != nil || found == nil {
+		t.Fatalf("find = %v, %v", found, err)
+	}
+	if err := hosted.CheckHost(found.Host, f.note); err == nil || !strings.Contains(err.Error(), "stored with string keys") {
+		t.Fatalf("checkHost of a string-keyed record = %v", err)
+	}
+	host := "session|S1"
+	if err := f.notes.CheckHost(&host, f.note); err == nil || !strings.Contains(err.Error(), "stored with addresses of session, declared with string keys") {
+		t.Fatalf("checkHost of a host record by a string-keyed definition = %v", err)
+	}
+	loaded, err := f.notes.Decode(stored, f.note, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nexttest.RequireJSONEqual(t, loaded.Value, obj("title", "plain", "n", 0.0))
+}

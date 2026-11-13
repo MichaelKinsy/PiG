@@ -67,10 +67,13 @@ func (linesComponent) Invalidate()                 {}
 // renderers keep. The shell ticker and the edit preview update it off the UI
 // loop, so it has its own lock.
 type builtInRenderState struct {
-	mu        sync.Mutex
-	lifetime  context.Context
-	closed    bool
-	tasks     sync.WaitGroup
+	mu       sync.Mutex
+	lifetime context.Context
+	closed   bool
+	tasks    sync.WaitGroup
+	// spawn, when set, starts a task the card does not join itself: an interactive session runs its cards' workers in its own
+	// background group, which its end cancels and joins. Unset, a task runs in tasks, which the card's Dispose joins.
+	spawn     func(task func())
 	startedAt time.Time
 	endedAt   time.Time
 	stopTick  chan struct{}
@@ -83,10 +86,20 @@ type builtInRenderState struct {
 	writeHighlight *writeHighlightCache
 	// writePlain is the write card's lines for a path without a language, extended as its content streams in.
 	writePlain writePlainLines
-	// writeWarmed is the length of the content the whole-file highlight was last warmed at (warmWholeHighlight), and writeWarmOff
-	// that the file's language cannot resume, so no warm-up is worth its cost.
-	writeWarmed  int
-	writeWarmOff bool
+	// writeWarmed is the length of the content last handed to the whole-file highlight warm-up (warmWholeHighlight), writeWarmOff
+	// that the file's language cannot resume or a warm-up failed, so no warm-up is worth its cost, writeWarmRunning that the
+	// card's warm-up worker is alive, writeWarmNext and writeWarmLang the newest content waiting for it, and writeWarmFailure the panic of a warm-up that the next frame raises.
+	// writeWarmHeld and writeWarmHeldLang are the text, and its language, that the last warm-up left the units for the next one of
+	// (empty when it left none), and writeWarmDone that the call is complete: both end the card's hold on them (releaseWarmUnits). All are guarded by mu.
+	writeWarmed       int
+	writeWarmOff      bool
+	writeWarmRunning  bool
+	writeWarmDone     bool
+	writeWarmNext     string
+	writeWarmLang     string
+	writeWarmHeld     string
+	writeWarmHeldLang string
+	writeWarmFailure  any
 	// highlighter is the row's highlighting of a complete write call's file, or of a codemode call's script (upstream
 	// WriteCallRenderComponent.highlighter and CodemodeRenderState.scriptHighlighter). A complete write call redraws on
 	// every update and expand toggle with the same file, and a codemode call on every progress update and timer tick with
@@ -103,6 +116,15 @@ type builtInRenderState struct {
 	// editCall reports that the built-in edit renderCall drew this card, so
 	// its box holds the preview (upstream state.callComponent).
 	editCall bool
+}
+
+// goTask runs task on a goroutine the card's owner joins. state.mu is held, so a card that ended starts no more.
+func (state *builtInRenderState) goTask(task func()) {
+	if state.spawn != nil {
+		state.spawn(task)
+		return
+	}
+	state.tasks.Go(task)
 }
 
 func builtInState(context extension.ToolRenderContext) *builtInRenderState {
@@ -178,7 +200,7 @@ type retainedToolResult struct {
 // structured content is the one the tool derives from its content, else the result.
 func retainToolResult(tool string, result agent.AgentToolResult) any {
 	if len(result.StructuredContent) > 0 {
-		if rebuilt, ok := tools.RebuildStructuredContent(tool, result.Content); ok && bytes.Equal(rebuilt, result.StructuredContent) {
+		if tools.StructuredContentMatches(tool, result.Content, result.StructuredContent) {
 			result.StructuredContent = nil
 			return retainedToolResult{result: result, tool: tool}
 		}
@@ -201,6 +223,19 @@ func toolResultOf(result any) (agent.AgentToolResult, bool) {
 		}
 	}
 	return agent.AgentToolResult{}, false
+}
+
+// readRenderResultCode identifies the built-in read renderer among the result renderers a card can hold.
+var readRenderResultCode = reflect.ValueOf(readRenderResult).Pointer()
+
+// toolResultForRenderer is toolResultOf for the result renderer render, which receives it. The built-in read renderer reads no structured
+// content, so it gets a retained read result as it is held, without the structured content toolResultOf derives from the file text again
+// for each draw. Every other renderer, an extension's included, receives the structured content the tool returned.
+func toolResultForRenderer(result any, render extension.ToolRenderResultFunc) (agent.AgentToolResult, bool) {
+	if held, ok := result.(retainedToolResult); ok && render != nil && reflect.ValueOf(render).Pointer() == readRenderResultCode {
+		return held.result, true
+	}
+	return toolResultOf(result)
 }
 
 // decodeRenderArgs reads the arguments a tool card holds once, so a renderer that needs several of them does not decode the whole object for each.
@@ -639,6 +674,9 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 		}
 	} else {
 		state.writeHighlight = nil
+		// A complete call draws its file from the highlighter once: a warm-up that has not started is dropped.
+		state.writeWarmNext = ""
+		state.writeWarmDone = state.writeWarmDone || context.ArgsComplete
 	}
 	cache := state.writeHighlight
 	var plain writePlainLines
@@ -693,6 +731,9 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 			text += moreLinesHint("\n... (" + strconv.Itoa(remaining) + " more lines, " + strconv.Itoa(total) + " total,")
 		}
 	}
+	// The frame that completed the call drew the highlighter's lines of the whole file from the state the last warm-up left, and took
+	// its units; a warm-up still running at that draw releases its own when it ends (runWriteWarmUps).
+	state.releaseWarmUnitsOfAFinishedCall()
 	// The row's Text is reused, and keeps its wrapped lines when a redraw sets the text it showed (upstream
 	// WriteCallRenderComponent extends Text).
 	component := reusableText(context.LastComponent)

@@ -1,6 +1,6 @@
 package coding
 
-// Pi resolves a provider's auth with resolveProviderAuth (auth/resolve.ts:46-117): the caller's signal reaches the provider's resolvers and toAuth, a runtime key is resolved before the stored credential is read, a still-valid credential takes no lock, and only an expiring OAuth credential's re-check and refresh run under credentials.modify (resolve.ts:119-155), where a started refresh finishes, bounded by the 15 s refresh timeout. So Pi's exit waits for that refresh and for nothing else. NativeProviderAuth runs the provider's ResolveAuth over the registry's credential store, whose tracked modifications (RuntimeCredentials.Settled) are what Close waits for (D237).
+// Pi resolves a provider's auth with resolveProviderAuth (auth/resolve.ts:46-117): the caller's signal reaches the provider's resolvers and toAuth, a runtime key is resolved before the stored credential is read, a still-valid credential takes no lock, and only an expiring OAuth credential's re-check and refresh run under credentials.modify (resolve.ts:119-155), where a started refresh finishes, bounded by the 15 s refresh timeout. So Pi's exit waits for that refresh and for nothing else. NativeProviderAuth runs the provider's ResolveAuth over the registry's credential store, whose tracked modifications (RuntimeCredentials.Settled) are what Close waits for.
 
 import (
 	"context"

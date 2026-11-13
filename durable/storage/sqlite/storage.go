@@ -124,7 +124,7 @@ func parseJSON[T any](text string) (T, error) {
 		}
 		return value, nil
 	}
-	if err := json.Unmarshal(stringBytes(text), &value); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(stringBytes(text), &value); err != nil {
 		return value, err
 	}
 	if ordered.HasDynamic(reflect.TypeFor[T]()) {
@@ -139,7 +139,7 @@ func parseJSON[T any](text string) (T, error) {
 }
 
 // unquoteJS decodes a JSON string with JavaScript string semantics: a lone surrogate escape becomes its WTF-8 form.
-func unquoteJS(raw []byte, text *string) error { return json.Unmarshal(raw, text) }
+func unquoteJS(raw []byte, text *string) error { return jsstring.UnmarshalKeepingSurrogates(raw, text) }
 
 // parseOps decodes a stored operation batch with its objects in document order.
 func parseOps(text string) ([]durable.Op, error) {

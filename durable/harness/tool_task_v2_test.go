@@ -11,11 +11,12 @@ import (
 
 // Pi 42a3497d harness/tool.ts: the built-in tool task's input and result are tagged unions (`kind: "model"` for a
 // model-issued call, `kind: "nested"` for a call a running tool made through executeTool()), version 2; version 1 had only
-// model-issued calls and no `kind`. Pi 1c6928b3 made it version 3: `unoffered` on a model-issued call's input.
+// model-issued calls and no `kind`. Pi 1c6928b3 made it version 3: `unoffered` on a model-issued call's input. Pi 473515f9c
+// made it version 4: the parked phase and the optional wake and checkpoint of execute.
 
-func TestToolTaskIsVersion3(t *testing.T) {
-	if got := ToolTask.AnyDefinition().Version; got != 3 {
-		t.Fatalf("pi.tool version = %d, want 3 (tool.ts ToolTask)", got)
+func TestToolTaskIsVersion4(t *testing.T) {
+	if got := ToolTask.AnyDefinition().Version; got != 4 {
+		t.Fatalf("pi.tool version = %d, want 4 (tool.ts ToolTask)", got)
 	}
 }
 

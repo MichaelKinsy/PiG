@@ -5,10 +5,12 @@
 // a local type that the plugins serve. Each is answered with one reply, as every control request is, and runs with the
 // request's context (the Go side's abort aborts it). `unwatch` and `release` are notifications (no reply). Node to Go,
 // unrequested and in the order they happen on the one channel: `frame` (one call of a watch's listener), `watchEnd` (the
-// watch ended, and why) and `state` (a reference's state changed).
+// watch ended, and why) and `state` (a reference's state changed). The events of the two hosts cross as `event` and `ack`
+// messages in both directions (events.mjs).
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
 import { ChordError } from "@earendil-works/chord";
 import { contractOf, operations as contractOperations } from "./contracts.mjs";
+import { createEvents } from "./events.mjs";
 import { createProxies } from "./proxy.mjs";
 import { decodeValue, encodeValue } from "./wire.mjs";
 
@@ -42,6 +44,8 @@ export function createBridge({ port, wireError, host }) {
 	const watches = new Map();
 	/** The keys the Go side pinned, by the id the Go side chose. */
 	const pins = new Map();
+	/** The events that cross between the two hosts (events.mjs): the Go side's `event` and `ack` messages come to it. */
+	const events = createEvents({ port, host });
 
 	function entry(handle) {
 		const found = handles.get(handle);
@@ -218,6 +222,8 @@ export function createBridge({ port, wireError, host }) {
 	let nextAsk = 0;
 	/** The observers of the Go host's watches, by the id this side chose, which the frames of the Go side name. */
 	const observers = new Map();
+	/** The copies of the Go host's keyed members, by the id this side chose, which the `mirrorDoc` and `mirrorReset` frames name. */
+	const copies = new Map();
 
 	/**
 	 * Requests `event` of the Go host (`{ event, id, ... }`, answered by `{ op: "bridgeAnswer", id, ok, result | error }`) with
@@ -261,7 +267,7 @@ export function createBridge({ port, wireError, host }) {
 	return {
 		operations: { ...contractOperations, get, value, watch, pin, call },
 		/** The host package of the Go core facets' proxies (`GO_PACKAGE`), answered to the scripts that import it. */
-		hostPackage: createProxies({ ask, tell, watches: observers }),
+		hostPackage: createProxies({ ask, tell, watches: observers, mirrors: copies, sinks: events.sinks, fatal: (error) => port.control({ event: "fatal", error: wireError(error) }) }),
 		/**
 		 * Handles a control message that is no request of `operations`: a notification of the Go side (no id, no reply), or
 		 * what the Go side sends for a request it serves for this side (an answer, a frame or the end of a watch of the Go
@@ -282,6 +288,19 @@ export function createBridge({ port, wireError, host }) {
 					observer?.end(error === undefined ? { kind } : { kind, error: errorOf(error) });
 					return true;
 				}
+				case "mirrorDoc":
+					if (message.retired === true) copies.get(message.mirror)?.retire(message.key);
+					else copies.get(message.mirror)?.put(message.key, decodeValue(message.value));
+					return true;
+				case "mirrorReset":
+					copies.get(message.mirror)?.reset(message.docs.map(({ key, value }) => ({ key, value: decodeValue(value) })));
+					return true;
+				case "event":
+					events.receive(message);
+					return true;
+				case "ack":
+					events.acked(message.events);
+					return true;
 			}
 			const notification = notifications[message.op];
 			if (notification === undefined) return false;

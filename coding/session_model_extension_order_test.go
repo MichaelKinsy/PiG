@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Pi: packages/coding-agent/src/core/agent-session.ts:1653 (Session.setScopedModels). pig divergence (D258): a missing current model selects the first entry forward and the last backward (Pi main 5732bac06); Pi 1.5.0 counted it as index 0.
+// Pi: packages/coding-agent/src/core/agent-session.ts:1653 (Session.setScopedModels). A missing current model selects the first entry forward and the last backward (Pi 5732bac06).
 func TestSessionModelCycleBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		name, direction, current, want string

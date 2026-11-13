@@ -219,7 +219,7 @@ func TestStandardReleaseUsesPigVersion(t *testing.T) {
 	if err := yaml.Unmarshal(data, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if want := pigversion.PigVersion + "-dev"; manifest.Release.Version != want {
+	if want := pigversion.PigVersion; manifest.Release.Version != want {
 		t.Fatalf("Standard release.version = %q, want %q; run make set-version VERSION=%s", manifest.Release.Version, want, pigversion.PigVersion)
 	}
 }

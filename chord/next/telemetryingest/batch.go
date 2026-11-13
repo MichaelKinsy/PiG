@@ -6,7 +6,7 @@ package telemetryingest
 // ASCII, no control characters; a worker's, the server's own child, generous), and the two remote objects on the server
 // that take them, PageTelemetry and WorkerTelemetry.
 //
-// Forced Go differences (D454): the schemas are the contracts package's schema nodes; the contracts are package variables
+// Forced Go differences (language mechanics): the schemas are the contracts package's schema nodes; the contracts are package variables
 // made at initialisation (a malformed declaration is a programming error and panics there, as a package-level `remote(...)`
 // throws at import).
 

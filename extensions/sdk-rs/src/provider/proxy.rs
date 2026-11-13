@@ -13,6 +13,7 @@ impl Drop for Lease {
                 method: "provider.release".into(),
                 args: Some(json!({"handle":self.handle,"token":self.token})),
                 parent_request_id: None,
+                command_context: false,
                 timer: false,
             }),
             ..Default::default()
@@ -66,6 +67,7 @@ impl Proxy {
                 method: "cancelModelStream".into(),
                 args: Some(json!({"streamId":id})),
                 parent_request_id: None,
+                command_context: false,
                 timer: false,
             }),
             ..Default::default()
@@ -399,6 +401,7 @@ impl ProviderObjects {
             name: decl["name"].as_str().ok_or("missing Provider name")?.into(),
             base_url: decl["baseUrl"].as_str().map(str::to_owned),
             headers: optional(&decl["headers"]),
+            refresh_models_auth: decl["refreshModelsAuth"].as_str().map(str::to_owned),
             auth: ProviderAuth { api_key, oauth },
             get_models: {
                 let proxy = proxy.clone();

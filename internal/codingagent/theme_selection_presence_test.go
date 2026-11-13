@@ -171,7 +171,7 @@ func TestStartupPromptExplicitEmptyThemeFallsBackToSystem(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"theme":""}`), &settings); err != nil {
 		t.Fatal(err)
 	}
-	configureStartupTheme(settings, nil)
+	configureStartupTui(StartupUIOptions{Settings: settings})
 	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
 		t.Fatalf("initial theme = %q, want the system fallback for the empty name", got)
 	}
@@ -193,7 +193,7 @@ func TestStartupPromptExplicitEmptyThemeFallsBackToSystem(t *testing.T) {
 func TestStartupPromptMalformedThemeUsesSystemTheme(t *testing.T) {
 	restoreStartupTheme(t)
 	settings := Settings{Theme: "light/dark/extra"}
-	configureStartupTheme(settings, nil)
+	configureStartupTui(StartupUIOptions{Settings: settings})
 	if got := tui.ActiveTheme().Name; got != tui.SystemThemeName {
 		t.Fatalf("initial theme = %q, want the system theme", got)
 	}

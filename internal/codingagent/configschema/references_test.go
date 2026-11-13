@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent/configschema"
+	"github.com/MichaelKinsy/PiG/internal/upstreammirror"
 )
 
 // pi: packages/coding-agent/test/references.test.ts "generated reference pages > matches the committed pages" (regression for #10790: models.json
@@ -35,7 +36,7 @@ func TestModelsConfigurationReferenceMatchesTheCommittedPage(t *testing.T) {
 
 // The same page as the pinned Pi renders it: everything but the generated comment, which names each project's generator.
 func TestModelsConfigurationReferenceMatchesThePinnedPiPage(t *testing.T) {
-	pi, err := os.ReadFile(filepath.Join(repoRoot(t), ".upstream", "current", "packages", "coding-agent", "docs", "models-configuration.md"))
+	pi, err := upstreammirror.ReadPicked(repoRoot(t), "packages/coding-agent/docs/models-configuration.md")
 	if err != nil {
 		t.Fatal(err)
 	}

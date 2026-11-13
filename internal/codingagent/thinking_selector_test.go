@@ -57,6 +57,7 @@ func TestThinkingSelectorKeepsCurrentLevelMarkedWhileBrowsing(t *testing.T) {
 
 // Ports "thinking selector › uses the configured save binding".
 func TestThinkingSelectorUsesTheConfiguredSaveBinding(t *testing.T) {
+	restoreTUIKeybindings(t)
 	useKeybindings(t, map[string][]KeyID{"app.thinking.save": {"ctrl+r"}})
 	var saved []ai.ThinkingLevel
 	selector := NewThinkingSelectorComponent("medium", []ai.ThinkingLevel{"medium", "high"}, func(ai.ThinkingLevel) {}, func() {},
@@ -260,6 +261,7 @@ func TestThinkingSelectorKeepsTheHighlightedLevelWhileFiltering(t *testing.T) {
 // upstream: thinking-selector.ts handleInput (:105-124). With no level matching the query the save key and Enter reach no
 // item, so neither callback runs; without an onSelectAsDefault the save key is not claimed.
 func TestThinkingSelectorBoundaryTransitions(t *testing.T) {
+	restoreTUIKeybindings(t)
 	useKeybindings(t, nil)
 	var saved, selected []ai.ThinkingLevel
 	selector := NewThinkingSelectorComponent("off", []ai.ThinkingLevel{"off", "low"},

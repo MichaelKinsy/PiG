@@ -198,7 +198,7 @@ func (r *ModelRegistry) awaitProviderTasks(ctx context.Context, tasks []func(con
 	return ctx.Err()
 }
 
-// CloseModelTasks stops admission, cancels the owner, and waits for admitted jobs and failed Promise siblings to drain. It then cancels the remote catalog collection's refreshes and waits for its operations, which are only this registry's catalog refreshes, so no store or credential read they started outlives Close. It also cancels the native Models collection's active refreshes, including a queued registration refresh's provider callbacks, without waiting for caller-owned Models operations such as in-flight streams or logins. Call it outside model callbacks.
+// CloseModelTasks stops admission, cancels the owner, and waits for admitted jobs and failed Promise siblings to drain. It then cancels the remote catalog collection's refreshes and waits for its operations, which are only this registry's catalog refreshes, so no store or credential read they started outlives Close. It cancels the native Models collection's active refreshes, including a queued registration refresh's provider callbacks, and waits for the operations the collection runs for its own queries (refresh, auth resolution and check, availability) so none of them writes to the agent directory after Close returns. It does not wait for caller-owned Models operations such as in-flight streams or logins. Call it outside model callbacks.
 func (r *ModelRegistry) CloseModelTasks() {
 	r.modelTasks.close()
 	// Admission is closed, so no remote refresh can add an operation while Close waits for them.
@@ -212,8 +212,7 @@ func (r *ModelRegistry) CloseModelTasks() {
 	models := r.nativeModels
 	r.nativeMu.Unlock()
 	if models != nil {
-		// Models.Close cancels refreshes and then joins every collection operation. Only the cancellation is part of this contract, so the join runs off the caller.
-		//portlint:allow asyncorder Models.Close cancels first and then joins every collection operation; only the cancellation is part of this contract (model-runtime.ts has no close that joins), so the join is not ordered against the caller
-		go models.Close()
+		// Drain joins the collection's own query work; a caller's stream or login ends with its context.
+		models.Drain()
 	}
 }

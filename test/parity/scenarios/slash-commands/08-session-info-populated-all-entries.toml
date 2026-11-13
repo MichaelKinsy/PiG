@@ -17,7 +17,7 @@
 #     Total: 1,347
 #
 #     Cache Warming
-#     Mode: streaming
+#     Mode: idle
 #     Status: Inactive (waiting for first request)
 #
 #     Cost
@@ -84,7 +84,7 @@ both_contain = [
   "Output: 27",
   "Total: 1,347",
   "Cache Warming",
-  "Mode: streaming",
+  "Mode: idle",
   "Status: Inactive (waiting for first request)",
   "Total: $0.500",
   "test-faux/faux-1: $0.410 (1.3k tokens)",

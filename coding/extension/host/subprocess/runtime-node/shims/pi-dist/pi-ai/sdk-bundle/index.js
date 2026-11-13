@@ -1,5 +1,9 @@
 import {
   AssistantMessageEventStream,
+  CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY,
+  CACHE_WARMING_MAX_AGE_MS,
+  CACHE_WARMING_MAX_IDLE_AGE_MS,
+  CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   StreamingJsonParser,
@@ -8,12 +12,17 @@ import {
   cleanupSessionResources,
   createAssistantMessageEventStream,
   createFauxCore,
+  evaluateCacheWarming,
   fauxAssistantMessage,
   fauxProvider,
   fauxText,
   fauxThinking,
   fauxToolCall,
+  getCacheWarmingDelayMs,
+  getCacheWarmingRequestOptions,
   getOverflowPatterns,
+  getPromptCacheTtlMs,
+  isCacheWarmingReplayable,
   isContextOverflow,
   isRecoverableLength,
   isRetryableAssistantError,
@@ -29,7 +38,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-LQVC3VYH.js";
+} from "./chunk-K4DZQMCL.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -81,11 +90,15 @@ import {
   toToolDeclaration,
   withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-DQ3IPTWT.js";
+} from "./chunk-TG7FIA7M.js";
 import "./chunk-SHUYVCID.js";
 export {
   AI_TELEMETRY_SCHEMA,
   AssistantMessageEventStream,
+  CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY,
+  CACHE_WARMING_MAX_AGE_MS,
+  CACHE_WARMING_MAX_IDLE_AGE_MS,
+  CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   InMemoryCredentialStore,
@@ -111,6 +124,7 @@ export {
   declarationsEqual,
   defaultProviderAuthContext,
   envApiKeyAuth,
+  evaluateCacheWarming,
   extractDiagnosticError,
   fauxAssistantMessage,
   fauxProvider,
@@ -120,6 +134,8 @@ export {
   formatThrownValue,
   formatUserAgent,
   getAttributionHeaders,
+  getCacheWarmingDelayMs,
+  getCacheWarmingRequestOptions,
   getClientVersion,
   getCurrentSystemMessage,
   getCurrentSystemPrompt,
@@ -130,12 +146,14 @@ export {
   getModelType,
   getOpenCodeSessionHeaders,
   getOverflowPatterns,
+  getPromptCacheTtlMs,
   getSupportedThinkingLevels,
   getSystemMessageText,
   getToolStateChanges,
   hasApi,
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
+  isCacheWarmingReplayable,
   isContextOverflow,
   isModelType,
   isRecoverableLength,

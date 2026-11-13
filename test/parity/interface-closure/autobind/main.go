@@ -224,13 +224,23 @@ func run(o options) error {
 			return err
 		}
 		if err := checkBaseline(baseline, decisions); err != nil {
-			return err
+			return overAnotherMirror(root, o.version, err)
 		}
 		if !bytes.Equal(current, derived) {
-			return fmt.Errorf("the ledger %s is not what the detector derives: run make interface-gaps-update and commit the result", mappingPath)
+			return overAnotherMirror(root, o.version, fmt.Errorf("the ledger %s is not what the detector derives: run make interface-gaps-update and commit the result", mappingPath))
 		}
 	}
 	return nil
+}
+
+// overAnotherMirror adds to the failure of a check that the rules did not read the pinned Pi. A check writes nothing, so it runs over any
+// mirror; over another Pi's (a PI_UPSTREAM_REF run of make upstream-mirror leaves .upstream/current at its commit) rows reopen, and
+// the gaps and the ledger the check reports are that Pi's, not the tree's. Over the pin's mirror the failure reads as before.
+func overAnotherMirror(root, version string, failure error) error {
+	if err := upstreammirror.Check(root, version); err != nil {
+		return fmt.Errorf("%w\nthis verdict is not the pin's: %w", failure, err)
+	}
+	return failure
 }
 
 // derive runs the rules over the ledger: it loads the reach graph, builds the Go index, applies the documented renames and reviewed inputs,
@@ -382,8 +392,9 @@ var libraryEntries = map[string][]string{
 	"durable:./storage/sqlite/node":       {"./durable/storage/sqlite/node"},
 	"durable:./storage/sqlite/cloudflare": {"./durable/storage/sqlite/cloudflare"},
 	"durable:./storage/store":             {"./durable/storage/store"},
-	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/next/contracts", "./chord/next/data", "./chord/next/documents", "./chord/next/host", "./chord/next/link", "./chord/next/registries", "./chord/next/state", "./chord/next/store", "./chord/next/surfaces", "./chord/next/telemetry", "./durable", "./durable/core/internal/delta"},
-	"chord:./app":                         {"./chord/nextnode", "./chord/nextnode/app"},
+	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/next/contracts", "./chord/next/data", "./chord/next/documents", "./chord/next/host", "./chord/next/link", "./chord/next/registries", "./chord/next/state", "./chord/next/store", "./chord/next/surfaces", "./chord/next/telemetry", "./chord/nextnode", "./durable", "./durable/core/internal/delta"},
+	"chord:./app":                         {"./chord/nextnode", "./chord/nextnode/app", "./chord/nextnode/plugins"},
+	"chord:./compression":                 {"./chord/nextnode"},
 	"chord:./app/files":                   {"./chord/nextnode/app"},
 	"chord:./context":                     {"./chord/context", "./chord/next/host"},
 	"chord:./delta":                       {"./chord", "./chord/delta", "./durable", "./durable/core/internal/delta"},

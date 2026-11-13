@@ -228,6 +228,132 @@ func TestOlderReadersWithoutAValueMappingAndForAReaderNewerThanTheProviderParkRe
 	must(t, host.Close(background))
 }
 
+// overdueLoop is a loop whose timer of one delay is due the moment its section ends, before the goroutine that armed it
+// runs on: the deadline of a `host.registry` call that the machine let the waiter miss, as a loaded CI runner does with a
+// 5 ms one. Pi's single event loop cannot do that to its `await`: the microtasks after the arming section (the
+// publication's, the first `usable()`) run before any timer, so the reason the registry cannot be read is what the
+// deadline reports.
+type overdueLoop struct {
+	*Loop
+	delay time.Duration
+}
+
+var _ sectionLoop = (*overdueLoop)(nil)
+
+// AfterFunc is the real timer, except for the delay that is overdue: its job is queued as a microtask.
+func (l *overdueLoop) AfterFunc(d time.Duration, job func()) Timer {
+	if d != l.delay {
+		return l.Loop.AfterFunc(d, job)
+	}
+	timer := &overdueTimer{job: job}
+	l.Queue(func() {
+		if timer.state.CompareAndSwap(timerPending, timerFired) {
+			timer.job()
+		}
+	})
+	return timer
+}
+
+type overdueTimer struct {
+	state atomic.Int32
+	job   func()
+}
+
+// Stop implements Timer.
+func (t *overdueTimer) Stop() bool { return t.state.CompareAndSwap(timerPending, timerStopped) }
+
+func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
+		return rvServeSum(h, rvTotalCompose, nil)
+	}))
+	for _, registry := range []registries.Registry[any, any]{rvSumV1, rvSumV3} {
+		_, err := host.Registry(background, registry, rvWithin(deadline))
+		if chordErr, ok := data.IsChordErrorCode(err, data.CodeContractMismatch); !ok {
+			t.Fatalf("host.registry(v%d) = %v, want contract_mismatch (%v)", registry.Version, err, chordErr)
+		}
+	}
+	_, err := host.Registry(background, rvRegistry(t, "app.nobody", 1), rvWithin(deadline))
+	if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok || chordErr.Reason != data.ReasonUndeclared {
+		t.Fatalf("host.registry(app.nobody) = %v, want unavailable/undeclared", err)
+	}
+	must(t, host.Close(background))
+}
+
+// directTimerLoop is a loop whose timers run their job on a goroutine of their own, not in a section: a deadline that fires while
+// a section is still running, here the load's, where a setup waits for the registry it asked for.
+type directTimerLoop struct{ *Loop }
+
+var _ sectionLoop = (*directTimerLoop)(nil)
+
+// AfterFunc implements the loop's timers: the job runs when the delay is over, whatever section is running.
+func (l *directTimerLoop) AfterFunc(d time.Duration, job func()) Timer {
+	timer := &overdueTimer{job: job}
+	time.AfterFunc(d, func() {
+		if timer.state.CompareAndSwap(timerPending, timerFired) {
+			timer.job()
+		}
+	})
+	return timer
+}
+
+// Ports the deadline of `registry` that fires after `load` was called and before the publication (chord host.ts:1125-1138):
+// `#assertLoadCalled` passed (host.ts:1128, 1767), `await awaitWithContext(this.#publication.promise, ...)` is still waiting, and
+// the timer armed at host.ts:1133 aborts with `notLive("registry app.sum", timeout)`, "did not become live within 5 ms". A
+// setup that asks for the registry is the one place the publication is pending while a `registry` call runs: the load's section
+// publishes after its setups.
+func TestReadersAHostRegistryWhoseDeadlineFiresAfterLoadStartedAndBeforeThePublicationDidNotBecomeLive(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host := newHost(t, HostOptions{loop: &directTimerLoop{Loop: NewLoop()}})
+	asked := make(chan error, 1)
+	// The wait of the setup is bounded by a context of its own, so a deadline that never fires ends the test at once with its message
+	// (the load runs in a section the wait holds: nothing else could end it).
+	bound, cancel := context.WithTimeout(background, 3*time.Second)
+	defer cancel()
+	setup := rvPlugin("@app/asks", func(FacetHost, FacetSelf) error {
+		_, err := host.Registry(bound, rvSum, rvWithin(deadline))
+		asked <- err
+		return nil
+	})
+	loaded := make(chan error, 1)
+	go func() {
+		_, err := host.Load([]HostFacet{setup}, background)
+		loaded <- err
+	}()
+	select {
+	case err := <-asked:
+		const want = "registry app.sum: did not become live within 5 ms"
+		if err == nil || err.Error() != want {
+			t.Fatalf("host.registry before the publication = %v, want %q", err, want)
+		}
+		if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok {
+			t.Fatalf("host.registry before the publication = %v (%v), want an unavailable error", err, chordErr)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("host.registry before the publication did not end at its 5 ms deadline or at the test's 3 s bound")
+	}
+	select {
+	case err := <-loaded:
+		must(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("the load did not return")
+	}
+	must(t, host.Close(background))
+}
+
+func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookStillReturnsAValueItFindsThere(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
+		return rvServeSum(h, rvTotalCompose, nil)
+	}))
+	value, err := host.Registry(background, rvSum, rvWithin(deadline))
+	must(t, err)
+	if got, thrown := rvRead(value); thrown != nil || got != (rvTotal{total: 0}) {
+		t.Fatalf("value = %v (%v), want {0}", got, thrown)
+	}
+	must(t, host.Close(background))
+}
+
 func TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive(t *testing.T) {
 	current := rvRegistry(t, "app.mapped", 2)
 	old := rvRegistry(t, "app.mapped", 1)
@@ -579,4 +705,48 @@ func TestValuesMemoryKeepsNoOldCompositionOnceItsReadersStoppedWaitingAndNobodyF
 		t.Fatalf("compositions alive = %v, want %v", alive, want)
 	}
 	must(t, host.Close(background))
+}
+
+// rvEnds records how an observer of a registry value ended.
+type rvEnds struct{ ends []chord.WatchEnd }
+
+func (*rvEnds) Advance(chord.NativeWatchCall[any], context.Context) {}
+func (recorder *rvEnds) End(end chord.WatchEnd)                     { recorder.ends = append(recorder.ends, end) }
+
+var _ state.NativeObserver[any] = (*rvEnds)(nil)
+
+// Pi: "a value an app keeps after `host.close` keeps no closed host, and reads its last composition (Sol, Astra)": the value of
+// `host.registry` kept past `host.close` ends its observation with the host, holds no closed host, and reads its last composition.
+func TestValuesMemoryAValueAnAppKeepsAfterHostCloseKeepsNoClosedHostAndReadsItsLastCompositionSolAstra(t *testing.T) {
+	kept := rvRegistryOf("app.kept", 1)
+	recorder := &rvEnds{}
+	ctx, cancel := context.WithCancel(background)
+	defer cancel()
+	closedHost, value := func() (weak.Pointer[chordHost], *registries.RegistryValueSource) {
+		host := newHost(t, HostOptions{OnError: noopOnError})
+		mustLoad(t)(host.Load([]HostFacet{rvPlugin("@app/a", func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(kept, registries.RegistryProvider[any, any]{
+				Compose: func(registries.RegistryTable[any], registries.ComposeContext) (any, error) { return 7.0, nil },
+			}, ServeOptions{})
+		})}, background))
+		value, err := host.Registry(background, kept, GetOptions{})
+		must(t, err)
+		if _, err := value.Observe(recorder, ctx); err != nil {
+			t.Fatal(err)
+		}
+		must(t, host.Close(background))
+		return weak.Make(host.(*chordHost)), value
+	}()
+	// The observation ended with the host: nothing of it is left to run when its context is cancelled.
+	if len(recorder.ends) != 1 {
+		t.Fatalf("observation ends after the host closed = %#v, want exactly one", recorder.ends)
+	}
+	cancel()
+	if len(recorder.ends) != 1 {
+		t.Fatalf("observation ends after its context was cancelled = %#v, want still one", recorder.ends)
+	}
+	expectCollected(t, closedHost)
+	if got := value.Value(); got != 7.0 {
+		t.Fatalf("value = %v, want its last composition 7", got)
+	}
 }

@@ -2,13 +2,17 @@ package subprocess
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
@@ -85,6 +89,9 @@ type Envelope struct {
 
 	// barrier, when set, is a host-side marker, not a frame: the dispatcher closes it when it reaches it, so everything the read loop read before the marker is dispatched.
 	barrier *dispatchMark
+
+	// pooled is the reusable frame the read loop built this envelope in (response_frame.go); releaseResponse returns it.
+	pooled *responseFrame
 
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
@@ -301,6 +308,8 @@ type NativeProviderDeclaration struct {
 	BaseURL *string                         `json:"baseUrl,omitempty"`
 	Models  []extension.ProviderModelConfig `json:"models"`
 	OAuth   *ProviderOAuthConfig            `json:"oauth,omitempty"`
+	// RefreshModelsAuth is the Provider object's refreshModelsAuth (ai/src/models.ts:204): "credential" (the default when absent) or "configured". Pi types the member and never validates it, so the host carries it unchanged and anything but "configured" refreshes with the credential.
+	RefreshModelsAuth ai.RefreshModelsAuthMode `json:"refreshModelsAuth,omitempty"`
 }
 
 type ProviderObjectAuthDeclaration struct {
@@ -567,6 +576,9 @@ type StatePayload struct {
 	// The Node runtime installs it as pi-tui's keybindings manager, the one
 	// Pi hands editor and custom-component factories and sets globally.
 	Keybindings any `json:"keybindings,omitempty"`
+	// UIAbilities (D614) is what the attached client draws; absent when none is attached, so an extension cannot mount.
+	// Every state is a full snapshot, so an absent value clears it.
+	UIAbilities *uiview.ClientAbilities `json:"uiAbilities,omitempty"`
 }
 
 // TerminalCapabilitiesPayload mirrors pi-tui's TerminalCapabilities.
@@ -637,6 +649,8 @@ type RequestPayload struct {
 	MessageSeqs []uint64 `json:"message_seqs,omitempty"` //portlint:allow emptydrop a PiG-only frame field; absent means no message of the event is shared
 	// SignalTimeoutMS, on oauth_refresh, tells a runtime whose refresh callback receives an AbortSignal that the signal is AbortSignal.timeout(SignalTimeoutMS) alone: the caller's cancellation never reaches it, as in Pi's refreshStoredOAuthCredential (auth/resolve.ts). Absent, the signal follows the request's cancellation.
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
+	// SignalAborted, on a session_before_compact or session_before_tree event, reports that the event's AbortSignal had already aborted when the host dispatched the handler: Pi's runner awaits every handler of those events with event.signal aborted (runner.ts emit), so a handler dispatched after the abort starts with event.signal.aborted true. When the signal ends while the handler runs, the host sends a signal-only cancel (CancelPayload.SignalOnly) and keeps waiting for the reply, as Pi keeps the handler's result.
+	SignalAborted bool `json:"signal_aborted,omitempty"`
 	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.
 	OwnSignal bool `json:"own_signal,omitempty"`
 	// ExecuteID, with OwnSignal, names the executeTool call of the same connection that made this nested call, so its runtime can hand the tool the very signal object its caller passed.
@@ -803,11 +817,36 @@ type ErrorInfo struct {
 	// one (a JavaScript `err.stack`). Hosts report it as upstream reports
 	// `ExtensionError.stack`.
 	Stack string `json:"stack,omitempty"`
+	// ShellExit is set on the error of a local shell command (Pi's createLocalBashOperations().exec) that timed out after its shell had already exited, so the
+	// tool was only still waiting for background processes that held the output pipes (Pi's ShellTimeoutError.shellExit). The host sets it on the error reply of
+	// builtinTool.localExec, and an SDK sets it on the error response of user_bash_exec when the error its exec raised is the one its local operations returned,
+	// unchanged. Message is then "timeout:<seconds>". It is omitted otherwise.
+	ShellExit *ShellExitInfo `json:"shellExit,omitempty"`
+}
+
+// ShellExitInfo is Pi's `shellExit`: the shell's own exit code and the seconds it ran, rounded to a tenth as Pi rounds them (Math.round(ms / 100) / 10).
+type ShellExitInfo struct {
+	ExitCode     int     `json:"exitCode"`
+	AfterSeconds float64 `json:"afterSeconds"`
+}
+
+// errorInfoOf is the wire error of err: its message, and the shell's exit when err is the local shell backend's timeout after the shell had exited.
+func errorInfoOf(err error) *ErrorInfo {
+	info := &ErrorInfo{Message: err.Error()}
+	var timeout *tools.ShellTimeoutError
+	if errors.As(err, &timeout) && timeout.ShellExit != nil {
+		info.ShellExit = &ShellExitInfo{ExitCode: timeout.ShellExit.ExitCode, AfterSeconds: timeout.ShellExit.AfterSeconds}
+	}
+	return info
 }
 
 func (e *ErrorInfo) ToError() error {
 	if e == nil {
 		return nil
+	}
+	if timeout, ok := strings.CutPrefix(e.Message, "timeout:"); ok && e.Code == "" && e.ShellExit != nil {
+		// Pi's bash tool tells the error of its local backend by class, and the error an extension's exec rethrows unchanged is that error.
+		return &tools.ShellTimeoutError{Timeout: timeout, ShellExit: &tools.ShellExit{ExitCode: e.ShellExit.ExitCode, AfterSeconds: e.ShellExit.AfterSeconds}}
 	}
 	message := e.Message
 	if e.Code != "" {
@@ -1032,6 +1071,23 @@ const (
 	NotifyUIViewEvicted = "ui.view.evicted"
 )
 
+// pig additive (D614): plugin UI mounts over D107 views. An extension mounts a view in a client slot and the host sends
+// back the user's intents. The records are in coding/uiview; the wire has no version field.
+const (
+	CallUIViewMount  = "ui.view.mount"
+	CallUIViewUpdate = "ui.view.update"
+	CallUIViewHide   = "ui.view.hide"
+	CallUIViewShow   = "ui.view.show"
+	CallUIViewFinish = "ui.view.finish"
+	CallUIViewRemove = "ui.view.remove"
+	CallUIViewState  = "ui.view.state"
+	// CallUIViewDiagnostics returns the notices of a mount: what the host rejected or ended and what a client could not draw.
+	CallUIViewDiagnostics = "ui.view.diagnostics"
+	// RequestUIViewIntent (host→ext) raises one intent of a mount and expects {outcome: done|refused|failed, answer?, error?}.
+	// A cancellable intent that times out or is cancelled by its caller is cancelled through the request's ordinary cancel frame.
+	RequestUIViewIntent = "ui.view.intent"
+)
+
 // View node kinds. Each mirrors the upstream pi-tui (or coding-agent
 // DynamicBorder) component of the same name; ViewKindLines is an opaque
 // range of rows a custom render(width) drew.
@@ -1210,6 +1266,8 @@ type ViewNode struct {
 
 	// ViewWidgetFields are the fields of the widget kinds (view_widget_wire.go).
 	ViewWidgetFields
+	// ViewGridFields are the fields of a grid (view_grid_wire.go).
+	ViewGridFields
 }
 
 // viewNodeWire is a ViewNode with its "message" as raw JSON: a loader's
@@ -1229,6 +1287,12 @@ func (n *ViewNode) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*n = ViewNode(wire.viewNodeFields)
+	if n.Kind == ViewKindGrid {
+		// pig additive (D614): a grid is read strictly, in the node, its cells and its chips.
+		if err := decodeGridNode(data); err != nil {
+			return err
+		}
+	}
 	if len(wire.Message) == 0 || string(wire.Message) == "null" {
 		return nil
 	}
@@ -1426,6 +1490,8 @@ type CallPayload struct {
 	Tick bool `json:"tick,omitempty"`
 	// OriginToolCallID, with Tick, is the tool call whose handler queued the callback that made the call (a Node runtime knows it from the request the callback was queued in). The host runs the call after that call's tool_execution_end, whether the call reaches the host before or after the event: the runtime is another process, so the time between its answer and the callback's call decides nothing about Pi's order. Empty when no tool call queued the callback.
 	OriginToolCallID string `json:"origin_tool_call_id,omitempty"`
+	// CommandContext marks a call made through a command context: the context of a command handler or of a withSession callback, the only contexts Pi gives newSession, fork, navigateTree, switchSession and reload (runner.ts createCommandContext). The SDK sets it from the kind of the context the call is made through, so a context kept past its request keeps its kind; the host refuses those five calls without it (commandOnlyCall).
+	CommandContext bool `json:"command_context,omitempty"`
 }
 
 // ── CallResult (host→ext) ────────────────────────────────────────────────────
@@ -1456,6 +1522,8 @@ type WidgetPushPayload struct {
 type CancelPayload struct {
 	RequestID string `json:"request_id,omitempty"`
 	Reason    string `json:"reason,omitempty"`
+	// SignalOnly reports that only the request's AbortSignal ended (session_before_compact, session_before_tree: Pi's abortCompaction aborts the AbortController, agent-session.ts:2867; tool_call: Pi's run abort aborts the signal executePreparedToolCall hands tool.execute, agent-loop.ts:817-853) and the request goes on: the runtime aborts the signal its handler holds and cancels no host call, as Pi's in-process calls never fail with the abort. The host keeps answering the handler's calls, before and after, and waits for its reply. An ordinary cancel, without it, ends the request and its host calls; a tool_call whose grace period ended is ended by one.
+	SignalOnly bool `json:"signal_only,omitempty"`
 }
 
 // ShutdownPayload signals the extension to exit gracefully.

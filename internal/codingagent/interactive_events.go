@@ -155,9 +155,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		// The bash execution callback renders the command's output.
 
 	case agent.AgentSettledEvent:
-		// pig divergence (D311): Pi acd059b72 moves user bash output shown while the agent works into the chat when the run settles.
+		// Move user bash output shown while the agent works into the chat when the run settles.
 		m.flushPendingBashBlocks()
-		m.tuiInst.RequestRender()
 		m.checkShutdownRequested()
 
 	case agent.TurnEndEvent:
@@ -399,7 +398,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			m.toolMu.Unlock()
 			m.appendToChat(comp)
 		}
-		m.tuiInst.Render()
+		// upstream: tool-execution.ts markExecutionStarted runs updateDisplay, the card's renderers, at the event, so a renderer's
+		// clock starts here; interactive-mode.ts:3754 then requests the frame, which the throttle draws.
+		comp.Render(m.tuiInst.Width())
+		m.tuiInst.RequestRender()
 
 	case agent.ToolExecutionUpdateEvent:
 		// Live streaming update from a long-running tool (e.g. bash).
@@ -465,7 +467,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		final.Result = retainToolResult(e.ToolName, result)
 		final.DurationMs = e.DurationMs
 		comp.UpdateResult(final, false)
-		m.tuiInst.Render()
+		// upstream: tool-execution.ts updateResult runs updateDisplay at the event; interactive-mode.ts:3773 then requests the
+		// frame, which the throttle draws.
+		comp.Render(m.tuiInst.Width())
+		m.tuiInst.RequestRender()
 
 	case agent.CompactionStartEvent:
 		// Central abort routing handles Esc and Ctrl+C during compaction.

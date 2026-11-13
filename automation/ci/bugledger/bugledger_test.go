@@ -118,6 +118,9 @@ func TestImpactAndPlatformComeFromTheWording(t *testing.T) {
 		{"A credential file was world-readable on Linux.", "Credential or permission exposure", "Linux"},
 		{"The update fails with EPERM.", "An operation failed or was rejected", "Windows"},
 		{"The block is drawn in the wrong colors.", "Wrong display", "All platforms"},
+		{"Every frame the renderer paints allocates two fewer objects.", "Extra allocation or slower run", "All platforms"},
+		{"`/fork` builds the entries from the decoded messages again instead of decoding every record twice, which doubled the allocations.", "Extra allocation or slower run", "All platforms"},
+		{"Searching a long session in `/tree` allocates as many objects as in 0.7.0 again.", "Extra allocation or slower run", "All platforms"},
 		{"A value is kept.", "Behavior differed from Pi", "All platforms"},
 	}
 	for _, c := range cases {
@@ -126,6 +129,19 @@ func TestImpactAndPlatformComeFromTheWording(t *testing.T) {
 		}
 		if got := platformOf(c.note); got != c.platform {
 			t.Errorf("platformOf(%q) = %q, want %q", c.note, got, c.platform)
+		}
+	}
+}
+
+// A verb that gives a value an identity says nothing about what a run costs: the duplicate-session bullet allocated a new ID, it did not allocate more objects.
+func TestAnIdentityAllocationIsNotAnAllocationCost(t *testing.T) {
+	note := "Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining subprocess IDs and timestamps through the native Session writer and preserving `entry_appended` semantics. Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror."
+	if got := impactOf(note); got == "Extra allocation or slower run" {
+		t.Fatalf("impactOf labels a duplicate-session bug %q", got)
+	}
+	for _, n := range []string{"The id is allocated a new value.", "A new ID is allocated per entry.", "Memory allocation of the ID is retained."} {
+		if got := impactOf(n); got == "Extra allocation or slower run" {
+			t.Errorf("impactOf(%q) = %q", n, got)
 		}
 	}
 }
@@ -600,6 +616,49 @@ func TestASquashLandingKeepsTheCommittedLedger(t *testing.T) {
 	}
 	if !bytes.Equal(regenerated, committed) {
 		t.Fatalf("regenerating on a squash landing changed the ledger:\n%s\nwant\n%s", regenerated, committed)
+	}
+}
+
+// Folding a fragment into CHANGELOG.md moves its bullets to a release heading. A bullet whose marker was re-pointed at the squash that replaced its fix commit would take the tests of every file the squash changes; it must keep the tests its own fix had.
+func TestAFoldedBulletRePointedAtASquashKeepsItsOwnFixsTests(t *testing.T) {
+	dev := newFixture(t)
+	release := dev.run("rev-parse", "HEAD")
+	dev.write("a.go", "package x\n")
+	dev.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+	fix := dev.commit("a: handle empty input", "a.go", "a_test.go")
+	dev.write("other.go", "package x\n")
+	dev.write("other_test.go", "package x\n\nfunc TestSomeOtherFix(t *testing.T) {}\n")
+	dev.commit("other: a change of another fix", "other.go", "other_test.go")
+	dev.write("changelog.d/a.md", "### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+fix[:10]+" -->\n")
+	dev.commit("Note the fix", "changelog.d/a.md")
+	if err := run(dev.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	dev.commit("Add the ledger", "docs/bug-ledger.json", "docs/site/docs/bug-ledger.md")
+
+	pub := squash(t, dev, release)
+	landed := pub.run("rev-parse", "HEAD")
+	pub.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.4.2] - 2026-02-01\n\n### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+landed[:10]+" -->\n\n## [0.4.1] - 2026-01-01\n")
+	pub.run("rm", "-q", "changelog.d/a.md")
+	pub.commit("Fold the changelog", "CHANGELOG.md")
+	if err := run(pub.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	l, _, err := readCommitted(pub.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *Entry
+	for i := range l.Entries {
+		if l.Entries[i].Origin == "release note" {
+			got = &l.Entries[i]
+		}
+	}
+	if got == nil {
+		t.Fatalf("no release note entry in %+v", l.Entries)
+	}
+	if got.FixedIn != "0.4.2" || !slices.Equal(got.Tests, []string{"a_test.go::TestAFixed"}) || len(got.Commits) != 1 || got.Commits[0].Hash != fix[:10] {
+		t.Fatalf("entry = %+v, want fixed in 0.4.2 with only a_test.go::TestAFixed from %s", got, fix[:10])
 	}
 }
 

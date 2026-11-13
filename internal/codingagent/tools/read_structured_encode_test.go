@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -181,5 +182,94 @@ func BenchmarkReadToolExecuteSmallFile(b *testing.B) {
 		if result, err := tool.Execute(b.Context(), "id", args, nil); err != nil || result.IsError {
 			b.Fatal(err, result.Content)
 		}
+	}
+}
+
+// nextEscape is the first byte of s from i that the encoder does not copy as it is: an ASCII control, a quote, a backslash, or a byte
+// that starts or continues a multi-byte sequence. It is checked against a byte loop for every length, start offset and position of a
+// byte of each class, so the eight-byte steps' word boundaries are all exercised.
+func TestNextEscapeMatchesByteLoop(t *testing.T) {
+	byteLoop := func(s string, i int) int {
+		for ; i < len(s); i++ {
+			if c := s[i]; c < 0x20 || c == '"' || c == '\\' || c >= utf8.RuneSelf {
+				return i
+			}
+		}
+		return len(s)
+	}
+	classes := []byte{0x00, 0x08, '\n', 0x1f, '"', '\\', 0x80, 0xc3, 0xff}
+	clean := []byte{0x20, '!', '#', '/', 'A', 'Z', '[', ']', '^', 'a', '~', 0x7f, 0x21, 0x5b, 0x5d, 0x23, 0x01 + 0x20}
+	for length := 0; length <= 40; length++ {
+		base := make([]byte, length)
+		for i := range base {
+			base[i] = clean[i%len(clean)]
+		}
+		for start := 0; start <= length; start++ {
+			if got, want := nextEscape(string(base), start), byteLoop(string(base), start); got != want {
+				t.Fatalf("clean len %d from %d: got %d, want %d", length, start, got, want)
+			}
+			for pos := range length {
+				for _, class := range classes {
+					s := append([]byte(nil), base...)
+					s[pos] = class
+					// A second, later hit must not be reported before the first.
+					if pos+3 < length {
+						s[pos+3] = '\\'
+					}
+					if got, want := nextEscape(string(s), start), byteLoop(string(s), start); got != want {
+						t.Fatalf("%q from %d: got %d, want %d", s, start, got, want)
+					}
+				}
+			}
+		}
+	}
+}
+
+// A file of 1.5 MB with every byte class the encoder branches on, at every alignment, encodes to the bytes a json.Encoder writes, with
+// and without an image, and the buffer is the exact size.
+func TestReadStructuredContentLargeMatchesEncoder(t *testing.T) {
+	rng := rand.New(rand.NewPCG(20261111, 9))
+	var b strings.Builder
+	for b.Len() < 3<<19 {
+		switch rng.IntN(5) {
+		case 0:
+			b.WriteString(strings.Repeat("x", rng.IntN(120)))
+		case 1:
+			b.WriteString(structuredContentPieces[rng.IntN(len(structuredContentPieces))])
+		default:
+			b.WriteString("const value = items.map((item) => `<li>${item.name}</li>`).join(\"\\n\");\n")
+		}
+	}
+	text := b.String()
+	for _, content := range [][]ai.ToolResultMessageContent{
+		{ai.TextContent{Text: text}},
+		{ai.TextContent{Text: text[1:]}},
+		{ai.TextContent{Text: strings.Repeat("plain ascii text without anything to escape ", 40000)}},
+		{ai.TextContent{Text: "note \u2028"}, ai.ImageContent{Data: text[:1<<20], MimeType: "image/png"}},
+	} {
+		assertStructuredContentMatchesEncoder(t, content)
+		if got := readStructuredContent(content); cap(got) != len(got) {
+			t.Errorf("capacity %d for %d bytes, want the exact size", cap(got), len(got))
+		}
+	}
+}
+
+// BenchmarkReadStructuredContent encodes the 50 KB of text a read returns: source with quotes, backslashes and newlines, plain ASCII,
+// and text that is mostly multi-byte.
+func BenchmarkReadStructuredContent(b *testing.B) {
+	source := readBenchTypeScript()[:50<<10]
+	for name, text := range map[string]string{
+		"source":    source,
+		"ascii":     strings.Repeat("plain ascii text without anything to escape ", 1200),
+		"multibyte": strings.Repeat("héllo wörld € 😀 ", 3000),
+	} {
+		content := []ai.ToolResultMessageContent{ai.TextContent{Text: text}}
+		b.Run(name, func(b *testing.B) {
+			b.SetBytes(int64(len(text)))
+			b.ReportAllocs()
+			for b.Loop() {
+				_ = readStructuredContent(content)
+			}
+		})
 	}
 }

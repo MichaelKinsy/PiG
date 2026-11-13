@@ -104,7 +104,7 @@ func TestExtensionChangelogUpdatesUpstream(t *testing.T) {
 		}
 	})
 
-	// pi: interactive-mode-extension-changelog.test.ts "does not repeat entries for a prerelease version" (Pi main 9a1953961, #11703); D245.
+	// pi: interactive-mode-extension-changelog.test.ts "does not repeat entries for a prerelease version" (Pi 9a1953961, #11703).
 	t.Run("does not repeat entries for a prerelease version", func(t *testing.T) {
 		sm := NewInMemorySettingsManager(Settings{})
 		info := newSourceInfo()

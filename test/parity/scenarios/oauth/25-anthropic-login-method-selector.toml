@@ -27,6 +27,11 @@ wait_contains = ["Select authentication method:"]
 keys = ["Enter"]
 wait_contains = ["Select provider to configure:", "Anthropic"]
 
+# Pi 1.5.1 (provider-brand.ts, oauth-selector.ts isPreferredProvider) lists Radius and OpenRouter ahead of the alphabetical providers, so the first row is no longer Anthropic: search for it.
+[[tmux.steps]]
+keys = ["anthropic"]
+wait_visible_contains = ["> anthropic", "→ Anthropic"]
+
 [[tmux.steps]]
 keys = ["Enter"]
 wait_contains = ["Select Anthropic login method:", "Copy code login (headless)"]

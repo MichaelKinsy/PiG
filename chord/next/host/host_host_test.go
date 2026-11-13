@@ -1174,9 +1174,22 @@ func TestHostCloseWithABackoffWindowRunningEndsAnObjectWaitingForItsWindowAndCle
 		first <- err
 	}()
 	awaitUnboundOrObject(t, host)
-	turn(host)
-	loop.AdvanceAsync(100)
+	// Pi's advanceTimersByTimeAsync runs the microtasks first, so the open's rejection has failed the attempt and its backoff
+	// window runs before the first get's 100 ms deadline fires. The open is a task here: the clock waits for it, as it does
+	// for the host's other tasks. Moved at once, the deadline ends the first get with the open still in flight and no window
+	// ever runs, so the close below clears a window that never was and finds an abandoned activation still unwinding.
+	advanceSettled(loop, host, 100)
 	<-first
+	var windowRunning bool
+	h := host.(*chordHost)
+	h.enter(func() {
+		for identity := range h.backoff.entries {
+			windowRunning = windowRunning || h.backoff.waiting(identity)
+		}
+	})
+	if !windowRunning {
+		t.Fatal("no backoff window runs after the first get failed")
+	}
 	waiting := make(chan error, 1)
 	go func() {
 		_, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})

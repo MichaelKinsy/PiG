@@ -176,7 +176,7 @@ func runConfigSelectorTUI(selector *tui.ConfigSelectorComponent, settings *codin
 // newConfigSelectorUI themes the process and builds the config selector's terminal UI, as Pi's selectConfig (config-selector.ts:20-30) does before it starts.
 func newConfigSelectorUI(selector *tui.ConfigSelectorComponent, settings *codingagent.SettingsManager, agentDir string) *tui.TuiMainScreen {
 	initTheme(configuredThemeName(settings), true)
-	// pig divergence (D254): Pi b0c64f33c installs KeybindingsManager.create(agentDir) so the selector resolves the user's keybindings.json (Pi 1.5.0 uses the defaults). Creating the manager installs it as the TUI registry.
+	// Pi's selectConfig() installs KeybindingsManager.create(agentDir) so the selector resolves the user's keybindings.json. Creating the manager installs it as the TUI registry.
 	codingagent.NewKeybindingsManager(agentDir)
 	ui := tui.New()
 	ui.SetLogDirectory(agentDir)

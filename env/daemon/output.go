@@ -80,6 +80,28 @@ func (o *output) waitForRoom(stop <-chan struct{}) {
 	}
 }
 
+// gate is the backpressure of the readers of one command: like a full pipe, a reader that read a chunk waits for room before
+// it reads the next. A reader counts as held while it hands a chunk over and waits, so the command can tell a reader the
+// link holds up from a pipe that went silent (Gate in output.rs).
+type gate struct {
+	out  *output
+	held atomic.Int32
+}
+
+func newGate(out *output) *gate { return &gate{out: out} }
+
+// pass runs deliver for a chunk just read, then waits for room unless stop is closed; it returns what deliver returned.
+func (g *gate) pass(stop <-chan struct{}, deliver func() bool) bool {
+	g.held.Add(1)
+	delivered := deliver()
+	g.out.waitForRoom(stop)
+	g.held.Add(-1)
+	return delivered
+}
+
+// isHeld reports whether a reader is handing over a chunk or waiting for room: its silence is not the end of the output.
+func (g *gate) isHeld() bool { return g.held.Load() > 0 }
+
 func (o *output) close() {
 	o.mu.Lock()
 	o.closed = true

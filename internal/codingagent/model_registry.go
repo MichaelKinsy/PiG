@@ -663,7 +663,35 @@ func (r *ModelRegistry) ResolveGeneratedModel(providerID, modelID string, genera
 	if entry, found, _ := r.resolveRadiusModel(providerID, modelID); found {
 		return entry
 	}
-	entry := generatedModelEntry(providerID, modelID, generated)
+	return r.layerCatalogEntry(providerID, modelID, generatedModelEntry(providerID, modelID, generated))
+}
+
+// ResolveRemoteCatalogModel is ResolveGeneratedModel for a model the remote catalog overlay carries: a model the bundled catalog lacks, or one whose bundled record the overlay replaces.
+// The entry holds the overlay's window, limits and prices, so a model built from it matches the one ModelRuntime.getModel returns. It reports false for a model the overlay does not carry
+// and for one an explicit models list defines.
+// upstream: model-runtime.ts getModel reads the catalog with the remote overlay applied; sdk.ts:224-229 and agent-session.ts:647 build every session model from it.
+func (r *ModelRegistry) ResolveRemoteCatalogModel(providerID, modelID string) (ModelEntry, bool) {
+	if r.GetProvider(providerID) != nil || r.HasModelDefinition(providerID, modelID) {
+		return ModelEntry{}, false
+	}
+	carried := slices.ContainsFunc(r.remoteOverlayModels(providerID), func(model ai.AnyModel) bool {
+		chat, ok := model.(*ai.Model)
+		return ok && chat.ID == modelID
+	})
+	if !carried {
+		return ModelEntry{}, false
+	}
+	model := r.GetProviderModelDataByID(providerID, modelID)
+	if model == nil {
+		return ModelEntry{}, false
+	}
+	entry := NativeModelEntry(model)
+	entry.ProviderID, entry.ModelID = providerID, modelID
+	return r.layerCatalogEntry(providerID, modelID, entry), true
+}
+
+// layerCatalogEntry layers provider configuration, registered-provider settings and a matching model override onto the catalog entry of one model.
+func (r *ModelRegistry) layerCatalogEntry(providerID, modelID string, entry ModelEntry) ModelEntry {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var configured *providerConfig
@@ -1183,10 +1211,15 @@ func (r *ModelRegistry) RuntimeAPIKey(providerID string) (string, bool) {
 // process environment when resolving config-value `$VAR` references for the
 // provider's API key and headers.
 func (r *ModelRegistry) providerEnv(providerID string) map[string]string {
+	return r.providerEnvIn(context.Background(), providerID)
+}
+
+// providerEnvIn is providerEnv with its credential read made in ctx's operation.
+func (r *ModelRegistry) providerEnvIn(ctx context.Context, providerID string) map[string]string {
 	if r.credentialStore == nil {
 		return nil
 	}
-	env, err := ai.CredentialStoreProviderEnv(context.Background(), r.credentialStore, providerID)
+	env, err := ai.CredentialStoreProviderEnv(ctx, r.credentialStore, providerID)
 	if err != nil {
 		return nil
 	}
@@ -1278,7 +1311,7 @@ func (r *ModelRegistry) refreshContext(ctx context.Context, providers []string) 
 
 // GetAll returns explicit models and configured overlays for exact generated identities; dynamic providers take precedence over models.json. It omits the models of a stripped API, as the composed catalog does (ai.OfferedModels).
 func (r *ModelRegistry) GetAll() []ModelEntry {
-	out := append(r.getAllConfigured(), r.radiusEntries(false)...)
+	out := append(r.getAllConfigured(), r.radiusEntries(nil)...)
 	out = slices.DeleteFunc(out, func(entry ModelEntry) bool {
 		return r.GetProvider(entry.ProviderID) != nil || pigstrip.Has(pigstrip.ListAPIs, entry.API)
 	})
@@ -1368,12 +1401,14 @@ func (r *ModelRegistry) GetAvailable() []ModelEntry {
 }
 
 // GetAvailableModelData returns the available catalog without request authentication or backend construction.
-// It reads every provider's catalog as GetAllModelData does, in the same order, but builds a model of a plain bundled catalog (plainGeneratedModels) only when the model is available: a catalog built for a provider without auth is discarded unseen.
+// It reads every provider's catalog as GetAllModelData does, in the same order, but builds a model of a plain bundled catalog (plainGeneratedModels) only when the model is available, and a Radius provider's models only when the provider has auth: a catalog built for a provider without auth is discarded unseen.
 func (r *ModelRegistry) GetAvailableModelData() []*ai.Model {
 	type providerData struct {
 		id      string
 		models  []*ai.Model
 		isPlain bool
+		// isRadius marks a provider whose models come only from its Radius catalog, bound to the provider's own ID (ai.newRadiusParts), so models read from it are available exactly when the provider is.
+		isRadius bool
 	}
 	ids := r.modelProviderIDs()
 	data := make([]providerData, len(ids))
@@ -1382,18 +1417,23 @@ func (r *ModelRegistry) GetAvailableModelData() []*ai.Model {
 			data[i] = providerData{id: id, isPlain: true}
 			continue
 		}
+		if r.isRadiusCatalog(id) {
+			data[i] = providerData{id: id, isRadius: true}
+			continue
+		}
 		data[i].models = r.GetProviderModelData(id)
 	}
 	var out []*ai.Model
+	ctx := availabilityPassContext()
 	configured := make(map[string]bool)
 	filters := make(map[string]func(string) bool)
 	accept := func(providerID, modelID string) bool {
-		return r.providerAvailable(configured, filters, providerID) && filters[providerID](modelID)
+		return r.providerAvailable(ctx, configured, filters, providerID) && filters[providerID](modelID)
 	}
 	for _, provider := range data {
 		if provider.isPlain {
 			// A provider that has no catalog or no auth lists no model, so its list (OpenRouter's routing variants, D199, are derived with it) is not read.
-			if len(builtinChatCatalog(provider.id)) == 0 || !r.providerAvailable(configured, filters, provider.id) {
+			if len(builtinChatCatalog(provider.id)) == 0 || !r.providerAvailable(ctx, configured, filters, provider.id) {
 				continue
 			}
 			plain := builtinChatCatalogListed(provider.id)
@@ -1405,6 +1445,12 @@ func (r *ModelRegistry) GetAvailableModelData() []*ai.Model {
 			}
 			continue
 		}
+		if provider.isRadius {
+			if !r.providerAvailable(ctx, configured, filters, provider.id) {
+				continue
+			}
+			provider.models = r.GetProviderModelData(provider.id)
+		}
 		for _, model := range provider.models {
 			if accept(model.ProviderMeta.ProviderID, model.ID) {
 				out = append(out, model)
@@ -1414,19 +1460,29 @@ func (r *ModelRegistry) GetAvailableModelData() []*ai.Model {
 	return out
 }
 
+// isRadiusCatalog reports whether GetProviderModelData(id) lists only the models of the Radius provider id: no provider code and no extension registration take the catalog (GetProviderModelData's radius branch).
+func (r *ModelRegistry) isRadiusCatalog(id string) bool {
+	if r.GetProvider(id) != nil {
+		return false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.radiusProviderLocked(id) != nil
+}
+
 // providerAvailable reports whether providerID has configured auth, reading it and its account filter once into configured and filters.
-func (r *ModelRegistry) providerAvailable(configured map[string]bool, filters map[string]func(string) bool, providerID string) bool {
+func (r *ModelRegistry) providerAvailable(ctx context.Context, configured map[string]bool, filters map[string]func(string) bool, providerID string) bool {
 	available, checked := configured[providerID]
 	if !checked {
-		available = r.HasConfiguredAuth(providerID)
+		available = r.hasConfiguredAuth(ctx, providerID)
 		configured[providerID] = available
-		filters[providerID] = r.accountModelFilter(providerID)
+		filters[providerID] = r.accountModelFilter(ctx, providerID)
 	}
 	return available
 }
 
 // accountModelFilter retains native availability snapshots and Copilot's optional OAuth picker allowlist.
-func (r *ModelRegistry) accountModelFilter(providerID string) func(string) bool {
+func (r *ModelRegistry) accountModelFilter(ctx context.Context, providerID string) func(string) bool {
 	r.mu.RLock()
 	native, registered := r.native[providerID]
 	available := slices.Clone(native.available)
@@ -1450,7 +1506,7 @@ func (r *ModelRegistry) accountModelFilter(providerID string) func(string) bool 
 	if store == nil {
 		return all
 	}
-	credential, found, err := ai.ReadRawCredential(context.Background(), store, providerID)
+	credential, found, err := ai.ReadRawCredential(ctx, store, providerID)
 	if err != nil || !found || credential.Type != ai.CredentialOAuth || len(credential.AvailableModelIDs) == 0 {
 		return all
 	}
@@ -1470,6 +1526,11 @@ func (r *ModelRegistry) accountModelFilter(providerID string) func(string) bool 
 // credentials. Mirrors upstream ModelRegistry.hasConfiguredAuth()
 // (model-registry.ts:605-612).
 func (r *ModelRegistry) HasConfiguredAuth(providerID string) bool {
+	return r.hasConfiguredAuth(context.Background(), providerID)
+}
+
+// hasConfiguredAuth is HasConfiguredAuth with its credential reads made in ctx's operation.
+func (r *ModelRegistry) hasConfiguredAuth(ctx context.Context, providerID string) bool {
 	if r.GetProvider(providerID) != nil {
 		if r.availabilityAuth != nil {
 			return r.availabilityAuth(providerID)
@@ -1479,7 +1540,7 @@ func (r *ModelRegistry) HasConfiguredAuth(providerID string) bool {
 		return r.nativeAvailable[providerID]
 	}
 	if _, owned := r.RadiusOAuth(providerID); owned {
-		return r.radiusHasAuth(providerID)
+		return r.radiusHasAuth(ctx, providerID)
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -1490,9 +1551,9 @@ func (r *ModelRegistry) HasConfiguredAuth(providerID string) bool {
 		return true
 	}
 	if prov, configured := r.effectiveProviderConfigLocked(providerID); configured {
-		return r.hasConfiguredAuthLocked(providerID, &prov)
+		return r.hasConfiguredAuthLocked(ctx, providerID, &prov)
 	}
-	return r.checkProviderAuth(providerID)
+	return r.checkProviderAuth(ctx, providerID)
 }
 
 func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
@@ -1569,8 +1630,8 @@ func (r *ModelRegistry) GetProviderDisplayName(providerID string) string {
 	return ai.ProviderDisplayName(providerID)
 }
 
-func (r *ModelRegistry) hasConfiguredAuthLocked(providerID string, prov *providerConfig) bool {
-	if r.storedOAuthWithoutMethod(providerID, prov) {
+func (r *ModelRegistry) hasConfiguredAuthLocked(ctx context.Context, providerID string, prov *providerConfig) bool {
+	if r.storedOAuthWithoutMethod(ctx, providerID, prov) {
 		return false
 	}
 	// Explicit authHeader:false declares an endpoint that does not require an
@@ -1579,22 +1640,22 @@ func (r *ModelRegistry) hasConfiguredAuthLocked(providerID string, prov *provide
 		return true
 	}
 	// Dynamic provider with explicit API key.
-	if prov.APIKey != "" && configvalue.IsConfigValueConfigured(prov.APIKey, r.providerEnv(providerID)) {
+	if prov.APIKey != "" && configvalue.IsConfigValueConfigured(prov.APIKey, r.providerEnvIn(ctx, providerID)) {
 		return true
 	}
 	// OAuth registration present → check stored credentials.
 	if prov.OAuth != nil && prov.OAuth.HasLogin {
-		return r.hasStoredOAuth(providerID)
+		return r.hasStoredOAuth(ctx, providerID)
 	}
 	// Fall back to a stored credential or env-based auth.
-	return r.checkProviderAuth(providerID)
+	return r.checkProviderAuth(ctx, providerID)
 }
 
-func (r *ModelRegistry) hasStoredOAuth(providerID string) bool {
+func (r *ModelRegistry) hasStoredOAuth(ctx context.Context, providerID string) bool {
 	if r.credentialStore == nil {
 		return false
 	}
-	cred, err := r.credentialStore.Read(context.Background(), providerID)
+	cred, err := r.credentialStore.Read(ctx, providerID)
 	return err == nil && cred != nil && cred.Type == "oauth"
 }
 
@@ -1613,8 +1674,8 @@ func (r *ModelRegistry) hasStoredCredential(providerID string) bool {
 // envApiKeyAuth uses the stored key only when it resolves non-empty and otherwise reads the env vars (auth/helpers.ts:18-28),
 // and the Bedrock and Cloudflare resolvers also need their env targets. A provider without built-in auth counts an env key or
 // a non-empty stored key.
-func (r *ModelRegistry) checkProviderAuth(providerID string) bool {
-	credential := r.storedCredentialLocked(providerID)
+func (r *ModelRegistry) checkProviderAuth(ctx context.Context, providerID string) bool {
+	credential := r.storedCredentialLocked(ctx, providerID)
 	if credential != nil && credential.Type == ai.CredentialOAuth {
 		return hasOAuthMethod(providerID, nil)
 	}
@@ -1626,14 +1687,14 @@ func (r *ModelRegistry) checkProviderAuth(providerID string) bool {
 	if store == nil {
 		store = noStoredCredentials
 	}
-	check, err := ai.CheckProviderAuth(context.Background(), providerID, auth, store, ai.DefaultProviderAuthContext())
+	check, err := ai.CheckProviderAuth(ctx, providerID, auth, store, ai.DefaultProviderAuthContext())
 	return err == nil && check != nil
 }
 
 // storedOAuthWithoutMethod reports a stored OAuth credential for a provider that has no OAuth method. Pi's checkProviderAuth
 // then reports no auth, whatever API key models.json or the environment holds.
-func (r *ModelRegistry) storedOAuthWithoutMethod(providerID string, prov *providerConfig) bool {
-	credential := r.storedCredentialLocked(providerID)
+func (r *ModelRegistry) storedOAuthWithoutMethod(ctx context.Context, providerID string, prov *providerConfig) bool {
+	credential := r.storedCredentialLocked(ctx, providerID)
 	return credential != nil && credential.Type == ai.CredentialOAuth && !hasOAuthMethod(providerID, prov)
 }
 
@@ -1648,11 +1709,11 @@ func hasOAuthMethod(providerID string, prov *providerConfig) bool {
 }
 
 // storedCredentialLocked reads providerID's stored credential; the caller holds r.mu or owns the registry.
-func (r *ModelRegistry) storedCredentialLocked(providerID string) *ai.Credential {
+func (r *ModelRegistry) storedCredentialLocked(ctx context.Context, providerID string) *ai.Credential {
 	if r.credentialStore == nil {
 		return nil
 	}
-	credential, err := r.credentialStore.Read(context.Background(), providerID)
+	credential, err := r.credentialStore.Read(ctx, providerID)
 	if err != nil {
 		return nil
 	}
@@ -1667,14 +1728,15 @@ var noStoredCredentials = ai.NewInMemoryCredentialStore()
 // /sprite create uses it to require a configured provider.
 func (r *ModelRegistry) AvailableProviderCount() int {
 	providers := make(map[string]struct{})
-	for _, entry := range r.radiusEntries(true) {
+	ctx := availabilityPassContext()
+	for _, entry := range r.radiusEntries(func(providerID string) bool { return r.radiusHasAuth(ctx, providerID) }) {
 		providers[entry.ProviderID] = struct{}{}
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	// Check dynamic providers.
 	for providerID, prov := range r.dynamic {
-		if r.hasConfiguredAuthLocked(providerID, &prov) {
+		if r.hasConfiguredAuthLocked(ctx, providerID, &prov) {
 			providers[providerID] = struct{}{}
 		}
 	}
@@ -1684,7 +1746,7 @@ func (r *ModelRegistry) AvailableProviderCount() int {
 			if _, already := providers[providerID]; already {
 				continue
 			}
-			if prov := r.config.Providers[providerID]; r.hasConfiguredAuthLocked(providerID, &prov) {
+			if prov := r.config.Providers[providerID]; r.hasConfiguredAuthLocked(ctx, providerID, &prov) {
 				providers[providerID] = struct{}{}
 			}
 		}
@@ -1694,7 +1756,7 @@ func (r *ModelRegistry) AvailableProviderCount() int {
 		if _, already := providers[pid]; already {
 			continue
 		}
-		if r.checkProviderAuth(pid) {
+		if r.checkProviderAuth(ctx, pid) {
 			providers[pid] = struct{}{}
 		}
 	}

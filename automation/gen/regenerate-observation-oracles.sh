@@ -2,9 +2,24 @@
 # Re-record the exact-Pi observation fixtures (coding/testdata/rpc33-observation, ai/testdata/google-tick-order) from the
 # pinned Pi build. Each probe stamps the pin's display version (PIG_UPSTREAM_VERSION), so a fixture recorded by another
 # pin fails its Go test until this runs. Review the diff against the Pi source before accepting it; never edit a fixture.
+#
+# The fixtures record the microtask and macrotask order of Pi's pipeline, which depends on the Node release: from Node 24.22.0
+# a body delivered in separate socket writes can reach Pi's consumer in one macrotask, where Node 24.14.1 through 24.21.0 deliver
+# one macrotask per write. The Go models replay the oracle Node, ai/testdata/node-microtasks/oracle-node-version, not .node-version
+# (CI's Node) and not Node current. The script records under no other Node: when the `node` on PATH is not that release it fetches it
+# (`pin.py oracle-node`: nodejs.org's tarball, sha256 checked against its SHASUMS256.txt, cached under ~/.cache/pig/node).
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$root"
+oracle=$(tr -d '\r\n' < ai/testdata/node-microtasks/oracle-node-version)
+have=$(node --version 2>/dev/null || true)
+if [ "$have" != "v$oracle" ]; then
+  # No image or host is guaranteed to have the oracle Node: fetch it from nodejs.org, verified against the release's SHASUMS256.txt, into the user cache.
+  bin=$(python3 automation/pin/pin.py oracle-node) || exit 1
+  export PATH="$bin:$PATH"
+  have=$(node --version 2>/dev/null || true)
+  [ "$have" = "v$oracle" ] || { echo "regenerate-observation-oracles: Node on PATH is '${have:-none}', not the oracle Node v$oracle (ai/testdata/node-microtasks/oracle-node-version)." >&2; exit 1; }
+fi
 eval "$(python3 automation/pin/pin.py env)"
 export PI_PACKAGE_ROOT="$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent"
 private=$(mktemp -d)

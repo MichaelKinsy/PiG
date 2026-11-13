@@ -409,25 +409,24 @@ func (s *TaskScheduler) scheduleSweepLocked() {
 		return
 	}
 	s.sweepScheduled = true
-	// Taken in the turn that scheduled it, as upstream's queued job is: after the host's commit listeners of the publication
-	// in progress ran.
-	s.options.Session.DeferUntilPublished(func() {
-		ticket := s.options.Session.TakeLineTicket()
+	// Its place on the line is taken in the turn that scheduled it, as upstream's queued job is: after the host's commit
+	// listeners of the publication in progress ran (sweepPlace).
+	s.background.Go(func() {
+		ticket := <-s.sweepPlace
 		// None once the Session began closing, when nothing is kept anyway.
 		if ticket == nil {
 			return
 		}
-		s.background.Go(func() {
-			// Fails only once the Session is closing or failed, when nothing is kept anyway.
-			_, _ = s.options.Session.ReadWithTicket(ticket, func(durable.Storage) (any, error) {
-				s.mu.Lock()
-				s.sweepScheduled = false
-				s.sweepLocked()
-				s.mu.Unlock()
-				return nil, nil
-			})
+		// Fails only once the Session is closing or failed, when nothing is kept anyway.
+		_, _ = s.options.Session.ReadWithTicket(ticket, func(durable.Storage) (any, error) {
+			s.mu.Lock()
+			s.sweepScheduled = false
+			s.sweepLocked()
+			s.mu.Unlock()
+			return nil, nil
 		})
 	})
+	s.options.Session.DeferUntilPublished(func() { s.sweepPlace <- s.options.Session.TakeLineTicket() })
 }
 
 // sweepLocked drops the queued nodes that are still unneeded: not live, nothing listed below. It runs once a publication
@@ -494,6 +493,7 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 		node := nodeOf(record)
 		s.deleteLiveLocked(id)
 		s.sleeping.Delete(id)
+		delete(s.gateWakes, id)
 		s.intent.Delete(id)
 		s.runnable.Delete(id)
 		s.finalizeChecks.Delete(id)
@@ -538,6 +538,7 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 		s.sleeping.Add(id)
 	} else {
 		s.sleeping.Delete(id)
+		delete(s.gateWakes, id)
 	}
 }
 

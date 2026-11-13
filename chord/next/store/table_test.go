@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -208,4 +209,58 @@ func TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinitio
 	if next.Evolution == nil || next.Evolution.Previous != base {
 		t.Fatalf("Evolution = %+v, want the version before it", next.Evolution)
 	}
+}
+
+func TestHostColumnTables(t *testing.T) {
+	session := hostColKind(t, "session")
+	user := hostColKind(t, "user")
+
+	t.Run("get the index `host` unless the key starts with them; a key with them takes addresses", func(t *testing.T) {
+		pins := qDefine(t, "pins", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("session", Host(session))}, Key: []string{"id"}})
+		if pins.HostColumn == nil || pins.HostColumn.Name != "session" {
+			t.Fatalf("HostColumn = %+v, want session", pins.HostColumn)
+		}
+		qEqual(t, pins.Indexes, IndexRecords{{Name: "host", Columns: []string{"session"}}})
+		labels := qDefine(t, "labels", TableOptions{
+			Version: 1, Columns: []ColumnProp{Col("session", Host(session)), Col("label", Str())}, Key: []string{"session", "label"},
+		})
+		qEqual(t, labels.Indexes, IndexRecords{})
+		key, err := labels.Rows.Key(Row{"session": hostColAddress(session, "S1"), "label": "a"}, "get")
+		must(t, err)
+		qEqual(t, key.Params, []sqlite.SqliteValue{"session|S1", "a"})
+	})
+
+	t.Run("keep their index across evolveTable, follow a rename and lose it with a drop", func(t *testing.T) {
+		pins := qDefine(t, "pins", TableOptions{
+			Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("session", Host(session)), Col("note", Opt(Str()))}, Key: []string{"id"},
+		})
+		renamed := qEvolve(t, pins, func(e *TableEditor) TableTailEditor { return e.Rename("session", "owner") })
+		qEqual(t, renamed.Indexes, IndexRecords{{Name: "host", Columns: []string{"owner"}}})
+		dropped := qEvolve(t, renamed, func(e *TableEditor) TableTailEditor { return e.Drop("owner") })
+		qEqual(t, dropped.Indexes, IndexRecords{})
+		if dropped.HostColumn != nil {
+			t.Fatalf("HostColumn = %+v after the drop", dropped.HostColumn)
+		}
+	})
+
+	t.Run("are one per table; the index name `host` is theirs; the kind is in the fingerprint", func(t *testing.T) {
+		_, err := DefineTable("t", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("a", Host(session)), Col("b", Host(user))}, Key: []string{"id"}})
+		qFails(t, err, "more than one host(...) column")
+		own := `index "host" is the host(...) column's own`
+		_, err = DefineTable("t", TableOptions{
+			Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("a", Host(session))}, Key: []string{"id"},
+			Indexes: IndexRecords{{Name: "host", Columns: []string{"id"}}},
+		})
+		qFails(t, err, own)
+		_, err = DefineTable("t", TableOptions{
+			Version: 1, Columns: []ColumnProp{Col("id", Str())}, Key: []string{"id"},
+			Indexes: IndexRecords{{Name: "host", Columns: []string{"id"}}},
+		})
+		qFails(t, err, own)
+		a := qDefine(t, "t", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("a", Host(session))}, Key: []string{"id"}})
+		b := qDefine(t, "t", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("a", Host(user))}, Key: []string{"id"}})
+		if a.Fingerprint == b.Fingerprint {
+			t.Fatalf("the kind is not in the fingerprint")
+		}
+	})
 }

@@ -29,6 +29,14 @@ type ModelSelectorRuntime interface {
 	Refresh(ctx context.Context, options ...ai.ModelsRefreshOptions) ai.ModelsRefreshResult
 }
 
+// ModelSelectorTaskOwner is optionally implemented by a ModelSelectorRuntime that owns the background work of the selectors it serves. Pi's selector
+// starts its refresh unawaited (`void this.refreshModels()`); the owner is where that work is cancelled and joined when the host shuts down.
+type ModelSelectorTaskOwner interface {
+	// StartModelSelectorTask runs refresh on the owner's lifetime: the context it receives ends when the owner shuts down, and the owner's
+	// shutdown waits for refresh to return. It reports false, running nothing, once the owner no longer admits work.
+	StartModelSelectorTask(refresh func(ctx context.Context)) bool
+}
+
 // ScopedModelItem is one scoped model of a session (model-selector.ts ScopedModelItem).
 type ScopedModelItem struct {
 	Model         *ai.Model
@@ -74,7 +82,7 @@ func modelSelectorItemOf(model *ai.Model) ModelSelectorItem {
 
 // NewModelSelectorComponent is model-selector.ts's constructor: it builds the picker, loads the runtime's available models and the scoped
 // models' current metadata, asks the TUI to render, and starts the catalog refresh in the background (15 seconds at most). The refresh's outcome
-// reaches the picker on the TUI's owner loop (PostToOwner); Dispose stops it. onSelect, onCancel and onSelectAsDefault run on the owner loop when
+// reaches the picker on the TUI's owner loop (PostToOwner); Dispose stops it. The refresh is a task of the runtime's ModelSelectorTaskOwner when it has one; otherwise the picker owns it and Wait joins it. onSelect, onCancel and onSelectAsDefault run on the owner loop when
 // the user decides; without onSelectAsDefault the picker has no "set as default" action. initialSearch starts the search input filled.
 func NewModelSelectorComponent(ui TUI, current *ai.Model, runtime ModelSelectorRuntime, scoped []ScopedModelItem, onSelect func(*ai.Model), onCancel func(), initialSearch string, onSelectAsDefault func(*ai.Model), defaultModel *DefaultModelReference) *ModelSelectorComponent {
 	callbacks := &modelSelectorCallbacks{models: map[string]*ai.Model{}, onSelect: onSelect, onSelectAsDefault: onSelectAsDefault, onCancel: onCancel}
@@ -116,17 +124,21 @@ func NewModelSelectorComponent(ui TUI, current *ai.Model, runtime ModelSelectorR
 	ms.SetStatus("Refreshing model catalogs…")
 	ui.RequestRender()
 
-	// life ends when the selector is disposed; the refresh also ends at its timeout, and the outcome of a timed-out refresh is still
-	// delivered, so the post waits on life, not on the refresh's own context (model-selector.ts refreshModels: AbortController + timeout).
+	// life ends when the selector is disposed or its task owner shuts down; the refresh also ends at its timeout, and the outcome of a
+	// timed-out refresh is still delivered, so the post waits on life, not on the refresh's own context (model-selector.ts refreshModels:
+	// AbortController + timeout). Dispose cancels life from the moment the constructor returns, before the owner has started the task.
 	life, cancel := context.WithCancel(context.Background())
-	ctx, cancelTimeout := context.WithTimeout(life, modelSelectorRefreshTimeout)
 	ms.SetRefreshCancel(cancel)
-	go func() {
+	timeout := modelSelectorRefreshTimeout
+	refresh := func(owner context.Context) {
 		defer cancel()
+		defer context.AfterFunc(owner, cancel)()
+		ctx, cancelTimeout := context.WithTimeout(life, timeout)
 		defer cancelTimeout()
 		// refreshModelCatalogs races the refresh with the selector's signal (model-catalog-refresh.ts raceWithAbortSignal): once the timeout or
 		// Dispose aborts the signal, the call rejects, whatever the refresh settles with later. A refresh that stopped because the signal
-		// aborted is the same rejection.
+		// aborted is the same rejection. The task ends only after the refresh call has returned, which a refresh that honors its signal does
+		// at once, so the task owner's join covers the call.
 		settled := make(chan ai.ModelsRefreshResult, 1)
 		go func() { settled <- runtime.Refresh(ctx) }()
 		var result ai.ModelsRefreshResult
@@ -136,6 +148,7 @@ func NewModelSelectorComponent(ui TUI, current *ai.Model, runtime ModelSelectorR
 			rejected = result.Aborted && ctx.Err() != nil
 		case <-ctx.Done():
 			rejected = true
+			defer func() { <-settled }()
 		}
 		timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
 		_ = ui.PostToOwner(life, func() {
@@ -149,7 +162,16 @@ func NewModelSelectorComponent(ui TUI, current *ai.Model, runtime ModelSelectorR
 			}
 			ui.RequestRender()
 		})
-	}()
+	}
+	if owner, ok := runtime.(ModelSelectorTaskOwner); ok {
+		if !owner.StartModelSelectorTask(refresh) {
+			// The owner has shut down: no refresh will report, so the row does not promise one.
+			ms.SetStatus("")
+			cancel()
+		}
+	} else {
+		ms.tasks.Go(func() { refresh(life) })
+	}
 	return ms
 }
 

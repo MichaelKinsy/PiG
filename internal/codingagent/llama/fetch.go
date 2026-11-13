@@ -34,8 +34,6 @@ func (e *fetchError) Error() string { return "fetch failed" }
 func (e *fetchError) Unwrap() error { return e.cause }
 
 // unreachableError is client.ts fetchServer's `Could not reach llama.cpp server at <url>: <cause>` with the original fetch error as its cause.
-//
-// pig divergence (D256): Pi ea0f49a36. Pi 1.5.0 lets the bare "fetch failed" through.
 type unreachableError struct {
 	serverURL string
 	cause     error

@@ -17,6 +17,7 @@ import (
 // on Windows. This test binds paste-image to alt+v directly (so it runs on any
 // GOOS) and asserts every alt+v wire form classifies as the paste action.
 func TestWindowsAltVPasteImageReachable(t *testing.T) {
+	restoreTUIKeybindings(t)
 	km := DefaultKeybindingsManager()
 	km.SetUserBindings(map[string][]KeyID{"app.clipboard.pasteImage": {"alt+v"}})
 	for _, enc := range []string{"\x1bv", "\x1b[118;3u", "\x1b[118;3:1u"} {
@@ -137,6 +138,7 @@ func TestKeybindingDefinitionsApplyPlatformDefaults(t *testing.T) {
 // resolve an app action and its user override without the coding-agent
 // manager.
 func TestKeybindingsManagerInstallsAppDefinitionsInTUIRegistry(t *testing.T) {
+	restoreTUIKeybindings(t)
 	previous := tui.GetTUIKeybindings()
 	t.Cleanup(func() { tui.SetTUIKeybindings(previous) })
 

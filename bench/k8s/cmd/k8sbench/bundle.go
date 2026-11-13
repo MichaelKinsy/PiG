@@ -66,11 +66,11 @@ type agentPins struct {
 // version whose sha512 the registry publishes.
 var publishedAgentPins = agentPins{
 	files: map[string]string{
-		"pi-agent/package.json":      "2c0524e9556a475c087ea43c5b4ef6af232b180dfac5724a33dfe3e309349472",
-		"pi-agent/package-lock.json": "d3d2abb9ed4e078b7978ecd0f6316cc4357cb8d7777d344020acfa23190e24b4",
+		"pi-agent/package.json":      "6c433244d03aa280f1aa298035ba59f54afd0c486566771ef83cc5aef318c4cc",
+		"pi-agent/package-lock.json": "57e3b475e52f630cf903f73b0d2a02c405875af61ce4a845f481dcc798f58005",
 		piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
 	},
-	tree: "df258d6a334f74497115f9f2f0e9bdea855bc8c2319ef321f6c64941a9ed2c02",
+	tree: "267a6b4f01e5660aad6a863fa9f1b9441426c347fe2378a35cb233a3b9df99c5",
 }
 
 // sourceAgentPins pin a commit pin's install, by commit: the project pinnedProject writes from the frozen closure, whose
@@ -708,7 +708,7 @@ func cmdBundle(ctx context.Context, args []string, stderr io.Writer, getenv func
 	}
 	pin := committedPiPin()
 	store := filepath.Join(cmp.Or(*piBuilds, piBuildStore(getenv)), pin.Commit)
-	piDurable, err := writePinnedInstall(root, filepath.Join(outDir, "pi-durable"), filepath.Join(store, durableReference.packs), durableReference, pin)
+	piDurable, err := writePinnedInstall(root, filepath.Join(outDir, "pi-durable"), "", durableReference, pin)
 	if err != nil {
 		return err
 	}

@@ -47,7 +47,7 @@ func startsAsync(method string) bool {
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom,
 		"setModel", "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
 		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool, CallBuiltinToolExecute, CallBuiltinToolLocalExec, CallSessionGraphAsync,
-		CallChildSessionCreate, CallChildSessionPrompt, CallChildSessionQueue, CallChildSessionAbort, CallChildSessionBindExtensions, CallChildSessionEmit,
+		CallChildSessionCreate, CallChildSessionPrompt, CallChildSessionQueue, CallChildSessionAbort, CallChildSessionBindExtensions, CallChildSessionEmit, CallChildSessionOpAsync,
 		CallOAuthOnPrompt, CallOAuthOnSelect, CallOAuthOnManualCodeInput:
 		return true
 	default:
@@ -363,7 +363,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		}
 		h.xref.unhold(conn, callID)
 	}
-	if callCtx.Err() != nil {
+	// A nested tool call made after its request's signal aborted (a tool_call's abort cancels no call but the nested tool calls) runs with that aborted signal, as Pi's nested call does with the outer tool's: its extension is not told to cancel it, so a dropped call would never be answered.
+	if callCtx.Err() != nil && !conn.parentAbortedOnly(call.ParentRequestID) {
 		refuseReferences()
 		return
 	}
@@ -377,6 +378,17 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	}
 	if !h.acceptsNodeGeneration(me) {
 		refuseReferences()
+		return
+	}
+	// A command-only session action through a context that is not a command context (an event, a tool, a shortcut: Pi's createContext() object lacks the member) is refused before it can replace the session under the emit that made it. The kind is the SDK's, sent with the call from the context the call is made through, not the live request's: a context kept past its request is the same context. A call without the mark is not from a command context.
+	if commandOnlyCall(call.Method) && !call.CommandContext {
+		refuseReferences()
+		if mark != nil {
+			mark()
+		}
+		if callID != "" {
+			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: commandOnlyCallError(call.Method)}})
+		}
 		return
 	}
 	// Pi's loop stays alive for a call that starts I/O, a child process or a session change, and does not for a dialog that stdin can no longer answer. The count runs from the call's frame, and the drain notification that follows it waits for the call's lane (queueCall), so the drain sees it.
@@ -597,7 +609,7 @@ func (h *Host) replyToCall(me *managedExt, conn *Conn, callID string, call *Call
 		_ = conn.Send(&Envelope{
 			Type:       MsgCallResult,
 			ID:         callID,
-			CallResult: &CallResultPayload{Error: &ErrorInfo{Message: err.Error()}},
+			CallResult: &CallResultPayload{Error: errorInfoOf(err)},
 		})
 		return
 	}

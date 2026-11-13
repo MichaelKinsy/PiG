@@ -16,10 +16,11 @@ import (
 	"testing"
 )
 
+// want is the id list of @earendil-works/pi-ai 1.5.2 dist/providers/data/meta.json (it lists muse-ember-1.0, which the pre-1.5.2 list lacked).
 func TestMetaCatalogMatchesPinnedProviderDefinition(t *testing.T) {
 	ids := generatedModelIDs("meta")
 	slices.Sort(ids)
-	want := []string{"muse-spark-1.1", "muse-spark-1.2", "muse-spark-1.2-contributor", "muse-spark-1.3", "muse-spark-1.3-contributor", "muse-wonder-1.0"}
+	want := []string{"muse-ember-1.0", "muse-spark-1.1", "muse-spark-1.2", "muse-spark-1.2-contributor", "muse-spark-1.3", "muse-spark-1.3-contributor", "muse-wonder-1.0"}
 	if !slices.Equal(ids, want) {
 		t.Fatalf("meta models = %v, want %v", ids, want)
 	}

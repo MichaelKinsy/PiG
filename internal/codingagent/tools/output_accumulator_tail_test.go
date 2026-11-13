@@ -45,10 +45,15 @@ func (r *referenceTail) snapshotText() string {
 	if r.startsAtLineStart {
 		return r.text
 	}
+	clipped := r.text
 	if i := strings.IndexByte(r.text, '\n'); i >= 0 {
-		return r.text[i+1:]
+		clipped = r.text[i+1:]
 	}
-	return r.text
+	// Pi 935f0ac0ccfc (#12092): `this.getSnapshotText() || this.tailText`, the tail itself when clipping leaves nothing.
+	if clipped == "" {
+		return r.text
+	}
+	return clipped
 }
 
 func TestOutputAccumulatorTailMatchesTheStringTail(t *testing.T) {

@@ -48,8 +48,8 @@ func TestPiGStandardRequiresAndResolvesOnlyFusedExtensions(t *testing.T) {
 	if standard.Build == nil || standard.Build.ExtensionRealization != "fused" {
 		t.Fatalf("PiG Standard build.extensionRealization = %#v, want fused", standard.Build)
 	}
-	if standard.Release == nil || standard.Release.Version != PigVersion+"-dev" && standard.Release.Version != PigVersion {
-		t.Fatalf("PiG Standard release.version = %#v, want %q or %q", standard.Release, PigVersion+"-dev", PigVersion)
+	if standard.Release == nil || standard.Release.Version != PigVersion {
+		t.Fatalf("PiG Standard release.version = %#v, want %q", standard.Release, PigVersion)
 	}
 	standardExtensions := make(map[string]bool, len(standard.Extensions))
 	for _, entry := range standard.Extensions {

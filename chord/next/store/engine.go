@@ -39,12 +39,14 @@ type rowLister interface {
 // DocumentAddress is a document's address: the owner name, the adapter's namespace (claimed with the owner: Chord's
 // `chord`, `chord.jobs`, `chord.job-states`; Durable's scopes), the kind and, for a keyed document, its key; a
 // singleton has none (nil). The column keeps `""` for it, which a keyed document's empty key shares (its definition
-// says which it is).
+// says which it is). Host is the address key of the host a Chord document being created belongs to (host-keyed
+// documents, schema 3); nil for any other, and for every address a read looks a record up by.
 type DocumentAddress struct {
 	Owner     string
 	Namespace string
 	Kind      string
 	Key       *string
+	Host      *string
 }
 
 // DocumentHistory is what a record keeps (R1), applied at a new base and at retirement: `none` (Chord) drops older
@@ -75,6 +77,8 @@ type DocumentRecord struct {
 	RetiredAt *int64 `json:"retiredAt,omitempty"`
 	// Meta is the adapter's details (Durable: its fork policy and history).
 	Meta *string `json:"meta,omitempty"`
+	// Host is the address key of the host it belongs to (Chord's host-keyed documents, schema 3); nil for others.
+	Host *string `json:"host,omitempty"`
 	// Revision counts its changes: a change names the revision it was prepared on.
 	Revision int64 `json:"revision"`
 	// Version and Fingerprint are the version and schema fingerprint of its current base.
@@ -171,11 +175,43 @@ type documentCreateJSON struct {
 	Base   *DocumentBase  `json:"base,omitempty"`
 }
 
+// committedRecord is a record in a commit's creation: Pi's `createDocument` spreads the address (with its `host`) into
+// the record, so `host` follows `key` there and follows `meta` in a stored record (`recordOf`).
+type committedRecord struct {
+	ID          int64           `json:"id"`
+	Owner       string          `json:"owner"`
+	Namespace   string          `json:"namespace"`
+	Kind        string          `json:"kind"`
+	Key         *string         `json:"key,omitempty"`
+	Host        *string         `json:"host,omitempty"`
+	History     DocumentHistory `json:"history"`
+	CreatedAt   int64           `json:"createdAt"`
+	RetiredAt   *int64          `json:"retiredAt,omitempty"`
+	Meta        *string         `json:"meta,omitempty"`
+	Revision    int64           `json:"revision"`
+	Version     int64           `json:"version"`
+	Fingerprint string          `json:"fingerprint"`
+}
+
+type committedCreateJSON struct {
+	Kind   string          `json:"kind"`
+	Record committedRecord `json:"record"`
+	Base   *DocumentBase   `json:"base,omitempty"`
+}
+
 // MarshalJSON is the write in Pi's key order.
 func (write *DocumentCreate) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *DocumentCreate) AppendStringify(dst []byte) ([]byte, error) {
+	if write.Base != nil {
+		record := write.Record
+		return jsstring.AppendMarshalJSON(dst, committedCreateJSON{"document.create", committedRecord{
+			ID: record.ID, Owner: record.Owner, Namespace: record.Namespace, Kind: record.Kind, Key: record.Key, Host: record.Host,
+			History: record.History, CreatedAt: record.CreatedAt, RetiredAt: record.RetiredAt, Meta: record.Meta,
+			Revision: record.Revision, Version: record.Version, Fingerprint: record.Fingerprint,
+		}, write.Base})
+	}
 	return jsstring.AppendMarshalJSON(dst, documentCreateJSON{"document.create", write.Record, write.Base})
 }
 
@@ -285,9 +321,10 @@ func (write stagedFunc) StageOrder() WriteOrder { return write.order }
 
 func (write stagedFunc) Apply(step *Step) ([]StoreWrite, error) { return write.apply(step) }
 
-// CreateDocument stages the creation of a Chord document at address with base; its id is taken from the allocator
-// when it applies (a saturated allocator refuses the commit) and handed to created (its owner adopts it after
-// `COMMIT`; nil for none). text is the base's value serialized before the queue (rule 8).
+// CreateDocument stages the creation of a Chord document at address (with its Host when it belongs to a host) with
+// base; its id is taken from the allocator when it applies (a saturated allocator refuses the commit) and handed to
+// created (its owner adopts it after `COMMIT`; nil for none). text is the base's value serialized before the queue
+// (rule 8).
 func CreateDocument(address DocumentAddress, base DocumentBase, text string, created func(id int64)) StagedWrite {
 	return stagedFunc{order: OrderCreate, apply: func(step *Step) ([]StoreWrite, error) {
 		id, err := step.IDs.Mint()
@@ -299,7 +336,7 @@ func CreateDocument(address DocumentAddress, base DocumentBase, text string, cre
 			created(id)
 		}
 		record := DocumentRecord{
-			ID: id, Owner: address.Owner, Namespace: address.Namespace, Kind: address.Kind, Key: address.Key,
+			ID: id, Owner: address.Owner, Namespace: address.Namespace, Kind: address.Kind, Key: address.Key, Host: address.Host,
 			History: HistoryNone, CreatedAt: step.Seq, Revision: 1, Version: base.Version, Fingerprint: base.Fingerprint,
 		}
 		if err := InsertDocument(step, record, &text); err != nil {
@@ -324,12 +361,16 @@ func InsertDocument(step *Step, record DocumentRecord, text *string) error {
 	if record.Meta != nil {
 		meta = *record.Meta
 	}
+	var host any
+	if record.Host != nil {
+		host = *record.Host
+	}
 	err := step.Run(
 		`INSERT INTO `+TableDocuments+`
-			(id, owner, namespace, kind, key, history, created_at, retired_at, meta, revision, version, fingerprint)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			(id, owner, namespace, kind, key, history, created_at, retired_at, meta, host, revision, version, fingerprint)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		record.ID, record.Owner, record.Namespace, record.Kind, key, string(record.History), record.CreatedAt, retiredAt, meta,
-		record.Revision, record.Version, record.Fingerprint,
+		host, record.Revision, record.Version, record.Fingerprint,
 	)
 	if err != nil {
 		return err
@@ -447,7 +488,7 @@ func InsertRevision(step *Step, id, seq int64, kind string, version int64, text 
 	)
 }
 
-const recordColumns = "id, owner, namespace, kind, key, history, created_at, retired_at, meta, revision, version, fingerprint"
+const recordColumns = "id, owner, namespace, kind, key, history, created_at, retired_at, meta, host, revision, version, fingerprint"
 
 const readSQL = `SELECT ` + recordColumns + ` FROM ` + TableDocuments + ` WHERE id = ?`
 
@@ -758,6 +799,19 @@ func ListRecords(executor rowLister, after, limit int64) ([]DocumentRecord, erro
 	return storedRecordsOf(rows)
 }
 
+// ListHostRecords is up to limit live records belonging to the host with address key host, with ids above after, by id.
+func ListHostRecords(executor rowLister, host string, after, limit int64) ([]DocumentRecord, error) {
+	rows, err := executor.All(
+		`SELECT `+recordColumns+` FROM `+TableDocuments+` WHERE host = ? AND id > ? AND retired_at IS NULL
+			ORDER BY id LIMIT ?`,
+		host, after, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return storedRecordsOf(rows)
+}
+
 // ListRevisions is up to limit stored revisions of document id after seq `after`, in seq order (an export's page).
 func ListRevisions(executor rowLister, id, after, limit int64) ([]DocumentRevision, error) {
 	rows, err := executor.All(
@@ -832,6 +886,9 @@ func storedRecordOf(row sqlite.SqliteRow) (*DocumentRecord, error) {
 	}
 	if meta, ok := row["meta"].(string); ok {
 		record.Meta = &meta
+	}
+	if host, ok := row["host"].(string); ok {
+		record.Host = &host
 	}
 	if record.Revision, err = sqlite.RowInt(row, "revision"); err != nil {
 		return nil, err

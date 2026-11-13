@@ -293,18 +293,48 @@ type Method struct {
 
 func (*Method) localMember() {}
 
-// KeyedMember is a keyed state member's declaration (slice 6a §12): documents of Schema by string key; only in local
-// contracts.
+// KeyedMember is a keyed state member's declaration (slice 6a §12): documents of Schema by string key, or by address of
+// host kind Key (decision "Documents and table rows can belong to a host"; nil: string keys); only in local contracts.
 type KeyedMember struct {
 	Schema Schema
+	Key    *HostKind
 }
 
 func (*KeyedMember) localMember() {}
 
-// Keyed declares a keyed state member of a local contract: documents of schema by string key, each watchable.
-func Keyed(schema Schema) *KeyedMember {
+// Keyed declares a keyed state member of a local contract: documents of schema by string key, or with key (a host kind)
+// by address of that kind (a host-keyed document handle implements it), each watchable. TypeScript's two overloads are
+// the optional key; more than one panics.
+func Keyed(schema Schema, key ...*HostKind) *KeyedMember {
 	refuseOptional("Keyed", schema)
-	return &KeyedMember{Schema: schema}
+	return &KeyedMember{Schema: schema, Key: keyOption("Keyed", key)}
+}
+
+// keyOption is the one optional host kind of a keyed declaration or edit; the zero or the single one of key.
+func keyOption(what string, key []*HostKind) *HostKind {
+	switch len(key) {
+	case 0:
+		return nil
+	case 1:
+		return key[0]
+	}
+	panic(fmt.Sprintf("%s: expected at most one key host kind, got %d", what, len(key)))
+}
+
+// EventDeclaration is an event member's declaration in a local contract's flat members (decision "Events:
+// fire-and-forget members"): the schema of the JSON values its object emits.
+type EventDeclaration struct {
+	Schema Schema
+}
+
+func (*EventDeclaration) localMember() {}
+
+// Event declares an event member of a local contract, as Keyed marks a keyed member: JSON values of schema the
+// object emits, delivered once to the references bound to it, never kept (a remote contract lists them under a
+// variant's Events).
+func Event(schema Schema) *EventDeclaration {
+	refuseOptional("Event", schema)
+	return &EventDeclaration{Schema: schema}
 }
 
 // refuseOptional panics when a schema is opt(...): it marks an object property and is no schema anywhere else.
@@ -337,7 +367,7 @@ func NewMethod(sides ...Schema) *Method {
 	return method
 }
 
-// LocalMember is a local contract's member: a state schema (Schema), a *Method or a *KeyedMember.
+// LocalMember is a local contract's member: a state schema (Schema), a *Method, a *KeyedMember or an *EventDeclaration.
 type LocalMember interface {
 	localMember()
 }

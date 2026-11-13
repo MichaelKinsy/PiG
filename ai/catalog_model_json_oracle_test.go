@@ -15,29 +15,16 @@ import (
 // same bytes.
 func TestCatalogModelJSONMatchesPiForEveryBuiltinModel(t *testing.T) {
 	const script = `
-const [root, d240Records] = process.argv.slice(1);
-// pig divergence (D240): Pi 4b9777737. The seven Sonnet 5 records the pinned package predates take compat.supportsTemperature false after forceAdaptiveThinking.
-const d240 = new Set(JSON.parse(d240Records));
-const d240Patch = (provider, model) => {
-  if (!d240.has(provider + "/" + model.id) || !model.compat || "supportsTemperature" in model.compat) return model;
-  const compat = {};
-  for (const [name, value] of Object.entries(model.compat)) {
-    compat[name] = value;
-    if (name === "forceAdaptiveThinking") compat.supportsTemperature = false;
-  }
-  if (!("supportsTemperature" in compat)) compat.supportsTemperature = false;
-  return { ...model, compat };
-};
+const [root] = process.argv.slice(1);
 const url = require('node:url').pathToFileURL(require('node:path').join(root, 'node_modules/@earendil-works/pi-ai/dist/models.generated.js')).href;
 import(url).then(({ MODELS }) => {
   const out = {};
   for (const [provider, models] of Object.entries(MODELS)) {
-    for (const model of Object.values(models)) out[provider + "/" + model.id] = JSON.stringify(d240Patch(provider, model));
+    for (const model of Object.values(models)) out[provider + "/" + model.id] = JSON.stringify(model);
   }
   process.stdout.write(JSON.stringify(out));
 });`
-	allowed, _ := json.Marshal(d240SonnetFiveRecords)
-	cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), string(allowed))
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t))
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	raw, err := cmd.Output()

@@ -21,8 +21,9 @@ import (
 // code built on the server at start by esbuild from the app's entry (its start code, its API with the kind's module, Chord,
 // React: inlined once), named by the hash of everything it is made of, served forever. A page's is a browser script with its
 // stylesheet and assets; a terminal's one CommonJS script the sandbox evaluates with its own `require` (its allowed builtins
-// only). Packages resolve with the server process's conditions (`--conditions`), so a base reads the same package files as
-// the server runs; every file it read is recorded with its bytes' hash (BaseInputs).
+// only). Packages resolve as the server process resolves them, so a base reads the same package files as the server runs:
+// with its conditions (`--conditions`), and through a tsconfig's `paths` for a server that resolves through them; every file it
+// read is recorded with its bytes' hash (BaseInputs).
 //
 // Forced Go differences. esbuild's Go API (pin 0.28.2, as the plugins component's builds) replaces its JavaScript API; a
 // failing build is an error naming its messages. A Go process has no `execArgv`: the server process's conditions are
@@ -50,14 +51,22 @@ const (
 	PlatformSandbox BasePlatform = "sandbox"
 )
 
+// BaseResolution is how a base bundle's packages resolve, as the server process resolves them: Conditions (by default, nil, the
+// server process's, ProcessConditions; an empty non-nil slice resolves with none), and Tsconfig, a tsconfig.json whose `paths`
+// map packages to files, for a server whose loader resolves through them (a source checkout without `dist/`). Without Tsconfig
+// every tsconfig.json is ignored.
+type BaseResolution struct {
+	Conditions []string
+	Tsconfig   string
+}
+
 // BuildBase builds the base bundle of entry for platform, its files under prefix (`/_chord/web/`): the script
 // `base.<hash>.js`, the stylesheet `base.<hash>.css` when it imports CSS, assets under `assets/` by their own hashes.
-// Packages resolve with conditions, by default (nil) the server process's (ProcessConditions); an empty non-nil slice resolves
-// with none. It fails with esbuild's messages.
-func BuildBase(entry string, platform BasePlatform, prefix string, conditions []string) (*BaseBundle, error) {
+// Packages resolve by resolution. It fails with esbuild's messages.
+func BuildBase(entry string, platform BasePlatform, prefix string, resolution BaseResolution) (*BaseBundle, error) {
 	browser := platform == PlatformBrowser
 	recorder := build.NewRecorder()
-	resolving := conditions
+	resolving := resolution.Conditions
 	if resolving == nil {
 		resolving = ProcessConditions(nil, os.Getenv("NODE_OPTIONS"))
 	}
@@ -65,11 +74,19 @@ func BuildBase(entry string, platform BasePlatform, prefix string, conditions []
 		EntryPoints: []string{entry}, Outdir: "/", EntryNames: "base", AssetNames: "assets/[name]-[hash]", PublicPath: prefix,
 		Write: false, Bundle: true,
 		MinifyWhitespace: true, MinifyIdentifiers: true, MinifySyntax: true, LegalComments: api.LegalCommentsNone,
-		// Ignore any tsconfig.json: TypeScript is stripped, JSX compiled with the automatic React runtime.
-		TsconfigRaw: "{}", JSX: api.JSXAutomatic,
-		Define:   map[string]string{"process.env.NODE_ENV": `"production"`},
+		// The given tsconfig for every file (its `paths` are how the server resolves); else none: TypeScript is stripped, JSX
+		// compiled with the automatic React runtime.
+		JSX:    api.JSXAutomatic,
+		Define: map[string]string{"process.env.NODE_ENV": `"production"`},
+		// Fonts and images a stylesheet's `url()` (or a script) names: files under `assets/`, named by their content.
+		Loader:   assetLoaders(),
 		Plugins:  []api.Plugin{recorder.Plugin()},
 		LogLevel: api.LogLevelSilent,
+	}
+	if resolution.Tsconfig == "" {
+		options.TsconfigRaw = "{}"
+	} else {
+		options.Tsconfig = resolution.Tsconfig
 	}
 	if browser {
 		options.Format, options.Platform, options.Target = api.FormatIIFE, api.PlatformBrowser, api.ES2022
@@ -111,6 +128,15 @@ func BuildBase(entry string, platform BasePlatform, prefix string, conditions []
 		}
 	}
 	return bundle, nil
+}
+
+// assetLoaders is the file loader of every extension of AssetExtensions.
+func assetLoaders() map[string]api.Loader {
+	loaders := make(map[string]api.Loader, len(AssetExtensions))
+	for _, extension := range AssetExtensions {
+		loaders["."+extension] = api.LoaderFile
+	}
+	return loaders
 }
 
 // ProcessConditions is the resolution conditions of a Node process started with execArgv and the environment's nodeOptions

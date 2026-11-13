@@ -116,6 +116,7 @@ impl BusRegistry {
                         error.map(|message| crate::protocol::ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     );
                 }

@@ -56,6 +56,16 @@ func IsStrictToolLimitErrorMessage(message string) bool {
 	return isStrictToolLimitErrorMessage(message)
 }
 
+// MarkStrictToolLimitsExceeded records that a session's strict tools exceeded Claude's limits (upstream markStrictToolLimitsExceeded).
+func MarkStrictToolLimitsExceeded(sessionID string) {
+	markStrictToolLimitsExceeded(sessionID)
+}
+
+// HasExceededStrictToolLimits reports whether the session's strict tools were rejected before (upstream hasExceededStrictToolLimits).
+func HasExceededStrictToolLimits(sessionID string) bool {
+	return hasExceededStrictToolLimits(sessionID)
+}
+
 type JsAsyncGenerator[T any] = jsAsyncGenerator[T]
 
 func JsAwait[T any](awaiter jsAwaiter, operand jsOperand[T]) (T, error) {

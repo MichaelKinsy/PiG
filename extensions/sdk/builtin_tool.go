@@ -30,6 +30,7 @@ import (
 	"io"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -101,10 +102,13 @@ type EditToolOptions struct {
 	Operations *EditOperations
 }
 
-// GrepOperations is Pi's GrepOperations: IsDirectory is required and fails when the path does not exist. Pi main (8da141c2a) takes grep's context lines from ripgrep and
-// no longer has a readFile member, so there is none here.
+// GrepOperations is Pi's GrepOperations: IsDirectory is required and fails when the path does not exist.
 type GrepOperations struct {
 	IsDirectory func(absolutePath string) (bool, error)
+	// ReadFile is Pi's optional readFile.
+	//
+	// Deprecated: Ignored. Grep takes its context lines from ripgrep, so the host never calls it and it is not sent to the host. Wrap the tool's Execute to search a remote system.
+	ReadFile func(absolutePath string) (string, error)
 }
 
 // GrepToolOptions is Pi's GrepToolOptions.
@@ -1027,6 +1031,22 @@ type localExecCall struct {
 	Aborted   bool               `json:"aborted,omitempty"`
 }
 
+// shellTimeoutError is the error of the local operations' exec for a command that timed out after its shell had exited (Pi's ShellTimeoutError with a
+// shellExit, which Pi does not export). The bash tool the host runs matches it by type, as Pi's matches the class, so only this error, returned from an
+// exec unchanged, keeps the shell's exit: an error wrapped around it, or built with its message, is the plain `timeout:<seconds>`.
+type shellTimeoutError struct {
+	message      string
+	exitCode     int
+	afterSeconds float64
+}
+
+func (e *shellTimeoutError) Error() string { return e.message }
+
+// ShellExitReport is read by the host of a fused extension, which cannot name this type.
+func (e *shellTimeoutError) ShellExitReport() (exitCode int, afterSeconds float64, ok bool) {
+	return e.exitCode, e.afterSeconds, true
+}
+
 // localExecReply is Pi's `{ exitCode }`, the reply of builtinTool.localExec.
 type localExecReply struct {
 	ExitCode *int `json:"exitCode"`
@@ -1078,6 +1098,13 @@ func localShellExec(shell, shellPath, command, cwd string, o BashExecOptions) (B
 			return BashExecResult{}, failed
 		}
 		if execErr != nil {
+			if reporter, ok := execErr.(interface {
+				ShellExitReport() (exitCode int, afterSeconds float64, ok bool)
+			}); ok && strings.HasPrefix(execErr.Error(), "timeout:") {
+				if exitCode, afterSeconds, exited := reporter.ShellExitReport(); exited {
+					return BashExecResult{}, &shellTimeoutError{message: execErr.Error(), exitCode: exitCode, afterSeconds: afterSeconds}
+				}
+			}
 			return BashExecResult{}, execErr
 		}
 		var reply localExecReply
@@ -1133,6 +1160,9 @@ func localShellExec(shell, shellPath, command, cwd string, o BashExecOptions) (B
 		return BashExecResult{}, failed
 	}
 	if err := callResultError(result, callErr); err != nil {
+		if result != nil && result.Error != nil && result.Error.ShellExit != nil {
+			return BashExecResult{}, &shellTimeoutError{message: err.Error(), exitCode: result.Error.ShellExit.ExitCode, afterSeconds: result.Error.ShellExit.AfterSeconds}
+		}
 		return BashExecResult{}, err
 	}
 	if result == nil {

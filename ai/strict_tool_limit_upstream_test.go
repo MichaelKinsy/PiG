@@ -1,6 +1,9 @@
 package ai
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+)
 
 // Pi 842c7317 (packages/ai/src/api/constrained-sampling.ts): the helpers the Anthropic Messages and Bedrock fallbacks share.
 func TestPrefersJSONSchemaStrictSampling(t *testing.T) {
@@ -35,8 +38,41 @@ func TestIsStrictToolLimitErrorMessage(t *testing.T) {
 		{"Too many strict tools", false},
 		{"", false},
 	} {
-		if got := isStrictToolLimitErrorMessage(tc.message); got != tc.want {
-			t.Errorf("isStrictToolLimitErrorMessage(%q) = %t, want %t", tc.message, got, tc.want)
+		if got := IsStrictToolLimitErrorMessage(tc.message); got != tc.want {
+			t.Errorf("IsStrictToolLimitErrorMessage(%q) = %t, want %t", tc.message, got, tc.want)
 		}
+	}
+}
+
+// Pi 45344bd3a (packages/ai/test/strict-tool-limits.test.ts).
+func TestStrictToolLimitSessionsRememberedUntilCleanup(t *testing.T) {
+	t.Cleanup(func() { _ = CleanupSessionResources("") })
+	MarkStrictToolLimitsExceeded("a")
+	MarkStrictToolLimitsExceeded("b")
+	MarkStrictToolLimitsExceeded("")
+	if !HasExceededStrictToolLimits("a") || HasExceededStrictToolLimits("c") || HasExceededStrictToolLimits("") {
+		t.Fatal("marked sessions are not remembered exactly")
+	}
+	if err := CleanupSessionResources("a"); err != nil {
+		t.Fatal(err)
+	}
+	if HasExceededStrictToolLimits("a") || !HasExceededStrictToolLimits("b") {
+		t.Fatal("cleaning up one session must forget only that session")
+	}
+	if err := CleanupSessionResources(""); err != nil {
+		t.Fatal(err)
+	}
+	if HasExceededStrictToolLimits("b") {
+		t.Fatal("cleaning up every session must forget all")
+	}
+}
+
+func TestStrictToolLimitSessionsDropOldestBeyondCap(t *testing.T) {
+	t.Cleanup(func() { _ = CleanupSessionResources("") })
+	for index := 0; index <= 10_000; index++ {
+		MarkStrictToolLimitsExceeded("session-" + strconv.Itoa(index))
+	}
+	if HasExceededStrictToolLimits("session-0") || !HasExceededStrictToolLimits("session-1") || !HasExceededStrictToolLimits("session-10000") {
+		t.Fatal("the oldest session beyond 10,000 must be the one dropped")
 	}
 }

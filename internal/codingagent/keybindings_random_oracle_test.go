@@ -14,6 +14,7 @@ import (
 
 // pi: packages/coding-agent/src/core/keybindings.ts KeybindingsManager.create against pinned Pi over random keybindings.json files: current, legacy, unknown and integer-like actions, string, array, mixed and non-string bindings, duplicate members, byte order marks and trailing garbage.
 func TestRandomKeybindingsFilesMatchPi(t *testing.T) {
+	restoreTUIKeybindings(t)
 	rng := rand.New(rand.NewSource(20261010))
 	pick := func(items ...string) string { return items[rng.Intn(len(items))] }
 	actions := []string{"app.interrupt", "app.clear", "tui.select.confirm", "tui.select.up", "tui.editor.cursorLeft", "interrupt", "clear", "selectConfirm", "cursorUp", "expandTools", "x.unknown", "0", "10", "2", "app.interrupt ", "APP.INTERRUPT", ""}

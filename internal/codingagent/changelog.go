@@ -135,9 +135,6 @@ var lastSeenVersionRE = lazyregexp.New(`^v?([0-9]+)\.([0-9]+)\.([0-9]+)`)
 // GetNewEntries returns the entries whose version is newer than sinceVersion, and false when sinceVersion has no major.minor.patch
 // to compare against. Only the leading major.minor.patch is read, like the changelog headings, so a prerelease or build suffix such as
 // 0.1.5-20261020.7 counts as 0.1.5 and its notes are not shown again on every launch.
-//
-// pig divergence (D245): Pi 1.5.0 reads `lastVersion.split(".").map(Number)`, so 0.1.5-20261020.7 counts as 0.1.0 and an unreadable
-// value as 0.0.0; Pi main 9a1953961 (#11753) reads the leading triple and returns undefined for an unreadable one.
 func GetNewEntries(entries []ChangelogEntry, sinceVersion string) ([]ChangelogEntry, bool) {
 	last, ok := parseLastSeenVersion(sinceVersion)
 	if !ok {

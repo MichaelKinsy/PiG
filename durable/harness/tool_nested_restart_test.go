@@ -384,7 +384,7 @@ func TestTheChildTasksAReplayUnsafeToolCreatedAndAwaitedInMemoryAreAbandoned(t *
 	})
 	addTask(t, setup.Registry, worker.Erased())
 	addTool(t, setup.Registry, tlTool("work", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-		id, err := api.CreateTaskErased(ctx, worker.Erased(), nil, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}})
+		id, err := api.CreateTaskErased(ctx, worker.Erased(), nil, durable.ToolTaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}})
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
@@ -571,7 +571,7 @@ func newRestartWorker(t *testing.T, setup *chatState, name string) *restartWorke
 		t.Fatal(err)
 	}
 	addTool(t, setup.Registry, tlTool("spawn", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-		id, err := api.CreateTaskErased(ctx, task.Erased(), nil, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}})
+		id, err := api.CreateTaskErased(ctx, task.Erased(), nil, durable.ToolTaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}})
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
 		}

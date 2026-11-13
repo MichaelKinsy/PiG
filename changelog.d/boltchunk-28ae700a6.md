@@ -1,0 +1,3 @@
+### Changed
+
+- A streamed response is searched for reasoning markers only when a keepalive asks. The idle-timeout tracker for server-sent events (D131) counts a comment line or a ping as progress while the last event was a reasoning event; it searched every data line for the providers' reasoning markers and now searches only the line a keepalive follows. The timeout ends the same streams at the same time. On the fake-model benchmark (paired runs against the base, 8 rounds) user instructions per prompt fell by 1.1 % for a headless prompt (8 of 8 pairs), 1.6 % in a 40-prompt interactive session (7 of 8) and 0.7 % in a 20-prompt session (5 of 8, inside that cell's noise); CPU and wall time stayed inside the noise.

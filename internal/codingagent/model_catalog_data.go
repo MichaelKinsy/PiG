@@ -17,35 +17,36 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	if r.GetProvider(id) != nil {
 		return r.GetNativeModels(id)
 	}
-	generatedModels := builtinChatCatalogListed(id)
-	var baseline []*ai.Model
-	if len(generatedModels) > 0 {
-		baseline = make([]*ai.Model, 0, len(generatedModels))
-	}
-	for _, generated := range generatedModels {
-		baseline = append(baseline, generated.ToModel())
-	}
-	// The remote catalog overlay adds models to, and replaces same-id models of, the bundled catalog (remote-catalog-provider.ts:getModels).
-	// A personalized catalog (the user's own list) replaces the bundled one instead (remote-catalog-provider.ts:withPersonalizedCatalog getModels).
-	if overlay := r.remoteOverlayModels(id); len(overlay) > 0 {
-		chatOverlay := slices.DeleteFunc(overlay, func(model ai.AnyModel) bool { return !ai.IsModelType(model, ai.ModelTypeChat) })
-		merged := mergeRemoteCatalogModels(ai.AnyModels(baseline), chatOverlay)
-		if r.remoteOverlayReplaces(id) {
-			// pig divergence (D199): the saved list replaces the bundled one, so OpenRouter's routing variants are derived from it, as they are from the bundled models.
-			merged = ai.WithOpenRouterRoutingVariantModels(chatOverlay)
-		}
-		baseline = baseline[:0:0]
-		for _, model := range merged {
-			baseline = append(baseline, model.(*ai.Model))
-		}
-	}
 	r.mu.RLock()
 	radius := r.radiusProviderLocked(id)
 	r.mu.RUnlock()
+	var baseline []*ai.Model
 	if radius != nil {
-		baseline = nil
+		// A Radius provider's catalog is its own (radius.ts getModels), so neither the bundled catalog nor a remote overlay is built to be replaced.
 		for _, model := range radius.GetModels() {
 			baseline = append(baseline, nativeModelFromEntry(radiusModelEntry(model)))
+		}
+	} else {
+		generatedModels := builtinChatCatalogListed(id)
+		if len(generatedModels) > 0 {
+			baseline = make([]*ai.Model, 0, len(generatedModels))
+		}
+		for _, generated := range generatedModels {
+			baseline = append(baseline, generated.ToModel())
+		}
+		// The remote catalog overlay adds models to, and replaces same-id models of, the bundled catalog (remote-catalog-provider.ts:getModels).
+		// A personalized catalog (the user's own list) replaces the bundled one instead (remote-catalog-provider.ts:withPersonalizedCatalog getModels).
+		if overlay := r.remoteOverlayModels(id); len(overlay) > 0 {
+			chatOverlay := slices.DeleteFunc(overlay, func(model ai.AnyModel) bool { return !ai.IsModelType(model, ai.ModelTypeChat) })
+			merged := mergeRemoteCatalogModels(ai.AnyModels(baseline), chatOverlay)
+			if r.remoteOverlayReplaces(id) {
+				// pig divergence (D199): the saved list replaces the bundled one, so OpenRouter's routing variants are derived from it, as they are from the bundled models.
+				merged = ai.WithOpenRouterRoutingVariantModels(chatOverlay)
+			}
+			baseline = baseline[:0:0]
+			for _, model := range merged {
+				baseline = append(baseline, model.(*ai.Model))
+			}
 		}
 	}
 	r.mu.RLock()
@@ -167,11 +168,40 @@ func (r *ModelRegistry) GetAllModelData() []*ai.Model {
 	return models
 }
 
-// ModelDataSource is one model of GetAllModelData before it is built. A plain bundled catalog's model is its catalog entry (Generated), whose
-// ToModel is the model GetAllModelData lists; any other provider's model is that model (Model).
+// ModelDataSource is one model of GetAllModelData before it is built. A plain bundled catalog's model is identified by its catalog entry
+// (Generated) and, for an OpenRouter routing variant, by the listing's name for it (Listed): Entry is the entry whose ToModel is the model
+// GetAllModelData lists. Any other provider's model is that model (Model).
 type ModelDataSource struct {
+	// Generated is the catalog entry of a plain bundled catalog's model, or the entry a routing variant is derived from.
 	Generated *ai.GeneratedModel
-	Model     *ai.Model
+	// Listed names a routing variant of Generated; it is nil for Generated itself.
+	Listed *ai.ListedOpenRouterModel
+	Model  *ai.Model
+}
+
+// ID is the id of a plain bundled catalog's model.
+func (s ModelDataSource) ID() string {
+	if s.Listed != nil {
+		return s.Listed.ID
+	}
+	return s.Generated.ID
+}
+
+// Name is the name of a plain bundled catalog's model.
+func (s ModelDataSource) Name() string {
+	if s.Listed != nil {
+		return s.Listed.Name
+	}
+	return s.Generated.DisplayName
+}
+
+// Entry is the catalog entry of a plain bundled catalog's model. A routing variant is derived from its model when it is first asked for
+// (ai.HeldOpenRouterVariant), so a caller that keeps few models builds few variants.
+func (s ModelDataSource) Entry() *ai.GeneratedModel {
+	if s.Listed != nil {
+		return ai.HeldOpenRouterVariant(s.Generated, s.Listed.VariantName())
+	}
+	return s.Generated
 }
 
 // GetAllModelDataSources is GetAllModelData for a caller that reads every model's identity and builds few models: it lists the same models,
@@ -179,9 +209,28 @@ type ModelDataSource struct {
 func (r *ModelRegistry) GetAllModelDataSources() []ModelDataSource {
 	var sources []ModelDataSource
 	for _, id := range r.modelProviderIDs() {
-		if plain, ok := r.plainGeneratedModels(id); ok {
-			for _, generated := range ai.OfferedGeneratedModels(plain) {
-				sources = append(sources, ModelDataSource{Generated: generated})
+		if r.isPlainGenerated(id) {
+			catalog, listing := builtinChatCatalogListing(id)
+			offered := ai.OfferedGeneratedModels(catalog)
+			switch {
+			case listing == nil:
+				for _, generated := range offered {
+					sources = append(sources, ModelDataSource{Generated: generated})
+				}
+			case len(offered) == len(catalog):
+				// pig divergence (D199): a routing variant is offered when its model is (it repeats the model's API), so the listing names the offered models and no variant is built to list it.
+				for i := range listing {
+					listed := &listing[i]
+					source := ModelDataSource{Generated: &catalog[listed.Base]}
+					if listed.Variant != 0 {
+						source.Listed = listed
+					}
+					sources = append(sources, source)
+				}
+			default:
+				for _, generated := range ai.OfferedGeneratedModels(builtinChatCatalogListed(id)) {
+					sources = append(sources, ModelDataSource{Generated: generated})
+				}
 			}
 			continue
 		}

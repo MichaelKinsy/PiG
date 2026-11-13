@@ -414,6 +414,8 @@ pub struct Provider {
     pub name: String,
     pub base_url: Option<String>,
     pub headers: Option<Value>,
+    /// Pi `Provider.refreshModelsAuth`: `"credential"` (the default, also when `None`) or `"configured"`, which runs the network phase of a catalog refresh without the credential and without an OAuth refresh first.
+    pub refresh_models_auth: Option<String>,
     pub auth: ProviderAuth,
     pub get_models: Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>,
     pub filter_models: Option<ProviderFilterFn>,
@@ -521,6 +523,9 @@ impl ProviderObjects {
         }
         if let Some(value) = &provider.headers {
             native["headers"] = value.clone()
+        }
+        if let Some(value) = &provider.refresh_models_auth {
+            native["refreshModelsAuth"] = json!(value)
         }
         if !oauth.is_null() {
             native["oauth"] = oauth

@@ -2,7 +2,7 @@
 // sites record through it: no span and no attribute object under the no-op context, spans kept open until an event ends
 // them, failures with a fixed category, carriers for links, and the instruments of an adapter's metrics made once.
 //
-// Forced Go differences (D453):
+// Forced Go differences (language mechanics):
 //   - Upstream's span generics (`ChordSpan<N>`, typed starters) have no Go form: a span is a pitelemetry.TelemetrySpan and
 //     an attribute a pitelemetry.Attr. The schema is the same data.
 //   - "Start a span, keep it open until a promise settles" is a goroutine here: OpenSpan starts the parent's span in one

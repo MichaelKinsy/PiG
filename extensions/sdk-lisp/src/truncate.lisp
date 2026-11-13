@@ -90,7 +90,7 @@
         (make-truncation-result output t truncated-by total-lines total-bytes count (cx-utf8-length output) partial nil max-lines max-bytes)))))
 
 (defun truncate-line (line &optional (max-chars +grep-max-line-length+))
-  "Pi's truncateLine: (values text truncated-p). A line longer than MAX-CHARS UTF-16 units is cut to that many units plus \"... [truncated]\". A cut inside a surrogate pair drops the whole pair, as Pi main's sliceHead does (9e870f6f0; pig divergence (D252)), and a negative MAX-CHARS keeps nothing of the line."
+  "Pi's truncateLine: (values text truncated-p). A line longer than MAX-CHARS UTF-16 units is cut to that many units plus \"... [truncated]\". A cut inside a surrogate pair drops the whole pair, as Pi's sliceHead does, and a negative MAX-CHARS keeps nothing of the line."
   (let* ((units (cx-utf16-units line)) (size (length units)))
     (if (<= size max-chars)
         (values line nil)

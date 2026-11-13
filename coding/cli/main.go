@@ -61,7 +61,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/frontendpack"
-	"github.com/MichaelKinsy/PiG/internal/gcpolicy"
+	_ "github.com/MichaelKinsy/PiG/internal/memprofrate" // pig additive (D627): its init turns heap-profile sampling off
 	"github.com/MichaelKinsy/PiG/internal/nativeplatform"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
@@ -892,9 +892,12 @@ func Main(args []string, options *MainOptions) {
 		procpolicy.Release()
 	}
 	// pig additive (D232): a --listen server skips D175's GOGC 400 start, because resident memory across many sessions is its objective.
-	if (runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC) && flags.Listen == "" {
+	if policy, ok := gcPolicyFor(runMode, flags.Listen); ok {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
-		gcpolicy.Apply()
+		// pig additive (D621): an interactive run keeps a heap goal of at least 16 MiB, at GOGC 150 until 8 MiB are live and at 100 from then on, unless the environment sets GOGC or GOMEMLIMIT; its watcher ends at 100 after 2 seconds without a collection.
+		stopGCPolicy = policy.Apply()
+		// Deferred after stopProfiles, so it runs first: the exit record counts no watcher.
+		defer stopGCPolicy()
 	}
 	// pig additive (D232): a --listen server skips the rpc cap of 1 P, because one process runs many sessions.
 	if runMode == appModeRPC && flags.Listen == "" {
@@ -1141,21 +1144,27 @@ func Main(args []string, options *MainOptions) {
 			fmt.Fprintf(os.Stderr, "%s\n", issue.Error())
 			exitProcess(1)
 		}
-		selected, ok, selectErr := codingagent.ShowStartupSelector(
-			issue.prompt(),
-			[]string{"Continue", "Cancel"},
-			startupUIOpts,
-		)
+		options := issue.options()
+		labels := make([]string, len(options))
+		for i, option := range options {
+			labels[i] = option.Label
+		}
+		selected, ok, selectErr := codingagent.ShowStartupSelector(issue.prompt(), labels, startupUIOpts)
 		if selectErr != nil {
 			printCLIError("select session cwd: %v", selectErr)
 			exitProcess(1)
 		}
-		if !ok || selected != 0 {
+		if !ok || selected < 0 || selected >= len(options) {
 			exitProcess(0)
 		}
-		startupSession.runtimeCWD = issue.fallbackCWD
-		startupSession.missingCWD = nil
-		flags.sessionCwdOverride = new(startupSession.runtimeCWD)
+		choice := options[selected].Value
+		if choice == "" {
+			exitProcess(0)
+		}
+		if applyErr := startupSession.applyMissingCWDChoice(choice, &flags, sessionDir); applyErr != nil {
+			printCLIError("%v", applyErr)
+			exitProcess(1)
+		}
 	}
 	cwd = startupSession.runtimeCWD
 	// upstream: packages/coding-agent/src/main.ts:autoTrustOnReloadCwd
@@ -1179,6 +1188,8 @@ func Main(args []string, options *MainOptions) {
 	flags.Name = sessionName
 	// pig additive (D211): the active Piglet decides whether an untrusted project loads its context files.
 	flags.ContextFilesTrustedOnly = activePiglet.WithholdsUntrustedContextFiles()
+	// pig additive (D614): the active Piglet decides whether the TUI draws the views extensions mount.
+	flags.TerminalViewClient = activePiglet.TerminalViewClient()
 	timings.Time("createSessionManager")
 	// The builder is Pi's createRuntime closure: every mode builds its first Session
 	// and every replacement Session from the same process-fixed inputs.
@@ -1612,6 +1623,7 @@ func Main(args []string, options *MainOptions) {
 	if subprocBridge != nil {
 		iopts.SubprocessUIBridge = subprocBridge
 	}
+	iopts.TerminalViewClient = flags.TerminalViewClient
 	if subprocHost != nil {
 		iopts.SubprocessHost = subprocHost
 		// /reload recompiles these, and it is the command reached for after
@@ -1629,7 +1641,7 @@ func Main(args []string, options *MainOptions) {
 	// SIGTERM must reach extensions before the root context is cancelled.
 	setTerminationShutdownHook(func() {
 		interactive.ShutdownFromSignal()
-		// pig divergence (D237): Pi's signal shutdown awaits runtimeHost.dispose(), which waits for a started OAuth refresh to be saved. Main cancels the root context, which owns the extension processes, as soon as this hook returns.
+		// Pi's signal shutdown awaits runtimeHost.dispose(), which waits for a started OAuth refresh to be saved. Main cancels the root context, which owns the extension processes, as soon as this hook returns.
 		//portlint:allow ctxbackground Pi's signal shutdown awaits dispose() with no signal (interactive-mode.ts shutdown); this signal hook has no caller context
 		_ = rt.SettleCredentialWrites(context.Background())
 	})
@@ -1662,8 +1674,8 @@ type startupBenchmarkMode interface {
 // replies, and stops it without entering the input loop. It then disposes the session runtime, as a normal interactive quit does after it stops
 // the TUI, so extensions receive session_shutdown and release what they hold.
 //
-// pig divergence (D262): Pi efb45b51d disposes the runtime right after interactiveMode.stop() and before the timings print; Pi 1.5.0 never disposes it
-// on this path. The error path disposes too, where the process would otherwise exit without session_shutdown.
+// Pi disposes the runtime right after interactiveMode.stop() and before the timings print.
+// The error path disposes too, where the process would otherwise exit without session_shutdown.
 //
 // upstream: packages/coding-agent/src/main.ts:964-978 (startupBenchmark)
 func runStartupBenchmark(ctx context.Context, interactive startupBenchmarkMode, dispose func() error) {

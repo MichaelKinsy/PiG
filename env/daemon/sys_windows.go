@@ -99,9 +99,12 @@ func home() string { return os.Getenv("USERPROFILE") }
 
 // driveCwds is the per-drive working directories of the `=C:` variables, which Node's path.resolve uses for
 // drive-relative paths.
-func driveCwds() Object {
+func driveCwds() Object { return driveCwdsOf(os.Environ()) }
+
+// driveCwdsOf is driveCwds over environ, entries of the form `=C:=C:\work`.
+func driveCwdsOf(environ []string) Object {
 	result := Object{}
-	for _, entry := range os.Environ() {
+	for _, entry := range environ {
 		key, value, ok := strings.Cut(entry[min(1, len(entry)):], "=")
 		//portlint:allow utf16units a key that passes is an ASCII letter and ':', where bytes and UTF-16 units agree; any non-ASCII key fails the letter or ':' test either way
 		if !ok || entry[0] != '=' || len(key) != 2 || key[1] != ':' || !isASCIILetter(key[0]) {

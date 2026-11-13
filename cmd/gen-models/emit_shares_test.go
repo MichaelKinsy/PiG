@@ -33,7 +33,7 @@ func TestEmitSharesEqualCatalogMaps(t *testing.T) {
 		"var generatedThinkingLevelMaps [2]map[ModelThinkingLevel]*string\n",
 		"var generatedThinkingLevelMapsPairs = [...][]generatedPair[ModelThinkingLevel, *string]{\n\t{{\"high\", &generatedStrings[0]}, {\"off\", nil}},\n\t{{\"max\", &generatedStrings[1]}},\n}\n",
 		"var generatedThinkingLevelMapsRefs = [...]generatedMapRef{{0, 0}, {1, 1}, {2, 0}}\n",
-		"generatedBuildMaps(generatedHeaders[:], generatedHeadersPairs[:])\n\tfor _, ref := range generatedHeadersRefs {\n\t\tgeneratedRows[ref.row].Headers = generatedHeaders[ref.element]\n\t}\n",
+		"generatedBuildMaps(generatedHeaders[:], generatedHeadersPairs[:])\n\tfor _, ref := range generatedHeadersRefs[:] {\n\t\tgeneratedRows[ref.row].Headers = generatedHeaders[ref.element]\n\t}\n",
 	} {
 		if !strings.Contains(src, want) {
 			t.Fatalf("generated catalog lacks %q:\n%s", want, src)
@@ -63,7 +63,7 @@ func TestEmitGivesEachRowItsOwnPromptCacheAndSamplingMap(t *testing.T) {
 	for _, want := range []string{
 		"var generatedPromptCachesPairs = [...][]generatedPair[string, float64]{\n\t{{\"ttl\", 5}},\n}\n",
 		"var generatedPromptCachesRefs = [...]generatedMapRef{{0, 0}, {1, 0}}\n",
-		"for _, ref := range generatedPromptCachesRefs {\n\t\tgeneratedRows[ref.row].PromptCache = generatedMap(generatedPromptCachesPairs[ref.element])\n\t}\n",
+		"for _, ref := range generatedPromptCachesRefs[:] {\n\t\tgeneratedRows[ref.row].PromptCache = generatedMap(generatedPromptCachesPairs[ref.element])\n\t}\n",
 		"var generatedSamplingParamsPairs = [...][]generatedPair[string, any]{\n\t{{\"mode\", \"x\"}, {\"on\", true}, {\"stop\", nil}, {\"top_p\", float64(0.5)}},\n}\n",
 		"generatedRows[ref.row].SamplingParams = generatedMap(generatedSamplingParamsPairs[ref.element])\n",
 	} {

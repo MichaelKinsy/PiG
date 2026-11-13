@@ -16,7 +16,8 @@ import (
 // Ports packages/chord/src/host/members.ts
 //
 // The member check (Q14): an implementation is one variant with exactly that variant's members, methods being
-// functions and state members JSON watchables; and the resolution of what Chord follows behind every derive's declared
+// functions, state members JSON watchables and event members the attempt's own sources or references' event members
+// (decision "Events: fire-and-forget members"); and the resolution of what Chord follows behind every derive's declared
 // sources (JSON and native) and every contribution to a registry (slice 8).
 //
 // The rule for watches across attempts (decision "References are the only indirection"): consumers' watches and
@@ -36,7 +37,20 @@ type members struct {
 	state *contracts.NamedMap[state.DeriveSource]
 	// keyed is the keyed members (slice 6a §12): the object's own slot, or the provider's member it re-exposes.
 	keyed *contracts.NamedMap[*keyedBinding]
+	// events is the event members: the attempt's own sources, or nodes fed by the references they re-expose
+	// (reexposedEvents).
+	events *contracts.NamedMap[*memberEvent]
 }
+
+// memberEvent is an event member's node: the attempt's own source (own), or a node fed by the reference it re-exposes
+// (reexposed).
+type memberEvent struct {
+	node      *eventNode
+	reexposed *reexposedEvents
+}
+
+// noEvents is the event members of a variant without any: shared, never written.
+var noEvents = contracts.NewNamedMap[*memberEvent](0)
 
 // keyedBindingKind tells what a keyed member is.
 type keyedBindingKind string
@@ -50,12 +64,14 @@ const (
 )
 
 // keyedBinding is what a keyed member is: a keyed document handle's slot (kind own, slot), or another object's keyed
-// member re-exposed through a reference (kind reexposed, binding and member).
+// member re-exposed through a reference (kind reexposed, binding, member and key).
 type keyedBinding struct {
 	kind    keyedBindingKind
 	slot    *documents.KeyedSlot
 	binding *binding
 	member  string
+	// key is the host kind the re-exposed member is keyed by; empty for string keys.
+	key string
 }
 
 // implementationMember is one member of what a factory returned.
@@ -87,11 +103,13 @@ type factoryResult struct {
 }
 
 // checkImplementation checks what a factory returned (plugin code): a local contract's members, or a remote contract's
-// `{ variant, members }` naming one of its current variants. Errors name the variant or member (the failure cause adds
-// the object). The returned variant is nil for a local contract.
+// `{ variant, members }` naming one of its current variants. sources owns the attempt's own event sources (none
+// declared: nil). Errors name the variant or member (the failure cause adds the object). The returned variant is nil for
+// a local contract.
 func checkImplementation(
 	contract *contracts.Contract,
 	result factoryResult,
+	sources *eventSourceOwner,
 ) (variant *string, checked *members, err error) {
 	variants, err := contracts.CurrentVariants(contract)
 	if err != nil {
@@ -99,7 +117,7 @@ func checkImplementation(
 	}
 	if contract.Kind == contracts.KindLocal {
 		// The member check establishes the shape.
-		checked, err = checkMembers(variants.Value(contracts.LocalVariant), result.members)
+		checked, err = checkMembers(variants.Value(contracts.LocalVariant), result.members, sources)
 		return nil, checked, err
 	}
 	var named *contracts.VariantData
@@ -114,7 +132,7 @@ func checkImplementation(
 		}
 		return nil, nil, fmt.Errorf("variant %s: not a variant of %s", name, contract.Name)
 	}
-	checked, err = checkMembers(named, result.members)
+	checked, err = checkMembers(named, result.members, sources)
 	return result.variant, checked, err
 }
 
@@ -128,13 +146,15 @@ func jsStringify(text string) string {
 }
 
 // checkMembers checks members against a variant's (exactly its members, methods being functions, state members JSON
-// watchables and keyed members keyed document handles); a method without arguments is called with the context alone.
+// watchables, keyed members keyed document handles and event members the attempt's own sources or references' event
+// members); a method without arguments is called with the context alone.
 func checkMembers(
 	variant *contracts.VariantData,
 	given implementation,
+	sources *eventSourceOwner,
 ) (*members, error) {
 	for _, each := range given {
-		if !variant.State.Has(each.name) && !variant.Methods.Has(each.name) && !variant.Keyed.Has(each.name) {
+		if !variant.State.Has(each.name) && !variant.Methods.Has(each.name) && !variant.Keyed.Has(each.name) && !variant.Events.Has(each.name) {
 			return nil, errors.New(each.name + ": not a member")
 		}
 	}
@@ -142,6 +162,7 @@ func checkMembers(
 		methods: contracts.NewNamedMap[contracts.MethodFunction](variant.Methods.Len()),
 		state:   contracts.NewNamedMap[state.DeriveSource](variant.State.Len()),
 		keyed:   contracts.NewNamedMap[*keyedBinding](variant.Keyed.Len()),
+		events:  noEvents,
 	}
 	for member := range variant.Methods.All() {
 		method, ok := asMethod(given.own(member))
@@ -161,7 +182,7 @@ func checkMembers(
 		}
 		checked.state.Set(member, source)
 	}
-	for _, member := range variant.Keyed.Keys() {
+	for member, declared := range variant.Keyed.All() {
 		resolved, err := resolveKeyed(given.own(member))
 		if err != nil {
 			return nil, err
@@ -169,9 +190,58 @@ func checkMembers(
 		if resolved == nil {
 			return nil, errors.New(member + ": a keyed member is a keyed document handle")
 		}
+		// Declaration policy: the handle's keys are the member's (strings, or addresses of its host kind).
+		keys := resolved.key
+		if resolved.kind == keyedOwn {
+			keys = ""
+			if host := resolved.slot.Definition().Current().Host; host != nil {
+				keys = host.Kind
+			}
+		}
+		declaredKey := ""
+		if declared.Key != nil {
+			declaredKey = declared.Key.Kind
+		}
+		if keys != declaredKey {
+			what := func(kind string) string {
+				if kind == "" {
+					return "string keys"
+				}
+				return "addresses of " + kind
+			}
+			return nil, fmt.Errorf("%s: declared with %s, implemented with %s", member, what(declaredKey), what(keys))
+		}
 		checked.keyed.Set(member, resolved)
 	}
+	if variant.Events.Len() > 0 {
+		events, err := checkEvents(variant.Events, given.own, sources)
+		if err != nil {
+			return nil, err
+		}
+		checked.events = events
+	}
 	return checked, nil
+}
+
+// checkEvents checks event members: each is the attempt's own source (owned by sources) or a reference's event member,
+// re-exposed (the declaration boundary, Q14: only Chord-made event members).
+func checkEvents(events *contracts.NamedMap[*contracts.Snapshot], own func(member string) any, sources *eventSourceOwner) (*contracts.NamedMap[*memberEvent], error) {
+	nodes := contracts.NewNamedMap[*memberEvent](events.Len())
+	for _, member := range events.Keys() {
+		switch value := own(member).(type) {
+		case *ownEventSource:
+			if sources != nil && value.ownedBy(sources) {
+				nodes.Set(member, &memberEvent{node: &value.eventNode})
+				continue
+			}
+		case *ReferenceEvents:
+			reexposed := newReexposedEvents(value)
+			nodes.Set(member, &memberEvent{node: &reexposed.eventNode, reexposed: reexposed})
+			continue
+		}
+		return nil, errors.New(member + ": an event member is this object's own self.events() or a reference's event member")
+	}
+	return nodes, nil
 }
 
 // asMethod is value as a method: a function (a nil one is none).

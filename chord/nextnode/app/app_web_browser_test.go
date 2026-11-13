@@ -107,6 +107,41 @@ func TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInput
 	}
 }
 
+// hooks.test.ts "calls the latest listener of useEvents, follows its member and stops at unmount" (Pi 8d30e6306): the page's
+// beats, two event members of a local object of the page, subscribed by a component with `useEvents`.
+func TestReactBindingsCallTheLatestListenerOfUseEventsFollowItsMemberAndStopAtUnmount(t *testing.T) {
+	browser := browsertest.Start(t)
+	s := webBrowserApp(t, versionedEntry(t, "1", ""), freePort(t), nil, nil)
+	signIn(browser, s.app.OwnerLink())
+	browser.Wait(`document.getElementById("beats")?.dataset.state === "live"`)
+	beats := func() string { return browser.String(`JSON.stringify(globalThis.beats)`) }
+	browser.Run(`globalThis.beat("a", 0)`)
+	browser.Wait(`globalThis.beats.length === 1`)
+	// A new render's layout effect emits: delivered before its passive effects, to that render's listener. A timer's update
+	// is not flushed synchronously, so its passive effects run in a later task.
+	browser.Run(`void setTimeout(() => globalThis.relabel("second"))`)
+	browser.Wait(`globalThis.beats.length === 2`)
+	if got := beats(); got != `["first:0","second:1"]` {
+		t.Fatalf("beats = %s, want first:0 then second:1", got)
+	}
+	// Another member: the first one's subscription stopped.
+	browser.Run(`globalThis.switchBeats()`)
+	browser.Wait(`document.getElementById("beats").dataset.member === "b"`)
+	browser.Run(`globalThis.beat("a", 2); globalThis.beat("b", 3)`)
+	browser.Wait(`globalThis.beats.length === 3`)
+	if got := browser.String(`globalThis.beats.at(-1)`); got != "second:3" {
+		t.Fatalf("the last beat = %q, want second:3", got)
+	}
+	// Unmounted: nothing more.
+	browser.Run(`globalThis.toggleBeats()`)
+	browser.Wait(`document.getElementById("beats") === null`)
+	browser.Run(`globalThis.beat("b", 4)`)
+	time.Sleep(200 * time.Millisecond)
+	if got := beats(); got != `["first:0","second:1","second:3"]` {
+		t.Fatalf("beats = %s after the unmount, want the three before it", got)
+	}
+}
+
 func TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick(t *testing.T) {
 	browser := browsertest.Start(t)
 	s := webBrowserApp(t, versionedEntry(t, "1", ""), freePort(t), map[string]map[string]string{"arabic": arabic}, nil)
@@ -176,6 +211,19 @@ func TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsT
 	}
 }
 
+func TestAPageWritesNoThemeOnRootWithThemesFalseSoTheAppsOwnVariablesStand(t *testing.T) {
+	browser := browsertest.Start(t)
+	s := webBrowserApp(t, versionedEntry(t, "1", "", "{ themes: false }"), freePort(t), map[string]map[string]string{"notes": panelPlugin("Notes", "#123456")}, nil)
+	signIn(browser, s.app.OwnerLink())
+	browser.Wait(`document.querySelector(".panel")?.textContent === "Notes"`)
+	if got := browser.String(`document.documentElement.style.cssText`); got != "" {
+		t.Fatalf("cssText = %q, want none", got)
+	}
+	if got := browser.String(`getComputedStyle(document.documentElement).getPropertyValue("--accent")`); got != "" {
+		t.Fatalf("--accent = %q, want none", got)
+	}
+}
+
 func TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle(t *testing.T) {
 	browser := browsertest.Start(t)
 	port := freePort(t)
@@ -203,16 +251,10 @@ var (
 	clickSpanID   = regexp.MustCompile(`^browser:[0-9a-f-]{36}:\d+$`)
 )
 
-// clickNotesPlugin is the notes plugin with the contract the page fixture (web/telemetry.ts) declares again, whose Notes also has
-// Pi's `attach` and `file`: a TS plugin cannot get a worker's `Files` (D461), so the two are served as stubs the click never calls;
-// the contract's fingerprint must equal the page's.
+// clickNotesPlugin is the notes plugin, whose Notes has Pi's `attach` and `file` as the contract the page fixture (web/telemetry.ts)
+// declares again: the contract's fingerprint must equal the page's.
 func clickNotesPlugin() map[string]string {
-	worker := strings.Replace(notesPlugin["worker.ts"], "visit: method(str(), int()) } } } });\nconst Text", "visit: method(str(), int()), attach: method(str(), str()), file: method(str(), str()) } } } });\nconst Text", 1)
-	worker = strings.Replace(worker, "visit: (page, ctx) => store.visit(page, ctx),\n\t\t} };", "visit: (page, ctx) => store.visit(page, ctx),\n\t\t\tattach: async () => \"\",\n\t\t\tfile: async () => \"\",\n\t\t} };", 1)
-	if worker == notesPlugin["worker.ts"] || !strings.Contains(worker, "attach: async") || !strings.Contains(worker, "attach: method") {
-		panic("clickNotesPlugin: the notes plugin changed")
-	}
-	return map[string]string{"worker.ts": worker}
+	return notesPlugin
 }
 
 func TestAPageRecordsAClickAsTheRootOfOneTraceThroughTheServerIntoTheWorkerStoredByTheServer(t *testing.T) {

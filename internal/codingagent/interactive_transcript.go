@@ -798,7 +798,6 @@ func (m *InteractiveMode) enqueueIfTurnActive(enqueue func()) bool {
 
 // queuedUserMessage is the user message the mode queues on the Agent. A Session builds it so its images are marked for normalization
 // when the message is delivered.
-// pig divergence (D249): Pi main 4cf69332c resizes queued images; Pi 1.5.0 queues them unprocessed.
 func (m *InteractiveMode) queuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage {
 	if m.opts.SessionHandle != nil {
 		return m.opts.SessionHandle.QueuedUserMessage(text, images)
@@ -829,11 +828,19 @@ func (m *InteractiveMode) followUpMessageWithImages(text string, images []ai.Ima
 // container with one line per queued steering/follow-up message and a
 // dequeue hint. Mirrors upstream interactive-mode.ts:3730-3746.
 func (m *InteractiveMode) updatePendingMessagesDisplay() {
+	if m.rebuildPendingMessages() {
+		m.tuiInst.Render()
+	}
+}
+
+// rebuildPendingMessages refreshes the pending-message rows without painting and reports whether it did. A caller that
+// paints right after (the end of a turn) uses it so the frame is drawn once.
+func (m *InteractiveMode) rebuildPendingMessages() bool {
 	if m.pendingMessagesContainer == nil || m.agent == nil {
-		return
+		return false
 	}
 	m.pendingMessagesContainer.Clear()
-	// pig divergence (D311): Pi acd059b72 keeps user bash output shown while the agent works in this area until the run settles.
+	// User bash output shown while the agent works in this area until the run settles.
 	m.pendingBashBlocksMu.Lock()
 	for _, block := range m.pendingBashBlocks {
 		m.pendingMessagesContainer.Add(block)
@@ -848,8 +855,7 @@ func (m *InteractiveMode) updatePendingMessagesDisplay() {
 	if len(steeringTexts) == 0 && len(followUpTexts) == 0 {
 		// pig divergence (D228): the copy tip describes a queued message, so it goes with the queue.
 		m.clearQueueCopyTip()
-		m.tuiInst.Render()
-		return
+		return true
 	}
 	theme := tui.ActiveTheme()
 	m.pendingMessagesContainer.Add(tui.NewSpacer(1))
@@ -864,7 +870,7 @@ func (m *InteractiveMode) updatePendingMessagesDisplay() {
 	// upstream: interactive-mode.ts:4736 getAppKeyDisplay is keyDisplayText: every key bound to the action, capitalized and joined by "/".
 	// pig divergence (D228): in Terminal.app with an empty editor the row names Up, the key that dequeues there.
 	m.pendingMessagesContainer.Add(queueHintLine{m})
-	m.tuiInst.Render()
+	return true
 }
 
 // extractAgentMessageText is getUserMessageText (interactive-mode.ts): the text blocks of a user message joined with "".

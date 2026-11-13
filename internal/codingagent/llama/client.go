@@ -341,7 +341,6 @@ func (c *LlamaClient) request(ctx context.Context, method, path string, body any
 	}
 	response, err := fetchJSON(ctx, method, c.ServerURL+path, headers, encoded)
 	if err != nil {
-		// pig divergence (D256): Pi ea0f49a36 names the server and the cause (fetchServer).
 		return nil, serverFailure(c.ServerURL, err)
 	}
 	if !response.ok() {
@@ -488,7 +487,6 @@ func (c *LlamaClient) Watch(ctx context.Context, onEvent func(LlamaModelEvent)) 
 func (c *LlamaClient) watch(ctx context.Context, onEvent func(LlamaModelEvent), onSent func()) error {
 	response, err := openStream(ctx, c.ServerURL+"/models/sse", c.headers(), onSent)
 	if err != nil {
-		// pig divergence (D256): Pi ea0f49a36 names the server and the cause (fetchServer).
 		return serverFailure(c.ServerURL, err)
 	}
 	defer func() { _ = response.Body.Close() }()

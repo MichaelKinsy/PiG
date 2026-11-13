@@ -375,12 +375,18 @@ func TestAcrossAttemptsFailTheAttemptBrokenForAFlippedKeyedAnOlderVersionOrASche
 		Schema: slotListSchema(), Version: 2, Initial: slotEmptyList,
 		Migrate: func(old *JsonObject, _ int) (*JsonObject, error) { return old, nil },
 	})
+	user, err := contracts.NewHostKind("user", contracts.Prop("id", contracts.Str()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ByUser := slotDefine(t, "list", StateOptions{Schema: slotListSchema(), Version: 1, Initial: slotEmptyList, Keyed: user})
 	cases := []struct {
 		name         string
 		first, later *StateDefinition
 		message      string
 	}{
 		{"flipped keyed", ListV1, KeyedList, "list: declared keyed, its documents are not"},
+		{"another key kind", KeyedList, ByUser, "list: declared with addresses of user, its documents have string keys"},
 		{"schema changed without a bump", ListV1, Changed, "list: the schema changed without a version bump (version 1)"},
 		{"older version", Newer, ListV1, "list: version 1 is older than its documents' (2)"},
 	}

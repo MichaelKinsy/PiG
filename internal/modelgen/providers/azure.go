@@ -25,14 +25,13 @@ func azureDeepseekV4ProCost() *Obj {
 	return O("input", 1.925, "output", 3.828, "cacheRead", 0.165, "cacheWrite", 0)
 }
 
-// azureOpenAIModels are OpenAI models as Azure deploys them. Azure bills without OpenAI's long-context tier.
+// azureOpenAIModels are OpenAI models as Azure deploys them, including OpenAI's long-context price tier above 272K input tokens.
 func azureOpenAIModels(models []ChatModel) []ChatModel {
 	out := []ChatModel{}
 	for _, model := range models {
 		if model.Str("api") != "openai-responses" {
 			continue
 		}
-		cost := model.Object("cost")
 		window, ok := azureContextWindowOverrides[model.Str("id")]
 		if !ok {
 			window = model.Num("contextWindow")
@@ -41,12 +40,6 @@ func azureOpenAIModels(models []ChatModel) []ChatModel {
 			Set("api", "azure-openai-responses").
 			Set("provider", "azure").
 			Set("baseUrl", "").
-			Set("cost", O(
-				"input", cost.Num("input"),
-				"output", cost.Num("output"),
-				"cacheRead", cost.Num("cacheRead"),
-				"cacheWrite", cost.Num("cacheWrite"),
-			)).
 			Set("contextWindow", window))
 	}
 	return out

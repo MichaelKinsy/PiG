@@ -1842,7 +1842,7 @@ type ExecOptions struct {
 	MaxBuffer *float64 `json:"maxBuffer,omitempty"`
 	// Signal is upstream's options.signal. When it is done the host terminates the command, as Pi does: the command alone
 	// receives SIGTERM (the process is killed on Windows), no descendant is signalled, and the call returns the output
-	// written so far with Killed set and ExitCode 0, which is what a command that a signal ended reports. A Signal that is done
+	// written so far with Killed set and ExitCode 143 (128 + SIGTERM), which is what a command that a signal ended reports. A Signal that is done
 	// before the call starts the command and ends it at once. SIGKILL follows the SIGTERM five seconds later if the command has not
 	// exited, as it does for a timeout or a MaxBuffer overflow.
 	//

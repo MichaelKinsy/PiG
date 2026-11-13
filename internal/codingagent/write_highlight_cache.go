@@ -176,37 +176,115 @@ func updateWriteHighlightCacheIncremental(cache *writeHighlightCache, rawPath, f
 	return cache
 }
 
-// A warm-up highlights the text the content gained since the last one, and costs the same again for what it reads of the text before
-// (about a millisecond a 100 KB), so the steps are a sixteenth of the content, between writeWarmMinStep and writeWarmMaxStep: the
-// frame a warm-up falls in absorbs it (TypeScript: about 10 ms for the smallest step, 30 ms for the largest), and a file of 400 KB
-// warms in a few dozen steps.
+// A warm-up highlights the text the content gained since the last one, and the little of the text before it that the highlighter reads
+// again: the cost of a step does not grow with the file (the units of the text and the resume state are kept from step to step), so
+// the steps are a few kilobytes and a warm-up is a few milliseconds, which the frame it falls in absorbs; a step of 32 KB held the
+// highlighter for 20-30 ms and stretched the 99th percentile of the gap between frames. A file of 400 KB warms in about a hundred steps.
 // pig additive (D112): the steps move when the highlight is computed, not what it is.
-const (
-	writeWarmMinStep = 8 << 10
-	writeWarmMaxStep = 32 << 10
-)
-
-// writeWarmStep is how many bytes a streaming write call's content of length n grows before its next warm-up.
 //
 //portlint:allow numbers a byte count of pig-only pacing (D112): no JS expression to match, and a step a byte short moves only when a warm-up runs
-func writeWarmStep(n int) int { return min(max(n/16, writeWarmMinStep), writeWarmMaxStep) }
+const writeWarmStep = 4 << 10
+
+// writeWarmHighlight is the one place a write call warms the highlight of its file; tests replace it to see where and when.
+var writeWarmHighlight = tui.WarmHighlight
+
+// writeWarmRelease drops the units a warm-up keeps for the next one; tests replace it to see when.
+var writeWarmRelease = tui.ReleaseWarmHighlight
 
 // warmWholeHighlight keeps the highlighting of the whole file of a streaming write call continuing from the text so far. The
 // call's last frame draws the highlighter's lines of the complete file (upstream formatWriteCall: highlighter.highlight(fileContent)),
 // which highlight.js computes from the first line unless a run over a prefix left a state to resume from; one run over a file of
 // 400 KB stalled the frame that completes the call for 300 ms. Each warm-up leaves such a state, so the last frame highlights only
-// what the last step left. The lines it draws are those of a run over the whole file; only when they are computed moves. A language
-// that cannot resume stops the warm-ups after the first.
+// what the last step left. The lines it draws are those of a run over the whole file; only when they are computed moves.
+//
+// A warm-up of 20-30 ms inside the frame it fell in doubled the 99th percentile of the gap between frames, so the card's worker
+// runs it (runWriteWarmUps) and the frame only hands it the newest content: one worker at a time, which warms the newest content
+// handed to it, so a step that arrives while one runs is folded into the next warm-up and the text a worker warms only grows. The
+// call's completion, the card's disposal and the end of the session drop the step that has not started; the card's Dispose, or the interactive
+// session's stop, joins the worker, so it ends with the step it is in. A language that cannot resume, and a warm-up that fails,
+// stop the warm-ups after it; the panic of a highlighter that fails is raised by the card's next frame, as an inline warm-up raised it.
+// state.mu is held; writeWarmed is the length of the content last handed to the worker.
 // pig additive (D112): upstream highlights the complete file once, when the call completes.
 func (state *builtInRenderState) warmWholeHighlight(content, lang string) {
-	if state.writeWarmOff || len(content) < state.writeWarmed+writeWarmStep(len(content)) {
+	if failure := state.writeWarmFailure; failure != nil {
+		state.writeWarmFailure = nil
+		panic(failure)
+	}
+	if state.writeWarmOff || state.writeWarmEnded() || len(content) < state.writeWarmed+writeWarmStep {
 		return
 	}
-	if !tui.WarmHighlight(normalizeWriteText(content), lang) {
-		state.writeWarmOff = true
+	state.writeWarmed, state.writeWarmNext, state.writeWarmLang = len(content), content, lang
+	if state.writeWarmRunning {
 		return
 	}
-	state.writeWarmed = len(content)
+	state.writeWarmRunning = true
+	state.goTask(state.runWriteWarmUps)
+}
+
+// writeWarmEnded reports that the card is disposed or its session ended: no warm-up starts. state.mu is held.
+func (state *builtInRenderState) writeWarmEnded() bool {
+	return state.closed || (state.lifetime != nil && state.lifetime.Err() != nil)
+}
+
+// runWriteWarmUps is the worker: it warms the content handed to it until none is left, then ends, so a card that is not
+// streaming holds no goroutine. The highlight runs outside state.mu, which a frame takes to hand the next step. A warm-up keeps the
+// units of its text for the next one, so the worker that ends after the call completed or the card ended releases them: the frame that
+// completed the call drew before the step ended, and no text follows.
+func (state *builtInRenderState) runWriteWarmUps() {
+	for {
+		state.mu.Lock()
+		content, lang := state.writeWarmNext, state.writeWarmLang
+		state.writeWarmNext = ""
+		if content == "" || state.writeWarmOff || state.writeWarmEnded() {
+			state.writeWarmNext, state.writeWarmRunning = "", false
+			state.releaseWarmUnitsOfAFinishedCall()
+			state.mu.Unlock()
+			return
+		}
+		state.mu.Unlock()
+		code := normalizeWriteText(content)
+		resumable, failure := warmWriteContent(code, lang)
+		state.mu.Lock()
+		if resumable {
+			state.writeWarmHeld, state.writeWarmHeldLang = code, lang
+		} else {
+			state.writeWarmOff = true
+			if state.writeWarmFailure == nil {
+				state.writeWarmFailure = failure
+			}
+			state.releaseWarmUnits()
+		}
+		state.releaseWarmUnitsOfAFinishedCall()
+		state.mu.Unlock()
+	}
+}
+
+// releaseWarmUnits releases the units that the last warm-up kept for the next one, if it kept any. state.mu is held.
+func (state *builtInRenderState) releaseWarmUnits() {
+	if state.writeWarmHeld == "" {
+		return
+	}
+	writeWarmRelease(state.writeWarmHeld, state.writeWarmHeldLang)
+	state.writeWarmHeld, state.writeWarmHeldLang = "", ""
+}
+
+// releaseWarmUnitsOfAFinishedCall releases them when the call is complete or the card ended: no text follows the last one warmed. state.mu is held.
+func (state *builtInRenderState) releaseWarmUnitsOfAFinishedCall() {
+	if state.writeWarmDone || state.writeWarmEnded() {
+		state.releaseWarmUnits()
+	}
+}
+
+// warmWriteContent warms the highlight of code, the normalized content, and reports whether a state to resume from is held. A panic
+// of the highlighter does not end the process from a goroutine of its own: it is returned as failure, and the next frame of the
+// card raises it where an inline warm-up raised it (warmWholeHighlight).
+func warmWriteContent(code, lang string) (resumable bool, failure any) {
+	defer func() {
+		if value := recover(); value != nil {
+			resumable, failure = false, value
+		}
+	}()
+	return writeWarmHighlight(code, lang), nil
 }
 
 // normalizeWriteText is replaceTabs(normalizeDisplayText(text)) for the content of a write call. A lone surrogate, which

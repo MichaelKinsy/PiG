@@ -174,8 +174,14 @@ type InteractiveMode struct {
 	editorFactory   extension.EditorFactory
 	widgetContainer *tui.Container
 	// widgetMu guards the widget state below: the extension processes' widgets (bridgeWidgets) and the host-process ones (inprocessWidgets).
-	widgetMu         sync.Mutex
-	bridgeWidgets    map[string]*subprocess.PushProxy
+	widgetMu      sync.Mutex
+	bridgeWidgets map[string]*subprocess.PushProxy
+	// viewMounts is the plugin mounts the terminal view client draws (D614), in mount order; widgetMu guards it. It is empty unless a Piglet selected the client and an extension mounted a view.
+	viewMounts []*viewMount
+	// viewTabRow is the tab row the view client draws above the panel mounts, nil while it draws none; widgetMu guards it.
+	viewTabRow *viewTabs
+	// viewClient is the terminal's attachment to the bound build's view registry, nil unless a Piglet selected it.
+	viewClient       atomic.Pointer[viewClient]
 	inprocessWidgets []inprocessWidget
 	// widgetSeq counts widget sets across both hosts; bridgeWidgetSeqs is the sequence each extension-process widget got when it was set, by its
 	// bridge insertion order, so the layout interleaves the hosts in the order Pi's one Map per side keeps.
@@ -693,18 +699,22 @@ type InteractiveMode struct {
 	activeSelectorDispose func()
 }
 
-// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then repaints on the owner loop, so code highlighted with the startup grammars picks up the rest. A mode that has stopped repaints nothing.
+// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, when a highlight lookup made before the load answers differently now (D618), repaints on the owner loop so code highlighted with the startup grammars picks up the rest. A mode that has stopped repaints nothing.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 	ctx := m.backgroundCtx
 	m.backgroundTasks.Go(func() {
-		tui.LoadAllHighlightLanguages()
-		_ = m.postToMain(ctx, func() {
-			m.tuiInst.Invalidate()
-			m.tuiInst.RequestRender()
-		})
+		// pig divergence (D618): Pi invalidates and requests a render whenever the languages have loaded (interactive-mode.ts init), and its render
+		// writes a frame even when no row changed; here the repaint is for a screen that drew code before the load could have answered it
+		// differently, so a start that drew none writes no second frame.
+		if tui.LoadAllHighlightLanguages() {
+			_ = m.postToMain(ctx, func() {
+				m.tuiInst.Invalidate()
+				m.tuiInst.RequestRender()
+			})
+		}
 		// After the repaint is queued, so the collection never delays it.
-		releaseStartupHeap()
+		m.releaseStartupHeapWhenIdle(ctx)
 	})
 }
 
@@ -1261,6 +1271,12 @@ type InteractiveModeOptions struct {
 	// ReplacementResources returns the cwd-bound options of the build that owns session.
 	ReplacementResources func(session InteractiveSessionHandle) InteractiveReplacement
 
+	// TerminalViewClient attaches the TUI as a client of the plugin view registry of SubprocessUIBridge, so the views
+	// extensions mount (ui.view) are drawn in the terminal. A Piglet's viewClient: terminal sets it.
+	//
+	// pig additive (D614).
+	TerminalViewClient bool
+
 	// SubprocessUIBridge, when non-nil, is the UI bridge for subprocess
 	// extensions. Run() wires it to the TUI after creation via
 	// SetUIContext and SetInvalidate.
@@ -1513,6 +1529,12 @@ var stdoutIsTTY = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
 
 // printResumeHint writes the resume command after the terminal is restored on an interactive quit, only for a persisted session with an existing file and TTY stdout.
 func (m *InteractiveMode) printResumeHint() {
+	// pig additive (D91): Pi has no frontend member. A frontend that drew this run owns its exit screen, and the
+	// frontend contract has no exit text path, so the host writes nothing after it. leaveFrontend clears surface,
+	// so a run that fell back to the ANSI renderer prints the hint as Pi does.
+	if m.surface != nil {
+		return
+	}
 	cmd := m.resumeHintCommand()
 	if cmd == "" {
 		return

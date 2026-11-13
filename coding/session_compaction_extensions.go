@@ -32,7 +32,8 @@ func (s *Session) extensionCompaction(
 	}
 	branchEntries := make([]extension.SessionEntry, len(entries))
 	copy(branchEntries, entries)
-	result, err := runner.Emit(ctx, extension.SessionBeforeCompactEvent{
+	// runner.ts emit awaits every handler with event.signal aborted and keeps their results; the abort reaches a handler as that signal, not as the end of its dispatch.
+	result, err := runner.Emit(context.WithoutCancel(ctx), extension.SessionBeforeCompactEvent{
 		Type:               icodingagent.EventSessionBeforeCompact,
 		Preparation:        *preparation,
 		BranchEntries:      branchEntries,
@@ -95,6 +96,12 @@ func generatedCompactionData(result compaction.CompactionResult) *sessionCompact
 	}
 }
 
+// emitSessionCompact notifies extensions that a compaction entry was saved
+// (agent-session.ts awaits runner.emit session_compact after appendCompaction).
+// Upstream's emit takes no signal and checks none, so an abort raised after the
+// last check, or by a handler during this dispatch, never skips an extension
+// and never fails the saved compaction: dispatch must not inherit the
+// cancellation that aborts the compaction.
 func (s *Session) emitSessionCompact(ctx context.Context, entry icodingagent.SessionEntry, fromExtension bool, reason string, willRetry bool) {
 	runner := s.currentRunner()
 	if runner == nil || !runner.HasHandlers(icodingagent.EventSessionCompact) {
@@ -104,7 +111,7 @@ func (s *Session) emitSessionCompact(ctx context.Context, entry icodingagent.Ses
 	if raw, err := json.Marshal(entry); err != nil || json.Unmarshal(raw, &compactionEntry) != nil {
 		return
 	}
-	_, _ = runner.Emit(ctx, extension.SessionCompactEvent{
+	_, _ = runner.Emit(context.WithoutCancel(ctx), extension.SessionCompactEvent{
 		Type:            icodingagent.EventSessionCompact,
 		CompactionEntry: compactionEntry,
 		FromExtension:   fromExtension,

@@ -25,7 +25,7 @@ import (
 // tunnel's address), instead of growing the server's memory without bound; a signed-in owner's pairings are not counted, so the
 // owner can always pair.
 //
-// Ports packages/chord/src/node/app/pairing.ts (Pi main c23b9ec1). Forced Go differences (D459): a starter is a struct (Pi's tagged
+// Ports packages/chord/src/node/app/pairing.ts (Pi main c23b9ec1). Forced Go differences (language mechanics): a starter is a struct (Pi's tagged
 // union), `begin`, `poll` and `waiting` answer a second `ok` value where Pi's answer `undefined`, and a pairing is approved by
 // its Approve method (Pi's route sets `pairing.token` on the shared object).
 

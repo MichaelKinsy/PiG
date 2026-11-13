@@ -798,6 +798,9 @@ type tuiBase struct {
 	renderRequested          bool
 	immediateRenderRequested bool
 	renderTimer              stoppableTimer
+	// deferredRenderTimer is the timer of RequestRenderWithin until a frame is drawn: that frame draws the change the timer was set for, so the timer is stopped when a frame begins. deferredRenderGeneration lets a callback that lost that race see it did.
+	deferredRenderTimer      stoppableTimer
+	deferredRenderGeneration uint64
 	// frameActive is set while a frame holds mu and renders components (lockFrame). mu is not reentrant, so RequestRender during the frame (from a component's Render, as Pi's Loader.invalidate and requestRender-on-image-load do, or from another goroutine) is recorded in frameRenderRequest and issued when the frame releases mu.
 	frameActive atomic.Bool
 	// frameOwner is the goroutine that set frameActive (0 outside a frame): the goroutine running a frame holds mu and the base container's lock while it
@@ -857,10 +860,18 @@ type tuiBase struct {
 	// render height-dependent content (chain graphs, dashboards) would
 	// never know to reflow.
 	onHeightChange func(height int)
+	// pendingWidth and pendingHeight are the sizes the geometry callbacks have not been given yet (0: none), and
+	// notifyingGeometry whether the one worker that calls them runs. The worker calls one callback at a time, in render
+	// order, so a slow callback cannot reorder resizes, and a size replaced before its turn is skipped: Pi's components
+	// get the width inside the render, one render at a time, and resizes that arrive before the next render share it
+	// (tui-main-screen.ts:249-252, tui.ts:1033-1042). A stop discards the pending sizes. Guarded by mu.
+	pendingWidth      int
+	pendingHeight     int
+	notifyingGeometry bool
 
 	mu sync.Mutex // protects render state
 
-	stopped bool // set by Stop(); prevents further Render() calls
+	stopped atomic.Bool // set by Stop(); prevents further Render() calls (RequestRender reads it from component goroutines)
 }
 
 // TuiMainScreen is the main-screen renderer: differential rendering into the terminal's
@@ -1190,7 +1201,7 @@ func (t *tuiBase) ShowOverlay(c Component, opts OverlayOptions) *OverlayHandle {
 
 // hideTerminalCursor hides the cursor while running; after Stop the shell owns it. Mirrors upstream hideTerminalCursor.
 func (t *tuiBase) hideTerminalCursor() {
-	if !t.stopped {
+	if !t.stopped.Load() {
 		t.HideCursor()
 	}
 }
@@ -1670,18 +1681,58 @@ func (t *TuiMainScreen) RenderSnapshot(width int) []string {
 	return t.Container.Render(width)
 }
 
-// SetOnWidthChange registers a terminal-width callback. Fullscreen coalesces pending changes while a callback runs. Thread-safe.
+// SetOnWidthChange registers a terminal-width callback. Pending changes coalesce while a callback runs, and the callbacks run one at a time in render order. Thread-safe.
 func (t *tuiBase) SetOnWidthChange(fn func(width int)) {
 	t.mu.Lock()
 	t.onWidthChange = fn
 	t.mu.Unlock()
 }
 
-// SetOnHeightChange registers a terminal-height callback. Fullscreen coalesces pending changes while a callback runs. Thread-safe.
+// SetOnHeightChange registers a terminal-height callback. Pending changes coalesce while a callback runs, and the callbacks run one at a time in render order. Thread-safe.
 func (t *tuiBase) SetOnHeightChange(fn func(height int)) {
 	t.mu.Lock()
 	t.onHeightChange = fn
 	t.mu.Unlock()
+}
+
+// queueGeometryLocked records a width or height that changed in the frame being rendered (0: unchanged) for the geometry
+// callbacks and starts the worker that calls them unless it runs. The caller holds mu.
+func (t *tuiBase) queueGeometryLocked(width, height int) {
+	if width != 0 && t.onWidthChange != nil {
+		t.pendingWidth = width
+	}
+	if height != 0 && t.onHeightChange != nil {
+		t.pendingHeight = height
+	}
+	if !t.notifyingGeometry && (t.pendingWidth != 0 || t.pendingHeight != 0) {
+		t.notifyingGeometry = true
+		//portlint:allow golifetime ends once no size is pending or the renderer stopped, and a stop discards the pending sizes (Go-only, no tui.ts counterpart); a callback may re-enter the TUI, so it runs off the frame
+		go t.notifyGeometryChanges()
+	}
+}
+
+// notifyGeometryChanges calls the geometry callbacks with the pending sizes, the width first, until none is pending or the
+// renderer stopped.
+func (t *tuiBase) notifyGeometryChanges() {
+	for {
+		t.mu.Lock()
+		if t.stopped.Load() || (t.pendingWidth == 0 && t.pendingHeight == 0) {
+			t.notifyingGeometry = false
+			t.mu.Unlock()
+			return
+		}
+		callback, size := t.onWidthChange, t.pendingWidth
+		if size != 0 {
+			t.pendingWidth = 0
+		} else {
+			callback, size = t.onHeightChange, t.pendingHeight
+			t.pendingHeight = 0
+		}
+		t.mu.Unlock()
+		if callback != nil {
+			callback(size)
+		}
+	}
 }
 
 // SetRenderDispatcher installs a hook that runs throttled scheduled renders
@@ -1825,7 +1876,7 @@ func (t *tuiBase) Height() int { _, height := t.size(); return height }
 // Use it when the physical buffer is invalid, including semantic transcript
 // replacement, not for ordinary dynamic shrink or streaming updates.
 func (t *TuiMainScreen) ForceFullRender() {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	t.mu.Lock()
@@ -1841,7 +1892,7 @@ func (t *TuiMainScreen) ForceFullRender() {
 // force is upstream's requestRender(force = false): true resets the render state so the next frame is a full repaint and renders on the next
 // owner-loop turn instead of waiting for the frame throttle.
 func (t *tuiBase) RequestRender(force ...bool) {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	forced := len(force) > 0 && force[0]
@@ -1918,7 +1969,7 @@ func (t *tuiBase) issueFrameRenderRequest() {
 // RenderNow renders immediately, cancelling any pending render; force=true makes the frame a full repaint.
 // Mirrors upstream renderNow(force) (tui.ts:982).
 func (t *tuiBase) RenderNow(force ...bool) {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	if len(force) > 0 && force[0] {
@@ -1935,7 +1986,7 @@ func (t *tuiBase) RenderNow(force ...bool) {
 // RequestImmediateRender preempts a throttled frame and coalesces keyboard updates onto the next owner-loop turn. It exposes TuiBase.requestImmediateRender to the Go driver's separately owned input path.
 func (t *tuiBase) RequestImmediateRender() {
 	t.mu.Lock()
-	if t.stopped || t.immediateRenderRequested {
+	if t.stopped.Load() || t.immediateRenderRequested {
 		t.mu.Unlock()
 		return
 	}
@@ -1975,7 +2026,15 @@ func (t *tuiBase) runImmediateRender(generation uint64) {
 func (t *tuiBase) requestRender(force bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	// RequestRender read stopped before it took mu, and every stop writes it under mu: a request that lost that race to a stop is dropped here, so no frame is armed on a stopped renderer.
+	if t.stopped.Load() {
+		return
+	}
+	t.requestRenderLocked(force)
+}
 
+// requestRenderLocked is requestRender with mu held.
+func (t *tuiBase) requestRenderLocked(force bool) {
 	if force {
 		t.forceRedraw = true
 		if t.resetRenderState != nil {
@@ -1997,6 +2056,63 @@ func (t *tuiBase) requestRender(force bool) {
 	}
 	t.renderRequested = true
 	t.scheduleRenderLocked()
+}
+
+// RequestRenderWithin asks for a frame within delay for a change that need not be drawn at once, such as a spinner's next step: any frame drawn in that time draws the change, and only when none is does the timer ask for one (Pi-Bolt TUI.requestRenderWithin). A frame already asked for draws the change, and so does a timer already set.
+//
+// pig divergence (D619): Pi asks for a frame at once for every animation step; the Loader asks for it within min(40 ms, interval/2) through this method.
+func (t *tuiBase) RequestRenderWithin(delay time.Duration) {
+	if t.frameActive.Load() {
+		// A request made while a frame holds mu cannot be deferred: the frame may have read the component before it changed. Ask for a frame as RequestRender does.
+		t.RequestRender()
+		return
+	}
+	t.mu.Lock()
+	if t.stopped.Load() || t.renderRequested || t.deferredRenderTimer != nil {
+		t.mu.Unlock()
+		return
+	}
+	t.deferredRenderGeneration++
+	generation := t.deferredRenderGeneration
+	t.deferredRenderTimer = t.afterFunc(delay, func() { t.runDeferredRender(generation) })
+	t.mu.Unlock()
+}
+
+// CancelRenderWithin drops the frame RequestRenderWithin asked for, when no frame has drawn the change yet: a spinner that was removed has no step left to draw, and a frame it asked for would come after the frame that removed it.
+//
+// pig divergence (D619): Pi-Bolt's Loader.stop() leaves the requestRenderWithin timer armed.
+func (t *tuiBase) CancelRenderWithin() {
+	t.mu.Lock()
+	if t.deferredRenderTimer != nil {
+		t.deferredRenderTimer.Stop()
+		t.deferredRenderTimer = nil
+		t.deferredRenderGeneration++
+	}
+	t.mu.Unlock()
+}
+
+func (t *tuiBase) runDeferredRender(generation uint64) {
+	t.mu.Lock()
+	if generation != t.deferredRenderGeneration || t.deferredRenderTimer == nil {
+		t.mu.Unlock()
+		return
+	}
+	t.deferredRenderTimer = nil
+	// The frame is requested under the lock the check was made under, and a frame begins under it (frameBeganLocked): a frame cannot begin between the check and the request, so the request never follows a frame that drew the change.
+	if !t.stopped.Load() {
+		t.requestRenderLocked(false)
+	}
+	t.mu.Unlock()
+}
+
+// frameBeganLocked is what a frame does first: it draws the changes RequestRenderWithin was set for, so their timer is not needed. mu must be held.
+func (t *tuiBase) frameBeganLocked() {
+	t.lastRenderAt = t.now()
+	if t.deferredRenderTimer != nil {
+		t.deferredRenderTimer.Stop()
+		t.deferredRenderTimer = nil
+		t.deferredRenderGeneration++
+	}
 }
 
 func (t *tuiBase) scheduleRenderLocked() {
@@ -2042,7 +2158,7 @@ func (t *tuiBase) runScheduledRender(generation uint64) {
 
 func (t *tuiBase) renderScheduled(generation uint64) {
 	t.mu.Lock()
-	current := generation == t.renderGeneration && !t.stopped
+	current := generation == t.renderGeneration && !t.stopped.Load()
 	t.mu.Unlock()
 	if !current {
 		return
@@ -2103,7 +2219,7 @@ func (t *tuiBase) cancelPendingRenderLocked() {
 //
 //perf:hot
 func (t *tuiBase) Render() {
-	if t.stopped {
+	if t.stopped.Load() {
 		return
 	}
 	t.CancelPendingRender()
@@ -2230,7 +2346,7 @@ func (t *TuiMainScreen) applyLineResetsCachedWithCursor(lines []string, cursorRo
 func (t *TuiMainScreen) doRender() {
 	t.lockFrame()
 	defer t.unlockFrame()
-	t.lastRenderAt = t.now()
+	t.frameBeganLocked()
 
 	t.updateSize()
 	width, height := t.size()
@@ -2335,12 +2451,14 @@ func (t *TuiMainScreen) doRender() {
 		t.fullRender(newLines, width, height, true)
 		t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
 		// Notify listeners of width change (e.g. subprocess extension host).
-		if widthChanged && t.onWidthChange != nil {
-			go t.onWidthChange(width)
+		changedWidth, changedHeight := 0, 0
+		if widthChanged {
+			changedWidth = width
 		}
-		if heightChanged && t.onHeightChange != nil {
-			go t.onHeightChange(height)
+		if heightChanged {
+			changedHeight = height
 		}
+		t.queueGeometryLocked(changedWidth, changedHeight)
 		return
 	}
 
@@ -2352,9 +2470,7 @@ func (t *TuiMainScreen) doRender() {
 		t.logRedraw(fmt.Sprintf("terminal height changed (%d -> %d)", t.prevHeight, height), len(newLines), height)
 		t.fullRender(newLines, width, height, true)
 		t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
-		if t.onHeightChange != nil {
-			go t.onHeightChange(height)
-		}
+		t.queueGeometryLocked(0, height)
 		return
 	}
 
@@ -2845,7 +2961,10 @@ func (t *TuiMainScreen) RestoreRenderState(state TuiMainScreenRenderState) {
 
 // Start resumes the main-screen renderer after a terminal handoff. The driver restores input and requests the full repaint, as Pi's TUI.start does.
 func (t *TuiMainScreen) Start() {
-	t.stopped = false
+	// Under mu, where the geometry worker reads it.
+	t.mu.Lock()
+	t.stopped.Store(false)
+	t.mu.Unlock()
 	t.HideCursor()
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.out, true)
@@ -2863,7 +2982,9 @@ func (t *TuiMainScreen) StopWithOptions(options StopOptions) {
 
 // stopWithOptionsLocked also serves the overflow path, which already holds the render lock.
 func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
-	t.stopped = true
+	t.stopped.Store(true)
+	t.pendingWidth = 0
+	t.pendingHeight = 0
 	t.cancelPendingRenderLocked()
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.out, false)

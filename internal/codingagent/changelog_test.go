@@ -4,7 +4,6 @@ package codingagent
 
 import (
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -220,11 +219,6 @@ func minClampInt(a, b int) int {
 	return b
 }
 
-// pinnedReadsLastSeenLikeD245 reports whether Pi 1.5.0's `split(".").map(Number)` and Pi main's leading major.minor.patch read last as the same triple.
-func pinnedReadsLastSeenLikeD245(last string) bool {
-	return regexp.MustCompile(`^\s*[0-9]+\.[0-9]+\.[0-9]+(\.|\s*$)`).MatchString(last)
-}
-
 func TestGetNewEntries(t *testing.T) {
 	content := "## [2.0.0]\nNew major.\n\n## [1.1.0]\nMinor bump.\n\n## [1.0.0]\nInitial."
 	entries := ParseChangelog(content)
@@ -248,7 +242,7 @@ func TestGetNewEntries(t *testing.T) {
 	}
 }
 
-// pi: packages/coding-agent/test/changelog.test.ts "getNewEntries" (Pi main 9a1953961, #11703); D245.
+// pi: packages/coding-agent/test/changelog.test.ts "getNewEntries" (Pi 9a1953961, #11703).
 func TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes(t *testing.T) {
 	entries := []ChangelogEntry{{Major: 0, Minor: 1, Patch: 5, Content: "0.1.5"}, {Major: 0, Minor: 1, Patch: 4, Content: "0.1.4"}}
 	contents := func(last string) []string {
@@ -283,7 +277,7 @@ func TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes(t *testing.T) {
 	}
 }
 
-// pi: interactive-mode-extension-changelog.test.ts / getChangelogForDisplay (Pi main 9a1953961); D245.
+// pi: interactive-mode-extension-changelog.test.ts / getChangelogForDisplay (Pi 9a1953961).
 func TestRecordChangelogVersionRecordsCurrentVersionForUnreadableLastSeen(t *testing.T) {
 	t.Setenv("PI_OFFLINE", "1")
 	sm := NewInMemorySettingsManager(Settings{LastChangelogVersion: "latest"})

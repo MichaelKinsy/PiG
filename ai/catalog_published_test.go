@@ -134,11 +134,6 @@ func TestGeneratedCatalogsMatchPublishedPackage(t *testing.T) {
 	}
 	for name, got := range map[string][]any{"chat": chat, "image": image, "classifier": classifier} {
 		want := published[name]
-		if name == "chat" {
-			for _, model := range want {
-				d240PatchPublished(model) // pig divergence (D240): see d240_sonnet5_allowance_test.go
-			}
-		}
 		if len(got) != len(want) {
 			t.Errorf("%s catalog has %d models, published %s has %d", name, len(got), UpstreamVersionString(), len(want))
 			continue

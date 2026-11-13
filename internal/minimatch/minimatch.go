@@ -17,6 +17,8 @@ import (
 type Options struct {
 	// NoCase makes the match case-insensitive.
 	NoCase bool
+	// NoExt turns extglobs off: `+(a|b)` is literal text.
+	NoExt bool
 	// Dot lets wildcards match a leading dot.
 	Dot bool
 	// NoNegate makes a leading `!` literal instead of a negation.
@@ -148,7 +150,9 @@ func (m *Minimatch) make() {
 		}
 	}
 	// with noext, `@(...)` would be literal
-	m.mergeRows()
+	if !m.options.NoExt {
+		m.mergeRows()
+	}
 }
 
 // at is parts[i], or "" past the end, where JavaScript has undefined; no portion is both "" and absent in a place this is asked.
@@ -320,7 +324,7 @@ func classEnd(pattern []rune, start int) int {
 	return -1
 }
 
-// literal is the string a path portion pattern matches if it has no magic, and whether that is so. It can report magic for a pattern that is in fact literal (eg, `[]`), but never the reverse, so a string result is always safe to compare directly.
+// literal is the string a path portion pattern matches if it has no magic, and whether that is so. It can report magic for a pattern that is in fact literal (eg, `[]`), but never the reverse, so a string result is always safe to compare directly. Minimatch's `noext` option also stops it reporting an extglob as magic; with noext the matcher reads an extglob as text and answers the same, so no option is passed here (TestMatchNoExtKeepsExtglobsLiteral).
 func literal(pattern string) (string, bool) {
 	if pattern == "+()" || pattern == "@()" {
 		return pattern, true
@@ -425,7 +429,7 @@ func (m *Minimatch) parse(pattern string) portion {
 	}
 	mt := m.matchers[pattern]
 	if mt == nil {
-		mt = newMatcher(pattern, m.nocase, m.options.Dot)
+		mt = newMatcher(pattern, m.nocase, m.options.Dot, m.options.NoExt)
 		m.matchers[pattern] = mt
 	}
 	return portion{m: mt}

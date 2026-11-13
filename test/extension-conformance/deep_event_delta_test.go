@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // deepNesting is value nested depth levels deep, in arrays or in one-key objects.
@@ -31,16 +32,6 @@ var deepDeltaShapes = []struct {
 	shape string
 	depth int
 }{{"arrays", 200}, {"arrays", 3000}, {"objects", 3000}, {"arrays", 4000}, {"objects", 4000}, {"arrays", 9000}, {"objects", 9000}, {"arrays", 1}}
-
-// nodeHandlerFails is where the Node SDK's handler fails: the runtime copies the payload for the handler (iteratively, so the copy never runs out of stack), and the
-// handler's own JSON.stringify of it runs out of V8 stack on the pinned Node between 4400 and 9000 levels, as it does in Pi, which hands its handler the object itself (D268).
-func nodeHandlerFails(depth int) bool { return depth >= 9000 }
-
-// carriesDeepValue reports whether the event holds the nested value (the first update of a stream holds none yet): its JSON is at least two bytes a level long.
-func carriesDeepValue(event any, depth int) bool {
-	whole, err := json.Marshal(event)
-	return err == nil && len(whole) >= 2*depth
-}
 
 // A message_update whose partial gains a tool call with deeply nested arguments: the host sends the block in a delta's `set` operation, and the operation must be read whole.
 func deepMessageUpdateEvents(shape string, depth int) []extension.MessageUpdateEvent {
@@ -86,7 +77,7 @@ func deepToolUpdateEvents(shape string, depth int) []extension.ToolExecutionUpda
 
 // TestDeepEventStreamDeltasReachEverySDK pins that a message_update or tool_execution_update delta whose operations carry a value nested past serde_json's 128 levels (up to
 // what the host's marshal sends) reaches the Go, Python, Rust and Lisp SDKs, in every placement (isolated and in a shared runtime cell): the handler receives the payload the
-// event encodes to (the Node SDK, Pi's own runtime, up to 4000 levels; at 9000 its handler's own JSON.stringify throws V8's RangeError, as in Pi: D268), and the same extension reads the ordinary update that follows (D268: no SDK ends its connection on deep input).
+// event encodes to (the Node SDK, Pi's own runtime, where the running Node's JSON.stringify has stack for it: to 4000 levels on Node 24 and every depth here on Node 26; where it has none, its handler's own JSON.stringify throws V8's RangeError, as in Pi: D268), and the same extension reads the ordinary update that follows (D268: no SDK ends its connection on deep input).
 func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -111,34 +102,22 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 			defer removeListener()
 			for _, name := range []string{"message_update", "tool_execution_update"} {
 				var events []extension.ExtensionEvent
-				// handlerFailures is how many handlers of the Node SDK fail on each event: the probe, and for a tool update that holds the arguments the fixture's own handler, which stringifies them.
-				var handlerFailures []int
+				var depths []int
 				for _, c := range deepDeltaShapes {
 					if name == "message_update" {
 						for _, event := range deepMessageUpdateEvents(c.shape, c.depth) {
-							events = append(events, event)
-							handlerFailures = append(handlerFailures, 0)
-							if node && nodeHandlerFails(c.depth) && carriesDeepValue(event, c.depth) {
-								handlerFailures[len(handlerFailures)-1] = 1
-							}
+							events, depths = append(events, event), append(depths, c.depth)
 						}
 					} else {
 						for _, event := range deepToolUpdateEvents(c.shape, c.depth) {
-							events = append(events, event)
-							handlerFailures = append(handlerFailures, 0)
-							if node && nodeHandlerFails(c.depth) && carriesDeepValue(event, c.depth) {
-								handlerFailures[len(handlerFailures)-1] = 1
-								args, _ := event.Args.(map[string]any)
-								if _, holdsArguments := args["meta"]; holdsArguments {
-									handlerFailures[len(handlerFailures)-1] = 2
-								}
-							}
+							events, depths = append(events, event), append(depths, c.depth)
 						}
 					}
 				}
 				prefix := "event_payload:" + name + ":"
 				*h.notify = (*h.notify)[:0]
 				failures = failures[:0]
+				h.wire.frames.keepEventFrames(name)
 				runConformanceCommandArgs(t, h, "event_payload_probe", name)
 				for index, event := range events {
 					ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -148,25 +127,47 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 						t.Fatalf("%s: emit %d: %v", name, index, err)
 					}
 				}
-				wantReports, wantFailures := 0, 0
-				for _, failed := range handlerFailures {
-					wantFailures += failed
-					if failed == 0 {
-						wantReports++
+				// probeFails and fixtureFails are where a handler of the Node SDK fails on the event: the probe's JSON.stringify of the payload, and for a tool update that holds the arguments the fixture's
+				// own handler's JSON.stringify of them. Each fails where the running Node's JSON.stringify does on what the runtime handed the handler, which the probe replays from the frames the host
+				// wrote (nodeEventStreamOutcomes, D268).
+				probeFails, fixtureFails := make([]bool, len(events)), make([]bool, len(events))
+				if node {
+					frames := h.wire.frames.keptEventFrames(tc.extName, name)
+					probeFails, fixtureFails = nodeEventStreamOutcomes(t, frames, len(events))
+					// The replay runs the runtime's own event-stream code, so it cannot be its own oracle: the outcomes must be the ones the rule below gives, which uses none of it.
+					wantProbe, wantFixture := nodeExpectedFailures(t, events, depths, frames)
+					for index := range events {
+						if probeFails[index] != wantProbe[index] || fixtureFails[index] != wantFixture[index] {
+							t.Fatalf("%s: event %d (nesting %d): the runtime's copy makes the handlers fail (probe %v, fixture %v), the rule says (probe %v, fixture %v)", name, index, depths[index], probeFails[index], fixtureFails[index], wantProbe[index], wantFixture[index])
+						}
 					}
 				}
+				wantReports, wantFailures := 0, 0
+				for index := range events {
+					if probeFails[index] {
+						wantFailures++
+					} else {
+						wantReports++
+					}
+					if fixtureFails[index] {
+						wantFailures++
+					}
+				}
+				// The wait ends when every handler has answered, or when one answered more than the row expects.
 				var reported []string
-				pollUntilConformance(t, "the handler did not report every "+name, func() bool {
+				if !awaitCondition(testbudget.Context(t), func() bool {
 					reported = reported[:0]
 					for _, n := range *h.notify {
 						if rest, ok := strings.CutPrefix(n, prefix); ok {
 							reported = append(reported, strings.TrimSuffix(rest, ":info"))
 						}
 					}
-					return len(reported) >= wantReports && len(failures) >= wantFailures
-				})
-				if len(failures) != wantFailures {
-					t.Fatalf("%s: %d handlers failed, want %d: %v", name, len(failures), wantFailures, failures)
+					return (len(reported) >= wantReports && len(failures) >= wantFailures) || len(reported) > wantReports || len(failures) > wantFailures
+				}) {
+					t.Fatalf("not satisfied within the test's wait budget (%s): the handler did not report every %s: %d of %d reported, %d of %d handlers failed: %.600v", testbudget.Env, name, len(reported), wantReports, len(failures), wantFailures, failures)
+				}
+				if len(reported) != wantReports || len(failures) != wantFailures {
+					t.Fatalf("%s: %d payloads reported and %d handlers failed, want %d and %d: %.600v", name, len(reported), len(failures), wantReports, wantFailures, failures)
 				}
 				for _, failure := range failures {
 					if !strings.Contains(failure, "Maximum call stack size exceeded") {
@@ -179,7 +180,7 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 				}
 				next := 0
 				for index, event := range events {
-					if handlerFailures[index] > 0 {
+					if probeFails[index] {
 						continue
 					}
 					whole, err := json.Marshal(event)

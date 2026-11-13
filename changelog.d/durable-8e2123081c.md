@@ -1,0 +1,3 @@
+### Fixed
+
+- Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns. The cleanup is scoped to the closing Harness (another live Harness in the process keeps its resources), runs also when the Harness fails, leaves the persisted provider session IDs for a reopened Harness, and a failing cleanup is reported as a `host_error` for `models` without stopping Storage from closing. <!-- fix: 8e2123081c -->

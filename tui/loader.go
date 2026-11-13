@@ -65,6 +65,38 @@ func (l *Loader) requestRender() {
 	}
 }
 
+// loaderStepFrameDelay is how long the frame for an animation step may wait for a frame drawn for something else (Pi-Bolt loader.ts STEP_FRAME_DELAY_MS): while a reply streams in, frames are drawn every few dozen milliseconds and a step drawn by one of them needs no frame of its own. Shorter than a step, so that each is drawn.
+const loaderStepFrameDelay = 40 * time.Millisecond // pig divergence (D619)
+
+// StepFrameDelay is how long the frame for an animation step of the given interval may wait for another frame: min(40 ms, interval/2), Pi-Bolt's `Math.min(STEP_FRAME_DELAY_MS, intervalMs / 2)`.
+func StepFrameDelay(interval time.Duration) time.Duration {
+	//portlint:allow numbers a time.Duration is whole nanoseconds, so the half is exact to the nanosecond; Pi-Bolt halves a millisecond float
+	return min(loaderStepFrameDelay, interval/2)
+}
+
+// FrameWithinRequester is a TUI that draws a change within a time rather than at once (Pi-Bolt's optional TUI.requestRenderWithin).
+type FrameWithinRequester interface {
+	RequestRenderWithin(delay time.Duration)
+}
+
+// FrameWithinCanceler is a TUI that can drop the frame RequestRenderWithin asked for.
+type FrameWithinCanceler interface {
+	CancelRenderWithin()
+}
+
+// requestStepRender asks the Loader's TUI for the frame of an animation step: within StepFrameDelay when the TUI draws changes within a time, at once otherwise (Pi-Bolt loader.ts updateDisplay(frameDelayMs)). The caller must not hold l.mu.
+func (l *Loader) requestStepRender(interval time.Duration) {
+	if l.ui == nil {
+		return
+	}
+	// pig divergence (D619): Pi's loader.ts asks for the frame of a step at once (`ui.requestRender()`).
+	if ui, ok := l.ui.(FrameWithinRequester); ok {
+		ui.RequestRenderWithin(StepFrameDelay(interval))
+		return
+	}
+	l.ui.RequestRender()
+}
+
 // Render produces ["", paddedLine] matching upstream Loader.render(width)
 // which returns ["", ...super.render(width)] where super is Text(paddingX=1).
 func (l *Loader) Render(width int) []string {
@@ -146,7 +178,7 @@ func (l *Loader) restartAnimation() {
 				l.updateDisplay()
 				l.invalidatable.Invalidate()
 				l.mu.Unlock()
-				l.requestRender()
+				l.requestStepRender(interval)
 			}
 		}
 	}()
@@ -256,6 +288,14 @@ func (l *Loader) Tick() {
 	l.Frame++
 	l.mu.Unlock()
 	l.Invalidate()
+}
+
+// TickStep advances the spinner one frame for an owner that draws the step itself: it asks its TUI for no frame, where Tick asks for one at once through Invalidate (D619).
+func (l *Loader) TickStep() {
+	l.mu.Lock()
+	l.Frame++
+	l.Text.Invalidate()
+	l.mu.Unlock()
 }
 
 func (l *Loader) renderedIndicator() string {

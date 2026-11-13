@@ -1,6 +1,6 @@
 # Quickstart
 
-PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview. To build from source instead, follow the steps below. Pi 1.5.0 documents its own install routes in [Pi's quickstart](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/quickstart.md).
+PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview. To build from source instead, follow the steps below. Pi 1.5.2 documents its own install routes in [Pi's quickstart](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/quickstart.md).
 
 If you have not used a terminal before, start with [Your first ten minutes](/docs/latest/first-run). It explains each step.
 
@@ -19,7 +19,7 @@ PiG doesn't run on iPhone, iPad, or iSH. Use `ssh` to connect to a computer that
 
 ## Requirements
 
-You need these tools only to build PiG from source. Build the `pig` executable with Go 1.27.3. Go 1.27 release binaries for macOS require macOS 13 or later.
+You need these tools only to build PiG from source. Build the `pig` executable with Go 1.27.4. Go 1.27 release binaries for macOS require macOS 13 or later.
 
 The complete verification suite also uses:
 

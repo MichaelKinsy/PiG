@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"unicode/utf8"
 	"unsafe"
+
+	"github.com/MichaelKinsy/PiG/internal/jsparity"
 )
 
 // A request re-sends the whole conversation, so encoding every earlier tool result's text again on every turn made a long session's per-turn CPU grow with its history. The completions request encodes each large message string once and splices the cached encoding into the body. The bytes are identical to what marshalRequestBody (JSON.stringify) of the same request produces.
@@ -31,6 +33,9 @@ const (
 	// subagent that alternates with the first warm.
 	// pig additive (D112): see requestSpliceMinBytes.
 	requestSpliceKeepRequests = 2
+	// requestSpliceUnsentBytes bounds the bytes of entries that a tool result's encoding made (QuotedPlainText, a session entry) and no request build has used yet. The request that follows a read uses them at once, so the bound is only a process that reads and never sends: it keeps this much and not requestSpliceCacheBytes.
+	// pig additive (D112): see requestSpliceMinBytes.
+	requestSpliceUnsentBytes = 4 << 20
 )
 
 type quotedStringKey struct {
@@ -46,8 +51,15 @@ type quotedString struct {
 	// copyBytes is the length of every string in copies.
 	copyBytes int
 	quoted    []byte
+	// plain is set when quoted is also what encoding/json writes for source with HTML escaping off: the two forms differ only for U+2028 and
+	// U+2029, which JSON.stringify writes as they are, and for text that is not UTF-8, which the cache never holds. A tool's structured content
+	// is written in the encoding/json form, so it can be this very slice when plain is set.
+	plain bool
 	// gen is the request build that last used the entry.
 	gen uint64
+	// pending is the entry's place in the cache's unsent list, nil once a request build used it; pendingBytes is what it counts there.
+	pending      *list.Element
+	pendingBytes int
 }
 
 // quotedStringCache remembers the JSON encoding of large strings. The entry keeps its source string and a hit requires equal content, so a hash collision costs an encoding and never serves another string's bytes. Eviction is least recently used and constant time, so a working set larger than the limit costs an encoding per string, as the uncached path does, and never a scan of the cache. An entry that requestSpliceKeepRequests request builds in a row did not use is evicted too, so history a session no longer sends does not stay until the limit pushes it out.
@@ -64,7 +76,10 @@ type quotedStringCache struct {
 	messages *encodedMessageCache
 	recency  list.List // front is the most recently used *quotedString
 	held     int
-	misses   int
+	// pending lists, newest first, the recency elements of the unsent entries: those a caller that is not a request build made and no request build has used. heldUnsent is their bytes; trimUnsent holds it to requestSpliceUnsentBytes.
+	pending    list.List
+	heldUnsent int
+	misses     int
 	// tokens is the number of large strings the last request build spliced, which sizes the next build's list of them.
 	tokens atomic.Int64
 	// gen counts request builds (beginRequest). A use stamps the entry with it, and recency moves the entry to the front, so the stamps
@@ -91,33 +106,70 @@ func (entry *quotedString) size() int { return len(entry.source) + entry.copyByt
 
 // quote returns the JSON.stringify encoding of s, as marshalRequestBody writes it.
 func (c *quotedStringCache) quote(s string) []byte {
-	if quoted := c.sourced(s); quoted != nil {
-		return quoted
+	if entry := c.sourcedEntry(s, false); entry != nil {
+		return entry.quoted
 	}
 	key := quotedStringKey{len(s), maphash.String(c.seed, s)}
-	if quoted := c.lookup(key, s); quoted != nil {
-		return quoted
+	if entry := c.lookupEntry(key, s, false); entry != nil {
+		return entry.quoted
 	}
-	return c.encode(key, s)
+	return c.encode(key, s, utf8.ValidString(s), false).quoted
 }
 
 // quoteValid is quote for a string that may not be UTF-8: it reports false, and caches nothing, for one that is not. A string the cache holds was checked when it was encoded, so a hit checks nothing.
 func (c *quotedStringCache) quoteValid(s string) ([]byte, bool) {
-	if quoted := c.sourced(s); quoted != nil {
-		return quoted, true
+	if entry := c.quoteValidEntry(s, false); entry != nil {
+		return entry.quoted, true
+	}
+	return nil, false
+}
+
+// quoteValidEarly is quoteValid for a caller that is not a request build (the session entry of a tool result): see quoteValidEntry.
+func (c *quotedStringCache) quoteValidEarly(s string) ([]byte, bool) {
+	if entry := c.quoteValidEntry(s, true); entry != nil {
+		return entry.quoted, true
+	}
+	return nil, false
+}
+
+// quoteValidEntry is quoteValid's entry, nil for a string that is not UTF-8. An entry's quoted and plain never change, so the caller reads them without the lock. early marks a caller that is not a request build: an entry it makes is unsent until a request build uses it, and the unsent entries are held to requestSpliceUnsentBytes, oldest forgotten first, so a process that reads files and sends no request keeps a few MiB and not the cache's whole limit. A hit by a request build makes the entry sent.
+func (c *quotedStringCache) quoteValidEntry(s string, early bool) *quotedString {
+	if entry := c.sourcedEntry(s, early); entry != nil {
+		return entry
 	}
 	key := quotedStringKey{len(s), maphash.String(c.seed, s)}
-	if quoted := c.lookup(key, s); quoted != nil {
-		return quoted, true
+	if entry := c.lookupEntry(key, s, early); entry != nil {
+		return entry
 	}
 	if !utf8.ValidString(s) {
+		return nil
+	}
+	return c.encode(key, s, true, early)
+}
+
+// quotePlain is the encoding of s that JSON.stringify and encoding/json (HTML escaping off) both write, for a string of at least requestSpliceMinBytes
+// that is UTF-8 and holds neither U+2028 nor U+2029; it reports false, and caches nothing it does not need, for any other. The slice is the
+// cache's own and is not to be written to.
+func (c *quotedStringCache) quotePlain(s string) ([]byte, bool) {
+	if len(s) < requestSpliceMinBytes {
 		return nil, false
 	}
-	return c.encode(key, s), true
+	if entry := c.quoteValidEntry(s, true); entry != nil && entry.plain {
+		return entry.quoted[:len(entry.quoted):len(entry.quoted)], true
+	}
+	return nil, false
 }
 
 // sourced returns the encoding of the entry whose source is s itself, found by its identity, or nil.
 func (c *quotedStringCache) sourced(s string) []byte {
+	if entry := c.sourcedEntry(s, false); entry != nil {
+		return entry.quoted
+	}
+	return nil
+}
+
+// sourcedEntry is the entry whose source is s itself, found by its identity, or nil.
+func (c *quotedStringCache) sourcedEntry(s string, early bool) *quotedString {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	element, ok := c.bySource[identityOf(s)]
@@ -127,7 +179,10 @@ func (c *quotedStringCache) sourced(s string) []byte {
 	entry := element.Value.(*quotedString)
 	c.recency.MoveToFront(element)
 	entry.gen = c.gen
-	return entry.quoted
+	if !early {
+		c.markSent(entry)
+	}
+	return entry
 }
 
 // known returns the encoding of s when the cache holds this very string.
@@ -136,8 +191,8 @@ func (c *quotedStringCache) known(s string) ([]byte, bool) {
 	return quoted, quoted != nil
 }
 
-// lookup returns the encoding of the entry with key whose source equals s, or nil. A hit by an equal copy at another address makes the entry remember that address too, so the next request that re-sends the copy finds it by identity, and so does each other copy the conversation holds.
-func (c *quotedStringCache) lookup(key quotedStringKey, s string) []byte {
+// lookupEntry returns the entry with key whose source equals s, or nil. A hit by an equal copy at another address makes the entry remember that address too, so the next request that re-sends the copy finds it by identity, and so does each other copy the conversation holds.
+func (c *quotedStringCache) lookupEntry(key quotedStringKey, s string, early bool) *quotedString {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	element, ok := c.entries[key]
@@ -150,10 +205,14 @@ func (c *quotedStringCache) lookup(key quotedStringKey, s string) []byte {
 	}
 	c.recency.MoveToFront(element)
 	entry.gen = c.gen
+	if early {
+		return entry
+	}
+	c.markSent(entry)
 	if _, indexed := c.bySource[identityOf(s)]; !indexed {
 		c.addCopy(element, entry, s)
 	}
-	return entry.quoted
+	return entry
 }
 
 // addCopy makes the address of s, which equals entry's source, an address the entry finds by identity. The entry remembers requestSpliceMaxCopies of them: the oldest is forgotten for the next. c.mu must be held.
@@ -179,11 +238,18 @@ func (c *quotedStringCache) addCopy(element *list.Element, entry *quotedString, 
 	}
 }
 
-// encode encodes s, which no entry holds, and keeps the encoding.
-func (c *quotedStringCache) encode(key quotedStringKey, s string) []byte {
-	quoted, err := marshalRequestBody(s)
-	if err != nil {
-		panic("ai: encoding a string failed: " + err.Error())
+// encode encodes s, which no entry holds, and keeps the encoding; valid reports that s is UTF-8, early that the caller is not a request build (quoteValidEntry).
+func (c *quotedStringCache) encode(key quotedStringKey, s string, valid, early bool) *quotedString {
+	var quoted []byte
+	plain := false
+	if valid {
+		quoted = quoteValidText(s)
+		plain = !hasLineSeparator(quoted)
+	} else {
+		var err error
+		if quoted, err = marshalRequestBody(s); err != nil {
+			panic("ai: encoding a string failed: " + err.Error())
+		}
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -191,16 +257,21 @@ func (c *quotedStringCache) encode(key quotedStringKey, s string) []byte {
 	if previous, ok := c.entries[key]; ok {
 		c.forget(previous)
 	}
-	entry := &quotedString{key: key, source: s, quoted: quoted, gen: c.gen}
+	entry := &quotedString{key: key, source: s, quoted: quoted, plain: plain, gen: c.gen}
 	element := c.recency.PushFront(entry)
 	c.entries[key] = element
 	c.bySource[identityOf(s)] = element
 	c.byData[&quoted[0]] = element
 	c.held += entry.size()
+	if early {
+		entry.pending, entry.pendingBytes = c.pending.PushFront(element), entry.size()
+		c.heldUnsent += entry.pendingBytes
+		c.trimUnsent()
+	}
 	for c.held > c.limit && c.recency.Len() > 1 {
 		c.forget(c.recency.Back())
 	}
-	return quoted
+	return entry
 }
 
 // beginRequest starts a request build: it forgets the entries that the last requestSpliceKeepRequests builds did not use. They are at the
@@ -226,7 +297,8 @@ func (c *quotedStringCache) release() {
 	c.bySource = map[stringIdentity]*list.Element{}
 	c.byData = map[*byte]*list.Element{}
 	c.recency.Init()
-	c.held = 0
+	c.pending.Init()
+	c.held, c.heldUnsent = 0, 0
 	c.mu.Unlock()
 	if c.messages != nil {
 		c.messages.release()
@@ -239,6 +311,24 @@ func (c *quotedStringCache) forget(element *list.Element) {
 	c.unindexSource(entry, element)
 	delete(c.byData, &entry.quoted[0])
 	c.held -= entry.size()
+	c.markSent(entry)
+}
+
+// markSent takes entry out of the unsent entries: a request build used it, or it is forgotten. c.mu must be held.
+func (c *quotedStringCache) markSent(entry *quotedString) {
+	if entry.pending == nil {
+		return
+	}
+	c.pending.Remove(entry.pending)
+	c.heldUnsent -= entry.pendingBytes
+	entry.pending, entry.pendingBytes = nil, 0
+}
+
+// trimUnsent forgets the oldest unsent entries while they hold more than requestSpliceUnsentBytes, keeping the newest. c.mu must be held.
+func (c *quotedStringCache) trimUnsent() {
+	for c.heldUnsent > requestSpliceUnsentBytes && c.pending.Len() > 1 {
+		c.forget(c.pending.Back().Value.(*list.Element))
+	}
 }
 
 // unindexSource removes the identity index of entry's source and copies, unless an index names another entry.
@@ -354,3 +444,50 @@ func newSpliceNonce() string {
 	}
 	return "pig-splice-" + hex.EncodeToString(raw[:])
 }
+
+// quoteScratch holds the buffers quoteValidText encodes into before it copies the encoding out at its exact length: a cached encoding lives as
+// long as the conversation holds its text, so it holds no spare room.
+var quoteScratch sync.Pool
+
+// maxPooledQuoteScratch bounds the buffer kept between encodings (golang/go#23199); a longer text encodes into a buffer that is dropped.
+// pig additive (D112): see requestSpliceMinBytes.
+const maxPooledQuoteScratch = 256 << 10
+
+// quoteValidText is marshalRequestBody(s) for a string that is UTF-8: JSON.stringify's text, with every character but the quote, the backslash
+// and the C0 controls as it is. The result is a new slice of exactly its length.
+func quoteValidText(s string) []byte {
+	buffer, _ := quoteScratch.Get().(*[]byte)
+	if buffer == nil {
+		buffer = new([]byte)
+	}
+	encoded := jsparity.AppendString((*buffer)[:0], s)
+	quoted := bytes.Clone(encoded)
+	if cap(encoded) <= maxPooledQuoteScratch {
+		*buffer = encoded[:0]
+		quoteScratch.Put(buffer)
+	}
+	return quoted
+}
+
+// hasLineSeparator reports whether the JSON text holds U+2028 or U+2029, which JSON.stringify writes as they are and encoding/json escapes.
+func hasLineSeparator(quoted []byte) bool {
+	for rest := quoted; ; {
+		at := bytes.IndexByte(rest, 0xe2)
+		if at < 0 || at+2 >= len(rest) {
+			return false
+		}
+		if rest[at+1] == 0x80 && (rest[at+2] == 0xa8 || rest[at+2] == 0xa9) {
+			return true
+		}
+		rest = rest[at+1:]
+	}
+}
+
+// QuotedPlainText returns the JSON encoding, quotes included, of a text that the session's entries, the request and a tool's structured content
+// all write: the bytes JSON.stringify writes and encoding/json writes with HTML escaping off, which differ only for U+2028 and U+2029 and for
+// text that is not UTF-8. It is the encoding the request cache keeps, made at the first ask and found again by the text's identity, so a tool
+// that hands its result to the agent asks for it once and the session entry and the request that follow find it made. It reports false for a
+// text shorter than requestSpliceMinBytes and for one of the two kinds that differ. The slice is the cache's own: it must not be written to, and it
+// has no spare room to append into.
+// pig additive (D112): see requestSpliceMinBytes.
+func QuotedPlainText(text string) ([]byte, bool) { return requestStrings.quotePlain(text) }

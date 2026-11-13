@@ -28,6 +28,9 @@ func streamWriteCard(t *testing.T, content string, step int) (collapsed, expande
 	for end := step; end < len(content); end += step {
 		draw(content[:end], false)
 	}
+	// The warm-ups run on the card's worker: the call completes after the last one, as a stream whose last chunk takes longer
+	// than a warm-up does.
+	builtInState(context).tasks.Wait()
 	collapsed = draw(content, true)
 	context.Expanded = true
 	expanded = draw(content, true)
@@ -60,7 +63,7 @@ func TestWarmedWriteCardDrawsTheLinesOfAWholeRun(t *testing.T) {
 
 	forgetHighlights(t)
 	gotCollapsed, gotExpanded, warm := streamWriteCard(t, content, 1000)
-	if warm.writeWarmOff || warm.writeWarmed < len(content)-writeWarmStep(len(content)) {
+	if warm.writeWarmOff || warm.writeWarmed < len(content)-writeWarmStep {
 		t.Fatalf("the warm-ups stopped at %d of %d bytes (off: %v)", warm.writeWarmed, len(content), warm.writeWarmOff)
 	}
 	if !slices.Equal(gotCollapsed, wantCollapsed) {

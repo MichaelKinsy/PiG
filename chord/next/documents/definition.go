@@ -58,6 +58,10 @@ type CheckpointInfo struct {
 // a delta.
 type CheckpointWhen func(value *JsonObject, ops []delta.Op, info CheckpointInfo) bool
 
+// KeyedBy is what a definition is keyed by: nothing (false or nil, a singleton), string keys (true) or a
+// *contracts.HostKind (addresses of that kind).
+type KeyedBy = any
+
 // StateOptions is what DefineState takes.
 type StateOptions struct {
 	Schema  contracts.Schema
@@ -66,15 +70,19 @@ type StateOptions struct {
 	Initial func() *JsonObject
 	// Migrate maps a value of an older version `from` to this version's shape; pure. Required to read older values.
 	Migrate func(old *JsonObject, from int) (*JsonObject, error)
-	Keyed   bool
+	// Keyed is what the definition is keyed by (Pi's `KeyedBy`): nothing (false or nil, a singleton), string keys (true)
+	// or a *contracts.HostKind, whose addresses key it. Any other value is refused by DefineState.
+	Keyed KeyedBy
 	// Persist stores the document in the host's store; only in `local` types with empty params (P3).
 	Persist bool
 	// CheckpointWhen is called once per commit per changed document; creations and version changes always store a base.
 	CheckpointWhen CheckpointWhen
 }
 
-// DefineState declares a document: a singleton per object, or with Keyed many per object, each by a string key; with
-// Persist stored in the host's store. Its name is a restricted name (lowercase `[a-z0-9@/._~-]`).
+// DefineState declares a document: a singleton per object, or with Keyed true many per object, each by a string key, or
+// with Keyed a host kind many per object, each by an address of that kind, belonging to that host (the store exports,
+// imports and deletes it with the host's data); with Persist stored in the host's store. Its name is a restricted name
+// (lowercase `[a-z0-9@/._~-]`).
 func DefineState(name string, options StateOptions) (*StateDefinition, error) {
 	if err := contracts.CheckName(name, "A state name"); err != nil {
 		return nil, err
@@ -89,7 +97,10 @@ type StateDefinition struct {
 	Name    string
 	Schema  contracts.Schema
 	Version int
-	Keyed   bool
+	// Keyed is whether it is keyed: by string keys or by addresses.
+	Keyed bool
+	// Host is the host kind whose addresses key it; nil for string keys and singletons.
+	Host    *contracts.HostKind
 	Persist bool
 	// Fingerprint is `hash64` of the schema's normal form (descriptions and titles ignored), computed once: the same
 	// version with another fingerprint is a schema changed without a version bump.
@@ -115,11 +126,32 @@ func newStateDefinition(name string, options StateOptions) (*StateDefinition, er
 	if checkpoint == nil {
 		checkpoint = neverCheckpoint
 	}
+	keyed, host, err := keyedBy(options.Keyed)
+	if err != nil {
+		return nil, err
+	}
 	return &StateDefinition{
-		Name: name, Schema: options.Schema, Version: options.Version, Keyed: options.Keyed, Persist: options.Persist,
+		Name: name, Schema: options.Schema, Version: options.Version, Keyed: keyed, Host: host, Persist: options.Persist,
 		Fingerprint: fingerprint, snapshot: snapshot, initial: options.Initial, migrate: options.Migrate,
 		checkpoint: checkpoint,
 	}, nil
+}
+
+// keyedBy reads a definition's `keyed` option: false or nil (a singleton), true (string keys) or a declared host kind
+// (declaration policy: only a declared host kind keys documents, its params decode the keys).
+func keyedBy(keyed KeyedBy) (bool, *contracts.HostKind, error) {
+	switch typed := keyed.(type) {
+	case nil:
+		return false, nil, nil
+	case bool:
+		return typed, nil, nil
+	case *contracts.HostKind:
+		if _, err := contracts.KindParams(typed); err != nil {
+			return false, nil, err
+		}
+		return true, typed, nil
+	}
+	return false, nil, fmt.Errorf("a state's keyed is a boolean or a host kind, not %T", keyed)
 }
 
 // CheckpointWhen reports whether a persisted document's change is stored as a new base (its `checkpointWhen`); never

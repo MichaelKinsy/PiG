@@ -1,5 +1,9 @@
 import {
   AssistantMessageEventStream,
+  CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY,
+  CACHE_WARMING_MAX_AGE_MS,
+  CACHE_WARMING_MAX_IDLE_AGE_MS,
+  CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   StreamingJsonParser,
@@ -8,12 +12,17 @@ import {
   cleanupSessionResources,
   createAssistantMessageEventStream,
   createFauxCore,
+  evaluateCacheWarming,
   fauxAssistantMessage,
   fauxProvider,
   fauxText,
   fauxThinking,
   fauxToolCall,
+  getCacheWarmingDelayMs,
+  getCacheWarmingRequestOptions,
   getOverflowPatterns,
+  getPromptCacheTtlMs,
+  isCacheWarmingReplayable,
   isContextOverflow,
   isRecoverableLength,
   isRetryableAssistantError,
@@ -29,7 +38,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-LQVC3VYH.js";
+} from "./chunk-K4DZQMCL.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
@@ -53,11 +62,11 @@ import {
   openAICodexResponsesApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-JIT7QO52.js";
+} from "./chunk-OEWASCFU.js";
 import {
   anthropicMessagesApi,
   openAICompletionsApi
-} from "./chunk-X3XF7POE.js";
+} from "./chunk-KPOW7NYG.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -109,7 +118,7 @@ import {
   toToolDeclaration,
   withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-DQ3IPTWT.js";
+} from "./chunk-TG7FIA7M.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -427,6 +436,10 @@ export {
   ANTHROPIC_SERVICE_ACCOUNT_ID_ENV,
   ANTHROPIC_WORKSPACE_ID_ENV,
   AssistantMessageEventStream,
+  CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY,
+  CACHE_WARMING_MAX_AGE_MS,
+  CACHE_WARMING_MAX_IDLE_AGE_MS,
+  CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   InMemoryCredentialStore,
@@ -457,6 +470,7 @@ export {
   declarationsEqual,
   defaultProviderAuthContext,
   envApiKeyAuth,
+  evaluateCacheWarming,
   extractDiagnosticError,
   fauxAssistantMessage,
   fauxProvider,
@@ -471,6 +485,8 @@ export {
   getApiProvider,
   getApiProviders,
   getAttributionHeaders,
+  getCacheWarmingDelayMs,
+  getCacheWarmingRequestOptions,
   getClientVersion,
   getCurrentSystemMessage,
   getCurrentSystemPrompt,
@@ -488,6 +504,7 @@ export {
   getModels,
   getOpenCodeSessionHeaders,
   getOverflowPatterns,
+  getPromptCacheTtlMs,
   getProviders,
   getSupportedThinkingLevels,
   getSystemMessageText,
@@ -497,6 +514,7 @@ export {
   hasApi,
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
+  isCacheWarmingReplayable,
   isContextOverflow,
   isModelType,
   isRecoverableLength,

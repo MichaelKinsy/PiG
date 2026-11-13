@@ -424,11 +424,11 @@ type matcher struct {
 	nocase     bool
 }
 
-func newMatcher(pattern string, nocase, dot bool) *matcher {
+func newMatcher(pattern string, nocase, dot, noext bool) *matcher {
 	p := []rune(pattern)
 	// a pattern that is only an empty extglob is a literal string, except for `!()`, which matches any non-empty string
 	literal := len(p) == 3 && indexRune("?*+@", p[0]) >= 0 && p[1] == '(' && p[2] == ')'
-	toks := tokenize(p, nocase, literal)
+	toks := tokenize(p, nocase, noext || literal)
 	alts := build(toks, pair(toks), 0, len(toks), true)
 	items := alts[0]
 	c := &compiler{id: 1, nocase: nocase, match: &node{kind: nodeMatch}}

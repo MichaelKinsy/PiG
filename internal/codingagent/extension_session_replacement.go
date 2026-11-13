@@ -3,6 +3,7 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
@@ -26,29 +27,31 @@ type sessionRebinder interface {
 // Statuses of Pi's handleResumeSession (interactive-mode.ts:5590-5626).
 const (
 	statusResumed         = "Resumed session"
-	statusResumedInCWD    = "Resumed session in current cwd"
 	statusResumeCancelled = "Resume cancelled"
 )
 
-// resumeHost is where a resume runs. The /resume command runs on the owner loop, so its replacement is awaited while that loop serves extension dialogs and its confirmation is a stacked dialog that the same loop awaits (interactive-mode.ts promptForMissingSessionCwd). An extension's ctx.switchSession runs on the extension host's call goroutine, so its replacement runs there and its confirmation is an extension dialog.
+// resumeHost is where a resume runs. The /resume command runs on the owner loop, so its replacement is awaited while that loop serves extension dialogs and its missing-cwd selector is a stacked dialog that the same loop awaits (interactive-mode.ts promptForMissingSessionCwd). An extension's ctx.switchSession runs on the extension host's call goroutine, so its replacement runs there and its selector is an extension dialog.
 type resumeHost struct {
-	await   func(ctx context.Context, work func(context.Context) error) error
-	confirm func(ctx context.Context, title, message string) bool
+	await func(ctx context.Context, work func(context.Context) error) error
+	// selectOption is showExtensionSelector: the chosen option, or ok false when it was dismissed.
+	selectOption func(ctx context.Context, title string, options []string) (string, bool)
 }
 
 func (m *InteractiveMode) commandResumeHost() resumeHost {
 	return resumeHost{
-		await:   m.awaitExtensionUI,
-		confirm: m.askConfirm,
+		await: m.awaitExtensionUI,
+		selectOption: func(ctx context.Context, title string, options []string) (string, bool) {
+			return m.askSelectorCommit(ctx, title, options, nil)
+		},
 	}
 }
 
 func (m *InteractiveMode) extensionResumeHost() resumeHost {
 	return resumeHost{
 		await: func(ctx context.Context, work func(context.Context) error) error { return work(ctx) },
-		confirm: func(ctx context.Context, title, message string) bool {
-			confirmed, err := (&ExtUIContext{m: m}).Confirm(ctx, title, message, extension.ExtensionUIDialogOptions{})
-			return err == nil && confirmed
+		selectOption: func(ctx context.Context, title string, options []string) (string, bool) {
+			choice, err := (&ExtUIContext{m: m}).Select(ctx, title, options, extension.ExtensionUIDialogOptions{})
+			return choice, err == nil
 		},
 	}
 }
@@ -58,33 +61,74 @@ func (m *InteractiveMode) projectTrustUI(cwd string) extension.ProjectTrustConte
 	return extension.ProjectTrustContext{Cwd: cwd, Mode: extension.ModeTUI, HasUI: true, UI: &ExtUIContext{m: m}}
 }
 
-// resumeThroughRuntime is Pi's handleResumeSession: the switch prompts for trust in the destination project, and a missing stored cwd offers the current directory. It returns the status Pi shows: empty when a session_before_switch handler cancelled, statusResumeCancelled when the user declined the current directory, statusResumedInCWD after a retry with it, statusResumed otherwise.
+// resumeThroughRuntime is Pi's handleResumeSession: the switch prompts for trust in the destination project, and a missing stored cwd offers the current directory. A missing stored cwd offers Continue, Fork or Cancel (promptForMissingSessionCwd). It returns the status Pi shows: empty when a session_before_switch handler cancelled, statusResumeCancelled when the user cancelled the prompt, "Resumed session in <cwd>" after Continue, "Forked into new session <id> in <cwd>" after Fork, statusResumed otherwise.
 func (m *InteractiveMode) resumeThroughRuntime(ctx context.Context, host resumeHost, path string, options *extension.SwitchSessionOptions) (extension.CancelledResult, string, error) {
-	rt := m.runtimeHost
-	run := func(cwdOverride string) (extension.CancelledResult, error) {
-		var result extension.CancelledResult
-		err := host.await(ctx, func(ctx context.Context) error {
-			var err error
-			result, err = rt.SwitchSession(ctx, path, cwdOverride, m.projectTrustUI, options)
-			return err
-		})
-		return result, err
-	}
-	result, err := run("")
+	result, err := m.switchThroughRuntime(ctx, host, path, "", options)
 	if missing, ok := errors.AsType[*MissingSessionCwdError](err); ok {
-		if !host.confirm(ctx, "Session cwd not found", FormatMissingSessionCwdPrompt(missing.Issue)) {
+		switch m.promptForMissingSessionCwd(ctx, host, missing.Issue) {
+		case MissingSessionCwdContinue:
+			result, err = m.switchThroughRuntime(ctx, host, path, missing.Issue.FallbackCwd, options)
+			if err != nil || result.Cancelled {
+				return result, "", err
+			}
+			return result, "Resumed session in " + missing.Issue.FallbackCwd, nil
+		case MissingSessionCwdFork:
+			return m.switchToForkedSession(ctx, host, path, missing.Issue.FallbackCwd, options)
+		default:
 			return extension.CancelledResult{Cancelled: true}, statusResumeCancelled, nil
 		}
-		result, err = run(missing.Issue.FallbackCwd)
-		if err != nil || result.Cancelled {
-			return result, "", err
-		}
-		return result, statusResumedInCWD, nil
 	}
 	if err != nil || result.Cancelled {
 		return result, "", err
 	}
 	return result, statusResumed, nil
+}
+
+// switchThroughRuntime is runtimeHost.switchSession with the project trust UI of the destination.
+func (m *InteractiveMode) switchThroughRuntime(ctx context.Context, host resumeHost, path, cwdOverride string, options *extension.SwitchSessionOptions) (extension.CancelledResult, error) {
+	var result extension.CancelledResult
+	err := host.await(ctx, func(ctx context.Context) error {
+		var err error
+		result, err = m.runtimeHost.SwitchSession(ctx, path, cwdOverride, m.projectTrustUI, options)
+		return err
+	})
+	return result, err
+}
+
+// promptForMissingSessionCwd is Pi's promptForMissingSessionCwd: the choice, or "" when the user cancelled.
+func (m *InteractiveMode) promptForMissingSessionCwd(ctx context.Context, host resumeHost, issue SessionCwdIssue) MissingSessionCwdChoice {
+	options := GetMissingSessionCwdOptions(issue)
+	labels := make([]string, len(options))
+	for i, option := range options {
+		labels[i] = option.Label
+	}
+	label, ok := host.selectOption(ctx, FormatMissingSessionCwdPrompt(issue), labels)
+	if !ok {
+		return ""
+	}
+	for _, option := range options {
+		if option.Label == label {
+			return option.Value
+		}
+	}
+	return ""
+}
+
+// switchToForkedSession is Pi's switchToForkedSession: fork a session whose stored cwd is gone into cwd and switch to the fork, like `--session <id>` from another project (Pi #11060). A switch an extension vetoed drops the fork, so cancelling leaves no copy behind.
+func (m *InteractiveMode) switchToForkedSession(ctx context.Context, host resumeHost, sourcePath, cwd string, options *extension.SwitchSessionOptions) (extension.CancelledResult, string, error) {
+	fork, err := NewSessionManagerWithDir(cwd, m.currentSession().GetSessionDir()).ForkFromFile(sourcePath)
+	if err != nil {
+		return extension.CancelledResult{}, "", err
+	}
+	result, err := m.switchThroughRuntime(ctx, host, fork.Path(), "", options)
+	if err != nil {
+		return result, "", err
+	}
+	if result.Cancelled {
+		_ = os.Remove(fork.Path())
+		return result, "", nil
+	}
+	return result, "Forked into new session " + fork.ID() + " in " + cwd, nil
 }
 
 // replaceThroughRuntime replaces the Session through the runtime host, as Pi's /new, /resume, /fork and /clone do with runtimeHost, while servicing extension dialogs and event barriers on the input loop.

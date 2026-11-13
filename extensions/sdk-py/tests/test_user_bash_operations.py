@@ -74,3 +74,23 @@ def test_replies_without_an_exec_function_name_no_handle():
     assert ext._bash_operations._objects == {}
     mapping = {"operations": {"exec": lambda command, cwd, options: 0}}
     assert pig_sdk.user_bash._user_bash_operations_reply(ext._bash_operations, mapping) == {"operations": {"handle": "bash-1"}}
+
+
+def test_only_the_local_backends_timeout_keeps_the_shells_exit_on_the_wire():
+    # Pi's bash tool matches ShellTimeoutError by class (bash.ts:408-411): the error the local operations raised, raised again unchanged, answers with shellExit; a new error with
+    # its message answers with the message alone.
+    backend = pig_sdk.HostCallError("timeout:2")
+    backend._shell_exit = {"exitCode": 7, "afterSeconds": 0.5}
+
+    def exec_(command, cwd, options):
+        raise backend if command == "same" else RuntimeError(str(backend))
+
+    ext = pig_sdk.Extension("user-bash")
+    ext.on_event("user_bash", lambda ctx, data: {"operations": {"exec": exec_}})
+    with connected_extension(ext) as (send, receive):
+        send({"type": "request", "id": "u1", "request": {"method": "event", "event": "user_bash", "handler_id": 1, "args": {"type": "user_bash", "command": "x", "excludeFromContext": False, "cwd": "/w"}}})
+        assert receive("response")["response"]["result"] == {"operations": {"handle": "bash-1"}}
+        _, answer = run_exec(send, receive, "e1", "same")
+        assert answer["error"] == {"message": "timeout:2", "shellExit": {"exitCode": 7, "afterSeconds": 0.5}}
+        _, answer = run_exec(send, receive, "e2", "wrapped")
+        assert answer["error"] == {"message": "timeout:2"}

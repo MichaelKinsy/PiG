@@ -1188,7 +1188,7 @@ export class Editor {
                     const x = Number(idGroup);
                     if (x <= targetId)
                         return fullMatch;
-                    return `[paste #${x - 1}${suffixGroup}]`;
+                    return `[paste #${x - 1}${suffixGroup ?? ""}]`;
                 }));
             }
             line = this.state.lines[this.state.cursorLine] || "";

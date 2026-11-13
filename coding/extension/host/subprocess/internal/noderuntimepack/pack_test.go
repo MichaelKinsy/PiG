@@ -5,9 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
+
+// libraryEncode writes a block with the library's best level: these tests compare no committed bytes, so they need no zstd command.
+func libraryEncode(raw []byte) ([]byte, error) { return zstdblob.EncodeLibrary(raw), nil }
 
 func sampleFiles() []File {
 	random := rand.New(rand.NewPCG(1, 2))
@@ -47,7 +54,7 @@ func extractAll(t *testing.T, archive []byte) map[string][]byte {
 // Every file comes back under its own name with its own bytes, including empty files and names longer than a tar header's name field.
 func TestPackRoundTripsEveryFile(t *testing.T) {
 	files := sampleFiles()
-	archive, err := Pack(files)
+	archive, err := Pack(files, libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,11 +71,11 @@ func TestPackRoundTripsEveryFile(t *testing.T) {
 
 // The generated archive is committed, so the same files must always give the same bytes.
 func TestPackIsDeterministic(t *testing.T) {
-	first, err := Pack(sampleFiles())
+	first, err := Pack(sampleFiles(), libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := Pack(sampleFiles())
+	second, err := Pack(sampleFiles(), libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,11 +91,11 @@ func TestPackStoresARepeatedFileAlmostForFree(t *testing.T) {
 	for i := range data {
 		data[i] = byte(random.UintN(256))
 	}
-	one, err := Pack([]File{{"runtime-node/shims/p/a.js", data}})
+	one, err := Pack([]File{{"runtime-node/shims/p/a.js", data}}, libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
-	two, err := Pack([]File{{"runtime-node/shims/p/a.js", data}, {"runtime-node/shims/p/b.js", data}})
+	two, err := Pack([]File{{"runtime-node/shims/p/a.js", data}, {"runtime-node/shims/p/b.js", data}}, libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +127,7 @@ func TestPackNeverSplitsAPackageAcrossBlocks(t *testing.T) {
 		files = append(files, File{fmt.Sprintf("runtime-node/shims/big/f%d.js", i), bytes.Repeat([]byte{byte(i)}, 1<<20)})
 	}
 	files = append(files, File{"runtime-node/shims/next/a.js", []byte("a")})
-	archive, err := Pack(files)
+	archive, err := Pack(files, libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +142,7 @@ func TestPackNeverSplitsAPackageAcrossBlocks(t *testing.T) {
 }
 
 func TestExtractRejectsDamagedArchives(t *testing.T) {
-	archive, err := Pack(sampleFiles())
+	archive, err := Pack(sampleFiles(), libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +161,7 @@ func TestExtractRejectsDamagedArchives(t *testing.T) {
 }
 
 func TestExtractStopsOnAVisitorError(t *testing.T) {
-	archive, err := Pack(sampleFiles())
+	archive, err := Pack(sampleFiles(), libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +172,7 @@ func TestExtractStopsOnAVisitorError(t *testing.T) {
 }
 
 func TestExtractRejectsNamesThatEscape(t *testing.T) {
-	archive, err := Pack([]File{{"runtime-node/../escape", []byte("x")}})
+	archive, err := Pack([]File{{"runtime-node/../escape", []byte("x")}}, libraryEncode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,6 +197,41 @@ func TestUnreadAtRuntimeLeavesVendoredReadmes(t *testing.T) {
 	} {
 		if got := UnreadAtRuntime(name); got != want {
 			t.Errorf("UnreadAtRuntime(%q) = %t, want %t", name, got, want)
+		}
+	}
+}
+
+// pinnedCLI returns when the zstd command that writes the committed frames is found (zstdblob.PinnedCLI). Without it the test fails where PIG_REQUIRE_ZSTD=1 (the CI jobs that provision it with automation/ci/install-zstd.sh) and is skipped elsewhere, as zstdblob's frame tests are.
+func pinnedCLI(t *testing.T) {
+	t.Helper()
+	_, err := zstdblob.PinnedCLI()
+	if err == nil {
+		return
+	}
+	if os.Getenv("PIG_REQUIRE_ZSTD") == "1" {
+		t.Fatal(err)
+	}
+	t.Skip(err)
+}
+
+// Every block of the committed archive is what the pinned zstd command writes for its content: decoding a block and encoding the result from scratch gives the same bytes, so a regeneration changes nothing and the 11 percent the command saves over the library's best level stays saved.
+func TestCommittedBlocksAreWhatEncodeWrites(t *testing.T) {
+	pinnedCLI(t)
+	archive, err := os.ReadFile(filepath.Join("..", "..", "runtime-node.pack"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocks, err := Blocks(string(archive))
+	if err != nil || len(blocks) == 0 {
+		t.Fatalf("committed archive: %d blocks, %v", len(blocks), err)
+	}
+	for i, block := range blocks {
+		raw, err := zstdblob.Decode([]byte(block))
+		if err != nil {
+			t.Fatalf("block %d: %v", i, err)
+		}
+		if again := zstdblob.Encode(raw); string(again) != block {
+			t.Fatalf("block %d is %d bytes and Encode of its content is %d: regenerate runtime-node.pack with go generate for the subprocess package, under zstd %s (automation/ci/install-zstd.sh)", i, len(block), len(again), zstdblob.PinnedCLIVersion)
 		}
 	}
 }

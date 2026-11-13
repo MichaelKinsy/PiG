@@ -348,14 +348,30 @@ type AgentSession struct {
 	tools    map[string]ToolFunc
 	prepares map[string]ToolPrepareArgumentsFunc
 
-	// SessionID and SessionFile are `session.sessionId` and `session.sessionFile` (empty for an in-memory session).
-	SessionID   string
+	// SessionID is `session.sessionId` as it was when CreateAgentSession returned.
+	//
+	// Deprecated: this is a snapshot, not the session's current value. Use [AgentSession.CurrentSessionID].
+	SessionID string
+	// SessionFile is `session.sessionFile` as it was when CreateAgentSession returned (empty for an in-memory session).
+	//
+	// Deprecated: this is a snapshot, not the session's current value. Use [AgentSession.CurrentSessionFile].
 	SessionFile string
-	// Model, ThinkingLevel, ActiveTools and SystemPrompt are what the session held when CreateAgentSession returned. Read the current values with [AgentSession.State].
-	Model         map[string]any
+	// Model is `session.model` as it was when CreateAgentSession returned.
+	//
+	// Deprecated: this is a snapshot, not the session's current value. Use [AgentSession.CurrentModel].
+	Model map[string]any
+	// ThinkingLevel is `session.thinkingLevel` as it was when CreateAgentSession returned.
+	//
+	// Deprecated: this is a snapshot, not the session's current value. Use [AgentSession.CurrentThinkingLevel].
 	ThinkingLevel string
-	ActiveTools   []string
-	SystemPrompt  string
+	// ActiveTools is `session.getActiveToolNames()` as it was when CreateAgentSession returned.
+	//
+	// Deprecated: this is a snapshot, not the session's current value. Use [AgentSession.GetActiveToolNames].
+	ActiveTools []string
+	// SystemPrompt is `session.systemPrompt` as it was when CreateAgentSession returned.
+	//
+	// Deprecated: this is a snapshot, not the session's current value. Use [AgentSession.CurrentSystemPrompt].
+	SystemPrompt string
 	// ModelFallbackMessage is CreateAgentSessionResult.modelFallbackMessage.
 	ModelFallbackMessage string
 	// ExtensionErrors are the errors of CreateAgentSessionResult.extensionsResult.errors, as "path: error".

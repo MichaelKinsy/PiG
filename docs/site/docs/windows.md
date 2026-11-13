@@ -1,10 +1,10 @@
 # Windows setup
 
-PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact. The command environment follows Pi 1.5.0 ([Pi's Windows guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/windows.md)).
+PiG supports source builds on Windows. Do not treat Windows as release-supported until native release verification passes for the published artifact. The command environment follows Pi 1.5.2 ([Pi's Windows guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/windows.md)).
 
 ## Build from source
 
-Install Git and Go 1.27.3. Then run:
+Install Git and Go 1.27.4. Then run:
 
 ```powershell
 git clone git@github.com:MichaelKinsy/PiG.git

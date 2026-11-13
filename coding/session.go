@@ -73,13 +73,17 @@ type Session struct {
 	//
 	// upstream: agent-session.ts _pendingToolNames
 	pendingToolNames []string
-	modelRuntime     *ModelRuntime
-	modelRegistry    *ModelRegistry
-	sessionDir       string
-	noSession        atomic.Bool // whether the installed log has no file: ReplaceInner stores it under mu, /new, /fork and Clone read it without mu
-	scopedModels     sessionScopedModels
-	runnerMu         sync.RWMutex
-	runner           *inproc.Runner // extension runner for event dispatch
+	// restoredToolNames is the restored or reloaded loadout that pendingToolNames belongs to. toolRegistryMu guards it.
+	//
+	// upstream: agent-session.ts _restoredToolNames
+	restoredToolNames []string
+	modelRuntime      *ModelRuntime
+	modelRegistry     *ModelRegistry
+	sessionDir        string
+	noSession         atomic.Bool // whether the installed log has no file: ReplaceInner stores it under mu, /new, /fork and Clone read it without mu
+	scopedModels      sessionScopedModels
+	runnerMu          sync.RWMutex
+	runner            *inproc.Runner // extension runner for event dispatch
 	// sharedRunner is the Runtime- or Clone-source-owned runner this Session borrowed; its owner invalidates it.
 	sharedRunner *inproc.Runner
 	// extensionHost is the extension host of the Runtime that created the Session (Session.ExtensionHost).
@@ -145,9 +149,11 @@ type Session struct {
 	extensionErrorUnsubscribe func()
 	baseSystemPrompt          atomic.Pointer[string]
 	baseSystemPromptOptions   atomic.Pointer[extension.BuildSystemPromptOptions]
+	systemPromptOptionsWatch  systemPromptOptionsWatch
 	systemPromptResources     atomic.Pointer[SystemPromptResources]
 	baseSystemSections        ai.OrderedSections
 	runPrompt                 atomic.Pointer[icodingagent.BeforeAgentStartRun]
+	runSystemPromptMemo       runSystemPromptMemo
 	structuredSystemPrompt    bool
 	// defaultSystemPrompt reports that the Session built its own prompt,
 	// which it rebuilds when the active tools change.
@@ -881,10 +887,13 @@ func restoreSessionRuntimeState(inner *icodingagent.Session, services *AgentSess
 	// Assistant messages name the physical model that answered, so a virtual selection is only in model_change entries. upstream: sdk.ts:201-205
 	// sdk.ts:224-231 keeps the saved model only while its provider has configured auth; otherwise the session keeps the model it had (none at startup).
 	if selected := GetBranchSelection(branch, services.ModelRuntime().GetModel); restoreModel && selected != nil && !selected.Unresolvable && selected.Provider != "" && selected.ModelID != "" && services.ModelRuntime().HasConfiguredAuth(selected.Provider) {
+		// sdk.ts:224-231 restores only a model modelRuntime.getModel finds; one no catalog describes would build blank (no window, no prices), so the session keeps its model.
 		if restored := services.ModelRuntime().GetModel(selected.Provider, selected.ModelID); IsVirtualModel(restored) {
 			model = restored
-		} else if restored, err := BuildModel(selected.Provider+"/"+selected.ModelID, services); err == nil {
-			model = restored
+		} else if restored != nil {
+			if built, err := BuildModel(selected.Provider+"/"+selected.ModelID, services); err == nil {
+				model = built
+			}
 		}
 	}
 	if slices.ContainsFunc(branch, func(entry icodingagent.SessionEntry) bool { return entry.Base().Type == "thinking_level_change" }) {
@@ -1893,9 +1902,6 @@ func (s *Session) QueueFollowUp(text string, images []ai.ImageContent) {
 // QueuedUserMessage is the user message QueueSteer and QueueFollowUp admit. A message with images is marked, and its images are
 // normalized when it is delivered ([Session.normalizeDeliveredImages]). A mode that queues on the Agent itself (the interactive
 // mode, which shows the pending messages from the Agent's queues) builds its message here so its images are normalized too.
-//
-// pig divergence (D249): Pi 1.5.0 queues the images unprocessed, so they reach the model and the session file at full size; Pi main
-// 4cf69332c (#11782) resizes them at delivery like an idle prompt's.
 func (s *Session) QueuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage {
 	message := &agent.UserMessage{
 		Role:      agent.RoleUser,
@@ -1908,7 +1914,6 @@ func (s *Session) QueuedUserMessage(text string, images []ai.ImageContent) agent
 	return agent.AgentMessage{User: message}
 }
 
-// pig divergence (D249): see QueuedUserMessage.
 // normalizeDeliveredImages replaces the images of a delivered queued message with normalized ones in place, appending the resize hints
 // to its text (agent-session.ts _normalizeQueuedMessageImages). The Agent's message_start carries a copy of the message that shares its
 // content array, so the transcript's message and the event both change, before listeners and persistence see either. It runs after the

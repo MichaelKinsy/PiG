@@ -24,6 +24,10 @@ type hlResume struct {
 	lines      []string
 	partial    string
 	iterations int
+	// text is the units of seen, kept by a warm-up so the next one converts only the text it gained. A run that continues from the state takes it (hlFindResume), so it is held by one run at a time; a state without it converts seen again.
+	text *hljs.Text
+	// unit is the offset of the resume point in the units of seen.
+	unit int
 }
 
 // hlResumes holds the states, least recently used first; hlMu guards it.
@@ -32,15 +36,23 @@ var hlResumes []hlResume
 func resetHighlightResumesLocked() { hlResumes = nil }
 
 // highlightResumable highlights code as highlightCodeUncached does, restarting from the resume state of an earlier prefix of the same block when it has one, and leaves the state to resume from next. It reports false when the engine cannot highlight the language, so the caller highlights without resuming.
-func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme) ([]string, bool) {
+//
+// keepUnits leaves the units of code with the state, for the next run over a longer text to continue from (a warm-up's text grows; the lines a frame draws are the last run's).
+func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme, keepUnits bool) ([]string, bool) {
 	if lang == "" || !registry.SupportsLanguage(lang) {
 		return nil, false
 	}
-	base, generation := hlFindResume(code, lang, t)
-	html, points, err := registry.HighlightResumable(code, lang, true, hljs.ResumePoint{Byte: len(base.prefix), Iterations: base.iterations})
+	base, generation := hlFindResume(code, lang, t, true)
+	source := base.text
+	if source == nil {
+		source = hljs.NewText(code)
+	} else {
+		source = source.Grow(code)
+	}
+	html, points, err := registry.HighlightResumable(source, lang, true, hljs.ResumePoint{Byte: len(base.prefix), Unit: base.unit, Iterations: base.iterations})
 	if errors.Is(err, hljs.ErrResumeFailed) {
 		base = hlResume{}
-		html, points, err = registry.HighlightResumable(code, lang, true, hljs.ResumePoint{})
+		html, points, err = registry.HighlightResumable(source, lang, true, hljs.ResumePoint{})
 	}
 	if err != nil {
 		return nil, false
@@ -66,7 +78,7 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme) ([
 	if len(points) > 0 {
 		point := points[len(points)-1]
 		complete := len(base.lines) + strings.Count(headText, "\n")
-		hlStoreResume(hlResume{
+		next := hlResume{
 			lang:       lang,
 			theme:      t,
 			seen:       code,
@@ -74,25 +86,45 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme) ([
 			lines:      lines[:complete:complete],
 			partial:    headText[strings.LastIndexByte(headText, '\n')+1:],
 			iterations: point.Iterations,
-		}, base, generation)
+			unit:       point.Unit,
+		}
+		if keepUnits {
+			next.text = source
+		}
+		hlStoreResume(next, base, generation)
 	}
 	return lines, true
 }
 
 // highlightResumeHeld reports whether a resume state continues a text that starts with code: the state the last highlight of code left, or an earlier one the run of code did not replace.
 func highlightResumeHeld(code, lang string, t *Theme) bool {
-	found, _ := hlFindResume(code, lang, t)
+	found, _ := hlFindResume(code, lang, t, false)
 	return len(found.prefix) > 0
 }
 
-// hlFindResume is the state with the longest prefix of code for the block among those whose whole code code starts with, or the zero state, and the generation of the loaded languages it was found under.
-func hlFindResume(code, lang string, t *Theme) (found hlResume, generation int) {
+// releaseHighlightUnits drops the units of the states of lang that hold them for code or for a text code starts with: what the warm-ups of code left. A run that continues from the longest resume point takes the units of one state, and states of equal resume points (the files of one directory share their first lines) are not told apart, so an earlier warm-up of the text can keep its units; they go with the last. A state of a longer or another text keeps its units, which a later text of its own continues from.
+func releaseHighlightUnits(code, lang string) {
 	hlMu.Lock()
 	defer hlMu.Unlock()
-	for _, r := range hlResumes {
-		if r.lang == lang && r.theme == t && len(r.prefix) > len(found.prefix) && strings.HasPrefix(code, r.seen) {
-			found = r
+	for i := range hlResumes {
+		if r := &hlResumes[i]; r.text != nil && r.lang == lang && strings.HasPrefix(code, r.seen) {
+			r.text = nil
 		}
+	}
+}
+
+// hlFindResume is the state with the longest prefix of code for the block among those whose whole code code starts with, or the zero state, and the generation of the loaded languages it was found under. take hands the state's units to the caller, which leaves the stored state without them.
+func hlFindResume(code, lang string, t *Theme, take bool) (found hlResume, generation int) {
+	hlMu.Lock()
+	defer hlMu.Unlock()
+	foundAt := -1
+	for i, r := range hlResumes {
+		if r.lang == lang && r.theme == t && len(r.prefix) > len(found.prefix) && strings.HasPrefix(code, r.seen) {
+			found, foundAt = r, i
+		}
+	}
+	if take && foundAt >= 0 {
+		hlResumes[foundAt].text = nil
 	}
 	return found, hlGeneration
 }

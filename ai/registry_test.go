@@ -112,10 +112,11 @@ func TestCatalogPin100(t *testing.T) {
 		}
 	}
 	llama, ok := LookupModelExact("openrouter/meta-llama/llama-3.3-70b-instruct")
-	if !ok || llama.InputCostPerMTokens != 0.59 || llama.OutputCostPerMTokens != 0.79 || llama.CacheReadCost != 0.295 {
-		// The pin 1.5.0+c23b9ec1 providers/data/openrouter.json prices it 0.59, 0.79, 0.295 cache read (1.3.0+8efd314f: 0.1, 0.32, no
-		// cache read; 1.2.0+34a8bb38: 0.59, 0.79, 0.295; 1.0.4-1.2.0: 0.22, 0.5, 0.11; 1.0.3: 0.1, 0.32, no cache read).
-		t.Fatalf("1.5.0+c23b9ec1 OpenRouter Llama 3.3 70B = %+v, %t", llama, ok)
+	if !ok || llama.InputCostPerMTokens != 0.71 || llama.OutputCostPerMTokens != 0.71 || llama.CacheReadCost != 0.71 {
+		// The published @earendil-works/pi-ai 1.5.2 dist/providers/data/openrouter.json prices it 0.71, 0.71, 0.71 cache read (1.5.1: 0.59, 0.79,
+		// 0.295 cache read; 1.5.0: 0.1, 0.32, no cache read; 1.3.0+8efd314f: 0.1, 0.32, no cache read; 1.2.0+34a8bb38: 0.59, 0.79, 0.295;
+		// 1.0.4-1.2.0: 0.22, 0.5, 0.11; 1.0.3: 0.1, 0.32, no cache read).
+		t.Fatalf("1.5.2 OpenRouter Llama 3.3 70B = %+v, %t", llama, ok)
 	}
 	// 1.1.0 (providers/data/anthropic.json): Claude Haiku 5.5 is an adaptive-thinking model with 1M context and 100k-token pricing tiers.
 	haiku, ok := LookupModelExact("anthropic/claude-haiku-5-5")

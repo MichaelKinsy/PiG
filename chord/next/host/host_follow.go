@@ -33,6 +33,19 @@ type FollowObserver[T any] interface {
 	End(end chord.WatchEnd)
 }
 
+// FollowSection is what the observer Chord gives a followed runtime also is. Section runs work exactly once, as one
+// synchronous section of the host's loop, and returns when it has run: inline when the caller is in a section (a method
+// handler telling of its own change), otherwise once the loop is free. A runtime whose changes are told from several
+// goroutines reads its state and advances inside one Section, so its advances reach the source in the order of its
+// reads: Pi's runtime reads and advances in one synchronous turn of the one event loop, and a read on the teller's
+// goroutine followed by an Advance (a section of its own) lets an older read be advanced last. work holds the loop: it
+// may enter it again (Advance, a registry's value, a Section: all inline) but must not wait for another goroutine's
+// work that needs it. The loop takes sections after the host closed too: work still runs once, and an Advance in it is
+// dropped, as any Advance after its source's attempt ended.
+type FollowSection interface {
+	Section(work func())
+}
+
 // FollowAttachment is what attaching gives: the value every later call starts from, and how to detach (Durable's
 // `Observation`).
 type FollowAttachment[T any] struct {
@@ -160,6 +173,9 @@ func (o followObserverOf) Advance(call chord.WatchCall[delta.JsonValue], ctx con
 }
 
 func (o followObserverOf) End(end chord.WatchEnd) { o.source.loop.Run(func() { o.source.end(end) }) }
+
+// Section runs work as one section of the host's loop (FollowSection).
+func (o followObserverOf) Section(work func()) { o.source.loop.Run(work) }
 
 // attach attaches (activation, after the natives opened): the calls that came meanwhile apply on the attachment's value,
 // and an end that came meanwhile takes effect then (the value stays). A rejected attachment, or nil (an absent address),

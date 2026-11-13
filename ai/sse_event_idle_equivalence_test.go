@@ -130,6 +130,8 @@ var sseIdleAlphabet = []string{
 
 func TestSSEIdleTrackerMatchesReference(t *testing.T) {
 	random := rand.New(rand.NewPCG(7, 8))
+	// The tracker searches a data line for reasoning markers only when something asks whether the stream is reasoning. asks decides when the test asks, apart from the streams, which stay the ones random draws.
+	asks := rand.New(rand.NewPCG(11, 12))
 	for range 3000 {
 		var stream []byte
 		for range random.IntN(30) {
@@ -145,10 +147,16 @@ func TestSSEIdleTrackerMatchesReference(t *testing.T) {
 				read[i] = '#'
 			}
 			wantProgress := want.scan(rest[:size])
-			if gotProgress != wantProgress || got.reasoning != want.reasoning || got.ping != want.ping || got.eventReasoning != want.eventReasoning {
-				t.Fatalf("stream %q, read ending at %d: progress=%v reasoning=%v ping=%v eventReasoning=%v, want %v %v %v %v", stream, len(stream)-len(rest)+size, gotProgress, got.reasoning, got.ping, got.eventReasoning, wantProgress, want.reasoning, want.ping, want.eventReasoning)
+			if gotProgress != wantProgress || got.ping != want.ping || got.eventReasoning != want.eventReasoning {
+				t.Fatalf("stream %q, read ending at %d: progress=%v ping=%v eventReasoning=%v, want %v %v %v", stream, len(stream)-len(rest)+size, gotProgress, got.ping, got.eventReasoning, wantProgress, want.ping, want.eventReasoning)
 			}
 			rest = rest[size:]
+			// The answer is the reference's whenever it is asked: after the last read, and after one read in three, so a search put off across reads, one made for a keepalive and one never made are all compared.
+			if len(rest) == 0 || asks.IntN(3) == 0 {
+				if reasoning := got.isReasoning(); reasoning != want.reasoning {
+					t.Fatalf("stream %q, read ending at %d: reasoning=%v, want %v", stream, len(stream)-len(rest), reasoning, want.reasoning)
+				}
+			}
 		}
 	}
 }

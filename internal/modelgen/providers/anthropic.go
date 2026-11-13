@@ -10,17 +10,35 @@ var anthropicAllowedFallbackModels = []struct {
 	fallbacks []string
 }{
 	{"claude-fable-5", []string{"claude-opus-4-8", "claude-opus-5"}},
+	{"claude-fable-5-2", []string{"claude-opus-4-8", "claude-opus-5"}},
 	{"claude-opus-5", []string{"claude-opus-4-8"}},
 }
 
 var anthropicModelsWith1MContext = map[string]bool{"claude-opus-4-6": true, "claude-sonnet-4-6": true}
 var anthropicModels55 = map[string]bool{"claude-opus-5-5": true, "claude-sonnet-5-5": true, "claude-haiku-5-5": true}
 
+// Released 2026-11-09; models.dev does not list it for Anthropic yet.
+// https://platform.claude.com/docs/en/models/fable-5-2/whats-new-fable-5-2
+func anthropicClaudeFable52() ChatModel {
+	return O(
+		"id", "claude-fable-5-2",
+		"name", "Claude Fable 5.2",
+		"api", "anthropic-messages",
+		"baseUrl", "https://api.anthropic.com",
+		"provider", "anthropic",
+		"reasoning", true,
+		"input", Strings("text", "image"),
+		"cost", O("input", 8, "output", 40, "cacheRead", 0.2, "cacheWrite", 10),
+		"contextWindow", 1000000,
+		"maxTokens", 128000,
+	)
+}
+
 func anthropic() ProviderDefinition {
 	return ProviderDefinition{
 		ID: "anthropic",
 		Models: func(ctx *ProviderContext) ([]ChatModel, error) {
-			return ModelsDevModels(ctx, "anthropic", ModelsDevOptions{
+			models, err := ModelsDevModels(ctx, "anthropic", ModelsDevOptions{
 				API:     "anthropic-messages",
 				BaseURL: "https://api.anthropic.com",
 				Map: func(model ChatModel, _ *ModelsDevModel) (ChatModel, error) {
@@ -34,6 +52,10 @@ func anthropic() ProviderDefinition {
 					return model, nil
 				},
 			})
+			if err != nil {
+				return nil, err
+			}
+			return AddMissing(models, []ChatModel{anthropicClaudeFable52()}), nil
 		},
 		Finalize: func(model ChatModel, _ *ProviderContext) {
 			if model.Str("api") != "anthropic-messages" {

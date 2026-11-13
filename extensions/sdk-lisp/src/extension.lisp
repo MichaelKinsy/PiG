@@ -67,7 +67,9 @@
   (state :active)               ; :active, :completed, :cancelled
   (finished nil)
   (reason nil)
-  (ticket nil))
+  (ticket nil)
+  ;; T for the request of a command handler or a withSession callback, whose context is Pi's command context. The context keeps the kind after the request ended; the host refuses the command-only session actions from any other.
+  (command nil))
 
 (defstruct (footer-data)
   (branch nil)
@@ -86,6 +88,8 @@
   (flags '()) (flag-defaults (make-hash-table :test 'equal))
   (handlers '()) (event-handlers (make-hash-table)) (next-handler-id 0)
   (loaded-handlers '())
+  ;; D614 plugin UI mounts: what the attached client draws (replicated, NIL while none is attached) and the intent handler
+  (view-lock (sb-thread:make-mutex :name "pig ui view")) (view-abilities nil) (view-abilities-known nil) (view-intent-handler nil)
   (live nil)
   ;; connection and per-connection state
   (conn nil)

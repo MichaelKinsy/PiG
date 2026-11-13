@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -48,13 +47,6 @@ func TestModelObjectsMatchPisModelObjects(t *testing.T) {
 		}
 		want[key.Provider+"/"+key.ID] = scanner.Text()
 	}
-	// pig divergence (D240): Pi 4b9777737 marks Claude Sonnet 5 as not supporting temperature. The host catalog, which the extension-visible model object
-	// follows, carries compat.supportsTemperature false on seven records the pinned Pi 1.5.0 object lacks it on. Only that member, after forceAdaptiveThinking, is added to those records.
-	for _, key := range d240SonnetFiveRecords {
-		if object, ok := want[key]; ok && !strings.Contains(object, `"supportsTemperature"`) {
-			want[key] = strings.Replace(object, `"forceAdaptiveThinking":true`, `"forceAdaptiveThinking":true,"supportsTemperature":false`, 1)
-		}
-	}
 	models := make([]*ai.Model, len(ai.GeneratedModels))
 	for i := range ai.GeneratedModels {
 		models[i] = ai.GeneratedModels[i].ToModel()
@@ -83,15 +75,4 @@ func TestModelObjectsMatchPisModelObjects(t *testing.T) {
 	if failures > 0 {
 		t.Errorf("%d of %d model objects differ from Pi's", failures, len(models))
 	}
-}
-
-// d240SonnetFiveRecords are the records the D240 allowance covers; the same list as d240SonnetFiveRecords in ai/d240_sonnet5_allowance_test.go.
-var d240SonnetFiveRecords = []string{
-	"anthropic/claude-sonnet-5",
-	"cloudflare-ai-gateway/claude-sonnet-5",
-	"github-copilot/claude-sonnet-5",
-	"opencode/claude-sonnet-5",
-	"openrouter/anthropic/claude-sonnet-5",
-	"vercel-ai-gateway/anthropic/claude-sonnet-5",
-	"vercel-ai-gateway/anthropic/claude-sonnet-5-batch",
 }

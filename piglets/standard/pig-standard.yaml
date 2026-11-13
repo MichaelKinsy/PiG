@@ -2,7 +2,7 @@ name: pig-standard
 description: "Explicit PiG composition built from ordinary extension Resources."
 
 release:
-  version: 0.7.0-dev
+  version: 0.7.0
 
 build:
   extensionRealization: fused
@@ -24,6 +24,9 @@ extensions:
 discovery:
   extensions: []
   skills: []
+
+# The terminal draws the views extensions mount (ui.view, D614). Stock PiG attaches no view client.
+viewClient: terminal
 
 # piglogin owns /sprite and the login sprite, so the built-in pig-login that registers the same command does not load.
 strip:

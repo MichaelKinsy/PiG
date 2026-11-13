@@ -142,7 +142,6 @@ func recordChangelogVersionAndMaybeReportInstall(sm *SettingsManager, appVersion
 	}
 	newEntries, ok := GetNewEntries(allEntries, lastSeen)
 	if !ok {
-		// pig divergence (D245): an unreadable recorded version shows nothing and records the current one (Pi main 9a1953961).
 		_ = sm.SetLastChangelogVersion(appVersion)
 		return nil
 	}

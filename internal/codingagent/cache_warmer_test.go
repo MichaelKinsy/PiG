@@ -245,7 +245,7 @@ func closeTo(got, want float64) bool { return math.Abs(got-want) < 0.5e-2 }
 func TestCacheWarmingDerivesEligibilityAndTiming(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	ttl := func(model *ai.Model, env ai.ProviderEnv) any {
-		if ms, ok := GetPromptCacheTtlMs(model, ai.StreamOptions{Env: env}); ok {
+		if ms, ok := ai.GetPromptCacheTtlMs(model, ai.StreamOptions{Env: env}); ok {
 			return ms
 		}
 		return nil
@@ -265,32 +265,32 @@ func TestCacheWarmingDerivesEligibilityAndTiming(t *testing.T) {
 			t.Errorf("%s: ttl = %v, want %v", tc.name, tc.got, tc.want)
 		}
 	}
-	if got, ok := GetPromptCacheTtlMs(models.adaptive, ai.StreamOptions{CacheRetention: ai.CacheRetentionLong}); !ok || got != 3_600_000 {
+	if got, ok := ai.GetPromptCacheTtlMs(models.adaptive, ai.StreamOptions{CacheRetention: ai.CacheRetentionLong}); !ok || got != 3_600_000 {
 		t.Fatalf("explicit long retention = %v, %t", got, ok)
 	}
-	if _, ok := GetPromptCacheTtlMs(models.adaptive, ai.StreamOptions{CacheRetention: ai.CacheRetentionNone}); ok {
+	if _, ok := ai.GetPromptCacheTtlMs(models.adaptive, ai.StreamOptions{CacheRetention: ai.CacheRetentionNone}); ok {
 		t.Fatal("cacheRetention none has a cache lifetime")
 	}
 	for ttlMs, want := range map[float64]float64{300_000: 270_000, 60_000: 50_000, 20_000.5: 10_000} {
-		if got, ok := GetCacheWarmingDelayMs(ttlMs); !ok || got != want {
+		if got, ok := ai.GetCacheWarmingDelayMs(ttlMs); !ok || got != want {
 			t.Errorf("delay(%v) = %v, %t, want %v", ttlMs, got, ok, want)
 		}
 	}
 	// cache-warmer.ts getPromptCacheTtlMs multiplies the tier's seconds by 1000 without rounding, so a fractional lifetime survives.
 	fractional := cacheWarmingTestModel(t, "anthropic/claude-opus-4-6", ai.ModelPromptCache{"short": 1.5, "long": 0.0005})
 	for retention, want := range map[ai.CacheRetention]float64{ai.CacheRetentionShort: 1_500, ai.CacheRetentionLong: 0.5} {
-		if got, ok := GetPromptCacheTtlMs(fractional, ai.StreamOptions{CacheRetention: retention}); !ok || got != want {
+		if got, ok := ai.GetPromptCacheTtlMs(fractional, ai.StreamOptions{CacheRetention: retention}); !ok || got != want {
 			t.Errorf("fractional %s ttl = %v, %t, want %v", retention, got, ok, want)
 		}
 	}
-	if _, ok := GetCacheWarmingDelayMs(10_000); ok {
+	if _, ok := ai.GetCacheWarmingDelayMs(10_000); ok {
 		t.Error("delay(10000) is defined, want undefined")
 	}
 	replayable := []bool{
-		IsReplayable(models.budget, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
-		IsReplayable(models.budget, ai.StreamOptions{}),
-		IsReplayable(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
-		IsReplayable(models.openai, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
+		ai.IsCacheWarmingReplayable(models.budget, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
+		ai.IsCacheWarmingReplayable(models.budget, ai.StreamOptions{}),
+		ai.IsCacheWarmingReplayable(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
+		ai.IsCacheWarmingReplayable(models.openai, ai.StreamOptions{Thinking: ai.ThinkingLevelMedium}),
 	}
 	if want := []bool{false, true, true, true}; !equalBools(replayable, want) {
 		t.Errorf("replayable = %v, want %v", replayable, want)

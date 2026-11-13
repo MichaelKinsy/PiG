@@ -49,8 +49,9 @@ func TestNodeNavigateTreeSendsFlatOptions(t *testing.T) {
 	}
 	runtimeURL := (&url.URL{Scheme: "file", Path: filepath.ToSlash(runtimePath)}).String()
 	script := fmt.Sprintf(`
-import { Runtime } from %q;
+import { Runtime, addCommandContextMembers } from %q;
 const runtime = new Runtime("/ext/tree.mjs");
+addCommandContextMembers(runtime.ctx, runtime.ctx);
 const calls = [];
 runtime.call = async (method, args) => { calls.push({ method, args }); return { cancelled: false }; };
 await runtime.ctx.navigateTree("entry-1", { summarize: true, customInstructions: "focus" });

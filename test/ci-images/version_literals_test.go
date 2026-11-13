@@ -50,11 +50,12 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/make/ci.mk", "26.5.1", "the oldest Node whose sandbox the terminal surface tests need; a requirement of that test, not a Node pin"},
 
 	// Checked copies. make compliance compares each with its source and fails on drift.
-	{"automation/images/ci-go/Dockerfile", "1.27.3", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
-	{"automation/images/ci-go/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
-	{"automation/images/ci-parity/Dockerfile", "1.27.3", "ARG GO_VERSION; make compliance checks it against .go-version"},
-	{"automation/images/ci-parity/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
-	{"automation/images/ci-parity/Dockerfile", "1.5.0", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
+	{"automation/images/ci-go/Dockerfile", "1.27.4", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
+	{"automation/images/ci-go/metadata.env", "1.27.4", "IMAGE_TAG; make compliance checks it against .go-version"},
+	{"automation/images/ci-parity/Dockerfile", "1.27.4", "ARG GO_VERSION; make compliance checks it against .go-version"},
+	{"automation/images/ci-parity/metadata.env", "1.27.4", "IMAGE_TAG; make compliance checks it against .go-version"},
+	{"automation/images/ci-parity/Dockerfile", "1.5.2", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
+	{"automation/images/ci-parity/metadata.env", "1.5.2", "IMAGE_TAG; make compliance checks it against the pin"},
 	{"automation/images/ci-parity/Dockerfile", "12.2.1", "the image's npm check; make compliance checks it against NPM_VERSION"},
 
 	{"automation/ci/install-shellcheck.sh", "0.11.0", "the pinned ShellCheck release, kept beside the sha256 of its tarballs; pre-push-gate.sh reads it with --print-version"},
@@ -91,7 +92,9 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/release/module-tags.sh", "0.2.0", "example in a comment"},
 	{"automation/release/npm/pack_npm.py", "0.2.0", "example in the usage text"},
 	{"automation/pin/pinlib.py", "1.1.0", "example in the module docstring"},
-	{"automation/pin/oracle.py", "1.3.0", "a fact about the published 1.3.0 release, which predates the facade's checkpointWhen"},
+	{"automation/gen/regenerate-observation-oracles.sh", "24.22.0", "the Node release from which a body in several socket writes reaches Pi's consumer in one macrotask: a measured fact about Node's behavior, not a pin; the oracle Node itself is read from ai/testdata/node-microtasks/oracle-node-version"},
+	{"automation/gen/regenerate-observation-oracles.sh", "24.14.1", "the oldest Node release of the range measured to give one macrotask per socket write (five recordings of each release): a fact about Node's behavior, not a pin"},
+	{"automation/gen/regenerate-observation-oracles.sh", "24.21.0", "the newest Node release of the range measured to give one macrotask per socket write (five recordings of each release): a fact about Node's behavior, not a pin"},
 	{"automation/pin/oracle.py", "0.0.0", "placeholder version of a generated private package"},
 	{"automation/dev/goproxy-github.py", "0.0.0", "the module version of a probe request"},
 	{"automation/dev/setup.sh", "0.0.0", "the module version of a probe request"},

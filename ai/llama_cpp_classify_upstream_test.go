@@ -20,7 +20,7 @@ var llamaServerCount atomic.Int64
 // llamaTestModel returns a fresh server URL per test: label tokens are cached per server and model.
 func llamaTestModel() ClassifierModel {
 	n := llamaServerCount.Add(1)
-	return ClassifierModel{ID: "qwen", Name: "qwen", API: "llama-cpp-classify", Provider: "llama.cpp", BaseURL: fmt.Sprintf("http://llama-%d.test:8080/v1", n), Input: []string{"text"}, ContextWindow: 32768}
+	return ClassifierModel{ID: "qwen", Name: "qwen", API: "llama-cpp-classify", Provider: "llama.cpp", BaseURL: fmt.Sprintf("http://llama-%d.test:9931/v1", n), Input: []string{"text"}, ContextWindow: 32768}
 }
 
 type llamaRecordedRequest struct {
@@ -463,9 +463,9 @@ func TestLlamaCppClassifyUpstream(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/llama-cpp-classify.test.ts:381
 	t.Run("derives the server root from OpenAI-compatible base URLs", func(t *testing.T) {
 		for input, want := range map[string]string{
-			"http://127.0.0.1:8080/v1/":     "http://127.0.0.1:8080",
+			"http://127.0.0.1:9931/v1/":     "http://127.0.0.1:9931",
 			"https://example.com/prefix/v1": "https://example.com/prefix",
-			"http://127.0.0.1:8080":         "http://127.0.0.1:8080",
+			"http://127.0.0.1:9931":         "http://127.0.0.1:9931",
 		} {
 			if got := LlamaCppServerRoot(input); got != want {
 				t.Errorf("LlamaCppServerRoot(%q)=%q want %q", input, got, want)

@@ -10,7 +10,7 @@ import (
 
 // pi: packages/chord/test/surfaces/registered.test.ts. Tests of scripts that register themselves (slice 11 §1, §2): the served
 // text calls `chordFacet` with the plugin, the digest and the build's function; evaluating it answers only the client's
-// modules and refuses a default export that is no facet. A Go script is a Go function (Pi's is JavaScript text a `vm` runs: D550).
+// modules and refuses a default export that is no facet. A Go script is a Go function (Pi's is JavaScript text a `vm` runs: language mechanics).
 
 // built is a built script's function as esbuild wraps a facet: it requires specifier, exports a facet.
 func built(specifier string) FacetFunction {

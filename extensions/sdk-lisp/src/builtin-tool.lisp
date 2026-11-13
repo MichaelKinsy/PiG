@@ -22,7 +22,7 @@
 (def-tool-options write-tool-options operations)
 (def-tool-options edit-operations read-file write-file access)
 (def-tool-options edit-tool-options operations)
-(def-tool-options grep-operations is-directory)
+(def-tool-options grep-operations is-directory read-file)
 (def-tool-options grep-tool-options operations)
 (def-tool-options find-operations exists glob)
 (def-tool-options find-tool-options operations)

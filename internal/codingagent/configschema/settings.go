@@ -42,7 +42,7 @@ var settingsDefaults = struct {
 	markdownCodeBlockIndent: "  ", markdownMermaid: "streaming",
 	warningsAnthropicExtraUsage: true,
 	codemodeMode:                "on", codemodeInlineBudget: 3000,
-	cacheWarming: "streaming", tuiMode: "fullscreen", fullscreenExitOutput: "transcript", fullscreenScrollbar: "auto",
+	cacheWarming: "idle", tuiMode: "fullscreen", fullscreenExitOutput: "transcript", fullscreenScrollbar: "auto",
 	fullscreenCopyOnSelect: true, fullscreenWheelScrollLines: "auto",
 }
 

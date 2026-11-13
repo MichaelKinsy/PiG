@@ -99,7 +99,7 @@ func TestConformance_EventHandlersDoNotShareTheirPayload(t *testing.T) {
 							t.Fatalf("emit %d: %v", emit, err)
 						}
 						pollUntilConformance(t, "both handlers report", func() bool { return len(reports("event_isolation:")) >= 2*emit })
-						time.Sleep(300 * time.Millisecond) // the late writer runs 100 ms after the first handler returned, before the next dispatch
+						time.Sleep(300 * time.Millisecond) // the Go late writer runs 100 ms after the second handler started (after the first handler returned and was answered), before the next dispatch
 					}
 					messageReports := reports("event_isolation_msgs:")
 					for _, r := range messageReports {

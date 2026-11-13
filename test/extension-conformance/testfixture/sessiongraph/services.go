@@ -68,9 +68,10 @@ func servicesScript(ctx sdk.Context, args map[string]any) map[string]any {
 	if err := session.BindExtensions(); err != nil {
 		panic(err)
 	}
+	model, system := ok(session.CurrentModel()), ok(session.CurrentSystemPrompt())
 	created := map[string]any{
-		"model": map[string]any{"provider": session.Model["provider"], "id": session.Model["id"]}, "thinkingLevel": session.ThinkingLevel, "fallback": nilIfEmpty(session.ModelFallbackMessage),
-		"extensionErrors": len(session.ExtensionErrors), "appendix": strings.Contains(session.SystemPrompt, "Services appendix"), "sessionId": session.SessionID == ok(memory.GetSessionID()),
+		"model": map[string]any{"provider": model["provider"], "id": model["id"]}, "thinkingLevel": ok(session.CurrentThinkingLevel()), "fallback": nilIfEmpty(session.ModelFallbackMessage),
+		"extensionErrors": len(session.ExtensionErrors), "appendix": strings.Contains(system, "Services appendix"), "sessionId": ok(session.CurrentSessionID()) == ok(memory.GetSessionID()),
 	}
 	if err := session.Prompt(context.Background(), "hello"); err != nil {
 		panic(err)

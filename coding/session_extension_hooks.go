@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/boundarywire"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // installExtensionHooks installs the Session's extension hooks on its agent,
@@ -59,7 +60,8 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 	}
 	var input map[string]any
 	if len(args) > 0 {
-		_ = json.Unmarshal(args, &input) // invalid JSON yields a nil input, as validation already ran
+		// A lone UTF-16 surrogate in the model's arguments stays that unit, as JSON.parse reads it: the handler, the before/after comparison and InputJSON all see it.
+		_ = jsstring.UnmarshalKeepingSurrogates(args, &input) // invalid JSON yields a nil input, as validation already ran
 	}
 	// The event carries the members in the order the model wrote them (JSON.stringify of Pi's input), and a subprocess handler's edit replaces these bytes. The agent loop runs the tool with whatever order they hold afterwards.
 	var wireInput *json.RawMessage
@@ -71,7 +73,7 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 	if wireInput != nil {
 		before = string(*wireInput)
 	}
-	beforeValues, _ := json.Marshal(input)
+	beforeValues, _ := jsstring.MarshalKeepingSurrogates(input)
 	event := extension.CustomToolCallEvent{
 		Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID, WireInput: wireInput,
 		ToolName: toolName,
@@ -82,7 +84,7 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 		return agent.ToolCallHookResult{Err: err}
 	}
 	var hook agent.ToolCallHookResult
-	if afterValues, err := json.Marshal(input); err == nil && (!bytes.Equal(beforeValues, afterValues) || (wireInput != nil && string(*wireInput) != before)) {
+	if afterValues, err := jsstring.MarshalKeepingSurrogates(input); err == nil && (!bytes.Equal(beforeValues, afterValues) || (wireInput != nil && string(*wireInput) != before)) {
 		if after, err := event.InputJSON(); err == nil {
 			hook.Args = after
 		}
@@ -117,7 +119,7 @@ func (s *Session) toolResultHook(ctx context.Context, toolCallID, parentToolCall
 	}
 	var input map[string]any
 	if len(args) > 0 {
-		_ = json.Unmarshal(args, &input)
+		_ = jsstring.UnmarshalKeepingSurrogates(args, &input)
 	}
 	if started := agent.ToolHookStartedFromContext(ctx); started != nil {
 		// A parallel batch starts the tool_result hooks of its calls in the order their tools settled (agent-loop.ts:619-647); the dispatch reports when the first handler started.
@@ -237,8 +239,9 @@ func sameContextMessages(returned, visible []extension.AgentMessage) bool {
 		if reflect.DeepEqual(returned[i], visible[i]) {
 			continue
 		}
-		left, errLeft := json.Marshal(returned[i])
-		right, errRight := json.Marshal(visible[i])
+		// A handler that turns one lone surrogate into another changed the message: json.Marshal writes both as U+FFFD.
+		left, errLeft := jsstring.MarshalKeepingSurrogates(returned[i])
+		right, errRight := jsstring.MarshalKeepingSurrogates(visible[i])
 		if errLeft != nil || errRight != nil {
 			return false
 		}
@@ -246,7 +249,7 @@ func sameContextMessages(returned, visible []extension.AgentMessage) bool {
 			continue
 		}
 		var leftValue, rightValue any
-		if json.Unmarshal(left, &leftValue) != nil || json.Unmarshal(right, &rightValue) != nil || !reflect.DeepEqual(leftValue, rightValue) {
+		if jsstring.UnmarshalKeepingSurrogates(left, &leftValue) != nil || jsstring.UnmarshalKeepingSurrogates(right, &rightValue) != nil || !reflect.DeepEqual(leftValue, rightValue) {
 			return false
 		}
 	}

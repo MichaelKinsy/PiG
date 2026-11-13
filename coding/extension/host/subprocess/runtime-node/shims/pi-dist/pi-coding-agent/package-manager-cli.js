@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, } from "node:fs";
 import { join, resolve } from "node:path";
+import { ModelsError } from "../pi-ai/sdk-bundle/index.js";
 import { Markdown } from "../../pi-tui.mjs";
 import chalk from "../../chalk/source/index.js";
 import lockfile from "../../proper-lockfile.mjs";
@@ -552,9 +553,18 @@ async function refreshModelCatalogs(agentDir) {
         if (result.aborted) {
             throw new Error("Model catalog refresh timed out.");
         }
-        if (result.errors.size > 0) {
-            const details = Array.from(result.errors, ([provider, error]) => `${provider}: ${error.message}`).join("; ");
-            throw new Error(`Could not refresh model catalogs: ${details}`);
+        const failures = [];
+        for (const [provider, error] of result.errors) {
+            // A stale login only affects that provider's catalog; the others are still worth refreshing.
+            if (error instanceof ModelsError && error.code === "oauth") {
+                console.warn(chalk.yellow(`Warning: skipped model catalog for ${provider}: ${error.message}\nLog in again with \`${APP_NAME} auth login ${provider}\` to refresh it.`));
+            }
+            else {
+                failures.push(`${provider}: ${error.message}`);
+            }
+        }
+        if (failures.length > 0) {
+            throw new Error(`Could not refresh model catalogs: ${failures.join("; ")}`);
         }
     }
     finally {

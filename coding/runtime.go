@@ -234,7 +234,7 @@ func (rt *Runtime) Close() error {
 			runner.Invalidate("")
 		}
 		err := current.Session.Close()
-		// pig divergence (D237): Pi main b2cb62923 makes dispose wait for a started OAuth refresh to be saved, right after session.dispose and while the extensions are still running. PiG's own teardown below stops the extension processes and cancels the model tasks, which would cut an in-flight refresh request.
+		// Pi's dispose waits for a started OAuth refresh to be saved, right after session.dispose and while the extensions are still running. PiG's own teardown below stops the extension processes and cancels the model tasks, which would cut an in-flight refresh request.
 		//portlint:allow ctxbackground Pi's dispose awaits settleCredentialWrites with no signal (agent-session-runtime.ts dispose); Close has no caller context
 		settleErr := rt.SettleCredentialWrites(context.Background())
 		current.retireResources("quit")
@@ -318,7 +318,7 @@ func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func
 		}
 		resumed = target
 	}
-	return create(rt.Services(), SessionOptions{
+	session, err := create(rt.Services(), SessionOptions{
 		resumed:                resumed,
 		SessionManager:         opts.SessionManager,
 		ScopedModels:           opts.ScopedModels,
@@ -348,4 +348,12 @@ func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func
 		runnerShared:           true,
 		extensionHost:          rt.extensionHost,
 	})
+	if session != nil {
+		// Pi builds every Session of every mode through createAgentSessionRuntime -> createAgentSession, whose stream function resolves auth
+		// through the model runtime for each request and is marked so summaries pre-resolve nothing (sdk.ts markRuntimeStreamFunction,
+		// agent-session.ts:603). A summary that pre-resolved here pinned one derived or refreshed credential into all its requests, which a
+		// retry's backoff or a later chunk then sent after it had expired. createAgentSessionOver marks its Session the same way.
+		session.runtimeStream = true
+	}
+	return session, err
 }

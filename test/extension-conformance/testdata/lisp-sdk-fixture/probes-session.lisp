@@ -18,6 +18,38 @@
                                         (error (e) (format nil "reload=error:~A" e)))))
                     "info")))))
 
+(defvar *kept-event-ctx* nil "The context the event_session_actions_on handler kept, for event_session_actions_stored.")
+
+(defun report-session-actions (hctx)
+  (flet ((report (name call)
+           (handler-case (progn (funcall call) (format nil "~A=allowed" name))
+             (error (e) (if (search "is not a function" (princ-to-string e))
+                            (format nil "~A=rejected" name)
+                            (format nil "~A=error:~A" name e))))))
+    (format nil "~{~A~^,~}"
+            (list (report "new" (lambda () (pig:ctx-new-session hctx)))
+                  (report "fork" (lambda () (pig:ctx-fork hctx "entry")))
+                  (report "navigate" (lambda () (pig:ctx-navigate-tree hctx "entry")))
+                  (report "switch" (lambda () (pig:ctx-switch-session hctx "/s.jsonl")))
+                  (report "reload" (lambda () (pig:ctx-reload hctx)))))))
+
+(def-fixture "event_session_actions_on" (ext)
+  (pig:command ext "event_session_actions_on" "Subscribe to the event named by the argument with a handler that calls the session actions"
+               (lambda (ctx args)
+                 (declare (ignore ctx))
+                 (pig:on ext (string-trim '(#\Space #\Newline #\Tab) args)
+                         (lambda (hctx data)
+                           (declare (ignore data))
+                           (setf *kept-event-ctx* hctx)
+                           (pig:ctx-notify hctx (format nil "event_actions:~A" (report-session-actions hctx)) "info")
+                           nil)))))
+
+(def-fixture "event_session_actions_stored" (ext)
+  (pig:command ext "event_session_actions_stored" "Call the session actions through the context an event handler kept"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-notify ctx (format nil "stored_actions:~A" (report-session-actions *kept-event-ctx*)) "info"))))
+
 (def-fixture "session_actions_bound" (ext)
   (pig:command ext "session_actions_bound" "Report what the host's bound session actions answer"
                (lambda (ctx args)

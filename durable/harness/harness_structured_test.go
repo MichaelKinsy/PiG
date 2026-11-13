@@ -1852,11 +1852,11 @@ func TestToolRounds(t *testing.T) {
 		addTool(t, setup.Registry, noopTool("noop"))
 		// An extension's hook starts work owned by the generation, which holds it while the next turn runs.
 		var opened Harness
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, api HookApi) error {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, api HookApi) (*HookTasks, error) {
 			_, err := durable.Commit(ctx, opened, func(tx durable.Tx) (durable.TaskId, error) {
 				return durable.CreateTask(tx, nodeTask, nodeInput{Name: "hooked"}, ownedBy(api.TaskId()))
 			})
-			return err
+			return nil, err
 		}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"noop", "c1"}), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -2528,11 +2528,11 @@ func TestToolRoundsAsTheViewShowsThem(t *testing.T) {
 		addTask(t, setup.Registry, nodeTask.Erased())
 		addTool(t, setup.Registry, noopTool("noop"))
 		var opened Harness
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, api HookApi) error {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterTools: func(ctx context.Context, _ durable.EntryId, _ []durable.EntryId, api HookApi) (*HookTasks, error) {
 			_, err := durable.Commit(ctx, opened, func(tx durable.Tx) (durable.TaskId, error) {
 				return durable.CreateTask(tx, nodeTask, nodeInput{Name: "hooked"}, ownedBy(api.TaskId()))
 			})
-			return err
+			return nil, err
 		}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCalls([2]string{"noop", "c1"}), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)

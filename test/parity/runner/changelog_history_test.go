@@ -77,11 +77,15 @@ func TestChangelogHeaderComparatorRequiresCompleteOrderedSource(t *testing.T) {
 	// Pi utils/changelog.ts:124-160 parses release headers and skips Unreleased; interactive-mode.ts:6506-6514 reverses all entries, regardless of collapseChangelog.
 	const source = "## [Unreleased]\nnot released\n## [2.0.0]\nThe documentation may mention Updated to vX.Y.Z.\n## Notes\nnot a release\n## [1.0.0]\nfirst\n"
 	const complete = "What's New\n\n[1.0.0]\nfirst\n\n[2.0.0]\nThe documentation may mention Updated to vX.Y.Z.\n"
+	// A release body may name the Unreleased heading in prose, as PiG 0.8.0's own entries do; only a rendered Unreleased header is a defect.
+	const prose = "What's New\n\n[1.0.0]\nfirst\n\n[2.0.0]\nThe fold stops while `## [Unreleased]` holds entries; wrapped\n[Unreleased]` text is still prose.\n"
 	for _, tc := range []struct {
 		name, output string
 		pass         bool
 	}{
 		{"complete", complete, true},
+		{"unreleased named in prose", prose, true},
+		{"rendered unreleased header", "[Unreleased]\nnot released\n\n" + complete, false},
 		{"viewport tail", "The documentation may mention Updated to vX.Y.Z.\n", false},
 		{"last release only", "[2.0.0]\nbody\n", false},
 		{"wrong order", "[2.0.0]\n[1.0.0]\n", false},

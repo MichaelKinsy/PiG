@@ -254,7 +254,24 @@
    #:agent-session-bind-extensions #:agent-session-state #:agent-session-messages #:agent-session-refresh-context
    #:agent-session-session-manager #:agent-session-subscribe #:agent-session-dispose
    #:agent-session-session-id #:agent-session-session-file #:agent-session-model #:agent-session-thinking-level
-   #:agent-session-active-tools #:agent-session-system-prompt #:agent-session-model-fallback-message #:agent-session-extension-errors
+   #:agent-session-system-prompt #:agent-session-active-tools #:agent-session-model-fallback-message #:agent-session-extension-errors
+    #:agent-session-current-session-id #:agent-session-current-session-file #:agent-session-current-model #:agent-session-current-thinking-level
+    #:agent-session-current-system-prompt #:agent-session-streaming-p #:agent-session-idle-p #:agent-session-compacting-p #:agent-session-retrying-p #:agent-session-bash-running-p
+    #:agent-session-has-pending-bash-messages-p #:agent-session-retry-attempt #:agent-session-pending-message-count #:agent-session-session-name
+    #:agent-session-routed-model #:agent-session-scoped-models #:agent-session-steering-mode #:agent-session-follow-up-mode
+    #:agent-session-auto-compaction-enabled-p #:agent-session-auto-retry-enabled-p #:agent-session-supports-thinking-p
+    #:agent-session-get-available-thinking-levels #:agent-session-get-last-assistant-text #:agent-session-get-active-tool-names
+    #:agent-session-get-callable-tool-names #:agent-session-get-steering-messages #:agent-session-get-follow-up-messages #:agent-session-get-all-tools
+    #:agent-session-get-tool-definition #:agent-session-get-context-usage #:agent-session-get-session-stats
+    #:agent-session-get-user-messages-for-forking #:agent-session-prompt-templates #:agent-session-cache-warming-status
+    #:agent-session-has-extension-handlers-p #:agent-session-cycle-model #:agent-session-set-thinking-level #:agent-session-cycle-thinking-level
+    #:agent-session-set-scoped-models #:agent-session-set-active-tools-by-name #:agent-session-set-steering-mode #:agent-session-set-follow-up-mode
+    #:agent-session-set-auto-compaction-enabled #:agent-session-set-auto-retry-enabled #:agent-session-set-cache-warming-mode
+    #:agent-session-set-session-name #:agent-session-clear-queue #:agent-session-abort-bash #:agent-session-abort-branch-summary
+    #:agent-session-abort-compaction #:agent-session-abort-retry #:agent-session-record-bash-result #:agent-session-export-to-jsonl
+    #:agent-session-set-model #:agent-session-wait-for-idle #:agent-session-reload #:agent-session-compact #:agent-session-navigate-tree
+    #:agent-session-execute-bash #:agent-session-export-to-html #:agent-session-summarize-for-bug-report #:agent-session-send-custom-message
+    #:agent-session-send-user-message
    #:agent-session-services #:make-agent-session-services #:agent-session-services-cwd #:agent-session-services-agent-dir
    #:agent-session-services-model-runtime #:agent-session-services-settings-manager #:agent-session-services-resource-loader
    #:agent-session-services-diagnostics #:create-agent-session-services #:create-agent-session-from-services
@@ -276,6 +293,9 @@
    #:oauth-on-prompt #:oauth-on-select #:oauth-on-manual-code-input #:register-virtual-model #:unregister-virtual-model
    #:ctx-register-virtual-model #:ctx-unregister-virtual-model #:register-mcp-server #:unregister-mcp-server
    #:ctx-register-mcp-server #:ctx-unregister-mcp-server #:ctx-get-mcp-servers #:tool-renderer #:message-renderer
+   #:view-ref #:view-ref-p #:view-ref-key #:view-ref-epoch #:view-ref-rev #:view-status #:view-status-p #:view-status-mount #:view-status-state #:view-status-reason #:view-status-result #:view-clause #:view-when #:view-alternative #:ctx-view-diagnostics
+   #:view-shape #:view-intent #:view-asset #:view-target #:ctx-view-abilities #:ctx-mount-view #:ctx-update-view #:ctx-hide-view #:ctx-show-view
+   #:ctx-finish-view #:ctx-remove-view #:ctx-view-state #:on-view-intent #:on-view-abilities #:view-intent-result
    #:message-view-renderer #:entry-renderer #:entry-view-renderer #:message-view-event #:entry-view-event
    #:message-render-options-state #:entry-render-options-state #:markdown-transformer #:own-thinking-runs #:ctx-own-thinking-runs #:ctx-set-login #:ctx-register-sprite
    #:auth-context #:make-auth-context #:auth-context-p #:auth-context-env #:auth-context-file-exists #:api-key-auth-input
@@ -297,7 +317,7 @@
    #:refresh-models-context-stored #:refresh-models-context-allow-network #:refresh-models-context-force
    #:refresh-models-context-signal #:refresh-models-context-base-url #:provider #:make-provider #:provider-p #:provider-id
    #:provider-name #:provider-auth #:provider-get-models #:provider-stream #:provider-stream-simple #:provider-base-url
-   #:provider-headers #:provider-filter-models #:provider-get-all-models #:provider-filter-all-models #:provider-refresh-models
+   #:provider-headers #:provider-refresh-models-auth #:provider-filter-models #:provider-get-all-models #:provider-filter-all-models #:provider-refresh-models
    #:provider-fetch-deferred #:provider-cancel-deferred #:provider-generate-images #:provider-classify #:provider-handle
    #:oauth-auth-info #:make-oauth-auth-info #:oauth-auth-info-p #:oauth-auth-info-url #:oauth-auth-info-instructions
    #:oauth-device-code-info #:make-oauth-device-code-info #:oauth-device-code-info-p #:oauth-device-code-info-user-code
@@ -349,7 +369,7 @@
    #:kit-skill-invocation #:kit-skill-invocation-set-expanded #:kit-skill-invocation-set-output-pad
    #:kit-custom-message #:kit-custom-message-set-expanded #:kit-custom-message-set-output-pad
    #:kit-cancellable-loader #:kit-bordered-loader #:kit-input #:kit-slash-command #:kit-autocomplete #:kit-editor
-   #:kit-scroll-view #:kit-mouse-region
+   #:kit-scroll-view #:kit-mouse-region #:kit-grid #:kit-grid-cell #:kit-grid-chip
    ;; kit: views, events and the view renderers' result
    #:kit-view #:kit-render-result #:kit-event-node #:kit-event-type #:kit-event-index #:kit-event-item #:kit-event-id #:kit-event-value
    #:kit-event-cursor #:kit-event-mouse

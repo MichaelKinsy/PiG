@@ -38,10 +38,14 @@ allow = [
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature",
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild",
 	"github.com/MichaelKinsy/PiG/coding/piglogin",
+	# 106,262 B on linux_amd64, 83,104 B on darwin_arm64 and 107,712 B on windows_amd64: the plugin UI registry of D614 with its amendment (claims and alternatives, drawing checks, notices, attachments, RFC 8785 digests). subprocess.NewUIBridge makes the registry, so every binary that hosts extensions links it, and RPC mode's carrier (internal/viewcarrier, below heavy_bytes) calls the attachment API, so that is linked too.
+	"github.com/MichaelKinsy/PiG/coding/uiview",
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json",
 	"github.com/MichaelKinsy/PiG/internal/codingagent",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+	# 32,789 B on linux_amd64 and 33,400 B on windows_amd64 (26,184 B on darwin_arm64, under 32 KiB): the HTML export page assets embedded gzip-compressed (template.js.gz 18.9 KB, template.css.gz 4.1 KB) and the renderer. The package stood at 30,508 B and 31,096 B until the OSC 8 link conversion of Pi #12052 (4669953e2, 909154b71 on the release line) added 2,281 B and 2,304 B, 21 B over the line on linux. cli.runExportFlag (the --export flag, which a Piglet Binary compiles out with pig_strip_export_html) reaches it through codingagent.ExportFileToHTML and export.FromJSONL.
+	"github.com/MichaelKinsy/PiG/internal/codingagent/export",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama",
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools",
 	"github.com/MichaelKinsy/PiG/internal/latex",

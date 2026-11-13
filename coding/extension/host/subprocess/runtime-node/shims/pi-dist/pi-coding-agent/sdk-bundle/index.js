@@ -76,6 +76,7 @@ import {
   getLastAssistantUsage,
   getLatestCompactionEntry,
   getMissingSessionCwdIssue,
+  getMissingSessionCwdOptions,
   getResourcePathKey,
   getSourcePackageKey,
   isBashToolResult,
@@ -123,13 +124,13 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-AE3LWF4M.js";
+} from "./chunk-P7ETM5TA.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
   ModelRuntime,
   VIRTUAL_MODEL_STATE_ENTRY
-} from "./chunk-H2BMMKZ4.js";
+} from "./chunk-HU4A3ZE6.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -162,7 +163,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-GAYOJ7LQ.js";
+} from "./chunk-QZRBRK3S.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -172,13 +173,13 @@ import {
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-L57ECBVI.js";
+} from "./chunk-UNRIEWAN.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
   createUsageTotals,
   getUsageCostBreakdown
-} from "./chunk-IJFG4BUL.js";
+} from "./chunk-2VCX4NLH.js";
 import {
   VisualLinePreview,
   formatReadLineRange,
@@ -5728,7 +5729,7 @@ import { llamaCppClassifyApi } from "../../pi-ai/api/llama-cpp-classify.lazy.js"
 import { typesafeSystemOneApi } from "../../pi-ai/api/typesafe-system-one.lazy.js";
 import { stream, streamSimple } from "../../pi-ai/sdk-bundle/compat.js";
 var LLAMA_PROVIDER_ID = "llama.cpp";
-var DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";
+var DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:9931";
 function credentialServerUrl(credential) {
   const value = credential?.env?.LLAMA_BASE_URL;
   return typeof value === "string" && value.trim() ? normalizeLlamaServerUrl(value) : void 0;
@@ -6626,7 +6627,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-ALRYPE2X.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-4E2HV3LO.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -7057,6 +7058,26 @@ function clearCrashLog(path6 = crashLogPath()) {
   }
 }
 __name(clearCrashLog, "clearCrashLog");
+
+// pi-dist/pi-coding-agent/core/preferred-providers.js
+var PREFERRED_PROVIDER_IDS = [RADIUS_PROVIDER_ID, "openrouter"];
+function isPreferredProvider(providerId) {
+  return PREFERRED_PROVIDER_IDS.includes(providerId);
+}
+__name(isPreferredProvider, "isPreferredProvider");
+function compareProviders(a, b) {
+  const rankA = preferredRank(a.id);
+  const rankB = preferredRank(b.id);
+  if (rankA !== rankB)
+    return rankA - rankB;
+  return a.name.localeCompare(b.name);
+}
+__name(compareProviders, "compareProviders");
+function preferredRank(providerId) {
+  const index = PREFERRED_PROVIDER_IDS.indexOf(providerId);
+  return index === -1 ? PREFERRED_PROVIDER_IDS.length : index;
+}
+__name(preferredRank, "preferredRank");
 
 // pi-dist/pi-coding-agent/core/slash-commands.js
 var BUILTIN_SLASH_COMMANDS = [
@@ -9905,6 +9926,62 @@ var ModelSelectorComponent = class extends Container19 {
 
 // pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js
 import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, getSelectPageIndex as getSelectPageIndex3, Input as Input7, Spacer as Spacer19, TruncatedText as TruncatedText2 } from "../../../pi-tui.mjs";
+
+// pi-dist/pi-coding-agent/modes/interactive/components/provider-brand.js
+import { foregroundAnsi, mixColors, parseColor } from "../../../pi-tui.mjs";
+function getProviderBrandStyle(providerId) {
+  if (providerId === RADIUS_PROVIDER_ID)
+    return radiusShimmer;
+  if (providerId === "openrouter")
+    return openRouterGlow;
+  return void 0;
+}
+__name(getProviderBrandStyle, "getProviderBrandStyle");
+var RADIUS_COLORS = ["#4d9abf", "#83ccd2", "#f1be57", "#f09082"].map((hex) => parseColor(hex));
+var CHARS_PER_COLOR = 4;
+var CHARS_PER_SECOND = 10;
+function radiusShimmer(text, elapsedMs) {
+  const mode = theme.getColorMode();
+  const cycle = RADIUS_COLORS.length * CHARS_PER_COLOR;
+  const offset = elapsedMs / 1e3 * CHARS_PER_SECOND;
+  let result = "";
+  let index = 0;
+  for (const char of text) {
+    const position = ((index - offset) % cycle + cycle) % cycle;
+    const band = Math.floor(position / CHARS_PER_COLOR);
+    const t = position / CHARS_PER_COLOR - band;
+    const amount = t * t * (3 - 2 * t);
+    const from = RADIUS_COLORS[band];
+    const to = RADIUS_COLORS[(band + 1) % RADIUS_COLORS.length];
+    result += foregroundAnsi(mixColors(from, to, amount, "srgb"), mode) + char;
+    index++;
+  }
+  return `${result}\x1B[39m`;
+}
+__name(radiusShimmer, "radiusShimmer");
+var OPENROUTER_GLOW = {
+  dark: { base: parseColor("#c6f243"), peak: parseColor("#efffb0") },
+  light: { base: parseColor("#5d32e1"), peak: parseColor("#8f6bff") }
+};
+var GLOW_PERIOD_MS = 2400;
+function openRouterGlow(text, elapsedMs) {
+  const { base, peak } = OPENROUTER_GLOW[theme.appearance];
+  const amount = (1 - Math.cos(2 * Math.PI * elapsedMs / GLOW_PERIOD_MS)) / 2;
+  return `${foregroundAnsi(mixColors(base, peak, amount, "oklch"), theme.getColorMode())}${text}\x1B[39m`;
+}
+__name(openRouterGlow, "openRouterGlow");
+var ANIMATION_FRAME_MS = 50;
+function startBrandAnimation(tui, isAnimating) {
+  const timer = setInterval(() => {
+    if (isAnimating())
+      tui.requestRender();
+  }, ANIMATION_FRAME_MS);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
+__name(startBrandAnimation, "startBrandAnimation");
+
+// pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js
 function formatAuthSelectorProviderType(authType, subscription) {
   if (authType === "api_key")
     return "API key";
@@ -9949,7 +10026,9 @@ var OAuthSelectorComponent = class extends Container20 {
   onSelectCallback;
   onCancelCallback;
   showAuthTypeLabels;
-  constructor(mode, providers, onSelect, onCancel, initialSearchInput) {
+  animationStart = performance.now();
+  stopAnimation;
+  constructor(mode, providers, onSelect, onCancel, initialSearchInput, tui) {
     super();
     this.mode = mode;
     this.allProviders = providers;
@@ -9979,6 +10058,22 @@ var OAuthSelectorComponent = class extends Container20 {
     this.addChild(new Spacer19(1));
     this.addChild(new DynamicBorder());
     this.filterProviders(initialSearchInput ?? "");
+    if (tui)
+      this.stopAnimation = startBrandAnimation(tui, () => this.getSelectedBrandStyle() !== void 0);
+  }
+  render(width) {
+    if (this.stopAnimation && this.getSelectedBrandStyle())
+      this.updateList();
+    return super.render(width);
+  }
+  /** Stops the brand animation. */
+  dispose() {
+    this.stopAnimation?.();
+    this.stopAnimation = void 0;
+  }
+  getSelectedBrandStyle() {
+    const selectedProvider = this.filteredProviders[this.selectedIndex];
+    return selectedProvider && getProviderBrandStyle(selectedProvider.id);
   }
   filterProviders(query) {
     this.filteredProviders = query ? fuzzyFilter4(this.allProviders, query, (provider) => `${provider.name} ${provider.id} ${provider.authType} ${provider.method?.name ?? ""}`) : this.allProviders;
@@ -9995,15 +10090,17 @@ var OAuthSelectorComponent = class extends Container20 {
         continue;
       const isSelected = i === this.selectedIndex;
       const statusIndicator = formatAuthSelectorProviderStatus(provider);
+      const partnerMarker = isPreferredProvider(provider.id) ? theme.fg("muted", " \u2726") : "";
       const authTypeLabel = this.showAuthTypeLabels ? theme.fg("muted", ` [${formatAuthSelectorProviderType(provider.authType, provider.subscription)}]`) : "";
       let line = "";
       if (isSelected) {
         const prefix = theme.fg("accent", "\u2192 ");
-        const text = theme.fg("accent", provider.name);
-        line = prefix + text + authTypeLabel + statusIndicator;
+        const brandStyle = this.stopAnimation && getProviderBrandStyle(provider.id);
+        const text = brandStyle ? brandStyle(provider.name, performance.now() - this.animationStart) : theme.fg("accent", provider.name);
+        line = prefix + text + partnerMarker + authTypeLabel + statusIndicator;
       } else {
         const text = `  ${theme.fg("text", provider.name)}`;
-        line = text + authTypeLabel + statusIndicator;
+        line = text + partnerMarker + authTypeLabel + statusIndicator;
       }
       this.listContainer.addChild(new TruncatedText2(line, 1, 0));
     }
@@ -10049,14 +10146,14 @@ var OAuthSelectorComponent = class extends Container20 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/pi-logo.js
-import { backgroundAnsi, foregroundAnsi, isAppleTerminalSession, rgbColor } from "../../../pi-tui.mjs";
+import { backgroundAnsi, foregroundAnsi as foregroundAnsi2, isAppleTerminalSession, rgbColor } from "../../../pi-tui.mjs";
 var CORAL = rgbColor(228, 138, 122);
 var BLUE = rgbColor(79, 142, 179);
 var YELLOW = rgbColor(234, 182, 93);
 var RESET = "\x1B[0m";
 function piLogoLines() {
   const mode = theme.getColorMode();
-  const fg = /* @__PURE__ */ __name((color) => foregroundAnsi(color, mode), "fg");
+  const fg = /* @__PURE__ */ __name((color) => foregroundAnsi2(color, mode), "fg");
   const top = `${fg(CORAL)}${backgroundAnsi(BLUE, mode)}\u2580${RESET}${fg(CORAL)}\u2580\u2588${RESET} `;
   const bottom = `${fg(BLUE)}\u2588\u2580${RESET} ${fg(YELLOW)}\u2588${RESET}`;
   return [top, bottom];
@@ -10068,42 +10165,19 @@ function supportsPiLogo() {
 __name(supportsPiLogo, "supportsPiLogo");
 function piWordmark() {
   const mode = theme.getColorMode();
-  return `${foregroundAnsi(CORAL, mode)}P${RESET}${foregroundAnsi(YELLOW, mode)}i${RESET}`;
+  return `${foregroundAnsi2(CORAL, mode)}P${RESET}${foregroundAnsi2(YELLOW, mode)}i${RESET}`;
 }
 __name(piWordmark, "piWordmark");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/radius-login-selector.js
-import { foregroundAnsi as foregroundAnsi2, mixColors, parseColor, Text as Text20 } from "../../../pi-tui.mjs";
-var RADIUS_COLORS = ["#4d9abf", "#83ccd2", "#f1be57", "#f09082"].map((hex) => parseColor(hex));
-var CHARS_PER_COLOR = 4;
-var CHARS_PER_SECOND = 10;
-var ANIMATION_FRAME_MS = 50;
-function radiusShimmer(text, elapsedMs) {
-  const mode = theme.getColorMode();
-  const cycle = RADIUS_COLORS.length * CHARS_PER_COLOR;
-  const offset = elapsedMs / 1e3 * CHARS_PER_SECOND;
-  let result = "";
-  let index = 0;
-  for (const char of text) {
-    const position = ((index - offset) % cycle + cycle) % cycle;
-    const band = Math.floor(position / CHARS_PER_COLOR);
-    const t = position / CHARS_PER_COLOR - band;
-    const amount = t * t * (3 - 2 * t);
-    const from = RADIUS_COLORS[band];
-    const to = RADIUS_COLORS[(band + 1) % RADIUS_COLORS.length];
-    result += foregroundAnsi2(mixColors(from, to, amount, "srgb"), mode) + char;
-    index++;
-  }
-  return `${result}\x1B[39m`;
-}
-__name(radiusShimmer, "radiusShimmer");
+import { Text as Text20 } from "../../../pi-tui.mjs";
 var RadiusLoginMenuComponent = class extends ExtensionSelectorComponent {
   static {
     __name(this, "RadiusLoginMenuComponent");
   }
   radiusOption;
   animationStart = performance.now();
-  animationTimer;
+  stopAnimationTimer;
   animating = false;
   constructor(tui, title, options, radiusOption, onSelect, onCancel) {
     super(title, options, (option) => {
@@ -10114,11 +10188,7 @@ var RadiusLoginMenuComponent = class extends ExtensionSelectorComponent {
       onCancel();
     });
     this.radiusOption = radiusOption;
-    this.animationTimer = setInterval(() => {
-      if (this.animating)
-        tui.requestRender();
-    }, ANIMATION_FRAME_MS);
-    this.animationTimer.unref?.();
+    this.stopAnimationTimer = startBrandAnimation(tui, () => this.animating);
   }
   render(width) {
     const lines = super.render(width);
@@ -10134,8 +10204,7 @@ var RadiusLoginMenuComponent = class extends ExtensionSelectorComponent {
     return lines;
   }
   stopAnimation() {
-    clearInterval(this.animationTimer);
-    this.animationTimer = void 0;
+    this.stopAnimationTimer();
     this.animating = false;
   }
   dispose() {
@@ -13557,7 +13626,7 @@ function getLoginProviderCompletionOptions(providerOptions) {
       subscription: provider.subscription
     });
   }
-  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  return Array.from(byId.values()).sort(compareProviders);
 }
 __name(getLoginProviderCompletionOptions, "getLoginProviderCompletionOptions");
 function getLoginProviderSearchText(provider) {
@@ -15488,8 +15557,9 @@ ${message}`, ["Yes", "No"], opts, {
     return result === "Yes";
   }
   async promptForMissingSessionCwd(error) {
-    const confirmed = await this.showExtensionConfirm("Session cwd not found", formatMissingSessionCwdPrompt(error.issue));
-    return confirmed ? error.issue.fallbackCwd : void 0;
+    const options = getMissingSessionCwdOptions(error.issue);
+    const label = await this.showExtensionSelector(formatMissingSessionCwdPrompt(error.issue), options.map((option) => option.label));
+    return options.find((option) => option.label === label)?.value;
   }
   /**
    * Show a text input for extensions.
@@ -17914,24 +17984,41 @@ ${packageLines}`, 1, 0));
       return result;
     } catch (error) {
       if (error instanceof MissingSessionCwdError) {
-        const selectedCwd = await this.promptForMissingSessionCwd(error);
-        if (!selectedCwd) {
-          this.showStatus("Resume cancelled");
-          return { cancelled: true };
+        switch (await this.promptForMissingSessionCwd(error)) {
+          case "continue": {
+            const result = await this.runtimeHost.switchSession(sessionPath, {
+              cwdOverride: error.issue.fallbackCwd,
+              withSession: options?.withSession,
+              projectTrustContextFactory: /* @__PURE__ */ __name((cwd) => this.createProjectTrustContext(cwd), "projectTrustContextFactory")
+            });
+            if (!result.cancelled)
+              this.showStatus(`Resumed session in ${error.issue.fallbackCwd}`);
+            return result;
+          }
+          case "fork":
+            return this.switchToForkedSession(sessionPath, error.issue.fallbackCwd, options);
+          case void 0:
+            this.showStatus("Resume cancelled");
+            return { cancelled: true };
         }
-        const result = await this.runtimeHost.switchSession(sessionPath, {
-          cwdOverride: selectedCwd,
-          withSession: options?.withSession,
-          projectTrustContextFactory: /* @__PURE__ */ __name((cwd) => this.createProjectTrustContext(cwd), "projectTrustContextFactory")
-        });
-        if (result.cancelled) {
-          return result;
-        }
-        this.showStatus("Resumed session in current cwd");
-        return result;
       }
       return this.handleFatalRuntimeError("Failed to resume session", error);
     }
+  }
+  /** Fork a session whose stored cwd is gone into `cwd` and switch to the fork, like `--session <id>` from another project (#11060). */
+  async switchToForkedSession(sourcePath, cwd, options) {
+    const fork = SessionManager.forkFrom(sourcePath, cwd, this.sessionManager.getSessionDir());
+    const forkPath = fork.getSessionFile();
+    const result = await this.runtimeHost.switchSession(forkPath, {
+      withSession: options?.withSession,
+      projectTrustContextFactory: /* @__PURE__ */ __name((cwd2) => this.createProjectTrustContext(cwd2), "projectTrustContextFactory")
+    });
+    if (result.cancelled) {
+      fs3.rmSync(forkPath, { force: true });
+      return result;
+    }
+    this.showStatus(`Forked into new session ${fork.getSessionId()} in ${cwd}`);
+    return result;
   }
   getLoginProviderOptions(authType) {
     const options = [];
@@ -17963,7 +18050,7 @@ ${packageLines}`, 1, 0));
         });
       }
     }
-    return options.sort((a, b) => a.name.localeCompare(b.name));
+    return options.sort(compareProviders);
   }
   async getLogoutProviderOptions() {
     return (await this.session.modelRuntime.listCredentials({ signal: AbortSignal.timeout(15e3) })).map(({ providerId, type }) => {
@@ -17975,7 +18062,7 @@ ${packageLines}`, 1, 0));
         status: { type, source: "stored credential" },
         subscription: provider?.auth.oauth?.isSubscription === true
       };
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    }).sort(compareProviders);
   }
   async handleLoginCommand(providerRef) {
     if (!providerRef) {
@@ -18083,8 +18170,8 @@ ${packageLines}`, 1, 0));
         } else {
           this.ui.requestRender();
         }
-      }, initialSearchInput);
-      return { component: selector, focus: selector };
+      }, initialSearchInput, this.ui);
+      return { component: selector, focus: selector, dispose: /* @__PURE__ */ __name(() => selector.dispose(), "dispose") };
     });
   }
   async showOAuthSelector(mode) {
@@ -18124,8 +18211,8 @@ ${packageLines}`, 1, 0));
       }, () => {
         done();
         this.ui.requestRender();
-      });
-      return { component: selector, focus: selector };
+      }, void 0, this.ui);
+      return { component: selector, focus: selector, dispose: /* @__PURE__ */ __name(() => selector.dispose(), "dispose") };
     });
   }
   async completeProviderAuthentication(providerId, providerName, authType, previousModel) {
@@ -18526,18 +18613,22 @@ ${packageLines}`, 1, 0));
       this.showStatus(`Session imported from: ${inputPath}`);
     } catch (error) {
       if (error instanceof MissingSessionCwdError) {
-        const selectedCwd = await this.promptForMissingSessionCwd(error);
-        if (!selectedCwd) {
-          this.showStatus("Import cancelled");
-          return;
+        switch (await this.promptForMissingSessionCwd(error)) {
+          case "continue": {
+            const result = await this.runtimeHost.importFromJsonl(inputPath, error.issue.fallbackCwd);
+            this.showStatus(result.cancelled ? "Import cancelled" : `Session imported from: ${inputPath}`);
+            return;
+          }
+          case "fork": {
+            const result = await this.switchToForkedSession(inputPath, error.issue.fallbackCwd);
+            if (result.cancelled)
+              this.showStatus("Import cancelled");
+            return;
+          }
+          case void 0:
+            this.showStatus("Import cancelled");
+            return;
         }
-        const result = await this.runtimeHost.importFromJsonl(inputPath, selectedCwd);
-        if (result.cancelled) {
-          this.showStatus("Import cancelled");
-          return;
-        }
-        this.showStatus(`Session imported from: ${inputPath}`);
-        return;
       }
       if (error instanceof SessionImportFileNotFoundError) {
         this.showError(`Failed to import session: ${error.message}`);
@@ -20378,8 +20469,9 @@ ${otherErrors.join("\n")}`;
 __name(validateThemeJson, "validateThemeJson");
 
 // pi-dist/pi-coding-agent/package-manager-cli.js
-import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync6, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync7, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join14, resolve as resolve6 } from "node:path";
+import { ModelsError } from "../../pi-ai/sdk-bundle/index.js";
 import { Markdown as Markdown8 } from "../../../pi-tui.mjs";
 import chalk6 from "../../../chalk/source/index.js";
 import lockfile from "../../../proper-lockfile.mjs";
@@ -21122,7 +21214,7 @@ __name(selectConfig, "selectConfig");
 
 // pi-dist/pi-coding-agent/utils/windows-self-update.js
 import { randomUUID as randomUUID6 } from "node:crypto";
-import { copyFileSync, existsSync as existsSync7, mkdirSync as mkdirSync4, renameSync as renameSync2, rmSync as rmSync5 } from "node:fs";
+import { copyFileSync, existsSync as existsSync7, mkdirSync as mkdirSync4, renameSync as renameSync2, rmSync as rmSync6 } from "node:fs";
 import { basename as basename3, dirname as dirname5, join as join13, relative as relative4, resolve as resolve5, toNamespacedPath } from "node:path";
 var QUARANTINE_DIR_NAME = ".pi-native-quarantine";
 function normalizePath2(path6) {
@@ -21172,7 +21264,7 @@ function cleanupWindowsSelfUpdateQuarantine(packageDir) {
     return;
   }
   try {
-    rmSync5(quarantineRoot, { recursive: true, force: true });
+    rmSync6(quarantineRoot, { recursive: true, force: true });
   } catch {
   }
 }
@@ -21272,7 +21364,7 @@ function activateManagedRelease(managedRoot, version) {
 `);
     renameSync3(temporaryPath, currentPath);
   } finally {
-    rmSync6(temporaryPath, { force: true });
+    rmSync7(temporaryPath, { force: true });
   }
 }
 __name(activateManagedRelease, "activateManagedRelease");
@@ -21288,7 +21380,7 @@ function pruneManagedReleases(managedRoot, activeVersion) {
     if (entry === activeVersion || entry === VERSION || !MANAGED_RELEASE_VERSION_RE.test(entry))
       continue;
     try {
-      rmSync6(join14(releasesRoot, entry), { force: true, recursive: true });
+      rmSync7(join14(releasesRoot, entry), { force: true, recursive: true });
     } catch {
     }
   }
@@ -21299,7 +21391,7 @@ function cleanupManagedStaging(managedRoot) {
   try {
     for (const entry of readdirSync2(stagingRoot)) {
       if (entry.startsWith("update-")) {
-        rmSync6(join14(stagingRoot, entry), { force: true, recursive: true });
+        rmSync7(join14(stagingRoot, entry), { force: true, recursive: true });
       }
     }
   } catch {
@@ -21369,7 +21461,7 @@ async function runManagedSelfUpdate(managedRoot, version) {
     pruneManagedReleases(managedRoot, version);
   } finally {
     if (stageDir)
-      rmSync6(stageDir, { force: true, recursive: true });
+      rmSync7(stageDir, { force: true, recursive: true });
     await releaseLock();
   }
 }
@@ -21710,9 +21802,17 @@ async function refreshModelCatalogs2(agentDir) {
     if (result.aborted) {
       throw new Error("Model catalog refresh timed out.");
     }
-    if (result.errors.size > 0) {
-      const details = Array.from(result.errors, ([provider, error]) => `${provider}: ${error.message}`).join("; ");
-      throw new Error(`Could not refresh model catalogs: ${details}`);
+    const failures = [];
+    for (const [provider, error] of result.errors) {
+      if (error instanceof ModelsError && error.code === "oauth") {
+        console.warn(chalk6.yellow(`Warning: skipped model catalog for ${provider}: ${error.message}
+Log in again with \`${APP_NAME} auth login ${provider}\` to refresh it.`));
+      } else {
+        failures.push(`${provider}: ${error.message}`);
+      }
+    }
+    if (failures.length > 0) {
+      throw new Error(`Could not refresh model catalogs: ${failures.join("; ")}`);
     }
   } finally {
     clearTimeout(timeout);
@@ -22623,13 +22723,6 @@ function resolveCliPaths(cwd, paths) {
   return paths?.map((value) => isLocalPath(value) ? resolvePath(value, cwd) : value);
 }
 __name(resolveCliPaths, "resolveCliPaths");
-async function promptForMissingSessionCwd(issue, settingsManager) {
-  return showStartupSelector(settingsManager, formatMissingSessionCwdPrompt(issue), [
-    { label: "Continue", value: issue.fallbackCwd },
-    { label: "Cancel", value: void 0 }
-  ]);
-}
-__name(promptForMissingSessionCwd, "promptForMissingSessionCwd");
 async function main(args, options) {
   resetTimings();
   setThemeJsonValidator(validateThemeJson);
@@ -22731,11 +22824,19 @@ async function main(args, options) {
   const missingSessionCwdIssue = getMissingSessionCwdIssue(sessionManager, cwd);
   if (missingSessionCwdIssue) {
     if (appMode === "interactive") {
-      const selectedCwd = await promptForMissingSessionCwd(missingSessionCwdIssue, startupSettingsManager);
-      if (!selectedCwd) {
-        process.exit(0);
+      const sessionFile = missingSessionCwdIssue.sessionFile;
+      const choice = await showStartupSelector(startupSettingsManager, formatMissingSessionCwdPrompt(missingSessionCwdIssue), getMissingSessionCwdOptions(missingSessionCwdIssue));
+      switch (choice) {
+        case "continue":
+          sessionManager = SessionManager.open(sessionFile, sessionDir, cwd);
+          break;
+        // Fork like `--session <id>` from another project, so the choice sticks without rewriting history (#11060).
+        case "fork":
+          sessionManager = forkSessionOrExit(sessionFile, cwd, sessionDir);
+          break;
+        case void 0:
+          process.exit(0);
       }
-      sessionManager = SessionManager.open(missingSessionCwdIssue.sessionFile, sessionDir, selectedCwd);
     } else {
       console.error(chalk7.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
       process.exit(1);

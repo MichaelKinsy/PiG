@@ -108,7 +108,6 @@ func truncateForSummary(text string, maxChars int) string {
 	if length <= maxChars {
 		return text
 	}
-	// pig divergence (D252): Pi main 9e870f6f0 does not split a surrogate pair at the cut.
 	return jsstring.SliceHead(text, maxChars) + "\n\n[... " + itoa(length-maxChars) + " more characters truncated]"
 }
 

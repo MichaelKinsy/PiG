@@ -36,7 +36,7 @@ func TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone(t *testin
 	// The lock release is the last step: it did not run, the data directory is still held.
 	second, err := StartServer(optionsFor(t, s.dataDir, s.root), background)
 	if err == nil {
-		_ = second.Close(background)
+		closeAndWait(t, second)
 	}
 	if err == nil || !strings.Contains(err.Error(), "another server runs on "+s.dataDir) {
 		t.Fatalf("a second server on the data directory after the failed close: %v, want it refused (the lock is still held)", err)

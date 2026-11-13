@@ -96,15 +96,15 @@ func TestHooksReturnTheResultObjectOfEachHook(t *testing.T) {
 				return &harness.CompactionDecision{Decline: true}, nil
 			}}},
 		{"onYield", `{"answer":{"role":"assistant","content":[],"stopReason":"stop"}}`, `{"continue":"more"}`, &harness.GenerationHooks{
-			OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (*harness.YieldContinue, error) {
+			OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (harness.YieldResult, error) {
 				return &harness.YieldContinue{Continue: ai.UserText("more")}, nil
 			}}},
 		{"afterTools", `{"assistant":4,"results":[5,6]}`, `null`, &harness.GenerationHooks{
-			AfterTools: func(_ context.Context, assistant durable.EntryId, results []durable.EntryId, _ harness.HookApi) error {
+			AfterTools: func(_ context.Context, assistant durable.EntryId, results []durable.EntryId, _ harness.HookApi) (*harness.HookTasks, error) {
 				if assistant != 4 || len(results) != 2 || results[1] != 6 {
 					t.Errorf("afterTools %v %v", assistant, results)
 				}
-				return nil
+				return nil, nil
 			}}},
 		{"beforeTool", `{"call":{"id":"c","name":"t","arguments":{"a":1}}}`, `{"block":"no"}`, &harness.ToolHooks{
 			BeforeTool: func(_ context.Context, call harness.ToolHookCall, _ harness.HookApi) (*harness.BeforeToolResult, error) {
@@ -197,15 +197,15 @@ func TestAPanickingHookIsAThrownOutcome(t *testing.T) {
 func TestAfterRunAnswersCarryRejectedOnlyWhenARequestWasRejected(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		asked harness.RunEndTasks
+		asked harness.HookTasks
 		want  string
 	}{
-		{"none asked", harness.RunEndTasks{}, `{"tasks":[]}`},
-		{"a request without a definition", harness.RunEndTasks{Tasks: []harness.RunEndTask{{}}},
-			`{"tasks":[],"rejected":[{"name":"Error","message":"An afterRun hook asked for a task without a definition"}]}`},
+		{"none asked", harness.HookTasks{}, `{"tasks":[]}`},
+		{"a request without a definition", harness.HookTasks{Tasks: []harness.HookTask{{}}},
+			`{"tasks":[],"rejected":[{"name":"Error","message":"A hook asked for a task without a definition"}]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			handler := &harness.GenerationHooks{AfterRun: func(context.Context, harness.RunSummary, harness.HookApi) (*harness.RunEndTasks, error) {
+			handler := &harness.GenerationHooks{AfterRun: func(context.Context, harness.RunSummary, harness.HookApi) (*harness.HookTasks, error) {
 				return &tc.asked, nil
 			}}
 			ev := hookRun(t, "afterRun", map[int]any{0: handler}, `{"run":{"reason":"answer","answer":1,"last":1,"first":1}}`)

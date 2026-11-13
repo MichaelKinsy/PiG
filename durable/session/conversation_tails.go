@@ -9,8 +9,9 @@
 //     microtask interleavings around `await read()` are the interleavings of the goroutines that call Apply while a
 //     read is out; no lock is held across `read`.
 //   - Kept markers are detached copies: Object.freeze has no Go counterpart, so Apply keeps its own copy of the written
-//     record and Marker returns a copy of the kept one, as a Storage read does. A caller that changes the record it wrote
-//     or the marker it got changes neither the kept marker nor another caller's.
+//     record, Marker keeps its own copy of a marker its read returned, and a cached Marker answer is a copy of the kept
+//     one, as a Storage read is. A caller that changes the record it wrote or the marker it got changes neither the
+//     kept marker nor another caller's.
 package session
 
 import (
@@ -120,8 +121,13 @@ func (tails *ConversationTails) Marker(conversationId durable.ConversationId, at
 	}
 	// Only a read that no newer entry can change: no cutoff, or one at or after the newest entry.
 	if atOrBefore == nil || (latestKnown && (!latest.present || latest.id <= *atOrBefore)) {
+		var kept *HeadMarker
+		if found != nil {
+			copied := detach.Entry(*found)
+			kept = &copied
+		}
 		tails.mu.Lock()
-		tails.markers.set(conversationId, found)
+		tails.markers.set(conversationId, kept)
 		tails.mu.Unlock()
 	}
 	return found, nil

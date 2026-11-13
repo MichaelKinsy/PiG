@@ -1,6 +1,6 @@
 // Schema helpers: Chord's short constructors over pi-schema's builders (plain JSON Schema, typed with the values they
-// accept), and method and keyed member declarations. The helpers keep the shapes contracts were fingerprinted with:
-// literals carry their `type`, `oneOf` is a union of literals, `map` a pattern-property record.
+// accept), and method, keyed member and event member declarations. The helpers keep the shapes contracts were
+// fingerprinted with: literals carry their `type`, `oneOf` is a union of literals, `map` a pattern-property record.
 
 import {
 	arr as arrSchema,
@@ -21,6 +21,9 @@ import {
 } from "@earendil-works/pi-schema";
 
 export { Optional, opt, type Schema, type Static } from "@earendil-works/pi-schema";
+
+import type { HostKind, KindShape } from "./host-kind.ts";
+import type { Params } from "./params.ts";
 
 /** Bounds of a string length, a number or an array length. */
 export type Bounds = { readonly min?: number; readonly max?: number };
@@ -177,8 +180,38 @@ export class Method<A extends Schema = Schema, R extends Schema = Schema> {
 	}
 }
 
-/** A keyed state member's declaration (slice 6a §12): documents of `schema` by string key; only in `local` contracts. */
-export class KeyedMember<S extends Schema = Schema> {
+/**
+ * A keyed state member's declaration (slice 6a §12): documents of `schema` by string key, or by address of host kind
+ * `key` (decision "Documents and table rows can belong to a host"); only in `local` contracts.
+ */
+export class KeyedMember<S extends Schema = Schema, K extends KindShape | undefined = KindShape | undefined> {
+	readonly schema: S;
+	readonly key: K;
+
+	constructor(schema: S, key: K) {
+		this.schema = schema;
+		this.key = key;
+	}
+}
+
+/**
+ * Declares a keyed state member of a `local` contract: documents of `schema` by string key, or with `key` (a host kind)
+ * by address of that kind (a host-keyed document handle implements it), each watchable.
+ */
+export function keyed<S extends Schema>(schema: S): KeyedMember<S, undefined>;
+export function keyed<S extends Schema, N extends string, P extends Params>(
+	schema: S,
+	key: HostKind<N, P>,
+): KeyedMember<S, HostKind<N, P>>;
+export function keyed(schema: Schema, key?: KindShape): KeyedMember {
+	return new KeyedMember(schema, key);
+}
+
+/**
+ * An event member's declaration in a `local` contract's flat members (decision "Events: fire-and-forget members"): the
+ * schema of the JSON values its object emits.
+ */
+export class EventDeclaration<S extends Schema = Schema> {
 	readonly schema: S;
 
 	constructor(schema: S) {
@@ -186,9 +219,13 @@ export class KeyedMember<S extends Schema = Schema> {
 	}
 }
 
-/** Declares a keyed state member of a `local` contract: documents of `schema` by string key, each watchable. */
-export function keyed<S extends Schema>(schema: S): KeyedMember<S> {
-	return new KeyedMember(schema);
+/**
+ * Declares an event member of a `local` contract, as `keyed(schema)` marks a keyed member: JSON values of `schema` the
+ * object emits, delivered once to the references bound to it, never kept (a remote contract lists them under a
+ * variant's `events`).
+ */
+export function event<S extends Schema>(schema: S): EventDeclaration<S> {
+	return new EventDeclaration(schema);
 }
 
 /** Declares a method: `method()`, `method(args)`, `method(args, result)` or `method(undefined, result)`. */

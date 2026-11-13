@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Tests of the pin model and its derivations. They use no network: refs that
 need resolution are exercised through the cached and committed paths."""
+import argparse
 import contextlib
 import hashlib
 import io
@@ -21,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pinlib  # noqa: E402
 import pin as pin_tool  # noqa: E402
 import oracle  # noqa: E402
+import backport_fixture  # noqa: E402
 
 TAG = pinlib.Pin("v1.1.0", "a" * 40, "1.1.0", "1.1.0")
 COMMIT = pinlib.Pin("b" * 40, "b" * 40, "1.1.0", "1.1.0+bbbbbbbb")
@@ -120,8 +122,11 @@ class RepositoryTests(unittest.TestCase):
         self.assertTrue("commit/" + "b" * 40 in moved["README.md"])
         self.assertTrue("1.1.0%2B" + "b" * 8 in moved["README.md"])
         self.assertTrue("The pinned Pi build is 1.1.0+bbbbbbbb, commit `" + "b" * 40 in moved["README.md"])
-        # The README's example shows the composite version of the banner, whose Pi part is the pin's display version.
-        self.assertRegex(moved["README.md"], r"for example `\d+\.\d+\.\d+\+1\.1\.0\+bbbbbbbb`")
+        # The README's example is the string the binary prints (pigversion.Version: PigVersion + "+" + the build metadata, one plus).
+        binary = re.search(r'^const Version = PigVersion \+ "(\+[^"]+)"', moved["internal/coding/pigversion/pigversion.go"], re.M).group(1)
+        self.assertEqual(binary, "+1.1.0.bbbbbbbb")
+        example = re.search(r"for example `(\d+\.\d+\.\d+)(\+[^`]+)`", moved["README.md"])
+        self.assertEqual(example.group(2), binary)
         self.assertTrue("ARG PI_COMMIT=" + "b" * 40 in moved["automation/images/ci-parity/Dockerfile"])
 
     def test_provenance_names_the_committed_pin(self):
@@ -473,6 +478,7 @@ class SharedStoreTests(unittest.TestCase):
         self.builds = 0
         self.build_delay = 0.0
         self.probe = lambda: None
+        self.binary = "cli.js"
         self.counter = threading.Lock()
         self.identity("first")
         stack = contextlib.ExitStack()
@@ -519,8 +525,9 @@ class SharedStoreTests(unittest.TestCase):
         self.probe()
         agent = flat / "node_modules" / "@earendil-works" / "pi-coding-agent"
         agent.mkdir(parents=True)
-        (agent / "package.json").write_text(json.dumps({"name": oracle.AGENT, "version": "1.1.0", "bin": {"pi": "cli.js"}, "oracle": self.label}))
-        (agent / "cli.js").write_text("")
+        (agent / "package.json").write_text(json.dumps({"name": oracle.AGENT, "version": "1.1.0", "bin": {"pi": self.binary}, "oracle": self.label}))
+        (agent / self.binary).parent.mkdir(parents=True, exist_ok=True)
+        (agent / self.binary).write_text("")
 
     def with_typescript(self, _flat, _destination, _version):
         self.probe()
@@ -670,23 +677,80 @@ class SharedStoreTests(unittest.TestCase):
         self.assertEqual(oracle.ensure(COMMIT), held)
         self.assertEqual(self.builds, 1)
 
-    def test_ensure_durable_packs_the_published_build_not_the_entry(self):
-        # ensure() builds into entry/build-<random>/src and publishes it through current.ref; it never creates entry/src.
-        # ensure_durable must pack that published build's source, as freeze_closure resolves it.
-        built = oracle.ensure(COMMIT).parent
-        (built / "src" / "packages" / "durable" / "dist").mkdir(parents=True)
-        self.assertFalse((oracle.entry(COMMIT) / "src").exists())
-        packed_from = []
+    def carries_backports(self, pin=COMMIT):
+        """The committed pin is `pin`, whose oracle carries the post-release backports; apply_backports is recorded, not run."""
+        applied = []
+        stack = contextlib.ExitStack()
+        self.addCleanup(stack.close)
+        stack.enter_context(mock.patch.object(pinlib, "committed", lambda: pin))
+        stack.enter_context(mock.patch.object(oracle, "apply_backports", applied.append))
+        return applied
 
-        def pack(source, _destination, *_roots):
-            packed_from.append(source)
-            raise pinlib.PinError("packed")
+    def test_the_committed_pins_oracle_carries_the_backports_and_is_stamped_with_them(self):
+        applied = self.carries_backports()
+        built = oracle.ensure(COMMIT)
+        self.assertEqual(applied, [built], "the installed tree must be patched once, before the build is published")
+        digest = hashlib.sha256(oracle.BACKPORTS.read_bytes()).hexdigest()
+        self.assertEqual(json.loads((built.parent / oracle.STAMP).read_text())["backports"], digest)
+        self.assertEqual(oracle.ensure(COMMIT), built, "a build with the current backports must be reused, not rebuilt")
+        self.assertEqual(self.builds, 1)
 
-        with mock.patch.object(oracle, "pack", pack), mock.patch.object(oracle, "read_frozen_lock", lambda *_a: None):
-            with self.assertRaisesRegex(pinlib.PinError, "packed"):
-                oracle.ensure_durable(COMMIT)
-        self.assertEqual(packed_from, [built / "src"])
+    def test_a_build_without_the_backports_is_not_the_oracle_of_the_pin_that_carries_them(self):
+        plain = oracle.ensure(COMMIT)
+        self.assertNotIn("backports", json.loads((plain.parent / oracle.STAMP).read_text()))
+        applied = self.carries_backports()
+        backported = oracle.ensure(COMMIT)
+        self.assertNotEqual(plain.resolve(), backported.resolve(), "the unpatched build was reused as the backported oracle")
+        self.assertEqual(applied, [backported])
+        self.assertNotIn("backports", json.loads((plain.parent / oracle.STAMP).read_text()), "the new build rewrote the first")
+        self.assertEqual(self.builds, 2)
 
+    def test_a_pin_the_backports_were_not_recorded_for_gets_a_plain_oracle(self):
+        applied = self.carries_backports(TAG)  # the committed pin is another one: PI_UPSTREAM_REF built COMMIT for one run
+        built = oracle.ensure(COMMIT)
+        self.assertEqual(applied, [])
+        self.assertNotIn("backports", json.loads((built.parent / oracle.STAMP).read_text()))
+
+    def test_the_backported_oracles_bundle_is_rebuilt_after_the_patch_and_stamped(self):
+        applied = self.carries_backports()
+        calls = []
+
+        def rebuild(source, modules):
+            calls.append((source, modules, list(applied)))
+            return "f" * 64
+
+        with mock.patch.object(oracle, "rebuild_bundle", rebuild):
+            built = oracle.ensure(COMMIT)
+        self.assertEqual(calls, [(built.parent / "src", built, [built])], "the bundle is rebuilt once, from the source build, after the installed tree is patched")
+        self.assertEqual(json.loads((built.parent / oracle.STAMP).read_text())["bundle_sha256"], "f" * 64)
+
+    def test_a_backported_build_whose_pi_bin_runs_another_bundle_than_it_stamped_is_not_the_oracle(self):
+        self.carries_backports()
+        self.binary = "dist/bundle/cli.js"
+        with mock.patch.object(oracle, "rebuild_bundle", lambda _source, _modules: ""):  # a build of the code that patched the compiled output only
+            unbundled = oracle.ensure(COMMIT)
+        self.assertNotIn("bundle_sha256", json.loads((unbundled.parent / oracle.STAMP).read_text()))
+        with mock.patch.object(oracle, "rebuild_bundle", lambda _source, modules: oracle.tree_digest(oracle.bundle_of(modules))):
+            rebuilt = oracle.ensure(COMMIT)
+            self.assertNotEqual(unbundled.resolve(), rebuilt.resolve(), "a build whose bundle is the pin's was reused as the backported oracle")
+            self.assertEqual(oracle.ensure(COMMIT), rebuilt, "a build whose bundle is the stamped one must be reused")
+            self.assertEqual(self.builds, 2)
+            (rebuilt / "@earendil-works" / "pi-coding-agent" / self.binary).write_text("another bundle")
+            self.assertNotEqual(oracle.ensure(COMMIT).resolve(), rebuilt.resolve(), "a build whose bundle changed after its stamp was reused")
+        self.assertEqual(self.builds, 3)
+
+    def test_the_key_of_a_backported_oracle_is_not_the_key_of_a_build_made_before_the_bundle_was_rebuilt(self):
+        before = hashlib.sha256(b"data\nclosure\nbackports").hexdigest()[:12]
+        self.assertNotEqual(oracle.identity("data", "closure", "backports"), before, "a tree on the earlier code would be handed this build, and this tree that one")
+        self.assertEqual(oracle.identity("data", "closure"), hashlib.sha256(b"data\nclosure").hexdigest()[:12], "an oracle without backports keeps its key")
+
+    def test_changing_a_backport_rebuilds_the_oracle(self):
+        self.carries_backports()
+        first = oracle.ensure(COMMIT)
+        with mock.patch.object(oracle, "backports_digest", lambda _pin: "0" * 64):
+            second = oracle.ensure(COMMIT)
+        self.assertNotEqual(first.resolve(), second.resolve())
+        self.assertEqual(self.builds, 2)
 
 
 class PiVersionTests(unittest.TestCase):
@@ -748,6 +812,56 @@ class ClosureTests(unittest.TestCase):
                 with self.assertRaisesRegex(pinlib.PinError, "packed"):
                     oracle.freeze_closure(TAG, Path("published-lock.json"))
         self.assertEqual(calls, ["extract", "build", "pack"])
+
+    def freezing_from(self, published_data: str, frozen_data: str):
+        """freeze_closure over a published build that ships `published_data` as its model data, for a pin that froze `frozen_data`; return the source it packed and the steps it took."""
+        steps = []
+        packed_from = []
+
+        def write_data(source, text):
+            (source / "packages" / "coding-agent" / "dist").mkdir(parents=True, exist_ok=True)
+            data = source / oracle.DIST_DATA_DIR
+            data.mkdir(parents=True, exist_ok=True)
+            (data / "openrouter.json").write_text(text)
+
+        def extract(_pin, destination):
+            steps.append("extract")
+            (destination / "packages").mkdir(parents=True)
+
+        def build(_pin, source):
+            steps.append("build")
+            write_data(source, frozen_data)
+
+        def pack(source, *_a):
+            steps.append("pack")
+            packed_from.append(source)
+            raise pinlib.PinError("packed")
+
+        with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as frozen:
+            built = Path(home) / "build"
+            write_data(built / "src", published_data)
+            frozen_source = Path(frozen) / "data"
+            frozen_source.mkdir()
+            (frozen_source / "openrouter.json").write_text(frozen_data)
+            with mock.patch.object(oracle, "published", lambda *_a: built), mock.patch.object(oracle, "entry", lambda _pin: Path(home) / "entry"), \
+                    mock.patch.object(oracle, "frozen_digest", lambda _pin: oracle.data_digest(frozen_source)), \
+                    mock.patch.object(oracle, "extract_source", extract), mock.patch.object(oracle, "build_source", build), mock.patch.object(oracle, "pack", pack), \
+                    mock.patch.object(oracle, "read_frozen_lock", lambda *_a: None):
+                with self.assertRaisesRegex(pinlib.PinError, "packed"):
+                    oracle.freeze_closure(COMMIT)
+            return packed_from[0].relative_to(home), steps
+
+    def test_freezing_a_closure_does_not_pack_a_build_made_with_other_model_data(self):
+        # A pack ships dist/providers/data. A build made before the pin froze its data packs other bytes than every later build, so a closure
+        # frozen from it fails `npm ci` with EINTEGRITY in a clean cache while the warm cache that still holds the old build passes.
+        packed, steps = self.freezing_from(published_data='{"day":"before the freeze"}', frozen_data='{"day":"frozen"}')
+        self.assertEqual(packed, Path("entry/src"))
+        self.assertEqual(steps, ["extract", "build", "pack"])
+
+    def test_freezing_a_closure_packs_the_published_build_that_ships_the_frozen_model_data(self):
+        packed, steps = self.freezing_from(published_data='{"day":"frozen"}', frozen_data='{"day":"frozen"}')
+        self.assertEqual(packed, Path("build/src"))
+        self.assertEqual(steps, ["pack"])
 
     def test_a_lock_of_another_install_is_not_a_closure(self):
         with self.assertRaisesRegex(pinlib.PinError, "not the lock of an install"):
@@ -851,131 +965,202 @@ class ClosureTests(unittest.TestCase):
             (pkg / "package.json").write_text(json.dumps({"name": ident, "dependencies": {d: "1" for d in deps if d != ident}}))
         self.assertEqual(oracle.closure_workspaces(source), ["@earendil-works/pi-ai", oracle.AGENT])
 
-    def test_a_commit_pin_freezes_a_durable_closure_whose_top_level_is_what_durable_interop_imports(self):
-        pin = pinlib.committed()
-        if pin.kind == "tag":
-            self.skipTest("a release installs the published pi-durable (npm-locked.py durable/interop)")
-        lock = oracle.read_frozen_lock(pin, oracle.DURABLE)
-        self.assertIsNotNone(lock, f"no frozen durable closure for {pin.commit}: durable/interop would run the published pi-durable, not a build of the pin")
-        top = lock["packages"][""]["devDependencies"]
-        self.assertLessEqual(set(oracle.INTEROP), set(top))
-        self.assertIn("diff", top, "pi-durable's source imports diff: it resolves it from the top of durable/interop/node_modules")
-        for name in oracle.INTEROP:
-            item = lock["packages"]["node_modules/" + name]
-            self.assertTrue(item["resolved"].startswith(oracle.PACK_PREFIX), f"{name} must come from the pin's pack: {item['resolved']}")
-        imported = json.loads((oracle.ROOT / "durable/interop/package.json").read_text())["dependencies"]
-        photon = "@silvia-odwyer/photon"  # the image oracle's processor: durable/interop imports it beside the three packs
-        self.assertIn(photon, top)
-        self.assertEqual(sorted(imported), sorted([*oracle.INTEROP, photon]))
-
-    def test_check_durable_rejects_an_interop_tree_that_is_not_the_pins_durable_oracle(self):
-        pin = pinlib.committed()
-        if pin.kind == "tag":
-            self.skipTest("a release installs the published pi-durable")
-        root = Path(tempfile.mkdtemp())
-        (root / "durable" / "interop").mkdir(parents=True)
-        stale = root / "stale"
-        (stale / "@earendil-works" / "pi-durable").mkdir(parents=True)
-        (stale / "@earendil-works" / "pi-durable" / "package.json").write_text(json.dumps({"name": oracle.DURABLE, "version": pin.package_version}))
-        (root / "durable" / "interop" / "node_modules").symlink_to(stale)
-        saved = oracle.ROOT
-        oracle.ROOT = root
-        try:
-            with self.assertRaisesRegex(pinlib.PinError, "not the durable oracle of commit"):
-                oracle.check_durable(pin)
-        finally:
-            oracle.ROOT = saved
-
-    def host_fixture(self, shared_store: bool):
-        """A Cloudflare host with a locked tree that holds the published packages, and a pinned durable oracle with the pin's."""
-        root = Path(tempfile.mkdtemp())
-        host = root / "host"
-        host.mkdir()
-        locked = (root / "store" / "host-abc" / "node_modules") if shared_store else host / "node_modules"
-        pinned = root / "oracle" / "node_modules"
-        for tree, kind in ((locked, "published"), (pinned, "pinned")):
-            for name in ("@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"):
-                (tree / name).mkdir(parents=True)
-                version = "1.3.0" if kind == "published" else pinlib.committed().package_version
-                (tree / name / "package.json").write_text(json.dumps({"name": name, "version": version, "kind": kind}))
-        (locked / "@earendil-works" / "pi-codemode").mkdir()  # a published package the pinned oracle holds only nested
-        (locked / "miniflare").mkdir()
-        (locked / ".pig-deps-ready").write_text("stamp")
-        if shared_store:
-            (host / "node_modules").symlink_to(locked, target_is_directory=True)
-        return host, locked, pinned
-
-    def kind_of(self, host: Path, name: str) -> str:
-        return json.loads((host / "node_modules" / name / "package.json").read_text())["kind"]
-
-    def test_a_commit_pins_host_imports_pis_packages_from_the_pinned_build_and_keeps_its_other_packages(self):
-        pin = pinlib.committed()
-        if pin.kind == "tag":
-            self.skipTest("a release pin installs the published packages")
-        for shared_store in (False, True):
-            with self.subTest(shared_store=shared_store):
-                host, locked, pinned = self.host_fixture(shared_store)
-                with mock.patch.object(oracle, "check_durable"), mock.patch.object(oracle, "durable_modules", return_value=pinned):
-                    with self.assertRaisesRegex(pinlib.PinError, "does not use the pinned build"):
-                        oracle.check_host(pin, host)  # the freshly locked tree is the published release: the failure this guards
-                    linked = oracle.link_host(pin, host)
-                    self.assertEqual(linked, ["@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"])
-                    for name in linked:
-                        self.assertEqual(self.kind_of(host, name), "pinned", name)
-                        self.assertEqual((host / "node_modules" / name).resolve(), (pinned / name).resolve())
-                    self.assertTrue((host / "node_modules" / "miniflare").exists(), "a package only the host locks stays")
-                    self.assertTrue((host / "node_modules" / "@earendil-works" / "pi-codemode").exists())
-                    self.assertTrue((host / "node_modules" / ".pig-deps-ready").exists(), "the lock stamp survives, so the locked install is not repeated")
-                    self.assertEqual(oracle.link_host(pin, host), linked, "linking again changes nothing")
-                    oracle.check_host(pin, host)
-                    if shared_store:
-                        for name in ("@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"):
-                            self.assertEqual(json.loads((locked / name / "package.json").read_text())["kind"], "published", "the shared store is never edited")
-                        self.assertFalse((host / "node_modules").is_symlink())
-
-    def test_a_host_tree_of_another_pi_version_than_the_pin_is_rejected(self):
-        pin = pinlib.committed()
-        if pin.kind == "tag":
-            self.skipTest("a release pin installs the published packages")
-        host, _locked, pinned = self.host_fixture(False)
-        (pinned / "@earendil-works" / "pi-durable" / "package.json").write_text(json.dumps({"name": oracle.DURABLE, "version": "0.0.1", "kind": "pinned"}))
-        with mock.patch.object(oracle, "check_durable"), mock.patch.object(oracle, "durable_modules", return_value=pinned):
-            with self.assertRaisesRegex(pinlib.PinError, "the pin needs"):
-                oracle.link_host(pin, host)
-
-    def test_a_release_pins_host_keeps_the_published_install_and_checks_its_version(self):
-        host, _locked, _pinned = self.host_fixture(False)
-        pin = pinlib.Pin("v1.3.0", "a" * 40, "1.3.0", "1.3.0")
-        self.assertEqual(oracle.link_host(pin, host), [])
-        self.assertEqual(self.kind_of(host, "@earendil-works/pi-durable"), "published")
-        oracle.check_host(pin, host)
-        with self.assertRaisesRegex(pinlib.PinError, "the release pin needs 1.4.0"):
-            oracle.check_host(pinlib.Pin("v1.4.0", "a" * 40, "1.4.0", "1.4.0"), host)
-
-    def test_the_host_manifest_follows_the_pin(self):
-        pin = pinlib.committed()
-        manifest = json.loads((oracle.ROOT / "durable/core/host/cf/package.json").read_text())["dependencies"]
-        for name in pin_tool.CF_HOST:
-            self.assertEqual(manifest[name], pin.package_version, name)
-
-    def test_the_durable_closure_has_its_own_frozen_file(self):
-        pin = pinlib.committed()
-        self.assertNotEqual(oracle.frozen_lock_path(pin), oracle.frozen_lock_path(pin, oracle.DURABLE))
-
-    def test_the_workspace_closure_of_durable_is_its_own_root(self):
-        source = Path(tempfile.mkdtemp())
-        for name, ident, deps in (("durable", oracle.DURABLE, ["@earendil-works/pi-ai"]), ("ai", "@earendil-works/pi-ai", []), ("agent", oracle.AGENT, [oracle.DURABLE])):
-            pkg = source / "packages" / name
-            pkg.mkdir(parents=True)
-            (pkg / "package.json").write_text(json.dumps({"name": ident, "dependencies": {d: "1" for d in deps}}))
-        self.assertEqual(oracle.closure_workspaces(source, oracle.DURABLE), ["@earendil-works/pi-ai", oracle.DURABLE])
-
     def test_the_committed_pins_frozen_closure_matches_the_pin(self):
         pin = pinlib.committed()
         lock = oracle.read_frozen_lock(pin)
         self.assertIsNotNone(lock, f"no frozen closure for {pin.commit}")
         self.assertEqual(lock["packages"][""]["devDependencies"], {oracle.AGENT: pin.package_version})
         self.assertEqual(lock["packages"][oracle.LOCK_KEY]["version"], pin.package_version)
+
+
+class BackportTests(unittest.TestCase):
+    """apply_backports hands the installed Pi packages to the backports script; the script's own patching is tested here with the real entries."""
+
+    def tree(self, root: Path) -> Path:
+        return make_tree(root / "node_modules", {
+            "node_modules/@earendil-works/pi-coding-agent": "@earendil-works/pi-coding-agent@1.5.2",
+            "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai": "@earendil-works/pi-ai@1.5.2",
+            "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui": "@earendil-works/pi-tui@1.5.2",
+            "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-mcp": "@earendil-works/pi-mcp@1.5.2",
+        })
+
+    def test_each_installed_pi_package_is_named_to_the_script_once(self):
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(oracle, "BACKPORTS", Path(root) / "args.mjs"):
+            modules = self.tree(Path(root))
+            oracle.BACKPORTS.write_text('import { writeFileSync } from "node:fs";\nwriteFileSync(process.argv[1] + ".out", JSON.stringify(process.argv.slice(2)));\n')
+            oracle.apply_backports(modules)
+            agent = modules / "@earendil-works" / "pi-coding-agent"
+            self.assertEqual(json.loads((Path(root) / "args.mjs.out").read_text()), [
+                "--packages", f"pi-ai={agent / 'node_modules/@earendil-works/pi-ai'}", f"pi-coding-agent={agent}", f"pi-tui={agent / 'node_modules/@earendil-works/pi-tui'}"])
+
+    def test_a_tree_with_two_copies_of_a_patched_package_is_refused(self):
+        with tempfile.TemporaryDirectory() as root:
+            modules = self.tree(Path(root))
+            make_tree(modules, {"node_modules/@earendil-works/pi-tui": "@earendil-works/pi-tui@1.5.2"})
+            with self.assertRaisesRegex(pinlib.PinError, "2 copies of pi-tui"):
+                oracle.apply_backports(modules)
+
+    def test_a_backport_that_does_not_apply_fails_the_build_with_the_scripts_reason(self):
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(oracle, "BACKPORTS", backport_fixture.script()):
+            modules = self.tree(Path(root))
+            with self.assertRaisesRegex(pinlib.PinError, "do not apply to the installed oracle"):
+                oracle.apply_backports(modules)  # the packages hold no dist/ files
+
+    def test_the_scripts_entries_patch_a_package_at_its_dist_and_docs_paths(self):
+        script = r'''
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import assert from "node:assert/strict";
+const { applyPackageBackports, backportPatches, packageBackportFiles, packageFileBackports } = await import(process.env.BACKPORTS);
+const root = process.env.ROOT;
+const packages = {};
+const entriesByFile = { ...backportPatches, ...packageFileBackports };
+const where = (file) => {
+  const [name, ...rest] = file.split("/");
+  packages[name] = join(root, name);
+  return join(root, name, name === "pi-coding-agent" && (rest[0] === "docs" || rest[0] === "schemas") ? rest.join("/") : ["dist", ...rest].join("/"));
+};
+for (const [file, entries] of Object.entries(entriesByFile)) {
+  const path = where(file);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, entries.map(([before]) => before).join("\n//--\n"));
+}
+assert.deepEqual(Object.keys(packages).sort(), ["pi-ai", "pi-coding-agent", "pi-tui"]);
+assert.deepEqual(packageBackportFiles(packages).sort(), Object.keys(entriesByFile).map(where).sort(), "--package-files must name every file --packages rewrites");
+applyPackageBackports(packages);
+for (const [file, entries] of Object.entries(entriesByFile)) {
+  const text = readFileSync(where(file), "utf8");
+  for (const [, after] of entries) assert.ok(text.includes(after), `${file} lacks ${after.slice(0, 60)}`);
+}
+assert.throws(() => applyPackageBackports(packages), /no longer applies/, "a second application must fail, not pass silently");
+'''
+        with tempfile.TemporaryDirectory() as root:
+            done = subprocess.run(["node", "--input-type=module", "-e", script], env={**os.environ, "BACKPORTS": backport_fixture.script().as_uri(), "ROOT": root}, capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 0, done.stderr)
+
+
+FAKE_BUNDLER = r'''
+// Stands for Pi's scripts/build-coding-agent-bundle.mjs: one chunk made of the three packages' compiled output with the whitespace removed
+// (so no backport's text survives in it as written), under the coding agent's dist/bundle.
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const bundle = join(root, "packages", "coding-agent", "dist", "bundle");
+rmSync(bundle, { recursive: true, force: true });
+mkdirSync(join(bundle, "chunks"), { recursive: true });
+const code = ["ai", "coding-agent", "tui"].map((name) => readFileSync(join(root, "packages", name, "dist", "code.js"), "utf8")).join("");
+writeFileSync(join(bundle, "chunks", "chunk.js"), code.replace(/\s+/g, ""));
+writeFileSync(join(bundle, "cli.js"), 'import "./chunks/chunk.js";\n');
+'''
+
+FAKE_BACKPORTS = r'''
+// Stands for the backports script: one entry per package (dist/code.js: old -> new) and one for the coding agent's docs.
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+const [mode, ...args] = process.argv.slice(2);
+const packages = Object.fromEntries(args.map((arg) => arg.split("=")));
+const files = Object.values(packages).map((dir) => join(dir, "dist", "code.js"));
+if (packages["pi-coding-agent"]) files.push(join(packages["pi-coding-agent"], "docs", "page.md"));
+if (mode === "--package-files") process.stdout.write(JSON.stringify(files));
+else if (mode === "--packages") {
+  for (const file of files) {
+    const text = readFileSync(file, "utf8");
+    if (!text.includes("old")) throw new Error(`no longer applies: ${file}`);
+    writeFileSync(file, text.replace("old", "new"));
+  }
+} else throw new Error(`unknown mode ${mode}`);
+'''
+
+
+class BundleTests(unittest.TestCase):
+    """`pi` runs the package's bundle, not the compiled output the backports patch: the oracle build has Pi's bundler make the bundle again from
+    the patched compiled output. A fake bundler and a fake backports script stand for Pi's and the committed one."""
+
+    PACKAGES = {"pi-ai": "ai", "pi-coding-agent": "coding-agent", "pi-tui": "tui"}
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        script = self.root / "backports.mjs"
+        script.write_text(FAKE_BACKPORTS)
+        patched = mock.patch.object(oracle, "BACKPORTS", script)
+        patched.start()
+        self.addCleanup(patched.stop)
+        self.source = self.root / "src"
+        (self.source / "scripts").mkdir(parents=True)
+        (self.source / oracle.BUNDLER).write_text(FAKE_BUNDLER)
+        (self.source / "package.json").write_text(json.dumps({"workspaces": ["packages/*"]}))
+        for name, directory in self.PACKAGES.items():
+            package = self.source / "packages" / directory
+            (package / "dist").mkdir(parents=True)
+            (package / "package.json").write_text(json.dumps({"name": f"@earendil-works/{name}", "version": "1.5.2", "bin": {"pi": "dist/bundle/cli.js"}}))
+            (package / "dist" / "code.js").write_text(f"export const {directory.replace('-', '_')} = 'old';\n")
+        (self.source / "packages" / "coding-agent" / "docs").mkdir()
+        (self.source / "packages" / "coding-agent" / "docs" / "page.md").write_text("the old page\n")
+        oracle.run_bundler(self.source)
+        # The installed tree, as `npm ci` of the packs lays it out: the coding agent with the two other packages nested under it.
+        self.modules = self.root / "node_modules"
+        self.agent = self.modules / "@earendil-works" / "pi-coding-agent"
+        shutil.copytree(self.source / "packages" / "coding-agent", self.agent)
+        for name in ("pi-ai", "pi-tui"):
+            shutil.copytree(self.source / "packages" / self.PACKAGES[name], self.agent / "node_modules" / "@earendil-works" / name)
+        self.chunk = self.agent / "dist" / "bundle" / "chunks" / "chunk.js"
+
+    @staticmethod
+    def files(tree: Path) -> dict[str, bytes]:
+        return {path.relative_to(tree).as_posix(): path.read_bytes() for path in sorted(tree.rglob("*")) if path.is_file()}
+
+    def test_the_bundle_pi_runs_is_rebuilt_from_the_patched_compiled_output_and_the_source_build_stays_as_built(self):
+        as_built = self.files(self.source)
+        oracle.apply_backports(self.modules)
+        self.assertNotIn("new", self.chunk.read_text(), "the fixture's bundle carried the backports before it was rebuilt")
+        digest = oracle.rebuild_bundle(self.source, self.modules)
+        self.assertEqual(self.chunk.read_text(), "exportconstai='new';exportconstcoding_agent='new';exportconsttui='new';")
+        self.assertEqual(digest, oracle.tree_digest(self.agent / "dist" / "bundle"))
+        self.assertEqual(self.files(self.source), as_built, "the source build must be left as built: the packs, the mirror and the Durable oracle read it")
+        self.assertEqual(sorted(path.name for path in self.root.iterdir()), ["backports.mjs", "node_modules", "src"], "the rebuild left scratch beside the source build")
+        self.assertEqual(oracle.bundle_problem(self.modules, {"backports": "b", "bundle_sha256": digest}), "")
+
+    def test_a_bundler_that_does_not_reproduce_the_installed_bundle_stops_the_build(self):
+        as_built = self.files(self.source)
+        oracle.apply_backports(self.modules)
+        self.chunk.write_text("the bundle of another build")
+        with self.assertRaisesRegex(pinlib.PinError, "does not reproduce the installed bundle"):
+            oracle.rebuild_bundle(self.source, self.modules)
+        self.assertEqual(self.chunk.read_text(), "the bundle of another build", "the installed bundle was replaced by one that is not provably Pi's plus the backports")
+        self.assertEqual(self.files(self.source), as_built)
+
+    def test_a_backport_that_does_not_apply_to_the_source_build_stops_the_build_and_leaves_the_source_as_built(self):
+        oracle.apply_backports(self.modules)
+        (self.source / "packages" / "coding-agent" / "docs" / "page.md").write_text("another page\n")
+        as_built = self.files(self.source)
+        with self.assertRaisesRegex(pinlib.PinError, "do not apply to the source build"):
+            oracle.rebuild_bundle(self.source, self.modules)
+        self.assertEqual(self.files(self.source), as_built, "the packages patched before the failure were not put back")
+        self.assertNotIn("new", self.chunk.read_text())
+
+    def test_a_pi_whose_bin_is_compiled_output_has_no_bundle_to_rebuild(self):
+        (self.agent / "package.json").write_text(json.dumps({"name": oracle.AGENT, "version": "1.5.2", "bin": {"pi": "dist/cli.js"}}))
+        (self.source / oracle.BUNDLER).unlink()
+        self.assertEqual(oracle.rebuild_bundle(self.source, self.modules), "")
+        self.assertEqual(oracle.bundle_problem(self.modules, {"backports": "b"}), "")
+
+    def test_an_installed_bundle_is_the_oracles_only_when_its_stamp_names_it(self):
+        digest = oracle.tree_digest(self.agent / "dist" / "bundle")
+        self.assertEqual(oracle.bundle_problem(self.modules, {}), "", "an oracle without backports runs the pin's bundle")
+        self.assertIn("compiled output only", oracle.bundle_problem(self.modules, {"backports": "b"}))
+        self.assertEqual(oracle.bundle_problem(self.modules, {"backports": "b", "bundle_sha256": digest}), "")
+        self.chunk.write_text("changed")
+        self.assertIn(f"its build stamped {digest}", oracle.bundle_problem(self.modules, {"backports": "b", "bundle_sha256": digest}))
+
+    def test_the_digest_of_a_tree_is_that_of_its_files_in_path_order(self):
+        tree = self.root / "tree"
+        (tree / "chunks").mkdir(parents=True)
+        (tree / "chunks" / "a.js").write_text("a")
+        (tree / "chunks-b.js").write_text("b")
+        lines = f"{hashlib.sha256(b'b').hexdigest()}  chunks-b.js\n{hashlib.sha256(b'a').hexdigest()}  chunks/a.js\n"
+        self.assertEqual(oracle.tree_digest(tree), hashlib.sha256(lines.encode()).hexdigest())
 
 
 class LedgerVersionTests(unittest.TestCase):
@@ -1108,6 +1293,35 @@ class CarryTests(unittest.TestCase):
     def test_an_override_run_restores_the_reviewed_types_the_update_pruned(self):
         self.assertEqual(self.carry(TAG).read_text(), "original")
 
+    def gaps(self, committed):
+        calls = self.calls
+        reviewed = self.root / "test/parity/interface-closure/autobind/reviewed-types.json"
+        reviewed.parent.mkdir(parents=True, exist_ok=True)
+        reviewed.write_text("stale")
+
+        def fake_run(command, **kwargs):
+            calls.append(command[-1])
+            if command[-1] == "ledger-update":
+                reviewed.write_text("pruned")
+            elif reviewed.read_text() != "pruned":
+                raise subprocess.CalledProcessError(2, command)  # ledger-check stops on a stale exception
+
+        saved = (pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run)
+        pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = self.root, (lambda: (COMMIT, committed != COMMIT)), (lambda: committed), fake_run
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                pin_tool.cmd_gaps(argparse.Namespace(updates=1))
+        finally:
+            pin_tool.ROOT, pinlib.effective, pinlib.committed, pin_tool.subprocess.run = saved
+        return reviewed
+
+    def test_the_gaps_step_binds_the_ledgers_before_it_checks_them(self):
+        self.gaps(COMMIT)
+        self.assertEqual(self.calls, ["ledger-update", "ledger-check"])
+
+    def test_the_gaps_step_of_an_override_run_leaves_the_committed_pins_reviewed_types(self):
+        self.assertEqual(self.gaps(TAG).read_text(), "stale")
+
     def test_the_committed_pin_keeps_the_prune(self):
         self.assertEqual(self.carry(COMMIT).read_text(), "pruned")
 
@@ -1118,6 +1332,48 @@ class CarryTests(unittest.TestCase):
         self.assertEqual(len(self.calls), first, self.calls[first:])
         self.carry(COMMIT, force=True)
         self.assertGreater(len(self.calls), first)
+
+
+class OverrideTreeCommandTests(unittest.TestCase):
+    """`pin.py override-tree` is read by make as $(...): its standard output is the tree's path and nothing else, whatever the build prints."""
+
+    def run_command(self, ref: str) -> str:
+        def build(pin):
+            print("npm said something")
+            os.write(1, b"a child process said something\n")
+            return Path("/store") / pin.commit / "durable-x"
+
+        import vendor
+
+        with tempfile.TemporaryFile() as captured:
+            saved = os.dup(1)
+            os.dup2(captured.fileno(), 1)
+            try:
+                with mock.patch.dict(os.environ, {pinlib.OVERRIDE_ENV: ref}), mock.patch.object(pinlib, "effective", lambda: (COMMIT, False)), mock.patch.object(vendor, "override_tree", build), contextlib.redirect_stderr(io.StringIO()):
+                    pin_tool.cmd_override_tree(None)
+            finally:
+                sys.stdout.flush()
+                os.dup2(saved, 1)
+                os.close(saved)
+            captured.seek(0)
+            return captured.read().decode()
+
+    def test_standard_output_is_the_path_alone(self):
+        with tempfile.TemporaryFile() as errors:
+            saved = os.dup(2)
+            os.dup2(errors.fileno(), 2)
+            try:
+                printed = self.run_command(COMMIT.commit)
+            finally:
+                os.dup2(saved, 2)
+                os.close(saved)
+            errors.seek(0)
+            self.assertIn(b"a child process said something", errors.read())
+        self.assertEqual(printed, str(Path("/store") / COMMIT.commit / "durable-x") + "\n")
+
+    def test_a_run_that_names_no_commit_has_no_override_tree(self):
+        with self.assertRaisesRegex(pinlib.PinError, "PI_UPSTREAM_REF"):
+            self.run_command("")
 
 
 class MirrorLinkTests(unittest.TestCase):

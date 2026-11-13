@@ -210,6 +210,7 @@ fn pixels() -> Provider {
         name: "Pixels".into(),
         base_url: None,
         headers: None,
+        refresh_models_auth: None,
         auth: ProviderAuth {
             api_key: Some(APIKeyAuth {
                 name: "Pixels key".into(),

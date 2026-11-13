@@ -102,7 +102,7 @@ func TestExportHTMLPinnedAssets(t *testing.T) {
 	for name, want := range map[string]string{
 		"template.html":                     "47d208235b066c856dae69c60281a3b99d164b99be9b81153d880375c9327105",
 		"template.css":                      "c9d26cc314336192021d604c0f1a4a63115172b24d03500571379f9172c06fc9",
-		"template.js":                       "14fbe96123a82ee0f3efdd9f9634dd316c59810509fdbd8c5a5f41f3918c07a4",
+		"template.js":                       "f04404c88e557a24c84d3e938d9f6b0521e2127c68ba401cc328315e59719417",
 		"vendor/marked.min.js":              "438eedfcf932a414d0d0bfeea32dc365c063563b8ca713b4687fc8f8b501e5e4",
 		"vendor/marked-cjk-friendly.min.js": "93d2c938754cb24eef5b9ffecc268a98ef6beeb75dad614b0e874176aeeba565",
 		"vendor/highlight.min.js":           "837a6fa5b0c736b52bbde2b2b6190f305da3fc9ed41681db5321507057b5c846",

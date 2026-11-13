@@ -133,6 +133,8 @@ type Conn struct {
 	beforeCancel func()
 	// inbound observes each decoded frame on the read loop, in wire order, before routing. Cross-process reference accounting uses it so a later release on this connection can never overtake an earlier transmission.
 	inbound func(*Envelope)
+	// inboundWantsResponse, set together with inbound, reports whether inbound has any use for the response frame of request id: a response it does not need is routed without a full decode (routeResponseFrame). Nil means inbound reads every response.
+	inboundWantsResponse func(id string) bool
 	// outbound observes each frame's JSON on the write loop, in write order, before it is written (Host.SetOutboundObserver).
 	outbound func(frame []byte)
 	// parts is conn when it takes frames by parts (a fused extension's fusedConn); nil for a socket.
@@ -222,6 +224,8 @@ type Conn struct {
 	requestStates map[string]requestStateSink
 	// writeResults pools the channels that carry a frame's write result (writeResult).
 	writeResults sync.Pool
+	// responseChans pools the channels that carry a request's response (responseChan).
+	responseChans sync.Pool
 	// suspending counts the suspension frames of a request that the read loop queued for the host and the host has not yet delivered. suspensionsSettled is closed and replaced whenever a count drops.
 	suspending        map[string]int
 	suspendedRequests map[string]bool
@@ -235,6 +239,10 @@ type Conn struct {
 	hostCallMu      sync.Mutex
 	hostCalls       map[string]map[string]context.CancelFunc
 	cancelledParent map[string]struct{}
+	// abortedParent holds the requests whose AbortSignal alone ended (a tool_call): their nested tool calls end, and the other host calls go on (abortNestedHostCalls).
+	abortedParent map[string]struct{}
+	// nestedCallIDs holds the call frames that run a nested tool of their request (nestedAbortMethod), from the moment the read loop admits them until their context is released.
+	nestedCallIDs map[string]struct{}
 	// reservedCalls holds the context of each call frame the read loop admitted and the host has not yet started, by call ID.
 	reservedCalls map[string]reservedHostCall
 
@@ -242,8 +250,9 @@ type Conn struct {
 	withSessionMu     sync.Mutex
 	withSessionRoutes map[string]*withSessionRoute
 
-	// nextID is an atomic counter for generating request IDs.
-	nextID atomic.Uint64
+	// nextID is an atomic counter for generating request IDs, which idChunk spells.
+	nextID  atomic.Uint64
+	idChunk atomic.Pointer[idChunk]
 
 	// autocompleteUnholds are the input-hold releases of the autocomplete.suggest requests in flight, by request id.
 	autocompleteMu      sync.Mutex
@@ -292,9 +301,11 @@ type Conn struct {
 	failure   error
 
 	// cancel signals all goroutines to stop.
-	cancel   context.CancelFunc
-	lifetime context.Context
-	done     chan struct{} // closed when reader, writer, and heartbeat exit
+	cancel context.CancelFunc
+	// lifetime is the context of requests no caller owns (Pi's synchronous provider callbacks). It exists from NewConn, so a connection a host publishes before it starts has one, and ends with the connection: when Start's parent ends, on Close and on a failure. endLifetime ends it.
+	lifetime    context.Context
+	endLifetime context.CancelFunc
+	done        chan struct{} // closed when reader, writer, and heartbeat exit
 }
 
 // NewConn wraps a connected socket into a managed connection.
@@ -314,7 +325,11 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		options.HeartbeatTimeout = defaultHeartbeatTimeout
 	}
 	parts, _ := c.(framePartsWriter)
+	//portlint:allow ctxbackground the connection owns its lifetime: it exists before Start ties it to the host's context, and ends with the connection
+	lifetime, endLifetime := context.WithCancel(context.Background())
 	return &Conn{
+		lifetime:           lifetime,
+		endLifetime:        endLifetime,
 		fileMutations:      fileMutationTurns{live: 1},
 		name:               name,
 		conn:               c,
@@ -340,6 +355,8 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		suspensionsSettled: make(chan struct{}),
 		hostCalls:          make(map[string]map[string]context.CancelFunc),
 		cancelledParent:    make(map[string]struct{}),
+		abortedParent:      make(map[string]struct{}),
+		nestedCallIDs:      make(map[string]struct{}),
 		reservedCalls:      make(map[string]reservedHostCall),
 		clock:              options.Clock,
 		heartbeatInterval:  options.HeartbeatInterval,
@@ -354,8 +371,13 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 // Start launches the reader and writer goroutines. The provided context
 // controls their lifetime. Cancellation stops all three goroutines.
 func (c *Conn) Start(ctx context.Context) {
-	ctx, c.cancel = context.WithCancel(ctx)
-	c.lifetime = ctx
+	ctx, stop := context.WithCancel(ctx)
+	// The connection's cancel ends the lifetime itself, before it stops the goroutines and before a Close or a failure answers the pending requests, so a request under the lifetime always finds it ended; only the parent's end reaches it through AfterFunc.
+	c.cancel = func() {
+		c.endLifetime()
+		stop()
+	}
+	context.AfterFunc(ctx, c.endLifetime)
 	var wg sync.WaitGroup
 	wg.Add(3)
 	go func() {
@@ -492,6 +514,14 @@ func (c *Conn) writeInline(frame *encodedFrame) (written bool, err error) {
 		c.fail(err)
 	}
 	return true, err
+}
+
+// responseChan returns an empty one-slot channel for a request's response. Like writeResult's, the pool belongs to the connection. A channel is returned only by a request that received its response and unregistered, and emptied: the senders (sendResponse, the failure paths) send under pendingMu to a registered request only, so a pooled channel is empty and has no sender.
+func (c *Conn) responseChan() chan *Envelope {
+	if ch, ok := c.responseChans.Get().(chan *Envelope); ok {
+		return ch
+	}
+	return make(chan *Envelope, 1)
 }
 
 // writeResult returns an empty one-slot channel for a frame's write result. The pool belongs to the connection, not the package: a channel made inside a testing/synctest bubble is bound to it, and a package pool would hand it to a connection of another bubble or of none.
@@ -728,7 +758,7 @@ const toolCallLane = " tool"
 // command) has a lane of its own, so a slow consumer holds back no tool.
 func (c *Conn) requestWithUpdates(ctx context.Context, env *Envelope, onUpdate func(json.RawMessage)) (*Envelope, error) {
 	if env.ID == "" {
-		env.ID = "r" + strconv.FormatUint(c.nextID.Add(1), 10)
+		env.ID = c.newRequestID()
 	}
 	updates := c.toolUpdates
 	if env.Request == nil || env.Request.Method != MethodToolCall {
@@ -766,7 +796,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 
 	// Assign a unique ID if not already set.
 	if env.ID == "" {
-		env.ID = "r" + strconv.FormatUint(c.nextID.Add(1), 10)
+		env.ID = c.newRequestID()
 	}
 	// The operation names the request in an error only, so it is built when one is returned.
 	operationName := func() string {
@@ -777,7 +807,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	}
 
 	// Register the pending response channel.
-	respCh := make(chan *Envelope, 1)
+	respCh := c.responseChan()
+	received := false
 	c.pendingMu.Lock()
 	c.pending[env.ID] = respCh
 	if env.Request != nil && env.Request.Method == MethodToolCall {
@@ -833,6 +864,14 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.earlierWindows, env.ID)
 		delete(c.drainable, env.ID)
 		c.pendingMu.Unlock()
+		if received {
+			// The request is unregistered, so nothing sends to the channel any more; a second answer that arrived after the first (a failure racing the response) is dropped with the channel's content.
+			select {
+			case <-respCh:
+			default:
+			}
+			c.responseChans.Put(respCh)
+		}
 		c.stateMu.Lock()
 		delete(c.requestStates, env.ID)
 		delete(c.suspendedRequests, env.ID)
@@ -842,6 +881,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		}
 		c.hostCallMu.Lock()
 		delete(c.cancelledParent, env.ID)
+		delete(c.abortedParent, env.ID)
 		c.hostCallMu.Unlock()
 	}()
 
@@ -856,11 +896,24 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if c.onDispatch != nil {
 		c.onDispatch()
 	}
+	signal := requestSignal(ctx)
+	signalAborted := false
+	if signal != nil && env.Request != nil {
+		signalAborted = signal.Err() != nil
+		env.Request.SignalAborted = signalAborted
+	}
 	if err := c.sendOrdered(ctx, env, order); err != nil {
 		return nil, err
 	}
 	if issued := requestIssued(ctx); issued != nil {
 		issued()
+	}
+	if signal != nil && !signalAborted {
+		// The signal-only cancel follows the request frame, also when the signal ended after the flag was read: AfterFunc runs at once for a signal that already ended. The reply is still awaited, as Pi awaits the handler.
+		stop := context.AfterFunc(signal, func() {
+			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: signal.Err().Error(), SignalOnly: true}})
+		})
+		defer stop()
 	}
 	// Admission ends only after the handler reaches an observable suspension
 	// boundary or finishes, not when its request reaches the socket.
@@ -889,6 +942,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	for {
 		select {
 		case resp := <-respCh:
+			received = true
 			// A state frame that preceded the response was queued first; apply it before the response is delivered. The host delivers a suspension only after every earlier call of the connection applied, so the response waits for it only while a suspension can change what the response does.
 			if requestSuspensionDecides(ctx) {
 				c.awaitSuspensions(ctx, env.ID)
@@ -938,16 +992,23 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 			if c.beforeCancel != nil {
 				c.beforeCancel()
 			}
+			toolCall := env.Request != nil && env.Request.Method == MethodToolCall
 			// pig additive (D19): the cancel is queued before the request's calls are cancelled, so a call's cancellation result follows it on the wire. The extension cancels its own pending calls on the cancel, and the result finds none.
+			// A tool_call's cancel is the abort of its AbortSignal alone: Pi's executePreparedToolCall awaits tool.execute with the signal aborted and nothing else is cancelled (agent-loop.ts:817-853), so the tool's pending and later host calls are answered. Only its nested tool calls take the abort, as the signal they run with; the rest of the request's calls end with the request, when the grace period does.
 			_ = c.Send(&Envelope{
 				Type: MsgCancel,
 				ID:   env.ID,
 				Cancel: &CancelPayload{
-					RequestID: env.ID,
-					Reason:    ctx.Err().Error(),
+					RequestID:  env.ID,
+					Reason:     ctx.Err().Error(),
+					SignalOnly: toolCall,
 				},
 			})
-			c.cancelHostCalls(env.ID)
+			if toolCall {
+				c.abortNestedHostCalls(env.ID)
+			} else {
+				c.cancelHostCalls(env.ID)
+			}
 			if env.Request != nil && (env.Request.Method == MethodProviderStream || env.Request.Method == RequestUserBashExec) && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
 				// Pi forwards the native stream's own terminal event after signaling
 				// abort, and executeBashWithOperations awaits operations.exec until it
@@ -956,7 +1017,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				cancelled = nil
 				continue
 			}
-			if env.Request != nil && env.Request.Method == MethodToolCall {
+			if toolCall {
 				// pig divergence (D111): the call waits ToolAbortGrace for the tool to settle, as Pi awaits tool.execute after its signal aborts (agent-loop.ts:831-853), and then fails as aborted instead of awaiting a tool that ignores its signal forever.
 				cancelled = nil
 				grace := c.clock.NewTimer(ToolAbortGrace)
@@ -966,6 +1027,13 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 			}
 			return nil, ctx.Err()
 		case <-abortGraceC:
+			// pig divergence (D111): the tool is abandoned, so its request ends as an ordinary cancel does: the extension cancels what the tool still awaits, and the host ends the request's calls.
+			_ = c.Send(&Envelope{
+				Type:   MsgCancel,
+				ID:     env.ID,
+				Cancel: &CancelPayload{RequestID: env.ID, Reason: ctx.Err().Error()},
+			})
+			c.cancelHostCalls(env.ID)
 			return nil, ErrToolAborted
 		case <-quantumC:
 			// pig divergence (D86): the handler outlived the quantum, so it is waiting.
@@ -1211,6 +1279,12 @@ func (c *Conn) readLoop(ctx context.Context) {
 			return
 		}
 
+		// The response to a request has one shape nearly always; it is routed without decoding the whole envelope.
+		if c.routeResponseFrame(frame.data) {
+			frame.release()
+			continue
+		}
+
 		// Decode the envelope. Unmarshal copies every string and json.RawMessage it keeps, so the frame is free once it returns.
 		var env Envelope
 		err = decodeEnvelope(frame.data, &env)
@@ -1319,28 +1393,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		// Route responses to pending requests.
 		if env.Type == MsgResponse || env.Type == MsgCallResult {
 			if env.ID != "" {
-				c.pendingMu.Lock()
-				ch, ok := c.pending[env.ID]
-				answered := c.answered[env.ID]
-				arrived := c.arrived[env.ID]
-				c.pendingMu.Unlock()
-				if !ok {
-					c.settleAbandoned(env.ID)
-				}
-				if ok {
-					// The read loop reads responses in the order the peer wrote them; the goroutines that wait for them wake in no order.
-					if arrived != nil {
-						arrived()
-					}
-					select {
-					case ch <- &env:
-					default:
-					}
-					// The frames after this response, such as a drain notification, are read after answered ran.
-					if answered != nil {
-						answered()
-					}
-				}
+				c.deliverResponse(env.ID, &env)
 			}
 			// Response-shaped frames never become unsolicited host messages.
 			// A missing correlation means cancellation already won; discard the
@@ -1354,6 +1407,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
 		if env.Type == MsgCall && env.Call != nil && env.ID != "" {
 			c.reportProvisionalBlocks(env.Call)
+			if env.Call.ParentRequestID != "" && nestedAbortMethod(env.Call.Method) {
+				c.markNestedCall(env.ID)
+			}
 			c.reserveHostCall(env.Call.ParentRequestID, env.ID)
 			if startsRun(env.Call.Method) && env.Call.ParentRequestID != "" {
 				c.reportRequestPhase(env.Call.ParentRequestID, invocation.Resumed)
@@ -1902,6 +1958,9 @@ func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, fu
 		_, pending := c.pending[parentRequestID]
 		if !pending {
 			c.pendingMu.Unlock()
+			c.hostCallMu.Lock()
+			delete(c.nestedCallIDs, callID)
+			c.hostCallMu.Unlock()
 			cancel()
 			return ctx, func() {}
 		}
@@ -1911,7 +1970,12 @@ func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, fu
 		c.hostCallMu.Lock()
 	}
 	_, cancelled := c.cancelledParent[parentRequestID]
+	if _, nested := c.nestedCallIDs[callID]; nested && !cancelled {
+		// A nested tool call made after the abort runs with the aborted signal, as Pi's nested call does with the outer tool's.
+		_, cancelled = c.abortedParent[parentRequestID]
+	}
 	if cancelled || c.closed.Load() {
+		delete(c.nestedCallIDs, callID)
 		c.hostCallMu.Unlock()
 		cancel()
 		return ctx, func() {}
@@ -1930,6 +1994,7 @@ func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, fu
 		cancel()
 		c.hostCallMu.Lock()
 		delete(calls, callID)
+		delete(c.nestedCallIDs, callID)
 		if len(calls) == 0 {
 			delete(c.hostCalls, parentRequestID)
 		}
@@ -1949,6 +2014,43 @@ func (c *Conn) cancelHostCalls(parentRequestID string) {
 	for _, cancel := range cancels {
 		cancel()
 	}
+}
+
+// nestedAbortMethod reports the extension→host calls that run a nested tool (executeTool, and the built-in tools' execute and localExec): called under a request, they carry the abort of that request as the nested tool's signal (runner.ts:979-981 `options.signal ?? signal`; an extension that passed a signal of its own makes the call detached from the request).
+func nestedAbortMethod(method string) bool {
+	return method == CallExecuteTool || method == CallBuiltinToolExecute || method == CallBuiltinToolLocalExec
+}
+
+// markNestedCall records, as the read loop admits the call frame callID, that the call runs a nested tool of its request, before the host opens the call's context.
+func (c *Conn) markNestedCall(callID string) {
+	c.hostCallMu.Lock()
+	c.nestedCallIDs[callID] = struct{}{}
+	c.hostCallMu.Unlock()
+}
+
+// abortNestedHostCalls is the abort of a request whose AbortSignal alone ended (a tool_call): it ends the nested tool calls of the request, which take the abort as their signal, and the nested calls it makes later, and spares every other host call of the request, as Pi's in-process calls never fail with the abort. cancelHostCalls ends the rest when the request is abandoned.
+func (c *Conn) abortNestedHostCalls(parentRequestID string) {
+	c.hostCallMu.Lock()
+	c.abortedParent[parentRequestID] = struct{}{}
+	var cancels []context.CancelFunc
+	for callID, cancel := range c.hostCalls[parentRequestID] {
+		if _, nested := c.nestedCallIDs[callID]; nested {
+			cancels = append(cancels, cancel)
+		}
+	}
+	c.hostCallMu.Unlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
+}
+
+// parentAbortedOnly reports whether the request's AbortSignal ended and nothing else (abortNestedHostCalls): its extension was not told to cancel the calls it still makes.
+func (c *Conn) parentAbortedOnly(parentRequestID string) bool {
+	c.hostCallMu.Lock()
+	defer c.hostCallMu.Unlock()
+	_, aborted := c.abortedParent[parentRequestID]
+	_, cancelled := c.cancelledParent[parentRequestID]
+	return aborted && !cancelled
 }
 
 func (c *Conn) cancelAllHostCalls() {
@@ -2180,6 +2282,78 @@ func (c *Conn) settleAbandoned(id string) {
 	}
 }
 
+// deliverResponse hands env, the response or call result for request id, to the request waiting for it. A response nobody waits for, because the request ended first, settles the request's abandonment instead.
+func (c *Conn) deliverResponse(id string, env *Envelope) {
+	c.pendingMu.Lock()
+	ch, ok := c.pending[id]
+	answered := c.answered[id]
+	arrived := c.arrived[id]
+	c.pendingMu.Unlock()
+	if !ok {
+		c.settleAbandoned(id)
+		return
+	}
+	// The read loop reads responses in the order the peer wrote them; the goroutines that wait for them wake in no order.
+	if arrived != nil {
+		arrived()
+	}
+	c.sendResponse(id, ch, env)
+	// The frames after this response, such as a drain notification, are read after answered ran.
+	if answered != nil {
+		answered()
+	}
+}
+
+// sendResponse puts env in the channel of the request id while the request is still registered, and reports whether it did: the request returns its channel for reuse only after it unregistered under pendingMu, so no response is sent to a channel that was reused.
+func (c *Conn) sendResponse(id string, ch chan *Envelope, env *Envelope) bool {
+	c.pendingMu.Lock()
+	sent := false
+	if c.pending[id] == ch {
+		select {
+		case ch <- env:
+			sent = true
+		default:
+		}
+	}
+	c.pendingMu.Unlock()
+	return sent
+}
+
+// routeResponseFrame delivers the frame when it is a response in the shape parseResponseFrame recognizes that inbound does not need, and reports whether it did; any other frame is left for the full decode, which shows it to inbound.
+func (c *Conn) routeResponseFrame(data []byte) bool {
+	if c.inbound != nil && c.inboundWantsResponse == nil {
+		return false
+	}
+	id, result, ok := parseResponseFrame(data)
+	if !ok {
+		return false
+	}
+	requestID := c.internRequestID(id)
+	if c.inbound != nil && c.inboundWantsResponse(requestID) {
+		return false
+	}
+	c.pendingMu.Lock()
+	ch, found := c.pending[requestID]
+	answered := c.answered[requestID]
+	arrived := c.arrived[requestID]
+	c.pendingMu.Unlock()
+	if !found {
+		c.settleAbandoned(requestID)
+		return true
+	}
+	if arrived != nil {
+		arrived()
+	}
+	resp := pooledResponse(requestID, result)
+	if !c.sendResponse(requestID, ch, resp) {
+		releaseResponse(resp)
+	}
+	if answered != nil {
+		answered()
+	}
+	return true
+}
+
 func (c *Conn) settleAllAbandoned() {
 	c.pendingMu.Lock()
 	abandoned := c.abandoned
@@ -2376,6 +2550,18 @@ func withRequestIssued(ctx context.Context, fn func()) context.Context {
 func requestIssued(ctx context.Context) func() {
 	fn, _ := ctx.Value(requestIssuedKey{}).(func())
 	return fn
+}
+
+type requestSignalKey struct{}
+
+// withRequestSignal gives request the AbortSignal its handler receives as event.signal (session_before_compact, session_before_tree), for a request whose own context must not end with it: Pi awaits every handler of the event, with the signal aborted, and keeps its result (runner.ts emit). Request records whether the signal had ended before the frame was written (RequestPayload.SignalAborted), and when it ends while the handler runs it sends a signal-only cancel (CancelPayload.SignalOnly: no host call of the handler is cancelled) and keeps waiting for the reply.
+func withRequestSignal(ctx, signal context.Context) context.Context {
+	return context.WithValue(ctx, requestSignalKey{}, signal)
+}
+
+func requestSignal(ctx context.Context) context.Context {
+	signal, _ := ctx.Value(requestSignalKey{}).(context.Context)
+	return signal
 }
 
 type requestWindowKey struct{}

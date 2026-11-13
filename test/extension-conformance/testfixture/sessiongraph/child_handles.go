@@ -52,11 +52,12 @@ func observeChild(ctx sdk.Context, options sdk.CreateAgentSessionOptions, manage
 		}
 	}
 	file := orNil(ok(manager.GetSessionFile()))
+	model, system, sessionFile := ok(session.CurrentModel()), ok(session.CurrentSystemPrompt()), ok(session.CurrentSessionFile())
 	created := map[string]any{
-		"model": map[string]any{"provider": session.Model["provider"], "id": session.Model["id"]}, "thinkingLevel": session.ThinkingLevel, "activeTools": session.ActiveTools,
-		"fallback": nilIfEmpty(session.ModelFallbackMessage), "extensionErrors": len(session.ExtensionErrors), "appendix": strings.Contains(session.SystemPrompt, "Handle appendix"),
-		"sessionId": session.SessionID == ok(manager.GetSessionID()), "sessionFile": (file == nil && session.SessionFile == "") || (file != nil && file == session.SessionFile),
-		"persisted": session.SessionFile != "",
+		"model": map[string]any{"provider": model["provider"], "id": model["id"]}, "thinkingLevel": ok(session.CurrentThinkingLevel()), "activeTools": ok(session.GetActiveToolNames()),
+		"fallback": nilIfEmpty(session.ModelFallbackMessage), "extensionErrors": len(session.ExtensionErrors), "appendix": strings.Contains(system, "Handle appendix"),
+		"sessionId": ok(session.CurrentSessionID()) == ok(manager.GetSessionID()), "sessionFile": (file == nil && sessionFile == "") || (file != nil && file == sessionFile),
+		"persisted": sessionFile != "",
 	}
 	if err := session.Prompt(context.Background(), "hello"); err != nil {
 		panic(err)
@@ -112,7 +113,7 @@ func childHandles(ctx sdk.Context, args map[string]any) (map[string]any, *childO
 	second := observeChild(ctx, sdk.CreateAgentSessionOptions{ResourceLoader: plainLoader, ModelRuntime: rt}, file, settings, false)
 	_, statErr := os.Stat(*ok(file.GetSessionFile()))
 	second.report["onDisk"] = statErr == nil
-	second.report["samePath"] = second.session.SessionFile == *ok(file.GetSessionFile())
+	second.report["samePath"] = ok(second.session.CurrentSessionFile()) == *ok(file.GetSessionFile())
 	r["file"] = second.report
 	return r, &first, &second, memory, file
 }

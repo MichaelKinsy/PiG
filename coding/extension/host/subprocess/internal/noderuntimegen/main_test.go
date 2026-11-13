@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepeers"
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 func writeTree(t *testing.T, root string, files map[string]string) {
@@ -59,6 +60,7 @@ func syntheticRuntime(extra map[string]string) map[string]string {
 // without the files nothing reads at runtime (noderuntimepack.UnreadAtRuntime), and the generated host peers into a noderuntimepack archive, and writes the hash of the entry names and bytes as the generated Go constant; the same input gives
 // byte-identical outputs, and a changed source changes the hash.
 func TestMainPackagesRuntimeReproducibly(t *testing.T) {
+	pinnedCLI(t)
 	root := t.TempDir()
 	writeTree(t, root, syntheticRuntime(map[string]string{
 		"main.mjs":                   "main",
@@ -161,6 +163,15 @@ func TestMainPackagesRuntimeReproducibly(t *testing.T) {
 		t.Fatal("second run changed the archive bytes")
 	}
 
+	// An unchanged runtime keeps the blocks on disk, so it regenerates without the zstd command (make build runs the generator every time).
+	pinned := os.Getenv("PIG_ZSTD")
+	t.Setenv("PIG_ZSTD", filepath.Join(t.TempDir(), "no-such-zstd"))
+	runMain(t, "-root", root, "-archive", archive, "-metadata", metadata)
+	if keptArchive, _ := os.ReadFile(archive); !bytes.Equal(firstArchive, keptArchive) {
+		t.Fatal("a run without the zstd command changed the archive bytes")
+	}
+	t.Setenv("PIG_ZSTD", pinned)
+
 	writeTree(t, root, map[string]string{"main.mjs": "changed"})
 	runMain(t, "-root", root, "-archive", archive, "-metadata", metadata)
 	if changed, _ := os.ReadFile(metadata); bytes.Equal(changed, generated) {
@@ -204,4 +215,17 @@ func TestGenerateRejectsAnIncompleteRuntime(t *testing.T) {
 			}
 		})
 	}
+}
+
+// pinnedCLI returns when the zstd command that writes the committed frames is found (zstdblob.PinnedCLI). Without it the test fails where PIG_REQUIRE_ZSTD=1 (the CI jobs that provision it with automation/ci/install-zstd.sh) and is skipped elsewhere, as zstdblob's frame tests are.
+func pinnedCLI(t *testing.T) {
+	t.Helper()
+	_, err := zstdblob.PinnedCLI()
+	if err == nil {
+		return
+	}
+	if os.Getenv("PIG_REQUIRE_ZSTD") == "1" {
+		t.Fatal(err)
+	}
+	t.Skip(err)
 }

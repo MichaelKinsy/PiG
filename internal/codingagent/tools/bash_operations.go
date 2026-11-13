@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -61,8 +62,9 @@ func resolveTimeoutMs(timeout *float64) (time.Duration, bool, error) {
 type LocalShellOperations struct {
 	ShellName    string
 	ResolveShell func() (ShellConfig, error)
-	// WrapCommand, when set, rewrites the command before execution.
-	WrapCommand func(string) string
+	// WrapCommand, when set, rewrites the command for the shell ResolveShell returned. The shell is resolved before the timeout and the abort are
+	// checked (createLocalPowerShellOperations calls getPowerShellConfig first), so a missing shell is the error.
+	WrapCommand func(command string, shell ShellConfig) string
 	// BinDir is prepended to PATH when the caller passes no environment
 	// (upstream getShellEnv's getBinDir).
 	BinDir string
@@ -96,8 +98,15 @@ func CreateLocalBashOperations(options *LocalBashOptions) *LocalShellOperations 
 // into one buffer, so a consumer copies what it keeps, as the bash tool's
 // accumulator and the user-bash executor do.
 func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, opts BashOperationsExecOptions) (BashOperationsResult, error) {
+	var shell ShellConfig
+	resolved := false
 	if o.WrapCommand != nil {
-		command = o.WrapCommand(command)
+		var err error
+		if shell, err = o.ResolveShell(); err != nil {
+			return BashOperationsResult{}, err
+		}
+		resolved = true
+		command = o.WrapCommand(command, shell)
 	}
 	timeout, hasTimeout, err := resolveTimeoutMs(opts.Timeout)
 	if err != nil {
@@ -106,9 +115,10 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	if ctx.Err() != nil {
 		return BashOperationsResult{}, errBashAborted
 	}
-	shell, err := o.ResolveShell()
-	if err != nil {
-		return BashOperationsResult{}, err
+	if !resolved {
+		if shell, err = o.ResolveShell(); err != nil {
+			return BashOperationsResult{}, err
+		}
 	}
 	if _, err := os.Stat(cwd); err != nil {
 		return BashOperationsResult{}, fmt.Errorf("Working directory does not exist: %s\nCannot execute %s commands.", cwd, o.ShellName)
@@ -131,6 +141,8 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	// The shell writes straight into an OS pipe (no exec copy goroutine), so
 	// Wait returns when the shell exits even if a background descendant still
 	// holds the write end. childwait then applies upstream's grace.
+	// pig divergence (D631): Pi's bash tool spawns the shell with stdio pipes (bash.ts:129), which libuv makes socket pairs. This is a pipe: a command
+	// can open it again through /dev/stdout or /dev/stderr, which a socket refuses (ENXIO), and a write after the reader closed raises SIGPIPE at once.
 	pr, pw, err := childwait.NewPipe()
 	if err != nil {
 		return BashOperationsResult{}, err
@@ -147,8 +159,8 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		}
 		cmd.Stdin = stdinRead
 	}
-	// Process group so abort and timeout reap descendants (upstream spawns
-	// detached on non-win32 and kills the tree).
+	// Own session and process group, so abort and timeout reap descendants and the shell has no controlling terminal (upstream spawns detached on
+	// non-win32 and kills the tree).
 	setProcessGroup(cmd)
 	// Upstream spawns with windowsHide: true and stdio
 	// [commandFromStdin ? "pipe" : "ignore", "pipe", "pipe"].
@@ -246,7 +258,6 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	}
 	code := shellExitCode(cmd.ProcessState)
 	if didTimeOut {
-		// pig divergence (D243): Pi main 06aa6563e reports the shell's exit code when it exited before the deadline.
 		timeoutErr := &ShellTimeoutError{Timeout: jsNumber(*opts.Timeout)}
 		if exitedBefore >= 0 {
 			timeoutErr.ShellExit = &ShellExit{ExitCode: code, AfterSeconds: math.Round(float64(exitedBefore.Milliseconds())/100) / 10}
@@ -314,17 +325,32 @@ func startTrackedShell(cmd *exec.Cmd) error {
 var (
 	testHookBeforeStdioRead   func()
 	testHookStdioGraceExpired func()
-	// testHookStdioGraceTimer replaces the wall-clock grace; it runs once the shell has exited, as Wait begins.
-	testHookStdioGraceTimer func() childwait.IdleTimer
-	testHookAfterShellStart func()
+	testHookAfterShellStart   func()
 )
+
+// stdioGraceTimer replaces the wall-clock grace of a command's pipes; it runs once the shell has exited, as Wait begins. It is atomic because the seam is
+// set from a test while other tests in the process run commands. Nil outside tests.
+var stdioGraceTimer atomic.Pointer[func() childwait.IdleTimer]
+
+// SetStdioGraceTimerForTest replaces the wall-clock timer that measures the grace Pi's waitForChildProcess and childwait.Wait allow a descendant that holds the
+// pipes after the shell has exited (EXIT_STDIO_GRACE_MS, 100 ms), so a test decides when the grace elapses instead of racing a writer against host load, as Pi's
+// own #5303 test does with virtual time. It returns the function that restores the previous timer. It is for tests only; a process that never calls it runs
+// the wall-clock grace.
+func SetStdioGraceTimerForTest(timer func() childwait.IdleTimer) (restore func()) {
+	previous := stdioGraceTimer.Swap(&timer)
+	return func() { stdioGraceTimer.Store(previous) }
+}
 
 // testStdioHooks is nil outside tests, so a command's pipes carry no hooks.
 func testStdioHooks() *childwait.Hooks {
-	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil && testHookStdioGraceTimer == nil {
+	var graceTimer func() childwait.IdleTimer
+	if timer := stdioGraceTimer.Load(); timer != nil {
+		graceTimer = *timer
+	}
+	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil && graceTimer == nil {
 		return nil
 	}
-	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired, GraceTimer: testHookStdioGraceTimer}
+	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired, GraceTimer: graceTimer}
 }
 
 // testHookTimeoutTimer replaces the wall-clock timer that arms a command's timeout, so a test can fire the timeout once the command has done

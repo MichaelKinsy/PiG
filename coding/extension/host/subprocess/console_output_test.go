@@ -230,6 +230,69 @@ func TestConsolePipeFlushAfterFinishReturns(t *testing.T) {
 	nilPipe.finish(0)
 }
 
+// gatedSink holds every write until released, and reports when the first one is in flight.
+type gatedSink struct {
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+	buf     lockedBuffer
+}
+
+func newGatedSink() *gatedSink {
+	return &gatedSink{entered: make(chan struct{}), release: make(chan struct{})}
+}
+
+func (s *gatedSink) Write(p []byte) (int, error) {
+	s.once.Do(func() { close(s.entered) })
+	<-s.release
+	return s.buf.Write(p)
+}
+
+// A runner that fails its only member writes the cause and exits at once, so the reaper's finish has closed the write end by the time the host, which read the member's socket
+// closing, flushes to read the cause. The copy may still hold what the process wrote: flush returns only once the sink has it.
+func TestConsolePipeFlushAfterFinishWaitsForTheCopy(t *testing.T) {
+	sink := newGatedSink()
+	pipe, err := newConsolePipe(sink)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pipe.write.WriteString("extension \"x\" load failed: boom\n"); err != nil {
+		t.Fatal(err)
+	}
+	// The copy holds the cause: it is in flight to the sink, which has not taken it.
+	<-sink.entered
+	finished := make(chan struct{})
+	go func() { pipe.finish(time.Minute); close(finished) }()
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(time.Millisecond) {
+		pipe.mu.Lock()
+		closed := pipe.closed
+		pipe.mu.Unlock()
+		if closed {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("finish never closed the pipe")
+		}
+	}
+	flushed := make(chan struct{})
+	go func() { pipe.flush(); close(flushed) }()
+	select {
+	case <-flushed:
+		t.Fatalf("flush returned after finish while the copy still held the process's output; sink = %q", sink.buf.String())
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(sink.release)
+	select {
+	case <-flushed:
+	case <-time.After(10 * time.Second):
+		t.Fatal("flush never returned once the copy drained")
+	}
+	if got := sink.buf.String(); got != "extension \"x\" load failed: boom\n" {
+		t.Fatalf("sink = %q when flush returned", got)
+	}
+	<-finished
+}
+
 // A sink that stalls fills the pipe, and the marker write then blocks: flush still returns within consoleFlushWait, holds no lock a finish needs, and no marker reaches the sink.
 type stalledSink struct {
 	release chan struct{}

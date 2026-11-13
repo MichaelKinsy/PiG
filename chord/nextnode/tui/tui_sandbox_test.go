@@ -13,6 +13,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Tests of the terminal's sandbox (slice 11 §4, decision "Slice 11, P8"; fix rounds 1 to 3: a child process, every way to modules
@@ -22,6 +24,47 @@ import (
 // prototypes changed first included), no getter on a prototype of Node's process, no `import()`, no Node `process` (the second
 // is in nextnode/app: it needs a kit app). Run under Node 26.5.1 or later; skipped without. Ports
 // packages/chord/test/node/tui/sandbox.test.ts.
+
+func TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions(t *testing.T) {
+	node := tuiNode(t)
+	root := t.TempDir()
+	target := filepath.Join(root, "target")
+	linked := filepath.Join(root, "linked")
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	testenv.RequireDirectoryLink(t, target, linked)
+	t.Setenv("TMPDIR", linked)
+	t.Setenv("TMP", linked)
+	t.Setenv("TEMP", linked)
+	messages := make(chan SandboxMessage, 4)
+	ended := make(chan string, 1)
+	sandbox, err := StartSandbox(node, `globalThis.chordBridge.send({ kind: "exit", code: 0 });`,
+		BridgeStart{Base: "test", Columns: 80, Rows: 24, Colors: "truecolor", Mode: "dark", Locales: []string{"en"}},
+		func(m SandboxMessage) { messages <- m }, func(reason string) { ended <- reason })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sandbox.Terminate()
+	select {
+	case m := <-messages:
+		if m.Kind != SandboxExit {
+			t.Fatalf("first message = %+v, want exit", m)
+		}
+	case reason := <-ended:
+		t.Fatalf("the sandbox ended before its exit message: %s", reason)
+	case <-time.After(30 * time.Second):
+		t.Fatal("no message from the sandbox")
+	}
+	// The grant stays the one script: its directory is the resolved path, with no symlink in it, and not the linked one.
+	resolved, err := filepath.EvalSymlinks(sandbox.directory)
+	if err != nil || resolved != sandbox.directory {
+		t.Fatalf("directory %q is not resolved (%q, %v)", sandbox.directory, resolved, err)
+	}
+	if strings.HasPrefix(sandbox.directory, linked) {
+		t.Fatalf("directory %q is under the symlink %q", sandbox.directory, linked)
+	}
+}
 
 func TestTheSandboxAsAProcessReachesNoTerminalFileSQLiteNetworkOrEnvironmentPastAnyJavaScriptOpusE1E2(t *testing.T) {
 	node := tuiNode(t)

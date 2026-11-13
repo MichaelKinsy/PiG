@@ -82,7 +82,7 @@ func TestStreamedHighlightIsAWholeRunAcrossBlocksAndEdits(t *testing.T) {
 			if !utf8.ValidString(text) {
 				text = strings.ToValidUTF8(text, "")
 			}
-			if base, _ := hlFindResume(text, s.lang, theme); base.prefix != "" {
+			if base, _ := hlFindResume(text, s.lang, theme, false); base.prefix != "" {
 				resumed++
 			}
 			steps++

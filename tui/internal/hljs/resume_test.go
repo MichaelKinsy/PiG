@@ -107,7 +107,7 @@ func TestHighlightResumableEqualsAFreshRun(t *testing.T) {
 				cut++
 			}
 			prefix := c.Code[:cut]
-			prefixHTML, points, err := r.HighlightResumable(prefix, c.Lang, true, ResumePoint{})
+			prefixHTML, points, err := r.HighlightResumable(NewText(prefix), c.Lang, true, ResumePoint{})
 			if err != nil {
 				t.Errorf("%s: %v", c.ID, err)
 				return
@@ -121,7 +121,7 @@ func TestHighlightResumableEqualsAFreshRun(t *testing.T) {
 				key := pointKey{p.Byte, p.Iterations}
 				run, seen := runs[key]
 				if !seen {
-					suffix, _, err := r.HighlightResumable(c.Code, c.Lang, true, p)
+					suffix, _, err := r.HighlightResumable(NewText(c.Code), c.Lang, true, p)
 					run = resumedRun{suffix, err == nil}
 					runs[key] = run
 					distinct.Add(1)
@@ -154,12 +154,12 @@ func TestHighlightResumableFollowsLaterText(t *testing.T) {
 			t.Fatal(err)
 		}
 		for cut := 1; cut <= len(code); cut++ {
-			prefixHTML, points, err := r.HighlightResumable(code[:cut], lang, true, ResumePoint{})
+			prefixHTML, points, err := r.HighlightResumable(NewText(code[:cut]), lang, true, ResumePoint{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, p := range points {
-				suffix, _, err := r.HighlightResumable(code, lang, true, p)
+				suffix, _, err := r.HighlightResumable(NewText(code), lang, true, p)
 				if err != nil {
 					continue
 				}
@@ -266,7 +266,7 @@ func TestResumeLimitHoldsBackPointsLaterTextDecides(t *testing.T) {
 	}
 	for _, c := range cases {
 		for _, prefix := range c.prefixes {
-			prefixHTML, points, err := r.HighlightResumable(prefix, c.lang, true, ResumePoint{})
+			prefixHTML, points, err := r.HighlightResumable(NewText(prefix), c.lang, true, ResumePoint{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -277,7 +277,7 @@ func TestResumeLimitHoldsBackPointsLaterTextDecides(t *testing.T) {
 					t.Fatal(err)
 				}
 				for _, p := range points {
-					suffix, _, err := r.HighlightResumable(code, c.lang, true, p)
+					suffix, _, err := r.HighlightResumable(NewText(code), c.lang, true, p)
 					if err != nil {
 						t.Fatal(err)
 					}

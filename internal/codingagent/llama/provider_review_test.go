@@ -80,7 +80,7 @@ func TestGetAllModelsListsChatModelsBeforeClassifiers(t *testing.T) {
 	controller.SetCatalog([]LlamaModelInfo{
 		{ID: "a", Status: LlamaModelInfoStatus{Value: LlamaModelStatusLoaded}},
 		{ID: "b", Status: LlamaModelInfoStatus{Value: LlamaModelStatusLoaded}},
-	}, "http://127.0.0.1:8080", false)
+	}, "http://127.0.0.1:9931", false)
 	var got []string
 	for _, model := range controller.Provider.GetAllModels() {
 		switch typed := model.(type) {

@@ -214,6 +214,14 @@ pub use truncate::{
 mod diagnostic;
 mod extension;
 pub mod kit;
+mod ui_view;
+pub use ui_view::{
+    ViewA11y, ViewAbilities, ViewAlternative, ViewAsset, ViewClaim, ViewClause, ViewDrawShape,
+    ViewDrawing, ViewDrawingAbilities, ViewError, ViewFocus, ViewInput, ViewIntent,
+    ViewIntentInvocation, ViewIntentResult, ViewLimits, ViewMount, ViewNotice, ViewPathCommand,
+    ViewPixels, ViewPoint, ViewRef, ViewRegion, ViewRelation, ViewShape, ViewSlotClaims,
+    ViewStatus, ViewStroke, ViewTarget, ViewUpdate, ViewViewport, ViewWhen, ViewWhenAll,
+};
 pub mod tui;
 mod tui_alt_screen;
 pub use tui_alt_screen::{
@@ -247,7 +255,7 @@ mod tool_render;
 mod tool_start_order;
 mod transport;
 mod user_bash;
-pub use user_bash::{BashExecFn, BashExecOptions, BashOperations};
+pub use user_bash::{BashExecError, BashExecFn, BashExecOptions, BashOperations};
 mod builtin_tool;
 pub use builtin_tool::{
     BashSpawnContext, BashSpawnHook, BashToolOptions, BuiltinTool, BuiltinToolDefinition,
@@ -285,9 +293,13 @@ pub use context::{
 };
 pub use events::*;
 mod child_session;
+mod child_session_members;
 pub use child_session::{
     AgentSession, CreateAgentSessionOptions, PromptOptions, ResourceOptions, SessionStartEvent,
     SessionSubscription,
+};
+pub use child_session_members::{
+    ExecuteBashOptions, ForkMessage, ModelMutationOptions, QueuedMessages, SendUserMessageOptions,
 };
 mod create_provider;
 pub use create_provider::{

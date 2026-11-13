@@ -115,10 +115,11 @@ class EditToolOptions:
 
 @dataclass
 class GrepOperations:
-    """Pi's GrepOperations: ``is_directory(path) -> bool`` (required; raises when the path does not exist). Pi main (8da141c2a) takes grep's context lines from
-    ripgrep and no longer has a ``readFile`` member, so there is none here."""
+    """Pi's GrepOperations: ``is_directory(path) -> bool`` (required; raises when the path does not exist). ``read_file`` is Pi's deprecated ``readFile``:
+    accepted and ignored. Grep takes its context lines from ripgrep, so the host never calls it and it is not sent to the host."""
 
     is_directory: Callable[[str], bool]
+    read_file: Callable[[str], str] | None = None
 
 
 @dataclass

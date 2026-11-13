@@ -193,9 +193,11 @@ func Attach(filePath string, terminal PromptTerminal, platform string) (*Attache
 		return nil, errCannotAttach
 	}
 	// The file the user confirms, by identity: what is read must be it (Opus R1: a parent directory swapped for a link after the
-	// yes would lead elsewhere, past `O_NOFOLLOW`, which guards the last step only).
+	// yes would lead elsewhere, past `O_NOFOLLOW`, which guards the last step only). Nothing is opened before the user confirms
+	// the link (a FIFO opened without blocking releases a writer that waits for a reader). On Windows the file ID of an `os.Stat`
+	// result loads by path inside `os.SameFile`, after the swap, so `SameFile(shown, shown)` loads it now (coding/cli's lstatPinned).
 	shown, err := os.Stat(file)
-	if err != nil {
+	if err != nil || !os.SameFile(shown, shown) {
 		return nil, errCannotAttach
 	}
 	if file != named {

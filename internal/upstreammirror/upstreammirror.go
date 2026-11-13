@@ -5,9 +5,11 @@
 package upstreammirror
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -67,4 +69,22 @@ func readJSON(path string, v any) error {
 		return fmt.Errorf("parse %s: %w", path, err)
 	}
 	return nil
+}
+
+// BackportsScript is the generator of the Pi fixes the release line carries beyond the pinned release, relative to the repository root.
+const BackportsScript = "automation/gen/pi-post-release-backports.mjs"
+
+// ReadPicked returns the file rel (slash-separated, relative to the Pi repository: packages/coding-agent/docs/models-configuration.md)
+// of root's pinned mirror as the release line's Pi has it: the pinned release's file plus the recorded post-release fixes, which
+// BackportsScript applies. The mirror stays the pinned release (the delta audit compares it with the earlier pin), so a test that
+// compares a PiG artifact with Pi's docs or schemas reads them here. It fails when a fix no longer applies to the mirror's file once.
+func ReadPicked(root, rel string) ([]byte, error) {
+	cmd := exec.Command("node", filepath.Join(root, filepath.FromSlash(BackportsScript)), "--read-mirror", filepath.Join(root, ".upstream", "current"), rel)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("read %s of the Pi mirror with the post-release fixes: %w\n%s", rel, err, stderr.String())
+	}
+	return out, nil
 }

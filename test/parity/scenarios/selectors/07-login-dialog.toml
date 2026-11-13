@@ -58,8 +58,14 @@ keys = ["Enter"]
 wait_contains = ["Select provider"]
 wait_timeout_seconds = 10
 
+# Pi 1.5.1 (provider-brand.ts, oauth-selector.ts isPreferredProvider) lists Radius and OpenRouter ahead of the alphabetical providers, so GitHub Copilot is no longer the second row: search for it.
 [[tmux.steps]]
-keys = ["Down", "Enter"]
+keys = ["github copilot"]
+wait_visible_contains = ["> github copilot", "→ GitHub Copilot"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
 wait_contains = ["Login to GitHub Copilot", "GitHub Enterprise URL/domain"]
 wait_timeout_seconds = 20
 

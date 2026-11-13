@@ -22,12 +22,12 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/host/revocation.test.ts for the part that needs no host: `revocation keys`. Upstream runs
-// its two cases through createHost (host.revoke, a RawPeer of hold messages), which belongs to the host core; these are own
-// tests of revocationKeys with the behavior each of them asserts: the keys are computed once per principal object and
-// compared as canonical JSON ("are computed once per principal object, compared as canonical JSON"), and the cache keeps
-// no principal alive ("keep no principal alive (a WeakMap keyed by the principal the host cached them for)"). The
-// remaining cases (revoke on one host, links, GC of revoked objects, relays, own requests over paths) are the host's.
+// Ports packages/chord/test/host/revocation.test.ts. The TestRevocationKeys... and TestRevokedBy... cases are own tests of
+// revocationKeys with the behavior each of them asserts: the keys are computed once per principal object and compared as
+// canonical JSON ("are computed once per principal object, compared as canonical JSON"), and the cache keeps no principal
+// alive ("keep no principal alive (a WeakMap keyed by the principal the host cached them for)"), a throw of `revokedBy`
+// reaches the caller and nothing is cached. The TestHost... cases below the line are the upstream cases on whole hosts
+// (createHost, host.revoke, links, a RawPeer of hold messages, relays, own requests over paths).
 
 func revocationGuest(session string) data.Principal {
 	return delta.JsonObjectOf("kind", "guest", "session", session)
@@ -113,8 +113,8 @@ func TestRevocationKeysReturnTheErrorOfRevokedByAndCacheNothing(t *testing.T) {
 		return []delta.JsonValue{"x"}, nil
 	})
 	principal := revocationGuest("S1")
-	if _, err := keys.revokes(principal, `"x"`, chordctx.Background()); !errors.Is(err, boom) {
-		t.Fatalf("first revokes error = %v, want boom", err)
+	if revoked, err := keys.revokes(principal, `"x"`, chordctx.Background()); !errors.Is(err, boom) || revoked {
+		t.Fatalf("first revokes = %v, %v; want false, boom", revoked, err)
 	}
 	if revoked, err := keys.revokes(principal, `"x"`, chordctx.Background()); err != nil || !revoked {
 		t.Fatalf("second revokes = %v, %v; want true, nil", revoked, err)
@@ -142,6 +142,16 @@ func TestRevokedByErasedKeepsTheOrderOfTheRevocations(t *testing.T) {
 	values, err := erased(revocationGuest("S1"))
 	if err != nil || !reflect.DeepEqual(values, []delta.JsonValue{"a", "b"}) {
 		t.Fatalf("erased = %v, %v; want [a b], nil", values, err)
+	}
+}
+
+// Own test of the cast and Pi's throw: an error of `revokedBy` is the error of the erased function, with no values.
+func TestRevokedByErasedReturnsTheErrorOfTheRevocations(t *testing.T) {
+	boom := errors.New("boom")
+	erased := RevokedBy[string](func(data.Principal) ([]string, error) { return []string{"a"}, boom }).erased()
+	values, err := erased(revocationGuest("S1"))
+	if !errors.Is(err, boom) || values != nil {
+		t.Fatalf("erased = %v, %v; want nil, boom", values, err)
 	}
 }
 

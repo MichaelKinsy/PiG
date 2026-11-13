@@ -105,7 +105,7 @@ func deliverModalInput(t *testing.T, m *InteractiveMode, buf []byte) {
 	}
 }
 
-// pi main 51313540a (#9809; D251) for the remote editor-slot overlay (ctx.ui.custom of a subprocess extension): the draft the editor held
+// pi main 51313540a (#9809) for the remote editor-slot overlay (ctx.ui.custom of a subprocess extension): the draft the editor held
 // when the component opened comes back with its collapsed paste content after the component closes.
 func TestRemoteOverlayEditorSlotKeepsCollapsedPasteContent(t *testing.T) {
 	m, _ := newExtensionDialogProbe(t)

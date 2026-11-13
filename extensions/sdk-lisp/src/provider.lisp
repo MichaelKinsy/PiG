@@ -19,8 +19,8 @@
 (defstruct models-publication "PERSIST is :OMITTED when the publication has no persist member." (persist :omitted) update)
 (defstruct refresh-models-context publish credential stored allow-network force signal base-url)
 (defstruct provider
-  "A Pi Provider. Its functions take what Python's do: STREAM and STREAM-SIMPLE (model context options) return a model-event-stream."
-  id name auth get-models stream stream-simple base-url headers filter-models get-all-models filter-all-models
+  "A Pi Provider. REFRESH-MODELS-AUTH is Pi's refreshModelsAuth: NIL or \"credential\" (the default), or \"configured\": the network phase of a catalog refresh then runs without the credential and without an OAuth refresh first. Its functions take what Python's do: STREAM and STREAM-SIMPLE (model context options) return a model-event-stream."
+  id name auth get-models stream stream-simple base-url headers refresh-models-auth filter-models get-all-models filter-all-models
   refresh-models fetch-deferred cancel-deferred generate-images classify
   (handle nil))
 
@@ -97,6 +97,7 @@
          (api-key (prov-api-key provider)) (oauth (prov-oauth provider)))
     (when (provider-base-url provider) (setf (gethash "baseUrl" decl) (provider-base-url provider)))
     (when (provider-headers provider) (setf (gethash "headers" decl) (provider-headers provider)))
+    (when (provider-refresh-models-auth provider) (setf (gethash "refreshModelsAuth" decl) (provider-refresh-models-auth provider)))
     (when api-key (setf (gethash "apiKey" auth) (obj "name" (api-key-auth-name api-key))))
     (when oauth
       (let ((entry (obj "name" (oauth-auth-name oauth))) (subscription (oauth-auth-is-subscription oauth)))
@@ -581,7 +582,7 @@ and SIGNAL, once set, cancels the call (the cancel is sent after the call, so th
                        :auth (prov-remote-auth ext handle decl methods)
                        :get-models (lambda () (invoke "getModels"))
                        :stream (streaming "stream") :stream-simple (streaming "streamSimple")
-                       :base-url (jget decl "baseUrl") :headers (jget decl "headers"))))
+                       :base-url (jget decl "baseUrl") :headers (jget decl "headers") :refresh-models-auth (jget decl "refreshModelsAuth"))))
         (when (member "generateImages" methods :test #'equal) (setf (provider-generate-images provider) (operation "generateImages")))
         (when (member "classify" methods :test #'equal) (setf (provider-classify provider) (operation "classify")))
         (when (member "getAllModels" methods :test #'equal) (setf (provider-get-all-models provider) (lambda () (invoke "getAllModels"))))

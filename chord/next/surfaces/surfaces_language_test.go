@@ -82,7 +82,7 @@ func TestCreateLanguageRefusesATagThatIsNone(t *testing.T) {
 
 // Ports "the render scope > is current only while a render runs, and a nested render restores the outer" with Pi's inputs
 // and expected results. Pi's scope is a module variable a synchronous render sets and restores; Go's is the context the
-// render is given (D450): InLanguage hands render a context carrying the language, and the outer context is untouched
+// render is given (language mechanics: the language is the context's): InLanguage hands render a context carrying the language, and the outer context is untouched
 // when it returns or panics.
 func TestTheRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter(t *testing.T) {
 	de, fr := newLanguage(t, "de"), newLanguage(t, "fr")

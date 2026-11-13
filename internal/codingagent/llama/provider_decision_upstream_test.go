@@ -156,7 +156,7 @@ func TestProviderListsDecisionModelsThatAlsoOutputTextForChat(t *testing.T) {
 	controller.SetCatalog([]LlamaModelInfo{
 		{ID: "decide", Status: LlamaModelInfoStatus{Value: LlamaModelStatusSleeping}, Architecture: &LlamaModelArchitecture{OutputModalities: []string{"decisions"}}},
 		{ID: "hybrid", Status: LlamaModelInfoStatus{Value: LlamaModelStatusLoaded}, Architecture: &LlamaModelArchitecture{OutputModalities: []string{"text", "decisions"}}},
-	}, "http://localhost:8080", false)
+	}, "http://localhost:9931", false)
 
 	if got := modelIDs(controller.Provider.GetModels()); !reflect.DeepEqual(got, []string{"hybrid"}) {
 		t.Fatalf("chat models = %v", got)

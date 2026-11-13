@@ -29,7 +29,9 @@ func TestConformance_NumberAndKeyArgumentsAgreeAcrossSDKs(t *testing.T) {
 		details string
 		failed  bool
 	}
-	runAll := func(t *testing.T, h *harness) []outcome {
+	// runAll echoes every input through the extension. An error from the reference ends the test: the inputs are all valid JSON, so Pi reads each of them, and an
+	// error is the reference process failing, not an outcome to compare a candidate with.
+	runAll := func(t *testing.T, h *harness, reference bool) []outcome {
 		t.Helper()
 		tool, ok := findTool(h.runner, "echo_params")
 		if !ok {
@@ -40,6 +42,9 @@ func TestConformance_NumberAndKeyArgumentsAgreeAcrossSDKs(t *testing.T) {
 			defer cancel()
 			result, err := tool.Definition.Execute(ctx, "tc-number", json.RawMessage(args), nil)
 			if err != nil {
+				if reference {
+					t.Fatalf("the Node (Pi) reference failed %s: %v", args, err)
+				}
 				t.Logf("%s: %v", args, err)
 				return outcome{failed: true}
 			}
@@ -58,50 +63,56 @@ func TestConformance_NumberAndKeyArgumentsAgreeAcrossSDKs(t *testing.T) {
 		}
 		return outcomes
 	}
-	cleanup := func(t *testing.T, h *harness) {
-		t.Cleanup(func() {
-			if h.cleanup != nil {
-				h.cleanup()
-			}
-			if h.host != nil {
-				h.host.Shutdown("test done")
-			}
-		})
+	shutdown := func(h *harness) {
+		if h.cleanup != nil {
+			h.cleanup()
+		}
+		if h.host != nil {
+			h.host.Shutdown("test done")
+		}
 	}
 
-	var reference []outcome
+	var nodeCase harnessCase
 	for _, tc := range sdkHarnessCases() {
-		if tc.name != "subprocess-node" {
-			continue
+		if tc.name == "subprocess-node" {
+			nodeCase = tc
 		}
-		t.Run(tc.name, func(t *testing.T) {
-			h := tc.make(t)
-			cleanup(t, h)
-			reference = runAll(t, h)
-		})
 	}
-	if len(reference) != len(inputs) {
-		t.Fatalf("the Node reference ran %d of %d inputs", len(reference), len(inputs))
+	if nodeCase.make == nil {
+		t.Fatal("sdkHarnessCases has no subprocess-node case, so there is no Node (Pi) reference to compare with")
 	}
-	// Values the JSON.parse rules imply, so a mistake shared by every SDK cannot pass.
-	for input, want := range map[string]string{`{"v":1e400}`: `{"v":null}`, `{"a":1,"a":2}`: `{"a":2}`, `{"v":9007199254740993}`: `{"v":9007199254740992}`, `{"v":-0}`: `{"v":0}`, `{"":1}`: `{"":1}`} {
-		for i, in := range inputs {
-			if in == input && (reference[i].failed || reference[i].details != want) {
-				t.Fatalf("reference echo of %s = %+v, want %s", in, reference[i], want)
+	// The reference row records the reference, and so does the first candidate row when -run leaves the reference row out.
+	reference := referenceRow[[]outcome]{name: "Node (Pi)"}
+	recordReference := func(t *testing.T) []outcome {
+		t.Helper()
+		h := nodeCase.make(t)
+		defer shutdown(h)
+		got := runAll(t, h, true)
+		// Values the JSON.parse rules imply, so a mistake shared by every SDK cannot pass.
+		for input, want := range map[string]string{`{"v":1e400}`: `{"v":null}`, `{"a":1,"a":2}`: `{"a":2}`, `{"v":9007199254740993}`: `{"v":9007199254740992}`, `{"v":-0}`: `{"v":0}`, `{"":1}`: `{"":1}`} {
+			for i, in := range inputs {
+				if in == input && (got[i].failed || got[i].details != want) {
+					t.Fatalf("reference echo of %s = %+v, want %s", in, got[i], want)
+				}
 			}
 		}
+		return got
 	}
+	t.Run(nodeCase.name, func(t *testing.T) {
+		reference.set(t, recordReference(t))
+	})
 
 	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		if tc.name == "subprocess-node" {
 			continue
 		}
 		t.Run(tc.name, func(t *testing.T) {
+			want := reference.get(t, func() []outcome { return recordReference(t) })
 			h := tc.make(t)
-			cleanup(t, h)
-			for i, got := range runAll(t, h) {
-				if !reflect.DeepEqual(got, reference[i]) {
-					t.Errorf("echo of %s = %+v, Node (Pi) reports %+v", inputs[i], got, reference[i])
+			t.Cleanup(func() { shutdown(h) })
+			for i, got := range runAll(t, h, false) {
+				if !reflect.DeepEqual(got, want[i]) {
+					t.Errorf("echo of %s = %+v, Node (Pi) reports %+v", inputs[i], got, want[i])
 				}
 			}
 		})

@@ -138,7 +138,8 @@ func (s *Session) emitSessionBeforeTree(ctx context.Context, preparation TreePre
 		return nil, err
 	}
 	preparation.EntriesToSummarize = sessionEntryValues(entries)
-	result, err := runner.Emit(ctx, extension.SessionBeforeTreeEvent{
+	// runner.ts emit awaits every handler with event.signal aborted and keeps their results, and navigateTree checks no abort after the emit (agent-session.ts): a late cancel or summary is honoured.
+	result, err := runner.Emit(context.WithoutCancel(ctx), extension.SessionBeforeTreeEvent{
 		Type:        icodingagent.EventSessionBeforeTree,
 		Preparation: preparation,
 		Signal:      ctx,
@@ -186,7 +187,8 @@ func (s *Session) emitSessionTree(ctx context.Context, newLeafID, oldLeafID *str
 			event.FromExtension = fromExtension
 		}
 	}
-	_, _ = runner.Emit(ctx, event)
+	// Upstream awaits the emit with no signal (agent-session.ts:4221-4230), so a navigation context that ended while it ran does not end the dispatch.
+	_, _ = runner.Emit(context.WithoutCancel(ctx), event)
 }
 
 // sessionEntryValues is the entries as the extension API's SessionEntry values; an empty list is a non-nil empty list, not null.

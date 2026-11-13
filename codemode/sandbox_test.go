@@ -122,6 +122,7 @@ var behaviorTests = map[string]func(*testing.T){
 	"ReportsThrownErrorsWithTheScriptsLineNumber":                          TestReportsThrownErrorsWithTheScriptsLineNumber,
 	"FormatsStacksLikeV8WithoutPreludeFrames":                              TestFormatsStacksLikeV8WithoutPreludeFrames,
 	"ReportsNonErrorThrows":                                                TestReportsNonErrorThrows,
+	"PrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText":         TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText,
 	"ReportsANonSerializableReturnValueAsAScriptError":                     TestReportsANonSerializableReturnValueAsAScriptError,
 	"ExposesToolsAsAsyncFunctionsAndRecordsCalls":                          TestExposesToolsAsAsyncFunctionsAndRecordsCalls,
 	"RunsConcurrentCallsAndListsToolNames":                                 TestRunsConcurrentCallsAndListsToolNames,
@@ -254,7 +255,7 @@ func TestEmbeddedSourcesMatchTheirRecordedHashes(t *testing.T) {
 	// upstream "embedded sources parse as JavaScript": the prelude parses (and runs) in every execution below; the
 	// hashes pin the exact upstream bytes that the engine and the prelude were verified against.
 	sum := func(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
-	if got := sum([]byte(codemode.PreludeSource)); got != "501d03d333a31ddaf98048ce82d865008d4636da94242ff4f5aa1fe27f085832" {
+	if got := sum([]byte(codemode.PreludeSource)); got != "e6a68df9fa044c3058a3b9d64f39f3014e5d0330677ae5f0e2c9c59bf96ae34e" {
 		t.Errorf("prelude sha256 = %s", got)
 	}
 	if got := sum(codemode.QuickJSWasm()); got != "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9" {
@@ -449,6 +450,35 @@ func TestFormatsStacksLikeV8WithoutPreludeFrames(t *testing.T) {
 	all, _ := json.Marshal(result.Output)
 	if strings.Contains(string(all), "codemode-prelude.js") {
 		t.Fatalf("output leaks prelude frames: %s", all)
+	}
+}
+
+// upstream "prints non-finite numbers in console output and thrown values like text()" (#11901). Pi's input plus -0, which
+// String() prints as 0 as Node's console does, and nested values, which stay JSON as JSON.stringify and text() print them.
+func TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText(t *testing.T) {
+	logged := run(t, newSandbox(t, 10_000), `console.log("avg", 0 / 0, 1 / 0, -1 / 0, { a: 1 }); text(0 / 0);`)
+	if !logged.OK {
+		t.Fatalf("failed: %+v", logged.Error)
+	}
+	want := []codemode.OutputItem{
+		{Type: "text", Text: `avg NaN Infinity -Infinity {"a":1}`, Console: true},
+		{Type: "text", Text: "NaN"},
+	}
+	if !slices.Equal(logged.Output, want) {
+		t.Fatalf("output = %+v, want %+v", logged.Output, want)
+	}
+	zero := run(t, newSandbox(t, 10_000), `console.log(-0, [NaN, Infinity, -Infinity], { n: NaN }); text(-0);`)
+	wantZero := []codemode.OutputItem{
+		{Type: "text", Text: `0 [null,null,null] {"n":null}`, Console: true},
+		{Type: "text", Text: "0"},
+	}
+	if !zero.OK || !slices.Equal(zero.Output, wantZero) {
+		t.Fatalf("output = %+v (error %+v), want %+v", zero.Output, zero.Error, wantZero)
+	}
+	for script, message := range map[string]string{"throw NaN": "NaN", "throw -Infinity": "-Infinity"} {
+		if e := wantFailure(t, run(t, newSandbox(t, 10_000), script), codemode.ErrorScript); e.Message != message {
+			t.Fatalf("%s: error = %+v, want message %q", script, e, message)
+		}
 	}
 }
 

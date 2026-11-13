@@ -1012,7 +1012,7 @@ func TestEsbuildBuildAllowsHostPackagesOnlyRefusingOtherFilesPackagesAndBuiltins
 }
 
 // Intention of workers/base.test.ts "the snapshot › bundles the entry and its imports once: an edit after the build runs
-// nowhere; inputs name both files" (D600 made the worker's base a copy of its executable; the plugin scripts a worker runs are
+// nowhere; inputs name both files" (a Go worker's base is a copy of its executable, not a Node bundle; the plugin scripts a worker runs are
 // what BuildFacet bundles): a script is the facet's file and what it imports at the time of the build, so an edit afterwards
 // changes neither the script nor its digest, and the inputs name the facet's file and the file it imports.
 func TestEsbuildBuildBundlesAFacetAndItsImportsOnceAnEditAfterTheBuildChangesNothingInputsNameBothFiles(t *testing.T) {

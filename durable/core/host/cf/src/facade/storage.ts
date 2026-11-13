@@ -131,22 +131,23 @@ export class MemoryStorage extends SqlStorage {
 class NodeSqliteStorage extends SqlStorage {
   readonly profile: StorageProfile
   private readonly path: string
-  constructor(path: string, profile: StorageProfile) { super(); this.path = path; this.profile = profile }
+  private readonly readOnly: boolean
+  constructor(path: string, profile: StorageProfile, readOnly = false) { super(); this.path = path; this.profile = profile; this.readOnly = readOnly }
   protected async openStore() {
     const captured = await contractStore(this.path)
     if (captured) return captured
     const { nodeStore } = await import("../store-node.ts")
-    return nodeStore(this.path)
+    return nodeStore(this.path, this.readOnly ? { readOnly: true } : {})
   }
 }
 
-export function openNodeSqliteStorage(path: string, profile: StorageProfile = "node-sqlite"): Storage {
-  return new NodeSqliteStorage(path, profile)
+export function openNodeSqliteStorage(path: string, profile: StorageProfile = "node-sqlite", readOnly = false): Storage {
+  return new NodeSqliteStorage(path, profile, readOnly)
 }
 
-/** pi-durable's `openNodeJsonlStorage(directory)`: the store lives in one SQLite file inside the directory. */
-export function openNodeJsonlStorage(directory: string): Storage {
-  return openNodeSqliteStorage(`${directory.replace(/\/$/, "")}/jsonl-as-sqlite`, "jsonl")
+/** pi-durable's `openNodeJsonlStorage(directory, context, { readOnly })`: the store lives in one SQLite file inside the directory; `readOnly` opens it without writing (Pi f5f4a71af, #11939). */
+export function openNodeJsonlStorage(directory: string, options: { readOnly?: boolean } = {}): Storage {
+  return openNodeSqliteStorage(`${directory.replace(/\/$/, "")}/jsonl-as-sqlite`, "jsonl", options.readOnly === true)
 }
 
 /** The Pi `Storage` methods a caller's Storage object replaces: a subclass of MemoryStorage (or an assignment on a node SQLite storage) that overrides one, or a proxy that wraps it. `commit` is gated by the core (PROTOCOL.md, "Storage gate"). */

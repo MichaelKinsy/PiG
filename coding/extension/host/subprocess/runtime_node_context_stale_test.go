@@ -17,8 +17,10 @@ func TestNodeContextMembersThrowOnceTheRuntimeIsStale(t *testing.T) {
 	}
 	script := fmt.Sprintf(`
 import assert from "node:assert/strict";
-import { Runtime, requestSignal } from %q;
+import { Runtime, addCommandContextMembers, requestSignal } from %q;
 const runtime = new Runtime("/ext/stale.mjs");
+// The session-replacing members exist on a command context only (D617): give the base context and the request context a command context's members.
+addCommandContextMembers(runtime.ctx, runtime.ctx);
 const request = () => {
   const requestCtx = Object.create(Object.getPrototypeOf(runtime.ctx));
   for (const key of Object.keys(runtime.ctx)) {
@@ -26,6 +28,7 @@ const request = () => {
     Object.defineProperty(requestCtx, key, { enumerable: true, configurable: true, ...(typeof descriptor.value === "function" ? { value: descriptor.value, writable: true } : { get: () => runtime.ctx[key] }) });
   }
   Object.defineProperty(requestCtx, requestSignal, { value: new AbortController().signal });
+  addCommandContextMembers(requestCtx, runtime.ctx);
   return requestCtx;
 };
 const getters = ["ui", "mode", "hasUI", "cwd", "sessionManager", "modelRegistry", "model", "scopedModels", "thinkingLevel", "signal"];

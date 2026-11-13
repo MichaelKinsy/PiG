@@ -267,6 +267,9 @@ func (p *factoryPump) serve(e *Extension, c *conn) {
 
 // serveLoadingEnvelope answers what the Host sends a connection whose extension has not registered: listener dispatches, each on its own goroutine so that a listener's nested emit does not stop the next dispatch, and the release of a listener a dispatch unsubscribed. A request the extension cannot serve yet is refused, so the Host does not wait for it.
 func (e *Extension) serveLoadingEnvelope(c *conn, env envelope) {
+	if env.Type == msgRequest {
+		c.dropQueuedRequest(env.ID)
+	}
 	switch {
 	case env.Type == msgRequest && env.Request != nil && env.Request.Method == methodEventsDispatch:
 		ctx := Context{ext: e, ctx: context.Background(), loading: c}

@@ -183,8 +183,12 @@ func TestExample14FlowControl(t *testing.T) {
 		exCall(t, reply2, "append", fmt.Sprintf(" t%d", i))
 		// A relay forwards at once and returns each `ack` to the worker, so a fast tab frees its slot before the next commit
 		// and receives every one. In Pi the hops are microtasks the next commit's own microtasks follow; here a commit is a call
-		// from this goroutine, so wait for the `state` to reach the fast tab and its `ack` the worker before the next one.
+		// from this goroutine, so wait for the `state` to reach the fast tab and its `ack` the worker before the next one, and for
+		// the tab's watch to deliver it: a delivery runs on a goroutine of the tab's here (a microtask in Pi, which runs before
+		// the next commit's own), and a `state` applied before that goroutine ran folds into the delivery waiting, so the watch
+		// saw one change for two commits and the count below never reached five (seen under CPU load).
 		transported(up2, down2, up3, down3, workerLink[0], workerLink[1])
+		turn(t3)
 	}
 	transported(up2, down2, up3, down3)
 	exEqual(t, "the worker has", exValue(t, reply2, "reply"), exJSON(t, `{"text":" t0 t1 t2 t3 t4"}`))

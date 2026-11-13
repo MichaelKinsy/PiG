@@ -11,10 +11,12 @@ type Result struct {
 	StderrCaptured bool
 	IdentityRoots  map[string]string // exact isolated roots, keyed by cwd/temp/agent
 	Escaped        string            // tmux -e capture, if available
-	ExitCode       int
-	RuntimeMs      int64
-	ReadyOK        bool // tmux: did the ready pattern appear?
-	Err            error
+	// PlainUncropped and EscapedUncropped mark a tmux capture that no comparator of the scenario reads and that was kept whole instead of cropped to its capture markers.
+	PlainUncropped, EscapedUncropped bool
+	ExitCode                         int
+	RuntimeMs                        int64
+	ReadyOK                          bool // tmux: did the ready pattern appear?
+	Err                              error
 
 	// Artifact holds the contents of the file named by the driver's
 	// artifact_path, read after the run. It lets a scenario assert on what
@@ -27,6 +29,9 @@ type Result struct {
 
 	// FrameWatch is what the steps' frame_watch saw.
 	FrameWatch FrameWatchResult
+
+	// FinalFrame is what the steps' final_frame saw in the raw transcript.
+	FinalFrame FinalFrameResult
 
 	// ChangelogSource is the binary's independent document input for complete release-header assertions.
 	ChangelogSource string

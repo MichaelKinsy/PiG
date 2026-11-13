@@ -78,6 +78,11 @@ func (m *InteractiveMode) openFrontend() {
 		Click: func(click frontend.Click) {
 			m.postFrontendAction(func() { m.surface.Click(click) })
 		},
+		// pig additive (D91): a wheel turn over an extension's view reaches
+		// the component that drew it on the owner loop, as Click does.
+		Wheel: func(wheel frontend.Wheel) {
+			m.postFrontendAction(func() { m.surface.Wheel(wheel) })
+		},
 	})
 	if err != nil || session == nil {
 		// No session draws: the process terminal shows the program status,
@@ -552,7 +557,14 @@ func (m *InteractiveMode) rewireRenderer() {
 	m.applyBaseRendererWiring()
 	m.tuiInst.SetFocus(m.editor)
 	if m.opts.SubprocessHost != nil {
-		m.tuiInst.SetOnWidthChange(func(width int) { m.opts.SubprocessHost.NotifyWidth(width) })
+		m.tuiInst.SetOnWidthChange(func(width int) {
+			m.opts.SubprocessHost.NotifyWidth(width)
+			m.viewClientResized()
+		})
+	}
+	// pig additive (D614): the new renderer has none of the view client's listeners, and its pointer may differ.
+	if client := m.viewClient.Load(); client != nil {
+		client.rewired()
 	}
 	// Registered unconditionally: the dialog chat cap depends on height even
 	// when no subprocess extensions are loaded.

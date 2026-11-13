@@ -1,13 +1,15 @@
 // References (§7): what `get` and `hold` return, a plain object built from the contract's members, and its binding to
 // the object: counted as a reference, it follows the object's state, parks calls while loading, keeps the
-// per-reference watches and is released once. A binding whose object a reload removed, or whose version it no longer
-// binds, waits unbound and binds again (slice 7b §6); one of an older version reads adapted members (Q10).
+// per-reference watches and event subscriptions and is released once. A binding whose object a reload removed, or
+// whose version it no longer binds, waits unbound and binds again (slice 7b §6); one of an older version reads adapted
+// members (Q10).
 
 import { BACKGROUND_CONTEXT, type Context } from "../context/index.ts";
-import type { Contract, Implementation, ParamsOf } from "../contracts/index.ts";
+import type { Contract, EventSubscription, Implementation, KindShape, ParamsOf } from "../contracts/index.ts";
 import {
 	type CurrentVariants,
 	currentVariants,
+	keyOfAddress,
 	LOCAL,
 	type MethodData,
 	type ShapeOf,
@@ -15,17 +17,21 @@ import {
 	type VariantImplementation,
 } from "../contracts/internal.ts";
 import { ChordError, type FailureCause, type Principal } from "../data/index.ts";
+import { invalid } from "../data/internal.ts";
 import { Keyed, type KeyedSlot, type SealToken, Singleton } from "../documents/internal.ts";
 import type { JsonValue } from "../json.ts";
 import { RETRY_HOPS } from "../link/internal.ts";
 import { type Batch, Constant, type DeriveSource, Source } from "../state/internal.ts";
+import { storedText } from "../store/text.ts";
 import type { NativeWatchable, Watch, Watchable } from "../watch.ts";
 import type { PinnedKey } from "./attempt.ts";
 import { type Caller, withLinkedAbortSignal } from "./ctx.ts";
+import { type EventListener, type EventNode, type HostEvents, subscribe } from "./events.ts";
 import type { KeyedBinding } from "./members.ts";
 import type { ChordObject, Holder, Removal } from "./object.ts";
 import { ParkedCalls } from "./parked.ts";
 import { type Ended, type Failed, LOADING, ReferenceState, type RefState } from "./ref-state.ts";
+import { ReferenceEvents, ReferenceEventTaps } from "./reference-events.ts";
 import { ReferenceKeys } from "./reference-keys.ts";
 import { ReferenceSource } from "./reference-source.ts";
 import type { UnboundRequest } from "./unbound.ts";
@@ -133,8 +139,25 @@ export interface Target {
 	pathTo(target: ChordObject, visited: Set<Target>): ChordObject[] | undefined;
 }
 
-/** An instance a reference attaches to (`Target.attachable`): it keeps last values in that instance's variant. */
-export type Attachable = { readonly variant: string | undefined };
+/**
+ * An instance a reference attaches to (`Target.attachable`): it keeps last values in that instance's variant, and taps
+ * its event members' nodes at its version (none for a member its variant lacks).
+ */
+export type Attachable = {
+	readonly variant: string | undefined;
+	eventNode(member: string, version: number): EventNode | undefined;
+};
+
+/** The instance a binding's event members tap, and the host's counter value when it bound to it. */
+type EventsAt = { readonly instance: Attachable; readonly boundAt: number };
+
+/**
+ * A binding's events, for a contract with event members only (decision "Events: fire-and-forget members"): the host's
+ * events; the instance its members tap and the counter value of its binding to it (`at`, taken whenever it attaches to
+ * another instance shown live, used or not, so a subscription made later still gets what was emitted since; none while
+ * it points at nothing); its members' subscriptions and re-exposing nodes (`taps`, made by the first use).
+ */
+type BindingEvents = { readonly host: HostEvents; at: EventsAt | undefined; taps: ReferenceEventTaps | undefined };
 
 /**
  * What a reference follows of its target for one state member (`Target.followed`): the member of the instance it
@@ -257,6 +280,8 @@ export class Binding implements Holder, UnboundRequest {
 	#attached: Attachable | undefined;
 	/** Whether presence lists show it: every reference but a restart's readiness bindings (`unlist`). */
 	#listed = true;
+	/** Its events, for a contract with event members only (one slot otherwise); dropped at its end (it keeps no host). */
+	#events: BindingEvents | undefined;
 
 	constructor(
 		contract: Contract,
@@ -264,6 +289,7 @@ export class Binding implements Holder, UnboundRequest {
 		dependent: ChordObject | undefined,
 		caller: Caller,
 		parkTimeout: number,
+		events: HostEvents,
 	) {
 		this.#name = contract.name;
 		this.#contract = contract;
@@ -275,8 +301,13 @@ export class Binding implements Holder, UnboundRequest {
 		// Every member of every variant (one kind and signature per name, D11); the bound variant decides which work.
 		const methods = new Map<string, MethodData>();
 		for (const variant of currentVariants(contract).values()) {
+			// Event bookkeeping only for a contract with event members: others pay nothing for events per binding.
+			if (variant.events.size > 0) {
+				this.#events ??= { host: events, at: undefined, taps: undefined };
+				for (const member of variant.events.keys()) reference[member] = new ReferenceEvents(this, member);
+			}
 			for (const member of variant.state.keys()) reference[member] = new ReferenceMember(this, member);
-			for (const member of variant.keyed.keys()) reference[member] = new ReferenceKeyed(this, member);
+			for (const [member, { key }] of variant.keyed) reference[member] = new ReferenceKeyed(this, member, key);
 			for (const [member, method] of variant.methods) methods.set(member, method);
 		}
 		for (const [member, method] of methods) {
@@ -370,6 +401,7 @@ export class Binding implements Holder, UnboundRequest {
 		const { target } = state;
 		const { version } = this.contract;
 		const attachable = target.attachable;
+		if (this.#events !== undefined) this.#retargetEvents(this.#events, attachable);
 		if (attachable !== undefined) this.#attached = attachable;
 		// Detaching from an instance it attached to: every member keeps its last value (none before it ever attached).
 		else if (this.#attached !== undefined) this.#keepAll(this.#attached);
@@ -378,6 +410,18 @@ export class Binding implements Holder, UnboundRequest {
 		// Its last values taken: it keeps no node of that instance (GC).
 		if (attachable === undefined) this.#attached = undefined;
 		this.#heldKeys?.follow(BACKGROUND_CONTEXT);
+	}
+
+	/**
+	 * Its event members follow `attachable` from the host's counter value now, when it is another instance than they
+	 * follow: only while it shows its object live (a failed instance's admitted commits still reach its members, never
+	 * its events; decision "Events: fire-and-forget members").
+	 */
+	#retargetEvents(events: BindingEvents, attachable: Attachable | undefined): void {
+		const instance = this.refState.kind === "live" ? attachable : undefined;
+		if (instance === events.at?.instance) return;
+		events.at = instance === undefined ? undefined : { instance, boundAt: events.host.counter };
+		events.taps?.retarget(events.at);
 	}
 
 	/**
@@ -399,6 +443,12 @@ export class Binding implements Holder, UnboundRequest {
 		}, BACKGROUND_CONTEXT);
 		// Its last values taken: it keeps no node of that instance (GC).
 		this.#attached = undefined;
+		// Unbound: no events until it binds again (then from that binding's counter value, even to the same instance).
+		const events = this.#events;
+		if (events !== undefined) {
+			events.at = undefined;
+			events.taps?.retarget(undefined);
+		}
 		this.#state = { kind: "unbound", batch: state.batch, dependent: state.dependent };
 		removal.host.rewait(this, this.contract, removal.params, removal.cause, removal.context);
 	}
@@ -531,6 +581,46 @@ export class Binding implements Holder, UnboundRequest {
 			return error as ChordError;
 		}
 		return new ChordError({ code: "not_ready", message: `${this.label}: not live yet` });
+	}
+
+	/**
+	 * Subscribes `listener` to event member `member` at once, bound or not: it gets what this reference receives while
+	 * it is bound to an instance whose variant has the member. Rejects `released` once released, and an aborted
+	 * `context`'s reason.
+	 */
+	subscribeEvents(member: string, listener: EventListener, context: Context): Promise<EventSubscription> {
+		const state = this.#state;
+		if (state.kind === "released") return Promise.reject(state.state.error);
+		const taps = this.#taps();
+		return subscribe(
+			// Its contract has event members (`member` is one) and it is not released: it has its events.
+			this.#events!.host,
+			listener,
+			context,
+			(subscription) => taps.subscribe(member, subscription),
+			(subscription) => this.#events?.taps?.unsubscribe(member, subscription),
+		);
+	}
+
+	/**
+	 * Feeds `node` (an object's member re-exposing event member `member`) what this reference receives, until
+	 * `unforwardEvents`; nothing for a released reference.
+	 */
+	forwardEvents(member: string, node: EventNode): void {
+		if (this.#state.kind !== "released") this.#taps().forward(member, node);
+	}
+
+	/** Stops feeding `node`. */
+	unforwardEvents(member: string, node: EventNode): void {
+		this.#events?.taps?.unforward(member, node);
+	}
+
+	/** Its event taps, made by the first use at its version, tapped on the instance it points at. */
+	#taps(): ReferenceEventTaps {
+		// Asked only for an event member of its contract, while it is not released: it has its events.
+		const events = this.#events!;
+		events.taps ??= new ReferenceEventTaps(this.contract.version, events.at);
+		return events.taps;
 	}
 
 	/** The keyed member `member`'s slot (slice 6a §12), as `member` resolves a state member. */
@@ -699,6 +789,10 @@ export class Binding implements Holder, UnboundRequest {
 		this.#contract = undefined;
 		if (previous.kind === "waiting") previous.leave();
 		for (const at of this.#ats) at.release();
+		// Its subscriptions end and its event members untap (taken out first: a stopping subscription finds none).
+		const eventTaps = this.#events?.taps;
+		this.#events = undefined;
+		eventTaps?.end();
 		// Its members' and keys' watches end, derives over them are marked; their instance subscriptions go.
 		const sources = this.#sources;
 		const keys = this.#heldKeys;
@@ -832,14 +926,31 @@ class ReferenceMember {
 	}
 }
 
-/** A keyed member of a reference (slice 6a §12): reads by key behave as calls (they wait while loading). */
+/**
+ * A keyed member of a reference (slice 6a §12): reads by key behave as calls (they wait while loading). A host-keyed
+ * one takes addresses of its kind (checked: a trust boundary for JavaScript callers) and reads the provider's slot by
+ * their canonical keys.
+ */
 class ReferenceKeyed {
 	readonly #binding: Binding;
 	readonly #member: string;
+	/** The host kind the member's keys are addresses of; `undefined` for string keys. */
+	readonly kind: (KindShape & { readonly kind: string }) | undefined;
 
-	constructor(binding: Binding, member: string) {
+	constructor(binding: Binding, member: string, kind: (KindShape & { readonly kind: string }) | undefined) {
 		this.#binding = binding;
 		this.#member = member;
+		this.kind = kind;
+	}
+
+	/** The provider slot's key of a key the consumer gave: an address's canonical key, or the string itself. */
+	#key(key: unknown): string {
+		const kind = this.kind;
+		// A string-keyed member's keys are strings (its type).
+		if (kind === undefined) return key as string;
+		const stored = keyOfAddress(kind, key);
+		if (stored === undefined) throw invalid("args", `${this.#member}: expected an address of ${kind.kind}`);
+		return storedText(stored, `${this.#member}: key`);
 	}
 
 	/** The provider's slot: the ultimate provider's, through re-exposures (rule 22). */
@@ -849,10 +960,11 @@ class ReferenceKeyed {
 
 	/** This member as another object re-exposing it has it: its keys held through this reference. */
 	get keyed(): KeyedBinding {
-		return { kind: "reexposed", binding: this.#binding, member: this.#member };
+		return { kind: "reexposed", binding: this.#binding, member: this.#member, key: this.kind?.kind };
 	}
 
-	async get(key: string, context: Context): Promise<JsonValue | undefined> {
+	async get(raw: unknown, context: Context): Promise<JsonValue | undefined> {
+		const key = this.#key(raw);
 		await this.#binding.hydrated(context);
 		const slot = this.slot;
 		const map = this.#binding.keyedMapping(this.#member);
@@ -864,7 +976,8 @@ class ReferenceKeyed {
 	 * A watch of the document at `key` across the object's attempts (it holds the key through the object), `undefined`
 	 * when absent; it ends with this reference.
 	 */
-	async watch(key: string, context: Context): Promise<Watch<JsonValue> | undefined> {
+	async watch(raw: unknown, context: Context): Promise<Watch<JsonValue> | undefined> {
+		const key = this.#key(raw);
 		await this.#binding.firstValues(context);
 		const slot = this.slot;
 		if ((await slot.get(key, ownAccess(slot), context)) === undefined) return undefined;
@@ -886,9 +999,9 @@ class ReferenceKeyed {
 		return this.#binding.follow(watch);
 	}
 
-	at(key: string): Watchable<JsonValue> {
+	at(key: unknown): Watchable<JsonValue> {
 		// The pinned key's values are the member's documents.
-		return this.#binding.at(this.#member, key) as unknown as Watchable<JsonValue>;
+		return this.#binding.at(this.#member, this.#key(key)) as unknown as Watchable<JsonValue>;
 	}
 }
 

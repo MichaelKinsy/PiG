@@ -37,6 +37,9 @@ func readChangelogSource(bin BinaryRef, env []string) (string, error) {
 var changelogSourceHeader = regexp.MustCompile(`^##[ \t]+\[?([0-9]+\.[0-9]+\.[0-9]+)\]?`)
 var changelogRenderedHeader = regexp.MustCompile(`(?m)^\s*\[([0-9]+\.[0-9]+\.[0-9]+)\]`)
 
+// A rendered Unreleased header is the whole line "[Unreleased]", as a release header is "[x.y.z]". Release prose may mention "## [Unreleased]" (it is a heading name in this repo's release tooling), so only the header line is rejected, not the substring.
+var changelogRenderedUnreleased = regexp.MustCompile(`(?m)^\s*\[Unreleased\]\s*$`)
+
 // expectedChangelogHeaders derives the denominator from the document input, independently of Pig's parser and renderer. Pi utils/changelog.ts accepts release headings and interactive-mode.ts renders all entries in reverse source order.
 func expectedChangelogHeaders(source string) []string {
 	var headers []string
@@ -62,6 +65,9 @@ func evaluateChangelogHeaders(o *ScenarioOutcome) {
 			if len(expected) == 0 {
 				o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: changelog assertion has no released document headers", system.name, index+1))
 				continue
+			}
+			if changelogRenderedUnreleased.MatchString(result.Output) {
+				o.Failures = append(o.Failures, fmt.Sprintf("%s run %d: rendered the Unreleased header, which Pi's changelog parser skips", system.name, index+1))
 			}
 			var actual []string
 			for _, match := range changelogRenderedHeader.FindAllStringSubmatch(result.Output, -1) {

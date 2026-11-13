@@ -150,8 +150,6 @@ func isDigits(s string) bool {
 // sseLineSplitter frames SSE lines, which end with CRLF, LF or a lone CR (the SSE spec; Pi b64e6badd). It is separate from the stdio framing, whose
 // lines end at "\n" alone. A CR at the end of the buffered bytes ends its line at once, and skipLF drops the LF that may start the next write so a
 // CRLF split across reads still counts as one line ending.
-//
-// pig divergence (D261): Pi b64e6badd. Pi 1.5.0 splits SSE lines on "\n" only and strips one trailing "\r", so a lone-CR stream never delivers an event.
 type sseLineSplitter struct {
 	buf     []byte
 	start   int  // first pending byte

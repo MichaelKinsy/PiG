@@ -3,13 +3,23 @@ package ai
 // pi: packages/ai/src/auth/oauth/load.ts
 
 import (
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
-// TestOAuthFlowLoadersMatchPi runs every loader of Pi's auth/oauth/load.ts (loadAnthropicOAuth ... loadRadiusOAuth) and checks that the flow it returns has a Go counterpart registered under the same provider id, with the same display name and subscription flag. load.ts is a loader table: each entry returns the OAuthAuth of one flow module.
+// TestOAuthFlowLoadersMatchPi runs every loader of Pi's auth/oauth/load.ts (loadAnthropicOAuth ... loadRadiusOAuth) and checks that the flow it returns has a Go counterpart registered under the same provider id, with the same display name and subscription flag. load.ts is a loader table: each entry returns the OAuthAuth of one flow module. The set of OAuth providers Go registers is exactly the set of Pi's built-in providers that carry auth.oauth (the flows lazy-oauth.ts registerLazyOAuthFlows registers and providers/*.ts load through lazyOAuth), read from Pi's providers/all.ts builtinProviders(), so a flow Pi adds or removes fails this test.
 func TestOAuthFlowLoadersMatchPi(t *testing.T) {
+	var piFlowIDs []string
+	pioracle.Run(t, `
+const all = await load("pi-ai/providers/all.js");
+emit(all.builtinProviders().filter((p) => p.auth && p.auth.oauth).map((p) => p.id).sort());`, nil, &piFlowIDs)
+	if got := slices.Sorted(maps.Keys(builtInOAuthProviders)); !slices.Equal(got, piFlowIDs) {
+		t.Errorf("built-in OAuth providers = %v, Pi's providers with auth.oauth = %v", got, piFlowIDs)
+	}
+
 	ids := []string{"anthropic", "openai-codex", "openai", "github-copilot", "openrouter", "kimi-coding", "meta", "xai", "radius"}
 	type flow struct {
 		Name           string `json:"name"`

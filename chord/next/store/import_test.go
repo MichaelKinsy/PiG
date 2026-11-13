@@ -294,6 +294,14 @@ func TestImportRefusals(t *testing.T) {
 			"not an archive part",
 		},
 		{"no manifest first", func(parts []any) []any { return parts[1:] }, "the manifest comes first"},
+		{
+			"a host's data archive",
+			func(parts []any) []any {
+				importAt(parts, 0).Set("host", "session|S1")
+				return parts
+			},
+			"a host's data archive (session|S1); import it with importHostData",
+		},
 		{"a second manifest", func(parts []any) []any { return append([]any{parts[0]}, parts...) }, "the manifest comes first, once"},
 		{
 			"another format",
@@ -712,4 +720,27 @@ func withMember(object *delta.JsonObject, key string, value any) *delta.JsonObje
 	copied := object.Clone()
 	copied.Set(key, value)
 	return copied
+}
+
+func TestImportOfAnArchiveWrittenBeforeSchema3(t *testing.T) {
+	t.Run("takes an old archive (no host in manifest, records or columns) and exports it again as it was, its manifest at schema 3", func(t *testing.T) {
+		// Pi's stored/archive.jsonl: exported by the code before schema 3 (manifest schema 2).
+		raw, err := os.ReadFile(filepath.Join("..", "host", "testdata", "schema-switch", "stored", "archive.jsonl"))
+		noError(t, err)
+		lines := strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
+		values := make([]any, len(lines))
+		for index, line := range lines {
+			values[index], err = delta.DecodeJson([]byte(line))
+			noError(t, err)
+		}
+		if !strings.Contains(lines[0], `"schema":2`) || strings.Contains(string(raw), `"host"`) {
+			t.Fatalf("the fixture is no archive of schema 2 without hosts: %s", lines[0])
+		}
+		imported := importedStore(t, SlicePartSource(values), false)
+		got := partTexts(t, exported(t, imported, chordctx.Background()))
+		want := append([]string{strings.Replace(lines[0], `"schema":2`, `"schema":3`, 1)}, lines[1:]...)
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("exported parts differ from the archive:\n got %v\nwant %v", got, want)
+		}
+	})
 }

@@ -28,6 +28,21 @@ func readPinned(t *testing.T, parts ...string) []byte {
 	return data
 }
 
+// What the vendored files are compared with is the pinned release plus the post-release fixes the release line carries
+// (automation/gen/pi-post-release-backports.mjs, applied to the installed packages by automation/pin/oracle.py). An installed Pi that
+// lacks a fix, or holds it twice, would make every comparison against it wrong, so the generator checks each file it covers.
+func TestPinnedPiPackagesCarryTheRecordedFixesOnce(t *testing.T) {
+	packages := make([]string, 0, 3)
+	for _, name := range []string{"pi-ai", "pi-coding-agent", "pi-tui"} {
+		dist := pinnedPackageDist[name]
+		packages = append(packages, name+"="+filepath.Join(append([]string{pinnedPiPackages}, dist[:len(dist)-1]...)...))
+	}
+	script := filepath.Join("..", "..", "..", "..", "automation", "gen", "pi-post-release-backports.mjs")
+	if out, err := exec.Command("node", append([]string{script, "--verify-packages"}, packages...)...).CombinedOutput(); err != nil {
+		t.Fatalf("the installed Pi does not carry the post-release fixes once (run make parity-deps): %v\n%s", err, out)
+	}
+}
+
 // The bundled TypeBox must be the release the pinned Pi depends on.
 func TestVendoredTypeBoxMatchesThePinnedDependency(t *testing.T) {
 	var manifest struct {

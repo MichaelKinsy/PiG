@@ -32,7 +32,7 @@ import { resolveCliModel, resolveModelScope } from "./core/model-resolver.js";
 import { ModelRuntime } from "./core/model-runtime.js";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.js";
 import { resolveProjectTrusted } from "./core/project-trust.js";
-import { formatMissingSessionCwdPrompt, getMissingSessionCwdIssue, MissingSessionCwdError, } from "./core/session-cwd.js";
+import { formatMissingSessionCwdPrompt, getMissingSessionCwdIssue, getMissingSessionCwdOptions, MissingSessionCwdError, } from "./core/session-cwd.js";
 import { assertValidSessionId, SessionManager } from "./core/session-manager.js";
 import { collectSettingsDiagnostics, deduplicateDiagnostics } from "./core/settings-diagnostics.js";
 import { SettingsManager } from "./core/settings-manager.js";
@@ -486,12 +486,6 @@ function buildSessionOptions(parsed, scopedModels, hasExistingSession, modelRunt
 function resolveCliPaths(cwd, paths) {
     return paths?.map((value) => (isLocalPath(value) ? resolvePath(value, cwd) : value));
 }
-async function promptForMissingSessionCwd(issue, settingsManager) {
-    return showStartupSelector(settingsManager, formatMissingSessionCwdPrompt(issue), [
-        { label: "Continue", value: issue.fallbackCwd },
-        { label: "Cancel", value: undefined },
-    ]);
-}
 export async function main(args, options) {
     resetTimings();
     // Commands and startup selectors can load user-authored themes before runtime creation.
@@ -610,11 +604,19 @@ export async function main(args, options) {
     const missingSessionCwdIssue = getMissingSessionCwdIssue(sessionManager, cwd);
     if (missingSessionCwdIssue) {
         if (appMode === "interactive") {
-            const selectedCwd = await promptForMissingSessionCwd(missingSessionCwdIssue, startupSettingsManager);
-            if (!selectedCwd) {
-                process.exit(0);
+            const sessionFile = missingSessionCwdIssue.sessionFile;
+            const choice = await showStartupSelector(startupSettingsManager, formatMissingSessionCwdPrompt(missingSessionCwdIssue), getMissingSessionCwdOptions(missingSessionCwdIssue));
+            switch (choice) {
+                case "continue":
+                    sessionManager = SessionManager.open(sessionFile, sessionDir, cwd);
+                    break;
+                // Fork like `--session <id>` from another project, so the choice sticks without rewriting history (#11060).
+                case "fork":
+                    sessionManager = forkSessionOrExit(sessionFile, cwd, sessionDir);
+                    break;
+                case undefined:
+                    process.exit(0);
             }
-            sessionManager = SessionManager.open(missingSessionCwdIssue.sessionFile, sessionDir, selectedCwd);
         }
         else {
             console.error(chalk.red(new MissingSessionCwdError(missingSessionCwdIssue).message));

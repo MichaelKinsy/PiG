@@ -3,6 +3,7 @@ package codingagent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -489,6 +490,45 @@ func TestRemoteCatalogProviderUpstream(t *testing.T) {
 
 		requireIDs(t, "models after the stale response", catalogModelIDs(t, provider), []string{"static", "newer"})
 		requireIDs(t, "stored models", storedCatalogIDs(t, store), []string{"newer"})
+	})
+
+	// pi-mono 6382d870 remote-catalog-provider.test.ts "fetches the pi.dev catalog without refreshing a stale OAuth login".
+	t.Run("fetches the pi.dev catalog without refreshing a stale OAuth login", func(t *testing.T) {
+		server := newCatalogServer(t, true, catalogJSONResponse(nil, map[string]any{"dynamic": catalogChatModel("dynamic")}))
+		oauthRefreshes := 0
+		base := catalogBuiltinProvider()
+		base.Auth = ai.ProviderAuth{OAuth: &ai.OAuthAuth{
+			Name: "Test OAuth",
+			Login: func(context.Context, ai.AuthInteraction, ai.LoginOptions) (ai.Credential, error) {
+				return ai.Credential{}, errors.New("not used")
+			},
+			Refresh: func(context.Context, ai.Credential) (ai.Credential, error) {
+				oauthRefreshes++
+				return ai.Credential{}, errors.New("invalid_grant")
+			},
+			ToAuth: func(c ai.Credential) (ai.ModelAuth, error) { return ai.ModelAuth{APIKey: c.Access}, nil },
+		}}
+		provider := WithRemoteCatalog(base, server.URL, nil)
+		credentials := ai.NewInMemoryCredentialStore()
+		if _, err := credentials.Modify(t.Context(), provider.ID, func(*ai.Credential) (*ai.Credential, error) {
+			return &ai.Credential{Type: ai.CredentialOAuth, Access: "expired", Refresh: "revoked", Expires: 0}, nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		models := ai.CreateModels(ai.CreateModelsOptions{Credentials: credentials, ModelsStore: ai.NewInMemoryModelsStore()})
+		models.SetProvider(provider)
+
+		result := models.Refresh(t.Context(), ai.ModelsRefreshOptions{Force: force})
+		if len(result.Errors) != 0 {
+			t.Fatalf("errors = %v", result.Errors)
+		}
+		if oauthRefreshes != 0 {
+			t.Fatalf("OAuth refreshes = %d, want 0", oauthRefreshes)
+		}
+		if got := server.count(); got != 1 {
+			t.Fatalf("catalog requests = %d, want 1", got)
+		}
+		requireIDs(t, "models", catalogModelIDs(t, provider), []string{"static", "dynamic"})
 	})
 
 	// remote-catalog-provider.test.ts:290

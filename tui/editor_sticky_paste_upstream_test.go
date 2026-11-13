@@ -453,6 +453,32 @@ func TestUpstreamEditorPasteMarkerAtomicBehavior(t *testing.T) {
 		}
 	})
 
+	// upstream: packages/tui/test/editor.test.ts:4038 (a77207d9c, Regression test for #11923)
+	t.Run("renumbers short paste markers without a size suffix", func(t *testing.T) {
+		e := newUpstreamWrappingEditor()
+		submitted := ""
+		e.OnSubmit = func(text string) { submitted = text }
+		linesA, linesB := make([]string, 12), make([]string, 12)
+		for i := range linesA {
+			linesA[i] = fmt.Sprintf("alpha%d", i)
+			linesB[i] = fmt.Sprintf("beta%d", i)
+		}
+		pasteA, pasteB := strings.Join(linesA, "\n"), strings.Join(linesB, "\n")
+		e.HandleInput("\x1b[200~" + pasteA + "\x1b[201~") // #1 = A
+		e.HandleInput("\x1b[200~" + pasteB + "\x1b[201~") // #2 = B
+		e.HandleInput("\x15")                             // Ctrl+U clears the line, registry stays
+		for _, ch := range "[paste #1][paste #2]" {
+			e.HandleInput(string(ch))
+		}
+		e.HandleInput("\x1b[D") // left over marker #2
+		e.HandleInput("\x7f")   // delete marker #1, renumber #2 -> #1
+		assertEditorText(t, e, "[paste #1]")
+		e.HandleInput("\r")
+		if submitted != pasteB {
+			t.Fatalf("submitted = %q, want %q", submitted, pasteB)
+		}
+	})
+
 	// upstream: packages/tui/test/editor.test.ts:3998
 	t.Run("undo after setText restores paste markers and registry", func(t *testing.T) {
 		e := newUpstreamWrappingEditor()

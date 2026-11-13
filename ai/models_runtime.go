@@ -4,7 +4,16 @@ package ai
 
 import (
 	"context"
+	"fmt"
 	"sync"
+)
+
+// RefreshModelsAuthMode mirrors upstream Provider.refreshModelsAuth ("credential" | "configured"); the zero value is the default, "credential".
+type RefreshModelsAuthMode string
+
+const (
+	RefreshModelsAuthCredential RefreshModelsAuthMode = "credential"
+	RefreshModelsAuthConfigured RefreshModelsAuthMode = "configured"
 )
 
 // ModelsProvider is the provider-owned runtime unit from models.ts; Provider remains the existing bound-backend streaming contract.
@@ -16,7 +25,12 @@ type ModelsProvider struct {
 	Auth          ProviderAuth
 	GetModels     func() ([]*Model, error)
 	RefreshModels func(RefreshModelsContext) error
-	FilterModels  func([]*Model, *Credential) []*Model
+	// RefreshModelsAuth is what the network phase of RefreshModels needs. The default, RefreshModelsAuthCredential, receives the effective
+	// credential, so an expired OAuth token is refreshed first. RefreshModelsAuthConfigured is for catalogs served by a source other than the
+	// provider, such as pi.dev: the phase still runs only when the provider is configured, but OAuth is never refreshed for it and
+	// RefreshModelsContext.Credential is nil.
+	RefreshModelsAuth RefreshModelsAuthMode
+	FilterModels      func([]*Model, *Credential) []*Model
 	// GetAllModels lists models of every type. Providers with only chat models may leave it nil.
 	GetAllModels func() ([]AnyModel, error)
 	// FilterAllModels is the credential-specific availability policy across every model type.
@@ -83,7 +97,11 @@ type Models struct {
 	refreshGenerations map[string]uint64
 	refreshControllers map[string]*modelsRefreshSignal
 	publicationChains  map[string]chan struct{}
-	operations         sync.WaitGroup
+	// operations joins every operation the collection runs, including a caller's login and a stream's auth callbacks; owned is the subset the collection runs for its own queries (refresh, auth resolution and check, availability) and for the credential writes of any auth resolution, which Drain joins.
+	operations sync.WaitGroup
+	owned      sync.WaitGroup
+	// draining is set, under mu, by the Drain that stops the collection admitting owned work. It never clears: a drained collection belongs to a registry that is shutting down.
+	draining bool
 }
 
 type MutableModels = Models
@@ -120,13 +138,41 @@ type modelsOperationResult[T any] struct {
 	err   error
 }
 
-func awaitModelsOperation[T any](ctx context.Context, owner *sync.WaitGroup, run func() (T, error)) (T, error) {
+// errModelsDraining is the failure of work the collection refuses to start because Drain has begun.
+var errModelsDraining = fmt.Errorf("the model collection is shutting down: %w", context.Canceled)
+
+// goOwned runs work the collection performs for its own queries. Drain waits for it. It reports false without running the work once Drain has begun: the
+// admission is decided under the lock that Drain takes to begin, so no owned work is added after Drain starts waiting, and Drain joins exactly the work admitted before it.
+func (m *Models) goOwned(run func()) bool {
+	m.mu.Lock()
+	if m.draining {
+		m.mu.Unlock()
+		return false
+	}
+	m.owned.Add(1)
+	m.mu.Unlock()
+	m.operations.Go(func() {
+		defer m.owned.Done()
+		run()
+	})
+	return true
+}
+
+// goOperation runs work Close joins but Drain does not: a caller's login and the callbacks of a stream's auth, which end with their callers' contexts.
+func (m *Models) goOperation(run func()) bool {
+	m.operations.Go(run)
+	return true
+}
+
+func awaitModelsOperation[T any](ctx context.Context, spawn func(func()) bool, run func() (T, error)) (T, error) {
 	var zero T
 	if ctx.Err() != nil {
 		return zero, context.Cause(ctx)
 	}
 	result := make(chan modelsOperationResult[T], 1)
-	owner.Go(func() { value, err := run(); result <- modelsOperationResult[T]{value, err} })
+	if !spawn(func() { value, err := run(); result <- modelsOperationResult[T]{value, err} }) {
+		return zero, errModelsDraining
+	}
 	select {
 	case outcome := <-result:
 		if ctx.Err() != nil {

@@ -1089,11 +1089,21 @@ func importHandler(sc *SlashContext) error {
 	}
 	cancelled, err := sc.ImportSession(inputPath, "")
 	if missing, ok := errors.AsType[*MissingSessionCwdError](err); ok {
-		if !confirmSlash(sc, "Session cwd not found", FormatMissingSessionCwdPrompt(missing.Issue)) {
+		switch promptForMissingSessionCwd(sc, missing.Issue) {
+		case MissingSessionCwdContinue:
+			cancelled, err = sc.ImportSession(inputPath, missing.Issue.FallbackCwd)
+		case MissingSessionCwdFork:
+			// Pi switchToForkedSession(inputPath, fallbackCwd): the fork replaces the import, and shows its own status.
+			var status string
+			status, cancelled, err = sc.ForkSession(inputPath, missing.Issue.FallbackCwd)
+			if err == nil && !cancelled {
+				showStatusOrAppend(sc, status)
+				return nil
+			}
+		default:
 			showStatusOrAppend(sc, "Import cancelled")
 			return nil
 		}
-		cancelled, err = sc.ImportSession(inputPath, missing.Issue.FallbackCwd)
 	}
 	if notFound, ok := errors.AsType[*SessionImportFileNotFoundError](err); ok {
 		return fmt.Errorf("Failed to import session: %w", notFound)
@@ -1110,6 +1120,25 @@ func importHandler(sc *SlashContext) error {
 	}
 	showStatusOrAppend(sc, "Session imported from: "+inputPath)
 	return nil
+}
+
+// promptForMissingSessionCwd is Pi's promptForMissingSessionCwd for a slash command: the choice, or "" when the selector was dismissed or Cancel was chosen.
+func promptForMissingSessionCwd(sc *SlashContext, issue SessionCwdIssue) MissingSessionCwdChoice {
+	options := GetMissingSessionCwdOptions(issue)
+	labels := make([]string, len(options))
+	for i, option := range options {
+		labels[i] = option.Label
+	}
+	label, ok := sc.ShowExtensionSelector(FormatMissingSessionCwdPrompt(issue), labels)
+	if !ok {
+		return ""
+	}
+	for _, option := range options {
+		if option.Label == label {
+			return option.Value
+		}
+	}
+	return ""
 }
 
 // confirmSlash asks a yes/no question as upstream showExtensionConfirm does:

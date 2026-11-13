@@ -449,7 +449,7 @@
 			"skipPrompt": false
 		},
 		"getBranchSummarySkipPrompt": false,
-		"getCacheWarmingMode": "streaming",
+		"getCacheWarmingMode": "idle",
 		"getClearOnShrink": false,
 		"getCodeBlockIndent": "  ",
 		"getCollapseChangelog": false,

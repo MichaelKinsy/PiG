@@ -250,7 +250,12 @@ func cloneAuthCredentials(creds map[string]Credential) map[string]Credential {
 
 // credential returns one provider's stored credential from the latest snapshot.
 func (a *AuthStorage) credential(provider string) (Credential, bool, error) {
-	creds, err := a.readLatest(context.Background())
+	return a.credentialIn(context.Background(), provider)
+}
+
+// credentialIn is credential with its read made in ctx's operation. It does not end with ctx.
+func (a *AuthStorage) credentialIn(ctx context.Context, provider string) (Credential, bool, error) {
+	creds, err := a.readLatest(context.WithoutCancel(ctx))
 	if err != nil {
 		return Credential{}, false, err
 	}
@@ -486,7 +491,7 @@ func (a *AuthStorage) ensureFileExists() error {
 	if pathExists(a.path) {
 		return nil
 	}
-	// Exclusive creation preserves existing bytes, modes, ACLs and symlinks, including when another process creates the file concurrently. A symlink whose target is missing gets its target created, as Pi's writeFileSync does, because the lock follows the link to the real file (D236).
+	// Exclusive creation preserves existing bytes, modes, ACLs and symlinks, including when another process creates the file concurrently. A symlink whose target is missing gets its target created, as Pi's writeFileSync does, because the lock follows the link to the real file.
 	file, err := createNewFollowingLinks(a.path, ownerfile.CreateNew)
 	if errors.Is(err, fs.ErrExist) {
 		return nil

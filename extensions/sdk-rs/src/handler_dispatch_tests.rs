@@ -105,6 +105,7 @@ impl Host {
                 args_error: None,
                 deep_args: false,
                 tool_call_index: None,
+                signal_aborted: false,
                 args_raw: None,
                 method: method.into(),
                 tool: (!tool.is_empty()).then(|| tool.into()),

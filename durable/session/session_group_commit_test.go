@@ -2,12 +2,29 @@ package session_test
 
 // Ports packages/durable/test/session-group-commit.test.ts: group commit on the Session line (docs/group-commit.md):
 // batching, gates, outcome fences, publication, failures per part, upkeep through the writer, backpressure, bounds, and a
-// randomized interleaving against an oracle. The cases that need Go to change what a transaction adopts, or what the read
-// caches do at publication, are in session_group_commit_internal_test.go.
+// randomized interleaving against an oracle.
 //
-// Not ported: the two `${value}` cases that reject with `undefined` and `null` (a Go error is never nil, so a rejection value
-// of no value does not exist; "rejects every part of a call with its rejection value" and "rejects a refused part with its
-// refusal" are ported with an error value in the cases below).
+// pi: packages/durable/src/session/writer.ts
+//
+// Pi's tests reach writer.ts only through the Session, and this file is the port of the one that pins it; the rules of the
+// writer a Session cannot reach are in writer_paths_internal_test.go.
+//
+// Adapted cases (a language mechanic Go forces; the inputs that differ from Pi's are named here, the expected results are Pi's):
+//   - "rejects every part of a call with its rejection value, ${value} included" and "rejects a refused part with its refusal,
+//     ${value} included, and the parts after it with SessionFailed", each for `undefined` and `null`: a Go error is never nil, so
+//     a rejection without a value does not exist. Each case runs with the two empty values Go can reject with (zeroRejections:
+//     an error with an empty message, and a zero-valued error struct) and asserts what Pi asserts of its value: the parts
+//     reject with it, and the Session ends `failed` carrying exactly it (the value itself, not an error that wraps it).
+//   - "leaves the parts after one whose adoption throws unpublished, rejected with SessionFailed", "fails the Session for a
+//     deferred commit memory cannot adopt, and still closes" and "settles a deferred commit whose adoption throws, alone, and
+//     closes": Pi replaces Transaction.prototype.adopt / adoptHeld by a function that throws an error of the test's own. Go
+//     cannot replace a method, so the commit's prepared change is aborted right before the publication Pi's mock throws in
+//     (the third adoption; the first held one), and the real adopt / adoptHeld fails with the tracker's error. Pi's
+//     `toBe(failure)` is then the identity of that error: what the commit rejects with is what the Session failed and ended with.
+//   - "fails the Session for a throw in the read caches' write-through, and leaves the later parts unpublished": Pi replaces
+//     CachedStorage.prototype.published by a function that throws at its second call. In Go the Session's writer reaches the
+//     read caches through its host (WriterHost.Stored, session.ts's `stored`), so the test wraps that one method of the
+//     Session's own host (session.WrapWriterHost) and panics with the test's error at the second write-through.
 
 import (
 	"context"
@@ -25,7 +42,81 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
+	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 )
+
+// emptyRejection is an error whose value and message are both empty.
+type emptyRejection struct{}
+
+func (emptyRejection) Error() string { return "" }
+
+var zeroRejections = []error{errors.New(""), emptyRejection{}}
+
+// identical is Pi's `toBe` of an error: the one value, not one that wraps or equals it.
+func identical(got, want error) bool {
+	return got == want //nolint:errorlint // identity is what Pi pins: `rejects.toBe(failure)`
+}
+
+// expectErrorMessage requires err to be an error whose message is exactly text: Pi's `toMatchObject({reason: new Error(text)})`.
+func expectErrorMessage(t *testing.T, err error, text string) {
+	t.Helper()
+	if err == nil || err.Error() != text {
+		t.Fatalf("got error %v, want one whose message is %q", err, text)
+	}
+}
+
+// adoptionHost is the Session's writer host with a step that runs right before each part publishes itself, which is where a
+// stored commit is adopted (Transaction.adopt) and a deferred one is held (Transaction.adoptHeld).
+type adoptionHost struct {
+	session.WriterHost
+	before func()
+}
+
+func (host adoptionHost) Publishing(publish func(), ctx context.Context) <-chan struct{} {
+	return host.WriterHost.Publishing(func() {
+		host.before()
+		publish()
+	}, ctx)
+}
+
+// cacheWriteHost is the Session's writer host whose write-through to the read caches (Stored) goes through stored, which gets
+// the Session's own write-through to call: Pi's spy on CachedStorage.prototype.published.
+type cacheWriteHost struct {
+	session.WriterHost
+	stored func(write func())
+}
+
+func (host cacheWriteHost) Stored(writes []durable.StorageWrite) {
+	host.stored(func() { host.WriterHost.Stored(writes) })
+}
+
+// capturing is change, with the transaction it runs in stored in captured.
+func capturing(captured *atomic.Pointer[session.Transaction], change func(tx durable.Tx) (any, error)) func(tx durable.Tx) (any, error) {
+	return func(tx durable.Tx) (any, error) {
+		captured.Store(tx.(*session.Transaction))
+		return change(tx)
+	}
+}
+
+// expectAdoptionFailure requires err to be a failure of the commit's own, not SessionFailed, and returns it.
+func expectAdoptionFailure(t *testing.T, err error) error {
+	t.Helper()
+	if err == nil {
+		t.Fatal("the commit whose adoption failed resolved")
+	}
+	if _, failed := isSessionFailed(err); failed {
+		t.Fatalf("the commit whose adoption failed got SessionFailed %v, want its adoption error", err)
+	}
+	return err
+}
+
+// expectEndedFailedWith requires the Session to have ended `{kind: "failed", error: failure}`, with failure itself.
+func expectEndedFailedWith(t *testing.T, end durable.SessionEnd, failure error) {
+	t.Helper()
+	if end.Kind != durable.SessionEndFailed || !identical(end.Error, failure) {
+		t.Fatalf("session ended %+v, want failed with %v itself", end, failure)
+	}
+}
 
 func TestGroupCommitBatching(t *testing.T) {
 	t.Run("stores the commits admitted while a call is in flight in one call, each with its seq, published in order", func(t *testing.T) {
@@ -544,13 +635,13 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err := before.wait()
-		expectErrorContains(t, err, "connection lost")
+		expectErrorMessage(t, err, "connection lost")
 		_, err = between.wait()
 		if _, failed := isSessionFailed(err); !failed {
 			t.Fatalf("the job without writes got %v, want SessionFailed", err)
 		}
 		_, err = after.wait()
-		expectErrorContains(t, err, "connection lost")
+		expectErrorMessage(t, err, "connection lost")
 		// Both parts were received, so they were published before they rejected.
 		if sizes := g.storage.callSizes(1); !slices.Equal(sizes, []int{2}) {
 			t.Fatalf("the last call had %v batches, want [2]", sizes)
@@ -601,66 +692,216 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects every part of a call with its rejection value", func(t *testing.T) {
-		g := openGC(t, 3)
-		a, b, c := g.ids[0], g.ids[1], g.ids[2]
+	for _, value := range zeroRejections {
+		t.Run(fmt.Sprintf("rejects every part of a call with its rejection value, %T included", value), func(t *testing.T) {
+			g := openGC(t, 3)
+			a, b, c := g.ids[0], g.ids[1], g.ids[2]
+			held := g.storage.hold()
+			first := g.bump(a)
+			<-held.Entered()
+			parts := []*call{g.bump(b), g.bump(c)}
+			quiesce(parts...)
+			g.awaitQueued(2)
+			rejection := value
+			g.storage.mu.Lock()
+			g.storage.rejection = rejection
+			g.storage.mu.Unlock()
+			g.storage.setRejectCall(g.storage.callCount())
+			held.Release()
+			mustBump(t, first)
+			for _, part := range parts {
+				if _, err := part.wait(); !identical(err, rejection) {
+					t.Fatalf("part rejected with %#v, want %#v", err, rejection)
+				}
+			}
+			if end := g.closed(); end.Kind != durable.SessionEndFailed || !identical(end.Error, rejection) {
+				t.Fatalf("session ended %+v, want failed with %#v", end, rejection)
+			}
+		})
+
+		t.Run(fmt.Sprintf("rejects a refused part with its refusal, %T included, and the parts after it with SessionFailed", value), func(t *testing.T) {
+			g := openGC(t, 3)
+			a, b, c := g.ids[0], g.ids[1], g.ids[2]
+			held := g.storage.hold()
+			first := g.bump(a)
+			<-held.Entered()
+			refused := g.commitAsync(appendChange(b, "refuse"))
+			after := g.bump(c)
+			quiesce(refused, after)
+			g.awaitQueued(2)
+			refusal := value
+			g.storage.mu.Lock()
+			g.storage.refusal = refusal
+			g.storage.mu.Unlock()
+			g.storage.setRefuse(func(writes []durable.StorageWrite) bool {
+				for _, write := range writes {
+					if entry, ok := write.(durable.EntryWrite); ok && entry.Value.Kind == "refuse" {
+						return true
+					}
+				}
+				return false
+			})
+			held.Release()
+			mustBump(t, first)
+			if _, err := refused.wait(); !identical(err, refusal) {
+				t.Fatalf("refused part rejected with %#v, want %#v", err, refusal)
+			}
+			_, err := after.wait()
+			if _, failed := isSessionFailed(err); !failed {
+				t.Fatalf("the part after the refused one got %v, want SessionFailed", err)
+			}
+			if end := g.closed(); end.Kind != durable.SessionEndFailed || !identical(end.Error, refusal) {
+				t.Fatalf("session ended %+v, want failed with %#v", end, refusal)
+			}
+		})
+	}
+
+	t.Run("leaves the parts after one whose adoption throws unpublished, rejected with SessionFailed", func(t *testing.T) {
+		g := openGC(t, 4)
+		a, b, c, d := g.ids[0], g.ids[1], g.ids[2], g.ids[3]
+		// Pi: the third call of Transaction.prototype.adopt throws. Here the third adoption is of a commit memory cannot adopt.
+		var failingTx atomic.Pointer[session.Transaction]
+		var adoptions atomic.Int32
+		session.WrapWriterHost(g.session, func(host session.WriterHost) session.WriterHost {
+			return adoptionHost{WriterHost: host, before: func() {
+				if adoptions.Add(1) == 3 {
+					session.AbortPrepared(failingTx.Load())
+				}
+			}}
+		})
 		held := g.storage.hold()
 		first := g.bump(a)
 		<-held.Entered()
-		parts := []*call{g.bump(b), g.bump(c)}
-		quiesce(parts...)
-		g.awaitQueued(2)
-		rejection := errors.New("rejection value")
-		g.storage.mu.Lock()
-		g.storage.rejection = rejection
-		g.storage.mu.Unlock()
-		g.storage.setRejectCall(g.storage.callCount())
+		before := g.bump(b)
+		failing := g.commitAsync(capturing(&failingTx, bumpChange(c)))
+		after := g.bump(d)
+		quiesce(before, failing, after)
+		g.awaitQueued(3)
 		held.Release()
 		mustBump(t, first)
-		for _, part := range parts {
-			if _, err := part.wait(); !errors.Is(err, rejection) {
-				t.Fatalf("part rejected with %v, want %v", err, rejection)
-			}
+		mustBump(t, before)
+		_, err := failing.wait()
+		failure := expectAdoptionFailure(t, err)
+		_, err = after.wait()
+		if _, failed := isSessionFailed(err); !failed {
+			t.Fatalf("the part after it got %v, want SessionFailed", err)
 		}
-		if end := g.closed(); !errors.Is(end.Error, rejection) {
-			t.Fatalf("session ended %+v, want failed with %v", end, rejection)
+		if g.published.len() != 2 {
+			t.Fatalf("%d commits published, want 2", g.published.len())
+		}
+		expectEndedFailedWith(t, g.closed(), failure)
+		// All four are durable: reopening recovers the unpublished one.
+		if notes := g.notes(a, b, c, d); !slices.Equal(notes, []float64{1, 1, 1, 1}) {
+			t.Fatalf("notes %v, want [1 1 1 1]", notes)
+		}
+	})
+}
+
+func TestGroupCommitAPublicationThatThrows(t *testing.T) {
+	// failingHeldAdoption makes the first adoption of a held commit fail: Pi's `adoptHeld` mocked once. The held commit is the
+	// one whose transaction is in heldTx.
+	failingHeldAdoption := func(kernel *session.SessionImpl, heldTx *atomic.Pointer[session.Transaction]) {
+		session.WrapWriterHost(kernel, func(host session.WriterHost) session.WriterHost {
+			return adoptionHost{WriterHost: host, before: func() {
+				if tx := heldTx.Swap(nil); tx != nil {
+					session.AbortPrepared(tx)
+				}
+			}}
+		})
+	}
+
+	t.Run("fails the Session for a deferred commit memory cannot adopt, and still closes", func(t *testing.T) {
+		g := openGC(t, 2)
+		a, b := g.ids[0], g.ids[1]
+		mustBump(t, g.bump(a))
+		mustBump(t, g.bump(b))
+		g.published.reset()
+		var heldTx atomic.Pointer[session.Transaction]
+		failingHeldAdoption(g.session, &heldTx)
+		held := g.commitAsync(capturing(&heldTx, bumpChange(a)), deferredForever)
+		after := g.bump(b)
+		_, err := held.wait()
+		failure := expectAdoptionFailure(t, err)
+		_, err = after.wait()
+		if _, failed := isSessionFailed(err); !failed {
+			t.Fatalf("the commit after it got %v, want SessionFailed", err)
+		}
+		if g.published.len() != 0 {
+			t.Fatalf("%d commits published, want none", g.published.len())
+		}
+		expectEndedFailedWith(t, g.closed(), failure)
+		g.close()
+	})
+
+	t.Run("settles a deferred commit whose adoption throws, alone, and closes", func(t *testing.T) {
+		// Astra's: the only commit is the deferred one, on a storage that runs nothing else.
+		storage := sessiontest.NewControlledStorage()
+		kernel := session.NewSessionImpl(storage, session.Hooks{}, nil, nil)
+		created, err := kernel.Commit(ctx, func(tx durable.Tx) (any, error) {
+			conversation, err := tx.CreateConversation(ownerless())
+			if err != nil {
+				return nil, err
+			}
+			if _, err := tx.Doc(gcNote, conversation.Id); err != nil {
+				return nil, err
+			}
+			return conversation.Id, nil
+		})
+		must(t, err)
+		id := created.(durable.ConversationId)
+		var heldTx atomic.Pointer[session.Transaction]
+		failingHeldAdoption(kernel, &heldTx)
+		_, err = kernel.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
+			return capturing(&heldTx, bumpChange(id))(tx)
+		}, session.TransactionScope{}, deferredForever)
+		failure := expectAdoptionFailure(t, err)
+		if got := kernel.Failure(); !identical(got, failure) {
+			t.Fatalf("session failure %v, want %v itself", got, failure)
+		}
+		must(t, kernel.Close(ctx))
+		<-kernel.Closed()
+		expectEndedFailedWith(t, kernel.End(), failure)
+		if sizes := kernel.LineSizes(); sizes != (session.LineSizes{}) {
+			t.Fatalf("line sizes %+v, want all zero", sizes)
 		}
 	})
 
-	t.Run("rejects a refused part with its refusal, and the parts after it with SessionFailed", func(t *testing.T) {
+	t.Run("fails the Session for a throw in the read caches' write-through, and leaves the later parts unpublished", func(t *testing.T) {
 		g := openGC(t, 3)
 		a, b, c := g.ids[0], g.ids[1], g.ids[2]
+		failure := errors.New("cache write failed")
+		// Pi installs the spy once the call is in flight; no batch is written through between here and there, so the count is
+		// the same, and the writer is idle here.
+		var writes atomic.Int32
+		session.WrapWriterHost(g.session, func(host session.WriterHost) session.WriterHost {
+			return cacheWriteHost{WriterHost: host, stored: func(write func()) {
+				if writes.Add(1) == 2 {
+					panic(failure)
+				}
+				write()
+			}}
+		})
 		held := g.storage.hold()
 		first := g.bump(a)
 		<-held.Entered()
-		refused := g.commitAsync(appendChange(b, "refuse"))
+		failing := g.bump(b)
 		after := g.bump(c)
-		quiesce(refused, after)
+		quiesce(failing, after)
 		g.awaitQueued(2)
-		refusal := errors.New("refusal value")
-		g.storage.mu.Lock()
-		g.storage.refusal = refusal
-		g.storage.mu.Unlock()
-		g.storage.setRefuse(func(writes []durable.StorageWrite) bool {
-			for _, write := range writes {
-				if entry, ok := write.(durable.EntryWrite); ok && entry.Value.Kind == "refuse" {
-					return true
-				}
-			}
-			return false
-		})
 		held.Release()
 		mustBump(t, first)
-		if _, err := refused.wait(); !errors.Is(err, refusal) {
-			t.Fatalf("refused part rejected with %v, want %v", err, refusal)
+		if _, err := failing.wait(); !identical(err, failure) {
+			t.Fatalf("the commit whose cache write threw got %v, want %v itself", err, failure)
 		}
 		_, err := after.wait()
 		if _, failed := isSessionFailed(err); !failed {
-			t.Fatalf("the part after the refused one got %v, want SessionFailed", err)
+			t.Fatalf("the commit after it got %v, want SessionFailed", err)
 		}
-		if end := g.closed(); !errors.Is(end.Error, refusal) {
-			t.Fatalf("session ended %+v, want failed with %v", end, refusal)
+		if g.published.len() != 1 {
+			t.Fatalf("%d commits published, want 1", g.published.len())
 		}
+		expectEndedFailedWith(t, g.closed(), failure)
+		g.close()
 	})
 }
 
@@ -1083,9 +1324,7 @@ func TestGroupCommitUpkeepThroughTheWriter(t *testing.T) {
 		}
 		value, err := g.session.SnapshotErased(ctx, gcNote, b)
 		must(t, err)
-		if num(value.Value("n")) != 1 {
-			t.Fatalf("note %v, want 1", value)
-		}
+		expectEqual(t, value, delta.JsonObjectOf("n", 1.0))
 		g.close()
 		if notes := g.notes(a, b); !slices.Equal(notes, []float64{2, 1}) {
 			t.Fatalf("notes %v, want [2 1]", notes)

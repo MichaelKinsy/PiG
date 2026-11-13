@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/bits"
 	"path"
 	"runtime"
 	"strings"
@@ -33,8 +32,8 @@ type File struct {
 // blockTarget is the raw size at which a block ends at the next group boundary. A group (one package directory) is never split, so a block holds every copy of the modules it was built from.
 const blockTarget = 4 << 20
 
-// Pack returns the blocks for files, in an order that keeps each package directory's files adjacent (a directory walk does). The output depends only on the names and contents.
-func Pack(files []File) ([]byte, error) {
+// Pack returns the blocks for files, in an order that keeps each package directory's files adjacent (a directory walk does). encode writes each block's tar stream as one zstd frame: the generator passes the pinned zstd command at --ultra -22 (zstdblob.Encode), whose frames are 11 to 12 percent smaller than the library's best level writes (0.5 MB of the pig binary); a test that needs no committed bytes passes zstdblob.EncodeLibrary. The output depends only on the names, the contents and encode.
+func Pack(files []File, encode func(raw []byte) ([]byte, error)) ([]byte, error) {
 	var out []byte
 	var block []File
 	size := 0
@@ -42,7 +41,7 @@ func Pack(files []File) ([]byte, error) {
 		if len(block) == 0 {
 			return nil
 		}
-		frame, err := compressBlock(block)
+		frame, err := compressBlock(block, encode)
 		if err != nil {
 			return err
 		}
@@ -80,7 +79,7 @@ func groupKey(name string) string {
 	return parts[0]
 }
 
-func compressBlock(files []File) ([]byte, error) {
+func compressBlock(files []File, encode func(raw []byte) ([]byte, error)) ([]byte, error) {
 	var raw bytes.Buffer
 	writer := tar.NewWriter(&raw)
 	for _, file := range files {
@@ -95,26 +94,28 @@ func compressBlock(files []File) ([]byte, error) {
 	if err := writer.Close(); err != nil {
 		return nil, err
 	}
-	// The window covers the whole block, so a repeat is found anywhere in it.
-	window := max(zstd.MinWindowSize, 1<<bits.Len(uint(raw.Len())))
-	encoder, err := zstd.NewWriter(nil, zstd.WithEncoderLevel(zstd.SpeedBestCompression), zstd.WithWindowSize(window), zstd.WithEncoderConcurrency(1))
-	if err != nil {
-		return nil, err
-	}
-	frame := encoder.EncodeAll(raw.Bytes(), nil)
-	return frame, encoder.Close()
+	return encode(raw.Bytes())
 }
 
-// Extract decodes every block of archive and calls visit for each file. Blocks run in parallel, so visit must be safe for concurrent use; data is valid only during the call. The first error stops further blocks.
-func Extract(archive string, visit func(name string, data []byte) error) error {
+// Blocks splits archive into the zstd frames Pack wrote, one per block.
+func Blocks(archive string) ([]string, error) {
 	var blocks []string
 	for rest := archive; len(rest) > 0; {
 		length, n := uvarint(rest)
 		if n <= 0 || uint64(len(rest)-n) < length {
-			return ErrTruncated
+			return nil, ErrTruncated
 		}
 		blocks = append(blocks, rest[n:n+int(length)])
 		rest = rest[n+int(length):]
+	}
+	return blocks, nil
+}
+
+// Extract decodes every block of archive and calls visit for each file. Blocks run in parallel, so visit must be safe for concurrent use; data is valid only during the call. The first error stops further blocks.
+func Extract(archive string, visit func(name string, data []byte) error) error {
+	blocks, err := Blocks(archive)
+	if err != nil {
+		return err
 	}
 	if len(blocks) > 1 {
 		// pig additive (D174): the first start of a Node extension waits on this decode; it runs at the runtime default width.

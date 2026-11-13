@@ -593,6 +593,12 @@ func (r *ModelRegistry) composeProvider(base *ai.ModelsProvider, extension *Prov
 	}
 	provider.GetModels = currentModels
 	provider.GetAllModels = currentAllModels
+	// Extension hooks read context.credential, so they need the default credential refresh.
+	if extension != nil && (extension.RefreshModels != nil || extension.OAuth != nil && extension.OAuth.ModifyModels != nil) {
+		provider.RefreshModelsAuth = ""
+	} else {
+		provider.RefreshModelsAuth = base.RefreshModelsAuth
+	}
 	provider.Auth = ai.ProviderAuth{APIKey: composeAPIKeyAuth(base.ID, auth, authConfig), OAuth: composeOAuthAuth(base.ID, auth.OAuth, authConfig)}
 	if base.RefreshModels != nil || (extension != nil && (extension.RefreshModels != nil || extension.OAuth != nil && extension.OAuth.ModifyModels != nil)) {
 		provider.RefreshModels = func(ctx ai.RefreshModelsContext) error {

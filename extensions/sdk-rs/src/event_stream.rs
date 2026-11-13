@@ -172,6 +172,7 @@ mod tests {
             args_error: None,
             deep_args: false,
             tool_call_index: None,
+            signal_aborted: false,
             args_raw: None,
         }
     }
