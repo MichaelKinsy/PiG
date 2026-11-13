@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "pi-dist/pi-coding-agent/cli/args.js",
-      "sha256": "3068601b4cd193c804ed29e5ba3c31714fabfb0306b1f4cb24505b9c6723dbeb"
+      "sha256": "ecb8c794275c3f8abfc7e8713ac8a4cac85170e2a0ea114f8470026d9d4854a1"
     },
     {
       "path": "pi-dist/pi-coding-agent/cli/auth-check.js",
@@ -223,7 +223,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-resolver.js",
-      "sha256": "f34d3026a06fe6566f83c9ad5bfa69a2cfedb29bd140a778d058c85447511695"
+      "sha256": "a2afc2b4071a60aa71183ffb11a2fe73a46f975cc0bbc771efcd1eed55fa2191"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-runtime.js",
@@ -363,11 +363,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/find.js",
-      "sha256": "2260b1eb39af786fc1c68b4ac70aa2d0f1261a0a68b4510b44f777a5f905c59c"
+      "sha256": "1cb1aa4c41f9204ae00a5c50ce01eef49389de4d5b398d302a6d7f519a4a1a72"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/grep.js",
-      "sha256": "949d5a31230005f0e37361acf136df657e2915d8956e4dcffb90fbd8e001b171"
+      "sha256": "4e5a9f9c155b94fdf556a8613afafe40f54fd793972469bc5e33ab4988439f4d"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/index.js",
@@ -555,7 +555,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/main.js",
-      "sha256": "e45bd6aa320b2f687ac4a727d30f48060d293680d53b7c729601b1b8d2209999"
+      "sha256": "41e4d9fdd2541c0d9cd5cd42acd491647c33cdcfcea5dabb58e4246e5ca1ca8c"
     },
     {
       "path": "pi-dist/pi-coding-agent/migrations.js",

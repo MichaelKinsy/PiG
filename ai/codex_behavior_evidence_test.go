@@ -37,8 +37,8 @@ func TestKimiRefreshRejectsInvalidGrantWithoutRetry(t *testing.T) {
 func TestQwenTokenPlanCatalogRoutes(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ provider, base string }{
-		{"qwen-token-plan", "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"},
-		{"qwen-token-plan-cn", "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"},
+		{"qwen-token-plan", "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"},
+		{"qwen-token-plan-cn", "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"},
 	} {
 		model := mustGeneratedModel(t, tc.provider, "qwen3.8-max")
 		if model.BaseURL != tc.base || model.API != APIOpenAICompletions {

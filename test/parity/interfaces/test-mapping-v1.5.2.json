@@ -763,7 +763,7 @@
       "evidence": [
         "cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict"
       ],
-      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests."
+      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched. Pi c23b9ec1 delta (qwen-token-plan-individual-cn rows and compat fields) is carried by the existing cases files/tests. Pi 1397070024 delta: the mocked source lists deepseek-v4.1-flash-1017, which the Individual allowlist now requires; the Go case's source lists it too."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
@@ -1753,7 +1753,7 @@
         "ai/port_wave_12_helpers_test.go#assertThinkingLevelPresence",
         "ai/auth_env_keys_test.go#TestEnvAPIKeysQwenIndividualCnUsesChinaTokenPlanVariable"
       ],
-      "rationale": "All ten upstream sites at qwen-token-plan-models.test.ts:122,130,136,143,151,184,202,220,228,260 retain 88 expanded cases: exact Individual catalog, environment lookup, two text and two image-provider rows, 39 thinking payloads, 14 reasoning maps, six qwen3.8 maps, three retired-preview exclusions, 14 reasoning payloads and six qwen3.8 payloads. Original model lists, Hi prompts and reasoning levels are preserved; map checks distinguish null, absent and empty string. Case-by-case review and go test -count=1 -race ./ai pass on stable tip 4 (636bab50a9872bd92ec0d2dd4e62bf8669eec62e) with isolated HOME/Pig/Pi roots. Pi c23b9ec1 delta: Pi c23b9ec1 adds the individual-cn provider rows, glm-5.3 and the China env variable case; the env case is that test."
+      "rationale": "All ten upstream sites at qwen-token-plan-models.test.ts:122,130,136,143,151,184,202,220,228,260 retain 88 expanded cases: exact Individual catalog, environment lookup, two text and two image-provider rows, 39 thinking payloads, 14 reasoning maps, six qwen3.8 maps, three retired-preview exclusions, 14 reasoning payloads and six qwen3.8 payloads. Original model lists, Hi prompts and reasoning levels are preserved; map checks distinguish null, absent and empty string. Case-by-case review and go test -count=1 -race ./ai pass on stable tip 4 (636bab50a9872bd92ec0d2dd4e62bf8669eec62e) with isolated HOME/Pig/Pi roots. Pi c23b9ec1 delta: Pi c23b9ec1 adds the individual-cn provider rows, glm-5.3 and the China env variable case; the env case is that test. Pi 1397070024 delta: the Team lists lose deepseek-v3.2 and deepseek-v4-flash, the Individual lists gain deepseek-v4.1-flash and deepseek-v4.1-flash-1017, the two single-variable environment cases become `prefers the per-plan key on %s and falls back to the shared one` (TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne, four providers through the provider's auth and GetEnvAPIKey) and `keeps a per-plan key away from the other plan` (TestQwenTokenPlanKeepsAPerPlanKeyAwayFromTheOtherPlan), the glm-5.3 case no longer asserts a base URL, and `omits retired models on %s` checks three ids (TestQwenTokenPlanOmitsRetiredModels); the two earlier environment cases stay in auth_env_keys_test.go because the shared variable is still the fallback."
     },
     {
       "path": "packages/ai/test/radius-oauth.test.ts",
@@ -6280,7 +6280,7 @@
       "evidence": [
         "coding/cli/model_resolver_defaults_upstream_test.go"
       ],
-      "rationale": "The changed Pi default-model expectations are asserted with the same provider ids and model ids."
+      "rationale": "The changed Pi default-model expectations are asserted with the same provider ids and model ids. Pi bacd45b9c delta: the case \"resolveModelScope preserves CLI warning output\" is removed with resolveModelScope, and its Go subtest with it."
     },
     {
       "path": "packages/coding-agent/test/model-runtime-auth-options.test.ts",

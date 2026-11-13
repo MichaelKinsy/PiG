@@ -36,7 +36,6 @@ package ai
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -77,11 +76,7 @@ func readProviderModules(t *testing.T) []providerModule {
 	}
 	var modules []providerModule
 	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		source := string(data)
+		source := string(readPinnedMirror(t, filepath.ToSlash(file)))
 		if !createProviderCallRe.MatchString(source) {
 			continue
 		}

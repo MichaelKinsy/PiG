@@ -1,0 +1,100 @@
+from = "1.5.2+e675a0d7"
+to = "1.5.2+13970700"
+
+[[files]]
+path = "packages/ai/catalog/providers/qwen-token-plan.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/evidence_provB_more_test.go#TestProvBQwenTokenPlans", "test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "1397070024 (#12112, #11773): INTERNATIONAL_BASE_URL and CN_BASE_URL are the current gateways (token-plan.maas.qwencloudapi.com, token-plan.maas.qianwenaiapi.com; the former aliyuncs.com hosts resolve to the same gateways), and qwenTokenPlanModels sets skipDeprecated in place of the EXCLUDED_MODEL_IDS set, so the models models.dev marks deprecated (qwen3.8-max-preview, deepseek-v3.2, deepseek-v4-flash) leave all four catalogs. internal/modelgen/providers/qwen_token_plan.go is the same file in Go. TestCatalogGenerationMatchesPi holds the Go generator to what Pi's generator writes with this file and qwen-token-plan-individual.ts of 1397070024 over the pinned mirror (PI_CATALOG_OVERLAY of equivalence.sh; the twelve Qwen Token Plan lines of golden.sha256)."
+
+[[files]]
+path = "packages/ai/catalog/providers/qwen-token-plan-individual.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/evidence_provB_more_test.go#TestProvBQwenTokenPlans", "test:cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict"]
+rationale = "1397070024: INDIVIDUAL_MODEL_IDS gains deepseek-v4.1-flash and deepseek-v4.1-flash-1017 (12 ids, the Personal lists of both regions). internal/modelgen/providers/qwen_token_plan_individual.go holds the same list; strict generation requires exactly it."
+
+[[files]]
+path = "packages/ai/src/env-api-keys.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanKeepsAPerPlanKeyAwayFromTheOtherPlan", "test:ai/auth_env_keys_test.go#TestEnvAPIKeysTableMatchesUpstream", "test:ai/env_api_keys_oracle_test.go#TestEnvAPIKeysMatchPi"]
+rationale = "1397070024: an envMap value is one variable or a list in lookup order, and each Qwen Token Plan provider lists its per-plan variable (QWEN_TOKEN_PLAN_TEAM_API_KEY, QWEN_TOKEN_PLAN_TEAM_CN_API_KEY, QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY, QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY) before the region variable both plans shared. envAPIKeyVars (ai/auth_env_keys.go) holds each provider's variables as a list; getAPIKeyEnvVars, FindEnvKeys, GetEnvAPIKey and the built-in API-key auth read that one table. The oracle test compares random environments, with the new variables among them, against the Pi that carries the backport."
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne", "test:ai/api_key_providers_test.go#TestAPIKeyProvidersCoverCatalogEnvAuth", "test:ai/codex_behavior_evidence_test.go#TestQwenTokenPlanCatalogRoutes"]
+rationale = "1397070024: name \"Qwen Token Plan Team\", the international gateway as baseUrl, and envApiKeyAuth(\"Qwen Token Plan Team API key\", [QWEN_TOKEN_PLAN_TEAM_API_KEY, QWEN_TOKEN_PLAN_API_KEY]). The provider id is unchanged. PiG's provider metadata tables hold the same values (ai/provider_names.go, ai/auth_providers.go, ai/auth_env_keys.go)."
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-cn.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne", "test:ai/api_key_providers_test.go#TestAPIKeyProvidersCoverCatalogEnvAuth", "test:ai/codex_behavior_evidence_test.go#TestQwenTokenPlanCatalogRoutes"]
+rationale = "1397070024: name \"Qwen Token Plan Team CN\", the China gateway as baseUrl, and envApiKeyAuth(\"Qwen Token Plan Team CN API key\", [QWEN_TOKEN_PLAN_TEAM_CN_API_KEY, QWEN_TOKEN_PLAN_CN_API_KEY]). Same tables as qwen-token-plan.ts."
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-individual.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanProvidersShareOneCatalogPerRegion"]
+rationale = "1397070024: the international gateway as baseUrl and envApiKeyAuth with [QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY, QWEN_TOKEN_PLAN_API_KEY]; the name is unchanged. Same tables as qwen-token-plan.ts."
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-individual-cn.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanProvidersShareOneCatalogPerRegion"]
+rationale = "1397070024: the China gateway as baseUrl and envApiKeyAuth with [QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY, QWEN_TOKEN_PLAN_CN_API_KEY]; the name is unchanged. Same tables as qwen-token-plan.ts."
+
+[[files]]
+path = "packages/coding-agent/src/cli/args.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/args_test.go#TestHelpTextMentionsProviderEnvVars"]
+rationale = "1397070024: --help lists QWEN_TOKEN_PLAN_TEAM_API_KEY, QWEN_TOKEN_PLAN_TEAM_CN_API_KEY, QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY and QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY in place of the two shared variables. coding/cli/help_upstream.txt is rendered from the Pi that carries the backport (make help-text), so PiG's --help prints the same four lines."
+
+[[files]]
+path = "packages/ai/test/qwen-token-plan-models.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanPrefersThePerPlanKeyAndFallsBackToTheSharedOne", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanKeepsAPerPlanKeyAwayFromTheOtherPlan", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanOmitsRetiredModels", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels"]
+rationale = "1397070024: the Team lists lose deepseek-v3.2 and deepseek-v4-flash, the Individual lists gain deepseek-v4.1-flash and deepseek-v4.1-flash-1017, the two single-variable environment cases are replaced by `prefers the per-plan key on %s and falls back to the shared one` (four providers, through the provider's auth and getEnvApiKey) and `keeps a per-plan key away from the other plan`, the base URL assertion of the glm-5.3 case is gone, and `omits retired models on %s` checks three ids. The Go file carries each case with the same inputs and results; the generated catalog it reads is built from the release's provider data with the backport."
+
+[[files]]
+path = "packages/ai/test/generate-models-strict.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict"]
+rationale = "1397070024: the mocked source lists deepseek-v4.1-flash-1017, so the only missing Individual id is the tool-less deepseek-v4-flash-0731. The Go case's source lists the same ids and expects the same diagnostic."
+
+[[files]]
+path = "packages/ai/README.md"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "1397070024: the provider list and the key table name a Team and an Individual provider per region with the four per-plan variables. PiG's providers page (docs/site/docs/providers.md and the bundled internal/pigdocs/content/providers.md) lists the four providers with those variables."
+
+[[files]]
+path = "packages/coding-agent/docs/providers.md"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "1397070024: the API-key table lists the four per-plan variables. Same PiG page as packages/ai/README.md; the vendored copy of Pi's page carries the rows through automation/gen/pi-post-release-backports.mjs."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "1397070024: Pi's changelog entries. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "1397070024: Pi's changelog entries. PiG's user-visible change is its own changelog.d fragment."

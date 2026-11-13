@@ -1136,6 +1136,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-89d167f](#bf-89d167f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-8a18a6b](#bf-8a18a6b) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | 0.5.2 |
 | [BF-8a25539](#bf-8a25539) | `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8a4185d](#bf-8a4185d) | `enabledModels`/`--models` warnings such as `No models match pattern "github-copilot/nope"` are reported with… | PiG's own defect | All platforms | Unreleased |
 | [BF-8a44836](#bf-8a44836) | Closing a session with an MCP server that signs in with OAuth no longer fails at random | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8a88c34](#bf-8a88c34) | On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version | PiG's own defect | Windows | 0.7.0 |
 | [BF-8a9bb40](#bf-8a9bb40) | fix(ai): Anthropic retry-delay message and Codex error body without an error member | PiG's own defect | All platforms | Unreleased |
@@ -1172,6 +1173,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f241ca](#bf-8f241ca) | A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8f81668](#bf-8f81668) | The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | 0.7.0 |
 | [BF-8fbbd2d](#bf-8fbbd2d) | Chord workers now start in a session of their own, as Pi's `detached: true` fork does, so a worker no longer… | PiG's own defect | All platforms | Unreleased |
 | [BF-8fead2d](#bf-8fead2d) | fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks… | PiG's own defect | All platforms | Unreleased |
@@ -1989,6 +1991,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f08ffe9](#bf-f08ffe9) | A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f0a9d01](#bf-f0a9d01) | An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line | PiG's own defect | All platforms | 0.7.0 |
+| [BF-f0c8b96](#bf-f0c8b96) | The find tool matched path patterns through folders above the search path: with the project in `~/src/app`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f0eace4](#bf-f0eace4) | LaTeX math renders two surrogate halves that end up side by side in one argument (`\vec{\ud83d{}\ude00}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f0eace4-2](#bf-f0eace4-2) | LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in… | PiG's own defect | All platforms | Unreleased |
 | [BF-f105c62](#bf-f105c62) | A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow… | PiG's own defect | All platforms | Unreleased |
@@ -17589,6 +17592,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules`, `test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence`
 - **Release note:** `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp` (Go's `math.Exp` differs in the last bit for some arguments on amd64). Its requests are written with their members in Pi's order, and a failed lookup no longer cancels the sibling requests of the same `Promise.all`, so the server receives what it receives from Pi.
 
+### BF-8a4185d
+
+**`enabledModels`/`--models` warnings such as `No models match pattern "github-copilot/nope"` are reported with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `enabledModels`/`--models` warnings such as `No models match pattern "github-copilot/nope"` are reported with the other startup diagnostics: in the chat in interactive mode, where they were a raw stderr line printed before the TUI started, and on stderr in print, JSON and RPC modes, after the settings and extension diagnostics.
+- **Root cause:** Port of Pi. The enabledModels/--models warnings join the initial runtime's diagnostics, after the settings and extension diagnostics and before the session option diagnostics, and are reported once, deduplicated: stderr in print, JSON and RPC modes and for --help and --list-models, chat warnings in interactive mode. They were printed to stderr first, before the TUI started.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8a4185de22` (2026-11-12)
+- **Tests:** `coding/cli/model_resolver_patterns_upstream_test.go::TestModelResolverScopeUpstream`, `coding/cli/model_scope_session_replacement_upstream_test.go::TestModelScopeWarningsOnSessionReplacement`, `coding/cli/startup_diagnostics_order_test.go::TestStartupDiagnosticOrderMatchesPi`, `internal/codingagent/model_scope_runtime_test.go::TestResolveModelScopeWithDiagnosticsPropagatesRuntimeErrors`
+- **Release note:** `enabledModels`/`--models` warnings such as `No models match pattern "github-copilot/nope"` are reported with the other startup diagnostics: in the chat in interactive mode, where they were a raw stderr line printed before the TUI started, and on stderr in print, JSON and RPC modes, after the settings and extension diagnostics. A pattern given twice is reported once (Pi #11973).
+
 ### BF-8a44836
 
 **Closing a session with an MCP server that signs in with OAuth no longer fails at random**
@@ -18089,6 +18106,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `8f450993c6` (2026-10-11)
 - **Tests:** `coding/cli/rpc_compaction_thinking_only_test.go::TestRPCCompactionSurvivesThinkingOnlyMessagesTheRequestsOmit`, `internal/codingagent/compaction/serialization_oracle_test.go::TestSerializeConversationMatchesPiOracle`, `internal/codingagent/compaction/serialization_upstream_test.go::TestSerializeConversationUpstream`, `internal/codingagent/compaction/utils_test.go::TestSerializeConversation_AssistantThinkingIsOmitted`, `test/docs-drift/bug_ledger_test.go::TestBugLedgerTestsExist`, `test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules`, `test/docs-drift/divergences_test.go::TestDivergenceLedgerEqualsItsRecordFiles`, `test/docs-drift/divergences_test.go::TestEveryActiveDivergenceIsInTheBundle` and 1 more in docs/bug-ledger.json
 - **Release note:** Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed thinking is often not in the live context, so including it could make the summarization request larger than the context it summarizes and compaction fail on every attempt.
+
+### BF-8f81668
+
+**The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).
+- **Root cause:** .upstream/current holds the pinned release's bytes: the readers of the mirror apply the recorded post-release fixes themselves (pi-post-release-backports.mjs --read-mirror), each exactly once. Once a backport changes a provider data file (Pi 1397070024, the four qwen-token-plan lists, which came with 14-on-line), a mirror made after it held the patched lists, and on a fresh clone
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8f816685ff` (2026-11-13)
+- **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData`, `internal/upstreammirror/upstreammirror_test.go::TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply`
+- **Release note:** The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).
 
 ### BF-8f88d43
 
@@ -29443,6 +29474,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f0a9d013e1` (2026-11-03)
 - **Tests:** `coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine`, `internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreen`, `internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreenChild`, `internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownIsIgnoredWhileSuspended`, `internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownLeavesTheOwnerLoopRunning`
 - **Release note:** An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line. The handler was installed only after the first screen was drawn, so a SIGINT in that window killed the session by the default action with no line, and once installed it also asked the session to unwind, which let the process exit 0 before the handler's own exit 130. The handler now goes in first, as Pi registers its signal handlers first in `init()`, and it ends the process without unwinding the session.
+
+### BF-f0c8b96
+
+**The find tool matched path patterns through folders above the search path: with the project in `~/src/app`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).
+- **Root cause:** Port of Pi. A relative path pattern of the find tool is relative to the search directory, like grep's glob: src/*.ts finds src/a.ts but not pkg/src/a.ts, and **/src/*.ts finds both.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f0c8b9662f` (2026-11-12)
+- **Tests:** `internal/codingagent/tools/find_ancestor_glob_upstream_test.go::TestFindPathGlobsDoNotMatchAboveTheSearchPath`, `internal/codingagent/tools/find_ancestor_glob_windows_branch_test.go::TestFindWindowsPathPatternDoesNotMatchAboveTheSearchPath`, `internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments`, `internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit`
+- **Release note:** The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).
 
 ### BF-f0eace4
 

@@ -30884,6 +30884,31 @@
       ]
     },
     {
+      "id": "BF-8a4185d",
+      "title": "`enabledModels`/`--models` warnings such as `No models match pattern \"github-copilot/nope\"` are reported with…",
+      "symptom": "`enabledModels`/`--models` warnings such as `No models match pattern \"github-copilot/nope\"` are reported with the other startup diagnostics: in the chat in interactive mode, where they were a raw stderr line printed before the TUI started, and on stderr in print, JSON and RPC modes, after the settings and extension diagnostics.",
+      "rootCause": "Port of Pi. The enabledModels/--models warnings join the initial runtime's diagnostics, after the settings and extension diagnostics and before the session option diagnostics, and are reported once, deduplicated: stderr in print, JSON and RPC modes and for --help and --list-models, chat warnings in interactive mode. They were printed to stderr first, before the TUI started.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`enabledModels`/`--models` warnings such as `No models match pattern \"github-copilot/nope\"` are reported with the other startup diagnostics: in the chat in interactive mode, where they were a raw stderr line printed before the TUI started, and on stderr in print, JSON and RPC modes, after the settings and extension diagnostics. A pattern given twice is reported once (Pi #11973).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8a4185de22",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_resolver_patterns_upstream_test.go::TestModelResolverScopeUpstream",
+        "coding/cli/model_scope_session_replacement_upstream_test.go::TestModelScopeWarningsOnSessionReplacement",
+        "coding/cli/startup_diagnostics_order_test.go::TestStartupDiagnosticOrderMatchesPi",
+        "internal/codingagent/model_scope_runtime_test.go::TestResolveModelScopeWithDiagnosticsPropagatesRuntimeErrors"
+      ]
+    },
+    {
       "id": "BF-8a44836",
       "title": "Closing a session with an MCP server that signs in with OAuth no longer fails at random",
       "symptom": "Closing a session with an MCP server that signs in with OAuth no longer fails at random.",
@@ -32123,6 +32148,30 @@
         "test/docs-drift/divergences_test.go::TestDivergenceLedgerEqualsItsRecordFiles",
         "test/docs-drift/divergences_test.go::TestEveryActiveDivergenceIsInTheBundle",
         "test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence"
+      ]
+    },
+    {
+      "id": "BF-8f81668",
+      "title": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the…",
+      "symptom": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).",
+      "rootCause": ".upstream/current holds the pinned release's bytes: the readers of the mirror apply the recorded post-release fixes themselves (pi-post-release-backports.mjs --read-mirror), each exactly once. Once a backport changes a provider data file (Pi 1397070024, the four qwen-token-plan lists, which came with 14-on-line), a mirror made after it held the patched lists, and on a fresh clone",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the pin froze for its commit, checked against its digest, and no longer a copy of the installed pi-ai package, which carries the post-release fixes: a mirror made after a fix changed a provider list held the fixed list and the tests that read the mirror failed (`make upstream-mirror` now also ends with the check that every recorded fix still applies to the mirror once).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8f816685ff",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
+        "ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData",
+        "internal/upstreammirror/upstreammirror_test.go::TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply"
       ]
     },
     {
@@ -56033,6 +56082,33 @@
         "internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreenChild",
         "internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownIsIgnoredWhileSuspended",
         "internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownLeavesTheOwnerLoopRunning"
+      ]
+    },
+    {
+      "id": "BF-f0c8b96",
+      "title": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`…",
+      "symptom": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).",
+      "rootCause": "Port of Pi. A relative path pattern of the find tool is relative to the search directory, like grep's glob: src/*.ts finds src/a.ts but not pkg/src/a.ts, and **/src/*.ts finds both.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The find tool matched path patterns through folders above the search path: with the project in `~/src/app`, `src/**/*.ts` returned every `.ts` file in the project (Pi #12066).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0c8b9662f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_ancestor_glob_upstream_test.go::TestFindPathGlobsDoNotMatchAboveTheSearchPath",
+        "internal/codingagent/tools/find_ancestor_glob_windows_branch_test.go::TestFindWindowsPathPatternDoesNotMatchAboveTheSearchPath",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit"
       ]
     },
     {

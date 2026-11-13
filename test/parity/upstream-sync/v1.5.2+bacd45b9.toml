@@ -1,0 +1,37 @@
+from = "1.5.2+13970700"
+to = "1.5.2+bacd45b9"
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/startup_diagnostics_order_test.go#TestStartupDiagnosticOrderMatchesPi", "test:coding/cli/model_scope_session_replacement_upstream_test.go#TestModelScopeWarningsOnSessionReplacement", "test:coding/cli/rpc_startup_extension_model_test.go#TestRPCStartupModelFromExtensionProvider"]
+rationale = "bacd45b9c (#11973, #11264): createRuntime calls resolveModelScopeWithDiagnostics and appends the model scope warnings to the runtime's diagnostics, after the settings and extension diagnostics and before buildSessionOptions' diagnostics, where resolveModelScope printed each one with console.warn on every run of the factory (startup and each session replacement). main reports the initial runtime's diagnostics once, deduplicated: stderr in print, JSON and RPC modes and for --help and --list-models, chat warnings in interactive mode. coding/cli/main.go appends selected.ScopeWarnings to startupDiagnostics at the same place and no longer prints them; PiG's builder never printed on a replacement, so the count on new_session was already one, and what changes is the order, the deduplication of a repeated pattern and the interactive startup (a chat warning instead of a stderr line before the TUI). The vendored main.js and the oracle carry the change through automation/gen/pi-post-release-backports.mjs."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/model_scope_runtime_test.go#TestResolveModelScopeWithDiagnosticsPropagatesRuntimeErrors", "test:coding/cli/model_resolver_patterns_upstream_test.go#TestModelResolverScopeUpstream"]
+rationale = "bacd45b9c: resolveModelScope, the variant of resolveModelScopeWithDiagnostics that printed each diagnostic with console.warn, is removed (no caller, not exported from the package index). internal/codingagent.ResolveModelScope, its public wrapper coding.ResolveModelScope and the CLI's printModelDiagnostic are removed; ResolveModelScopeWithDiagnostics and ResolveModelScopeFromModels are unchanged. The vendored model-resolver.js loses the function through the backports table."
+
+[[files]]
+path = "packages/coding-agent/test/model-resolver.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/model_resolver_patterns_upstream_test.go#TestModelResolverScopeUpstream"]
+rationale = "bacd45b9c removes the case `resolveModelScope preserves CLI warning output` with the function. Its Go subtest and the internal test of the printing variant are removed; the other cases are unchanged."
+
+[[files]]
+path = "packages/coding-agent/test/model-scope-session-replacement.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/cli/model_scope_session_replacement_upstream_test.go#TestModelScopeWarningsOnSessionReplacement"]
+rationale = "bacd45b9c adds the regression test: RPC mode with the same models.json and settings.json (enabledModels fake/fake-model and github-copilot/missing-model), one new_session, and the warning on stderr exactly once. The Go test runs the pig binary the same way. It passes on PiG before the port (the builder never printed) and fails with two occurrences under the compiled mutation that prints the scope warnings in the builder, which is Pi's behavior before this commit."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "bacd45b9c: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."
