@@ -677,6 +677,8 @@ type managedExt struct {
 	commands commandGate
 	// replaced is set when a commit replaces or removes this generation; its later host calls fail as stale (runCall).
 	replaced atomic.Bool
+	// superseded is set when a reload starts to replace this generation (supersedeGenerations): Pi has invalidated its runner by then, so its later host calls fail as stale (runCall) while it still runs the handlers in flight.
+	superseded atomic.Bool
 
 	// entryCursor is how many session entries this extension has been sent.
 	// Guarded by entryCursorMu because pushes originate from event, command,
@@ -2908,6 +2910,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	// actually replaced: a real, later crash of that still-current process
 	// would then be silently discarded as stale instead of quarantined.
 	h.armPackedProcessGenerations()
+	h.supersedeGenerations()
 	h.releaseRetryableQuarantines()
 	// Explicit reload ends inconclusive diagnostic partitions; identified culprits remain quarantined.
 	clear(h.nodeGroups)
@@ -4835,8 +4838,8 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			continue
 		}
 		if !h.acceptsNodeGeneration(me) {
-			// A reload's replaced generation still runs its command; runCall answers each of its calls with Pi's stale error instead of leaving a synchronous call blocked.
-			if env.Type == MsgCall && env.Call != nil && me.replaced.Load() {
+			// A generation a reload replaces still runs its command, and until the commit every handler that was in flight when the reload began; runCall answers each of its calls with Pi's stale error instead of leaving the handler that waits for the call blocked.
+			if env.Type == MsgCall && env.Call != nil && (me.replaced.Load() || me.superseded.Load()) {
 				h.queueCall(me, conn, lanes, env.ID, env.Call)
 				continue
 			}

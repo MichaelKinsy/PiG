@@ -321,6 +321,16 @@ func TestRPCReloadHoldEnds(t *testing.T) {
 			f.p.waitForExit("after the reload")
 		})
 	})
+	// Stdin ends while the reloaded extension's factory awaits a timer. Pi's loop turns inside such a load, reads the end and exits 0 at once, without the reload's response. PiG holds stdin's end to the end of the reload as it holds a prompt (D630, proposed): the reload finishes, its command answers and the process exits, bounded by the load's end.
+	t.Run("stdin ends while the reloaded factory awaits", func(t *testing.T) {
+		f := startReloadRPC(t, "node", "RL_LOAD=await")
+		f.p.send(f.prompt("b", "/rl"))
+		f.reached("loading")
+		f.p.closeInput()
+		f.open("load-gate")
+		f.expectStream("the reload after stdin's end", "notify started g2", "response b success=true")
+		f.p.waitForExit("after the reload")
+	})
 	// A termination signal during the reload ends the process with the signal's status; the reload's hold does not keep the shutdown waiting.
 	t.Run("SIGTERM during the reload", func(t *testing.T) {
 		eachReloadSDK(t, func(t *testing.T, sdk string) {
@@ -366,6 +376,66 @@ func TestRPCUserMessageSentByAReloadsSessionStartRunsOnTheReloadedExtension(t *t
 		t.Fatalf("a user message sent by session_start: %q, want %q", tokens, want)
 	}
 	f.finish()
+}
+
+// Defect B. A command whose handler is in flight when a reload replaces its generation still answers. The handler signals that it runs, the test starts the reload and lets the handler go on while the replacement generation is loading: the handler's ctx is stale by then (agent-session.ts:3825-3826), so in Pi its ctx.ui throws, RPC reports the error and the prompt answers "handled" (agent-session.ts:2280-2291). On the base the host dropped the Node handler's call unanswered and the prompt never answered.
+// mutation-checked: dropping the call of a generation the reload has armed (Host.supersededByReload out of runCall and handleIncoming, with invalidateSupersededGenerations out of Reload) leaves `response c` unwritten.
+func TestRPCCommandInFlightAtAReloadIsAnswered(t *testing.T) {
+	eachReloadSDK(t, func(t *testing.T, sdk string) {
+		f := startReloadRPC(t, sdk, "RL_LOAD=await")
+		f.p.send(f.prompt("c", "/held"))
+		if got, want := f.through("notify held running g1"), []string{"notify held running g1"}; !slices.Equal(got, want) {
+			t.Fatalf("held: %q, want %q", got, want)
+		}
+		f.p.send(f.prompt("b", "/rl"))
+		f.reached("loading")
+		f.open("held-gate")
+		want := []string{"extension_error command:held: stale ctx", "response c success=true"}
+		if sdk == "go" {
+			// A Go handler has no exception to raise: Notify on a stale ctx does nothing.
+			want = []string{"response c success=true"}
+		}
+		if got := f.through("response c success=true"); !slices.Equal(got, want) {
+			t.Fatalf("the command in flight at the reload: %q, want %q", got, want)
+		}
+		f.open("load-gate")
+		if got, want := f.through("response b success=true"), []string{"notify started g2", "response b success=true"}; !slices.Equal(got, want) {
+			t.Fatalf("the reload: %q, want %q", got, want)
+		}
+		f.finish()
+	})
+}
+
+// A dialog in flight at a reload is answered after it: the handler goes on with a stale ctx and its prompt answers.
+func TestRPCDialogInFlightAtAReloadIsAnswered(t *testing.T) {
+	eachReloadSDK(t, func(t *testing.T, sdk string) {
+		f := startReloadRPC(t, sdk)
+		f.p.send(f.prompt("c", "/ask"))
+		var dialog string
+		f.p.await("the dialog", func(record rpcRecord) bool {
+			if record["type"] == "extension_ui_request" && record["method"] == "input" {
+				dialog, _ = record["id"].(string)
+			}
+			return dialog != ""
+		})
+		f.p.send(f.prompt("b", "/rl"))
+		if got, want := f.through("response b success=true"), []string{"notify started g2", "response b success=true"}; !slices.Equal(got, want) {
+			t.Fatalf("the reload: %q, want %q", got, want)
+		}
+		f.p.sendJSON(rpcRecord{"type": "extension_ui_response", "id": dialog, "value": "v"})
+		want := []string{"extension_error command:ask: stale ctx", "response c success=true"}
+		if sdk == "go" {
+			want = []string{"response c success=true"}
+		}
+		if got := f.through("response c success=true"); !slices.Equal(got, want) {
+			t.Fatalf("the command whose dialog was open at the reload: %q, want %q", got, want)
+		}
+		// The call in flight when the reload made the generation stale keeps its own answer: Pi checks staleness where a member is used (runner.ts:738-741), not where a pending promise settles.
+		if asked, err := os.ReadFile(filepath.Join(f.dir, "asked")); err != nil || string(asked) != "v" {
+			t.Fatalf("the dialog in flight at the reload answered %q (%v), want the client's value", asked, err)
+		}
+		f.finish()
+	})
 }
 
 // A tool call in flight when a command asks for a reload: Pi refuses the reload while the Session runs (agent-session.ts:3816-3818), the command's prompt answers with the error reported, the tool call ends in its run, and the refused reload leaves no hold on stdin.

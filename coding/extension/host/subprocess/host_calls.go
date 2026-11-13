@@ -368,8 +368,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		refuseReferences()
 		return
 	}
-	// A reload invalidates the replaced runner, so its captured pi and ctx throw Pi's stale message (runner.ts:721-734, agent-session.ts:3580). The generation still runs while its command returns from `await ctx.reload()` (retireGeneration), so answer each call with that error: a dropped call would block the command, and the stop that waits for it, forever.
-	if me.replaced.Load() {
+	// A reload invalidates the runner of the generations it replaces before the extensions load again, so their captured pi and ctx throw Pi's stale message from then on (agent-session.ts:3825-3826 oldRunner.invalidate(), runner.ts:729-741). A generation runs on past that point: every handler that was in flight goes on until the commit, and its command until it returns from `await ctx.reload()` (retireGeneration). So each call it makes from the reload's start (superseded) is answered with that error: a dropped call would block the handler that waits for it, and the stop that waits for that handler, forever.
+	if me.replaced.Load() || me.superseded.Load() {
 		refuseReferences()
 		if callID != "" {
 			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: (&inproc.StaleError{}).Error()}}})
