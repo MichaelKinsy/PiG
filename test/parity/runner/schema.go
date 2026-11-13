@@ -29,7 +29,11 @@ type Scenario struct {
 	OpenAIFixture bool `toml:"openai_fixture"`
 	// ProviderFixture selects the same hermetic endpoint for another provider API (anthropic-messages, google-generative-ai, mistral-conversations, openai-completions, or openai-responses). It excludes openai_fixture.
 	ProviderFixture string `toml:"provider_fixture"`
-	Model           string `toml:"model"`
+	// ProviderFixtureBasePath stands between the fixture server's address and the API's own base path in the model's baseUrl ("/api.anthropic.com"), for behavior a provider derives from its base URL. Empty keeps the plain address.
+	ProviderFixtureBasePath string `toml:"provider_fixture_base_path"`
+	// ProviderFixtureCompat is written as the compat object of the fixture's model ({ supportsStrictMode = true }). Empty writes no compat member.
+	ProviderFixtureCompat map[string]any `toml:"provider_fixture_compat"`
+	Model                 string         `toml:"model"`
 	// ChangelogFixture replaces only the bundled changelog input in isolated PiG/Pi builds.
 	ChangelogFixture string `toml:"changelog_fixture"`
 

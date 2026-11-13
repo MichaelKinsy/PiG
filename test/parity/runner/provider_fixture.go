@@ -26,8 +26,7 @@ func configureProviderFixture(t *testing.T, sc *Scenario, env []string, cwd, tem
 	if api == "" {
 		return env
 	}
-	fixture := providerFixtures[api]
-	server := httptest.NewServer(fixture.handler())
+	server := httptest.NewServer(providerFixtures[api].handler())
 	t.Cleanup(server.Close)
 	agent := resultIdentityRoots(cwd, temp, env)["agent"]
 	if agent == "" {
@@ -36,8 +35,7 @@ func configureProviderFixture(t *testing.T, sc *Scenario, env []string, cwd, tem
 	if err := os.MkdirAll(agent, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	models := map[string]any{"providers": map[string]any{"strict-wire": map[string]any{"api": api, "baseUrl": server.URL + fixture.baseURLPath, "apiKey": "fixture-key", "models": []any{map[string]any{"id": "strict", "name": "strict", "reasoning": false, "input": []string{"text"}, "cost": map[string]int{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 128000, "maxTokens": 1000}}}}}
-	data, err := json.Marshal(models)
+	data, err := json.Marshal(providerFixtureModels(sc, api, server.URL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,6 +43,17 @@ func configureProviderFixture(t *testing.T, sc *Scenario, env []string, cwd, tem
 		t.Fatal(err)
 	}
 	return env
+}
+
+// providerFixtureModels is the models.json both binaries read: the strict-wire provider with the fixture's API and address and its one model, strict.
+// The scenario's provider_fixture_base_path stands between the server's address and the path the API's SDK expects, and its provider_fixture_compat is the model's compat object; a scenario that sets neither gets the plain address and no compat member.
+func providerFixtureModels(sc *Scenario, api, serverURL string) map[string]any {
+	model := map[string]any{"id": "strict", "name": "strict", "reasoning": false, "input": []string{"text"}, "cost": map[string]int{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 128000, "maxTokens": 1000}
+	if len(sc.ProviderFixtureCompat) > 0 {
+		model["compat"] = sc.ProviderFixtureCompat
+	}
+	baseURL := serverURL + sc.ProviderFixtureBasePath + providerFixtures[api].baseURLPath
+	return map[string]any{"providers": map[string]any{"strict-wire": map[string]any{"api": api, "baseUrl": baseURL, "apiKey": "fixture-key", "models": []any{model}}}}
 }
 
 // readArguments is the tool-call argument object every fixture returns for a READ prompt.
@@ -84,10 +93,17 @@ func providerFixtureAPI(sc *Scenario) (string, error) {
 		if api != "" {
 			return "", fmt.Errorf("scenario %s sets both openai_fixture and provider_fixture", sc.Name)
 		}
-		return "openai-completions", nil
+		api = "openai-completions"
 	}
 	if _, ok := providerFixtures[api]; api != "" && !ok {
 		return "", fmt.Errorf("scenario %s: unknown provider_fixture %q", sc.Name, api)
+	}
+	path := sc.ProviderFixtureBasePath
+	if api == "" && (path != "" || len(sc.ProviderFixtureCompat) > 0) {
+		return "", fmt.Errorf("scenario %s sets provider_fixture_base_path or provider_fixture_compat without a provider fixture", sc.Name)
+	}
+	if path != "" && (!strings.HasPrefix(path, "/") || strings.HasSuffix(path, "/")) {
+		return "", fmt.Errorf("scenario %s: provider_fixture_base_path %q must start with a slash and not end with one", sc.Name, path)
 	}
 	return api, nil
 }
