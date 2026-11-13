@@ -1824,6 +1824,39 @@
       ]
     },
     {
+      "id": "BF-095939f",
+      "title": "Extensions: a host call that a handler of a TypeScript extension makes while a reload is replacing that…",
+      "symptom": "Extensions: a host call that a handler of a TypeScript extension makes while a reload is replacing that extension is answered with Pi's stale-context error, from the point the reload has run the `session_shutdown` handlers; a call that was already waiting for its answer keeps it.",
+      "rootCause": "The flag was stored on the generation and never cleared, so a generation that stayed registered after a reload would have stayed stale.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: a host call that a handler of a TypeScript extension makes while a reload is replacing that extension is answered with Pi's stale-context error, from the point the reload has run the `session_shutdown` handlers; a call that was already waiting for its answer keeps it. PiG dropped such a call while the replacement was loading, so the handler's command never finished and, in RPC mode, its prompt got no response.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "095939f576",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "bf60a53121",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "de7a83636f",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCCommandInFlightAtAReloadIsAnswered",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogInFlightAtAReloadIsAnswered",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCReloadHoldEnds",
+        "test/extension-conformance/reload_supersede_test.go::TestConformance_CallsOfAGenerationAReloadReplacesAgreeAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-098e33d",
       "title": "Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` in every SDK for a…",
       "symptom": "Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` in every SDK for a token the palette lacks, as Pi's theme does; a theme with no palette still leaves text unstyled.",
@@ -4894,6 +4927,26 @@
       ]
     },
     {
+      "id": "BF-1b699a5",
+      "title": "extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an…",
+      "symptom": "extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an extension in its own process, about 30 KiB for a cell of two) for every `/reload` of an unchanged subprocess extension, until the extension's process ended.",
+      "rootCause": "A reload keeps the process of an unchanged extension and runs its factory again in it. Each generation it replaced left one goroutine that waited for that process to exit, holding the generation's state: the connection loop of a Node extension in its own process (it waited before it removed the stderr log), and the watcher of a packed cell's process state (Node, Go, Python, Rust and Lisp cells). A session that reloaded n times held n of them, about 14 KiB each for an isolated extension, until the process ended. They also removed the stderr log the moment the process died, before the crash report of the running generation kept it, so the report of a process that had been reloaded did not…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "extensions: a session leaked one goroutine and the state of the replaced generation (about 14 KiB for an extension in its own process, about 30 KiB for a cell of two) for every `/reload` of an unchanged subprocess extension, until the extension's process ended. A reload keeps that process and runs the extension's factory in it again; each generation it replaced kept a goroutine that waited for the process to exit. The same goroutines removed the extension's stderr log the moment the process died, so the crash notice of a process that had been reloaded did not name its log. The end of a process is now handled once: over a hundred reloads the host's goroutines do not grow and its live heap stays within 512 KiB, for every SDK (Node, Go, Python, Rust, Lisp), isolated and packed, and the crash notice names the log as it does for a process that was never reloaded. Present in releases 0.3.0 to 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1b699a5442",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1b9718b",
       "title": "fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon",
       "symptom": "fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon",
@@ -7654,6 +7707,30 @@
       ],
       "tests": [
         "internal/codingagent/slash_cost_order_test.go::TestFormatCostSummaryListsToolsInStableNameOrder"
+      ]
+    },
+    {
+      "id": "BF-2a1edc2",
+      "title": "RPC mode: a dialog answer read in the same stdin chunk as a prompt, while a reload runs, is delivered after…",
+      "symptom": "RPC mode: a dialog answer read in the same stdin chunk as a prompt, while a reload runs, is delivered after the lines of its chunk, as Pi delivers it, so the notifications and responses of the two commands come in Pi's order.",
+      "rootCause": "Pi resolves a dialog's promise on the answer's line and the handler that asked goes on in a microtask (rpc-mode.ts:784-797), behind every line of the stdin chunk: the reader emits the lines of a chunk in one synchronous loop (jsonl.ts:29-40, rpc-mode.ts:832-834). A prompt of the chunk that names an extension command has run its handler by then, on the runner that was current, and one that awaits nothing has answered (agent-session.ts:2171-2176, 2279).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: a dialog answer read in the same stdin chunk as a prompt, while a reload runs, is delivered after the lines of its chunk, as Pi delivers it, so the notifications and responses of the two commands come in Pi's order. PiG delivered the answer at once and the order was a race: the reloading command could answer before the prompt of its chunk, or the prompt could answer without its notification.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2a1edc2dc0",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_gate_test.go::TestRPCDialogAnswerReadDuringAReloadIsDeliveredBehindItsBatch",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload"
       ]
     },
     {
@@ -10548,6 +10625,26 @@
       "tests": [
         "durable/contract/test/vitest-candidate-plugin.test.mjs"
       ]
+    },
+    {
+      "id": "BF-36123ec",
+      "title": "extensions: the animated loader of an extension's view kept running after its message or tool card was gone…",
+      "symptom": "extensions: the animated loader of an extension's view kept running after its message or tool card was gone from the transcript.",
+      "rootCause": "A tick now arms the next one only when the surface was drawn since the timer was armed (Render or FrontendView). A surface that is drawn asks for its next draw with every tick, so its loaders run on; one that nothing draws has no timer after one interval, and the next draw starts its loaders again. docs/plan/extension-component-kit.md says so.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "extensions: the animated loader of an extension's view kept running after its message or tool card was gone from the transcript. A transcript that is rebuilt (after `/reload`, a compaction, `/tree`) drops its cards, and each dropped view with a loader left a timer that asked the terminal to draw again on every tick and kept the view and its extension's connection for the rest of the session: fifty rebuilds left fifty timers, and a session that reloaded an extension drawing such views grew by about 27 KiB for each reload (54 KiB for two extensions in one cell). A loader is now animated while its view is drawn, stops within one tick once nothing draws it, and starts again with the next draw. Present in releases 0.5.0 to 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "36123ec15c",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-364cc57",
@@ -27990,6 +28087,26 @@
       ]
     },
     {
+      "id": "BF-78f9ff1",
+      "title": "extensions: a widget that an extension set before `/reload` and did not set again stayed on screen for the…",
+      "symptom": "extensions: a widget that an extension set before `/reload` and did not set again stayed on screen for the rest of the session, for an extension process and for an extension of the host process alike.",
+      "rootCause": "A widget that an extension set before a /reload and did not set again stayed drawn for the rest of the session, with its view surface and the connection of the generation that set it. The bridge cleared an extension's widgets only for the connection it currently named, and a reload registers the new connection before it stops the old generation; the interactive mode's /reload cleared no widget at all, for a host-process extension or an extension process. Pi clears the extension widgets when a reload begins (interactive-mode.ts handleReloadCommand, resetExtensionUI, clearExtensionWidgets).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "extensions: a widget that an extension set before `/reload` and did not set again stayed on screen for the rest of the session, for an extension process and for an extension of the host process alike. `/reload` now clears the extension widgets when it begins, as Pi does, and the reloaded extensions set their own. Present in releases 0.2.0 to 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "78f9ff1ba7",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-7901dbc",
       "title": "fix: cover the Lisp SDK in the blocked custom component row; regenerate the Node runtime pack and the bug…",
       "symptom": "fix: cover the Lisp SDK in the blocked custom component row; regenerate the Node runtime pack and the bug ledger after the batch merge",
@@ -28231,6 +28348,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-7c24a92",
+      "title": "extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or…",
+      "symptom": "extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or crashed, an extension could be reported twice: first as disabled (`packed member connection closed; /reload restarts it`), then as crashed and restarting, so one exit read as an error that asked for `/reload` and a warning that the extension restarts by itself.",
+      "rootCause": "A member of a Node cell whose connection closed was disabled at once, with \"packed member connection closed; /reload restarts it\", and the watcher of the process then restarted the cell and reported the same member again, as restarting. What a user saw depended on which of the two the host saw first: two, three or four notices for a cell of two, four in 86 of 100 kills, and for each doubled member an error that told them to run /reload beside a warning that the extension restarts by itself.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or crashed, an extension could be reported twice: first as disabled (`packed member connection closed; /reload restarts it`), then as crashed and restarting, so one exit read as an error that asked for `/reload` and a warning that the extension restarts by itself. How many notices appeared depended on whether the host noticed the closed connections or the exited process first: two, three or four for two extensions, four in 86 of 100 kills. The host now reports the exit once for each extension, as restarting, in the order the extensions load, whichever it notices first. The extensions of a Go, Python or Rust cell that stops are reported in load order too, where the order varied from one exit to the next. Present in releases 0.3.0 to 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7c24a924a9",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/retention_dead_share_reload_test.go::TestReloadOfAKilledNodeCellRefusesItsUnreapedProcess"
+      ]
     },
     {
       "id": "BF-7c59949",
@@ -29932,6 +30071,29 @@
         "mcp/fixtures_test.go::TestMain",
         "mcp/stdio_session_linux_test.go::TestStdioServerCannotTakeThePigTerminal",
         "mcp/stdio_session_linux_test.go::TestStdioServerLeadsItsOwnSessionAndProcessGroup"
+      ]
+    },
+    {
+      "id": "BF-83d0c73",
+      "title": "Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured…",
+      "symptom": "Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured `pi` and `ctx` throw the stale-context error, and a later `/reload` that succeeds loads live instances.",
+      "rootCause": "The runner's ExtensionRuntime stays active after a failed interactive reload, because the next reload's runner is built over it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured `pi` and `ctx` throw the stale-context error, and a later `/reload` that succeeds loads live instances. PiG left the old instances in service after the failure.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "83d0c73705",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_reload_interactive_failed_test.go::TestFailedInteractiveReloadLeavesTheOldInstanceStale",
+        "internal/codingagent/reload_default_tools_failure_test.go::TestFailedExtensionReloadDropsTheStagedDefaultTools"
       ]
     },
     {
@@ -38820,6 +38982,33 @@
       ]
     },
     {
+      "id": "BF-a31c30a",
+      "title": "Extensions: a call that a handler of a TypeScript extension makes just before a reload invalidates the…",
+      "symptom": "Extensions: a call that a handler of a TypeScript extension makes just before a reload invalidates the extension is served, as a call made before Pi's `invalidate()` is.",
+      "rootCause": "That is the output of the one failing run this fix answers: `response c` with no `extension_error` in TestRPCCommandInFlightAtAReloadIsAnswered/node, 1 of 50 runs of the eleven RPC reload tests on. That run was not instrumented, so the late read is inferred for it, not observed. It did not recur in 50 runs of the same set on, nor in 200 runs of the test alone.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: a call that a handler of a TypeScript extension makes just before a reload invalidates the extension is served, as a call made before Pi's `invalidate()` is. The host marked the extension stale when it sent the notification, before the extension's runtime had read it, so the call was refused; a call the handler does not await, such as `ctx.ui.notify`, was dropped with a diagnostic where Pi throws, and in RPC mode the command's prompt answered with no `extension_error`. The reload now waits until the runtime has acknowledged the invalidation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a31c30a42a",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCCommandInFlightAtAReloadIsAnswered",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload",
+        "coding/extension/host/subprocess/generation_supersede_test.go::TestSupersedeOfANodeRuntimeThatNeverAcknowledgesIsBoundedByThePongDeadline",
+        "coding/extension/host/subprocess/generation_supersede_test.go::TestSupersedeWaitsForTheNodeRuntimeToAcknowledgeTheInvalidation",
+        "test/extension-conformance/reload_supersede_test.go::TestConformance_ACallMadeBeforeTheRuntimeReadsAReloadsInvalidationIsServed",
+        "test/extension-conformance/reload_supersede_test.go::TestConformance_AReloadReplacesAnExtensionWhoseRuntimeStoppedAnswering"
+      ]
+    },
+    {
       "id": "BF-a3391bc",
       "title": "env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a…",
       "symptom": "env: closing a connection at the moment its daemon was being started left that daemon process unreaped, a zombie holding its pipes, until PiG exited.",
@@ -47140,6 +47329,66 @@
       "tests": []
     },
     {
+      "id": "BF-d047508",
+      "title": "RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the…",
+      "symptom": "RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the reload, runs on the reloaded extension and answers after that command, as in Pi.",
+      "rootCause": "A client that waits for each response before it writes the next record was not affected.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the reload, runs on the reloaded extension and answers after that command, as in Pi. PiG read it while the reload ran: it ran on the extension being replaced and answered first, and with a TypeScript extension neither prompt was answered and the stream stayed silent until stdin closed. A client that waits for each response before it writes the next record was not affected. Present since 0.5.2.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d04750891b",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_gate_test.go::TestRPCCommandFlightRunsResumptionWorkAtTheNextSuspensionOrTheAnswer",
+        "coding/cli/rpc_reload_gate_test.go::TestRPCSettleGateHoldsInputThroughAReload",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptOfTheReloadsChunkRunsOnTheReplacedExtension",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptWrittenDuringAReloadRunsOnTheReloadedExtension",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCReloadHoldEnds",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCToolCallInFlightAtARefusedReloadIsAnswered",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCUserMessageSentByAReloadsSessionStartRunsOnTheReloadedExtension"
+      ]
+    },
+    {
+      "id": "BF-d047508-2",
+      "title": "RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it…",
+      "symptom": "RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it ran on the replaced one, whose `ctx` was stale.",
+      "rootCause": "Pi dispatches every stdin line as it is read and awaits none (rpc-mode.ts:832-834, :415), so what orders a record written behind a command that calls ctx.reload() is its one event loop: session.reload() awaits session_shutdown, the loaders, session_start and resources_discover in one chain, and the command that awaited it goes on in the microtasks of its end (agent-session.ts:3815-3861, rpc-mode.ts:345-347). No stdin chunk is read inside that chain unless a handler of it waits on a timer or I/O.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it ran on the replaced one, whose `ctx` was stale.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d04750891b",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_gate_test.go::TestRPCCommandFlightRunsResumptionWorkAtTheNextSuspensionOrTheAnswer",
+        "coding/cli/rpc_reload_gate_test.go::TestRPCSettleGateHoldsInputThroughAReload",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogOfAReloadsHandlerIsAnsweredDuringTheReload",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptOfTheReloadsChunkRunsOnTheReplacedExtension",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptWrittenDuringAReloadRunsOnTheReloadedExtension",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCReloadHoldEnds",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCToolCallInFlightAtARefusedReloadIsAnswered",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCUserMessageSentByAReloadsSessionStartRunsOnTheReloadedExtension"
+      ]
+    },
+    {
       "id": "BF-d06b3d2",
       "title": "The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request…",
       "symptom": "The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request is recorded as a `chord.http` trace of the server.",
@@ -47350,6 +47599,26 @@
         "coding/model_registration_snapshot_test.go::TestSessionCycleModelSeesExtensionProviderRegistration",
         "coding/session_model_extension_upstream_test.go::TestSessionModelExtensionCyclesUpstream"
       ]
+    },
+    {
+      "id": "BF-d1848ed",
+      "title": "extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins…",
+      "symptom": "extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins: keyed statuses (`ctx.ui.setStatus`), a custom footer and header, the working message and indicator, the hidden thinking label, overlays, and the terminal title; a terminal input listener (`ctx.ui.onTerminalInput`) of a replaced extension kept receiving every key, and `ctx.ui.getEditorComponent()` kept answering its editor factory.",
+      "rootCause": "After a /reload an extension's keyed statuses, its footer and header, its working message and indicator, its hidden thinking label, its terminal input listeners and its overlays stayed, and the terminal kept the title an extension had set, unless the reloaded extension set them again. A session replacement kept the statuses, the footer and header, the title and the input listeners. Pi's resetExtensionUI resets all of them in both places.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins: keyed statuses (`ctx.ui.setStatus`), a custom footer and header, the working message and indicator, the hidden thinking label, overlays, and the terminal title; a terminal input listener (`ctx.ui.onTerminalInput`) of a replaced extension kept receiving every key, and `ctx.ui.getEditorComponent()` kept answering its editor factory. A session replacement (`/new`, `/resume`, `/fork`) kept the statuses, the footer and header, the title and the input listeners. Both now reset all of them, as Pi's `resetExtensionUI` does, and dispose the footer and header components; an extension that wants them after a reload sets them again in its `session_start` handler. Present in releases 0.2.0 to 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d1848ed259",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-d1af7ae",
@@ -61379,6 +61648,10 @@
       "id": "D629",
       "title": "A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi…",
       "entry": "BF-D629"
+    },
+    {
+      "id": "D630",
+      "title": "RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads"
     },
     {
       "id": "D631",
