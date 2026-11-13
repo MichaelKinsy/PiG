@@ -2056,7 +2056,7 @@ allocs = 133
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkDuplicateGoFolderStartup"
-allocs = 36910
+allocs = 14148
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
