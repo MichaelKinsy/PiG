@@ -234,7 +234,7 @@ type RunStart struct {
 }
 
 // BeginRunStart marks the Session busy for a user prompt's run (_startRun: `_isAgentRunActive = true; _agentRunAbortRequested = false`).
-// A Session that is already busy rejects the prompt, as prompt() does when it is streaming (agent-session.ts:2098-2103).
+// A Session that is already busy rejects the prompt, as prompt() does when it is streaming (agent-session.ts:2227-2232).
 func (s *Session) BeginRunStart() (*RunStart, error) {
 	s.pendingBashMu.Lock()
 	defer s.pendingBashMu.Unlock()
@@ -243,6 +243,8 @@ func (s *Session) BeginRunStart() (*RunStart, error) {
 		return nil, errors.New("coding: session is closed")
 	default:
 	}
+	// pig divergence (D629): Pi's _startRun marks the run active without this check (agent-session.ts:1943-1945), so the second of two RPC
+	// prompts whose preflights overlapped is answered "started" and never run; PiG rejects it.
 	if s.IsStreaming() {
 		return nil, errAgentAlreadyProcessing
 	}
