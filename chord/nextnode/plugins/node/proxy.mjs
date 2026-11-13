@@ -17,6 +17,11 @@
 // `mirrorReset`. A method's answer follows the frames of the commits it made on the one channel and is returned after the copy
 // applied them, so a read of the member after an awaited call sees what the call wrote. The copy is read-only for plugins as a
 // reference's keyed member is (`get`, `watch`, `at`; a plugin has no `change` of another object's keyed member).
+//
+// An event member is this object's own source (`self.events()`), fed with what the Go object emits: the Go side taps its
+// reference when it binds it (before `get` is answered) and names the type's event members in the order its messages index
+// them; the sources are registered under the handle in that order (`sinks`, events.mjs), and each event reaches its source
+// with the Go host's stamp. Nothing is emitted here: a plugin's listener gets the Go emit's value and `at`.
 import { defineFacet, defineState } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { contractOf } from "./contracts.mjs";
@@ -107,9 +112,10 @@ function createCopy(handle, fatal) {
 
 /**
  * The proxy facets of one driver: `rpc` is the Go side's request channel (`ask`, `tell`, `watches`: the observers of the
- * Go host's watches by the id this side chose, and `mirrors`: the copies of its keyed members by theirs).
+ * Go host's watches by the id this side chose, and `mirrors`: the copies of its keyed members by theirs); `sinks` are the
+ * sources of the proxies' event members by handle (events.mjs).
  */
-export function createProxies({ ask, tell, watches, mirrors, fatal }) {
+export function createProxies({ ask, tell, watches, mirrors, sinks, fatal }) {
 	let nextWatch = 0;
 	let nextMirror = 0;
 
@@ -159,14 +165,23 @@ export function createProxies({ ask, tell, watches, mirrors, fatal }) {
 	/** What a factory of `data`'s type returns: its members, forwarded to the Go host's object for `params`. */
 	function implementation(facet, data, params, self, keyedDefinitions) {
 		const keyed = new Map(keyedDefinitions.map(([name, definition]) => [name, self.state(definition)]));
+		// One source per event member, this object's own: the Go object's events are pushed to it.
+		const sources = new Map(
+			Object.entries(data.normal.members)
+				.filter(([, node]) => Object.hasOwn(node, "event"))
+				.map(([name]) => [name, self.events()]),
+		);
 		const held = self.open(
 			async (context) => {
-				const { handle } = await ask("get", { facet, contract: data.name, params }, context);
+				const { handle, events } = await ask("get", { facet, contract: data.name, params }, context);
+				// The Go side tapped its reference before it answered, and named the members in its messages' order.
+				if (events !== undefined) sinks.set(handle, events.map((name) => sources.get(name)));
 				const copies = [];
 				try {
 					for (const [name, handles] of keyed) copies.push(await mirror(handle, name, handles, context));
 				} catch (error) {
 					for (const copy of copies) copy.stop();
+					sinks.delete(handle);
 					tell("release", { handle });
 					throw error;
 				}
@@ -174,6 +189,7 @@ export function createProxies({ ask, tell, watches, mirrors, fatal }) {
 			},
 			({ handle, copies }) => {
 				for (const copy of copies) copy.stop();
+				sinks.delete(handle);
 				tell("release", { handle });
 			},
 		);
@@ -181,6 +197,8 @@ export function createProxies({ ask, tell, watches, mirrors, fatal }) {
 		for (const [name, node] of Object.entries(data.normal.members)) {
 			if (Object.hasOwn(node, "state")) {
 				members[name] = self.follow((observer, context) => follow(held.value.handle, name, observer, context));
+			} else if (Object.hasOwn(node, "event")) {
+				members[name] = sources.get(name);
 			} else if (Object.hasOwn(node, "keyed")) {
 				members[name] = keyed.get(name);
 			} else {

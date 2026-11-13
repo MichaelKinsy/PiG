@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -26,8 +25,9 @@ func TestNodeDescribeRebuildsAnEventMemberAsAnEventMember(t *testing.T) {
 	}
 }
 
-// A type with an event member does not cross the bridge yet: holding one a Node host serves fails on the Go side, before
-// anything is sent, with a message that says so, never with a reference whose event member is missing or a method.
+// A type with an event member a Node host serves is not held by the Go side yet (the other direction, a Go core facet's
+// type held by a plugin, crosses: plugins_node_bridged_events_test.go): holding one fails on the Go side, before anything
+// is sent, with a message that says so, never with a reference whose event member is missing or a method.
 func TestNodeGetOfATypeWithAnEventMemberSaysEventsDoNotCrossThePluginsBridge(t *testing.T) {
 	node := evNode(t)
 	const want = "test.ticker: events do not cross the plugins bridge between a Go host and a Node host, and the type has the event members ticks"
@@ -42,21 +42,5 @@ func TestNodeGetOfATypeWithAnEventMemberSaysEventsDoNotCrossThePluginsBridge(t *
 			ref.Release()
 		}
 		t.Fatalf("Hold = %v, want the error %q", err, want)
-	}
-}
-
-// A Go core facet's type with an event member is refused as a bridged type, at load and at SetBridged: a plugin on the
-// Node host would otherwise get a proxy whose event member is a method that calls the Go host.
-func TestABridgedGoTypeWithAnEventMemberIsRefusedSayingEventsDoNotCrossThePluginsBridge(t *testing.T) {
-	goHost := bgGoHost(t)
-	bridged := []BridgedFacet{{Name: "@test/gocore", Host: goHost, Contracts: []*contracts.Contract{bgCore, evTicker}}}
-	const want = `plugins: bridged facet "@test/gocore": test.ticker: events do not cross the plugins bridge between a Go host and a Node host, and the type has the event members ticks`
-	_, _, err := NewPluginRuntime(NodeOptions{}).Load(RuntimeLoad{Kind: "server", Principal: serverPrincipal, Peer: serverPrincipal, Bridged: bridged}, background)
-	if err == nil || !strings.Contains(err.Error(), want) {
-		t.Fatalf("Load = %v, want an error with %q", err, want)
-	}
-	node := evNode(t)
-	if err := node.SetBridged(bridged); err == nil || err.Error() != want {
-		t.Fatalf("SetBridged = %v, want the error %q", err, want)
 	}
 }

@@ -244,3 +244,9 @@ paths = ["internal/viewcarrier/testdata/transcripts/*.txt"]
 owner = "pig"
 invariant = "TestCarrierMessagesAreTheGoAPI"
 why = "Pi has no plugin UI carrier, so the nine messages of the view carrier (D614) are PiG's own wire format. The invariant test asserts as values that every message carries the Go API's records and codes; the transcripts add the exact member order and bytes a client or a relay on another protocol builds against, which TestCarrierTranscripts pins."
+
+[[golden]]
+paths = ["coding/testdata/tool_schema_request_bodies.golden.json"]
+owner = "pig"
+invariant = "TestRequestBodiesAreUnchangedByHoldingToolSchemasOnce"
+why = "The length and SHA-256 of every request body the session sent through seven provider shapes before tool schemas were held once (written from commit 9cd955810e). The test is a before and after guard of a refactor, so only a body taken from the code before the change can state it; the provider conformance tests hold the bodies themselves against Pi."

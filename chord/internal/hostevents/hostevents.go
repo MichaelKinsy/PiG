@@ -11,12 +11,13 @@ package hostevents
 
 // Entry is one event of a flush's message, as a link's `event` message carries one (link.WireEvent): the hold its
 // reference was tapped under, its member (an index into the reference's event members sorted by name), the emitting
-// host's stamp (unix milliseconds) and its value as the link's JSON part text (link.JsonPart).
+// host's stamp (unix milliseconds) and its value as the link's JSON part text (link.JsonPart). Its JSON form is the
+// bridge's entry of an `event` message, in both directions.
 type Entry struct {
-	Hold   int
-	Member int
-	At     int64
-	Value  string
+	Hold   int    `json:"hold"`
+	Member int    `json:"member"`
+	At     int64  `json:"at"`
+	Value  string `json:"value"`
 }
 
 // Port takes the event flushes of one Go host for the references tapped on it: per flush, the entries of every tapped

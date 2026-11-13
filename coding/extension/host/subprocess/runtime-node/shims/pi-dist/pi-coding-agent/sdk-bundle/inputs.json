@@ -711,7 +711,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/session-selector.js",
-      "sha256": "23344d8fea1dc53f635eed6220c8b911db7b0720a576c86021673eb2d8abefee"
+      "sha256": "a56a3679a9a9754b3f46e794450da13074cff398460cd6f763fb990832a10e2c"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/settings-selector.js",

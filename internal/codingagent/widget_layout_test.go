@@ -16,7 +16,7 @@ import (
 // above-editor widgets, even when empty. editor.ts:556-613 starts at its border.
 func TestAboveEditorWidgetSpacerPrecedesWidgets(t *testing.T) {
 	m := &InteractiveMode{widgetContainer: tui.NewContainer()}
-	widget := subprocess.NewPushProxy(nil, nil)
+	widget := subprocess.NewPushProxy(nil)
 	widget.UpdateLines([]string{"widget"})
 	for _, widgets := range []map[string]*subprocess.PushProxy{nil, {"test": widget}, nil} {
 		m.syncWidgets(widgets)
@@ -42,7 +42,7 @@ func TestAboveEditorWidgetSpacerPrecedesWidgets(t *testing.T) {
 func TestWidgetsFollowTheOrderTheyWereSetAcrossExtensionHosts(t *testing.T) {
 	m := &InteractiveMode{widgetContainer: tui.NewContainer(), widgetContainerBelow: tui.NewContainer()}
 	proxy := func(text string) *subprocess.PushProxy {
-		p := subprocess.NewPushProxy(nil, nil)
+		p := subprocess.NewPushProxy(nil)
 		p.UpdateLines([]string{text})
 		return p
 	}
@@ -84,7 +84,7 @@ func trimRows(rows []string) []string {
 
 func BenchmarkAboveEditorWidgetLayout(b *testing.B) {
 	m := &InteractiveMode{widgetContainer: tui.NewContainer()}
-	widget := subprocess.NewPushProxy(nil, nil)
+	widget := subprocess.NewPushProxy(nil)
 	widget.UpdateLines([]string{"one", "two", "three"})
 	m.syncWidgets(map[string]*subprocess.PushProxy{"test": widget})
 	layout := tui.NewContainer(m.widgetContainer, tui.NewEditor())

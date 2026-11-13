@@ -8,6 +8,14 @@ import (
 // The @google/genai SDK does not send the params Pi's buildParams hands it: generateContentParametersToMldev and the converters it calls
 // rebuild every object member by member, copying a member only when it is neither null nor undefined. The functions here write a params
 // value the same way, so the body keeps the SDK's member order whatever order the params (or a before_provider_request replacement) use.
+//
+// PiG has no @google/genai dependency, but the tables below are a port of its converters, so an SDK update in Pi is a port obligation for
+// this file: compare the converters reachable from generateContentParametersToMldev and generateContentParametersToVertex (dist/node/index.mjs)
+// between the two versions, member by member. geminiMirroredSDKVersion names the version mirrored; `make pin-check` and
+// TestGoogleWireMirrorsTheInstalledSDK fail when it is not the version the parity oracle installs.
+
+// geminiMirroredSDKVersion is the @google/genai version whose converters the tables mirror.
+const geminiMirroredSDKVersion = "2.32.0"
 
 // geminiWireMember is one member of a rebuilt object; value is JSON.
 type geminiWireMember struct {
@@ -41,25 +49,31 @@ type geminiWireDialect struct {
 	topLevel         []string
 	generationConfig []string
 	part             []string
-	// partMembers are the members of the part values the backend converts; the other part values are copied as they are.
+	// partMembers are the members of the part values the backend converts; the other part values are copied as they are, in the
+	// member order the params give them (inlineData and fileData on both backends since SDK 2.32.0, which dropped blobToMldev and
+	// fileDataToMldev from partToMldev: Pi's own image parts are mimeType then data, google-shared.ts convertMessages).
 	partMembers map[string][]string
+	// functionResponsePart is the member order of each part of a functionResponse the backend converts (functionResponsePartToVertex).
+	functionResponsePart []string
 }
 
 var geminiAPIWire = geminiWireDialect{
-	topLevel:         []string{"contents", "serviceTier", "systemInstruction", "safetySettings", "tools", "toolConfig", "cachedContent", "generationConfig", "labels", "modelArmorConfig"},
+	topLevel:         []string{"contents", "serviceTier", "systemInstruction", "safetySettings", "tools", "toolConfig", "labels", "cachedContent", "continuationToken", "store", "generationConfig", "modelArmorConfig"},
 	generationConfig: []string{"temperature", "topP", "topK", "candidateCount", "maxOutputTokens", "stopSequences", "responseLogprobs", "logprobs", "presencePenalty", "frequencyPenalty", "seed", "responseMimeType", "responseSchema", "responseJsonSchema", "responseModalities", "mediaResolution", "speechConfig", "thinkingConfig", "audioTranscriptionConfig", "imageConfig", "enableEnhancedCivicAnswers"},
-	part:             []string{"mediaResolution", "toolCall", "toolResponse", "audioTranscription", "codeExecutionResult", "executableCode", "fileData", "functionCall", "functionResponse", "inlineData", "text", "thought", "thoughtSignature", "videoMetadata", "partMetadata", "mediaProcessing"},
+	part:             []string{"mediaResolution", "toolCall", "toolResponse", "audioTranscription", "codeExecutionResult", "executableCode", "fileData", "functionCall", "functionResponse", "inlineData", "text", "thought", "thoughtSignature", "videoMetadata", "partMetadata", "mediaProcessing", "speechMetadata"},
 	partMembers: map[string][]string{
-		"fileData":     {"fileUri", "mimeType"},
 		"functionCall": {"args", "id", "name"},
-		"inlineData":   {"data", "mimeType"},
 	},
 }
 
 var geminiVertexWire = geminiWireDialect{
-	topLevel:         []string{"contents", "serviceTier", "systemInstruction", "safetySettings", "tools", "toolConfig", "labels", "cachedContent", "modelArmorConfig", "generationConfig"},
+	topLevel:         []string{"contents", "serviceTier", "systemInstruction", "safetySettings", "tools", "toolConfig", "labels", "cachedContent", "modelArmorConfig", "continuationToken", "outputConfig", "generationConfig"},
 	generationConfig: []string{"temperature", "topP", "topK", "candidateCount", "maxOutputTokens", "stopSequences", "responseLogprobs", "logprobs", "presencePenalty", "frequencyPenalty", "seed", "responseMimeType", "responseSchema", "responseJsonSchema", "routingConfig", "modelConfig", "responseModalities", "mediaResolution", "speechConfig", "audioTimestamp", "thinkingConfig", "audioTranscriptionConfig", "imageConfig"},
-	part:             []string{"mediaResolution", "audioTranscription", "codeExecutionResult", "executableCode", "fileData", "functionCall", "functionResponse", "inlineData", "text", "thought", "thoughtSignature", "videoMetadata", "mediaProcessing"},
+	part:             []string{"mediaResolution", "audioTranscription", "codeExecutionResult", "executableCode", "fileData", "functionCall", "functionResponse", "inlineData", "text", "thought", "thoughtSignature", "videoMetadata", "mediaProcessing", "speechMetadata"},
+	partMembers: map[string][]string{
+		"functionResponse": {"id", "name", "parts", "response", "scheduling"},
+	},
+	functionResponsePart: []string{"fileData", "inlineData"},
 }
 
 func geminiWireFor(api API) *geminiWireDialect {
@@ -116,7 +130,19 @@ func (dialect *geminiWireDialect) lowerPart(part json.RawMessage) (json.RawMessa
 		if !ok {
 			return value, nil
 		}
-		return geminiPick(inner, keys, nil)
+		return geminiPick(inner, keys, func(member string, value json.RawMessage) (json.RawMessage, error) {
+			if key != "functionResponse" || member != "parts" {
+				return value, nil
+			}
+			// functionResponseToVertex converts each part: fileData, then inlineData, each copied as it is.
+			return lowerGeminiArray(value, func(part json.RawMessage) (json.RawMessage, error) {
+				members, ok := geminiObjectMembers(part)
+				if !ok {
+					return part, nil
+				}
+				return geminiPick(members, dialect.functionResponsePart, nil)
+			})
+		})
 	})
 }
 

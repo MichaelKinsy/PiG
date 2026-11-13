@@ -106,7 +106,7 @@ func (s *Session) effectiveSystemSectionsFor(run *codingagent.BeforeAgentStartRu
 	}
 	built := run.BaseSections(s.ActiveToolNames(), s.hiddenDeclarations())
 	// The caller's sections are not compared with a rendering of the base options: the skills section follows the loadout too (system-prompt.ts:177), so they stop being that rendering when the read tool leaves it.
-	if s.defaultSystemPrompt || s.systemPromptResources.Load() != nil {
+	if s.buildsRunPromptWhole() {
 		return prompts.ApplyCustomSystemPromptSections(built, run.Sections)
 	}
 	desired = cloneSystemSections(desired)
@@ -122,6 +122,11 @@ func (s *Session) effectiveSystemSectionsFor(run *codingagent.BeforeAgentStartRu
 		}
 	}
 	return prompts.ApplyCustomSystemPromptSections(desired, run.Sections)
+}
+
+// buildsRunPromptWhole reports that a structured prompt is the Session's to build: it is the default prompt, or the caller supplied the resources behind its sections. The caller holds toolRegistryMu.
+func (s *Session) buildsRunPromptWhole() bool {
+	return s.defaultSystemPrompt || s.systemPromptResources.Load() != nil
 }
 
 // hiddenDeclarations returns the tools whose declarations the active loadout hides (agent-session.ts:1674-1677).

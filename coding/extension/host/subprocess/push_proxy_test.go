@@ -16,7 +16,7 @@ import (
 
 func TestPushProxy_RenderReturnsCache(t *testing.T) {
 	var invalidated atomic.Int32
-	proxy := NewPushProxy(func() { invalidated.Add(1) }, nil)
+	proxy := NewPushProxy(func() { invalidated.Add(1) })
 
 	// Empty initially.
 	lines := proxy.Render(80)
@@ -40,7 +40,7 @@ func TestPushProxy_RenderReturnsCache(t *testing.T) {
 }
 
 func TestPushProxy_RenderNeverBlocks(t *testing.T) {
-	proxy := NewPushProxy(func() {}, nil)
+	proxy := NewPushProxy(func() {})
 	proxy.UpdateLines([]string{"cached"})
 
 	// Render must complete in <1ms (it's a cache read).
@@ -55,7 +55,7 @@ func TestPushProxy_RenderNeverBlocks(t *testing.T) {
 }
 
 func TestPushProxy_ReturnsCopy(t *testing.T) {
-	proxy := NewPushProxy(func() {}, nil)
+	proxy := NewPushProxy(func() {})
 	proxy.UpdateLines([]string{"a", "b"})
 
 	lines := proxy.Render(80)
@@ -70,7 +70,7 @@ func TestPushProxy_ReturnsCopy(t *testing.T) {
 
 func TestPushProxy_Clear(t *testing.T) {
 	var invalidated atomic.Int32
-	proxy := NewPushProxy(func() { invalidated.Add(1) }, nil)
+	proxy := NewPushProxy(func() { invalidated.Add(1) })
 	proxy.UpdateLines([]string{"hello"})
 
 	proxy.Clear()
@@ -82,29 +82,6 @@ func TestPushProxy_Clear(t *testing.T) {
 	lines := proxy.Render(80)
 	if lines != nil {
 		t.Errorf("after Clear, Render = %v", lines)
-	}
-}
-
-func TestPushProxy_WidthChange(t *testing.T) {
-	var notifiedWidth atomic.Int32
-	proxy := NewPushProxy(func() {}, func(w int) {
-		notifiedWidth.Store(int32(w))
-	})
-	proxy.UpdateLines([]string{"x"})
-
-	// First render reports the actual TUI width so extensions that rendered
-	// from a stale ready payload can refresh to the real terminal width.
-	_ = proxy.Render(80)
-	time.Sleep(50 * time.Millisecond) // notification is async
-	if notifiedWidth.Load() != 80 {
-		t.Errorf("first render notification = %d, want 80", notifiedWidth.Load())
-	}
-
-	// Width change triggers notification.
-	_ = proxy.Render(120)
-	time.Sleep(50 * time.Millisecond) // notification is async
-	if notifiedWidth.Load() != 120 {
-		t.Errorf("width notification = %d, want 120", notifiedWidth.Load())
 	}
 }
 
@@ -581,7 +558,7 @@ func TestUIBridge_HandleUnsupported(t *testing.T) {
 
 // A component's rendered frame is not a string list: RPC mode, which forwards string lists only, tells them apart with IsFrame.
 func TestPushProxyIsFrameOnlyForRenderedFrames(t *testing.T) {
-	text, frame := NewPushProxy(nil, nil), NewPushProxy(nil, nil)
+	text, frame := NewPushProxy(nil), NewPushProxy(nil)
 	text.UpdateContent([]string{"a"})
 	frame.UpdateLinesAt([]string{"a"}, 80)
 	if text.IsFrame() || !frame.IsFrame() {
