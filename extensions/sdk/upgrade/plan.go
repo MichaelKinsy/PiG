@@ -512,5 +512,8 @@ func (r *Result) Drift() []Drift {
 		drift.Rewrites = false
 		byRule[symbol] = drift
 	}
-	return slices.SortedFunc(maps.Values(byRule), func(a, b Drift) int { return strings.Compare(a.Symbol, b.Symbol) })
+	// One Drift per symbol: no two compare equal. sort.Slice shares one copy of the sort; slices.SortedFunc compiles one for this struct.
+	drifts := slices.Collect(maps.Values(byRule))
+	sort.Slice(drifts, func(i, j int) bool { return drifts[i].Symbol < drifts[j].Symbol })
+	return drifts
 }
