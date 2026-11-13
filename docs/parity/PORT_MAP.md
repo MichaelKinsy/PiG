@@ -972,7 +972,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
-| `packages/chord/src/node/app/ephemeral-sessions.ts` | `chord/nextnode/app/ephemeral_sessions.go` | ✅ |
+| `packages/chord/src/node/app/ephemeral-sessions.ts` | `chord/nextnode/app/ephemeral_sign_ins.go` Sign-ins at ff7414d51: Pi's file is ephemeral-sign-ins.ts from that commit (this row's path is the pin's) | ✅ |
 | `packages/chord/src/node/app/ephemeral.ts` | `chord/nextnode/app/ephemeral.go` | ✅ |
 | `packages/chord/src/node/app/files-copy.ts` | `chord/nextnode/app/files_copy.go` | ✅ |
 | `packages/chord/src/node/app/files-entry.ts` | `(barrel: Go imports the package; the files-entry exports are FilesFacet, Files, FilesFolder, CopyFiles, PrivateDirectory, PrivateStore and the types)` | n/a |
@@ -986,7 +986,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/app/owner.ts` | `chord/nextnode/app/owner.go` | ✅ |
 | `packages/chord/src/node/app/pairing.ts` | `chord/nextnode/app/pairing.go` | ✅ |
 | `packages/chord/src/node/app/secrets.ts` | `chord/nextnode/app/secrets.go` | ✅ |
-| `packages/chord/src/node/app/sessions.ts` | `chord/nextnode/app/sessions.go` | ✅ |
+| `packages/chord/src/node/app/sessions.ts` | `chord/nextnode/app/sign_ins.go` Sign-ins at ff7414d51: Pi's file is sign-ins.ts from that commit (this row's path is the pin's) | ✅ |
 | `packages/chord/src/node/app/tar.ts` | `chord/nextnode/app/tar.go` | ✅ |
 | `packages/chord/src/node/app/uploads.ts` | `chord/nextnode/app/uploads.go (Accept is the synchronous half of Pi's append, D430)` | ✅ |
 | `packages/chord/src/node/app/users.ts` | `chord/nextnode/app/users.go` | ✅ |
