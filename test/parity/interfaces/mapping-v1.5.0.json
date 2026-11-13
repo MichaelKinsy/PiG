@@ -119226,8 +119226,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild"
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello",
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
       ]
     },
     {
@@ -119248,8 +119248,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild"
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello",
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
       ]
     },
     {
@@ -120714,7 +120714,7 @@
       "evidence": [
         "test:chord/next/host/host_example_14_test.go#TestExample14FlowControl",
         "test:chord/next/link/channel_test.go#TestInOrderHandling",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello"
       ]
     },
     {
@@ -120822,9 +120822,9 @@
         "call:chord/next/link/channel.go#Channel.Start"
       ],
       "evidence": [
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild"
       ]
     },
     {
@@ -120844,9 +120844,9 @@
         "call:chord/next/link/channel.go#Channel.Start"
       ],
       "evidence": [
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild"
       ]
     },
     {
