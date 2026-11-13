@@ -15,7 +15,9 @@ import (
 // sequentialAdmissionTool is an admissionTool whose calls run one after the other.
 type sequentialAdmissionTool struct{ *admissionTool }
 
-func (sequentialAdmissionTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeSequential }
+func (sequentialAdmissionTool) ExecutionMode() agent.ToolExecutionMode {
+	return agent.ToolModeSequential
+}
 
 // Pi 4438c58ba (#9986), packages/coding-agent/CHANGELOG.md: "Fixed pressing Esc during a batch of tool calls leaving the calls
 // that had not started yet without a result in the session; they now get an "Operation aborted" result". An extension's

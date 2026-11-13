@@ -305,7 +305,7 @@ func TestRunToolCallAnswersAnAbortedSignalBeforeTheLookupAndTheHooks(t *testing.
 	} {
 		t.Run(name, func(t *testing.T) {
 			var probe batchProbe
-			outcome, err := RunToolCall(signal, call, RunToolCallOptions{Tools: []AgentTool{probe.tool("", nil)}, ToolCallHooks: ToolCallHooks{BeforeToolCall: probe.config("").BeforeToolCall}})
+			outcome, err := RunToolCall(signal, call, RunToolCallOptions{Tools: []AgentTool{probe.tool("", nil)}, BeforeToolCall: probe.config("").BeforeToolCall})
 			if err != nil {
 				t.Fatal(err)
 			}
