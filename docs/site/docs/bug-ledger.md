@@ -160,6 +160,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-167dae3](#bf-167dae3) | fix(codingagent): the idle collection runs two GC cycles again so pool victims are freed (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-168d095](#bf-168d095) | fix(photonimage): decode farbfeld as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-16d0758](#bf-16d0758) | A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-16f41f0](#bf-16f41f0) | The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension… | PiG's own defect | All platforms | Unreleased |
 | [BF-16f8d39](#bf-16f8d39) | fix(codingagent): keep the clock allowance on the marker header's time.Now line | PiG's own defect | All platforms | Unreleased |
 | [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | PiG's own defect | Windows | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
@@ -627,6 +628,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-578804d](#bf-578804d) | fix(photonimage): the remaining if-else chains of the inflater are switches | PiG's own defect | All platforms | Unreleased |
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
+| [BF-57dc298](#bf-57dc298) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
@@ -1003,7 +1005,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7a5e7d1](#bf-7a5e7d1) | fix(chord/nextnode/plugins): the bridged proxies' Go get takes the context first, as the merged host does | PiG's own defect | All platforms | Unreleased |
 | [BF-7b0f5d7](#bf-7b0f5d7) | A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7b59fe2](#bf-7b59fe2) | `pig piglet build --format binary` from a Pig source directory that is not a Git checkout (for example… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-7b6510e](#bf-7b6510e) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
 | [BF-7b92429](#bf-7b92429) | `find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7ba3211](#bf-7ba3211) | A resumed session no longer holds its whole file in memory | PiG's own defect | macOS | 0.5.0 |
 | [BF-7bcd404](#bf-7bcd404) | fix(durable): state the lifetime of the goroutine that publishes an adopted commit | PiG's own defect | All platforms | Unreleased |
@@ -4025,6 +4026,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `16d0758710` (2026-10-30, #11492)
 - **Tests:** `ai/overflow_upstream_test.go::TestOverflowUpstream`, `ai/utils_exports_upstream_test.go::TestGetOverflowPatternsMatchesUpstreamList`, `durable/core/turn/classify_carried_test.go::TestLiteLLMContextWindowExceededIsOverflow`, `extensions/sdk/pi_ai_helpers_test.go::TestLiteLLMContextWindowExceededIsOverflow`
 - **Release note:** A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given call`) is now recognised as a context overflow, so the turn compacts instead of failing, in `ai.IsContextOverflow`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs. Carried forward from Pi d3398f82 (earendil-works/pi#11492), past the 1.4.0+b3a29f11 pin.
+
+### BF-16f41f0
+
+**The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete.
+- **Root cause:** Fix-Commit: (cherry picked from commit) Signed-off-by: Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com>
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `16f41f045e` (2026-11-09, #443)
+- **Tests:** `coding/cli/provider_bridge_test.go::TestProviderBridgeStartIsSerializedBeforeTheResponseFillsItsPartial`, `coding/extension/host/subprocess/model_stream_attach_test.go::TestModelStreamForwardsStartBeforeTheResponseFillsItsPartial`, `durable/core/driver/model_test.go::TestModelContextSendsStartBeforeTheResponseFillsItsPartial`, `durable/harness/observe_response_test.go::TestObserveResponseSkipsTheStartEventWhoseProviderPartialHasNoContentYet`
+- **Release note:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: "pending"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.
 
 ### BF-16f8d39
 
@@ -10471,6 +10486,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `57a1687bc4` (2026-10-13)
 - **Tests:** `agent/messages_projection_test.go::TestAssistantMessageProjectionEqualsObserve`, `ai/assistant_observation_projection_norace_test.go::TestObserveProjectionAllocatesNothing`, `ai/assistant_observation_projection_test.go::TestObserveProjectionEqualsObserve`, `internal/codingagent/reload_allocs_norace_test.go::TestInteractiveSessionReloadAllocatesPerRetainedMessageWithinBudget`
 
+### BF-57dc298
+
+**On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do.
+- **Root cause:** Fix-Commit: (cherry picked from commit) Signed-off-by: Michael Kinsy <54590707+MichaelKinsy@users.noreply.github.com>
+- **User impact:** An operation failed or was rejected
+- **Platform:** Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `57dc298c19` (2026-11-11, #424)
+- **Tests:** `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes`
+- **Release note:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0 by itself. As libxcb 1.16 does (xcb_util.c `_xcb_parse_display_path_to_socket` and `_xcb_open`), the text after `unix:` is a path that must exist once any `.N` screen suffix is removed (`unix:relative-socket.1` needs `relative-socket`), and only an absolute path is dialed directly: a relative path that exists (`unix:relative-socket`, or `unix:0` with a file named `0` in the working directory) dials display 0's socket, `/tmp/.X11-unix/X0`, and one that does not exist fails. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.
+
 ### BF-57ee33b
 
 **A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as…**
@@ -15684,20 +15713,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `375de4a98c` (2026-10-12), `35006c8baf` (2026-10-13), `7b59fe2605` (2026-10-13)
 - **Tests:** `coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK`, `coding/pigletbuild/source_fetch_test.go::TestSourceRevisionOutsideGitCheckoutNamesDirectory`, `internal/codingagent/program_status_reporter_oracle_test.go::TestProgramStatusReporterRandomSequencesMatchPi`, `third_party/awssdk/internal/endpoints/v2/lazy_test.go::TestLazyRegexpMatchesLikeRegexp`
 - **Release note:** `pig piglet build --format binary` from a Pig source directory that is not a Git checkout (for example `PIG_SOURCE_ROOT` pointing at an extracted archive) now says the directory must be a Git checkout of PiG, names it, and suggests cloning PiG or unsetting `PIG_SOURCE_ROOT`, instead of failing with `resolve Pig source revision: exit status 128`. Other git failures now include git's error line.
-
-### BF-7b6510e
-
-**On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an…**
-
-- **Source:** PiG's own defect
-- **Symptom:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do.
-- **Root cause:** Pi's Linux clipboard addon links libxcb.so.1 and calls xcb_connect, so the host's libxcb decides how DISPLAY is read. libxcb 1.16 (by Demi Marie Obenour, a mitigation for CVE-2020-25697) made a display that starts with "/" or "unix:" always a socket path with an optional screen of 1 to 9 first digit, and no longer a host:number display. PiG still read "unix:<number>" as a local display, so DISPLAY=unix:0.-1 connected where libxcb 1.16 and 1.17 fail, and a display such as /tmp/.X11-unix/X0 failed where they connect.
-- **User impact:** An operation failed or was rejected
-- **Platform:** Linux
-- **Fixed in:** Unreleased
-- **Fix commits:** `7b6510e674` (2026-11-08)
-- **Tests:** `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes`, `internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes`
-- **Release note:** On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.
 
 ### BF-7b92429
 

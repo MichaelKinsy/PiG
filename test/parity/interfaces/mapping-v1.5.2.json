@@ -163057,8 +163057,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -163078,8 +163079,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -163186,8 +163188,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -163208,8 +163210,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165729,8 +165731,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165750,8 +165753,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165858,8 +165862,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165880,8 +165884,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -173230,7 +173234,7 @@
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
         "test:tui/show_images_selector_component_upstream_test.go#TestShowImagesSelectorComponentStructureAndSelectionUpstream",
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange"
       ]
     },
     {
@@ -224067,8 +224071,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -224088,8 +224093,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -224196,8 +224202,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -224218,8 +224224,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -293785,8 +293791,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -293807,8 +293813,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
