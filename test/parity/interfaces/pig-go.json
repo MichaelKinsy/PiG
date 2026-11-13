@@ -63479,6 +63479,17 @@
       "shapeHash": "sha256:5917e9394ad5cfe2f17bca198978f905b5cf3ad0745feb1cf9b19a59428ac43a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#strippedProviderStreams",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "strippedProviderStreams",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string) *ProviderStreams"
+      },
+      "shapeHash": "sha256:3343b5e21c07555a196681d5fd6db15e4192b9bb0e80e46a85b7238e06604068"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#supportsGoogleStrictToolSampling",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "supportsGoogleStrictToolSampling",

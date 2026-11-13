@@ -40246,6 +40246,39 @@
       ]
     },
     {
+      "id": "BF-afe29c4",
+      "title": "piglet: a Piglet built or run with one of `strip.apis: mistral-conversations`, `google-vertex` or…",
+      "symptom": "piglet: a Piglet built or run with one of `strip.apis: mistral-conversations`, `google-vertex` or `bedrock-converse-stream` answered pi-ai's `stream` and `complete` functions with an internal panic, whichever provider the request was for: `internal_panic: panic in HandleCall for \u003cextension\u003e.modelStream: Provider mistral: at least one of \"api\", \"images\", or \"classifiers\" is required.` Two callers reach those functions: an extension that asks a model while its module loads (at top level or in its factory, before a session exists), and the provider bridge (`pig`'s bridge for a process that has no session, such as an SDK host).",
+      "rootCause": "The built-in provider collection, which pi-ai's compatibility layer builds before such a request, still built an entry for that provider after the strip had taken all its models, and an entry without an implementation is an error, as in Pi's `createProvider`; the panic came back on every request, since the collection was never completed.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "piglet: a Piglet built or run with one of `strip.apis: mistral-conversations`, `google-vertex` or `bedrock-converse-stream` answered pi-ai's `stream` and `complete` functions with an internal panic, whichever provider the request was for: `internal_panic: panic in HandleCall for \u003cextension\u003e.modelStream: Provider mistral: at least one of \"api\", \"images\", or \"classifiers\" is required.` Two callers reach those functions: an extension that asks a model while its module loads (at top level or in its factory, before a session exists), and the provider bridge (`pig`'s bridge for a process that has no session, such as an SDK host). Each of the three APIs serves the whole catalog of one provider (`mistral`, `google-vertex`, `amazon-bedrock`). The built-in provider collection, which pi-ai's compatibility layer builds before such a request, still built an entry for that provider after the strip had taken all its models, and an entry without an implementation is an error, as in Pi's `createProvider`; the panic came back on every request, since the collection was never completed. The collection now has no entry for such a provider, as the model list and the login list already had none, and the provider's own constructor (`ai.MistralProvider`, `ai.GoogleVertexProvider`, `ai.AmazonBedrockProvider`) returns an entry without models whose streams answer `Provider mistral: API mistral-conversations is stripped from this Piglet (strip.apis: mistral-conversations)`. Those are the words a session already gave, and still gives, when a model of the stripped provider is selected (`--model mistral/codestral-latest`); model streams of a running session go through the session's model runtime and did not show the panic in the run at hand. The defect is in every release since 0.5.0. Stock PiG strips no API and is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0a08173ded",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "0f79bf7a54",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "afe29c431a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/builtin_providers_strip_test.go::TestCompatStreamWithAStrippedAPI",
+        "ai/builtin_providers_strip_test.go::TestStrippedAPIBuiltinProviders",
+        "coding/cli/provider_bridge_strip_test.go::TestProviderBridgeWithAnAPIStrippedAtRunTime",
+        "coding/load_time_completion_strip_test.go::TestLoadTimeCompletionsAnsweredWithAnAPIStrippedAtRunTime"
+      ]
+    },
+    {
       "id": "BF-aff6631",
       "title": "A code mode script in a loop can no longer freeze the whole process",
       "symptom": "A code mode script in a loop can no longer freeze the whole process.",
