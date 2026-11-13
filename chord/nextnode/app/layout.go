@@ -18,7 +18,7 @@ import (
 // every start. `server/` holds the server's store and files, `workers/<kind>/<address>/` each worker's store and files,
 // `plugins/` the user's plugins root, `logs/` the logs, `owner-token` the owner's token for command-line clients.
 // Directories are 0700 and stores 0600, also when they existed looser before (other local users must not read the
-// sessions in a store, nor replace it).
+// sign-ins in a store, nor replace it).
 //
 // Go forced differences: the asynchronous functions block and return `(value, error)`; `process.getuid` is os.Getuid
 // (not on Windows, where the owner check is skipped as Pi's `process.getuid === undefined` skips it).

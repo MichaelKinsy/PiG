@@ -65,16 +65,19 @@ func TestATurnHookKeepsTheMessagesItWasGiven(t *testing.T) {
 	}
 }
 
-// The after hooks of tool calls that run in parallel each get their own copy of the run's messages: they run on the calls' goroutines at
-// the same time, and two of them writing a message of one array would race. What they write stays theirs and does not reach the run, and
-// the copy holds what the before hooks wrote. (Run with -race.)
-func TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages(t *testing.T) {
+// Pi hands the after hooks of a parallel batch the one live context (agent-loop.ts executeToolCallsParallel: currentContext reaches each
+// call's closure under Promise.all and, through finalizeExecutedToolCall, afterToolCall): they write the run's own messages, the later
+// hook reads what the earlier one wrote, and the next request carries the last write. The hooks run on the calls' goroutines; the batch
+// runs them one at a time, in the order the tools settled, so neither their writes to the messages nor the test's unguarded record of
+// their order race. (Run with -race.)
+func TestAfterHooksOfParallelToolCallsWriteTheRunsMessagesOneAtATime(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(
 		toolCall("tool-1", "echo", ai.JsonObject{"value": "first"}),
 		toolCall("tool-2", "echo", ai.JsonObject{"value": "second"}),
 	)}
 	var release sync.WaitGroup
 	release.Add(2)
+	var order, read []string
 	a := mustNewAgent(AgentOptions{
 		Model:         scriptedModel(provider),
 		Tools:         []AgentTool{valueEchoTool(ToolModeParallel, func(string) { release.Done(); release.Wait() })},
@@ -84,9 +87,12 @@ func TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages(t *testing.T) {
 			return nil
 		},
 		AfterToolCall: func(_ context.Context, call AfterToolCallContext) *AfterToolCallResult {
-			// Both calls are past their tools here, so the two after hooks run together.
+			// Both calls are past their tools here: their goroutines reach the after hooks together.
+			index := promptIndex(call.Context.Messages)
+			order = append(order, argValue(call.Args))
+			read = append(read, userText(call.Context.Messages[index]))
 			for range 1000 {
-				call.Context.Messages[promptIndex(call.Context.Messages)] = userMessage("written after " + argValue(call.Args))
+				call.Context.Messages[index] = userMessage("written after " + argValue(call.Args))
 			}
 			return nil
 		},
@@ -94,12 +100,15 @@ func TestHooksOfParallelToolCallsWriteTheirOwnCopyOfTheMessages(t *testing.T) {
 
 	mustSend(t, a, "echo both")
 
-	if provider.calls() != 2 {
-		t.Fatalf("model requests %d, want 2", provider.calls())
+	if provider.calls() != 2 || len(order) != 2 {
+		t.Fatalf("model requests %d and after hooks %q, want 2 requests and both hooks", provider.calls(), order)
 	}
-	// The before hooks ran one after another on the run's own messages (the second call's hook wrote last); the after hooks wrote copies.
-	if got := userTexts(provider.request(2).transcript); !reflect.DeepEqual(got, []string{"written before second"}) {
-		t.Fatalf("the request after the tools carries %q: want the message the last before hook wrote and nothing an after hook wrote", got)
+	// The before hooks ran one after another (the second call's wrote last); each after hook then wrote the same message of the run.
+	if want := []string{"written before second", "written after " + order[0]}; !reflect.DeepEqual(read, want) {
+		t.Errorf("the after hooks read %q, want %q: the last before hook's message, then the earlier after hook's", read, want)
+	}
+	if got := userTexts(provider.request(2).transcript); !reflect.DeepEqual(got, []string{"written after " + order[1]}) {
+		t.Errorf("the request after the tools carries %q, want the message the last after hook (%s) wrote in place", got, order[1])
 	}
 }
 

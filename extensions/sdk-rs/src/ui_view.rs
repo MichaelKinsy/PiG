@@ -110,7 +110,9 @@ impl ViewShape {
 /// One intent the view's nodes may raise. `name` is `"<extension>.<verb>"`; `timeout_ms` defaults to 30000 (0) and is
 /// 100..300000. `when_hidden` lets a client raise the intent while the mount is hidden: it is how the user opens a view
 /// the extension hid, and the handler shows the mount. At most one intent of a mount has it; it names no node and its
-/// `arg` accepts the empty object.
+/// `arg` accepts the empty object. `dismiss` names the intent a client raises, with the empty object, when the user
+/// dismisses a dialog or overlay mount: the handler closes the mount. The same three rules hold for it. Without one,
+/// Escape leaves the mount and it stays open until the extension closes it.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct ViewIntent {
     pub name: String,
@@ -125,6 +127,8 @@ pub struct ViewIntent {
     pub timeout_ms: u32,
     #[serde(rename = "whenHidden", skip_serializing_if = "std::ops::Not::not")]
     pub when_hidden: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub dismiss: bool,
 }
 
 /// A bounded image a view refers to by id; `delivery` is inline or managed.
@@ -156,6 +160,8 @@ pub struct ViewMount {
     pub a11y: Vec<ViewA11y>,
     /// At most 256 entries; at most one requests the focus.
     pub focus: Vec<ViewFocus>,
+    /// At most 32 entries; a key or a gesture is bound once.
+    pub bindings: Vec<ViewBinding>,
 }
 
 /// The argument of [`Context::update_view`]: a full replacement of the content of the revision `mount` names.
@@ -174,6 +180,8 @@ pub struct ViewUpdate {
     pub a11y: Vec<ViewA11y>,
     /// At most 256 entries; at most one requests the focus.
     pub focus: Vec<ViewFocus>,
+    /// At most 32 entries; a key or a gesture is bound once.
+    pub bindings: Vec<ViewBinding>,
 }
 
 /// Bounds of one mount on the attached client.
@@ -632,6 +640,24 @@ pub struct ViewFocus {
     pub restore: String,
 }
 
+/// Ties a key or a gesture to an intent of the same content that names no node; a client fires it only while the mount
+/// holds the focus and the focused node did not take the key. Exactly one of `key` and `gesture` is set. `key` is a key
+/// id as `register_shortcut` writes it (`d`, `shift+left`, `ctrl+shift+p`); `gesture` is `swipe-left`, `swipe-right`,
+/// `swipe-up` or `swipe-down`. `arg` is the constant argument the intent is raised with (`{}` when `None`) and `name`
+/// what a client shows for the binding.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct ViewBinding {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub gesture: String,
+    pub intent: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arg: Option<Value>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub name: String,
+}
+
 /// One diagnostic of a mount: an operation the host rejected (`invalid`, `unsupported`, `limit`, `stale`,
 /// `terminal`), an intent it ended (`refused`, `failed`, `timeout`, `stale`), a part a client could not draw
 /// (`undrawn`) or a focus request a client did not grant (`unfocused`). `count` is how often it happened.
@@ -670,6 +696,7 @@ struct ViewParts<'a> {
     drawing: Option<&'a ViewDrawing>,
     a11y: &'a [ViewA11y],
     focus: &'a [ViewFocus],
+    bindings: &'a [ViewBinding],
 }
 
 impl Context {
@@ -701,6 +728,7 @@ impl Context {
             drawing,
             a11y,
             focus,
+            bindings,
         } = parts;
         let mut out = Map::new();
         out.insert("view".into(), self.view_wire(view)?);
@@ -742,6 +770,12 @@ impl Context {
             out.insert(
                 "focus".into(),
                 serde_json::to_value(focus).map_err(transport)?,
+            );
+        }
+        if !bindings.is_empty() {
+            out.insert(
+                "bindings".into(),
+                serde_json::to_value(bindings).map_err(transport)?,
             );
         }
         if !intents.is_empty() {
@@ -796,6 +830,7 @@ impl Context {
             drawing: mount.drawing.as_ref(),
             a11y: &mount.a11y,
             focus: &mount.focus,
+            bindings: &mount.bindings,
         })?;
         args.insert("key".into(), Value::String(mount.key));
         args.insert("slot".into(), Value::String(mount.slot));
@@ -821,6 +856,7 @@ impl Context {
             drawing: update.drawing.as_ref(),
             a11y: &update.a11y,
             focus: &update.focus,
+            bindings: &update.bindings,
         })?;
         args.insert(
             "mount".into(),
@@ -909,6 +945,7 @@ mod tests {
             cancellable: true,
             timeout_ms: 500,
             when_hidden: true,
+            dismiss: true,
         };
         assert_eq!(
             serde_json::to_value(&intent).unwrap(),
@@ -919,7 +956,8 @@ mod tests {
                 "answer": {"type": "array", "items": {"type": "string"}, "maxItems": 3},
                 "cancellable": true,
                 "timeoutMs": 500,
-                "whenHidden": true
+                "whenHidden": true,
+                "dismiss": true
             })
         );
         assert_eq!(
@@ -930,6 +968,20 @@ mod tests {
             })
             .unwrap(),
             json!({"name": "y.go", "arg": {"type": "integer"}})
+        );
+    }
+
+    #[test]
+    fn the_intent_the_users_dismissal_raises_is_written_as_dismiss() {
+        let close = ViewIntent {
+            name: "x.close".into(),
+            arg: ViewShape::new("object"),
+            dismiss: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            serde_json::to_value(&close).unwrap(),
+            json!({"name": "x.close", "arg": {"type": "object"}, "dismiss": true})
         );
     }
 
@@ -1080,6 +1132,24 @@ mod tests {
             })
             .unwrap(),
             json!({"node": "n", "request": "update"})
+        );
+        assert_eq!(
+            serde_json::to_value([
+                ViewBinding {
+                    key: "shift+left".into(),
+                    intent: "x.page".into(),
+                    arg: Some(json!({})),
+                    name: "Back".into(),
+                    ..Default::default()
+                },
+                ViewBinding {
+                    gesture: "swipe-left".into(),
+                    intent: "x.page".into(),
+                    ..Default::default()
+                },
+            ])
+            .unwrap(),
+            json!([{"key": "shift+left", "intent": "x.page", "arg": {}, "name": "Back"}, {"gesture": "swipe-left", "intent": "x.page"}])
         );
         let state = ViewState::default();
         let snapshot = json!({"uiAbilities": {"claims": [{"name": "display.colors", "value": 4242}], "slotClaims": [{"slot": "panel", "claims": [{"name": "display.colors", "value": 77}]}], "drawing": {"profiles": ["scene"], "shapes": 5, "pixels": 16}}});

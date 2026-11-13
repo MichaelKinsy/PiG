@@ -93,12 +93,12 @@ func TestOwnerLinkServesAPageReadingTheFragmentSignsTheOwnerInOnceAndRefusesTheT
 	if status := postToken(s, token).status; status != 403 {
 		t.Fatalf("second post = %d, want 403", status)
 	}
-	sessions, err := s.host.Get(background, Sessions, delta.NewJsonObject(0), host.GetOptions{})
+	signIns, err := s.host.Get(background, SignIns, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sessions.Release()
-	list, err := sessions.Member("list").Value()
+	defer signIns.Release()
+	list, err := signIns.Member("list").Value()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestOwnerLinkServesAPageReadingTheFragmentSignsTheOwnerInOnceAndRefusesTheT
 		}
 	}
 	if len(labels) != 1 || labels[0] != "owner browser" {
-		t.Fatalf("browser sessions = %v", labels)
+		t.Fatalf("browser sign-ins = %v", labels)
 	}
 }
 
@@ -175,7 +175,7 @@ func TestOwnerTokenFileIsWrittenAtFirstStartWithMode0600SignsInAsTheOwnerAndIsKe
 	}
 }
 
-func TestOwnerTokenFileIsReplacedAtTheNextStartWhenItsSecretNoLongerMatchesItsSession(t *testing.T) {
+func TestOwnerTokenFileIsReplacedAtTheNextStartWhenItsSecretNoLongerMatchesItsSignIn(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "owner-token")
 	first, _ := ownerServer(t, dir, ownerPrincipal())
@@ -194,7 +194,7 @@ func TestOwnerTokenFileIsReplacedAtTheNextStartWhenItsSecretNoLongerMatchesItsSe
 	}
 }
 
-func TestOwnerTokenFileIsReplacedAtTheNextStartOnceItsSessionWasRevoked(t *testing.T) {
+func TestOwnerTokenFileIsReplacedAtTheNextStartOnceItsSignInWasRevoked(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "owner-token")
 	first, _ := ownerServer(t, dir, ownerPrincipal())
@@ -241,7 +241,7 @@ func TestAUserOwnersTokenFileIsKeptAcrossStartsAlsoWithTheOwnersFieldsInAnotherO
 	}
 }
 
-func TestTheOwnerTokenFileIsReplacedWhenTheOwnerChangesItsSessionRevokedTheOldOwnersOthersStay(t *testing.T) {
+func TestTheOwnerTokenFileIsReplacedWhenTheOwnerChangesItsSignInRevokedTheOldOwnersOthersStay(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "owner-token")
 	first, _ := ownerServer(t, dir, adaUser())
@@ -264,6 +264,6 @@ func TestTheOwnerTokenFileIsReplacedWhenTheOwnerChangesItsSessionRevokedTheOldOw
 		t.Fatalf("old owner token = %d, want 401", status)
 	}
 	if got := whoamiOf(t, second, bearer(other)); got != `{"kind":"user","id":"u1"}` {
-		t.Fatalf("other session whoami = %s", got)
+		t.Fatalf("other sign-in whoami = %s", got)
 	}
 }

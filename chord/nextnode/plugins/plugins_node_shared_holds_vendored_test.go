@@ -550,8 +550,9 @@ func (i *shIngested) Ingest(batch telemetryingest.TelemetryBatch) int {
 	return len(batch.Spans)
 }
 
-// Not upstream's: Pi 7ae9ff8c7 gave the ingest facet `admit(principal)`; the Go port has it (IngestOptions.Admit), the
-// client tree's facet.ts is the file before that commit (the server is Go: nothing serves that file). What a page of
+// Not upstream's: Pi 7ae9ff8c7 gave the ingest facet `admit(principal)`; the Go port has it (IngestOptions.Admit) and the
+// client tree's facet.ts has admit too (TestTheClientTreesIngestFacetAsksAdmit); the server is Go, so nothing serves
+// that file. What a page of
 // a principal the Go server does not admit meets is the vendored SENDER's side of it: the page's sender
 // (sendPageTelemetry of the client tree, as web/page.ts starts it) holds `chord.telemetry.page`, the Go facet refuses
 // the hold `forbidden` "chord.telemetry.page: not admitted", the sender sends no batch (its object is not live) and its

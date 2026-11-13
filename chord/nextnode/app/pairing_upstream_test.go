@@ -75,7 +75,7 @@ func TestPairsAClientCodeOwnerApprovalOneStatusPollWithTheTokenThenNothing(t *te
 		t.Fatalf("second poll = %d, want 404", status)
 	}
 	id, _, _ := strings.Cut(token.Token, ".")
-	listed, ok := session(t, s, id).(*delta.JsonObject)
+	listed, ok := listedSignIn(t, s, id).(*delta.JsonObject)
 	if !ok || listed.Value("label") != "laptop" || listed.Value("kind") != "device" || fmt.Sprint(listed.Value("principal")) != fmt.Sprint(ownerPrincipal()) {
 		t.Fatalf("listed = %v", listed)
 	}
@@ -92,7 +92,7 @@ func TestRefusesAnUnknownPollSecret(t *testing.T) {
 	}
 }
 
-func TestAnOwnerTheAppChoosesAloneApprovesGetsTheDeviceSessionAndIsNotCounted(t *testing.T) {
+func TestAnOwnerTheAppChoosesAloneApprovesGetsTheDeviceSignInAndIsNotCounted(t *testing.T) {
 	ada := adaUser()
 	s := pairServer(t, ada, PairingLimits{MaxPending: 1, PerAddress: 1})
 	defer s.close()
@@ -120,7 +120,7 @@ func TestAnOwnerTheAppChoosesAloneApprovesGetsTheDeviceSessionAndIsNotCounted(t 
 		t.Fatal(err)
 	}
 	id, _, _ := strings.Cut(token.Token, ".")
-	listed, ok := session(t, s, id).(*delta.JsonObject)
+	listed, ok := listedSignIn(t, s, id).(*delta.JsonObject)
 	if !ok || listed.Value("label") != "phone" || fmt.Sprint(listed.Value("principal")) != fmt.Sprint(ada) {
 		t.Fatalf("listed = %v", listed)
 	}

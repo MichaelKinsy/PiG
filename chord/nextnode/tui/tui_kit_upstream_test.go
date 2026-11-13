@@ -352,12 +352,12 @@ func TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheC
 	s := tuiApp(t, "plugin v1")
 	l := launch(t, s.port, TerminalCredentials{Kind: CredentialsPairing, Label: "test terminal"})
 	code := l.waitFor(`Pairing code ([A-Z0-9]{4}-[A-Z0-9]{4}): approve it at `)[1]
-	sessions, err := s.app.Host.Get(background, app.Sessions, delta.NewJsonObject(0), host.GetOptions{})
+	signIns, err := s.app.Host.Get(background, app.SignIns, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sessions.Release()
-	issued, err := sessions.Call("issue", delta.JsonObjectOf("principal", delta.JsonObjectOf("kind", "owner"), "label", "o", "kind", "device"), background)
+	defer signIns.Release()
+	issued, err := signIns.Call("issue", delta.JsonObjectOf("principal", delta.JsonObjectOf("kind", "owner"), "label", "o", "kind", "device"), background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,7 +366,7 @@ func TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheC
 		t.Fatalf("approve = %d %s", status, body)
 	}
 	l.waitFor(`lines: \["plugin v1 tried=\d+ escaped=none"\]`)
-	list, err := sessions.Member("list").Value()
+	list, err := signIns.Member("list").Value()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +375,7 @@ func TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheC
 		found = found || item.(*delta.JsonObject).Value("label") == "test terminal"
 	}
 	if !found {
-		t.Fatalf("no session labelled the test terminal: %v", list)
+		t.Fatalf("no sign-in labelled the test terminal: %v", list)
 	}
 	l.typeKeys("q")
 	if code := l.exited(); code != 3 {
