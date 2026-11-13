@@ -196,12 +196,17 @@ const (
 // reaches its span and then waits its turn on the goroutines that run them (at most max(GOMAXPROCS/4, 1): one under D174's cap of 2 Ps), and a sentinel allocated while a collection marks survives that collection, so
 // a check armed that way can miss the collection that found the large heap and leave the target at 400 for the rest of the run.
 // debug.SetMemoryLimit is not a substitute: it caps the absolute heap rather than returning to a percent past a live size.
+// The first read of runtime/metrics builds the runtime's metric table (12,704 bytes in 72 objects), and a run that ends before its
+// first collection has no live heap to read. Until a collection has finished the poll therefore counts collections with
+// collectionsFinished (polls at 5, 15, 35, 75 ms and so on, then one a second), and it reads metrics from the first collection on.
+// runtime.ReadMemStats is not the counter: it stops the world and flushes every P's allocation cache on each call, and the polls of a
+// 70 ms rpc start left the process 0.5 MB more anonymous memory at ready (4.87 MB against 4.28 MB, ceiling 4.5 MB).
 // The wait doubles from minPoll to maxPoll while no collection has finished. An idle process then fires one timer a second, which
 // costs about 4 more voluntary context switches a second than a process without the watcher (273 against 39-46 in 60 s, 4-CPU
 // Linux container); a run that collects often reads every minPoll. An Idle policy ends that cost after Idle, and a restart that a late cleanup
 // triggers is harmless, because the new watcher reads the live heap itself.
 func (p Policy) watchLiveHeap(quit <-chan struct{}, fellBack *atomic.Bool, percent int) endReason {
-	sample := []metrics.Sample{{Name: "/gc/heap/live:bytes"}, {Name: "/gc/cycles/total:gc-cycles"}, {Name: "/gc/scan/globals:bytes"}, {Name: "/gc/scan/stack:bytes"}}
+	var sample []metrics.Sample
 	var cycles uint64
 	wait := minPoll
 	lastCollection := time.Now()
@@ -213,26 +218,34 @@ func (p Policy) watchLiveHeap(quit <-chan struct{}, fellBack *atomic.Bool, perce
 			return endedStopped
 		case <-timer.C:
 		}
-		metrics.Read(sample)
-		live := sample[0].Value.Uint64()
-		if live > p.FallbackLive && !fellBack.Load() {
-			if p.GoalFloor == 0 {
-				debug.SetGCPercent(DefaultPercent)
-				return endedFallback
-			}
-			fellBack.Store(true)
+		if sample == nil && (collected.Load() || collectionsFinished() > 0) {
+			collected.Store(true)
+			sample = []metrics.Sample{{Name: "/gc/heap/live:bytes"}, {Name: "/gc/cycles/total:gc-cycles"}, {Name: "/gc/scan/globals:bytes"}, {Name: "/gc/scan/stack:bytes"}}
 		}
-		if p.GoalFloor > 0 {
-			base := p.Percent
-			if fellBack.Load() {
-				base = DefaultPercent
+		var now uint64 // No collection has finished while sample is nil: the percent Apply set stands and there is no live heap to read.
+		if sample != nil {
+			metrics.Read(sample)
+			live := sample[0].Value.Uint64()
+			if live > p.FallbackLive && !fellBack.Load() {
+				if p.GoalFloor == 0 {
+					debug.SetGCPercent(DefaultPercent)
+					return endedFallback
+				}
+				fellBack.Store(true)
 			}
-			if next := p.percentFor(base, live, sample[2].Value.Uint64()+sample[3].Value.Uint64()); next != percent {
-				debug.SetGCPercent(next)
-				percent = next
+			if p.GoalFloor > 0 {
+				base := p.Percent
+				if fellBack.Load() {
+					base = DefaultPercent
+				}
+				if next := p.percentFor(base, live, sample[2].Value.Uint64()+sample[3].Value.Uint64()); next != percent {
+					debug.SetGCPercent(next)
+					percent = next
+				}
 			}
+			now = sample[1].Value.Uint64()
 		}
-		if now := sample[1].Value.Uint64(); now != cycles {
+		if now != cycles {
 			cycles, wait, lastCollection = now, minPoll, time.Now()
 		} else {
 			wait = min(2*wait, maxPoll)
@@ -243,4 +256,36 @@ func (p Policy) watchLiveHeap(quit <-chan struct{}, fellBack *atomic.Bool, perce
 		}
 		timer.Reset(wait)
 	}
+}
+
+// collected is set by the first poll that finds a finished collection. No later watcher of the process counts collections again: the
+// one a cleanup starts after an idle stop runs after a collection and reads metrics at once.
+var collected atomic.Bool
+
+// debug.ReadGCStats takes the runtime's heap lock and nothing else (no stop-the-world, no mcache flush), but it makes its two history
+// buffers (4,120 and 6,144 bytes) when the caller gives it none. A watcher that polls before the first collection hands it these
+// two, which live in the binary's zeroed data, so a poll allocates nothing on the heap; the runtime writes only the entries
+// for the collections that have run and three trailing words, so a process that has collected nothing touches one page of them.
+// gcStatsMu serializes the watchers of two Apply calls that overlap, which only a test makes.
+var (
+	gcStatsMu       sync.Mutex
+	gcStats         debug.GCStats
+	gcPauseScratch  [2*pauseHistory + 3]time.Duration
+	gcPauseEndSpace [pauseHistory]time.Time
+)
+
+// pauseHistory is the number of collections the runtime keeps pause times for (len(runtime.MemStats{}.PauseNs)); debug.ReadGCStats
+// allocates its buffers unless they have room for twice this and three words, and for this many end times.
+const pauseHistory = 256
+
+// The compiler rejects a runtime whose history length is not pauseHistory.
+var _ = [1]struct{}{}[pauseHistory-len(runtime.MemStats{}.PauseNs)]
+
+// collectionsFinished is the number of collections that have finished, as debug.ReadGCStats reports it.
+func collectionsFinished() int64 {
+	gcStatsMu.Lock()
+	defer gcStatsMu.Unlock()
+	gcStats.Pause, gcStats.PauseEnd = gcPauseScratch[:0], gcPauseEndSpace[:0]
+	debug.ReadGCStats(&gcStats)
+	return gcStats.NumGC
 }
