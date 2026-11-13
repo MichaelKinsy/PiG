@@ -858,7 +858,12 @@ func TestRecords(t *testing.T) {
 func TestTextScans(t *testing.T) {
 	rng := rand.New(rand.NewPCG(1, 2))
 	for range 20000 {
-		b := make([]byte, rng.IntN(40))
+		// Short texts mostly, and some longer than the sixty-four bytes commonSuffix compares at a time.
+		size := rng.IntN(40)
+		if rng.IntN(4) == 0 {
+			size = rng.IntN(300)
+		}
+		b := make([]byte, size)
 		for i := range b {
 			switch rng.IntN(12) {
 			case 0:
@@ -1039,6 +1044,9 @@ func TestParseMatchesThePlainReading(t *testing.T) {
 		}
 		if got.uncertain != uncertain {
 			t.Fatalf("%s: parse(%q) after %q: first uncertain cell %d, want %d", name, line, old.line, got.uncertain, uncertain)
+		}
+		if ink := got.inkBefore(len(got.cells)); got.inked != ink {
+			t.Fatalf("%s: parse(%q) after %q: %d cells through the last that is not a default blank, the cells say %d", name, line, old.line, got.inked, ink)
 		}
 		if old != nil && old.known {
 			for i := range shared {
