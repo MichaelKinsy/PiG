@@ -213234,9 +213234,9 @@
         "call:internal/codingagent/session_selector_load.go#NewSessionSelectorComponent"
       ],
       "evidence": [
-        "test:internal/codingagent/session_selector_constructor_options_pi_test.go#TestNewSessionSelectorComponentLoaderReceivesTheSignalAndProgressCallback",
-        "test:internal/codingagent/session_selector_constructor_options_pi_test.go#TestNewSessionSelectorComponentOptionsAndCurrentSessionPath",
-        "test:internal/codingagent/session_selector_constructor_test.go#TestSessionSelectorConstructorCallbacksMatchUpstream"
+        "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheReloadAfterADelete",
+        "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestUpstreamSessionSelectorKeepsTheNextSessionSelectedWhenAProgressiveReloadAfterDeleteStartsWithAnotherSession",
+        "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -213408,8 +213408,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_selector_path_delete_upstream_test.go#TestSessionListCallbacksAndSelection",
-        "test:internal/codingagent/session_selector_constructor_test.go#TestSessionSelectorConstructorCallbacksMatchUpstream",
-        "test:internal/codingagent/session_persistence_error_unix_test.go#TestSessionSelectorRenamePersistenceFailureReachesCrashLog"
+        "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheReloadAfterADelete",
+        "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestSessionSelectorKeepsTheSelectedSessionWhenTheScopeToggledToHasNotLoadedYet"
       ]
     },
     {
@@ -213430,8 +213430,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_selector_path_delete_upstream_test.go#TestSessionListCallbacksAndSelection",
-        "test:internal/codingagent/session_selector_constructor_test.go#TestSessionSelectorConstructorCallbacksMatchUpstream",
-        "test:internal/codingagent/session_persistence_error_unix_test.go#TestSessionSelectorRenamePersistenceFailureReachesCrashLog"
+        "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheReloadAfterADelete",
+        "test:internal/codingagent/session_selector_progressive_reload_upstream_test.go#TestSessionSelectorKeepsTheSelectedSessionWhenTheScopeToggledToHasNotLoadedYet"
       ]
     },
     {
@@ -295718,9 +295718,9 @@
         "call:tui/terminal_image.go#DeleteKittyImage"
       ],
       "evidence": [
-        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding",
-        "test:tui/tui_render_kitty_upstream_test.go#TestKittyDeletionPreservesEncounterOrder",
-        "test:tui/bounded_terminal_writer_test.go#TestKittyReservedGrowthRecomputesAppendStart"
+        "test:tui/overlay_terminal_image_upstream_test.go#TestLaterOverlayHidesAnImageInsideAnEarlierOverlay",
+        "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAKittyImageWhoseLineIsAboveTheViewport",
+        "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAnImageOfUnknownWidthWhenItSharesItsRows"
       ]
     },
     {
@@ -295740,9 +295740,9 @@
         "call:tui/terminal_image.go#DeleteKittyImage"
       ],
       "evidence": [
-        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding",
-        "test:tui/tui_render_kitty_upstream_test.go#TestKittyDeletionPreservesEncounterOrder",
-        "test:tui/bounded_terminal_writer_test.go#TestKittyReservedGrowthRecomputesAppendStart"
+        "test:tui/overlay_terminal_image_upstream_test.go#TestLaterOverlayHidesAnImageInsideAnEarlierOverlay",
+        "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAKittyImageWhoseLineIsAboveTheViewport",
+        "test:tui/overlay_terminal_image_upstream_test.go#TestOverlayHidesAnImageOfUnknownWidthWhenItSharesItsRows"
       ]
     },
     {
@@ -297415,8 +297415,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/terminal_image_dimensions_oracle_test.go#TestImageSizingAndEncodingMatchPi",
-        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
+        "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayKeepsAnImageBesideItThatSharesItsRows",
+        "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem"
       ]
     },
     {
@@ -297437,8 +297437,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/terminal_image_dimensions_oracle_test.go#TestImageSizingAndEncodingMatchPi",
-        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
+        "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayKeepsAnImageBesideItThatSharesItsRows",
+        "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem"
       ]
     },
     {
@@ -304198,7 +304198,7 @@
       "evidence": [
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
         "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop",
-        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle"
+        "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem"
       ]
     },
     {
@@ -304220,7 +304220,7 @@
       "evidence": [
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
         "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop",
-        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle"
+        "test:tui/overlay_terminal_image_upstream_test.go#TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem"
       ]
     },
     {

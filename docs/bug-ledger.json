@@ -26770,6 +26770,32 @@
       "tests": []
     },
     {
+      "id": "BF-7838047",
+      "title": "`/resume` no longer selects an unrelated session while its list reloads after a session is deleted or…",
+      "symptom": "`/resume` no longer selects an unrelated session while its list reloads after a session is deleted or renamed: the selected session stays selected through the partial lists of the reload.",
+      "rootCause": "After a delete or a rename the picker reloads its list progressively, and the first partial list holds only the session that finished loading first. A touched selection that is missing from a partial list is now kept as the target (pendingSelectedPath) and selected again once it arrives, instead of becoming whichever session the clamped index points to. A complete list ends the wait, and so does a key that moves the selection or types a search; the scope toggle waits while the scope it switches to is loading or not yet loaded.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/resume` no longer selects an unrelated session while its list reloads after a session is deleted or renamed: the selected session stays selected through the partial lists of the reload.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7838047e30",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestResumePickerOverTheSessionListingKeepsTheNextSessionSelectedAcrossTheReloadAfterADelete",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestSessionSelectorKeepsTheSelectedSessionWhenTheScopeToggledToHasNotLoadedYet",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestSessionSelectorMovingOrSearchingDuringAProgressiveReloadGivesUpTheAwaitedSession",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestUpstreamSessionSelectorKeepsTheNextSessionSelectedWhenAProgressiveReloadAfterDeleteStartsWithAnotherSession",
+        "internal/codingagent/session_selector_progressive_reload_upstream_test.go::TestUpstreamSessionSelectorKeepsTheRenamedSessionSelectedWhenTheReloadStartsWithAnotherSession"
+      ]
+    },
+    {
       "id": "BF-787c354",
       "title": "Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on…",
       "symptom": "Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on an Anthropic-messages provider as not supporting it.",
@@ -33655,6 +33681,40 @@
         "coding/cli/nonfinite_tool_args_test.go::TestPrintJSONModeWritesNonFiniteToolArgumentsAsNull",
         "coding/cli/nonfinite_tool_args_test.go::TestRPCEventsWriteNonFiniteToolArgumentsAsNull",
         "coding/cli/rpc_output_differential_test.go::TestRPCEventLinesWriteNullForANonFiniteToolCall"
+      ]
+    },
+    {
+      "id": "BF-959646e",
+      "title": "Kitty and iTerm2 images no longer cover an overlay drawn over them",
+      "symptom": "Kitty and iTerm2 images no longer cover an overlay drawn over them.",
+      "rootCause": "An image under an overlay left a hole in it, and a Kitty image also covered the overlay's text on the rows below its image line. While the overlays are composited back to front, hideImagesUnderOverlay now removes from the frame's lines every image placement an overlay overlaps by row and by column; the renderers' change detection deletes the image and draws it again once the overlay no longer covers it. An image beside an overlay stays. Ports getImageLineExtent and stripImageSequences of packages/tui/src/terminal-image.ts, hideImagesUnderOverlay of packages/tui/src/tui.ts and the nine cases of packages/tui/test/overlay-terminal-image.test.ts; each frame of a case must equal the bytes Pi…",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Kitty and iTerm2 images no longer cover an overlay drawn over them. An image that an overlay overlaps by row and column is removed while the overlay is open and drawn again when it closes, on the main screen and in fullscreen mode; an image beside an overlay, such as a sidebar, stays visible.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "959646e66a",
+          "date": "2026-11-12"
+        }
+      ],
+      "tests": [
+        "tui/image_line_extent_oracle_test.go::TestImageLineExtentAndStripMatchPi",
+        "tui/main_screen_oracle_test.go::TestMainScreenFramesMatchPiOracle",
+        "tui/overlay_terminal_image_upstream_test.go::TestFullscreenOverlayKeepsAnImageBesideItThatSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go::TestFullscreenOverlayRemovesKittyPlacementsWhileItCoversThem",
+        "tui/overlay_terminal_image_upstream_test.go::TestGetImageLineExtentReadsTheCellsAnImageLineCovers",
+        "tui/overlay_terminal_image_upstream_test.go::TestLaterOverlayHidesAnImageInsideAnEarlierOverlay",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAKittyImageWhoseLineIsAboveTheViewport",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAnITerm2ImageWhenItCoversRowsAboveItsImageLine",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayHidesAnImageOfUnknownWidthWhenItSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayKeepsAnImageBesideItThatSharesItsRows",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayKeepsAnImageWhoseRowsItDoesNotTouch",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayOverAKittyImageDeletesTheImageAndRedrawsItAfterTheOverlayCloses",
+        "tui/overlay_terminal_image_upstream_test.go::TestOverlayThatRendersNoLineKeepsTheImageItsRowLiesIn"
       ]
     },
     {
