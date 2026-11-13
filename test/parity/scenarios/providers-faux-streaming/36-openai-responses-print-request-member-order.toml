@@ -1,0 +1,35 @@
+# Behavior family: providers-faux-streaming
+# Surface: the member order of a replayed reasoning item in the OpenAI Responses request body in print mode.
+#
+# Pi stores a reasoning item as the text of the item the provider sent and
+# replays the parsed object as it is (openai-responses-shared.ts
+# convertResponsesMessages), so the item goes back with the members the provider
+# wrote, in the provider's order. Both CLIs run in print mode against a local
+# Responses endpoint that answers with a reasoning item written id, type,
+# encrypted_content, summary and a call of the read tool, so the second request
+# replays the item, and the harness prints the member names of each request body
+# in wire order. Strings other than type and role are elided: the system prompt
+# and the paths differ per run.
+
+name = "36-openai-responses-print-request-member-order"
+description = "Print mode replays a stored Responses reasoning item with the members in the order the provider wrote them."
+covers = ["packages/ai/src/api/openai-responses-shared.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/provider-print-request-order.mjs", "openai-responses", "pig"]
+pi_args = ["node", "./test/parity/testdata/provider-print-request-order.mjs", "openai-responses", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["{id:s,type:reasoning,encrypted_content:s,summary:[]}"]
+runs = 3

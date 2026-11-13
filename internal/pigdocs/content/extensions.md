@@ -2,7 +2,7 @@
 
 > **Differs from Pi, or easy to get wrong**
 > - Extensions load from `~/.pig/agent/extensions` and a trusted `.pig/extensions`, never from `~/.pi` (D2).
-> - Only top-level `.ts` or `.js` files, or a folder with an `index.ts` or `index.js`, load. PiG ignores a `.mjs` file without an error.
+> - In these folders, only top-level `.ts` or `.js` files, or a folder with an `index.ts` or `index.js`, load. There PiG ignores a `.mjs` file without an error. `pig -e ./file.mjs` loads a `.mjs` file.
 > - An untrusted project loads nothing. With `-p` there is no prompt: pass `--approve` ([project trust](trust.md)).
 > - Pi extensions are TypeScript. In PiG, prefer Go, then Rust, then Python. Lisp is also supported.
 
@@ -197,11 +197,13 @@ MB. Later appends use the same bounded path.
 
 ## Reload
 
-`/reload` resolves the same extension inputs as startup and preserves their first-seen order. PiG reuses valid build artifacts, but it constructs a fresh factory and runtime for every configured, embedded, fused, and built-in extension so module and closure state reset as they do in Pi. It starts and validates replacements, checks registration, and publishes the successful set. A failed extension is removed and reported while other extensions load.
+`/reload` resolves the same extension inputs as startup and preserves their first-seen order. PiG reuses valid build artifacts and calls the factory of every configured, embedded, fused, and built-in extension again, so what a factory creates is new. An extension whose source did not change keeps its process: a Go package variable or a Python module variable keeps its value. An edited Go extension runs its new build in a new process (D70; [Go hot reload](go-hot-reload.md)). It starts and validates replacements, checks registration, and publishes the successful set. A failed extension is removed and reported while other extensions load.
 
 ## MCP servers, virtual models and tool exposure
 
 An extension in any supported language can register MCP servers (`registerMcpServer`), virtual models (`registerVirtualModel`) and tools with `exposure`, `namespace`, `annotations`, `outputSchema`, `defaultActive` and `prepareLoadout`, and a tool can call other tools through `ctx.executeTool()`. `prepareLoadout` receives each tool's prompt guidelines (`getPromptGuidelines`); the default system prompt leaves hidden tools out of its tool list and rules, and names no tool in the skills hint when the file reader is hidden. See [MCP servers](mcp.md#extensions), [virtual models](virtual-models.md) and [codemode](codemode.md).
+
+An extension in any supported language can call another extension through the event bus `pi.events`: [Event bus](event-bus.md).
 
 `namespace: { name, description, instructions }` groups related tools, as MCP servers do. Codemode lists a namespace under one heading with its `description`. `instructions` holds longer usage guidance, such as MCP server instructions. It is not listed, and codemode scripts read it with `describeNamespace(name)`. A server config given to `registerMcpServer` accepts the same `description` as an `mcpServers` entry in `mcp.json`.
 

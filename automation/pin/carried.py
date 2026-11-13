@@ -86,7 +86,7 @@ def retire_backport_blocks(text: str, carried: list[str]) -> str:
 # -- the sync ledgers' account of the oracle ----------------------------------------------------------------------------
 
 LEDGERS = "test/parity/upstream-sync"
-ORACLE_SOURCES = {"ai": "pi-ai", "coding-agent": "pi-coding-agent", "tui": "pi-tui"}  # the source directory of each package a block can patch
+ORACLE_SOURCES = {"agent": "pi-agent-core", "ai": "pi-ai", "coding-agent": "pi-coding-agent", "tui": "pi-tui"}  # the source directory of each package a block can patch
 ORACLE_LOCKS = ("package-lock.json", "packages/coding-agent/install-lock/package-lock.json")
 ORACLE_MANIFEST = re.compile(r"packages/[a-z-]+/package\.json")
 
@@ -116,7 +116,7 @@ def oracle_ledger_problems(pin: Pin, root: Path = ROOT) -> list[str]:
     The port follows Pi commits past the pin, and the oracle answers as the pin unless the backports script carries the commit, so a
     ported change the oracle lacks is a parity red that is the pin's age, found only by a full parity pass. Each such row must say what
     the oracle does:
-    * a `ported` row of a file a block can patch (the compiled output of pi-ai, pi-coding-agent and pi-tui, the coding agent's docs and
+    * a `ported` row of a file a block can patch (the compiled output of pi-agent-core, pi-ai, pi-coding-agent and pi-tui, the coding agent's docs and
       schemas) has a block for that file in the script;
     * a row of a package manifest or a lock (any disposition: `designed-out` there is about PiG's product, which installs no npm
       dependency of Pi) carries `oracle = "carried: <backport id> ..."`, naming a commit the script has an entry for;

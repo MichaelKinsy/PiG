@@ -980,6 +980,7 @@ class BackportTests(unittest.TestCase):
     def tree(self, root: Path) -> Path:
         return make_tree(root / "node_modules", {
             "node_modules/@earendil-works/pi-coding-agent": "@earendil-works/pi-coding-agent@1.5.2",
+            "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-agent-core": "@earendil-works/pi-agent-core@1.5.2",
             "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai": "@earendil-works/pi-ai@1.5.2",
             "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui": "@earendil-works/pi-tui@1.5.2",
             "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-mcp": "@earendil-works/pi-mcp@1.5.2",
@@ -992,7 +993,8 @@ class BackportTests(unittest.TestCase):
             oracle.apply_backports(modules)
             agent = modules / "@earendil-works" / "pi-coding-agent"
             self.assertEqual(json.loads((Path(root) / "args.mjs.out").read_text()), [
-                "--packages", f"pi-ai={agent / 'node_modules/@earendil-works/pi-ai'}", f"pi-coding-agent={agent}", f"pi-tui={agent / 'node_modules/@earendil-works/pi-tui'}"])
+                "--packages", f"pi-agent-core={agent / 'node_modules/@earendil-works/pi-agent-core'}", f"pi-ai={agent / 'node_modules/@earendil-works/pi-ai'}", f"pi-coding-agent={agent}",
+                f"pi-tui={agent / 'node_modules/@earendil-works/pi-tui'}"])
 
     def test_a_tree_with_two_copies_of_a_patched_package_is_refused(self):
         with tempfile.TemporaryDirectory() as root:
@@ -1081,7 +1083,7 @@ assert.throws(() => applyPackageBackports(packages), /no longer applies/, "a sec
 
 
 FAKE_BUNDLER = r'''
-// Stands for Pi's scripts/build-coding-agent-bundle.mjs: one chunk made of the three packages' compiled output with the whitespace removed
+// Stands for Pi's scripts/build-coding-agent-bundle.mjs: one chunk made of the four packages' compiled output with the whitespace removed
 // (so no backport's text survives in it as written), under the coding agent's dist/bundle.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -1090,7 +1092,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const bundle = join(root, "packages", "coding-agent", "dist", "bundle");
 rmSync(bundle, { recursive: true, force: true });
 mkdirSync(join(bundle, "chunks"), { recursive: true });
-const code = ["ai", "coding-agent", "tui"].map((name) => readFileSync(join(root, "packages", name, "dist", "code.js"), "utf8")).join("");
+const code = ["agent", "ai", "coding-agent", "tui"].map((name) => readFileSync(join(root, "packages", name, "dist", "code.js"), "utf8")).join("");
 writeFileSync(join(bundle, "chunks", "chunk.js"), code.replace(/\s+/g, ""));
 writeFileSync(join(bundle, "cli.js"), 'import "./chunks/chunk.js";\n');
 '''
@@ -1118,7 +1120,7 @@ class BundleTests(unittest.TestCase):
     """`pi` runs the package's bundle, not the compiled output the backports patch: the oracle build has Pi's bundler make the bundle again from
     the patched compiled output. A fake bundler and a fake backports script stand for Pi's and the committed one."""
 
-    PACKAGES = {"pi-ai": "ai", "pi-coding-agent": "coding-agent", "pi-tui": "tui"}
+    PACKAGES = {"pi-agent-core": "agent", "pi-ai": "ai", "pi-coding-agent": "coding-agent", "pi-tui": "tui"}
 
     def setUp(self):
         self.root = Path(tempfile.mkdtemp())
@@ -1140,11 +1142,11 @@ class BundleTests(unittest.TestCase):
         (self.source / "packages" / "coding-agent" / "docs").mkdir()
         (self.source / "packages" / "coding-agent" / "docs" / "page.md").write_text("the old page\n")
         oracle.run_bundler(self.source)
-        # The installed tree, as `npm ci` of the packs lays it out: the coding agent with the two other packages nested under it.
+        # The installed tree, as `npm ci` of the packs lays it out: the coding agent with the three other packages nested under it.
         self.modules = self.root / "node_modules"
         self.agent = self.modules / "@earendil-works" / "pi-coding-agent"
         shutil.copytree(self.source / "packages" / "coding-agent", self.agent)
-        for name in ("pi-ai", "pi-tui"):
+        for name in ("pi-agent-core", "pi-ai", "pi-tui"):
             shutil.copytree(self.source / "packages" / self.PACKAGES[name], self.agent / "node_modules" / "@earendil-works" / name)
         self.chunk = self.agent / "dist" / "bundle" / "chunks" / "chunk.js"
 
@@ -1157,7 +1159,7 @@ class BundleTests(unittest.TestCase):
         oracle.apply_backports(self.modules)
         self.assertNotIn("new", self.chunk.read_text(), "the fixture's bundle carried the backports before it was rebuilt")
         digest = oracle.rebuild_bundle(self.source, self.modules)
-        self.assertEqual(self.chunk.read_text(), "exportconstai='new';exportconstcoding_agent='new';exportconsttui='new';")
+        self.assertEqual(self.chunk.read_text(), "exportconstagent='new';exportconstai='new';exportconstcoding_agent='new';exportconsttui='new';")
         self.assertEqual(digest, oracle.tree_digest(self.agent / "dist" / "bundle"))
         self.assertEqual(self.files(self.source), as_built, "the source build must be left as built: the packs, the mirror and the Durable oracle read it")
         self.assertEqual(sorted(path.name for path in self.root.iterdir()), ["backports.mjs", "node_modules", "src"], "the rebuild left scratch beside the source build")
@@ -1201,7 +1203,7 @@ class BundleTests(unittest.TestCase):
         self.assertIn("sdk='one';", self.chunk.read_text())
         oracle.apply_backports(self.modules)
         digest = oracle.rebuild_bundle(self.source, self.modules)
-        self.assertEqual(self.chunk.read_text(), "exportconstai='new';exportconstcoding_agent='new';exportconsttui='new';sdk='two';")
+        self.assertEqual(self.chunk.read_text(), "exportconstagent='new';exportconstai='new';exportconstcoding_agent='new';exportconsttui='new';sdk='two';")
         self.assertEqual(digest, oracle.tree_digest(self.agent / "dist" / "bundle"))
         self.assertEqual(self.files(self.source), as_built, "the source build must keep the dependency it was built with")
         self.assertEqual(sorted(path.name for path in self.root.iterdir()), ["backports.mjs", "node_modules", "src"], "the rebuild left scratch beside the source build")

@@ -35,7 +35,7 @@ func chatModelsOf(models []ai.AnyModel) []*ai.Model {
 // NativeModelEntry lowers native model data to the configured backend representation without resolving credentials.
 func NativeModelEntry(model *ai.Model) ModelEntry {
 	cost := model.CostRates()
-	return ModelEntry{Type: model.Type, CatalogRecord: ai.CatalogRecordRefOf(model), ProviderID: model.ProviderMeta.ProviderID, ModelID: model.ID, DisplayName: model.DisplayName, API: string(model.ProviderMeta.API), BaseURL: model.ProviderMeta.BaseURL, Reasoning: model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != "", Input: slices.Clone(model.Input), ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens, InputCost: cost.Input, OutputCost: cost.Output, CacheReadCost: cost.CacheRead, CacheWriteCost: cost.CacheWrite, CostTiers: slices.Clone(cost.Tiers), ModelHeaders: maps.Clone(model.ProviderMeta.Headers), Headers: maps.Clone(model.ProviderMeta.Headers), Compat: mergeCompat((*providerCompat)(model.ProviderMeta.Compat), nil), ThinkingLevelMap: cloneThinkingLevelMap(model.ThinkingLevelMap), SamplingParams: maps.Clone(model.SamplingParams), SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(model.SamplingParamsByThinkingLevel), PromptCache: maps.Clone(model.PromptCache), InputLimits: model.InputLimits.Clone()}
+	return ModelEntry{Type: model.Type, CatalogRecord: ai.CatalogRecordRefOf(model), ProviderID: model.ProviderMeta.ProviderID, ModelID: model.ID, DisplayName: model.DisplayName, API: string(model.ProviderMeta.API), BaseURL: model.ProviderMeta.BaseURL, Reasoning: model.ProviderMeta.Reasoning || model.Capabilities.MaxThinking != "", Input: slices.Clone(model.Input), ContextWindow: model.Capabilities.ContextWindow, MaxTokens: model.Capabilities.MaxOutputTokens, InputCost: cost.Input, OutputCost: cost.Output, CacheReadCost: cost.CacheRead, CacheWriteCost: cost.CacheWrite, CostTiers: slices.Clone(cost.Tiers), ModelHeaders: maps.Clone(model.ProviderMeta.Headers), Headers: maps.Clone(model.ProviderMeta.Headers), Compat: mergeCompat((*providerCompat)(model.ProviderMeta.Compat), nil), ThinkingLevelMap: cloneThinkingLevelMap(model.ThinkingLevelMap), SamplingParams: maps.Clone(model.SamplingParams), SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(model.SamplingParamsByThinkingLevel), SamplingParamsOrder: model.SamplingParamsOrder, SamplingParamsByThinkingLevelOrder: model.SamplingParamsByThinkingLevelOrder, PromptCache: maps.Clone(model.PromptCache), InputLimits: model.InputLimits.Clone()}
 }
 
 func nativeModelFromEntry(entry ModelEntry) *ai.Model {
@@ -44,6 +44,7 @@ func nativeModelFromEntry(entry ModelEntry) *ai.Model {
 	model.Type = entry.Type
 	model.Capabilities = generated.ToCapabilities()
 	model.SamplingParamsByThinkingLevel = cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel)
+	model.SamplingParamsOrder, model.SamplingParamsByThinkingLevelOrder = entry.SamplingParamsOrder, entry.SamplingParamsByThinkingLevelOrder
 	return model
 }
 

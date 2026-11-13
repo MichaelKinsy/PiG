@@ -1,20 +1,10 @@
-// Run Pi's runAgentLoop (packages/agent/src/agent-loop.ts, imported as-is with types stripped) over scripted programs from stdin.
+// Run Pi's runAgentLoop (pi-agent-core/agent-loop.js of the vendored Pi runtime: the pinned build's compiled packages/agent/src/agent-loop.ts plus the Pi commits PiG carries ahead of the pin, automation/gen/pi-post-release-backports.mjs) over scripted programs from stdin.
 // A program scripts the stream function (one assistant message per request), the tools, the hooks and the queues; the output per program is the event sequence, the returned messages and the transcript of every request, all projected to the observable members.
-// usage: node agent_loop_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-ai)
-import module from "node:module";
+// usage: node agent_loop_oracle.mjs <pi-dist dir>   (coding/extension/host/subprocess/runtime-node/shims/pi-dist: internal/pioracle.Root)
 import { pathToFileURL } from "node:url";
-import { chordSourceURL } from "../../durable/internal/oraclesupport/chord_resolve.mjs";
-const packages = process.argv[2].replace(/\/?$/, "/");
-module.registerHooks({
-	resolve(specifier, context, next) {
-		const chordSource = chordSourceURL(packages, specifier);
-		if (chordSource) return next(chordSource, context);
-		if (specifier.startsWith("@earendil-works/pi-ai")) return next(specifier, { ...context, parentURL: pathToFileURL(process.env.PI_INTEROP_DIR).href });
-		return next(specifier, context);
-	},
-});
-const { runAgentLoop } = await import(pathToFileURL(`${packages}agent/src/agent-loop.ts`).href);
-const { createAssistantMessageEventStream } = await import("@earendil-works/pi-ai");
+const dist = process.argv[2].replace(/\/?$/, "/");
+const { runAgentLoop } = await import(pathToFileURL(`${dist}pi-agent-core/agent-loop.js`).href);
+const { createAssistantMessageEventStream } = await import(pathToFileURL(`${dist}pi-ai/sdk-bundle/index.js`).href);
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;

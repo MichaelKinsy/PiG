@@ -223,6 +223,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1fbdabb](#bf-1fbdabb) | A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-1fcf017](#bf-1fcf017) | `toUpperCase` ports use a shared JavaScript `jsstring.ToUpper` (matches Node over every code point).… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2022c75](#bf-2022c75) | sdk-py: fix the ruff findings in the type engine, child session and type vector tests | PiG's own defect | All platforms | Unreleased |
+| [BF-202aea0](#bf-202aea0) | OpenAI Responses requests replay a stored reasoning item as it was stored, and the items of a client tool… | PiG's own defect | All platforms | Unreleased |
 | [BF-202b8f1](#bf-202b8f1) | On arm64 and other CPUs with a fused multiply-add, the OKHSL saturation of a color (used when generating the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-205933e](#bf-205933e) | fix(ai): a Gemini model outside the catalog carries the provider's API, so replay's isSameModel matches Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-206b3d4](#bf-206b3d4) | fix(chord/nextnode): lint findings of the T11 files (gosec G204 and bodyclose annotated with their reasons… | PiG's own defect | All platforms | Unreleased |
@@ -269,6 +270,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-261fecd](#bf-261fecd) | `tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-264127b](#bf-264127b) | `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-2653e62](#bf-2653e62) | Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the… | PiG's own defect | All platforms | Unreleased |
 | [BF-26787ff](#bf-26787ff) | `pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down… | PiG's own defect | All platforms | Unreleased |
 | [BF-2699291](#bf-2699291) | The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26a08b0](#bf-26a08b0) | `PI_STARTUP_BENCHMARK=1` disposes the session runtime after it stops interactive mode, so extensions receive… | PiG's own defect | All platforms | Unreleased |
@@ -461,6 +463,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | 0.7.0 |
 | [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | PiG's own defect | Windows | Unreleased |
+| [BF-3fe8180](#bf-3fe8180) | OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with… | PiG's own defect | All platforms | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
 | [BF-402f61c](#bf-402f61c) | A custom message keeps the member order of its `content` blocks everywhere the host holds it | PiG's own defect | All platforms | Unreleased |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
@@ -584,6 +587,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4d731f2](#bf-4d731f2) | Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is… | PiG's own defect | Windows | Unreleased |
 | [BF-4d965e3](#bf-4d965e3) | The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `<`, `>`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4db62b6](#bf-4db62b6) | Quitting during startup (Ctrl-D, or Ctrl-C twice, while the tools download or the terminal colours are… | PiG's own defect | All platforms | Unreleased |
+| [BF-4de6fba](#bf-4de6fba) | A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does… | PiG's own defect | All platforms | Unreleased |
 | [BF-4e204f4](#bf-4e204f4) | fix(sdk-py): clear bandit's findings in the 0.5.2 Python SDK code | PiG's own defect | All platforms | Unreleased |
 | [BF-4e47260](#bf-4e47260) | A lazy line joins a list item as written (indentation kept), four spaces after the marker make the first line… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e5b684](#bf-4e5b684) | A list item whose first line is another list item is rendered as a nested list with no bullet of its own, and… | PiG's own defect | All platforms | 0.5.0 |
@@ -1569,6 +1573,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b730205](#bf-b730205) | OpenRouter image models that only the Images API serves (for example `openai/gpt-image-2.5-flare`) now… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-b751326](#bf-b751326) | When an extension in a shared Go, Rust or Python process crashes, the error for each stopped extension now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b78cdae](#bf-b78cdae) | A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `\|description: ...`)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b7d2c07](#bf-b7d2c07) | Azure OpenAI Responses requests hold the members Pi's Azure requests hold | PiG's own defect | All platforms | Unreleased |
 | [BF-b7d9b2b](#bf-b7d9b2b) | `pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b84facb](#bf-b84facb) | fix(codingagent,tui): extension editor follows the terminal rows; title and image fallback close only the… | PiG's own defect | All platforms | Unreleased |
 | [BF-b85fd68](#bf-b85fd68) | fix(chord/host): compile the frame schema once, not for every frame a link carries | PiG's own defect | All platforms | Unreleased |
@@ -1708,6 +1713,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cdf2887](#bf-cdf2887) | fix(ai): keep a reused-id tool result in its own turn during the D48 repair | PiG's own defect | All platforms | Unreleased |
 | [BF-ce0f352](#bf-ce0f352) | `createPowerShellTool` now uses the `operations` option | A fix Pi shipped that PiG ported | Windows | 0.5.0 |
 | [BF-ce0f352-2](#bf-ce0f352-2) | The editor's autocomplete list takes its colors from one `getSelectListTheme` equivalent, the same function… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ce136a8](#bf-ce136a8) | OpenAI Chat Completions request bodies now have the member order of the bodies Pi sends | PiG's own defect | All platforms | Unreleased |
 | [BF-ce366dd](#bf-ce366dd) | fix(coding): resume restores the transcript's tools only for the unchanged default selection… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce42877](#bf-ce42877) | `durable/images.CreatePhotonImages`, and `durable/images/node.CreateNodePhotonImages` with `Worker: false`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ce4df6b](#bf-ce4df6b) | An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the… | PiG's own defect | All platforms | Unreleased |
@@ -4989,6 +4995,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2022c75e94` (2026-10-26)
 - **Tests:** None recorded.
 
+### BF-202aea0
+
+**OpenAI Responses requests replay a stored reasoning item as it was stored, and the items of a client tool…**
+
+- **Source:** PiG's own defect
+- **Symptom:** OpenAI Responses requests replay a stored reasoning item as it was stored, and the items of a client tool search have Pi's member order.
+- **Root cause:** Three fixtures fed the converter a same-model signature that is not JSON, which Pi rejects; each keeps the property its name claims: - TestRequestBuildLeavesTheTranscriptUnchanged: fed signatures "sig" and "r"; now two stored reasoning items. Assertion unchanged. - TestProvidersSendTheSameBodyForEveryLargeStringOfARequest: fed "sig" repeated 2000 times; now a stored reasoning item whose encrypted_content is that string, still a large string of the request. Assertion unchanged. - TestResponsesConvertMessages_CrossProviderThinkingSkipped: gave the inner converter another provider's signed block without the transform that precedes it; now through TransformMessages as the stream does. It still…
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `202aea01ba` (2026-11-13)
+- **Tests:** `ai/openai_responses_test.go::TestResponsesConvertMessages_CrossProviderThinkingSkipped`, `ai/openai_responses_test.go::TestResponsesConvertMessages_StoredSignatureThatIsNotJSON`, `ai/openai_responses_tool_notices_oracle_test.go::TestOpenAIResponsesToolChangeNoticesMatchPi`, `ai/openai_responses_wire_body_oracle_test.go::TestOpenAIResponsesWireBodyMatchesPi`, `ai/request_marshal_to_test.go::TestRequestTypesEncodeAsTheirMarshalJSON`, `ai/request_string_providers_test.go::TestProvidersSendTheSameBodyForEveryLargeStringOfARequest`, `ai/transcript_borrow_test.go::TestRequestBuildLeavesTheTranscriptUnchanged`, `test/parity/scenarios/providers-faux-streaming/36-openai-responses-print-request-member-order.toml`
+- **Release note:** OpenAI Responses requests replay a stored reasoning item as it was stored, and the items of a client tool search have Pi's member order. A replayed reasoning item was rewritten `type, id, summary, encrypted_content` and lost any member PiG does not know; Pi sends the stored object as the provider wrote it. The `tool_search_call` and `tool_search_output` items were written `type, status, call_id, ...` (Pi: `type, call_id, execution, status, ...`). This held for OpenAI, Azure OpenAI and ChatGPT (Codex) Responses. A stored reasoning signature that is not JSON now ends the request with the JSON error before anything is sent, as in Pi, where PiG dropped the block and sent the request; only a block of the same provider, API and model id with such a signature reaches this, which means a hand-edited or corrupted session.
+
 ### BF-202b8f1
 
 **On arm64 and other CPUs with a fused multiply-add, the OKHSL saturation of a color (used when generating the…**
@@ -5625,6 +5645,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `264127b95e` (2026-10-30, #11331)
 - **Tests:** `coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksANameMatchAboveMentionsInDescriptions`, `coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName`, `coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi`, `coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream`
 - **Release note:** `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in their descriptions, for example `peekaboo app` ranking `mcp__peekaboo__app` 14th. A query word in a tool's name now scores more than any number of mentions in its description, a tool whose whole name is in the query gets a large bonus, and long server instructions no longer lower the scores of that server's tools. Carried forward from Pi cc44fa21 (earendil-works/pi#11331), past the 1.4.0+b3a29f11 pin.
+
+### BF-2653e62
+
+**Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the session: the transcript held an assistant message with tool calls that no tool result answered.
+- **Root cause:** When a run was aborted in the middle of a batch of tool calls, the loop left the batch at once: executeToolCallsSequential and executeToolCallsParallel stopped at the first call that ended under a cancelled context. The calls the loop had not reached got no tool_execution_start, no tool_execution_end and no tool result. The session then held an assistant message whose tool calls nothing answered, followed by the aborted response. PiG 0.2.0, 0.3.0 and 0.7.0 have the defect; it is Pi's own (#9986), fixed there by.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2653e62834` (2026-11-13)
+- **Tests:** `agent/abort_batch_answers_test.go::TestABeforeHookEndedByTheAbortAnswersOperationAborted`, `agent/abort_batch_answers_test.go::TestAbortBeforeTheFirstCallOfABatchAnswersEveryCall`, `agent/abort_batch_answers_test.go::TestAbortBetweenTwoCallsOfASequentialBatchAnswersTheRest`, `agent/abort_batch_answers_test.go::TestAbortDuringACallOfASequentialBatchAnswersTheRestInOrder`, `agent/abort_batch_answers_test.go::TestAbortWhileAParallelBatchIsPreparedAnswersEveryCallInOrder`, `agent/abort_batch_answers_test.go::TestRunToolCallAnswersAnAbortedSignalBeforeTheLookupAndTheHooks`, `agent/abort_batch_answers_test.go::TestSteeringQueuedDuringAnAbortedBatchFollowsAResultForEveryCall`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi` and 8 more in docs/bug-ledger.json
+- **Release note:** Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the session: the transcript held an assistant message with tool calls that no tool result answered. Each of those calls now gets its start and end events and an "Operation aborted" error result, and extension `tool_call` handlers are not asked about a call that will not run. A call whose `tool_call` handler in an extension process was still deciding when the run was aborted now reads "Operation aborted" too, where it read "event tool_call: context canceled". `ctx.executeTool` answers an aborted run the same way, before it looks the tool up. A session that an older build left with unanswered calls still opens and continues as before. Follows Pi 4438c58ba ([#9986](https://github.com/earendil-works/pi/issues/9986)).
 
 ### BF-26787ff
 
@@ -8279,6 +8313,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go::TestBashTimeoutAfterShellExit11613`
 - **Release note:** A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout. A shell still running at the deadline keeps the plain timeout message, and custom operations that fail with `timeout:N` are unchanged (D243).
 
+### BF-3fe8180
+
+**OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with their members in the order the source lists them, as Pi does; PiG wrote each sorted by key.
+- **Root cause:** Three objects of an openai-completions request are supplied by a catalog entry, models.json, an extension or the caller, and Pi writes each with its members in the order the source lists them. PiG held them in Go maps, which encoding/json writes sorted.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3fe81801cc` (2026-11-13)
+- **Tests:** `ai/openai_compat_objects_test.go::TestBundledCatalogCompatObjectsRoundTrip`, `ai/openai_compat_objects_test.go::TestMergeOpenAICompatSpreadsObjectMembers`, `ai/openai_compat_objects_test.go::TestOpenAICompatKeepsObjectMemberOrder`, `ai/openai_compat_objects_test.go::TestResolveSamplingParamsInOrder`, `coding/extension/host/subprocess/model_stream_sampling_order_test.go::TestDecodeModelStreamRequestKeepsSamplingParamsOrder`, `coding/model_member_order_wire_test.go::TestSuppliedObjectsReachTheWireInTheirSourceOrder`, `internal/codingagent/model_registry_member_order_test.go::TestSamplingParamsMergeKeepsSpreadOrder`, `internal/codingagent/model_registry_merge_compat_fields_test.go::TestMergeCompatSpreadsEveryScalarCompatField` and 2 more in docs/bug-ledger.json
+- **Release note:** OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with their members in the order the source lists them, as Pi does; PiG wrote each sorted by key. This holds for `chat_template_kwargs` / `chat_template_args` (compat `chatTemplateKwargs` / `chatTemplateArgs`), for `provider` and its nested objects such as `max_price` (compat `openRouterRouting`), and for the sampling parameters at the top level of the request (`samplingParams`, `samplingParamsByThinkingLevel` and a request's own). The content was the same. The order is kept from `models.json`, from a provider an extension registers and from a request an extension streams with; a provider entry's compat merged with a model's and with a model override's follows Pi's spread (the base's members in the base's order, an overridden member in its place, new members after them). The sampling parameters of OpenAI Responses and Azure OpenAI Responses requests follow the same order. Go callers: `ai.Model` and `ai.StreamOptions` gain `SamplingParamsOrder` (`ai.Model` also `SamplingParamsByThinkingLevelOrder`) beside the maps, and `ai.MergeOpenAICompat` merges two compats as Pi's `mergeCompat` does; a caller that sets only the map still sends its members sorted.
+
 ### BF-4027b34
 
 **A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer…**
@@ -9974,6 +10022,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4db62b64ea` (2026-11-05)
 - **Tests:** `internal/codingagent/startup_window_keys_pty_test.go::TestRunDoesNotSubmitTheInitialMessageAfterAStartupQuit`, `internal/codingagent/startup_window_keys_pty_test.go::TestRunStartupQuitWithAPlainMessageChild`, `internal/codingagent/startup_window_keys_pty_test.go::TestRunStartupQuitWithASlashCommandChild`
 - **Release note:** Quitting during startup (Ctrl-D, or Ctrl-C twice, while the tools download or the terminal colours are queried) in a session started with an initial message, such as `pig "/hello"`, ends the session cleanly instead of crashing or starting a prompt with no session bound.
+
+### BF-4de6fba
+
+**A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does; PiG wrote `function, type`.
+- **Root cause:** Pi builds the tool choice of a named function anew from the caller's function name: { type: "function", function: { name } } (mistral-conversations.ts:902-905). PiG built it as a Go map, which is written function, type. It is a struct in Pi's order.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4de6fbaf00` (2026-11-13)
+- **Tests:** `ai/mistral_map_tool_choice_test.go::TestMistralToolChoiceMatchesPiMapToolChoice`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi`, `ai/mistral_transcript_payload_oracle_test.go::TestMistralTranscriptPayloadMatchesPi`, `ai/mistral_wire_body_oracle_test.go::TestMistralWireBodyMatchesPi`
+- **Release note:** A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does; PiG wrote `function, type`. The content was the same. Only an extension or SDK caller that passes a tool choice object reaches this.
 
 ### BF-4e204f4
 
@@ -23677,6 +23739,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/yaml12/parse_mutation_test.go::TestParseMatchesTheLibraryOnErrorRangesPastNonASCII`
 - **Release note:** A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `|description: ...`) draws the carets of the `Implicit keys need to be on a single line` message as the yaml library does when the scalar's content holds a non-ASCII character: the range ends one UTF-16 unit per character after the key's offset, where it used to count bytes and print one caret or too many.
 
+### BF-b7d2c07
+
+**Azure OpenAI Responses requests hold the members Pi's Azure requests hold**
+
+- **Source:** PiG's own defect
+- **Symptom:** Azure OpenAI Responses requests hold the members Pi's Azure requests hold.
+- **Root cause:** The exclusions came in with the squashed commit (PiG 0.5.0); no divergence record or marker covers any of the five (docs/parity/DIVERGENCES.md names Azure for the User-Agent only).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b7d2c0775e` (2026-11-13)
+- **Tests:** `ai/openai_responses_payload_oracle_test.go::TestAzureOpenAIResponsesPayloadMatchesPi`, `ai/openai_responses_wire_body_oracle_test.go::TestAzureOpenAIResponsesWireBodyMatchesPi`, `test/parity/scenarios/providers-faux-streaming/38-azure-openai-responses-print-request-members.toml`
+- **Release note:** Azure OpenAI Responses requests hold the members Pi's Azure requests hold. PiG sent Azure three members Pi does not send: `prompt_cache_retention` (with long cache retention), `prompt_cache_options` (for a model with explicit cache mode) and `service_tier` (when one was configured). PiG left out two members Pi sends: `prompt_cache_key` when cache retention is `none`, and `max_output_tokens` for a model marked as not supporting it.
+
 ### BF-b7d9b2b
 
 **`pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when…**
@@ -25597,6 +25673,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `38b0f0c036` (2026-10-05), `ce0f352637` (2026-10-07)
 - **Tests:** `durable/env/node/conformance_cases_test.go::TestCreateEnvConformanceDetectsABrokenEnvironment`, `internal/codingagent/session_set_file_test.go::TestSetSessionFileOnAnInMemoryManagerDoesNotPersist`, `internal/codingagent/session_set_file_test.go::TestSetSessionFileSwitchesThePersistedManager`, `internal/codingagent/slash_command_source_test.go::TestSlashCommandCatalogListsPromptAndSkillSources`, `internal/codingagent/tools/bash_tool_options_test.go::TestCreatePowerShellToolRunsCustomOperationsAfterTheSpawnHook`, `tui/highlight_test.go::TestCliHighlightThemeColorsSubstitutionsWithTheTextColor`, `tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently`, `tui/select_list_theme_test.go::TestGetSelectListThemeColorsFromTheActiveTheme` and 2 more in docs/bug-ledger.json
 - **Release note:** The editor's autocomplete list takes its colors from one `getSelectListTheme` equivalent, the same function the other select lists use.
+
+### BF-ce136a8
+
+**OpenAI Chat Completions request bodies now have the member order of the bodies Pi sends**
+
+- **Source:** PiG's own defect
+- **Symptom:** OpenAI Chat Completions request bodies now have the member order of the bodies Pi sends.
+- **Root cause:** Pi builds the Chat Completions request as JavaScript objects and the OpenAI client writes them with JSON.stringify, so the members of each object are on the wire in the order Pi's code created them. PiG wrote two objects in another order. The content was the same.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ce136a8bd5` (2026-11-13)
+- **Tests:** `ai/openai_completions_payload_oracle_test.go::TestOpenAICompletionsDetectedCompatPayloadMatchesPi`, `ai/openai_completions_payload_oracle_test.go::TestOpenAICompletionsPayloadMatchesPi`, `ai/openai_completions_wire_body_oracle_test.go::TestOpenAICompletionsWireBodyMatchesPi`, `ai/request_marshal_to_test.go::TestRequestTypesEncodeAsTheirMarshalJSON`, `test/parity/scenarios/providers-faux-streaming/35-openai-completions-print-request-member-order.toml`
+- **Release note:** OpenAI Chat Completions request bodies now have the member order of the bodies Pi sends. A replayed assistant message that carries reasoning was written `role, content, tool_calls, reasoning_content` (Pi: `role, content, reasoning_content, tool_calls`; the same for `reasoning` and `reasoning_text`), and the z.ai `thinking` member was `clear_thinking, type` (Pi: `type, clear_thinking`). The content was the same. This held for every provider that uses the Chat Completions API. A request built from a transcript that converts to no message now sends `"messages":[]`, as Pi does, where PiG sent `"messages":null`; a first prompt and a compaction's own request cannot produce one; an extension whose `context` handler returns an empty message list can. Not yet in Pi's order: objects a model's catalog entry or a caller supplies (`chat_template_kwargs`, `chat_template_args`, the OpenRouter `provider` routing object, sampling parameters), which PiG writes with sorted keys.
 
 ### BF-ce366dd
 

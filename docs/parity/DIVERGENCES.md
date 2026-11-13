@@ -1251,7 +1251,7 @@ What: every Node process is one realm, and all realms share one `pi.events` bus.
    - `util.inspect` of a non-extensible foreign payload (frozen, sealed or `Object.preventExtensions`) after the reader queries or changes its extensibility prints Pi's output inside `Proxy(...)` on Node 26.0.0 and later, for example `Proxy({ k: 1 })`. On Node 25 and earlier it prints exactly as in Pi, because the shadow holds the owner's own properties. Before that query it prints as in Pi on every version.
 
    Every other inspect, clone and write case must match Pi.
-5. Native realms. Go, Rust and Python extensions have no `pi.events` API (no Pi counterpart); native data would cross by value.
+5. Native realms. Go, Rust, Python and Lisp extensions use the same bus through their SDKs (`Events()` in Go, `events()` in Rust, the `events` property in Python, `events-on` and `events-emit` in Lisp); Pi has no native SDK. A payload to or from a native realm crosses by value as JSON: a native listener receives the emitter's `JSON.stringify` view and not the emitter's object (`docs/extension-api-parity.md`, the row "`pi.events` in a Go, Rust or Python realm"; `extensions/sdk-lisp/src/event-bus.lisp`).
 
 Why: several processes have several event loops. Pi's guarantees that depend on one thread and one microtask queue can be reproduced for the synchronous prefix and the first continuation, but general interleaving would require serializing all extension JavaScript in every process, and distributed cycle collection has no bounded design yet (D78 shares it). Proxy-based identity cannot carry V8 internal slots.
 

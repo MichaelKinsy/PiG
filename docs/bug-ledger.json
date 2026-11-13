@@ -5744,6 +5744,35 @@
       "tests": []
     },
     {
+      "id": "BF-202aea0",
+      "title": "OpenAI Responses requests replay a stored reasoning item as it was stored, and the items of a client tool…",
+      "symptom": "OpenAI Responses requests replay a stored reasoning item as it was stored, and the items of a client tool search have Pi's member order.",
+      "rootCause": "Three fixtures fed the converter a same-model signature that is not JSON, which Pi rejects; each keeps the property its name claims: - TestRequestBuildLeavesTheTranscriptUnchanged: fed signatures \"sig\" and \"r\"; now two stored reasoning items. Assertion unchanged. - TestProvidersSendTheSameBodyForEveryLargeStringOfARequest: fed \"sig\" repeated 2000 times; now a stored reasoning item whose encrypted_content is that string, still a large string of the request. Assertion unchanged. - TestResponsesConvertMessages_CrossProviderThinkingSkipped: gave the inner converter another provider's signed block without the transform that precedes it; now through TransformMessages as the stream does. It still…",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenAI Responses requests replay a stored reasoning item as it was stored, and the items of a client tool search have Pi's member order. A replayed reasoning item was rewritten `type, id, summary, encrypted_content` and lost any member PiG does not know; Pi sends the stored object as the provider wrote it. The `tool_search_call` and `tool_search_output` items were written `type, status, call_id, ...` (Pi: `type, call_id, execution, status, ...`). This held for OpenAI, Azure OpenAI and ChatGPT (Codex) Responses. A stored reasoning signature that is not JSON now ends the request with the JSON error before anything is sent, as in Pi, where PiG dropped the block and sent the request; only a block of the same provider, API and model id with such a signature reaches this, which means a hand-edited or corrupted session.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "202aea01ba",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/openai_responses_test.go::TestResponsesConvertMessages_CrossProviderThinkingSkipped",
+        "ai/openai_responses_test.go::TestResponsesConvertMessages_StoredSignatureThatIsNotJSON",
+        "ai/openai_responses_tool_notices_oracle_test.go::TestOpenAIResponsesToolChangeNoticesMatchPi",
+        "ai/openai_responses_wire_body_oracle_test.go::TestOpenAIResponsesWireBodyMatchesPi",
+        "ai/request_marshal_to_test.go::TestRequestTypesEncodeAsTheirMarshalJSON",
+        "ai/request_string_providers_test.go::TestProvidersSendTheSameBodyForEveryLargeStringOfARequest",
+        "ai/transcript_borrow_test.go::TestRequestBuildLeavesTheTranscriptUnchanged",
+        "test/parity/scenarios/providers-faux-streaming/36-openai-responses-print-request-member-order.toml"
+      ]
+    },
+    {
       "id": "BF-202b8f1",
       "title": "On arm64 and other CPUs with a fused multiply-add, the OKHSL saturation of a color (used when generating the…",
       "symptom": "It differed from Pi's in the last bit for about 9% of sRGB colors.",
@@ -7028,6 +7057,43 @@
         "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName",
         "coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi",
         "coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream"
+      ]
+    },
+    {
+      "id": "BF-2653e62",
+      "title": "Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the…",
+      "symptom": "Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the session: the transcript held an assistant message with tool calls that no tool result answered.",
+      "rootCause": "When a run was aborted in the middle of a batch of tool calls, the loop left the batch at once: executeToolCallsSequential and executeToolCallsParallel stopped at the first call that ended under a cancelled context. The calls the loop had not reached got no tool_execution_start, no tool_execution_end and no tool result. The session then held an assistant message whose tool calls nothing answered, followed by the aborted response. PiG 0.2.0, 0.3.0 and 0.7.0 have the defect; it is Pi's own (#9986), fixed there by.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Pressing Esc during a batch of tool calls left the calls that had not started yet without a result in the session: the transcript held an assistant message with tool calls that no tool result answered. Each of those calls now gets its start and end events and an \"Operation aborted\" error result, and extension `tool_call` handlers are not asked about a call that will not run. A call whose `tool_call` handler in an extension process was still deciding when the run was aborted now reads \"Operation aborted\" too, where it read \"event tool_call: context canceled\". `ctx.executeTool` answers an aborted run the same way, before it looks the tool up. A session that an older build left with unanswered calls still opens and continues as before. Follows Pi 4438c58ba ([#9986](https://github.com/earendil-works/pi/issues/9986)).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2653e62834",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "agent/abort_batch_answers_test.go::TestABeforeHookEndedByTheAbortAnswersOperationAborted",
+        "agent/abort_batch_answers_test.go::TestAbortBeforeTheFirstCallOfABatchAnswersEveryCall",
+        "agent/abort_batch_answers_test.go::TestAbortBetweenTwoCallsOfASequentialBatchAnswersTheRest",
+        "agent/abort_batch_answers_test.go::TestAbortDuringACallOfASequentialBatchAnswersTheRestInOrder",
+        "agent/abort_batch_answers_test.go::TestAbortWhileAParallelBatchIsPreparedAnswersEveryCallInOrder",
+        "agent/abort_batch_answers_test.go::TestRunToolCallAnswersAnAbortedSignalBeforeTheLookupAndTheHooks",
+        "agent/abort_batch_answers_test.go::TestSteeringQueuedDuringAnAbortedBatchFollowsAResultForEveryCall",
+        "agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi",
+        "agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi",
+        "agent/agent_loop_upstream_test.go::TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "agent/agent_loop_upstream_test.go::TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "agent/agent_test.go::TestExecuteParallelAnswersUnstartedCallsAfterContextAbort",
+        "agent/agent_test.go::TestExecuteSequentialAnswersEveryCallAfterContextAbort",
+        "coding/cli/rpc_aborted_batch_test.go::TestRPCAbortedBatchAnswersEveryCallInOrder",
+        "coding/session_aborted_batch_test.go::TestSessionAbortedBatchPersistsAResultForEveryCall",
+        "test/parity/scenarios/rpc/82-rpc-abort-mid-batch-answers-every-call.toml"
       ]
     },
     {
@@ -12407,6 +12473,37 @@
       ]
     },
     {
+      "id": "BF-3fe8180",
+      "title": "OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with…",
+      "symptom": "OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with their members in the order the source lists them, as Pi does; PiG wrote each sorted by key.",
+      "rootCause": "Three objects of an openai-completions request are supplied by a catalog entry, models.json, an extension or the caller, and Pi writes each with its members in the order the source lists them. PiG held them in Go maps, which encoding/json writes sorted.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenAI-compatible (chat completions) requests write the objects a model entry or the caller supplies with their members in the order the source lists them, as Pi does; PiG wrote each sorted by key. This holds for `chat_template_kwargs` / `chat_template_args` (compat `chatTemplateKwargs` / `chatTemplateArgs`), for `provider` and its nested objects such as `max_price` (compat `openRouterRouting`), and for the sampling parameters at the top level of the request (`samplingParams`, `samplingParamsByThinkingLevel` and a request's own). The content was the same. The order is kept from `models.json`, from a provider an extension registers and from a request an extension streams with; a provider entry's compat merged with a model's and with a model override's follows Pi's spread (the base's members in the base's order, an overridden member in its place, new members after them). The sampling parameters of OpenAI Responses and Azure OpenAI Responses requests follow the same order. Go callers: `ai.Model` and `ai.StreamOptions` gain `SamplingParamsOrder` (`ai.Model` also `SamplingParamsByThinkingLevelOrder`) beside the maps, and `ai.MergeOpenAICompat` merges two compats as Pi's `mergeCompat` does; a caller that sets only the map still sends its members sorted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3fe81801cc",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/openai_compat_objects_test.go::TestBundledCatalogCompatObjectsRoundTrip",
+        "ai/openai_compat_objects_test.go::TestMergeOpenAICompatSpreadsObjectMembers",
+        "ai/openai_compat_objects_test.go::TestOpenAICompatKeepsObjectMemberOrder",
+        "ai/openai_compat_objects_test.go::TestResolveSamplingParamsInOrder",
+        "coding/extension/host/subprocess/model_stream_sampling_order_test.go::TestDecodeModelStreamRequestKeepsSamplingParamsOrder",
+        "coding/model_member_order_wire_test.go::TestSuppliedObjectsReachTheWireInTheirSourceOrder",
+        "internal/codingagent/model_registry_member_order_test.go::TestSamplingParamsMergeKeepsSpreadOrder",
+        "internal/codingagent/model_registry_merge_compat_fields_test.go::TestMergeCompatSpreadsEveryScalarCompatField",
+        "internal/codingagent/subprocess_member_order_test.go::TestAPIModelOfJSONKeepsSuppliedMemberOrder",
+        "internal/codingagent/subprocess_member_order_test.go::TestSubprocessStreamOptionsKeepSamplingParamsOrder"
+      ]
+    },
+    {
       "id": "BF-4027b34",
       "title": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer…",
       "symptom": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer, which stays in an idle scheduler's timer heap until that scheduler next runs.",
@@ -15788,6 +15885,31 @@
         "internal/codingagent/startup_window_keys_pty_test.go::TestRunDoesNotSubmitTheInitialMessageAfterAStartupQuit",
         "internal/codingagent/startup_window_keys_pty_test.go::TestRunStartupQuitWithAPlainMessageChild",
         "internal/codingagent/startup_window_keys_pty_test.go::TestRunStartupQuitWithASlashCommandChild"
+      ]
+    },
+    {
+      "id": "BF-4de6fba",
+      "title": "A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does…",
+      "symptom": "A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does; PiG wrote `function, type`.",
+      "rootCause": "Pi builds the tool choice of a named function anew from the caller's function name: { type: \"function\", function: { name } } (mistral-conversations.ts:902-905). PiG built it as a Go map, which is written function, type. It is a struct in Pi's order.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does; PiG wrote `function, type`. The content was the same. Only an extension or SDK caller that passes a tool choice object reaches this.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4de6fbaf00",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/mistral_map_tool_choice_test.go::TestMistralToolChoiceMatchesPiMapToolChoice",
+        "ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi",
+        "ai/mistral_transcript_payload_oracle_test.go::TestMistralTranscriptPayloadMatchesPi",
+        "ai/mistral_wire_body_oracle_test.go::TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -43240,6 +43362,30 @@
       ]
     },
     {
+      "id": "BF-b7d2c07",
+      "title": "Azure OpenAI Responses requests hold the members Pi's Azure requests hold",
+      "symptom": "Azure OpenAI Responses requests hold the members Pi's Azure requests hold.",
+      "rootCause": "The exclusions came in with the squashed commit (PiG 0.5.0); no divergence record or marker covers any of the five (docs/parity/DIVERGENCES.md names Azure for the User-Agent only).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Azure OpenAI Responses requests hold the members Pi's Azure requests hold. PiG sent Azure three members Pi does not send: `prompt_cache_retention` (with long cache retention), `prompt_cache_options` (for a model with explicit cache mode) and `service_tier` (when one was configured). PiG left out two members Pi sends: `prompt_cache_key` when cache retention is `none`, and `max_output_tokens` for a model marked as not supporting it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b7d2c0775e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/openai_responses_payload_oracle_test.go::TestAzureOpenAIResponsesPayloadMatchesPi",
+        "ai/openai_responses_wire_body_oracle_test.go::TestAzureOpenAIResponsesWireBodyMatchesPi",
+        "test/parity/scenarios/providers-faux-streaming/38-azure-openai-responses-print-request-members.toml"
+      ]
+    },
+    {
       "id": "BF-b7d9b2b",
       "title": "`pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when…",
       "symptom": "`pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when the agent directory is reached through a symlink, such as `~/.pi` linked into a dotfiles repository.",
@@ -47241,6 +47387,32 @@
         "tui/select_list_theme_test.go::TestGetSelectListThemeColorsFromTheActiveTheme",
         "tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationEndsWithTheString",
         "tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationTakesTheTextColor"
+      ]
+    },
+    {
+      "id": "BF-ce136a8",
+      "title": "OpenAI Chat Completions request bodies now have the member order of the bodies Pi sends",
+      "symptom": "OpenAI Chat Completions request bodies now have the member order of the bodies Pi sends.",
+      "rootCause": "Pi builds the Chat Completions request as JavaScript objects and the OpenAI client writes them with JSON.stringify, so the members of each object are on the wire in the order Pi's code created them. PiG wrote two objects in another order. The content was the same.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenAI Chat Completions request bodies now have the member order of the bodies Pi sends. A replayed assistant message that carries reasoning was written `role, content, tool_calls, reasoning_content` (Pi: `role, content, reasoning_content, tool_calls`; the same for `reasoning` and `reasoning_text`), and the z.ai `thinking` member was `clear_thinking, type` (Pi: `type, clear_thinking`). The content was the same. This held for every provider that uses the Chat Completions API. A request built from a transcript that converts to no message now sends `\"messages\":[]`, as Pi does, where PiG sent `\"messages\":null`; a first prompt and a compaction's own request cannot produce one; an extension whose `context` handler returns an empty message list can. Not yet in Pi's order: objects a model's catalog entry or a caller supplies (`chat_template_kwargs`, `chat_template_args`, the OpenRouter `provider` routing object, sampling parameters), which PiG writes with sorted keys.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ce136a8bd5",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/openai_completions_payload_oracle_test.go::TestOpenAICompletionsDetectedCompatPayloadMatchesPi",
+        "ai/openai_completions_payload_oracle_test.go::TestOpenAICompletionsPayloadMatchesPi",
+        "ai/openai_completions_wire_body_oracle_test.go::TestOpenAICompletionsWireBodyMatchesPi",
+        "ai/request_marshal_to_test.go::TestRequestTypesEncodeAsTheirMarshalJSON",
+        "test/parity/scenarios/providers-faux-streaming/35-openai-completions-print-request-member-order.toml"
       ]
     },
     {

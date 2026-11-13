@@ -95,7 +95,8 @@ func TestDocumentedSlashCommandsExist(t *testing.T) {
 		"/sprite":    "PiG Standard piglogin extension",
 		"/review":    "example prompt template a user creates (prompt-templates.md)",
 		"/component": "example prompt template a user creates (prompt-templates.md)",
-		"/greet":     "command of the tour extension the reader writes in first-extension.md",
+		"/greet":     "command of the tour extension the reader writes in first-extension.md, and of the greeter extension in go-hot-reload.md",
+		"/locate":    "command of the asker extension the reader writes in event-bus.md",
 		"/ask":       "command of the tour extension the reader writes in first-extension.md",
 		// piglets/README.md and piglets/standard/README.md document the commands their Piglets register.
 		"/pig-porter":   "the porter Piglet's command (piglets/porter)",

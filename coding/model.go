@@ -174,6 +174,7 @@ func modelFromEntry(entry icodingagent.ModelEntry, provider ai.Provider) *ai.Mod
 	model.ThinkingLevelMap = cloneThinkingLevelMap(entry.ThinkingLevelMap)
 	model.SamplingParams = maps.Clone(entry.SamplingParams)
 	model.SamplingParamsByThinkingLevel = cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel)
+	model.SamplingParamsOrder, model.SamplingParamsByThinkingLevelOrder = entry.SamplingParamsOrder, entry.SamplingParamsByThinkingLevelOrder
 	model.PromptCache = maps.Clone(entry.PromptCache)
 	model.ProviderMeta = ai.ProviderMetadata{
 		ProviderID: entry.ProviderID,
@@ -292,33 +293,37 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 			baseURL = firstNonEmpty(os.Getenv("OLLAMA_HOST"), "http://localhost:11434/v1")
 		}
 		return ai.NewOpenAIProvider(ai.OpenAIConfig{
-			ModelMetadata:                 modelFromEntry(entry, nil),
-			BaseURL:                       baseURL,
-			APIKey:                        apiKey,
-			GetAPIKey:                     resolveAPIKey,
-			Model:                         modelID,
-			ProviderID:                    providerID,
-			ExtraHeaders:                  extraHeaders,
-			SamplingParams:                maps.Clone(entry.SamplingParams),
-			SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel),
-			Env:                           ai.ProviderEnv(maps.Clone(entry.Env)),
-			Compat:                        cloneCompat(entry.Compat),
-			Insecure:                      entry.Insecure,
+			ModelMetadata:                      modelFromEntry(entry, nil),
+			BaseURL:                            baseURL,
+			APIKey:                             apiKey,
+			GetAPIKey:                          resolveAPIKey,
+			Model:                              modelID,
+			ProviderID:                         providerID,
+			ExtraHeaders:                       extraHeaders,
+			SamplingParams:                     maps.Clone(entry.SamplingParams),
+			SamplingParamsByThinkingLevel:      cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel),
+			SamplingParamsOrder:                entry.SamplingParamsOrder,
+			SamplingParamsByThinkingLevelOrder: entry.SamplingParamsByThinkingLevelOrder,
+			Env:                                ai.ProviderEnv(maps.Clone(entry.Env)),
+			Compat:                             cloneCompat(entry.Compat),
+			Insecure:                           entry.Insecure,
 		}), nil
 	case ai.APIOpenAIResponses:
 		return ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{
-			ModelMetadata:                 modelFromEntry(entry, nil),
-			BaseURL:                       baseURL,
-			APIKey:                        apiKey,
-			GetAPIKey:                     resolveAPIKey,
-			Model:                         modelID,
-			ProviderID:                    providerID,
-			ExtraHeaders:                  extraHeaders,
-			SamplingParams:                maps.Clone(entry.SamplingParams),
-			SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel),
-			Env:                           ai.ProviderEnv(maps.Clone(entry.Env)),
-			Compat:                        cloneCompat(entry.Compat),
-			IsReasoning:                   entry.Reasoning,
+			ModelMetadata:                      modelFromEntry(entry, nil),
+			BaseURL:                            baseURL,
+			APIKey:                             apiKey,
+			GetAPIKey:                          resolveAPIKey,
+			Model:                              modelID,
+			ProviderID:                         providerID,
+			ExtraHeaders:                       extraHeaders,
+			SamplingParams:                     maps.Clone(entry.SamplingParams),
+			SamplingParamsByThinkingLevel:      cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel),
+			SamplingParamsOrder:                entry.SamplingParamsOrder,
+			SamplingParamsByThinkingLevelOrder: entry.SamplingParamsByThinkingLevelOrder,
+			Env:                                ai.ProviderEnv(maps.Clone(entry.Env)),
+			Compat:                             cloneCompat(entry.Compat),
+			IsReasoning:                        entry.Reasoning,
 		}), nil
 	case ai.APIOpenAICodexResponses:
 		return ai.NewOpenAICodexResponsesProvider(ai.OpenAICodexResponsesConfig{
@@ -332,17 +337,19 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 		}), nil
 	case ai.APIAzureOpenAIResponses:
 		return ai.NewAzureOpenAIResponsesProvider(ai.AzureOpenAIResponsesConfig{
-			ModelMetadata:                 modelFromEntry(entry, nil),
-			Compat:                        cloneCompat(entry.Compat),
-			BaseURL:                       baseURL,
-			APIKey:                        apiKey,
-			Model:                         modelID,
-			ProviderID:                    providerID,
-			ExtraHeaders:                  extraHeaders,
-			SamplingParams:                maps.Clone(entry.SamplingParams),
-			SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel),
-			Env:                           ai.ProviderEnv(maps.Clone(entry.Env)),
-			IsReasoning:                   entry.Reasoning,
+			ModelMetadata:                      modelFromEntry(entry, nil),
+			Compat:                             cloneCompat(entry.Compat),
+			BaseURL:                            baseURL,
+			APIKey:                             apiKey,
+			Model:                              modelID,
+			ProviderID:                         providerID,
+			ExtraHeaders:                       extraHeaders,
+			SamplingParams:                     maps.Clone(entry.SamplingParams),
+			SamplingParamsByThinkingLevel:      cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel),
+			SamplingParamsOrder:                entry.SamplingParamsOrder,
+			SamplingParamsByThinkingLevelOrder: entry.SamplingParamsByThinkingLevelOrder,
+			Env:                                ai.ProviderEnv(maps.Clone(entry.Env)),
+			IsReasoning:                        entry.Reasoning,
 		}), nil
 	case ai.APIAnthropicMessages:
 		config := ai.AnthropicConfig{
@@ -415,18 +422,20 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 		return ai.NewPiMessagesProvider(config), nil
 	default:
 		return ai.NewOpenAIProvider(ai.OpenAIConfig{
-			ModelMetadata:                 modelFromEntry(entry, nil),
-			BaseURL:                       baseURL,
-			APIKey:                        apiKey,
-			GetAPIKey:                     resolveAPIKey,
-			Model:                         modelID,
-			ProviderID:                    providerID,
-			ExtraHeaders:                  extraHeaders,
-			SamplingParams:                maps.Clone(entry.SamplingParams),
-			SamplingParamsByThinkingLevel: cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel),
-			Env:                           ai.ProviderEnv(maps.Clone(entry.Env)),
-			Compat:                        cloneCompat(entry.Compat),
-			Insecure:                      entry.Insecure,
+			ModelMetadata:                      modelFromEntry(entry, nil),
+			BaseURL:                            baseURL,
+			APIKey:                             apiKey,
+			GetAPIKey:                          resolveAPIKey,
+			Model:                              modelID,
+			ProviderID:                         providerID,
+			ExtraHeaders:                       extraHeaders,
+			SamplingParams:                     maps.Clone(entry.SamplingParams),
+			SamplingParamsByThinkingLevel:      cloneSamplingParamsByThinkingLevel(entry.SamplingParamsByThinkingLevel),
+			SamplingParamsOrder:                entry.SamplingParamsOrder,
+			SamplingParamsByThinkingLevelOrder: entry.SamplingParamsByThinkingLevelOrder,
+			Env:                                ai.ProviderEnv(maps.Clone(entry.Env)),
+			Compat:                             cloneCompat(entry.Compat),
+			Insecure:                           entry.Insecure,
 		}), nil
 	}
 }

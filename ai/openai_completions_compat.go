@@ -113,5 +113,7 @@ func getOpenAICompletionsCompat(providerID, baseURL, modelID string, model *Open
 			merged.Field(i).Set(overlay.Field(i))
 		}
 	}
+	// The overlay sets exported fields; the member order of the model's compat objects goes with them.
+	detected.objectOrder = model.objectOrder
 	return &detected
 }

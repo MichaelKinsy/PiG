@@ -1696,8 +1696,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestAgentLoopConfigAfterToolCallFuncMarksBatchTerminating",
-        "test:coding/cli/agent_loop_oracle_test.go#TestAgentLoopMatchesPi"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -1764,6 +1764,7 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
         "test:coding/cli/agent_loop_oracle_test.go#TestAgentLoopMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -2011,7 +2012,7 @@
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
         "test:coding/cli/agent_loop_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/standalone_loop_test.go#TestRunAgentLoop_PollsSteeringAndFollowUpMessages"
+        "test:agent/abort_batch_answers_test.go#TestSteeringQueuedDuringAnAbortedBatchFollowsAResultForEveryCall"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -2365,8 +2366,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:coding/cli/agent_loop_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/standalone_loop_test.go#TestAgentLoop_ReportsARunFailureOnTheProcessLogAndEndsTheStream"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -3813,7 +3814,8 @@
         "call:agent/run_tool_call.go#RunToolCall"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs"
+        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs",
+        "test:agent/abort_batch_answers_test.go#TestRunToolCallAnswersAnAbortedSignalBeforeTheLookupAndTheHooks"
       ]
     },
     {
@@ -4044,9 +4046,9 @@
         "call:agent/tool_execution.go#ToolUpdatesObserved"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -4066,9 +4068,9 @@
         "call:agent/tool_execution.go#ToolUpdatesObserved"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -4221,8 +4223,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMixedBatchWithOneTerminatingBlockedCallContinues",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMutatedArgsExecuteWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/tool_call_hook_func_upstream_test.go#TestBeforeToolCallFuncMixedBatchWithOneTerminatingBlockedCallContinues"
       ]
     },
     {
@@ -4309,8 +4311,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestRunToolCallFuncHooksValidateRunAndReportFailures",
-        "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/tool_call_hook_func_upstream_test.go#TestRunToolCallFuncHooksValidateRunAndReportFailures"
       ]
     },
     {
@@ -9287,8 +9289,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -26614,8 +26616,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -26769,8 +26771,8 @@
       ],
       "evidence": [
         "test:ai/provider_option_fields_upstream_test.go#TestCodexTextVerbosityOption",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -27235,7 +27237,7 @@
       "evidence": [
         "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/openai_completions_chat_template_values_test.go#TestOpenAICompletionsChatTemplateEffortFollowsTheThinkingLevelMap"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -27301,7 +27303,7 @@
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/types_unions_test.go#TestGrammarVariantsAndRoutingAliasesAreTheFieldTypes"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -28505,7 +28507,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -28549,7 +28551,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_chatgpt_sign_in_upstream_test.go#TestOpenAIResponsesChatGPTSignInRequestFieldsUpstream",
@@ -28592,7 +28594,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#openAIResponsesProvider.Stream"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -28701,7 +28703,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
@@ -29083,8 +29085,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -32546,7 +32548,7 @@
       "evidence": [
         "test:ai/openai_request_key_order_oracle_test.go#TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder",
         "test:ai/interface_ledger_test.go#TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream",
-        "test:ai/radius_clone_alias_test.go#TestCloneRadiusModelSharesNoCollectionWithItsSource"
+        "test:ai/openai_compat_objects_test.go#TestResolveSamplingParamsInOrder"
       ]
     },
     {
@@ -34223,7 +34225,7 @@
       "evidence": [
         "test:ai/openai_completions_member_type_oracle_test.go#TestOpenAICompletionsMistypedMembersMatchPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared"
       ]
     },
     {
@@ -34244,8 +34246,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
       ]
     },
     {
@@ -34288,8 +34290,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
       ]
     },
     {
@@ -34856,8 +34858,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnlyContentIsReplaced"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs"
       ]
     },
     {
@@ -38162,8 +38164,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -44620,8 +44622,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -44775,8 +44777,8 @@
       ],
       "evidence": [
         "test:ai/provider_option_fields_upstream_test.go#TestCodexTextVerbosityOption",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -47237,8 +47239,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -53877,8 +53879,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -72322,8 +72324,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -72477,8 +72479,8 @@
       ],
       "evidence": [
         "test:ai/provider_option_fields_upstream_test.go#TestCodexTextVerbosityOption",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -72987,7 +72989,7 @@
       "evidence": [
         "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/openai_completions_chat_template_values_test.go#TestOpenAICompletionsChatTemplateEffortFollowsTheThinkingLevelMap"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -73053,7 +73055,7 @@
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/types_unions_test.go#TestGrammarVariantsAndRoutingAliasesAreTheFieldTypes"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -74301,7 +74303,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -74345,7 +74347,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_chatgpt_sign_in_upstream_test.go#TestOpenAIResponsesChatGPTSignInRequestFieldsUpstream",
@@ -74388,7 +74390,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#openAIResponsesProvider.Stream"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -74497,7 +74499,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
@@ -74879,8 +74881,8 @@
       ],
       "evidence": [
         "test:ai/sampling_options_upstream_test.go#TestSamplingParamsByThinkingLevelDirectStreamUpstream",
-        "test:ai/openai_responses_payload_oracle_test.go#TestAzureOpenAIResponsesPayloadMatchesPi",
-        "test:ai/openai_responses_payload_oracle_test.go#TestOpenAICodexResponsesPayloadMatchesPi"
+        "test:ai/google_wire_body_oracle_test.go#TestGoogleWireBodyMatchesPi",
+        "test:ai/mistral_wire_body_oracle_test.go#TestMistralWireBodyMatchesPi"
       ]
     },
     {
@@ -78640,7 +78642,7 @@
       "evidence": [
         "test:ai/openai_request_key_order_oracle_test.go#TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder",
         "test:ai/interface_ledger_test.go#TestResolveSamplingParamsMergesDefaultsLevelAndRequestInOrderLikeUpstream",
-        "test:ai/radius_clone_alias_test.go#TestCloneRadiusModelSharesNoCollectionWithItsSource"
+        "test:ai/openai_compat_objects_test.go#TestResolveSamplingParamsInOrder"
       ]
     },
     {
@@ -81139,7 +81141,7 @@
       "evidence": [
         "test:ai/openai_completions_member_type_oracle_test.go#TestOpenAICompletionsMistypedMembersMatchPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared"
       ]
     },
     {
@@ -81160,8 +81162,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
       ]
     },
     {
@@ -81204,8 +81206,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContextUpdateReplacesExecutableTools"
       ]
     },
     {
@@ -81772,8 +81774,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnlyContentIsReplaced"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs"
       ]
     },
     {
@@ -90451,7 +90453,7 @@
       "evidence": [
         "test:coding/model_registry_custom_upstream_test.go#TestModelRegistryCustomModelsUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/openai_completions_chat_template_values_test.go#TestOpenAICompletionsChatTemplateEffortFollowsTheThinkingLevelMap"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -90517,7 +90519,7 @@
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
         "test:ai/model_compat_clone_test.go#TestCloneCompatPreservesSerializedCopy",
-        "test:ai/types_unions_test.go#TestGrammarVariantsAndRoutingAliasesAreTheFieldTypes"
+        "test:ai/openai_compat_objects_test.go#TestBundledCatalogCompatObjectsRoundTrip"
       ]
     },
     {
@@ -91166,7 +91168,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -91210,7 +91212,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_chatgpt_sign_in_upstream_test.go#TestOpenAIResponsesChatGPTSignInRequestFieldsUpstream",
@@ -91253,7 +91255,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#openAIResponsesProvider.Stream"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream",
@@ -91362,7 +91364,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_responses.go#getResponsesCompat"
+        "call:ai/openai_compat_objects.go#MergeOpenAICompat"
       ],
       "evidence": [
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
@@ -158139,8 +158141,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -158161,8 +158163,8 @@
       ],
       "evidence": [
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes",
-        "test:agent/agent_upstream_test.go#TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes"
       ]
     },
     {
@@ -158270,9 +158272,9 @@
         "call:agent/tool_execution.go#ToolUpdatesObserved"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -158292,9 +158294,9 @@
         "call:agent/tool_execution.go#ToolUpdatesObserved"
       ],
       "evidence": [
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder",
-        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation"
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfAParallelBatchAbortedWhileCallsArePrepared",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_AnswersEveryToolCallOfASequentialBatchAbortedMidBatch",
+        "test:agent/agent_loop_upstream_test.go#TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate"
       ]
     },
     {
@@ -170288,7 +170290,7 @@
       "evidence": [
         "test:internal/codingagent/custom_editor_test.go#TestCustomEditorEscapeOverAutocompleteGoesToTheEditor",
         "test:internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
-        "test:internal/codingagent/view_client_mode_test.go#TestTerminalViewClientEscapeLeavesThePanelBeforeItInterrupts"
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientEscapeDismissesADialogThatDeclaresItOnce"
       ]
     },
     {
@@ -304041,6 +304043,7 @@
         "call:tui/mouse.go#tuiBase.dispatchMouseToOverlay"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
@@ -304083,6 +304086,7 @@
         "call:tui/mouse.go#tuiBase.dispatchMouseToOverlay"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
@@ -304125,6 +304129,7 @@
         "call:tui/mouse.go#tuiBase.dispatchMouseToOverlay"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
@@ -304210,6 +304215,7 @@
         "call:tui/tui.go#OverlayHandle.GetBounds"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
@@ -304231,6 +304237,7 @@
         "call:tui/tui.go#OverlayHandle.GetBounds"
       ],
       "evidence": [
+        "test:internal/codingagent/view_client_dialog_mode_test.go#TestTerminalViewClientDrawsADialogInTheRenderersFrame",
         "test:tui/mouse_test.go#TestOverlayBoundsAndMouseHitTesting",
         "test:tui/overlay_bounds_test.go#TestOverlayHandleGetBoundsReportsItsOwnOverlay"
       ]
