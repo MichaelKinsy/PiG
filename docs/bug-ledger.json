@@ -40165,6 +40165,28 @@
       ]
     },
     {
+      "id": "BF-a1af4d7",
+      "title": "Fix BuildModel returning a model object for an id no registry lists",
+      "symptom": "Fix BuildModel returning a model object for an id no registry lists",
+      "rootCause": "buildModel treated \"the provider exists\" as \"the model exists\" and filled the gaps with an empty object, so a model id the registry did not list reached the provider's stream function with the provider's credential.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a1af4d7dd9",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/model_unlisted_noconnection_test.go::TestUnlistedModelMakesNoConnection",
+        "coding/model_unlisted_noconnection_test.go::TestUnlistedModelOfAProviderObjectMakesNoConnection"
+      ]
+    },
+    {
       "id": "BF-a1b0991",
       "title": "The error for a model whose provider is not known now reads `Unknown provider: \u003cid\u003e` as in Pi, where it read…",
       "symptom": "The error for a model whose provider is not known now reads `Unknown provider: \u003cid\u003e` as in Pi, where it read `unknown provider: \u003cid\u003e`.",
@@ -43487,6 +43509,26 @@
       ]
     },
     {
+      "id": "BF-b214a4c",
+      "title": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose…",
+      "symptom": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.",
+      "rootCause": "the per-session bindings of a replacement were swapped one by one and the model builder was left out of the list",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b214a4c12d",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b22120f",
       "title": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into",
       "symptom": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into.",
@@ -45233,6 +45275,26 @@
         "durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesDecodeAsJSONParseDoes",
         "durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesEncodeAsPiDoes"
       ]
+    },
+    {
+      "id": "BF-bc05945",
+      "title": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API…",
+      "symptom": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API, window and limits, instead of building it a second time from its name.",
+      "rootCause": "restore followed the old BuildModel contract, which made a model from any provider and id, so it re-resolved what it had already resolved",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API, window and limits, instead of building it a second time from its name.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bc0594500f",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-bc24321",
@@ -48493,6 +48555,26 @@
       ]
     },
     {
+      "id": "BF-cdd5b98",
+      "title": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer…",
+      "symptom": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer leaves the file truncated and loses every provider's cached model catalog.",
+      "rootCause": "the store was written in place with os.WriteFile, which truncates the file before it writes, so any failure after that left a partial file",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer leaves the file truncated and loses every provider's cached model catalog. The file is replaced through a temporary file in the same directory, and a failed write leaves the old content.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cdd5b98d39",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-cdf0be7",
       "title": "Markdown rendering matches Pi on blank lines at the start and end of the text, empty headings and closing `#`…",
       "symptom": "Markdown rendering matches Pi on blank lines at the start and end of the text, empty headings and closing `#` runs, and unterminated code fences: a text that starts with a blank line begins with one empty row, a trailing line of spaces after a list, table or quote adds one, a closing run of `#` is dropped from a heading, an empty heading keeps its row, and an unterminated fence does not show the empty line its final newline splits off.",
@@ -50553,7 +50635,6 @@
         }
       ],
       "tests": [
-        "coding/build_model_native_unlisted_test.go::TestBuildModelOnNativeProviderBuildsUnlistedModel",
         "test/extension-conformance/set_model_object_test.go::TestSetModelObjectAcrossSDKs"
       ]
     },
@@ -62513,6 +62594,55 @@
       ]
     },
     {
+      "id": "BF-fbe92b6",
+      "title": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost…",
+      "symptom": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost its lock, and the refreshed login was thrown away.",
+      "rootCause": "the async lock heartbeat (stale/2 = 15 s) was longer than the sync acquirers stale window (10 s), so a live holder looked stale to them.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D651",
+      "removeWhen": "(A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost its lock, and the refreshed login was thrown away. The lock is now renewed every five seconds, so a slow refresh keeps it. Divergence D651 (approved by the owner, 2026-11-14T14:10:39Z \"proceed\"): Pi renews its async auth lock every 15 s (proper-lockfile stale/2) while its sync readers take any lock older than 10 s; pig renews every 5 s. Why: a live holder is never taken over, so a rotating refresh token is not spent twice. Remove when: Pi renews faster than its sync stale window.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "73cb76959b",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "a7f0835033",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "d5b70c4804",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "fbe92b66a0",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile",
+        "internal/atomicfile/inplace_test.go::TestWriteFileCannotCreateAFileInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReplacesAPlainFileAndReportsNothing",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReportsARealFailureOfTheInPlaceWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceThroughAHardLink",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceWhereTheRenameIsRefused",
+        "internal/atomicfile/xattr_test.go::TestWriteFileCarriesExtendedAttributesOver",
+        "internal/atomicfile/xattr_test.go::TestWriteFileKeepsAPosixACL",
+        "internal/atomicfile/xattr_test.go::TestWriteFileWritesInPlaceWhenAnAttributeCannotBeCarried",
+        "internal/pilock/async_heartbeat_test.go::TestAsyncLockHeldPastTheSyncStaleWindowIsNotTaken"
+      ]
+    },
+    {
       "id": "BF-fc028ee",
       "title": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or…",
       "symptom": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.",
@@ -63836,6 +63966,11 @@
       "id": "D650",
       "title": "A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process…",
       "entry": "BF-D650"
+    },
+    {
+      "id": "D651",
+      "title": "Credential and state files are replaced through a temporary file where that changes nothing but the inode…",
+      "entry": "BF-fbe92b6"
     }
   ],
   "exemptCommits": {

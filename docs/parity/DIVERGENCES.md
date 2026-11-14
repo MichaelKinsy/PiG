@@ -4176,3 +4176,65 @@ Call-site markers: `coding/extension/host/subprocess/conn.go` (`Conn.holdsLoop`)
 Evidence: `coding/cli/interactive_quit_every_runtime_linux_test.go` (`TestInteractiveQuitWaitsForACommandInFlight`: a command in flight holds the interactive quit in the Go, Rust, Python and Lisp SDKs and in a packed Node cell; `TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds`: ctrl+c, SIGINT, SIGTERM and SIGHUP end the held quit within 0.5 s with Pi's status, a second ctrl+d does not), `coding/cli/rpc_held_quit_native_command_signal_test.go` (`TestRPCHeldQuitOfANativeCommandEndsOnTheSignalsPiEnds`), `test/extension-conformance/quit_every_runtime_conformance_test.go` (`TestConformance_QuitWaitsForACommandInFlight` over every SDK, isolated, packed and fused) and `coding/extension/host/subprocess/quit_every_runtime_test.go` (`TestQuitDrainWaitsForANativeCommandInFlight`).
 
 Parity allowance: observable only to an extension in a Go, Rust, Python or Lisp runtime whose handler of the kinds above never returns and holds no handle, at a quit whose dispose cannot return: pig holds the quit where Pi exits, and the keys and signals end it.
+
+## D651 Credential and state files are replaced through a temporary file where that changes nothing but the inode, where Pi writes every file in place
+
+What: in the files pig and Pi share (`auth.json`, `settings.json`, `trust.json`, `keybindings.json`, the MCP credential store, `mcp.json`, the models store `models-store.json`, and the two start-up migrations that write them) pig and Pi write differently. The record has two parts: part A and part C (the lock heartbeat) are built and landed.
+
+### Part A: the writes (landed)
+
+Pi writes each of these files with `writeFileSync`: it opens the file, truncates it and writes. A write that stops after the truncate (a full disk, a size limit, a kill, a power loss) leaves the file empty or cut short, and the next login or token refresh of one provider then saves a file that holds that provider alone (the owner's report of being signed out of every provider). pig writes a private temporary file in the same directory, syncs it and renames it over the file (`internal/atomicfile` `WriteFile`), so a failed write leaves the old file. The rule: pig replaces the file when that changes nothing but the inode; otherwise it writes the file in place with the same bytes, exactly as Pi does, once, and says so in one line of the debug log (`PIG_DEBUG`, `internal/codingagent/atomic_debug_log.go`); that is not an error and not a warning. In place is the answer where
+
+- the file has more than one hard link (a rename would leave the other names with the old bytes);
+- an extended attribute cannot be copied onto the replacement, for a reason other than a file system that keeps none (they are copied when the file system takes them: POSIX ACLs on Linux, the user's attributes on macOS);
+- the temporary file cannot be created in the directory (EACCES, EROFS, EPERM: a directory the process cannot write, holding a file it can), or the rename is refused (EBUSY, EXDEV, ETXTBSY: a file mounted into a container on its own is a mount point).
+
+A write that fails for a real reason (ENOSPC, EIO) is an error, in place or not, as in Pi; a read-only file is refused as Pi's write refuses it. What is kept as Pi leaves it: the bytes, the mode, owner and group (where the process may set them), a symbolic link (its target is replaced, the link stays), the extended attributes, and on Windows the DACL, attributes and streams of the replaced file (ReplaceFileW). EXDEV cannot happen for the same-directory temporary file; it is on the list only for a file system that reports it for a rename within one directory (an overlay or a FUSE mount). The writers that take no lock (the keybindings save and migration) write in place in a directory the process cannot write, as Pi does.
+
+Windows: ReplaceFileW refuses with ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION or ERROR_UNABLE_TO_REMOVE_REPLACED (another process holds the file open without delete sharing: an editor, an indexer, a sync client) and ERROR_UNABLE_TO_MOVE_REPLACEMENT; pig retries the replacement for `fsretry.RenameBudget`, then returns the error, and never turns a refusal into an in-place write there. The case that may break a working Pi setup is a settings or credential file another program keeps open without delete sharing: Pi writes it in place and pig fails after the retry budget. NOT RUN (no Windows host in the lane); a Windows run is the evidence needed before this entry is called final on Windows.
+
+What was run (2026-11-14, xd670, tern-ci:v11, container user kinsy, not root; logs in `~/lanes/CredStore3.out/` on xd670): each cell is the result of a login (`Set`), a token refresh, a settings change, a trust decision, a keybindings save and the keybindings migration, in `fs-before.log` (line tip before the branch, 640f2d2740aa), `fs-stamped.log` (49de76c76066, atomic replace without the fallback), `fs-after.log` (the fallback), `fs-pi.log` (Pi 1.5.2, vendored dist):
+
+| Case | before the branch | 49de76c76066 | with the fallback | Pi 1.5.2 |
+|---|---|---|---|---|
+| auth.json, settings.json, trust.json each mounted as ONE file (`docker -v file:/work/file`) | every write succeeds, in place | every write fails: login `rename /work/auth.json.tmp-N /work/auth.json: device or resource busy`; the same text for the refresh, the settings change (shown as the startup diagnostic `Invalid settings file ...`), the trust decision and the keybindings save; the keybindings migration is skipped silently | every write succeeds, in place | every write succeeds, in place |
+| `chmod 555` directory holding 600 files: auth, settings, trust | login and refresh fail `EACCES: permission denied, mkdir '<dir>/auth.json.lock'`; the settings and trust writes fail at their lock the same way | identical | identical | identical (the lock directory is created first; the settings setter does not throw and records the error) |
+| the same directory: keybindings save and migration (no lock) | written in place | save fails `open <dir>/keybindings.json.tmp-N: permission denied`; migration skipped (file unchanged) | written in place | migration written in place |
+| control: a plain writable directory | all succeed | all succeed | all succeed | all succeed |
+
+So the regression the fallback removes is the single-file mount for every file, and the unwritable directory for the two lock-free writers. Auth, settings and trust in an unwritable directory fail at the lock directory on every build including Pi; nothing changed there.
+
+### Part C: the async lock renewal (approved 2026-11-14; landed with `fix/credential-lock-heartbeat-on-line`)
+
+Pi's async credential lock (an OAuth refresh in flight) is renewed by proper-lockfile every stale/2 = 15 s with a 30 s stale window, while Pi's sync acquirers (every process that opens a credential store: the constructor, a footer render, a login selector) take any lock older than 10 s. A refresh that runs more than 10 s therefore has its lock taken by the next process that opens a store, and the holder learns of it only at its next heartbeat. pig renews the async lock every 5 s (`asyncUpdate` in `internal/pilock/lock.go`), so a live holder is never taken over.
+
+What a user observes: with two pig processes on one `auth.json` and a provider that rotates a single-use refresh token, a refresh that takes more than 10 s is the only one that spends the token (Pi 1.5.2 spends it twice, and the provider then revokes the login); a process that opens the credential store while the refresh runs waits 180 ms (the sync acquirer's ten attempts, `SyncAttempts` 10 at `SyncDelay` 20 ms) on the fresh lock and then carries on, where Pi takes the lock at once. A refresher that starts late reads the holder's credential and keeps it; Pi overwrites it.
+
+What was run (2026-11-14, xd670, tern-ci:v11; logs in `~/lanes/CredStore3.out/` on xd670; scenario `hbjob2.sh` with `zz_hb_probe_test.go.ai` and `pi_hb_probe.mjs`): one `auth.json` with four providers; `slow` refreshes openai-codex (single-use refresh token `r-old`) and holds the async lock for 12 s; `queued` is a second refresher of the same provider started at 1 s; `late1`, `late2`, `late3` start at 10.2, 10.6 and 10.9 s; `newstore` opens a credential store at 11 s. Three runs per column:
+
+| Per cell | pig without the 5 s heartbeat (47be7294807f), `hb2-before.log` | pig with it (ebbaab0ce85a), `hb2-after.log` | Pi 1.5.2, `hb2-pi.log` |
+|---|---|---|---|
+| the process that opens a store at 11 s | gets the lock at once (0 s) in 3 runs: the live holder's lock is taken | waits 180 ms in 3 runs: the lock is fresh and is not taken | gets the lock at once (2 ms, 5 ms, 2 ms) |
+| times the single-use token `r-old` was spent | 2 in 3 of 3 runs | 1 in 3 of 3 runs | 2 in 3 of 3 runs |
+| credential in the file at the end | `slow`'s; the refresh a late refresher wrote earlier is overwritten and its refresh token is lost | `slow`'s | `slow`'s; the late refresher's credential is overwritten |
+| providers kept in the file | all four | all four | all four |
+
+The red test is `internal/pilock` `TestAsyncLockHeldPastTheSyncStaleWindowIsNotTaken` (red at f0598bed36, green with fbe92b66a0). Not run: Windows, a real provider.
+
+Why: (A) a credential or settings write must not be able to destroy the file it replaces, and every setup in which Pi's in-place write works (a single file mounted into a container, a hard link, an ACL, a directory the process cannot write) keeps working as before. (C) with a provider that rotates a single-use refresh token, a lock taken from a live holder lets a queued refresher spend the same token a second time, and the provider then revokes the login.
+
+Pi bug: yes for part A: Pi's truncate-then-write can empty `auth.json` on a failed write, and part C's double spend of a single-use token.
+
+Scope: pig's writes of the listed files through `internal/atomicfile`. Pi's file formats, names and locations are unchanged.
+
+Owner decision: approved 2026-11-14T14:10:39Z ("proceed", handoffs/0.8.0/OWNER-DECISIONS.md, entry `## 2026-11-14T14:10:39Z owner: "proceed" (on Claude's recommendations of 13:2xZ)`); the line, verbatim: "D651 APPROVED, both parts: (1) auth.json, settings, trust, keybindings and the MCP config replaced through a private temp file + rename where that changes nothing but the inode; Pi's in-place write kept for hard links, uncarriable ACL/xattrs, bind-mounted single files and unwritable directories; (2) a 5 s refresh of the async lock so a live refresher is never taken over (single-use refresh token spent once)."
+
+SCRUTINIZED:approved 2026-11-14
+
+Remove when: (A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.
+
+Call-site markers: `internal/atomicfile/atomicfile.go` (`WriteFile`, `writeInPlace`); the writers `ai/auth.go` (`writeAuthFile`), `ai/models_store.go`, `coding/mcpext/storage.go`, `coding/mcpext/config.go`, `internal/codingagent/settings.go`, `internal/codingagent/trust_manager.go`, `internal/codingagent/keybindings.go` and `internal/codingagent/migrations.go` (three writes). Part C: `internal/pilock/lock.go` (`asyncUpdate` and `tryAcquireResolved`).
+
+Evidence: `internal/atomicfile` tests: `TestWriteFileWritesInPlaceWhereTheRenameIsRefused`, `TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason`, `TestWriteFileWritesInPlaceInADirectoryItCannotWrite`, `TestWriteFileCannotCreateAFileInADirectoryItCannotWrite`, `TestWriteFileReportsARealFailureOfTheInPlaceWrite`, `TestWriteFileWritesInPlaceThroughAHardLink`, `TestWriteFileReplacesAPlainFileAndReportsNothing`, `TestWriteFileWritesInPlaceWhenAnAttributeCannotBeCarried`, `TestWriteFileCarriesExtendedAttributesOver`, `TestWriteFileKeepsAPosixACL`, `TestWriteFileFollowsSymlink`, `TestWriteFileRefusesReadOnlyFile`, `TestWriteFileCreatesPrivateAndKeepsMode`; the three-way table above (lane CredStore3, `fs-before.log`, `fs-stamped.log`, `fs-after.log`, `fs-pi.log`); part C: `internal/pilock` `TestAsyncLockHeldPastTheSyncStaleWindowIsNotTaken` and the table of part C (`hb2-before.log`, `hb2-after.log`, `hb2-pi.log`).
+
+Parity allowance: observable only where a write is interrupted (the old file survives where Pi's is truncated), in the inode of the file after a write, and on Windows in a file another program holds open without delete sharing; no other file content, mode or location differs. Part C: observable only in a refresh longer than 10 s with a second process opening the store (the opener waits 180 ms; the lock is not taken). The Windows case has no run on this tip.
