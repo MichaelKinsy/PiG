@@ -2,12 +2,15 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -88,6 +91,98 @@ func docsHeroCommand(t *testing.T, session *rpcLines, id, command string) []stri
 	return notes
 }
 
+// stalledStderrPipe is the stderr of a child process that a test can stall: stall fills the pipe, so the child's next write to its stderr blocks until the reader runs again; release starts it after a delay. finish waits for the reader to reach the end of the pipe. What the child wrote reaches out. The write end is the child's stderr, so exec has put it in blocking mode and a deadline cannot bound a write: the filler is a goroutine of one-byte writes, and the pipe is full when it makes no more progress.
+type stalledStderrPipe struct {
+	t        *testing.T
+	r, w     *os.File
+	out      *lockedBuffer
+	parked   chan struct{}
+	resume   chan struct{}
+	done     chan struct{}
+	resumed  sync.Once
+	fillStop atomic.Bool
+	fillDone sync.WaitGroup
+	filled   atomic.Int64
+}
+
+func newStalledStderrPipe(t *testing.T, out *lockedBuffer) *stalledStderrPipe {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &stalledStderrPipe{t: t, r: r, w: w, out: out, parked: make(chan struct{}), resume: make(chan struct{}), done: make(chan struct{})}
+	go func() {
+		defer close(p.done)
+		chunk := make([]byte, 4096)
+		for {
+			n, err := r.Read(chunk)
+			_, _ = out.Write(chunk[:n])
+			if err == nil {
+				continue
+			}
+			if !errors.Is(err, os.ErrDeadlineExceeded) {
+				return
+			}
+			p.parked <- struct{}{}
+			<-p.resume
+			_ = r.SetReadDeadline(time.Time{})
+		}
+	}()
+	t.Cleanup(func() {
+		p.release(0)
+		p.stopFilling()
+		_ = w.Close()
+		<-p.done
+		_ = r.Close()
+	})
+	return p
+}
+
+// stall parks the reader and fills the pipe to its capacity.
+func (p *stalledStderrPipe) stall() {
+	p.t.Helper()
+	_ = p.r.SetReadDeadline(time.Now())
+	<-p.parked
+	p.fillDone.Add(1)
+	go func() {
+		defer p.fillDone.Done()
+		for !p.fillStop.Load() {
+			if _, err := p.w.Write([]byte{'.'}); err != nil {
+				return
+			}
+			p.filled.Add(1)
+		}
+	}()
+	// Full: three checks in a row see no progress.
+	for last, still := int64(-1), 0; still < 3; {
+		time.Sleep(100 * time.Millisecond)
+		if now := p.filled.Load(); now == last {
+			still++
+		} else {
+			last, still = now, 0
+		}
+	}
+}
+
+// release lets the reader run after delay.
+func (p *stalledStderrPipe) release(delay time.Duration) {
+	time.AfterFunc(delay, func() { p.resumed.Do(func() { close(p.resume) }) })
+}
+
+// stopFilling ends the filler, which needs the reader to run for the write it is blocked in.
+func (p *stalledStderrPipe) stopFilling() {
+	p.fillStop.Store(true)
+	p.fillDone.Wait()
+}
+
+func (p *stalledStderrPipe) finish() {
+	p.t.Helper()
+	p.stopFilling()
+	_ = p.w.Close()
+	<-p.done
+}
+
 // TestDocsEventBusPage runs the page's Go extension with each of its two answering extensions, and alone.
 func TestDocsEventBusPage(t *testing.T) {
 	if testing.Short() {
@@ -127,18 +222,20 @@ func TestDocsEventBusPage(t *testing.T) {
 		name       string
 		extensions []string
 		want       string
+		stalled    bool
 	}{
-		{"a Node extension answers", []string{"asker", "geo.mjs"}, found},
-		{"a Python extension answers", []string{"asker", "geo.py"}, found},
-		{"a Go extension answers", []string{"asker", "geogo"}, found},
-		{"the answering extension is loaded first", []string{"geo.mjs", "asker"}, found},
-		{"no extension listens", []string{"asker"}, "warning: no extension answers geo:locate"},
-		{"a listener before the answering one fails", []string{"asker", "failing.mjs", "geo.mjs"}, found},
-		{"an async listener replies after emit returned", []string{"asker", "late.mjs"}, "warning: no extension answers geo:locate"},
-		{"a waiting asker hears a Node listener that answers after an await", []string{"waiter", "slow-geo.mjs"}, found},
-		{"a waiting asker hears a Python extension that answers from a thread", []string{"waiter", "slow-geo.py"}, found},
-		{"a waiting asker gives up when no extension answers", []string{"waiter"}, "warning: no extension answered geo:locate in 2 s"},
-		{"a reply to another request is not taken", []string{"asker", "stranger.mjs"}, "warning: no extension answers geo:locate"},
+		{"a Node extension answers", []string{"asker", "geo.mjs"}, found, false},
+		{"a Python extension answers", []string{"asker", "geo.py"}, found, false},
+		{"a Go extension answers", []string{"asker", "geogo"}, found, false},
+		{"the answering extension is loaded first", []string{"geo.mjs", "asker"}, found, false},
+		{"no extension listens", []string{"asker"}, "warning: no extension answers geo:locate", false},
+		{"a listener before the answering one fails", []string{"asker", "failing.mjs", "geo.mjs"}, found, false},
+		{"a listener's report is delivered when the terminal stalls as pig ends", []string{"asker", "failing.mjs", "geo.mjs"}, found, true},
+		{"an async listener replies after emit returned", []string{"asker", "late.mjs"}, "warning: no extension answers geo:locate", false},
+		{"a waiting asker hears a Node listener that answers after an await", []string{"waiter", "slow-geo.mjs"}, found, false},
+		{"a waiting asker hears a Python extension that answers from a thread", []string{"waiter", "slow-geo.py"}, found, false},
+		{"a waiting asker gives up when no extension answers", []string{"waiter"}, "warning: no extension answered geo:locate in 2 s", false},
+		{"a reply to another request is not taken", []string{"asker", "stranger.mjs"}, "warning: no extension answers geo:locate", false},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			args := []string{"--mode", "rpc", "--model", "test-faux/echo", "--no-session", "--no-extensions"}
@@ -156,7 +253,13 @@ func TestDocsEventBusPage(t *testing.T) {
 				t.Fatal(err)
 			}
 			stderr := &lockedBuffer{}
-			cmd.Stderr = stderr
+			var pipe *stalledStderrPipe
+			if row.stalled {
+				pipe = newStalledStderrPipe(t, stderr)
+				cmd.Stderr = pipe.w
+			} else {
+				cmd.Stderr = stderr
+			}
 			cmd.WaitDelay = 10 * time.Second
 			if err := cmd.Start(); err != nil {
 				t.Fatal(err)
@@ -169,9 +272,22 @@ func TestDocsEventBusPage(t *testing.T) {
 			// The first build of a Go extension takes longer than an RPC answer.
 			session.budget = probeWait(t, 5*time.Minute)
 			started := time.Now()
+			if pipe != nil {
+				// Past the start the pig process writes nothing to stderr until the extension's report: the next write blocks.
+				session.send(`{"id":"state","type":"get_state"}`)
+				session.until("the response to get_state", func(record map[string]any) bool { return record["type"] == "response" && record["id"] == "state" })
+				pipe.stall()
+			}
 			notes := docsHeroCommand(t, session, "locate", "/locate Paris")
 			t.Logf("/locate Paris answered after %s: %q", time.Since(started).Round(time.Millisecond), notes)
+			if pipe != nil {
+				// The report of the failing listener is a write of the Node process that the pig process copies to its stderr on a goroutine of its own, and the exit of pig must wait for it as Pi's console.error, written before the exit, is never lost: the pipe has no reader until after pig was told to end.
+				pipe.release(150 * time.Millisecond)
+			}
 			session.end()
+			if pipe != nil {
+				pipe.finish()
+			}
 			if !slices.Equal(notes, []string{row.want}) {
 				t.Fatalf("/locate Paris notified %q, want %q", notes, row.want)
 			}
