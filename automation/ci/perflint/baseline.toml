@@ -110,8 +110,8 @@ class = "hot-kept: once per message that needs the lax decode (session load of a
 [[hit]]
 file = "agent/messages.go"
 func = "customMessageContent"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
+pattern = "decode-own-encode"
+detail = "jsstring.MarshalKeepingSurrogates->json.Unmarshal"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
@@ -278,8 +278,8 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 [[hit]]
 file = "ai/constrained_sampling.go"
 func = "makeStrictJSONSchemaWithOrder"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
+pattern = "decode-own-encode"
+detail = "jsstring.MarshalKeepingSurrogates->jsstring.UnmarshalKeepingSurrogates"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
@@ -381,14 +381,6 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "ai/messages.go"
-func = "NestedToolCallRecord.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "ai/messages.go"
 func = "cloneAssistantContentInto"
 pattern = "loop-format"
 detail = "fmt.Sprintf"
@@ -418,14 +410,6 @@ pattern = "loop-format"
 detail = "fmt.Sprintf"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/model_compat_json.go"
-func = "OpenAICompat.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
 file = "ai/models_store.go"
@@ -1324,30 +1308,6 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "coding/extension/custom_message.go"
-func = "CustomMessage.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "coding/extension/events.go"
-func = "BeforeAgentStartEvent.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 2
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "coding/extension/events.go"
-func = "SessionBoundaryDraft.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 4
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
 file = "coding/extension/host/cellpack/manifest.go"
 func = "Resolver.ResolvePrebuilt"
 pattern = "env-stat"
@@ -2069,14 +2029,6 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 
 [[hit]]
 file = "coding/extension/mcp_servers.go"
-func = "RegisteredMcpServer.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "coding/extension/mcp_servers.go"
 func = "resolveExposureAliases"
 pattern = "json-roundtrip"
 detail = "marshal+unmarshal"
@@ -2192,7 +2144,7 @@ file = "coding/extension/system_prompt_options.go"
 func = "BuildSystemPromptOptions.MarshalJSON"
 pattern = "nested-marshal"
 detail = "json.Marshal"
-count = 2
+count = 1
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
@@ -4910,8 +4862,8 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 [[hit]]
 file = "internal/codingagent/tool_result_content.go"
 func = "toolResultBlockFields"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
+pattern = "decode-own-encode"
+detail = "jsstring.MarshalKeepingSurrogates->jsstring.UnmarshalKeepingSurrogates"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 

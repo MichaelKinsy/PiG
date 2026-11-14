@@ -39011,6 +39011,25 @@
       ]
     },
     {
+      "id": "BF-D648",
+      "title": "A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…",
+      "symptom": "none. (The host-side loss the same rows found, eight event types that wrote U+FFFD on the way out to every SDK, is cured in 0.8.0 and carries no divergence.)",
+      "rootCause": "the lossless alternative is a Rust value type that holds UTF-16 units wherever a `Value` or `String` is in the public API (`serde_json::Value` in `on_event`, `\u0026str` in `args`, `String` in every snapshot field). Until it lands the decode must not refuse the frame, and a replacement is what Go's decoder makes in a `string`.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D648",
+      "removeWhen": "the Rust SDK has a lossless value type for JavaScript strings (UTF-16 units) in its public event, command and snapshot types, so a Rust handler holds the unit and writes it back.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [],
+      "tests": [
+        "test/extension-conformance/lone_surrogate_passthrough_test.go::TestConformance_LoneSurrogatePassThroughAcrossSDKs",
+        "test/extension-conformance/tool_argument_strings_test.go::TestConformance_ToolArgumentStringsAgreeAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -62514,6 +62533,11 @@
       "id": "D645",
       "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
       "entry": "BF-D645"
+    },
+    {
+      "id": "D648",
+      "title": "A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…",
+      "entry": "BF-D648"
     }
   ],
   "exemptCommits": {

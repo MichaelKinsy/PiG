@@ -18,10 +18,10 @@ import (
 // loneUnit is the lone UTF-16 surrogate U+D83D as a Go string holds it (three WTF-8 bytes).
 const loneUnit = "\xed\xa0\xbd"
 
-// rustHoldsReplacement states what the Rust SDK does today with a lone surrogate the host sends it: its frame decode replaces the unit with U+FFFD before a
+// rustHoldsD648 pins divergence D648 (docs/parity/divergences/D648.md): the Rust SDK's frame decode replaces the unit with U+FFFD before a
 // handler is called (a Rust String and a serde_json::Value cannot hold the unit), so a value a Rust handler hands back as it received it reaches the host with
 // one U+FFFD. Every other SDK holds the unit. Set it to false when the Rust SDK keeps the unit: the Rust cells then assert what every other bridge's assert.
-const rustHoldsReplacement = true
+const rustHoldsD648 = true
 
 // loneTap records the frames the host writes to an extension and the raw results and call arguments it reads from one.
 type loneTap struct {
@@ -138,8 +138,8 @@ func loneSeen(h *harness, name string) string {
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		notes := slices.Clone(*h.notify)
-		for i := len(notes) - 1; i >= 0; i-- {
-			if rest, ok := strings.CutPrefix(notes[i], prefix); ok {
+		for _, note := range slices.Backward(notes) {
+			if rest, ok := strings.CutPrefix(note, prefix); ok {
 				units := strings.Split(strings.TrimSuffix(rest, ":info"), ".")
 				open, shut := slices.Index(units, "5b"), slices.Index(units, "5d")
 				if open < 0 || shut < open {
@@ -309,9 +309,9 @@ func TestConformance_LoneSurrogatePassThroughAcrossSDKs(t *testing.T) {
 				if err != nil {
 					t.Errorf("%s: %v", cell.value, err)
 				}
-				if strings.Contains(tc.name, "rust") && rustHoldsReplacement {
+				if strings.Contains(tc.name, "rust") && rustHoldsD648 {
 					if len(host) == 0 || slices.ContainsFunc(host, func(form string) bool { return form != "U+FFFD x1" }) {
-						t.Errorf("%s: the host holds %v after a Rust handler handed the value back, want one U+FFFD for the unit (rustHoldsReplacement)", cell.value, host)
+						t.Errorf("%s: the host holds %v after a Rust handler handed the value back, want one U+FFFD for the unit (divergence D648)", cell.value, host)
 					}
 				} else if !strings.HasPrefix(verdict, "SAME") {
 					t.Errorf("%s: %s: the host wrote %v, the handler held %s, the extension sent %v, the host holds %v; want the unit", cell.value, verdict, out, seen, in, host)

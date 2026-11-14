@@ -1426,6 +1426,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D633](#bf-d633) | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D636](#bf-d636) | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D645](#bf-d645) | A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D648](#bf-d648) | A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -21717,6 +21718,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3fb47cfd56` (2026-11-13), `43e001e9e3` (2026-11-13)
 - **Tests:** `coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi`, `coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure`, `internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi`, `internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline`, `internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol`, `tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey`, `tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi`, `tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable`
 
+### BF-D648
+
+**A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D648)
+- **Symptom:** none. (The host-side loss the same rows found, eight event types that wrote U+FFFD on the way out to every SDK, is cured in 0.8.0 and carries no divergence.)
+- **Root cause:** the lossless alternative is a Rust value type that holds UTF-16 units wherever a `Value` or `String` is in the public API (`serde_json::Value` in `on_event`, `&str` in `args`, `String` in every snapshot field). Until it lands the decode must not refuse the frame, and a replacement is what Go's decoder makes in a `string`.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the Rust SDK has a lossless value type for JavaScript strings (UTF-16 units) in its public event, command and snapshot types, so a Rust handler holds the unit and writes it back.
+- **Fix commits:** Not yet committed.
+- **Tests:** `test/extension-conformance/lone_surrogate_passthrough_test.go::TestConformance_LoneSurrogatePassThroughAcrossSDKs`, `test/extension-conformance/tool_argument_strings_test.go::TestConformance_ToolArgumentStringsAgreeAcrossSDKs`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -32406,6 +32422,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
 | D636 | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | [BF-D636](#bf-d636) |
 | D645 | A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects… | [BF-D645](#bf-d645) |
+| D648 | A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where… | [BF-D648](#bf-d648) |
 
 ## Fix-titled commits that are not bugs in a release
 

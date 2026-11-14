@@ -113,8 +113,8 @@ func (f *sweepFill) fill(v reflect.Value, path string, depth int) {
 		return
 	}
 	t := v.Type()
-	switch {
-	case t == sweepMessageType:
+	switch t {
+	case sweepMessageType:
 		message, err := f.message(path, 2)
 		if err != nil {
 			f.unfilled = append(f.unfilled, path+": message decode: "+err.Error())
@@ -122,14 +122,14 @@ func (f *sweepFill) fill(v reflect.Value, path string, depth int) {
 		}
 		v.Set(reflect.ValueOf(message))
 		return
-	case t == sweepRawType:
+	case sweepRawType:
 		v.SetBytes([]byte(`{"raw":"` + f.escaped(path+"(raw JSON)") + `"}`))
 		return
-	case t == sweepPromptType:
+	case sweepPromptType:
 		text := f.label(path)
 		v.Set(reflect.ValueOf(extension.NewSystemPrompt(func() (string, error) { return text, nil })))
 		return
-	case t == sweepEntryType:
+	case sweepEntryType:
 		if entry, ok := f.entry(path, 2); ok {
 			v.Set(entry)
 		}
