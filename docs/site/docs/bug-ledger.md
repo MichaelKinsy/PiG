@@ -359,6 +359,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2f881ba](#bf-2f881ba) | "Your first extension" now says that `pig install --validate-only` exits 1 when the extension does not build | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2fb2917](#bf-2fb2917) | fix(interactive): label skill diagnostics [Skill warnings] and show the model scope in the fullscreen header | PiG's own defect | All platforms | Unreleased |
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-301270f](#bf-301270f) | An extension that emits an event to listeners in another extension process no longer pays a host round trip… | PiG's own defect | All platforms | Unreleased |
 | [BF-305432b](#bf-305432b) | fix(coding-agent): stop macOS shell groups before killing them (Pi) | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3063e76](#bf-3063e76) | `setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label… | PiG's own defect | All platforms | Unreleased |
@@ -6947,6 +6948,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2fc2307be4` (2026-10-11)
 - **Tests:** `internal/yaml12/parse_mutation_test.go::TestParseMatchesTheLibraryOnCollectionTagsOnScalars`
 - **Release note:** A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in the key's text, as the yaml library prints it; it used to be quoted (`!!map "1"`) as a string scalar is, so the object key differed.
+
+### BF-301270f
+
+**An extension that emits an event to listeners in another extension process no longer pays a host round trip…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that emits an event to listeners in another extension process no longer pays a host round trip, and its allocations, for a varying share of its emits (a cost only: what the emits return is unchanged).
+- **Root cause:** A listener realm that already waits in a synchronous call when events.dispatch reaches it reports events.quiesce at once. It wrote the report after the response, in a separate write, so the Host read the two in two reads in a varying share of the emits: the emit goroutine checked emission.pending before the report was applied, returned an emission, and the emitter paid an events.settle round trip (33 to 120 of 200 emits per burst). The report now goes first; the Host applies one connection's frames in wire order, so the verdict no longer depends on read timing. The protocol is otherwise unchanged. The runtime pack and its digest are regenerated.
+- **User impact:** Extra allocation or slower run
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `301270f76a` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/xref_quiesce_order_test.go::TestXrefListenerRealmReportsQuiesceBeforeItsDispatchResponse`
+- **Release note:** An extension that emits an event to listeners in another extension process no longer pays a host round trip, and its allocations, for a varying share of its emits (a cost only: what the emits return is unchanged). The listener process now reports that it has run its listeners before it sends its answer, so the host settles the emit when the answer arrives and does not depend on whether a second read has already delivered the report; the same 200 emits cost the same frames and allocations on every run.
 
 ### BF-305432b
 
