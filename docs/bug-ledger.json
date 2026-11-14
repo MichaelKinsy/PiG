@@ -39758,6 +39758,35 @@
       ]
     },
     {
+      "id": "BF-D647",
+      "title": "A message or entry that an extension renders is drawn as the placeholder `[\u003ccustomType\u003e]` until the…",
+      "symptom": "none.",
+      "rootCause": "the renderer lives in another process. Waiting for its answer inside the frame is blocking IPC on the render loop, which stalls every key and every other frame for as long as the extension takes, up to the inactivity boundary. Drawing nothing for the message instead of the placeholder moves every later row when the answer arrives.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D647",
+      "removeWhen": "the first frame that shows a message or entry draws the component the renderer returned, not `[\u003ccustomType\u003e]`, without a wait on the render loop: that is, a test that builds the proxy, draws it once and gets the component's rows with the loop never blocked (the renderer's answer obtained before the message's first frame, off the loop), or the renderer runs in the host's process.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "b6507a915b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/render_padding_test.go::TestRenderProxyOutputPadRefreshRejectsStaleGeneration",
+        "coding/extension/host/subprocess/render_proxy_early_click_test.go::TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder",
+        "coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyClickBeforeAFailedFirstAnswerIsDropped",
+        "coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyClickBeforeTheFirstFrameReachesTheDrawnComponent",
+        "coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyHeldClickDiesWithItsProxy",
+        "coding/extension/host/subprocess/render_proxy_test.go::TestRenderProxyRenderNeverWaitsForIPC",
+        "test/extension-conformance/renderer_click_test.go::TestRendererClickBeforeTheFirstFrameAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-D648",
       "title": "A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…",
       "symptom": "none. (The host-side loss the same rows found, eight event types that wrote U+FFFD on the way out to every SDK, is cured in 0.8.0 and carries no divergence.)",
@@ -63993,6 +64022,11 @@
       "id": "D645",
       "title": "A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects…",
       "entry": "BF-88bbdd2"
+    },
+    {
+      "id": "D647",
+      "title": "A message or entry that an extension renders is drawn as the placeholder `[\u003ccustomType\u003e]` until the…",
+      "entry": "BF-D647"
     },
     {
       "id": "D648",

@@ -1458,6 +1458,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D633](#bf-d633) | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D636](#bf-d636) | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D647](#bf-d647) | A message or entry that an extension renders is drawn as the placeholder `[<customType>]` until the… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D648](#bf-d648) | A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D649](#bf-d649) | A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D650](#bf-d650) | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -22222,6 +22223,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `29b020152d` (2026-11-13), `b7eb5ae11d` (2026-11-13)
 - **Tests:** `chord/next/surfaces/surfaces_active_language_test.go::TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted`, `chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted`, `chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick`, `chord/nextnode/app/app_web_stored_pick_test.go::TestAPageAppliesAThemeStoredBeforeItOpens`, `chord/nextnode/app/app_web_stored_pick_test.go::TestThePagesLanguageFollowsAPickStoredBeforeThePageOpens`
 
+### BF-D647
+
+**A message or entry that an extension renders is drawn as the placeholder `[<customType>]` until the…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D647)
+- **Symptom:** none.
+- **Root cause:** the renderer lives in another process. Waiting for its answer inside the frame is blocking IPC on the render loop, which stalls every key and every other frame for as long as the extension takes, up to the inactivity boundary. Drawing nothing for the message instead of the placeholder moves every later row when the answer arrives.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the first frame that shows a message or entry draws the component the renderer returned, not `[<customType>]`, without a wait on the render loop: that is, a test that builds the proxy, draws it once and gets the component's rows with the loop never blocked (the renderer's answer obtained before the message's first frame, off the loop), or the renderer runs in the host's process.
+- **Fix commits:** `b6507a915b` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/render_padding_test.go::TestRenderProxyOutputPadRefreshRejectsStaleGeneration`, `coding/extension/host/subprocess/render_proxy_early_click_test.go::TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder`, `coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyClickBeforeAFailedFirstAnswerIsDropped`, `coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyClickBeforeTheFirstFrameReachesTheDrawnComponent`, `coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyHeldClickDiesWithItsProxy`, `coding/extension/host/subprocess/render_proxy_test.go::TestRenderProxyRenderNeverWaitsForIPC`, `test/extension-conformance/renderer_click_test.go::TestRendererClickBeforeTheFirstFrameAcrossSDKs`
+
 ### BF-D648
 
 **A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…**
@@ -33317,6 +33333,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
 | D636 | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | [BF-D636](#bf-d636) |
 | D645 | A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects… | [BF-88bbdd2](#bf-88bbdd2) |
+| D647 | A message or entry that an extension renders is drawn as the placeholder `[<customType>]` until the… | [BF-D647](#bf-d647) |
 | D648 | A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where… | [BF-D648](#bf-d648) |
 | D649 | A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's… | [BF-D649](#bf-d649) |
 | D650 | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | [BF-D650](#bf-d650) |
