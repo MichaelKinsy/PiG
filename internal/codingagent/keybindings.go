@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -545,7 +546,7 @@ func (km *KeybindingsManager) Save(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, buf.Bytes(), 0o644)
+	return atomicfile.WriteFile(path, buf.Bytes(), 0o644)
 }
 
 // keysOf is the resolved keys of an action the merged table defines, tui.* and app.* alike as upstream's KeybindingsManager extends the tui
