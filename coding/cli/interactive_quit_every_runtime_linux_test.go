@@ -138,3 +138,99 @@ func TestInteractiveQuitWaitsForACommandInFlight(t *testing.T) {
 		})
 	}
 }
+
+// quitEscapeBound is how long pig may take to end after a key or a signal at the stopped TUI of a held quit. Pi 1.5.2 under tmux: 24 to 29 ms.
+const quitEscapeBound = 500 * time.Millisecond
+
+// TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds: a quit that a native command in flight holds (TestInteractiveQuitWaitsForACommandInFlight)
+// must have the escape Pi has. Pi's stop() removed its signal handlers, so at the stopped TUI ctrl+c, SIGINT, SIGTERM and SIGHUP each end Pi at once: exit 130, 130,
+// 143 and 129 after 24 to 29 ms (Pi 1.5.2 under tmux, a Node interval beside the silent handler). ctrl+d a second time does nothing, in Pi and in pig.
+//
+// pig took the second a pending dispose holds shutdownMu for ctrl+c (1.01 to 1.03 s), and for SIGTERM and SIGHUP its signal shutdown waited on that lock for ever: no
+// exit in 5 s.
+func TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds(t *testing.T) {
+	t.Parallel()
+	if _, err := exec.LookPath("tmux"); err != nil {
+		t.Skip("tmux is not on PATH:", err)
+	}
+	binary := buildPigBinaryForSignalTest(t)
+	goExt := buildGoSDKFixture(t, "rpc-settle-wait-go")
+	for _, tc := range []struct {
+		name   string
+		end    func(p *quitPane)
+		status int
+	}{
+		{"ctrl+c", func(p *quitPane) { p.keys("C-c") }, 130},
+		{"SIGINT", func(p *quitPane) { _ = syscall.Kill(p.pid(), syscall.SIGINT) }, 130},
+		{"SIGTERM", func(p *quitPane) { _ = syscall.Kill(p.pid(), syscall.SIGTERM) }, 143},
+		{"SIGHUP", func(p *quitPane) { _ = syscall.Kill(p.pid(), syscall.SIGHUP) }, 129},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			agent, project, sessions := filepath.Join(root, "agent"), filepath.Join(root, "project"), filepath.Join(root, "sessions")
+			if err := os.MkdirAll(project, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			seedFirstRunDone(t, agent)
+			models := `{"providers":{"localhold":{"baseUrl":"http://127.0.0.1:1/v1","api":"openai-completions","apiKey":"dummy","models":[{"id":"hold-model"}]}}}`
+			if err := os.WriteFile(filepath.Join(agent, "models.json"), []byte(models), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			silent := filepath.Join(root, "shutdown-never.mjs")
+			if err := os.WriteFile(silent, []byte(quitProbeShutdownNever), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			peer := newRPCSettlePeer(t)
+			argv := []string{binary, "--no-extensions", "--model", "localhold/hold-model", "--session-dir", sessions, "-e", goExt, "-e", silent}
+			env := []string{"HOME=" + root, "PIG_HOME=" + root, "PI_HOME=" + root, "PIG_CODING_AGENT_DIR=" + agent, "PI_CODING_AGENT_DIR=" + agent, "PIG_OFFLINE=1", "PI_OFFLINE=1",
+				"RPC_SETTLE_ADDR=" + peer.addr()}
+			p := startQuitPane(t, project, filepath.Join(root, "stderr.log"), env, argv...)
+			p.await("the model in the footer", func() bool { return strings.Contains(p.screen(), "hold-model") })
+			p.text("/hold")
+			p.await("the typed /hold", func() bool { return strings.Contains(p.screen(), "/hold") })
+			p.keys("Enter")
+			held := peer.accept()
+			children := childProcesses(p.pid())
+			p.keys("C-d")
+			p.await("the stopped TUI", p.cooked)
+			// The command's connection stays silent while pig holds the quit; a second ctrl+d changes nothing, as in Pi.
+			p.keys("C-d")
+			if err := held.SetReadDeadline(time.Now().Add(quitHeldWatch)); err != nil {
+				t.Fatal(err)
+			}
+			if n, err := held.Read(make([]byte, 16)); !errors.Is(err, os.ErrDeadlineExceeded) {
+				t.Fatalf("the connection of the command in flight ended or spoke within %s of the quit (%d bytes, %v): pig did not hold the quit", quitHeldWatch, n, err)
+			}
+			if status, exited := p.status(); exited {
+				t.Fatalf("pig exited (status %d) while the command in flight had not finished", status)
+			}
+			ended := time.Now()
+			tc.end(p)
+			status := 0
+			p.await("pig's exit", func() bool {
+				code, exited := p.status()
+				status = code
+				return exited
+			})
+			if took := time.Since(ended); took > quitEscapeBound {
+				t.Errorf("pig took %s to end after %s at the stopped TUI of a held quit, want at most %s (Pi: 24 to 29 ms)", took, tc.name, quitEscapeBound)
+			}
+			if status != tc.status {
+				t.Errorf("pig exited with status %d after %s, want %d", status, tc.name, tc.status)
+			}
+			budget := testbudget.Wait(t)
+			deadline := time.Now().Add(budget)
+			for _, child := range children {
+				for !errors.Is(syscall.Kill(child, 0), syscall.ESRCH) {
+					if time.Now().After(deadline) {
+						t.Errorf("the child process %d of pig is alive %s after pig ended", child, budget)
+						_ = syscall.Kill(child, syscall.SIGKILL)
+						break
+					}
+					time.Sleep(20 * time.Millisecond)
+				}
+			}
+		})
+	}
+}
