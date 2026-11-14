@@ -712,14 +712,6 @@ call = "json.Unmarshal"
 dest = "*T"
 count = 1
 
-# the shared JS-semantics decode helper: one place for what five call-site entries held (net -3 on the baseline)
-[[hit]]
-file = "internal/jsstring/surrogate_json.go"
-func = "UnmarshalKeepingSurrogates"
-call = "sdkjson.Unmarshal"
-dest = "*T"
-count = 1
-
 [[hit]]
 file = "internal/npmpublish/npmtest/npmtest.go"
 func = "Fake.Manifest"
