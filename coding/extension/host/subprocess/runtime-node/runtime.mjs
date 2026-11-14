@@ -25,6 +25,8 @@ import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-d
 import { EditorComponentHost } from "./editor-component.mjs";
 import { setCapabilities as setTerminalCapabilities } from "./shims/pi-dist/pi-tui/terminal-image.js";
 import { loadAllHighlightLanguages } from "./shims/syntax-highlight.mjs";
+// The timers of node:timers are not the globals installTimerOrigin wraps: the runtime's own delays are no extension timer.
+import { clearTimeout as rawClearTimeout, setImmediate as rawSetImmediate, setTimeout as rawSetTimeout } from "node:timers";
 import { themeFromPalette, wireColors } from "./theme-palette.mjs";
 import { Chalk } from "./shims/chalk/source/index.js";
 import { classifierErrorResult, imageErrorResult } from "./shims/pi-dist/pi-ai/utils/model-operations.js";
@@ -59,6 +61,75 @@ setHandlersRunning(() => {
 // Host shares it: this process's listeners stay in its own heap, and
 // payloads cross to other realms by reference (xref.mjs).
 const liveRuntimes = new Set();
+
+// pig additive (D20): the last step of the highlight.js load (shims/syntax-highlight.mjs: the first load of Pi's highlighter and its registration pass) holds this thread for tens of milliseconds. Pi starts it once the startup transcript is rendered (interactive-mode.ts init: renderInitialMessages, then loadAllHighlightLanguages); the host renders that transcript through requests to this process, which the pass would keep waiting. So the pass starts only while no host request is being handled or waits to be read, and once one has been answered or, when the host asks nothing, idleDelay after the grammars were imported: an extension the host never asks still gets every language. maxWait after the grammars were imported the pass starts whatever is outstanding, so requests that leave no gap cannot keep the languages away.
+export class HighlightLoadGate {
+  constructor(outstanding, { idleDelay = 250, maxWait = 2000, setTimer = rawSetTimeout, clearTimer = rawClearTimeout, defer = rawSetImmediate } = {}) {
+    this.outstanding = outstanding;
+    this.idleDelay = idleDelay;
+    this.maxWait = maxWait;
+    this.setTimer = setTimer;
+    this.clearTimer = clearTimer;
+    this.defer = defer;
+    this.answered = false;
+    this.idle = false;
+    this.checking = false;
+  }
+
+  // wait resolves when the pass may start. The first call starts the two delays.
+  wait() {
+    this.waiting ??= new Promise((resolve) => {
+      this.open = resolve;
+      this.timers = [
+        this.setTimer(() => {
+          this.idle = true;
+          this.check();
+        }, this.idleDelay),
+        this.setTimer(() => this.release(), this.maxWait),
+      ];
+      // The delays are no work of their own: they do not keep the process alive.
+      for (const timer of this.timers) timer?.unref?.();
+      this.check();
+    });
+    return this.waiting;
+  }
+
+  // requestAnswered tells the gate that the handling of a host request ended.
+  requestAnswered() {
+    this.answered = true;
+    this.check();
+  }
+
+  // check opens the gate a turn later if nothing is outstanding then: a request the host wrote behind the answered one has been read by that turn.
+  check() {
+    if (!this.open || this.checking) return;
+    this.checking = true;
+    this.defer(() => {
+      this.checking = false;
+      if ((this.answered || this.idle) && !this.outstanding()) this.release();
+    });
+  }
+
+  release() {
+    if (!this.open) return;
+    for (const timer of this.timers) this.clearTimer(timer);
+    const open = this.open;
+    this.open = undefined;
+    open();
+  }
+}
+
+// hostRequestOutstanding reports whether a runtime of this process handles a host request or holds one it has not read.
+function hostRequestOutstanding() {
+  const request = (env) => env.type === "request";
+  for (const runtime of liveRuntimes) {
+    if (runtime.requestRecords.size > 0 || runtime.conn?.queue.some(request) || runtime.conn?.held.some(request)) return true;
+  }
+  return false;
+}
+
+// One load serves every runtime of the process, so one gate does.
+export const highlightLoadGate = new HighlightLoadGate(hostRequestOutstanding);
 
 // siblingToolPending reports whether a tool call of group is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does. pig additive (D232): a member with a group counts only its own Host's tools, because another session's tool is no sibling of its session; a group-less member counts the whole process, as before.
 function siblingToolPending(group) {
@@ -2808,7 +2879,7 @@ export class Runtime {
     }
     if (this.highlightAfter.size > 0) return;
     this.highlightAfter = undefined;
-    void loadAllHighlightLanguages();
+    void loadAllHighlightLanguages(() => highlightLoadGate.wait());
   }
 
   registerTool(definition) {
@@ -3387,6 +3458,7 @@ export class Runtime {
         this.requestRecords.delete(env.id);
         request.connection?.callEpochs?.delete(env.id);
         refreshQuitDrain(drainFor(this.group));
+        highlightLoadGate.requestAnswered();
       }
       if (request.responded && endsPrompt(env.request, this.ready?.mode, this.runSignal !== undefined)) awaitHostStep(request.connection);
     }));
