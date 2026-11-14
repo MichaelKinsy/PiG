@@ -1,0 +1,23 @@
+from = "1.5.2+c815ddaa"
+to = "1.5.2+06f5671c"
+
+[[files]]
+path = "apps/p3/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3c7116fd8, 06f5671c9 (3c7116fd8, 06f5671c9: build in the shared checkout; the resource model stays superseded; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 06f5671c92; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/06-locks.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "06f5671c9 (3c7116fd8, 06f5671c9: build in the shared checkout; the resource model stays superseded; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 06f5671c92; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/workflow.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3c7116fd8 (3c7116fd8, 06f5671c9: build in the shared checkout; the resource model stays superseded; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 06f5671c92; no text is quoted here."

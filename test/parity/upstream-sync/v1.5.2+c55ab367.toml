@@ -1,0 +1,87 @@
+from = "1.5.2+df56759d"
+to = "1.5.2+c55ab367"
+
+[[files]]
+path = "apps/p3/README.md"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/biome.json"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/package.json"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/plugins/.gitkeep"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/src/api/v1/index.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/src/api/v1/server.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/src/api/v1/worker.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/src/principals.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/test/api.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "apps/p3/tsconfig.json"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+
+[[files]]
+path = "package-lock.json"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+oracle = "not carried: the lock gains the entries of the @p3/app workspace package (16 lines); no package the oracle installs moves."
+
+[[files]]
+path = "apps/p3/docs/slices/01-base-and-sessions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "c55ab367f (slice 1 filled out). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3/docs at c55ab367f4; no text is quoted here."
