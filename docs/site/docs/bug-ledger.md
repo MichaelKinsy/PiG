@@ -1135,6 +1135,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-848836a](#bf-848836a) | fix(frontmatter): header starts one UTF-16 unit after the fence | PiG's own defect | All platforms | Unreleased |
 | [BF-849f5f9](#bf-849f5f9) | The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler… | PiG's own defect | All platforms | Unreleased |
 | [BF-849f5f9-2](#bf-849f5f9-2) | `registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named… | PiG's own defect | All platforms | Unreleased |
+| [BF-84adf0c](#bf-84adf0c) | Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does… | PiG's own defect | All platforms | Unreleased |
 | [BF-84b2fca](#bf-84b2fca) | Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-852652e](#bf-852652e) | PiG no longer names documentation that does not exist | PiG's own defect | All platforms | 0.5.0 |
 | [BF-852c46b](#bf-852c46b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -17645,6 +17646,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `849f5f9c8d` (2026-11-12)
 - **Tests:** `extensions/sdk-ts/scripts/author-view.test.mjs`, `extensions/sdk-ts/scripts/pin-bundle.test.mjs`
 - **Release note:** `registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named `MarkdownTransformContext` and `Theme` without importing them.
+
+### BF-84adf0c
+
+**Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does unless it supplies `copySelection`), entering and leaving the alternate screen, and switching the terminal's light/dark reports now wait for a frame that is being written instead of writing at the same time, so a copy or a switch no longer lands among the bytes of a frame.
+- **Root cause:** the alternate screen's own writes held its render lock but not the terminal writer's lock that frames and cursor writes take, because the writer lock was added for cursor and raw writes and these seven writes were not among the ones it was applied to
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `84adf0cc98` (2026-11-14)
+- **Tests:** `tui/terminal_writer_lock_audit_test.go::TestEveryRendererWriteHoldsTheWriterLock`, `tui/terminal_writer_lock_audit_test.go::TestTheWriterLockAuditSeesEveryFormOfAnUnlockedWrite`
+- **Release note:** Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does unless it supplies `copySelection`), entering and leaving the alternate screen, and switching the terminal's light/dark reports now wait for a frame that is being written instead of writing at the same time, so a copy or a switch no longer lands among the bytes of a frame. An extension screen's start and stop show and hide the cursor through the same path.
 
 ### BF-84b2fca
 
