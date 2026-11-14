@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -76,6 +77,7 @@ func streamSurrogateReplies(second string) map[string]string {
 	mistral := surrogateEvents(false, fill(
 		chunk(`{"role":"assistant","content":"T[\ud83d"}`, "null"),
 		chunk(`{"content":"§]"}`, "null"),
+		chunk(`{"content":[{"type":"text","text":" T[\ud83d§]"}]}`, "null"),
 		`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"m1","choices":[{"index":0,"delta":{"content":"","tool_calls":[{"id":"call00001","type":"function","function":{"name":"N","arguments":"{\"p\":\"A[\ud83d§]\"}"},"index":0}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`)...)
 	return map[string]string{"anthropic-messages": anthropic, "openai-completions": completions, "openai-responses": responses, "azure-openai-responses": responses,
 		"google-generative-ai": google, "mistral-conversations": mistral}
@@ -121,10 +123,19 @@ func TestStreamDeltasKeepSurrogatesAsPi(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// A character joined from two deltas is held in its four bytes, the form every reader of the message takes; encoding/json writes
-			// two halves left apart as U+FFFD.
-			if plain, err := json.Marshal(message); err != nil || strings.Contains(piMarks, "\U0001F600") && strings.Count(string(plain), "\U0001F600") != strings.Count(piMarks, "\U0001F600") {
-				t.Errorf("the message holds the joined character %d times in its four bytes, Pi's %d times (%v): %s", strings.Count(string(plain), "\U0001F600"), strings.Count(piMarks, "\U0001F600"), err, plain)
+			// A character joined from two deltas is held in its four bytes, the form every reader of the message takes (the next request, the
+			// screen), not as two halves side by side.
+			for _, block := range message.Content {
+				text := ""
+				switch block := block.(type) {
+				case ai.TextContent:
+					text = block.Text
+				case ai.ThinkingContent:
+					text = block.Thinking
+				}
+				if jsstring.HasAdjacentSurrogates(text) {
+					t.Errorf("the block holds the two halves of a character side by side instead of the character: %q", text)
+				}
 			}
 			if marks := strings.Join(streamUnitMarks.FindAllString(string(encoded), -1), " "); marks != piMarks {
 				t.Errorf("the message holds %q, Pi's holds %q\nPiG: %s\nPi:  %s", marks, piMarks, encoded, want[i])

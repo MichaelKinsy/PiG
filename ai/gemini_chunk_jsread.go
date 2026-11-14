@@ -48,7 +48,7 @@ func decodeGeminiChunk(text string, chunk *geminiStreamChunk) error {
 		return err
 	}
 	var rewritten geminiStreamChunk
-	if jsstring.UnmarshalKeepingSurrogates(normalized, &rewritten) != nil {
+	if json.Unmarshal(normalized, &rewritten) != nil {
 		return err
 	}
 	*chunk = rewritten

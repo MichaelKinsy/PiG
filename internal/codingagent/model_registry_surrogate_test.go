@@ -52,3 +52,23 @@ func TestModelsJSONKeepsALoneSurrogate(t *testing.T) {
 		t.Errorf("the unmodeled member = %s (present %v), want the member named with the unit and its value as models.json writes it; members: %v", extra, ok, compat.Extra)
 	}
 }
+
+// BenchmarkModelsJSONLoad loads a models.json of forty models and finds the last one: the decodes that keep a lone surrogate scan the
+// document for an escape and read it as before when there is none.
+func BenchmarkModelsJSONLoad(b *testing.B) {
+	models := make([]string, 0, 40)
+	for i := range 40 {
+		models = append(models, fmt.Sprintf(`{"id":"model-%d","name":"Model %d","reasoning":false,"input":["text"],"contextWindow":128000,"maxTokens":4096,"compat":{"supportsDeveloperRole":false}}`, i, i))
+	}
+	path := filepath.Join(b.TempDir(), "models.json")
+	content := `{"providers":{"local":{"api":"openai-completions","baseUrl":"http://127.0.0.1:9/v1","apiKey":"k","models":[` + strings.Join(models, ",") + `]}}}`
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if NewModelRegistryWithModelsPath(path).GetProviderModelDataByID("local", "model-39") == nil {
+			b.Fatal("the model was not loaded")
+		}
+	}
+}

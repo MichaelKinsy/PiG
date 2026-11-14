@@ -219,7 +219,7 @@ type modelOverrideJSONAlias modelOverrideJSON
 
 func (config *providerConfig) UnmarshalJSON(data []byte) error {
 	var decoded providerConfigJSON
-	if err := jsstring.UnmarshalKeepingSurrogates(data, &decoded); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
 	*config = providerConfig(decoded)
@@ -532,8 +532,8 @@ func (r *ModelRegistry) readConfig() (*modelsConfig, string) {
 	}
 	var cfg modelsConfig
 	// JSON.parse reads 128000.0 or 1.28e5 as the number 128000, which ModelDefinitionSchema's Type.Number() accepts, and keeps a lone UTF-16
-	// surrogate of a string or a member name (a provider's name, a model's id and name, a compat value): the decodes of a provider and of a
-	// model definition keep it too.
+	// surrogate of a string or a member name (a provider's name, a model's id and name, a compat value): the decode of a model
+	// definition keeps it too.
 	if err := jsstring.UnmarshalKeepingSurrogates(jsjson.NormalizeIntegers(content), &cfg); err != nil {
 		return nil, "Failed to parse models.json: " + err.Error() + "\n\nFile: " + path
 	}
