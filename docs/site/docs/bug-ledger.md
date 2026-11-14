@@ -1031,6 +1031,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7689b82](#bf-7689b82) | An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-76f780d](#bf-76f780d) | A tool call that streams many argument deltas no longer costs time and memory that grow with the square of… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-76f780d-2](#bf-76f780d-2) | A grammar (custom) tool input no longer copies the whole input so far on every delta | PiG's own defect | All platforms | 0.7.0 |
+| [BF-770a98a](#bf-770a98a) | interactive mode: when it ended, PiG wrote an empty terminal title (`ESC ] 0 ; BEL`) and a clear of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-773a868](#bf-773a868) | RPC mode no longer hangs when a Node extension command calls `pi.sendMessage(..., { triggerTurn: true })`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-773a868-2](#bf-773a868-2) | RPC mode no longer hangs when a Node extension command calls `pi.appendEntry` and then `pi.setSessionName`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7744a0b](#bf-7744a0b) | `--model <provider>/<id>` now resolves when the provider id itself contains a `/`, such as a URL-derived id… | PiG's own defect | All platforms | 0.7.0 |
@@ -3124,7 +3125,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `095939f576` (2026-11-12), `bf60a53121` (2026-11-12), `de7a83636f` (2026-11-12)
-- **Tests:** `coding/cli/rpc_reload_pipelined_test.go::TestRPCCommandInFlightAtAReloadIsAnswered`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogInFlightAtAReloadIsAnswered`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCReloadHoldEnds`, `coding/extension/host/subprocess/node_recovery_test.go::TestNodeCrashQuarantinesOnlyCulpritAndDoesNotReplay`, `test/extension-conformance/reload_supersede_test.go::TestConformance_CallsOfAGenerationAReloadReplacesAgreeAcrossSDKs`
+- **Tests:** `coding/cli/rpc_reload_pipelined_test.go::TestRPCCommandInFlightAtAReloadIsAnswered`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCDialogInFlightAtAReloadIsAnswered`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCReloadHoldEnds`, `test/extension-conformance/reload_supersede_test.go::TestConformance_CallsOfAGenerationAReloadReplacesAgreeAcrossSDKs`
 - **Release note:** Extensions: a host call that a handler of a TypeScript extension makes while a reload is replacing that extension is answered with Pi's stale-context error, from the point the reload has run the `session_shutdown` handlers; a call that was already waiting for its answer keeps it. PiG dropped such a call while the replacement was loading, so the handler's command never finished and, in RPC mode, its prompt got no response.
 
 ### BF-098e33d
@@ -7432,7 +7433,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `36123ec15c` (2026-11-12)
-- **Tests:** `coding/extension/host/subprocess/view_loader_draw_test.go::TestViewLoadersStopWhenNothingDrawsTheirSurface`
+- **Tests:** None recorded.
 - **Release note:** extensions: the animated loader of an extension's view kept running after its message or tool card was gone from the transcript. A transcript that is rebuilt (after `/reload`, a compaction, `/tree`) drops its cards, and each dropped view with a loader left a timer that asked the terminal to draw again on every tick and kept the view and its extension's connection for the rest of the session: fifty rebuilds left fifty timers, and a session that reloaded an extension drawing such views grew by about 27 KiB for each reload (54 KiB for two extensions in one cell). A loader is now animated while its view is drawn, stops within one tick once nothing draws it, and starts again with the next draw. Present in releases 0.5.0 to 0.7.0.
 
 ### BF-364cc57
@@ -16185,6 +16186,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_stream_test.go::TestAnthropicFailureLeavesNoScratchAndNoEndEvents`, `ai/anthropic_stream_test.go::TestAnthropicOpenBlocksCarryNoProviderScratch`, `ai/streaming_json_parser_oracle_test.go::TestStreamingJSONParserMatchesPi`
 - **Release note:** A grammar (custom) tool input no longer copies the whole input so far on every delta.
 
+### BF-770a98a
+
+**interactive mode: when it ended, PiG wrote an empty terminal title (`ESC ] 0 ; BEL`) and a clear of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** interactive mode: when it ended, PiG wrote an empty terminal title (`ESC ] 0 ; BEL`) and a clear of the terminal progress indicator (`ESC ] 9 ; 4 ; 0 BEL`) whatever `terminal.showTerminalProgress` said, and on a quit it wrote both after the renderer had stopped.
+- **Root cause:** When interactive mode ended, PiG wrote an empty terminal title (ESC ] 0 ; BEL) and a progress clear (ESC ] 9 ; 4 ; 0 BEL) whatever the settings said, both from teardowns Init registered, so after the renderer had stopped on a quit. Pi writes no empty title anywhere, and its stop() clears the progress indicator only when terminal.showTerminalProgress is on, as its first write, before the renderer stops (interactive-mode.ts:7283-7287).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `770a98ad1e` (2026-11-13)
+- **Tests:** `internal/codingagent/interactive_init_full_test.go::TestInitBuildsTheInteractiveModeFromTheSettingsAndTheSession`
+- **Release note:** interactive mode: when it ended, PiG wrote an empty terminal title (`ESC ] 0 ; BEL`) and a clear of the terminal progress indicator (`ESC ] 9 ; 4 ; 0 BEL`) whatever `terminal.showTerminalProgress` said, and on a quit it wrote both after the renderer had stopped. Pi writes no empty title, and clears the progress indicator only when the setting is on, before the renderer stops. PiG now writes the same: on ctrl+d, ctrl+c twice, `/quit`, SIGTERM and SIGHUP the terminal receives the session title once, and the progress clear only with the setting on. Present in releases 0.2.0 to 0.7.0.
+
 ### BF-773a868
 
 **RPC mode no longer hangs when a Node extension command calls `pi.sendMessage(..., { triggerTurn: true })`…**
@@ -16404,7 +16419,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `78f9ff1ba7` (2026-11-12)
-- **Tests:** `coding/extension/host/subprocess/reload_widget_test.go::TestReloadDropsAWidgetTheReloadedExtensionDoesNotSetAgain`, `coding/extension/host/subprocess/widget_generation_test.go::TestWidgetGoesWithTheConnectionThatSetIt`, `internal/codingagent/reload_widgets_test.go::TestReloadClearsTheExtensionWidgets`, `test/extension-conformance/reload_leak_test.go::TestReloadLeak`
+- **Tests:** None recorded.
 - **Release note:** extensions: a widget that an extension set before `/reload` and did not set again stayed on screen for the rest of the session, for an extension process and for an extension of the host process alike. `/reload` now clears the extension widgets when it begins, as Pi does, and the reloaded extensions set their own. Present in releases 0.2.0 to 0.7.0.
 
 ### BF-7901dbc
@@ -17387,7 +17402,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `83d0c73705` (2026-11-13)
-- **Tests:** `coding/cli/extension_reload_interactive_failed_test.go::TestFailedInteractiveReloadLeavesTheOldInstanceStale`, `coding/cli/headless_reload_test.go::TestFailedExtensionReloadLeavesTheOldInstanceStale`, `internal/codingagent/reload_default_tools_failure_test.go::TestFailedExtensionReloadDropsTheStagedDefaultTools`
+- **Tests:** `coding/cli/extension_reload_interactive_failed_test.go::TestFailedInteractiveReloadLeavesTheOldInstanceStale`, `internal/codingagent/reload_default_tools_failure_test.go::TestFailedExtensionReloadDropsTheStagedDefaultTools`
 - **Release note:** Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured `pi` and `ctx` throw the stale-context error, and a later `/reload` that succeeds loads live instances. PiG left the old instances in service after the failure.
 
 ### BF-83d5488
@@ -21967,7 +21982,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `a31c30a42a` (2026-11-12)
-- **Tests:** `coding/cli/rpc_reload_pipelined_test.go::TestRPCCommandInFlightAtAReloadIsAnswered`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload`, `coding/extension/host/subprocess/generation_retirement_test.go::TestReplacedGenerationCallsFailWithThePiStaleMessage`, `coding/extension/host/subprocess/generation_supersede_test.go::TestSupersedeOfANodeRuntimeThatNeverAcknowledgesIsBoundedByThePongDeadline`, `coding/extension/host/subprocess/generation_supersede_test.go::TestSupersedeWaitsForTheNodeRuntimeToAcknowledgeTheInvalidation`, `test/extension-conformance/reload_supersede_test.go::TestConformance_ACallMadeBeforeTheRuntimeReadsAReloadsInvalidationIsServed`, `test/extension-conformance/reload_supersede_test.go::TestConformance_AReloadReplacesAnExtensionWhoseRuntimeStoppedAnswering`
+- **Tests:** `coding/cli/rpc_reload_pipelined_test.go::TestRPCCommandInFlightAtAReloadIsAnswered`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptReadWhileAReloadsHandlerWaitsRunsInsideTheReload`, `coding/extension/host/subprocess/generation_supersede_test.go::TestSupersedeOfANodeRuntimeThatNeverAcknowledgesIsBoundedByThePongDeadline`, `coding/extension/host/subprocess/generation_supersede_test.go::TestSupersedeWaitsForTheNodeRuntimeToAcknowledgeTheInvalidation`, `test/extension-conformance/reload_supersede_test.go::TestConformance_ACallMadeBeforeTheRuntimeReadsAReloadsInvalidationIsServed`, `test/extension-conformance/reload_supersede_test.go::TestConformance_AReloadReplacesAnExtensionWhoseRuntimeStoppedAnswering`
 - **Release note:** Extensions: a call that a handler of a TypeScript extension makes just before a reload invalidates the extension is served, as a call made before Pi's `invalidate()` is. The host marked the extension stale when it sent the notification, before the extension's runtime had read it, so the call was refused; a call the handler does not await, such as `ctx.ui.notify`, was dropped with a diagnostic where Pi throws, and in RPC mode the command's prompt answered with no `extension_error`. The reload now waits until the runtime has acknowledged the invalidation.
 
 ### BF-a3391bc
@@ -26073,7 +26088,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `d1848ed259` (2026-11-12)
-- **Tests:** `coding/extension/host/subprocess/reset_extension_ui_test.go::TestResetExtensionUIForgetsWhatTheBridgeShowsALaterUI`, `internal/codingagent/reload_allocs_norace_test.go::TestInteractiveSessionReloadAllocatesPerRetainedMessageWithinBudget`, `test/parity/scenarios/extensions-runtime/98-reload-resets-extension-ui.toml`
+- **Tests:** None recorded.
 - **Release note:** extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins: keyed statuses (`ctx.ui.setStatus`), a custom footer and header, the working message and indicator, the hidden thinking label, overlays, and the terminal title; a terminal input listener (`ctx.ui.onTerminalInput`) of a replaced extension kept receiving every key, and `ctx.ui.getEditorComponent()` kept answering its editor factory. A session replacement (`/new`, `/resume`, `/fork`) kept the statuses, the footer and header, the title and the input listeners. Both now reset all of them, as Pi's `resetExtensionUI` does, and dispose the footer and header components; an extension that wants them after a reload sets them again in its `session_start` handler. Present in releases 0.2.0 to 0.7.0.
 
 ### BF-d1af7ae
