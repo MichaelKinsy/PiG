@@ -3153,6 +3153,28 @@
       ]
     },
     {
+      "id": "BF-0fde943",
+      "title": "fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement",
+      "symptom": "fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement",
+      "rootCause": "the placement cache of (view_mount_image.go place) keyed the terminal image by ref+cols+rows, so a component that renders at more than one width in a frame, or two components of one image at two sizes, were each given an image of their own and its bytes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0fde943c25",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageInAnHStackIsTransmittedOncePerRef",
+        "coding/extension/host/subprocess/view_mount_image_test.go::TestMountImageUpdateSecondMountAndEnd"
+      ]
+    },
+    {
       "id": "BF-0ff9f4a",
       "title": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh…",
       "symptom": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.",
@@ -55851,6 +55873,31 @@
       "tests": [
         "internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi",
         "tui/select_filterable_test.go::TestFilterableListShowsNoLabelWhenNoCellRemains"
+      ]
+    },
+    {
+      "id": "BF-e4b5861",
+      "title": "fix(view): a second size of an image is a placement only while its first placement is not drawn",
+      "symptom": "fix(view): a second size of an image is a placement only while its first placement is not drawn",
+      "rootCause": "the placement cache of (view_mount_image.go place) keyed the terminal image by ref+cols+rows, and the first cut of the cure used placement 0 beside a second placement, which kitty draws half.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e4b5861a96",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageAtTwoSizesAtOnceIsTwoImages",
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageInAnHStackIsTransmittedOncePerRef",
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageIsFreedAtItsLastPlacement",
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImagePlacementIDReachesTheTerminalThroughTheFrame",
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageResizeSendsNoBytesAndKeepsFewPlacements"
       ]
     },
     {
