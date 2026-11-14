@@ -163,6 +163,10 @@ func TestTerminateProcessesLeavesTheStderrOfNodeExtensionsInTheirLog(t *testing.
 			if log == nil || log.path == "" {
 				t.Fatalf("the extension has no stderr log: %+v", me)
 			}
+			// A crash diagnostic that names the file retains it; the file of an ended process is otherwise removed as soon as its holders let go.
+			if retained := log.retain(); retained != log.path {
+				t.Fatalf("retain = %q, want %q", retained, log.path)
+			}
 			release(200 * time.Millisecond)
 			h.TerminateProcesses()
 			_ = finish()
