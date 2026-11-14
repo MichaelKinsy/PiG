@@ -434,13 +434,10 @@ func regionWidth(cols, width int) int {
 	return cols
 }
 
-//perf:hot
-func (t *TuiSurface) doRender() { t.drawFrame(frameGate{}) }
-
 // drawFrame is the surface's frame: gate says which frame started it (frameGate). It reports whether the frame began.
 //
 //perf:hot
-func (t *TuiSurface) drawFrame(gate frameGate) (began bool) {
+func (t *TuiSurface) drawFrame(gate frameGate) bool {
 	mainCols, dockCols := t.session.Columns()
 	t.lockFrame()
 	if t.stopped.Load() || !t.started || t.frameSupersededLocked(gate) {
@@ -448,7 +445,6 @@ func (t *TuiSurface) drawFrame(gate frameGate) (began bool) {
 		return false
 	}
 	t.frameBeganLocked()
-	began = true
 	t.updateSize()
 	columns, rows := t.size()
 	width, height := max(1, columns), max(1, rows)
