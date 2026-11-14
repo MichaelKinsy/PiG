@@ -280,11 +280,12 @@ sdk-bundles-drift: ## Fail when a packed SDK bundle differs from its sources (re
 
 ##@ Test and lint
 
-vet: ## Run go vet on every package, natively and for every shipped Windows architecture and for Android (Termux)
+vet: ## Run go vet on every package: natively, once for each platform and once with every build tag the tree declares (automation/ci/vet-tags.txt; vet-tags.sh check fails on a tag or an operating system without a row)
 	./automation/ci/go-vet.sh
-	GOOS=windows GOARCH=amd64 ./automation/ci/go-vet.sh
-	GOOS=windows GOARCH=arm64 ./automation/ci/go-vet.sh
-	CGO_ENABLED=0 GOOS=android GOARCH=arm64 ./automation/ci/go-vet.sh
+	./automation/ci/vet-tags.sh check
+	python3 -B -m unittest discover -s automation/ci -p test_vet_tags.py
+	./automation/ci/vet-tags.sh platforms | while read -r vars; do env $$vars ./automation/ci/go-vet.sh || exit 1; done
+	./automation/ci/go-vet.sh -tags "$$(./automation/ci/vet-tags.sh tags)"
 
 LINT_BASE ?= main
 
