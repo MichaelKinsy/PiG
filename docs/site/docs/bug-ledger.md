@@ -999,6 +999,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-976af87](#bf-976af87) | The documentation said PiG starts without a first-time setup screen and that Stock PiG has no built-in sprites | PiG's own defect | All platforms | 0.5.0 |
 | [BF-97cd675](#bf-97cd675) | fix(agent): nested records keep a message whatever the spelling of its numbers | PiG's own defect | All platforms | Unreleased |
 | [BF-97e178f](#bf-97e178f) | Tool-call arguments that arrive as incomplete or malformed JSON are now recovered exactly as Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-982a52a](#bf-982a52a) | A Chord rollout lists every failed worker it retried | PiG's own defect | All platforms | Unreleased |
 | [BF-983d651](#bf-983d651) | The bash truncation notice for a last line over 50 KB that ends with a newline reports the line's size… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9841da6](#bf-9841da6) | A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-985b5f9](#bf-985b5f9) | fix(coding): a resumed session takes its active tools from the transcript (pi-mono #10785) [SIGNOFF-PENDING] | PiG's own defect | All platforms | Unreleased |
@@ -15196,6 +15197,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0ae4683246` (2026-10-08), `e8cc072521` (2026-10-08), `15a5c0b670` (2026-10-09), `97e178f7f6` (2026-10-09)
 - **Tests:** `ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`, `chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder`, `internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages`
 - **Release note:** Tool-call arguments that arrive as incomplete or malformed JSON are now recovered exactly as Pi's partial-json parser recovers them. When a value inside an object or array is unreadable, the containers around it keep their members and read on, so text after the bad value is kept; a truncated number is cut at a lowercase `e` only (`1E` is not an exponent); `Infinity`, `-Infinity`, `NaN` and out-of-range numbers such as `1e400` are read as values and become `null` (Pi serializes them as `null`, and Go cannot serialize them); a `__proto__` member is dropped from the recovered object, as in Pi.
+
+### BF-982a52a
+
+**A Chord rollout lists every failed worker it retried**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord rollout lists every failed worker it retried.
+- **Root cause:** A rollout kept the entry of a failed worker it retried only when its own Retry answered that it had started the resolve, and the entry of one whose address already had a start running (the route starts a resolve itself when a worker link closes; a resolve ends only when its start settles) was dropped: the worker went on starting and the rollout list lacked it. Pi has no such test: it lists `routed.starting` after `retry`, whatever began it (workers.ts:598-601). The rollout now does the same.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `982a52a9f9` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A Chord rollout lists every failed worker it retried. A worker whose address already had a start running when the rollout retried it (the route starts one itself when the worker's link closes) was left out of the rollout's list although its start went on, so the app saw one worker fewer than the rollout had brought up; the list now carries the start the address has after the retry, whoever began it, as Pi's does. <!-- cause: the rollout kept a retried worker's entry only when its own Retry answered that it had started the resolve, assuming a start on a failed address was always its own; Pi lists whatever start the address has after the retry (workers.ts:598-601) -->
 
 ### BF-983d651
 
