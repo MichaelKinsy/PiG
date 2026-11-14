@@ -5394,4 +5394,3 @@ pattern = "nested-marshal"
 detail = "json.Marshal"
 count = 2
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-

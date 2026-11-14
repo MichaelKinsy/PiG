@@ -2185,3 +2185,10 @@ commit = "f93f99dd65a8b1054cfc7ca972079dc13646dd85"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "test/parity/correspondence is PiG-original parity tooling (the comparison behind `make correspondence-check`), so no Pi line governs the test. The commit gives Rules the lineage rule TableDescriptionTexts (table, item, Pi's fragment, PiG's fragment, the divergence) for the D2 pair of the settings row show-hardware-cursor (docs/parity/divergences/D2.md: `instead of Pi's drawn cursor`, `instead of PiG's drawn cursor`). The expected mapping count adds the declared pairs, as it adds the additive table items, and the failure message names the description text lineage. A description with no declared pair is still compared byte for byte, a declared pair that replaces nothing is a finding of its own, and nothing is added to known-gaps.toml."
+
+[[entry]]
+path = "ai/tool_surrogate_wire_test.go"
+commit = "e95b1a4f1165a0867517cca6b34fcb6fda7f07b4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No expected value changed: the called tool's name was and is `N[\\ude00]`, the unit the stream gave. The assertion that held the literal (strings.Contains on PiG's message, two API kinds) was replaced by one that reads the name out of the message Pi's pinned build ends with for the same stream (testdata/tool_surrogate_stream.mjs), requires that to be `N[\\ude00]`, and compares PiG's with it, for eight API kinds. Pi takes the name as the stream gives it (openai-completions.ts:489, anthropic-messages.ts:1012) and sanitizes no tool name; JSON.stringify writes the lone unit as its escape. Stricter, not weaker."

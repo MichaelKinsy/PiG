@@ -24,7 +24,8 @@ for (const row of JSON.parse(input)) {
   try {
     const module = (modules[row.api] ??= await import(pathToFileURL(dist + "api/" + row.api + ".js")));
     const model = { id: row.id, name: row.id, api: row.api, provider: row.provider, baseUrl: row.baseUrl, reasoning: false, input: ["text"],
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: row.contextWindow, maxTokens: 16384 };
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: row.contextWindow, maxTokens: 16384,
+      ...(row.compat ? { compat: row.compat } : {}) };
     // A hook that hands the payload back: the SDK then posts the payload the hook returned.
     const options = { apiKey: row.apiKey, maxRetries: 0, ...(row.hook ? { onPayload: (payload) => payload } : {}) };
     result = await module.stream(model, normalizeContext(row.context), options).result();
