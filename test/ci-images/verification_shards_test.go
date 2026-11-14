@@ -274,10 +274,10 @@ func TestLinuxAggregateRejectsUnsuccessfulShards(t *testing.T) {
 	}
 }
 
-// fakeTests are the top-level tests the fixture's fake go test -list prints for every package; it also prints a benchmark, which -run does not select.
+// fakeTests are the top-level tests the fixture's fake go test -list prints for every package; it also prints a benchmark, which -run does not select. There are enough of them (100) that no shard of the largest shard count in test-grouped.sh (14) hashes empty.
 var fakeTests = func() []string {
 	var names []string
-	for i := range 24 {
+	for i := range 100 {
 		names = append(names, fmt.Sprintf("TestFixture%02d", i))
 	}
 	return append(names, "ExampleFixture", "FuzzFixture")
