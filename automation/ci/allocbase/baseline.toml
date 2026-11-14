@@ -2591,7 +2591,7 @@ allocs = 2134
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkStagedSDKWalkHash"
-allocs = 3475
+allocs = 3135
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
