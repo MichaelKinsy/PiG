@@ -2660,7 +2660,7 @@ func (h *Host) awaitReaped(reaped []<-chan struct{}, timer *time.Timer) {
 }
 
 // processWaitDelay is how long the output pipes of a stopped extension process get to drain before they are closed (cmd.WaitDelay), and how long TerminateProcesses waits for the processes it killed.
-const processWaitDelay = 5 * time.Second
+const processWaitDelay = 5 * time.Second // pig divergence (D56): the drain bound of a stopped extension process's output pipes, and of TerminateProcesses' wait
 
 func (h *Host) processWaitDelay() time.Duration {
 	if h.waitDelay > 0 {

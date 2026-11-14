@@ -144,16 +144,14 @@ func (p *stalledStderrPipe) stall() {
 	p.t.Helper()
 	_ = p.r.SetReadDeadline(time.Now())
 	<-p.parked
-	p.fillDone.Add(1)
-	go func() {
-		defer p.fillDone.Done()
+	p.fillDone.Go(func() {
 		for !p.fillStop.Load() {
 			if _, err := p.w.Write([]byte{'.'}); err != nil {
 				return
 			}
 			p.filled.Add(1)
 		}
-	}()
+	})
 	// Full: three checks in a row see no progress.
 	for last, still := int64(-1), 0; still < 3; {
 		time.Sleep(100 * time.Millisecond)
