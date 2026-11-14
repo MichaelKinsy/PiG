@@ -19492,6 +19492,37 @@
       ]
     },
     {
+      "id": "BF-6dddc19",
+      "title": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session…",
+      "symptom": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering.",
+      "rootCause": "interactive mode answered an extension's ctx.abort() from the owner loop's side. First it waited for the run to settle, which the run could not do while it waited for the handler that made the call, so the call never returned and no later prompt was answered. Then it queued the cancellation on the loop and replied once the loop accepted the task, so a loop busy with earlier work left the run signal live when the handler resumed. Pi aborts the run signal before abort() returns and awaits nothing, and a handler the run awaits has no way to wait for that run's end.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering. The abort action waited for the turn to end, and the turn waited for the handler that made the call, so the call never returned: the turn stayed open and no later prompt was answered. The call now starts the abort and returns, as in Pi, for extensions of the Node, Go, Python, Rust and Lisp SDKs, and the run's `ctx.signal` is already aborted when it returns, even while the interactive loop is busy with earlier work. An extension that needs the turn to have ended cannot wait for it inside the handler the turn awaits, because the turn is waiting for that handler: it waits outside it, with `ctx.waitForIdle()` in a command handler (Pi offers that call on the command context only) or by acting from an `agent_settled` handler. Present in 0.2.0 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a14dd43d7b",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "6dddc19157",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "a289ab6116",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortAbortsTheRunSignalBeforeItReturnsWhileTheOwnerLoopIsBusy",
+        "internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortTwiceInOneTurnIsIdempotent"
+      ]
+    },
+    {
       "id": "BF-6debb12",
       "title": "fix(train): gate repairs after merging train 3 and the ordering stack",
       "symptom": "fix(train): gate repairs after merging train 3 and the ordering stack",
