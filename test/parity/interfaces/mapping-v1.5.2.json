@@ -110427,8 +110427,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello",
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
       ]
     },
     {
@@ -110449,8 +110449,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello",
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
       ]
     },
     {
