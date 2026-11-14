@@ -26387,7 +26387,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is one character again in the reply, in the session file, in RPC output and in the next request for OpenAI Responses, Azure OpenAI Responses, OpenAI Codex, Amazon Bedrock and pi-messages models too, and the `text_delta`, `thinking_delta` and `toolcall_delta` events of RPC mode carry each half as Pi writes it.
-- **Root cause:** Pi reads a stream event with JSON.parse, which reads the escape of a surrogate as that unit, and copies a value as the object it is. PiG read these events with encoding/json, which reads the escape as U+FFFD, and copied four values through an encoding/json round trip, which writes the three bytes of the unit as three U+FFFD.
+- **Root cause:** PiG read these stream events and copied these values with encoding/json, which has no form for a lone UTF-16 surrogate and replaces it with U+FFFD, where Pi uses JSON.parse and the object itself
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
@@ -26401,7 +26401,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an extension returns, in the text and images that an `input` handler returns, in the content array of a custom message, and in the schema of a tool that asks for strict sampling.
-- **Root cause:** Pi reads a stream event with JSON.parse, which reads the escape of a surrogate as that unit, and copies a value as the object it is. PiG read these events with encoding/json, which reads the escape as U+FFFD, and copied four values through an encoding/json round trip, which writes the three bytes of the unit as three U+FFFD.
+- **Root cause:** PiG read these stream events and copied these values with encoding/json, which has no form for a lone UTF-16 surrogate and replaces it with U+FFFD, where Pi uses JSON.parse and the object itself
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
