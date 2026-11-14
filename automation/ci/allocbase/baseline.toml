@@ -2394,6 +2394,16 @@ benchmark = "BenchmarkRenderProxyCached"
 allocs = 1
 
 [[benchmark]]
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRenderProxyMouseUnhandled/click_outside_the_regions"
+allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRenderProxyMouseUnhandled/press"
+allocs = 0
+
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkStagedSDKKeyMemoized"
 allocs = 2134
@@ -3605,6 +3615,11 @@ allocs = 201
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkHighlightThemeFormatter"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkImageFallbackRender"
 allocs = 13
 
@@ -3637,6 +3652,11 @@ allocs = 5
 package = "./tui"
 benchmark = "BenchmarkKeystrokeBindingMatch/printable"
 allocs = 6
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLanguageFromPath"
+allocs = 0
 
 [[benchmark]]
 package = "./tui"
@@ -4001,7 +4021,7 @@ allocs = 44
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkRenderScrollOffChange/turns=5000"
-allocs = 303
+allocs = 279
 
 [[benchmark]]
 package = "./tui"
