@@ -182,26 +182,133 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	}
 	// The two test-cli halves run the cmd/pig shard ranges that together are every shard, each once.
 	shards, _ := cliShards(t)
-	runs := make([]int, shards+1)
-	cliRange := regexp.MustCompile(`(?m)^(test-cli-[12]):[^\n]*\n\t@\./automation/ci/test-grouped\.sh cli ([0-9]+) ([0-9]+)$`)
-	halves := cliRange.FindAllStringSubmatch(readMakeSources(t, repoRoot(t)), -1)
-	if len(halves) != 2 {
-		t.Fatalf("found %d test-cli halves with a shard range, want test-cli-1 and test-cli-2", len(halves))
+	cliHalves, err := shardHalves(readMakeSources(t, repoRoot(t)), "cli")
+	if err != nil {
+		t.Fatal(err)
 	}
+	if err := shardCoverage(cliHalves, shards); err != nil {
+		t.Fatalf("cmd/pig shards: %v", err)
+	}
+	// The two test-conformance halves run the conformance shard ranges that together are every shard SHARDED_SPEC declares, each once.
+	grouped, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "test-grouped.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conformance := regexp.MustCompile(`(?m)^\s+\./test/extension-conformance:([0-9]+)$`).FindSubmatch(grouped)
+	if conformance == nil {
+		t.Fatal("test-grouped.sh does not declare the conformance shard count in SHARDED_SPEC")
+	}
+	conformanceShards, _ := strconv.Atoi(string(conformance[1]))
+	conformanceHalves, err := shardHalves(readMakeSources(t, repoRoot(t)), "conformance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := shardCoverage(conformanceHalves, conformanceShards); err != nil {
+		t.Fatalf("conformance shards: %v", err)
+	}
+}
+
+// shardHalf is one test-<group>-N Makefile recipe and the test-grouped.sh shard range it runs.
+type shardHalf struct {
+	target      string
+	first, last int
+}
+
+// shardHalves returns the recipes of test-<group>-1 and test-<group>-2 in the Makefile sources, in that order; each target must have exactly one recipe with a shard range.
+func shardHalves(sources, group string) ([]shardHalf, error) {
+	recipe := regexp.MustCompile(`(?m)^(test-` + regexp.QuoteMeta(group) + `-[12]):[^\n]*\n\t@\./automation/ci/test-grouped\.sh ` + regexp.QuoteMeta(group) + ` ([0-9]+) ([0-9]+)$`)
+	found := recipe.FindAllStringSubmatch(sources, -1)
+	var halves []shardHalf
+	for _, target := range []string{"test-" + group + "-1", "test-" + group + "-2"} {
+		var recipes []shardHalf
+		for _, m := range found {
+			if m[1] == target {
+				first, _ := strconv.Atoi(m[2])
+				last, _ := strconv.Atoi(m[3])
+				recipes = append(recipes, shardHalf{target: target, first: first, last: last})
+			}
+		}
+		if len(recipes) != 1 {
+			return nil, fmt.Errorf("found %d %s recipes with a shard range, want exactly one", len(recipes), target)
+		}
+		halves = append(halves, recipes[0])
+	}
+	return halves, nil
+}
+
+// shardCoverage reports an error unless the halves' ranges together run each of shards 1..shards exactly once.
+func shardCoverage(halves []shardHalf, shards int) error {
+	runs := make([]int, shards+1)
 	for _, half := range halves {
-		first, _ := strconv.Atoi(half[2])
-		last, _ := strconv.Atoi(half[3])
-		for shard := first; shard <= last; shard++ {
+		for shard := half.first; shard <= half.last; shard++ {
 			if shard < 1 || shard > shards {
-				t.Fatalf("%s runs cmd/pig shard %d of %d", half[1], shard, shards)
+				return fmt.Errorf("%s runs shard %d of %d", half.target, shard, shards)
 			}
 			runs[shard]++
 		}
 	}
 	for shard := 1; shard <= shards; shard++ {
 		if runs[shard] != 1 {
-			t.Errorf("cmd/pig shard %d runs in %d test-cli halves, want exactly one", shard, runs[shard])
+			return fmt.Errorf("shard %d runs in %d halves, want exactly one", shard, runs[shard])
 		}
+	}
+	return nil
+}
+
+// TestShardHalvesNeedBothTargetsAndEveryShardOnce: the two halves must be the two distinct targets, and their ranges must run every shard once; a recipe that repeats the first half's name leaves the second target without tests.
+func TestShardHalvesNeedBothTargetsAndEveryShardOnce(t *testing.T) {
+	recipes := func(targets ...string) string {
+		var b strings.Builder
+		for i, target := range targets {
+			first, last := 1, 6
+			if i == 1 {
+				first, last = 7, 12
+			}
+			fmt.Fprintf(&b, "%s: test-prereqs\n\t@./automation/ci/test-grouped.sh conformance %d %d\n\n", target, first, last)
+		}
+		return b.String()
+	}
+	for _, tc := range []struct {
+		name, sources, want string
+	}{
+		{"both targets", recipes("test-conformance-1", "test-conformance-2"), ""},
+		{"targets in either order", recipes("test-conformance-2", "test-conformance-1"), ""},
+		{"first target twice", recipes("test-conformance-1", "test-conformance-1"), "found 2 test-conformance-1 recipes"},
+		{"second target twice", recipes("test-conformance-2", "test-conformance-2"), "found 0 test-conformance-1 recipes"},
+		{"only one target", recipes("test-conformance-1"), "found 0 test-conformance-2 recipes"},
+		{"a target three times", recipes("test-conformance-1", "test-conformance-2", "test-conformance-1"), "found 2 test-conformance-1 recipes"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			halves, err := shardHalves(tc.sources, "conformance")
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("shardHalves: %v", err)
+				}
+				if err := shardCoverage(halves, 12); err != nil {
+					t.Fatalf("shardCoverage: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("shardHalves error = %v, want one naming %q", err, tc.want)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name   string
+		halves []shardHalf
+		shards int
+		want   string
+	}{
+		{"a shard run by no half", []shardHalf{{"test-conformance-1", 1, 5}, {"test-conformance-2", 7, 12}}, 12, "shard 6 runs in 0"},
+		{"a shard run by both halves", []shardHalf{{"test-conformance-1", 1, 7}, {"test-conformance-2", 7, 12}}, 12, "shard 7 runs in 2"},
+		{"a range past the last shard", []shardHalf{{"test-conformance-1", 1, 6}, {"test-conformance-2", 7, 13}}, 12, "shard 13 of 12"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := shardCoverage(tc.halves, tc.shards); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("shardCoverage error = %v, want one naming %q", err, tc.want)
+			}
+		})
 	}
 }
 
@@ -274,10 +381,10 @@ func TestLinuxAggregateRejectsUnsuccessfulShards(t *testing.T) {
 	}
 }
 
-// fakeTests are the top-level tests the fixture's fake go test -list prints for every package; it also prints a benchmark, which -run does not select.
+// fakeTests are the top-level tests the fixture's fake go test -list prints for every package; it also prints a benchmark, which -run does not select. There are enough of them for no shard of the largest shard count (the conformance suite's twelve) to select none.
 var fakeTests = func() []string {
 	var names []string
-	for i := range 24 {
+	for i := range 96 {
 		names = append(names, fmt.Sprintf("TestFixture%02d", i))
 	}
 	return append(names, "ExampleFixture", "FuzzFixture")
