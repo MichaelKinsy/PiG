@@ -75,7 +75,7 @@ func TestUnknownAPINameIsRefusedBeforeAnyRequest(t *testing.T) {
 }
 
 // An api registered in the API registry is known: the model's request runs its implementation, and once it is unregistered the same
-// provider refuses, because the lookup happens when the request starts (provider-composer.ts:605 inside lazyStream).
+// provider refuses, because the lookup happens when the request starts (provider-composer.ts:603 inside lazyStream).
 func TestRegisteredAPINameRunsItsImplementationUntilUnregistered(t *testing.T) {
 	const api, source = ai.API("unknown-api-test-registered"), "unknown-api-test"
 	reached := errors.New("registered implementation reached")

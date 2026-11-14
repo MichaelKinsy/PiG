@@ -84,8 +84,7 @@ func (home unknownAPIHome) run(t *testing.T, bin string, extraEnv []string, args
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
 	code := 0
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		code = exit.ExitCode()
 	} else if err != nil {
 		t.Fatalf("run pig: %v\nstderr: %s", err, stderr.String())
