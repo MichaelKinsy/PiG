@@ -392,6 +392,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4d2f44e](#bf-4d2f44e) | A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4d32556](#bf-4d32556) | `Math.exp` in `internal/jsmath` returns Node's bits on arm64 | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4d33f78](#bf-4d33f78) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
+| [BF-4d65734](#bf-4d65734) | Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn… | PiG's own defect | All platforms | Unreleased |
 | [BF-4d7e227](#bf-4d7e227) | fix(chord/workers): a worker waits for its parent to accept on the IPC pipe instead of giving up after 2 s | PiG's own defect | All platforms | Unreleased |
 | [BF-4d965e3](#bf-4d965e3) | The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `<`, `>`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e204f4](#bf-4e204f4) | fix(sdk-py): clear bandit's findings in the 0.5.2 Python SDK code | PiG's own defect | All platforms | Unreleased |
@@ -1048,6 +1049,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D220](#bf-d220) | Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D226](#bf-d226) | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D247](#bf-d247) | Quit settles the interrupted run before session_shutdown and disposal | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -6776,6 +6778,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `4d33f78449` (2026-10-11)
 - **Tests:** `internal/codingagent/model_registry_availability_refresh_gaps_test.go::TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover`, `tui/tool_execution_test.go::TestErrorResultStaysCollapsedUntilExpanded`
+
+### BF-4d65734
+
+**Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end` and `agent_end` before `session_shutdown`.
+- **Root cause:** Pi's quit awaits session.abort() before it emits session_shutdown (Pi main, #9126, the divergence D247 that the line carries): the interrupted turn's final assistant message is saved and the extensions see message_end, turn_end and agent_end. pig ended the process at the quit while the turn still streamed and lost the turn.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4d65734a52` (2026-11-14)
+- **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
+- **Release note:** Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end` and `agent_end` before `session_shutdown`. PiG exited at once: the interrupted turn was missing from the session file, and extensions saw `session_shutdown` in the middle of the turn. A `!` command that is still running is not waited for, and nothing of the interrupted turn is drawn after the screen was restored. PiG 0.2.0 through 0.7.0 have the defect.
 
 ### BF-4d7e227
 
@@ -15891,6 +15907,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `24d55ab3f0` (2026-11-02), `4a7c33c707` (2026-11-02), `82fd316d04` (2026-11-02), `e27164c914` (2026-11-02)
 - **Tests:** `test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined`
 
+### BF-D247
+
+**Quit settles the interrupted run before session_shutdown and disposal**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D247)
+- **Symptom:** 
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pin reaches a Pi release containing 7a53c310a.
+- **Fix commits:** `4d65734a52` (2026-11-14)
+- **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -24126,6 +24157,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D231 | PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()` | [BF-0cced6a](#bf-0cced6a) |
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
+| D247 | Quit settles the interrupted run before session_shutdown and disposal | [BF-D247](#bf-d247) |
 | D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release

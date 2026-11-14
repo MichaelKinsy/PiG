@@ -3028,6 +3028,28 @@ Evidence: `TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses` (red on 67d7
 
 Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported.
 
+## D247 Quit settles the interrupted run before session_shutdown and disposal
+
+What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown` and `Runtime.EmitQuitShutdownContext`, the first step of a quit (`Runtime.Close`, print mode's signal hook, RPC shutdown, the interactive quit), now abort the current Session and wait until it is idle before they emit `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.
+
+Why: Pi 1.5.0 disposes the runtime during a tool without waiting: persistence is disconnected before the turn settles, leaving a stored assistant tool call without its result.
+
+Pi bug: Pi 1.5.0 (`agent-session-runtime.ts` `dispose`), fixed by Pi main 7a53c310a ([#9124](https://github.com/earendil-works/pi/issues/9124)).
+
+Scope: the quit and dispose path only; session replacement already awaited the abort.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S5).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 7a53c310a.
+
+Call-site markers: `coding/runtime_replacement.go` (`EmitQuitShutdown`, `EmitQuitShutdownContext`).
+
+Evidence: `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` (Pi's regression test, plus the order an extension's `session_shutdown` handler observes).
+
+Parity allowance: none needed; the pinned-Pi runtime oracle does not quit during a run.
+
 ## D615 The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider pushed it, which is stronger than Pi's consumer guarantees
 
 What: an extension provider that builds its stream with `CreateAssistantMessageEventStream` (Go `sdk.CreateAssistantMessageEventStream`, Python `create_assistant_message_event_stream`, Lisp `create-assistant-message-event-stream`) and pushes an event that shows a message it goes on changing (the shared `partial`) is forwarded to the host with the message as it was when `Push` returned. The result the host receives is the message as it was when the provider ended the stream (the `done`/`error` event's message, or the value passed to `End`). The Go SDK encodes the event on the provider's goroutine at `Push`; the Python and Lisp SDKs queue a deep copy. In-process iteration (`Events`, `events()`, `model-stream-next`) still yields the pushed object itself, and `Result` returns the provider's own message. A value that cannot be copied or encoded (a cycle, a lock, a dotted list) fails the request that forwards the stream; it does not raise in `Push`. The Rust SDK takes the event by value, so it shows the host the event as pushed with no copy.
