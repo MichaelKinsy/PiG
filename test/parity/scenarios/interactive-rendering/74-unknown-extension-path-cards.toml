@@ -1,0 +1,65 @@
+# Behavior family: interactive-rendering
+# Surface: the built-in write and read cards of a path whose extension neither side knows.
+#
+# The control of scenario 70-prototype-named-path-cards: the same two turns with `out.unknownext` and `notes.unknownext`. theme.ts getLanguageFromPath finds no
+# language for the extension on either side, so write.ts renderCall and read.ts formatReadResult draw the cards with plain text, and the two captures are equal
+# byte for byte. PiG draws the cards of scenario 70's paths the same way (D645); Pi draws its fallbacks there.
+#
+# Upstream evidence (pi 1.5.2 at b4afdddf oracle build, Node 24.22.2, 100x45 tmux, three runs, 2026-11-13): the expanded write card is `write out.unknownext`, a
+# blank row and the two content rows; the expanded read card is `read notes.unknownext`, a blank row and the three rows of the file.
+#
+# The tools are expanded (ctrl+o) before the turns, as in scenario 70.
+#
+# Crop: the capture runs from the first prompt (`Run: ext tool write`) to the faux provider's echo of the read result (`ext-tool-done: alpha line`). Inside the
+# crop the escaped bytes are compared. The runner's cwd_snapshot_digits step (D2) replaces the digits of the per-run cwd copy by the same number of
+# placeholders; the prompts and the cards name relative paths, so no row of the crop holds the cwd and the step changes nothing here.
+
+name = "74-unknown-extension-path-cards"
+description = "A write and a read of a path whose extension neither side knows draw the write and read cards, expanded, byte for byte."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 45
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+# Each binary writes out.unknownext into its own copy of the directory.
+cwd = "testdata/unknown-extension-path-cwd"
+capture_start = "Run: ext tool write"
+capture_end = "ext-tool-done: alpha line"
+
+[[tmux.steps]]
+keys = ["C-o"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ['Run: ext tool write {"path":"out.unknownext","content":"const x = 1;\n\tlet y = 2;\n"}', "Enter"]
+settle_seconds = 1
+wait_contains = ["ext-tool-done: Successfully wrote to out.unknownext"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ['Run: ext tool read {"path":"notes.unknownext"}', "Enter"]
+settle_seconds = 1
+wait_contains = ["ext-tool-done: alpha line"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+escaped_output_equal = true
+both_contain = ["write out.unknownext", "read notes.unknownext", "const x = 1;", "beta tabbed", "ext-tool-done: Successfully wrote to out.unknownext"]
+both_not_contain = ["panic:", "goroutine ", "TypeError", "path: out.unknownext"]
+runs = 3

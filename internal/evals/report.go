@@ -652,10 +652,6 @@ var nodeTermEnvs = map[string]bool{
 	"rxvt-unicode-24bit": true, "terminator": true, "xterm-kitty": true,
 }
 
-// nodeObjectPrototypeLowercaseKeys are the lowercase Object.prototype properties: TERM_ENVS is a plain object, so
-// such a TERM returns a non-number, which is not above two colors.
-var nodeObjectPrototypeLowercaseKeys = map[string]bool{"constructor": true, "__proto__": true}
-
 var teamCityColorVersion = regexp.MustCompile(`^(9\.(0*[1-9]\d*)\.|\d{2,}\.)`)
 
 // nodeColorDepthAboveTwo is getColorDepth(env) > 2 from Node 24's lib/internal/tty.js.
@@ -707,11 +703,9 @@ func nodeColorDepthAboveTwo(lookup func(string) (string, bool), goos string) boo
 			return true
 		}
 		termEnv := strings.ToLower(term)
+		// pig divergence (D645): Node's TERM_ENVS is a plain object, so for TERM=constructor and TERM=__proto__ getColorDepth returns a member inherited from Object.prototype as the depth, which is not above two colors whatever COLORTERM says. Here such a TERM is one the table does not hold.
 		if nodeTermEnvs[termEnv] {
 			return true
-		}
-		if nodeObjectPrototypeLowercaseKeys[termEnv] {
-			return false
 		}
 		for _, pattern := range nodeTermColorPatterns {
 			if pattern.MatchString(termEnv) {

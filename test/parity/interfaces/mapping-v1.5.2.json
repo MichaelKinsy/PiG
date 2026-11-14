@@ -189501,8 +189501,8 @@
       ],
       "evidence": [
         "test:tui/language_from_path_oracle_test.go#TestLanguageFromPathMatchesPi",
-        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy",
-        "test:tui/highlight_test.go#TestLanguageFromPath"
+        "test:tui/language_from_path_prototype_names_oracle_test.go#TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage",
+        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy"
       ]
     },
     {
@@ -189523,8 +189523,8 @@
       ],
       "evidence": [
         "test:tui/language_from_path_oracle_test.go#TestLanguageFromPathMatchesPi",
-        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy",
-        "test:tui/highlight_test.go#TestLanguageFromPath"
+        "test:tui/language_from_path_prototype_names_oracle_test.go#TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage",
+        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy"
       ]
     },
     {
