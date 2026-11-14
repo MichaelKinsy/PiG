@@ -499,6 +499,15 @@ func (d *LoginDialogComponent) Render(width int) []string {
 	return d.Container.Render(width)
 }
 
+// IsDirty reports whether a render of the dialog would differ from the last one, under the dialog's lock like Render. A parent container asks its
+// child this before it renders it (container_settled.go childSettledLocked), and the answer of the embedded Container scans the content children,
+// which read the input and redaction state that the mutators write under d.mu from an OAuth flow's goroutines and the clipboard goroutine.
+func (d *LoginDialogComponent) IsDirty() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.Container.IsDirty()
+}
+
 // resetContent is upstream's contentContainer.clear() before a step that replaces the dialog content.
 func (d *LoginDialogComponent) resetContent() {
 	d.content.Clear()
