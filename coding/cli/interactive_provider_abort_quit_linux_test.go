@@ -230,12 +230,12 @@ func startQuitPane(t *testing.T, cwd, stderr string, env []string, argv ...strin
 	p := &quitPane{t: t, socket: filepath.Join(dir, "tmux"), stderr: stderr, exit: filepath.Join(dir, "exit-status")}
 	// pig runs as the child of a shell that records its exit status as a user's shell sees it: 128 plus the signal's number when a signal ended pig. tmux's own status of
 	// the pane is not read: tmux marks a pane dead when its terminal closes, and that can be long before it has collected the status of the pane's process (current
-	// behavior of tmux, seen for Pi and for pig alike). The shell traps SIGINT so that a ctrl+c at the stopped TUI, which the terminal sends to it too, does not end it.
+	// behavior of tmux, seen for Pi and for pig alike). After pig exited the shell prints quitExitedMark on the terminal, which ends what pig wrote. The shell traps SIGINT so that a ctrl+c at the stopped TUI, which the terminal sends to it too, does not end it.
 	script := "trap : INT\nTERM=xterm-256color"
 	for _, arg := range argv {
 		script += " " + quitShellQuote(arg)
 	}
-	script += " 2>" + quitShellQuote(stderr) + "\necho $? > " + quitShellQuote(p.exit+".tmp") + "\nmv " + quitShellQuote(p.exit+".tmp") + " " + quitShellQuote(p.exit) + "\n"
+	script += " 2>" + quitShellQuote(stderr) + "\necho $? > " + quitShellQuote(p.exit+".tmp") + "\nmv " + quitShellQuote(p.exit+".tmp") + " " + quitShellQuote(p.exit) + "\nprintf " + quitExitedMark + "\n"
 	runner := filepath.Join(dir, "run.sh")
 	if err := os.WriteFile(runner, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
@@ -260,6 +260,9 @@ func startQuitPane(t *testing.T, cwd, stderr string, env []string, argv ...strin
 	})
 	return p
 }
+
+// quitExitedMark is what the pane's shell prints on the terminal once pig has exited.
+const quitExitedMark = "PIG-HAS-EXITED"
 
 // quitShellQuote quotes arg for sh.
 func quitShellQuote(arg string) string { return "'" + strings.ReplaceAll(arg, "'", `'\''`) + "'" }
@@ -527,10 +530,10 @@ func TestInteractiveQuitWithAnExtensionProviderTurnInFlight(t *testing.T) {
 	}
 	// A Node author that never reacts and holds a timer: its loop is alive, so it holds the quit as it holds Pi's (Pi 1.5.2 does not exit, 10 s watched), and the ctrl+c
 	// that ends pig must not leave its runtime behind.
-	rows = append(rows, row{author: "node", model: "author-held", key: "ctrl-d", escape: true, held: true})
 	// Mixed sets. A second Node extension that holds a timer is packed into the author's runtime process: its timer keeps that loop alive, as it keeps Pi's one loop
 	// alive, so the quit waits. An idle Go extension beside the Node author has nothing in flight and does not hold the quit.
 	rows = append(rows,
+		row{author: "node", model: "author-held", key: "ctrl-d", escape: true, held: true},
 		row{author: "node-packed-timer", model: "author-never", key: "ctrl-d", escape: true, held: true},
 		row{author: "node-and-idle-go", model: "author-never", key: "ctrl-d", escape: true},
 	)
@@ -633,8 +636,9 @@ export default function (pi) {
 `
 
 // quitBytesAfterStop is what pig writes to its terminal after the stop sequence of its TUI (it ends by turning bracketed paste off) at a quit by keys: the resume
-// hint, between the title and the progress, title and cursor sequences of its exit. Nothing of the run that ends under the dispose is among them.
-var quitBytesAfterStop = regexp.MustCompile(`^(\x1b\]0;[^\x07]*\x07)?To resume this session: [^\r\n]*\r\n(\x1b\]9;4;0\x07)?(\x1b\]0;[^\x07]*\x07)?(\x1b\[\?25h)?$`)
+// hint, after at most a title, and then the title, progress-off and cursor sequences of its exit. Nothing of the run that ends under the dispose is among them: no
+// text, and no progress sequence before the hint (Pi's stop() turns the terminal progress off before the TUI stops, and its mode is unsubscribed from the run).
+var quitBytesAfterStop = regexp.MustCompile(`^(\x1b\]0;[^\x07]*\x07)?To resume this session: [^\r\n]*\r\n(\x1b\]9;4;0\x07|\x1b\]0;[^\x07]*\x07|\x1b\[\?25h)*$`)
 
 // TestInteractiveQuitWhileABuiltInProviderTurnStreams: the user quits interactive mode (ctrl+c twice, ctrl+d or /quit) while a turn of a built-in provider kind streams:
 // openai-completions through models.json, served by a local listener that shows "alpha beta " and then holds its stream open. No Escape precedes the quit: the quit's own
@@ -755,10 +759,11 @@ func TestInteractiveQuitWhileABuiltInProviderTurnStreams(t *testing.T) {
 				t.Errorf("pig did not print the resume hint of a completed dispose:\n%s", screen)
 			}
 			var written []byte
-			p.await("the terminal's bytes of the exit", func() bool {
+			p.await("the terminal's bytes up to pig's exit", func() bool {
 				written, _ = os.ReadFile(raw)
-				return bytes.Contains(written, []byte("To resume this session")) && bytes.HasSuffix(written, []byte("\x1b[?25h"))
+				return bytes.Contains(written, []byte(quitExitedMark))
 			})
+			written, _, _ = bytes.Cut(written, []byte(quitExitedMark))
 			stop := []byte("\x1b[?2004l")
 			if at := bytes.LastIndex(written, stop); at < 0 {
 				t.Errorf("the terminal's bytes do not hold the stop sequence of the TUI: %q", written[max(0, len(written)-400):])
