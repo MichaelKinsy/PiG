@@ -39,6 +39,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-030a083](#bf-030a083) | Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes… | PiG's own defect | All platforms | Unreleased |
 | [BF-030f512](#bf-030f512) | A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK… | PiG's own defect | All platforms | Unreleased |
 | [BF-031b259](#bf-031b259) | fix(chord/nextnode/workers): a start releases the registrations of its context when it returns | PiG's own defect | All platforms | Unreleased |
+| [BF-033f100](#bf-033f100) | The Go `ai.StreamSimple` reports `No API provider registered for api: <name>` for a model whose api has no… | PiG's own defect | All platforms | Unreleased |
 | [BF-03675ab](#bf-03675ab) | fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary | PiG's own defect | All platforms | Unreleased |
 | [BF-0367abc](#bf-0367abc) | The agent docs bundle no longer contradicts the site | PiG's own defect | All platforms | 0.7.0 |
 | [BF-037b2e3](#bf-037b2e3) | A session message whose members are in another order than Pi writes them, or that holds members PiG does not… | PiG's own defect | All platforms | 0.5.0 |
@@ -369,7 +370,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-32ce7ad](#bf-32ce7ad) | The Termux page shows the `[Context]` line as PiG prints it, `~/.pig/agent/AGENTS.md` | PiG's own defect | Android and Termux | 0.5.0 |
 | [BF-32e86a8](#bf-32e86a8) | Go, Python and Rust SDK: `theme.bold`, `italic`, `underline`, `inverse` and `strikethrough` now draw as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-32fe8c4](#bf-32fe8c4) | The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-3300e6d](#bf-3300e6d) | fix: refuse a model whose api has no registered implementation, as Pi does | PiG's own defect | All platforms | Unreleased |
+| [BF-3300e6d](#bf-3300e6d) | A provider or model whose `api` is not the name of a registered API is refused when its first request starts… | PiG's own defect | All platforms | Unreleased |
 | [BF-331ab59](#bf-331ab59) | `pig status` reports the agent and project directories by the same resolved path before and after a run… | PiG's own defect | macOS | 0.7.0 |
 | [BF-333229c](#bf-333229c) | An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-334bb4b](#bf-334bb4b) | A Gemini or Mistral stream chunk with a member of an unexpected type no longer sorts the members of a tool… | PiG's own defect | All platforms | 0.5.0 |
@@ -2459,6 +2460,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `031b259281` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-033f100
+
+**The Go `ai.StreamSimple` reports `No API provider registered for api: <name>` for a model whose api has no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Go `ai.StreamSimple` reports `No API provider registered for api: <name>` for a model whose api has no implementation even when the request has no key, as `streamSimple` of Pi does; it reported the missing key first.
+- **Root cause:** streamSimpleAs resolved the key before it looked at the api, where Pi looks the api up first, and the earlier refusal of an unknown api kept the key check ahead of it
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `033f100d9a` (2026-11-14)
+- **Tests:** `ai/direct_simple_unknown_api_test.go::TestStreamSimpleRefusesAnUnknownAPINameWithPiText`
+- **Release note:** The Go `ai.StreamSimple` reports `No API provider registered for api: <name>` for a model whose api has no implementation even when the request has no key, as `streamSimple` of Pi does; it reported the missing key first.
 
 ### BF-03675ab
 
@@ -7020,16 +7035,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-3300e6d
 
-**fix: refuse a model whose api has no registered implementation, as Pi does**
+**A provider or model whose `api` is not the name of a registered API is refused when its first request starts…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix: refuse a model whose api has no registered implementation, as Pi does
-- **Root cause:** the default branch of the api switch in buildLeafProviderForEntry built an OpenAI chat-completions provider for any name outside the API constants, where Pi looks the name up in its API registry and refuses.
-- **User impact:** An operation failed or was rejected
+- **Symptom:** PiG sent the conversation, the system prompt and the credential of the entry to its `baseUrl` as an OpenAI chat-completions request.
+- **Root cause:** the default branch of the api switch that builds a model's provider built an OpenAI chat-completions provider for any name outside the API constants, where Pi looks the name up in its API registry and refuses
+- **User impact:** Credential or permission exposure
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `3300e6d394` (2026-11-13)
-- **Tests:** None recorded.
+- **Tests:** `ai/direct_simple_unknown_api_test.go::TestStreamSimpleRefusesAnUnknownAPINameWithPiText`, `coding/cli/unknown_api_refused_binary_test.go::TestUnknownAPINameJSONModeSendsNothingAndReportsPiText`, `coding/cli/unknown_api_refused_binary_test.go::TestUnknownAPINamePrintSendsNothingAndReportsPiText`, `coding/cli/unknown_api_refused_binary_test.go::TestUnknownAPINameRPCSendsNothingAndReportsPiText`, `coding/cli/unknown_api_refused_binary_test.go::TestUnknownAPINameResumedSessionSendsNothing`, `coding/cli/unknown_api_refused_pty_linux_test.go::TestUnknownAPINameInteractiveShowsPiTextAndSendsNothing`, `coding/unknown_api_refused_test.go::TestRegisteredAPINameRunsItsImplementationUntilUnregistered`, `coding/unknown_api_refused_test.go::TestUnknownAPINameIsRefusedBeforeAnyRequest` and 2 more in docs/bug-ledger.json
+- **Release note:** A provider or model whose `api` is not the name of a registered API is refused when its first request starts, with the message of Pi, `No API provider registered for api: <name>`, and nothing is sent. Before, PiG sent the conversation, the system prompt and the credential of the entry to its `baseUrl` as an OpenAI chat-completions request. Affects 0.3.0 through 0.7.0.
 
 ### BF-331ab59
 
