@@ -19,7 +19,7 @@ func init() {
 				harness.Call{Name: "bash", Args: map[string]any{"command": "echo quick-one"}},
 				harness.Call{Name: "bash", Args: map[string]any{"command": harness.GateWait("never-par") + "; echo unreachable-par"}}))),
 		),
-		Normalizers: []harness.Normalizer{findingAbortedFetchText, findingAbortedSessionText},
+		Normalizers: []harness.Normalizer{findingAbortedFetchText},
 		Backbone: []harness.Step{
 			{Name: "launch", Run: func(c *harness.Ctx) { c.Launch(); c.Snap("startup") }},
 			{Name: "warmup", Run: func(c *harness.Ctx) { prompt(c, "Say hello first", 1); c.Snap("warm") }},

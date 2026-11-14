@@ -37,11 +37,6 @@ var (
 		Pattern: `context canceled`, With: "This operation was aborted", Kinds: []harness.Kind{harness.PiG},
 		Reason: "FINDING e2e-1: PiG surfaces Go's \"context canceled\" where Pi's fetch rejects with \"This operation was aborted\" (packages/ai/src/api/openai-completions.ts:719 formatProviderError of the AbortError)",
 	}
-	// FINDING e2e-2. Pi's interactive message_end handler assigns "Operation aborted" to the aborted assistant message itself (interactive-mode.ts:3563-3570), so the persisted session entry carries it. PiG renders the replacement from a copy and persists the provider's "Request was aborted".
-	findingAbortedSessionText = harness.Normalizer{
-		Pattern: `"errorMessage":"Request was aborted"`, With: `"errorMessage":"Operation aborted"`, Kinds: []harness.Kind{harness.PiG},
-		Reason: "FINDING e2e-2: PiG persists \"Request was aborted\" where Pi's interactive mode mutates the message to \"Operation aborted\" before it is saved (interactive-mode.ts:3563-3570)",
-	}
 )
 
 // After a branch summary or a failed turn the footer has no provider usage to show and estimates the context from the request text, system prompt included; the two products' system prompts differ in length, so the percentage can differ by a rounding step.
