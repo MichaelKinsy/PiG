@@ -703,6 +703,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6d0ec02](#bf-6d0ec02) | Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6dddc19](#bf-6dddc19) | An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-6dfa6bf](#bf-6dfa6bf) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6e6a0dd](#bf-6e6a0dd) | A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it | PiG's own defect | All platforms | 0.5.0 |
@@ -11090,6 +11091,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6d9b403c0a` (2026-10-11)
 - **Tests:** `tui/config_selector_test.go::TestBuildResourceGroupsTiesKeepFirstSeenOrder`
 - **Release note:** The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto resources from different base directories); it followed Go map order (`tui/config_selector.go` BuildResourceGroups, config-selector.ts buildGroups; regression `TestBuildResourceGroupsTiesKeepFirstSeenOrder`).
+
+### BF-6dddc19
+
+**An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering.
+- **Root cause:** interactive mode answered an extension's ctx.abort() from the owner loop's side. First it waited for the run to settle, which the run could not do while it waited for the handler that made the call, so the call never returned and no later prompt was answered. Then it queued the cancellation on the loop and replied once the loop accepted the task, so a loop busy with earlier work left the run signal live when the handler resumed. Pi aborts the run signal before abort() returns and awaits nothing, and a handler the run awaits has no way to wait for that run's end.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a14dd43d7b` (2026-11-13), `6dddc19157` (2026-11-14), `a289ab6116` (2026-11-14)
+- **Tests:** `internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortAbortsTheRunSignalBeforeItReturnsWhileTheOwnerLoopIsBusy`, `internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortTwiceInOneTurnIsIdempotent`
+- **Release note:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering. The abort action waited for the turn to end, and the turn waited for the handler that made the call, so the call never returned: the turn stayed open and no later prompt was answered. The call now starts the abort and returns, as in Pi, for extensions of the Node, Go, Python, Rust and Lisp SDKs, and the run's `ctx.signal` is already aborted when it returns, even while the interactive loop is busy with earlier work. An extension that needs the turn to have ended cannot wait for it inside the handler the turn awaits, because the turn is waiting for that handler: it waits outside it, with `ctx.waitForIdle()` in a command handler (Pi offers that call on the command context only) or by acting from an `agent_settled` handler. Present in 0.2.0 through 0.7.0.
 
 ### BF-6debb12
 
