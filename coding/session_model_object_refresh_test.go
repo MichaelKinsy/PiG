@@ -299,7 +299,7 @@ func TestResumeAfterAHandBuiltModelObjectRestoresByProviderAndID(t *testing.T) {
 		}
 	})
 	fromName := resume(func(session *Session) {
-		built, err := BuildModel("acme/handmade-9", services)
+		built, err := BuildFallbackModel(&ai.Model{ID: "handmade-9", DisplayName: "handmade-9", ProviderMeta: ai.ProviderMetadata{ProviderID: "acme", API: ai.APIOpenAICompletions, BaseURL: "https://acme.example/v1"}}, services)
 		if err != nil {
 			t.Fatal(err)
 		}
