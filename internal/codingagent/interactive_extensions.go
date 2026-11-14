@@ -574,20 +574,16 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		b.SetHostAction("getExtensionStatuses", func() map[string]string { return m.statusLine.GetExtensionStatuses() })
 		b.SetHostAction("getAvailableProviderCount", func() int { return m.statusLine.ProviderCount() })
 	}
-	// Upstream abort() cancels the retry delay, compaction, branch summary
-	// and run, then awaits waitForIdle.
+	// upstream: interactive-mode.ts:2399-2401 and :4935-4937: ctx.abort() is `void this.session.abort()`. The abort cancels the retry delay, compaction, branch summary and run; nothing awaits the end of the run, so a handler the run awaits can call it. The owner loop runs the abort as one of its tasks.
 	b.SetHostAction("abort", func() {
-		if err := m.postToMain(m.runCtx, func() {
+		_ = m.postToMain(m.runCtx, func() {
 			if m.opts.SessionHandle != nil {
 				m.opts.SessionHandle.AbortRetry()
 				m.opts.SessionHandle.AbortCompaction()
 				m.opts.SessionHandle.AbortBranchSummary()
 			}
 			m.abortRun(m.runCtx)
-		}); err != nil {
-			return
-		}
-		_ = m.waitForIdle(m.runCtx)
+		})
 	})
 	b.SetHostAction("getScopedModels", m.extensionScopedModels)
 	b.SetHostAction("hasPendingMessages", m.extensionHasPendingMessages)

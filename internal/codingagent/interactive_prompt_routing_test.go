@@ -260,9 +260,9 @@ func TestSettleActiveRunAbortsAndWaitsForTheRun(t *testing.T) {
 	}
 }
 
-// An extension's abort cancels the run and waits until it settles, as
-// upstream abort() awaits waitForIdle, and leaves the mode able to run the
-// next prompt. Interactive mode cancelled the shared abort context without
+// An extension's abort cancels the run, which settles (the extension awaits
+// ctx.waitForIdle() for that), and leaves the mode able to run the next
+// prompt. Interactive mode cancelled the shared abort context without
 // replacing it (so the next turn started already cancelled), and
 // waitForIdle polled isIdle every 50 ms off the owner loop (GUARD-11).
 func TestExtensionAbortSettlesTheRunAndTheNextPromptRuns(t *testing.T) {
