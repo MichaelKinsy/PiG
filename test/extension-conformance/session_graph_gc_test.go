@@ -87,7 +87,7 @@ func collectContinuously(t testing.TB) {
 
 // cellOutcome reports whether the run's output holds a row of the cell with the outcome ("PASS" or "SKIP").
 func cellOutcome(text, outcome, cell string) bool {
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.Contains(line, "--- "+outcome+": ") && strings.Contains(line, "/"+cell+" (") {
 			return true
 		}
