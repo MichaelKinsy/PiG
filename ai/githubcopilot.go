@@ -720,6 +720,8 @@ type CopilotProviderConfig struct {
 	ModelMetadata *Model
 }
 
+func init() { registerOwnStreamProvider("github-copilot") }
+
 // NewCopilotProvider builds a Provider that streams via the Copilot proxy.
 // The wire protocol (Completions vs Responses API) is selected by cfg.API.
 // The credential is auto-refreshed transparently when within 60s of expiry.
