@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"runtime"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -181,8 +182,8 @@ func TestModelRegistryUpdateDigestIsOfTheFrame(t *testing.T) {
 }
 
 // A change publication of the state the replica holds reads the state and hashes it; it builds no frame. The catalog here is the size of the
-// one a start sends (about 1.5 MB).
-func BenchmarkModelCatalogChangeUnchanged(b *testing.B) {
+// one a start sends (about 1.5 MB): the publications allocate far less than one frame of it, and none is sent.
+func TestModelCatalogChangeUnchangedBuildsNoFrame(t *testing.T) {
 	bridge := NewUIBridge(nil)
 	models := json.RawMessage("[" + string(bytes.Repeat([]byte(`{"id":"model","name":"a model name","cost":{"input":1.25,"output":2.5}},`), 21000)) + `{"id":"last"}]`)
 	bridge.SetHostAction("getModelRegistryState", func() map[string]any { return map[string]any{"models": models} })
@@ -192,12 +193,17 @@ func BenchmarkModelCatalogChangeUnchanged(b *testing.B) {
 	bridge.PublishModelCatalog()
 	<-conn.outCh
 	conn.endWork()
-	b.SetBytes(int64(len(models)))
-	b.ReportAllocs()
-	for b.Loop() {
+	const publications = 5
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	for range publications {
 		bridge.PublishModelCatalogChange()
 	}
+	runtime.ReadMemStats(&after)
+	if got := after.TotalAlloc - before.TotalAlloc; got > uint64(len(models)) {
+		t.Fatalf("%d unchanged publications allocated %d bytes, more than one %d-byte catalog frame", publications, got, len(models))
+	}
 	if len(conn.outCh) != 0 {
-		b.Fatal("an unchanged catalog was sent")
+		t.Fatal("an unchanged catalog was sent")
 	}
 }

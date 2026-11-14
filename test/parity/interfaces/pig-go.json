@@ -143176,6 +143176,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.PublishModelCatalogChange",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.PublishModelCatalogChange",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.RecordNativeProviderRegistration",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.RecordNativeProviderRegistration",
@@ -144348,9 +144359,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, actions *HostCallbacks, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
+        "type": "func(ctx context.Context, actions *HostCallbacks, extName string, owner *Conn, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
       },
-      "shapeHash": "sha256:b5b55586595cef6275b349dd5b15a694ffd6d01101a24ea1795f6ca02b52b08f"
+      "shapeHash": "sha256:d6d7c118aa14e85ccd8e766a481a5142fa29edff08d0367f800e288297ccd26e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleRefreshTools",
@@ -144824,6 +144835,17 @@
         "type": "func(extName string, owner *Conn, request RemoteOverlayTargetPayload) (github.com/MichaelKinsy/PiG/coding/extension.RemoteOverlayFocusTarget, error)"
       },
       "shapeHash": "sha256:9f580571a3f83ab16dc61e1d43aaa239f9944a221c289878e598477fd48e4d01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.publishModelCatalog",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.publishModelCatalog",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(all bool)"
+      },
+      "shapeHash": "sha256:eaabe828b154e632ab3e6a08e460ebec2c07cb23d1fe5daa0dbf1dd38b06e89f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.recordNativeProviderRegistration",
@@ -154561,6 +154583,17 @@
       "shapeHash": "sha256:830de060a8b739a9588e121b626edb8b1aa12d9169bc4a3d08fbd9cf0dd4113a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelCatalogDigest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelCatalogDigest",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "modelCatalogDigest"
+      },
+      "shapeHash": "sha256:79d28888b428cdccaeffed98eded7d1bf7cc54d967da7edcf3eaf4cac7d9eaac"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelFetchBody",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "modelFetchBody",
@@ -154647,6 +154680,83 @@
         "type": "modelFetchResponse"
       },
       "shapeHash": "sha256:9065e5e5a3feb4489b58a45d954aa392daae2b5e5f53208aa23d7ce74e1989c0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdate",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "modelRegistryUpdate"
+      },
+      "shapeHash": "sha256:4c0add271fab9ab1b4e59df343033e6dadccb3bf4c4918e6a8da04337627b269"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdate.digest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdate.digest",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (sum modelCatalogDigest)"
+      },
+      "shapeHash": "sha256:f595f2940756de6d9ee4b9a53d81b359d48f9072481003a17fb49ec956e648de"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdate.encode",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdate.encode",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() encodedEnvelope"
+      },
+      "shapeHash": "sha256:4e23c2c753376b05b3453af054a332886d110b877fea3cf4691e945092fa6339"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdateColon",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdateColon",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]byte"
+      },
+      "shapeHash": "sha256:32a9615b107e58af7794a1f07ecd55a815fb3487ce86dbeb88068a575a12b5c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdateComma",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdateComma",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]byte"
+      },
+      "shapeHash": "sha256:32a9615b107e58af7794a1f07ecd55a815fb3487ce86dbeb88068a575a12b5c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdatePrefix",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdatePrefix",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]byte"
+      },
+      "shapeHash": "sha256:32a9615b107e58af7794a1f07ecd55a815fb3487ce86dbeb88068a575a12b5c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdateSuffix",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdateSuffix",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]byte"
+      },
+      "shapeHash": "sha256:32a9615b107e58af7794a1f07ecd55a815fb3487ce86dbeb88068a575a12b5c3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelSelectWire",
@@ -155780,6 +155890,17 @@
         "type": "func(invoke modelFetchInvoke) github.com/MichaelKinsy/PiG/ai.FetchFunction"
       },
       "shapeHash": "sha256:a849b2bfecacce18226458daf3b9edae8a3f348e34e3a35ebbbd725925bf5fb8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#newModelRegistryUpdate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "newModelRegistryUpdate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(state map[string]any) (modelRegistryUpdate, error)"
+      },
+      "shapeHash": "sha256:c2312ec6e42e7275c8e4f03af97c700c4e32ddc4a7ff17fc8f203fb5374719f3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#newOverlayProxy",
