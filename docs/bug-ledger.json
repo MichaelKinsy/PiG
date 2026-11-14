@@ -15905,6 +15905,29 @@
       "tests": []
     },
     {
+      "id": "BF-4c0f5e5",
+      "title": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a…",
+      "symptom": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data.",
+      "rootCause": "the gate that kept the Copilot provider to the apis its catalog lists compared the provider id with a literal in shared code, where Pi has no provider special case",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data. Behavior is unchanged: a Copilot model whose api the Copilot catalog does not list is refused when the request starts.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4c0f5e5337",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/provider_api_test.go::TestProviderHasOwnStreamFor",
+        "coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused"
+      ]
+    },
+    {
       "id": "BF-4c45afa",
       "title": "fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns…",
       "symptom": "fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns gofmt-clean",
