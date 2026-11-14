@@ -128,7 +128,8 @@ func directAPIProviderFor(api API, model *Model, key string, env ProviderEnv) (P
 	case APIMistralConversations:
 		return NewMistralAPIProvider(MistralConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Reasoning: meta.Reasoning})
 	default:
-		return nil, fmt.Errorf("Provider %s has no API implementation for %s", meta.ProviderID, api)
+		// upstream: compat.ts:244-247 (resolveApiProvider)
+		return nil, fmt.Errorf("No API provider registered for api: %s", api)
 	}
 }
 
