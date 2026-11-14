@@ -79,7 +79,7 @@ func prepareNativeRequest(ctx context.Context, model *ai.Model, options ai.Strea
 		return nil, nil, options, err
 	}
 	if resolution == nil {
-		return nil, nil, options, fmt.Errorf("provider is not configured: %s", p.ID)
+		return nil, nil, options, fmt.Errorf("Provider is not configured: %s", p.ID)
 	}
 	requestModel := *model
 	requestModel.ProviderMeta = model.ProviderMeta

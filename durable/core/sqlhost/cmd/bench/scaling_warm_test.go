@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/durable/core/driver"
+	"github.com/MichaelKinsy/PiG/durable/harness"
 )
 
 // TestWarmTurnScaling measures the bench workload's warm turn at history sizes 10x apart: allocations, bytes and wall time per
@@ -42,7 +42,7 @@ func TestWarmTurnScaling(t *testing.T) {
 		fixture := filepath.Join(dir, fmt.Sprintf("pig-native-%d.sqlite", size))
 		if _, err := os.Stat(fixture); err != nil {
 			start := time.Now()
-			if err := seedFixture(ctx, dir, size, "pig-native"); err != nil {
+			if err := seedFixture(ctx, dir, size, "pig-native", workloadStandard); err != nil {
 				t.Fatal(err)
 			}
 			t.Logf("seeded %d in %s", size, time.Since(start))
@@ -52,7 +52,7 @@ func TestWarmTurnScaling(t *testing.T) {
 			if err := copyFile(fixture, work); err != nil {
 				t.Fatal(err)
 			}
-			o := k8sOptions(work, func(ctx context.Context, s *driver.Session, _ *script, _ measured) error { return s.Close(ctx) })
+			o := k8sOptions(work, workloadStandard, func(ctx context.Context, s harness.Harness, _ *script, _ measured) error { return s.Close(ctx) })
 			o.turns = turns
 			runtime.GC()
 			var a, b runtime.MemStats

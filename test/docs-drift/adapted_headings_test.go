@@ -1,6 +1,7 @@
 package docsdrift
 
 import (
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -61,7 +62,7 @@ func pageHeadings(body string) []string {
 // pinned upstream Pi page, unless intentionalOmissions says why the PiG page differs.
 func TestAdaptedPiPagesKeepUpstreamHeadings(t *testing.T) {
 	if _, err := os.Stat(upstreamDocsDir); err != nil {
-		t.Skipf("the Pi source mirror is absent (%s); run `make upstream-mirror` to enable this check", upstreamDocsDir)
+		pioracle.Missing(t, "the Pi source mirror ("+upstreamDocsDir+")", err)
 	}
 	manifest := readSiteDocsManifest(t)
 	pages := readSiteDocPages(t)

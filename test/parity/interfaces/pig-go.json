@@ -19701,6 +19701,17 @@
       "shapeHash": "sha256:1c21a2158b5874158f5675d0c6fbd1786e5703b477a3e8f3d91e28296d1f2bf0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#NextThinkingLevel",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "NextThinkingLevel",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m *Model, current ModelThinkingLevel) (ModelThinkingLevel, bool)"
+      },
+      "shapeHash": "sha256:5405a853d2dd217cc1c6a4c86331cd6dffd27035b7175af0037756eb8c41dd0a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#NodeFetch",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "NodeFetch",
@@ -52160,6 +52171,17 @@
         "type": "func(s string, from int, c byte) int"
       },
       "shapeHash": "sha256:cddb1ee8cfec2c074f4a3710bf908c049ec5c381cd80b075fd8e74360897fe55"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#nodeAltNameMismatch",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "nodeAltNameMismatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(mismatch crypto/x509.HostnameError) string"
+      },
+      "shapeHash": "sha256:f17a047ff7e7891f9141bd9a5985c17ed3ecd52574991b8110bd2bad272e4442"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#nodeBodyFailure",
@@ -139992,9 +140014,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(img *viewImage, dims *github.com/MichaelKinsy/PiG/tui.ImageDimensions, half mountHalf) []string"
+        "type": "func(img *viewImage, dims *github.com/MichaelKinsy/PiG/tui.ImageDimensions, half mountHalf) (rows []string, missing string)"
       },
-      "shapeHash": "sha256:c0d0688b99cea98beabf1dba52b1c7f9105530ba3afec453b9a2e839f3705846"
+      "shapeHash": "sha256:65191021cda035ee423e7b7815376277bb6f886fa31a560dab0828165bb2d8b9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.id",
@@ -140036,9 +140058,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(img *viewImage, png bool, half mountHalf, waiter func() func()) (*mountImageData, []string, bool)"
+        "type": "func(img *viewImage, png bool, half mountHalf, waiter func() func()) (*mountImageData, []string, string, bool)"
       },
-      "shapeHash": "sha256:ca85da004d31cc7e0be2e2fabe1d4b99f2e5bdeb77aa58ed10770766014cb698"
+      "shapeHash": "sha256:96901d0e19fbcd4dfc178d15bb730156357cceecaa304ddf63e330680a791258"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.release",
@@ -238403,6 +238425,17 @@
       "shapeHash": "sha256:bd41faed9088cb863f4be986de2ec32274aa3ee715a0e1d6330ccc5dd31b61e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#compareFieldsByIndex",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "compareFieldsByIndex",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a *field, b *field) int"
+      },
+      "shapeHash": "sha256:6eff577ea014194ac5bffcc0459fd30eb8be3b06b5782b91cfdf8dce9b3a1f0a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#compareFieldsByName",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
       "name": "compareFieldsByName",
@@ -240493,6 +240526,17 @@
       "shapeHash": "sha256:8e29662471c87a624090b974d35b3745c7898061975b31c44125e4b0ffd679b2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#siftDownFields",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "siftDownFields",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fields []field, root int, hi int, cmp func(a *field, b *field) int)"
+      },
+      "shapeHash": "sha256:04dab4419823075e0fe824ca0b3cd24aaf5e175a7aacd17a5ed426219a75af99"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#siftDownOrderEntries",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
       "name": "siftDownOrderEntries",
@@ -240557,6 +240601,17 @@
         "type": "[256]any"
       },
       "shapeHash": "sha256:cdda44eac671767724487d2126de838252a6ddbfb8ce8d725f97c501e7b9d14f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#sortFields",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "sortFields",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fields []field, cmp func(a *field, b *field) int)"
+      },
+      "shapeHash": "sha256:cf232cc29fd5c2cd44a55ec1fa55f3f85350b5d5419194f4af3f2ebbe92b5245"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#sortOrderEntries",
@@ -307470,17 +307525,6 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#maxThinkingIndex",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "maxThinkingIndex",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model) int"
-      },
-      "shapeHash": "sha256:2db3fee2d0cdb76f3b72693f606779700f7fabfd6ab13acf3ed447f1d7fcbcc3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#maxUpdateBinaryBytes",
@@ -378851,6 +378895,17 @@
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.writeColorSchemeNotificationsOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.writeColorSchemeNotificationsOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.writeOwned",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.writeOwned",
@@ -380917,6 +380972,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.writeColorSchemeNotificationsOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.writeColorSchemeNotificationsOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.writeOwned",
@@ -383469,6 +383535,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.writeColorSchemeNotificationsOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.writeColorSchemeNotificationsOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.writeOwned",
@@ -408494,6 +408571,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.writeColorSchemeNotificationsOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.writeColorSchemeNotificationsOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.writeOwned",

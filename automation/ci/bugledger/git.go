@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -93,20 +94,51 @@ func (r repo) releaseBaseline(version string) (string, error) {
 }
 
 type commitInfo struct {
-	Hash    string
+	Hash string
+	// Date is the author date in the author's own time zone, as the ledger shows it; At is the same moment as an instant.
 	Date    string
+	At      time.Time
 	Subject string
 	Body    string
 }
 
 func (r repo) commit(rev string) (commitInfo, error) {
-	out, err := r.git("show", "-s", "--format=%H%x00%ad%x00%s%x00%b", "--date=short", rev)
+	out, err := r.git("show", "-s", "--format=%H%x00%ad%x00%at%x00%s%x00%b", "--date=short", rev)
 	if err != nil {
 		return commitInfo{}, err
 	}
-	parts := strings.SplitN(out, "\x00", 4)
-	if len(parts) != 4 {
+	parts := strings.SplitN(out, "\x00", 5)
+	if len(parts) != 5 {
 		return commitInfo{}, fmt.Errorf("unexpected git show output for %s", rev)
 	}
-	return commitInfo{Hash: parts[0], Date: parts[1], Subject: parts[2], Body: strings.TrimSpace(parts[3])}, nil
+	secs, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		return commitInfo{}, fmt.Errorf("git show %s: author time %q: %w", rev, parts[2], err)
+	}
+	return commitInfo{Hash: parts[0], Date: parts[1], At: time.Unix(secs, 0).UTC(), Subject: parts[3], Body: strings.TrimSpace(parts[4])}, nil
+}
+
+// authorInstants returns the author instant of each of the commits the abbreviated or full hashes name, keyed by full hash, with one git call. A hash the repository does not hold is left out.
+func (r repo) authorInstants(hashes []string) (map[string]time.Time, error) {
+	if len(hashes) == 0 {
+		return nil, nil
+	}
+	args := append([]string{"log", "--no-walk=unsorted", "--ignore-missing", "--format=%H %at"}, hashes...)
+	out, err := r.git(append(args, "--")...)
+	if err != nil {
+		return nil, err
+	}
+	found := map[string]time.Time{}
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
+		hash, secs, ok := strings.Cut(line, " ")
+		if !ok {
+			continue
+		}
+		n, err := strconv.ParseInt(secs, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("git log: author time %q of %s: %w", secs, hash, err)
+		}
+		found[hash] = time.Unix(n, 0).UTC()
+	}
+	return found, nil
 }

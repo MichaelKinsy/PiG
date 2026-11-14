@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -290,7 +291,7 @@ func attachViewClient(ctx context.Context, host viewHost, ui viewClientUI) *view
 	// The conversion of an image to PNG runs off the loop, on the goroutine the surface starts for it, and the mount is
 	// told on the loop that its image is ready.
 	c.images = &subprocess.MountImages{
-		Write: ui.write, Placeholders: ui.placeholders, ToPNG: ConvertImageBytesToPng,
+		Write: ui.write, Placeholders: ui.placeholders, ToPNG: ConvertImageBytesToPng, Decode: imageprocessing.DecodeImage,
 		Post: func(fn func()) { ui.postWait(c.ctx, fn) },
 	}
 	c.ctx, c.end = context.WithCancel(ctx)

@@ -263,7 +263,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "6f572f5f60c890ba840acee632eae19a11a19e2668bbe6eeb2f50a6cd865c662"
+      "sha256": "091d30e2bf6220973ab87ddc7869e211ae718e9963bde47f47bd91165efeb508"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",

@@ -176,6 +176,13 @@ func (t *tuiBase) colorSchemeNotificationsEnabled() bool {
 	return t.input.schemeNotifications
 }
 
+// writeColorSchemeNotificationsOwned is writeColorSchemeNotifications for a caller that holds mu or nothing: it takes outMu for the write, as writeOwned does.
+func (t *tuiBase) writeColorSchemeNotificationsOwned(enabled bool) {
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
+	writeColorSchemeNotifications(t.out, enabled)
+}
+
 func writeColorSchemeNotifications(out io.Writer, enabled bool) {
 	sequence := "\x1b[?2031l"
 	if enabled {

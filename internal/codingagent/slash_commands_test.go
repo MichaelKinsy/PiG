@@ -765,3 +765,34 @@ func TestBuiltinSlashCommandsFollowUpstreamOrder(t *testing.T) {
 		t.Fatalf("builtin order = %v, want %v", got, want)
 	}
 }
+
+// Pi interactive-mode.ts:3331-3463 matches a built-in only by the exact text "/name" (or "/name " plus arguments for a command that takes
+// them); nothing else is a command, so "/neww" is not "/new" and "/logi" is not "/login". Row 106: the text then goes to the prompt path,
+// where a model-less session answers with the login guidance. Measured on the pin in tmux, print and RPC (test/parity/scenarios/slash-commands 29, 30).
+func TestSlashDispatchIsExactNameMatch(t *testing.T) {
+	r := NewSlashRegistry()
+	for _, line := range []string{"/neww", "/ne", "/new w", "/new-", "/newer", "/logi", "/loginx"} {
+		sc, out, cleared, quit := newTestSlashContext()
+		err := r.Dispatch(sc, line, nil)
+		if !errors.Is(err, ErrUnknownSlashCommand) {
+			t.Errorf("Dispatch(%q) = %v, want ErrUnknownSlashCommand", line, err)
+		}
+		if out.Len() != 0 || *cleared || *quit {
+			t.Errorf("Dispatch(%q) ran a command: output %q", line, out.String())
+		}
+	}
+}
+
+// An unknown slash falls through to the prompt path without a transcript error of its own (interactive-mode.ts onSubmit has no unknown-command branch).
+func TestInteractiveUnknownSlashShowsNoErrorOfItsOwn(t *testing.T) {
+	m := resumeThinkingMode(t, false)
+	prepareAssistantEventTest(t, m)
+	m.slashRegistry = NewSlashRegistry()
+	if m.resolvableSlashCommand("/neww") {
+		t.Error("an unknown slash resolves locally; Pi sends it to the prompt path")
+	}
+	m.dispatchSlashContext(m.buildSlashContext(t.Context()), "/neww")
+	if text := stripANSITest(strings.Join(m.chatContainer.Render(120), "\n")); strings.Contains(text, "Error") || strings.Contains(text, "nknown") {
+		t.Errorf("transcript after an unknown slash: %q", text)
+	}
+}

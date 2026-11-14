@@ -627,6 +627,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-50ed346](#bf-50ed346) | fix: merge fallout of the 0.6.0 merge | PiG's own defect | All platforms | Unreleased |
 | [BF-50f526d](#bf-50f526d) | The Go, Rust and Python SDKs export Pi's `CURRENT_SESSION_VERSION`, `VIRTUAL_MODEL_STATE_ENTRY`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5144418](#bf-5144418) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-519554a](#bf-519554a) | The error for a provider with no credentials now reads `Provider is not configured: <id>` as in Pi, where it… | PiG's own defect | All platforms | Unreleased |
 | [BF-51c8f1c](#bf-51c8f1c) | The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-5213cab](#bf-5213cab) | Checking for available package updates now queries at most four npm registries or Git remotes at a time, as… | PiG's own defect | All platforms | Unreleased |
 | [BF-5229b7d](#bf-5229b7d) | fix(durable/core): unloadDocuments with held changes is an api read job, memory notice shares the publish… | PiG's own defect | All platforms | Unreleased |
@@ -1141,6 +1142,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-848836a](#bf-848836a) | fix(frontmatter): header starts one UTF-16 unit after the fence | PiG's own defect | All platforms | Unreleased |
 | [BF-849f5f9](#bf-849f5f9) | The README installed `@michaelkinsy/pig-extension-types` from the source tree as a link, and the compiler… | PiG's own defect | All platforms | Unreleased |
 | [BF-849f5f9-2](#bf-849f5f9-2) | `registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named… | PiG's own defect | All platforms | Unreleased |
+| [BF-84adf0c](#bf-84adf0c) | Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does… | PiG's own defect | All platforms | Unreleased |
 | [BF-84b2fca](#bf-84b2fca) | Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-852652e](#bf-852652e) | PiG no longer names documentation that does not exist | PiG's own defect | All platforms | 0.5.0 |
 | [BF-852c46b](#bf-852c46b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -1450,6 +1452,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a178939](#bf-a178939) | The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a17e2a1](#bf-a17e2a1) | A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does… | PiG's own defect | All platforms | Unreleased |
 | [BF-a18da32](#bf-a18da32) | fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does | PiG's own defect | All platforms | Unreleased |
+| [BF-a1b0991](#bf-a1b0991) | The error for a model whose provider is not known now reads `Unknown provider: <id>` as in Pi, where it read… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1be545](#bf-a1be545) | The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-a1ec891](#bf-a1ec891) | fix(schema): no panic leaves the API, strings keep lone surrogates, references resolve as new URL does | PiG's own defect | All platforms | Unreleased |
@@ -1613,6 +1616,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ba80002](#bf-ba80002) | fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too | PiG's own defect | Windows | Unreleased |
 | [BF-ba8b6b7](#bf-ba8b6b7) | `/logout` reads stored credentials with Pi's 15-second signal, so an unreadable `auth.json` reports "Could… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ba9c37b](#bf-ba9c37b) | Starting `pig` no longer waits for the daily cleanup of the extension cache | PiG's own defect | All platforms | 0.5.0 |
+| [BF-baacd45](#bf-baacd45) | A request that fails because the server's TLS certificate does not name the host now shows the reason after… | PiG's own defect | All platforms | Unreleased |
 | [BF-bada2af](#bf-bada2af) | Session and crash timestamps are read like Date.parse of a JavaScript string: U+00A0 and U+FEFF between… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bb1c920](#bf-bb1c920) | A Go, Rust, Python or Lisp extension's `stdout` and `stderr` now reach the terminal as Pi's `console.log` and… | PiG's own defect | All platforms | Unreleased |
 | [BF-bb324f7](#bf-bb324f7) | A JavaScript or TypeScript extension loads when its `registerCommand` options carry a member Pi does not… | PiG's own defect | All platforms | 0.5.0 |
@@ -1759,6 +1763,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d06b3d2](#bf-d06b3d2) | The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request… | PiG's own defect | All platforms | Unreleased |
 | [BF-d06e6cf](#bf-d06e6cf) | Ending an RPC session while a response is running (stdin closes, an extension calls `ctx.shutdown()`, or pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-d0c2727](#bf-d0c2727) | fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization… | PiG's own defect | All platforms | Unreleased |
+| [BF-d0de445](#bf-d0de445) | The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of… | PiG's own defect | All platforms | Unreleased |
 | [BF-d11ca55](#bf-d11ca55) | `pig piglet build --format binary` from a Pig checkout with a `go.work` builds a Piglet whose fused Go… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d133e3d](#bf-d133e3d) | Codemode scripts that patch built-ins, for example `Array.prototype.toJSON = ...`, no longer break the tool… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-d133e3d-2](#bf-d133e3d-2) | MCP OAuth sign-in no longer fails with `invalid_redirect_uri` on OpenID Connect servers: client registration… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -10609,6 +10614,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5144418192` (2026-10-21)
 - **Tests:** None recorded.
 
+### BF-519554a
+
+**The error for a provider with no credentials now reads `Provider is not configured: <id>` as in Pi, where it…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The error for a provider with no credentials now reads `Provider is not configured: <id>` as in Pi, where it read `provider is not configured: <id>`, so a failed `/compact` or prompt after `auth.json` was emptied shows Pi's sentence.
+- **Root cause:** the messages were written in Go error-string style (lowercase) instead of copied from Pi's ModelsError text, and their tests pinned the lowercase copy
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `519554ac1d` (2026-11-14)
+- **Tests:** `coding/model_runtime_native_deferred_test.go::TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider`
+- **Release note:** The error for a provider with no credentials now reads `Provider is not configured: <id>` as in Pi, where it read `provider is not configured: <id>`, so a failed `/compact` or prompt after `auth.json` was emptied shows Pi's sentence.
+
 ### BF-51c8f1c
 
 **The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as…**
@@ -17737,6 +17756,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `extensions/sdk-ts/scripts/author-view.test.mjs`, `extensions/sdk-ts/scripts/pin-bundle.test.mjs`
 - **Release note:** `registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named `MarkdownTransformContext` and `Theme` without importing them.
 
+### BF-84adf0c
+
+**Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does unless it supplies `copySelection`), entering and leaving the alternate screen, and switching the terminal's light/dark reports now wait for a frame that is being written instead of writing at the same time, so a copy or a switch no longer lands among the bytes of a frame.
+- **Root cause:** the alternate screen's own writes held its render lock but not the terminal writer's lock that frames and cursor writes take, because the writer lock was added for cursor and raw writes and these seven writes were not among the ones it was applied to
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `84adf0cc98` (2026-11-14)
+- **Tests:** `tui/terminal_writer_lock_audit_test.go::TestEveryRendererWriteHoldsTheWriterLock`, `tui/terminal_writer_lock_audit_test.go::TestTheWriterLockAuditSeesEveryFormOfAnUnlockedWrite`
+- **Release note:** Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does unless it supplies `copySelection`), entering and leaving the alternate screen, and switching the terminal's light/dark reports now wait for a frame that is being written instead of writing at the same time, so a copy or a switch no longer lands among the bytes of a frame. An extension screen's start and stop show and hide the cursor through the same path.
+
 ### BF-84b2fca
 
 **Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the…**
@@ -22071,6 +22104,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a18da32c47` (2026-10-31)
 - **Tests:** `schema/errors_golden_test.go::TestHandWrittenCaseErrorsMatchPi`
 
+### BF-a1b0991
+
+**The error for a model whose provider is not known now reads `Unknown provider: <id>` as in Pi, where it read…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The error for a model whose provider is not known now reads `Unknown provider: <id>` as in Pi, where it read `unknown provider: <id>`.
+- **Root cause:** the message was written in Go error-string style (lowercase) instead of copied from Pi's ModelsError text, and no test pinned it
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a1b09915ff` (2026-11-14)
+- **Tests:** `coding/model_runtime_provider_texts_test.go::TestModelRuntimeRequestFailureTextsAreThoseOfPi`
+- **Release note:** The error for a model whose provider is not known now reads `Unknown provider: <id>` as in Pi, where it read `unknown provider: <id>`.
+
 ### BF-a1be545
 
 **The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig…**
@@ -24322,6 +24369,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure`, `coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure` and 15 more in docs/bug-ledger.json
 - **Release note:** Starting `pig` no longer waits for the daily cleanup of the extension cache. The cleanup now runs in the background after the session is running, stops when `pig` exits, and skips entries that are in use or that the file system reports busy (such as NFS `.nfs*` files) instead of failing and repeating at every start. `pig extensions cache prune` reports the skipped entries, and `pig extensions cache stats` shows the last background failure.
 
+### BF-baacd45
+
+**A request that fails because the server's TLS certificate does not name the host now shows the reason after…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A request that fails because the server's TLS certificate does not name the host now shows the reason after `Connection error.` (`Hostname/IP does not match certificate's altnames: ...`), as Pi does, for the Anthropic, OpenAI completions and OpenAI responses APIs.
+- **Root cause:** nodeConnectionFailure mapped only dial, socket and EOF failures to Node's cause text; the TLS name mismatch had no message
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `baacd45fe9` (2026-11-14)
+- **Tests:** `ai/tls_hostname_mismatch_test.go::TestTLSHostnameMismatchShowsNodesCause`
+- **Release note:** A request that fails because the server's TLS certificate does not name the host now shows the reason after `Connection error.` (`Hostname/IP does not match certificate's altnames: ...`), as Pi does, for the Anthropic, OpenAI completions and OpenAI responses APIs.
+
 ### BF-bada2af
 
 **Session and crash timestamps are read like Date.parse of a JavaScript string: U+00A0 and U+FEFF between…**
@@ -26342,6 +26403,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d0c2727053` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-d0de445
+
+**The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of its levels (`minimal` from `off` on a model that cannot turn thinking off, as Pi), and works for every model that reasons.
+- **Root cause:** the interactive mode re-implemented the cycle with its own index arithmetic (an unknown index clamped to 0) instead of calling the Session's function
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d0de445007` (2026-11-14)
+- **Tests:** `ai/model_utils_test.go::TestNextThinkingLevel`, `internal/codingagent/thinking_selector_test.go::TestCycleThinkingLevelGoesToTheLowestLevelOfTheModel`
+- **Release note:** The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of its levels (`minimal` from `off` on a model that cannot turn thinking off, as Pi), and works for every model that reasons.
 
 ### BF-d11ca55
 

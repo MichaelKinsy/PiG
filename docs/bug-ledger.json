@@ -17019,6 +17019,28 @@
       "tests": []
     },
     {
+      "id": "BF-519554a",
+      "title": "The error for a provider with no credentials now reads `Provider is not configured: \u003cid\u003e` as in Pi, where it…",
+      "symptom": "The error for a provider with no credentials now reads `Provider is not configured: \u003cid\u003e` as in Pi, where it read `provider is not configured: \u003cid\u003e`, so a failed `/compact` or prompt after `auth.json` was emptied shows Pi's sentence.",
+      "rootCause": "the messages were written in Go error-string style (lowercase) instead of copied from Pi's ModelsError text, and their tests pinned the lowercase copy",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The error for a provider with no credentials now reads `Provider is not configured: \u003cid\u003e` as in Pi, where it read `provider is not configured: \u003cid\u003e`, so a failed `/compact` or prompt after `auth.json` was emptied shows Pi's sentence.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "519554ac1d",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/model_runtime_native_deferred_test.go::TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider"
+      ]
+    },
+    {
       "id": "BF-51c8f1c",
       "title": "The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as…",
       "symptom": "The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as the Go SDK and Pi do: `CSI P`/`Q`/`S` and `CSI 1;\u003cmod\u003e P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5.",
@@ -30984,6 +31006,29 @@
       ]
     },
     {
+      "id": "BF-84adf0c",
+      "title": "Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does…",
+      "symptom": "Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does unless it supplies `copySelection`), entering and leaving the alternate screen, and switching the terminal's light/dark reports now wait for a frame that is being written instead of writing at the same time, so a copy or a switch no longer lands among the bytes of a frame.",
+      "rootCause": "the alternate screen's own writes held its render lock but not the terminal writer's lock that frames and cursor writes take, because the writer lock was added for cursor and raw writes and these seven writes were not among the ones it was applied to",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does unless it supplies `copySelection`), entering and leaving the alternate screen, and switching the terminal's light/dark reports now wait for a frame that is being written instead of writing at the same time, so a copy or a switch no longer lands among the bytes of a frame. An extension screen's start and stop show and hide the cursor through the same path.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "84adf0cc98",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "tui/terminal_writer_lock_audit_test.go::TestEveryRendererWriteHoldsTheWriterLock",
+        "tui/terminal_writer_lock_audit_test.go::TestTheWriterLockAuditSeesEveryFormOfAnUnlockedWrite"
+      ]
+    },
+    {
       "id": "BF-84b2fca",
       "title": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the…",
       "symptom": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked.",
@@ -39632,6 +39677,28 @@
       ]
     },
     {
+      "id": "BF-a1b0991",
+      "title": "The error for a model whose provider is not known now reads `Unknown provider: \u003cid\u003e` as in Pi, where it read…",
+      "symptom": "The error for a model whose provider is not known now reads `Unknown provider: \u003cid\u003e` as in Pi, where it read `unknown provider: \u003cid\u003e`.",
+      "rootCause": "the message was written in Go error-string style (lowercase) instead of copied from Pi's ModelsError text, and no test pinned it",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The error for a model whose provider is not known now reads `Unknown provider: \u003cid\u003e` as in Pi, where it read `unknown provider: \u003cid\u003e`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a1b09915ff",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/model_runtime_provider_texts_test.go::TestModelRuntimeRequestFailureTextsAreThoseOfPi"
+      ]
+    },
+    {
       "id": "BF-a1be545",
       "title": "The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig…",
       "symptom": "The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig surface is one) takes the text current when its debounce ends when the editor has an owner loop, as Pi does, so a space, `é` or `/` typed right after `@al` no longer loses the search; with no loop the search leaves its answer for the caller's goroutine to publish instead of writing the editor from its own.",
@@ -44385,6 +44452,28 @@
       ]
     },
     {
+      "id": "BF-baacd45",
+      "title": "A request that fails because the server's TLS certificate does not name the host now shows the reason after…",
+      "symptom": "A request that fails because the server's TLS certificate does not name the host now shows the reason after `Connection error.` (`Hostname/IP does not match certificate's altnames: ...`), as Pi does, for the Anthropic, OpenAI completions and OpenAI responses APIs.",
+      "rootCause": "nodeConnectionFailure mapped only dial, socket and EOF failures to Node's cause text; the TLS name mismatch had no message",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A request that fails because the server's TLS certificate does not name the host now shows the reason after `Connection error.` (`Hostname/IP does not match certificate's altnames: ...`), as Pi does, for the Anthropic, OpenAI completions and OpenAI responses APIs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "baacd45fe9",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/tls_hostname_mismatch_test.go::TestTLSHostnameMismatchShowsNodesCause"
+      ]
+    },
+    {
       "id": "BF-bada2af",
       "title": "Session and crash timestamps are read like Date.parse of a JavaScript string: U+00A0 and U+FEFF between…",
       "symptom": "Session and crash timestamps are read like Date.parse of a JavaScript string: U+00A0 and U+FEFF between tokens are white space, and U+2028 and U+2029 are not, as in V8.",
@@ -48622,6 +48711,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-d0de445",
+      "title": "The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of…",
+      "symptom": "The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of its levels (`minimal` from `off` on a model that cannot turn thinking off, as Pi), and works for every model that reasons.",
+      "rootCause": "the interactive mode re-implemented the cycle with its own index arithmetic (an unknown index clamped to 0) instead of calling the Session's function",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The thinking-level shortcut now goes to the lowest level of the model when the current level is not one of its levels (`minimal` from `off` on a model that cannot turn thinking off, as Pi), and works for every model that reasons.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d0de445007",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/model_utils_test.go::TestNextThinkingLevel",
+        "internal/codingagent/thinking_selector_test.go::TestCycleThinkingLevelGoesToTheLowestLevelOfTheModel"
+      ]
     },
     {
       "id": "BF-d11ca55",

@@ -1,6 +1,7 @@
 package parity
 
 import (
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"slices"
 	"strings"
 	"testing"
@@ -177,7 +178,7 @@ func TestCamelToGoField(t *testing.T) {
 func TestParser_LiveUpstream_Smoke(t *testing.T) {
 	s, err := LoadUpstream()
 	if err != nil {
-		t.Skipf("upstream mirror not available: %v", err)
+		pioracle.Missing(t, "the upstream mirror", err)
 	}
 	// Sanity bounds: these are conservative and will only fail if the parser
 	// catastrophically miscounts. Exact numbers are checked by the parity tests.

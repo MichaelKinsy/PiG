@@ -1,0 +1,51 @@
+# Behavior family: slash-commands
+# Surface: an unknown slash command ("/neww", one letter off /new) typed with no model and no credential.
+#
+# Pi has no unknown-command branch: interactive-mode.ts onSubmit matches a built-in only by the exact text "/name" (or "/name " plus
+# arguments), so "/neww" is sent as an ordinary prompt. A session with no model refuses a prompt with the auth guidance of
+# core/auth-guidance.ts, which says "Use /login ...". That reads as "the editor asked me to log in", but it is the no-model prompt
+# error, not a /login dispatch (there is no prefix or fuzzy match to /login).
+#
+# Upstream evidence (Pi 1.5.2 pin, PiG 5283d279a, tmux 100x35, 2026-11-14): both binaries show, after "/neww" Enter,
+#   Error: No API key found for the selected model.
+#   Use /login to log into a provider via OAuth or API key. See:
+# and no "Unknown command" notice. The same prompt in print mode and RPC gives the same text (print rc 1; RPC success:false).
+
+name = "29-unknown-slash-no-model"
+description = "Both binaries answer an unknown slash command with no model by sending it as a prompt: the no-API-key guidance, no unknown-command notice."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/auth-guidance.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+# Both sides type after the startup rebind that prints this warning (see 03-new-session).
+ready_pattern_pig = "Warning: No models available."
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+# The docs paths on the lines after "See:" differ by install location, so the crop stops at "See:".
+capture_start = "Error: No API key found for the selected model."
+capture_end = "OAuth or API key. See:"
+
+[[tmux.steps]]
+keys = ["/neww", "Enter"]
+wait_contains = ["Error: No API key found for the selected model."]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["No API key found for the selected model.", "Use /login to log into a provider via OAuth or API key."]
+both_not_contain = ["Unknown command", "unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

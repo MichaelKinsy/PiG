@@ -24,7 +24,8 @@
 // What a commit's blocks deliberately leave at the pin is said in them, one `// not carried: <file> (<what>): <reason>` line per file. The sync ledger rows of a followed
 // commit answer for the oracle too (automation/pin/carried.py oracle_ledger_problems, which `pin.py check-oracle` runs).
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -1374,6 +1375,14 @@ patch("86918f9eeb", "pi-ai/providers/data/github-copilot.json", [
 ]);
 // END backport 86918f9eeb
 
+// BEGIN backport 86918f9eeb
+// The manifest of the provider data: Pi's generation writes it with the data, so the hash of the one file the block above changes follows it. The structure
+// hash (the model ids of each provider) stays: the block changes no model id. generatedAt stays the release's: no generation ran.
+patch("86918f9eeb", "pi-ai/providers/data/.manifest.json", [
+    ['"github-copilot.json":"075f19a4019990cd22b3439730638b7944db696d528f59e3dbee280a0de50401"', '"github-copilot.json":"16d0f6c940a6795e87f09e6e817d082abcc1624225196ce33f842876ce505a88"'],
+]);
+// END backport 86918f9eeb
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
@@ -1422,12 +1431,31 @@ export function patchBackports(file, source) {
   return source;
 }
 
+// checkProviderDataManifest throws when a data file of `dir` (pi-ai's providers/data) is not the one its hidden manifest records, or the manifest names a file the
+// directory lacks: Pi writes the data and .manifest.json in one generation, so a backport that changes a data file must change its manifest entry in the same
+// run (a block for pi-ai/providers/data/.manifest.json), or check-model-data fails on the result. The structure hash is the Go validator's to check
+// (cmd/check-model-data, TestPublishedModelDataValidates). A directory with no manifest is not checked.
+export function checkProviderDataManifest(dir) {
+  const manifestPath = join(dir, ".manifest.json");
+  if (!existsSync(manifestPath)) return;
+  const files = JSON.parse(readFileSync(manifestPath, "utf8")).files;
+  const problems = [];
+  for (const name of readdirSync(dir).filter((name) => name.endsWith(".json") && !name.startsWith(".")).sort()) {
+    const recorded = files[name];
+    if (recorded === undefined) problems.push(`${name} is not in the manifest`);
+    else if (createHash("sha256").update(readFileSync(join(dir, name))).digest("hex") !== recorded) problems.push(`${name} does not match its manifest hash`);
+  }
+  for (const name of Object.keys(files)) if (!existsSync(join(dir, name))) problems.push(`${name} is in the manifest and not in the directory`);
+  if (problems.length > 0) throw new Error(`${dir}: the provider data and its manifest differ after the backports (add a pi-ai/providers/data/.manifest.json block with the hashes of the changed files):\n${problems.join("\n")}`);
+}
+
 // applyBackportPatches rewrites the vendored files under dist (shims/pi-dist).
 export function applyBackportPatches(dist) {
   for (const file of Object.keys(backportPatches)) {
     const path = join(dist, file);
     writeFileSync(path, patchBackports(file, readFileSync(path, "utf8")));
   }
+  checkProviderDataManifest(join(dist, "pi-ai", "providers", "data"));
 }
 
 // packageLocation is where the file of package `name` with the path `rest` (the segments of its backport key after the package)
@@ -1446,6 +1474,7 @@ export function applyPackageBackports(packages) {
     const path = join(packages[name], packageLocation(name, rest));
     writeFileSync(path, patchBackports(file, readFileSync(path, "utf8")));
   }
+  if ("pi-ai" in packages) checkProviderDataManifest(join(packages["pi-ai"], "dist", "providers", "data"));
 }
 
 // packageBackportFiles lists the files applyPackageBackports rewrites under `packages`.

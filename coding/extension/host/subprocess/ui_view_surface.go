@@ -78,6 +78,7 @@ func NewMountSurface(o MountSurfaceOptions) *MountSurface {
 	if m.s.mountImages == nil {
 		m.s.mountImages = &MountImages{}
 	}
+	m.s.buildMountImage = (*viewBuilder).mountImage
 	m.s.unfocused = true
 	m.s.sendEvent = m.event
 	return m
