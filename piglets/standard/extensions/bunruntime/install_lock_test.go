@@ -25,11 +25,9 @@ func TestVerifyDoesNotObserveTheWindowBetweenTheReplacementRenames(t *testing.T)
 	var wg sync.WaitGroup
 	var verifyErr error
 	afterReplaceAside = func() {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, verifyErr = runAction(t.Context(), "verify", root, "linux-x64", in)
-		}()
+		})
 		// Time for the other process's check to run while <root>/bun does not exist.
 		time.Sleep(200 * time.Millisecond)
 	}
@@ -57,11 +55,9 @@ func TestConcurrentInstallsLeaveOneRuntime(t *testing.T) {
 	errs := make([]error, 4)
 	var wg sync.WaitGroup
 	for i := range errs {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, errs[i] = runAction(t.Context(), "install", root, "linux-x64", in)
-		}()
+		})
 	}
 	wg.Wait()
 	for i, err := range errs {
