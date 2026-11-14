@@ -25457,6 +25457,28 @@
       ]
     },
     {
+      "id": "BF-6aa9446",
+      "title": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi…",
+      "symptom": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: \"Operation aborted\", or \"Aborted after N retry attempt(s)\" when an automatic retry was running.",
+      "rootCause": "Pi's interactive mode rewrites the errorMessage of an aborted assistant message in its message_end listener (interactive-mode.ts:3686-3697), on the object the Session persists afterwards (agent-session.ts:1208-1230). PiG rewrote a copy on the UI loop after persistence, so the session file, turn_end / agent_end handlers and the next request kept the provider's text. The mode now subscribes a synchronous Session listener at Pi's place in the order, with the retry text and Pi's plural rule, and unsubscribes where Pi's stop() does (:7293). print, json and rpc are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: \"Operation aborted\", or \"Aborted after N retry attempt(s)\" when an automatic retry was running. The session file, an extension's `turn_end` and `agent_end` handlers and the next request carried the provider's text before; print, JSON and RPC modes keep the provider's text, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6aa94467d3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_test.go::TestInteractiveMode_AbortedMessageNamesRetryAttempts"
+      ]
+    },
+    {
       "id": "BF-6ac4c8c",
       "title": "Ctrl+V pastes clipboard text in Termux",
       "symptom": "Ctrl+V pastes clipboard text in Termux.",
@@ -53606,6 +53628,30 @@
         {
           "hash": "df5964b4e7",
           "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-df5e3e8",
+      "title": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session…",
+      "symptom": "The turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected.",
+      "rootCause": "In interactive mode the abort host action waited for the run to settle. A handler the run awaits (message_update, tool_call, ...) that called ctx.abort() therefore hung the run, the next prompt and the quit. Pi starts the abort and returns (interactive-mode.ts:2399-2401, :4935-4937 void this.session.abort()); the action now posts the abort to the owner loop and returns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session: the call returns at once, the turn ends aborted and the next prompt runs, in the Node, Go, Python and Rust SDKs. Before, the turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected. Messages queued while the turn ran go back to the editor instead of running after the abort, as in Pi. Affects 0.2.0 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a079f7223f",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "df5e3e87ff",
+          "date": "2026-11-13"
         }
       ],
       "tests": []

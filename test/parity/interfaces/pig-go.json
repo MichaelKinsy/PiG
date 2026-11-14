@@ -78472,6 +78472,17 @@
       "shapeHash": "sha256:c14259d36b3a4d58e4d89fe9480d909f6e116867a0fcd01d1e926dcf69078529"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.SetExtensionAbortHandler",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.SetExtensionAbortHandler",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(handler func())"
+      },
+      "shapeHash": "sha256:28cf67605dd4d72d748bdcfaf20e9d39e31bc1759c6634d4b182b2a4d21aaaaa"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.SetFollowUpMode",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.SetFollowUpMode",
@@ -78745,6 +78756,17 @@
         "type": "func(listener AgentSessionEventListener) func()"
       },
       "shapeHash": "sha256:02b9f65349c644bbb04f70beba529f67b59e2ba88c399e27e7f9761c1ff316b8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.SubscribeFunc",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.SubscribeFunc",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(listener func(github.com/MichaelKinsy/PiG/agent.AgentEvent)) func()"
+      },
+      "shapeHash": "sha256:3ab7610f06cfbeadd780ea7a9dffce1133373a6832888b6ef02c5deaf2fff761"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.SummarizeForBugReport",
@@ -265098,6 +265120,17 @@
       "shapeHash": "sha256:58a7f36d2df9198a95e1af0bc1688a9cef2cbb241b03cbc1f5eb925b24f55804"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.extensionAbort",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.extensionAbort",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.extensionCommandSlashEntry",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.extensionCommandSlashEntry",
@@ -265899,6 +265932,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.handleSessionEvent",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.handleSessionEvent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(session InteractiveSessionHandle, event github.com/MichaelKinsy/PiG/agent.AgentEvent)"
+      },
+      "shapeHash": "sha256:10fc01d44c773e6a4fd16a33042110b05091e6656dc548a96efa1490d3c2c7ba"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.handleStartupInput",
@@ -270048,6 +270092,17 @@
       "shapeHash": "sha256:c0b76159ea20d2069dea73f440d4c812619658744b31e241ad9dc18f1477b399"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.subscribeSessionListener",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.subscribeSessionListener",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.subscribeToAgent",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.subscribeToAgent",
@@ -270376,6 +270431,17 @@
         "type": "func(value any, stack []byte)"
       },
       "shapeHash": "sha256:251eb3641b84b6e5b61a1a0dc864e10e9695482d0a0b41e27ad4826fd7d372dd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.unsubscribeSessionListener",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.unsubscribeSessionListener",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.updatePendingMessagesDisplay",
