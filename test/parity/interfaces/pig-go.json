@@ -378675,6 +378675,17 @@
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.writeColorSchemeNotificationsOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.writeColorSchemeNotificationsOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.writeOwned",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.writeOwned",
@@ -380741,6 +380752,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.writeColorSchemeNotificationsOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.writeColorSchemeNotificationsOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.writeOwned",
@@ -383293,6 +383315,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.writeColorSchemeNotificationsOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.writeColorSchemeNotificationsOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.writeOwned",
@@ -408318,6 +408351,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.writeColorSchemeNotificationsOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.writeColorSchemeNotificationsOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.writeOwned",
