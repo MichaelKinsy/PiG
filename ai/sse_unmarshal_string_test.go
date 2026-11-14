@@ -70,7 +70,7 @@ func TestAnthropicDeltaReflectDecodesAsTheCopyingDecodeDid(t *testing.T) {
 			want.Delta.Text = piText
 		}
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("%q:\n got: %+q\nwant: %+q", text, got, want)
+			t.Errorf("%q:\n got: %+v (text %q)\nwant: %+v (text %q)", text, got, got.Delta.Text, want, want.Delta.Text)
 		}
 	}
 }
