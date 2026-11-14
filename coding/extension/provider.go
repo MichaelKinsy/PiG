@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // ProviderConfig is the registration payload for [API.RegisterProvider].
@@ -152,7 +153,7 @@ func (config ProviderConfig) MarshalJSON() ([]byte, error) {
 
 func (config *ProviderModelConfig) UnmarshalJSON(data []byte) error {
 	var decoded providerModelConfigJSON
-	if err := json.Unmarshal(data, &decoded); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &decoded); err != nil {
 		return err
 	}
 	*config = ProviderModelConfig(decoded)
@@ -166,7 +167,7 @@ func (config *ProviderModelConfig) UnmarshalJSON(data []byte) error {
 }
 
 func (config ProviderModelConfig) MarshalJSON() ([]byte, error) {
-	data, err := json.Marshal(providerModelConfigJSON(config))
+	data, err := jsstring.MarshalKeepingSurrogates(providerModelConfigJSON(config))
 	if err != nil {
 		return data, err
 	}

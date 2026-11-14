@@ -1,6 +1,6 @@
 package extension
 
-import "encoding/json"
+import "github.com/MichaelKinsy/PiG/internal/jsstring"
 
 // CustomMessage is the custom message an extension's message renderer receives (core/messages.ts:46 CustomMessage<T>).
 type CustomMessage struct {
@@ -19,7 +19,7 @@ func (CustomMessage) MessageRole() string { return "custom" }
 
 // MarshalJSON writes the object Pi's renderer reads: role is always "custom" and details is left out when unset.
 func (m CustomMessage) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
+	return jsstring.MarshalKeepingSurrogates(struct {
 		Role       string `json:"role"`
 		CustomType string `json:"customType"`
 		Content    any    `json:"content"`

@@ -163593,7 +163593,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/state_push_partial_test.go#TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes"
+        "test:test/extension-conformance/lone_surrogate_passthrough_test.go#TestConformance_LoneSurrogatePassThroughAcrossSDKs"
       ]
     },
     {
@@ -163681,7 +163681,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:coding/extension/host/inproc/before_agent_start_render_test.go#TestBeforeAgentStartPromptFollowsEveryOptionsEdit",
-        "test:coding/session_prompt_options_version_test.go#TestSystemPromptOptionsVersionSeesEveryWrite"
+        "test:coding/extension/host/subprocess/prompt_options_surrogate_test.go#TestPromptOptionEditsKeepALoneSurrogate"
       ]
     },
     {
@@ -184477,7 +184477,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestUpstreamRunnerProviderRegistration",
         "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKProviderConfigWithImageAndClassifierModels",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeProviderConfigWithImageAndClassifierModels"
+        "test:test/extension-conformance/lone_surrogate_passthrough_test.go#TestConformance_LoneSurrogatePassThroughAcrossSDKs"
       ]
     },
     {

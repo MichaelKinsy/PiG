@@ -24,6 +24,7 @@ SHARDED_SPEC=(
   ./coding:6
   ./internal/codingagent:13
   ./test/parity/interface-closure/autobind:4
+  ./test/parity/cmd/portmapcheck:4
   ./codemode:2
   ./durable/codemode:2
   ./coding/extension/host/subprocess:5

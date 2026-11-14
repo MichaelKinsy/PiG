@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -512,7 +513,7 @@ func (s RegisteredMcpServer) MarshalJSON() ([]byte, error) {
 	if len(s.Declared) > 0 {
 		config = s.Declared
 	}
-	return json.Marshal(struct {
+	return jsstring.MarshalKeepingSurrogates(struct {
 		Name          string `json:"name"`
 		Config        any    `json:"config"`
 		ExtensionPath string `json:"extensionPath"`
