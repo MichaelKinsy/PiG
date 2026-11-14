@@ -27,6 +27,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-00d9a1f](#bf-00d9a1f) | fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an… | PiG's own defect | All platforms | Unreleased |
 | [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-01a63b9](#bf-01a63b9) | The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248) | PiG's own defect | All platforms | Unreleased |
+| [BF-01d0835](#bf-01d0835) | fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is… | PiG's own defect | All platforms | Unreleased |
 | [BF-01f1936](#bf-01f1936) | Print and JSON mode: on SIGTERM or SIGHUP the interrupted run now settles before `session_shutdown` handlers… | PiG's own defect | All platforms | Unreleased |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-0223bea](#bf-0223bea) | `make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names… | PiG's own defect | All platforms | Unreleased |
@@ -348,7 +349,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-308d280](#bf-308d280) | `chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-308d280-2](#bf-308d280-2) | `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed… | PiG's own defect | All platforms | Unreleased |
 | [BF-30a10ed](#bf-30a10ed) | chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended | PiG's own defect | All platforms | Unreleased |
-| [BF-30bc09c](#bf-30bc09c) | A model with no api (an empty api name) and a GitHub Copilot model whose api is none of `anthropic-messages`… | PiG's own defect | All platforms | Unreleased |
+| [BF-30bc09c](#bf-30bc09c) | A model with no api (an empty api name) and a GitHub Copilot model whose api is not one the Copilot catalog… | PiG's own defect | All platforms | Unreleased |
 | [BF-30cdab4](#bf-30cdab4) | Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path… | PiG's own defect | Windows | Unreleased |
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
@@ -2296,6 +2297,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `01a63b933a` (2026-11-05)
 - **Tests:** `internal/codingagent/selector_focus_test.go::TestEditorSlotTreeSelectorTakesAndReturnsFocus`, `tui/tree_select_empty_state_test.go::TestTreeSelectSearchCursor`
 - **Release note:** The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).
+
+### BF-01d0835
+
+**fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is refused as Pi does
+- **Root cause:** the gate that stopped the Copilot provider from sending an unknown api as chat completions named the three Copilot APIs in a hand-written list, where Pi decides by whether the provider catalog lists the api, and no test counted the connections of a bare model to the default host.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `01d08355b9` (2026-11-14)
+- **Tests:** `ai/provider_api_test.go::TestProviderCatalogServesAPI`, `coding/bare_model_default_host_test.go::TestBareModelSendsNothingToTheDefaultOpenAIHost`, `coding/bare_model_default_host_test.go::TestDefaultHostProxyControlSeesAChatCompletionsRequest`, `coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused`
 
 ### BF-01f1936
 
@@ -6731,17 +6745,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-30bc09c
 
-**A model with no api (an empty api name) and a GitHub Copilot model whose api is none of `anthropic-messages`…**
+**A model with no api (an empty api name) and a GitHub Copilot model whose api is not one the Copilot catalog…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.
+- **Symptom:** A model with no api went to the default OpenAI host as chat completions with the provider's credential, and a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.
 - **Root cause:** the Copilot branch of buildLeafProviderForEntry defaulted to chat completions for every api name, and the refusal of an unknown name printed a missing api as nothing where Pi reads it as undefined
-- **User impact:** An operation failed or was rejected
+- **User impact:** Credential or permission exposure
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `30bc09cbdb` (2026-11-14)
-- **Tests:** `ai/empty_api_refused_test.go::TestEmptyAPINameIsRefusedAtEveryStreamEntry`, `coding/unknown_api_refused_test.go::TestBareModelIsRefusedAtItsRequest`, `coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused`
-- **Release note:** A model with no api (an empty api name) and a GitHub Copilot model whose api is none of `anthropic-messages`, `openai-responses` and `openai-completions` are refused when the request starts, with `No API provider registered for api: undefined` for the empty name and the same text with the name otherwise, and nothing is sent. Before, a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.
+- **Tests:** `ai/empty_api_refused_test.go::TestEmptyAPINameIsRefusedAtEveryStreamEntry`, `ai/provider_api_test.go::TestProviderCatalogServesAPI`, `coding/bare_model_default_host_test.go::TestBareModelSendsNothingToTheDefaultOpenAIHost`, `coding/unknown_api_refused_test.go::TestBareModelIsRefusedAtItsRequest`, `coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused`
+- **Release note:** A model with no api (an empty api name) and a GitHub Copilot model whose api is not one the Copilot catalog lists are refused when the request starts, with `No API provider registered for api: undefined` for the empty name and the same text with the name otherwise, and nothing is sent. Before, a model with no api went to the default OpenAI host as chat completions with the provider's credential, and a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.
 
 ### BF-30cdab4
 
