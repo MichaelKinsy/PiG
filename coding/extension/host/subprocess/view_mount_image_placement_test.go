@@ -72,7 +72,7 @@ func distinctRefs(datas ...[]byte) int {
 
 var (
 	kittyPlacementHead = regexp.MustCompile(`\x1b_Ga=([Tp]),U=1,(?:f=100,)?q=2,i=(\d+),(?:p=(\d+),)?c=(\d+),r=(\d+)`)
-	kittyRowHead       = regexp.MustCompile(`^\x1b\[38;2;(\d+);(\d+);(\d+)m(?:\x1b\[58;2;(\d+);(\d+);(\d+)m)?`)
+	kittyRowHead       = regexp.MustCompile(`\x1b\[38;2;(\d+);(\d+);(\d+)m(?:\x1b\[58;2;(\d+);(\d+);(\d+)m)?`)
 )
 
 func sent(p *imageProbe) string { return strings.Join(p.written, "") }
@@ -166,8 +166,15 @@ func TestMountImageInAnHStackIsTransmittedOncePerRef(t *testing.T) {
 	if n, want := transmissions(p), distinctRefs(photo); n != want {
 		t.Fatalf("an image in an HStack was transmitted %d times, want %d (one per distinct image)", n, want)
 	}
-	if drawn := requirePlacedAsDrawn(t, p, got); len(drawn) != 1 {
+	drawn := requirePlacedAsDrawn(t, p, got)
+	if len(drawn) != 1 {
 		t.Fatalf("the rows draw %d placements, want 1: %v", len(drawn), drawn)
+	}
+	// The stack composes the rows of the image with those of its neighbour: the underline colour is set and reset in each.
+	for _, row := range got {
+		if strings.Contains(row, kittyPlaceholder) && drawn[0].pid != 0 && !strings.Contains(row, "\x1b[39m\x1b[59m") {
+			t.Fatalf("a row of the stack does not reset both colours after its cells: %q", row)
+		}
 	}
 }
 
@@ -213,8 +220,10 @@ func TestMountImageResizeSendsNoBytesAndDeletesTheOldPlacement(t *testing.T) {
 		t.Fatalf("the placement of the second size was not deleted alone, or the image was freed: %q", sent(p)[len(sent(p))-80:])
 	}
 	before := len(p.written)
-	if again := requirePlacedAsDrawn(t, p, s.Render(40)); again[0] != first[0] || len(p.written) != before {
-		t.Fatalf("the first size again drew %v and wrote %q, want %v and nothing", again, p.written[before:], first)
+	again := requirePlacedAsDrawn(t, p, s.Render(40))
+	dropped := "\x1b_Ga=d,d=i,i=" + strconv.Itoa(id) + ",p=" + strconv.Itoa(third[0].pid) + ",q=2\x1b\\"
+	if again[0] != first[0] || strings.Join(p.written[before:], "") != dropped || transmissions(p) != distinctRefs(photo) {
+		t.Fatalf("the first size again drew %v and wrote %q, want %v and only the delete of the third placement", again, p.written[before:], first)
 	}
 }
 

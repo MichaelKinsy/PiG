@@ -230,8 +230,8 @@ func TestMountImageIsPreparedOffTheLoopAndTransmittedOnce(t *testing.T) {
 }
 
 // pig additive (D614): an update that keeps the photograph, a second mount of it and the end of one of two mounts send
-// no bytes of it again and free nothing; a width that changes its cells transmits it for the new cells and frees the
-// old image in the same write; the end of the last mount frees the image.
+// no bytes of it again and free nothing; a width that changes its cells places the held image for the new cells (no
+// bytes of it); the end of the last mount frees the image.
 func TestMountImageUpdateSecondMountAndEnd(t *testing.T) {
 	imageTerminal(t, tui.ImageProtocolKitty)
 	p := newImageProbe(true)
@@ -265,17 +265,15 @@ func TestMountImageUpdateSecondMountAndEnd(t *testing.T) {
 	if len(p.written) != 2 {
 		t.Fatalf("a narrower mount wrote %d times, want once", len(p.written)-1)
 	}
-	freed := tui.DeleteKittyImage(id)
-	if !strings.HasSuffix(p.written[1], freed) {
-		t.Fatalf("the write for the new cells does not free image %d: %.60q", id, p.written[1][max(0, len(p.written[1])-60):])
+	if want := "\x1b_Ga=p,U=1,q=2,i=" + strconv.Itoa(id) + ",p=1,c=16,r=8\x1b\\"; p.written[1] != want {
+		t.Fatalf("the write for the new cells is %q, want the placement %q and no bytes of the image", p.written[1], want)
 	}
-	id2, cols, rows := transmission(t, strings.TrimSuffix(p.written[1], freed))
-	if id2 == id || cols != 16 || rows != 8 || len(placeholderRows(t, narrow, id2, cols)) != rows {
-		t.Fatalf("the narrower mount is image %d (was %d) of %d by %d cells, want another id and 16 by 8", id2, id, cols, rows)
+	if drawn := drawnPlacements(t, narrow); len(drawn) != 1 || drawn[0] != (placed{id, 1, 16, 8}) {
+		t.Fatalf("the narrower mount draws %v, want image %d, placement 1, 16 by 8 cells", drawn, id)
 	}
 
 	s.Close()
-	if len(p.written) != 3 || p.written[2] != tui.DeleteKittyImage(id2) {
+	if len(p.written) != 3 || p.written[2] != tui.DeleteKittyImage(id) {
 		t.Fatalf("the end of the last mount wrote %q, want the image freed", p.written[2:])
 	}
 	if p.conversions != 1 {

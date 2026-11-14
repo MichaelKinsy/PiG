@@ -3,6 +3,7 @@ package subprocess
 import (
 	"encoding/base64"
 	"image"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -69,7 +70,7 @@ type MountImages struct {
 	prepared map[string]*mountImageData
 	recent   []string
 	ids      map[string]int
-	placed   map[mountPlacement]*mountPlaced
+	held     map[string]*mountHeld
 	lastID   int
 }
 
@@ -105,7 +106,15 @@ type mountPlacement struct {
 	cols, rows int
 }
 
-type mountPlaced struct{ id, users int }
+// mountHeld is an image the terminal holds for placeholder cells: its id, and its placements by cells.
+type mountHeld struct {
+	id      int
+	lastPID int
+	cells   map[[2]int]*mountCell
+}
+
+// mountCell is a placement of a held image: its id (0 for the one the transmission made) and the components that draw it.
+type mountCell struct{ pid, users int }
 
 func (m *MountImages) nextIDLocked() int {
 	if m.lastID == 0 {
@@ -257,31 +266,40 @@ func (m *MountImages) halfBlock(img *viewImage, dims *tui.ImageDimensions, half 
 }
 
 // place makes next the placement a component holds in the place of prev (nil: it held none) and returns the id of its
-// image. An image no component holds yet is transmitted with its virtual placement; one that a component of the frame
-// before held is not sent again. Images no component holds any more are freed.
-func (m *MountImages) place(prev *mountPlacement, next mountPlacement, png string) int {
+// image and the id of its placement. The bytes of an image are sent once, with the first placement made (id 0, drawn by
+// cells that carry no placement id); a further size of the held image is a placement of its own, which sends no bytes.
+// A placement no component holds any more is deleted, the image when none of its placements is held.
+func (m *MountImages) place(prev *mountPlacement, next mountPlacement, png string) (id, pid int) {
 	var out strings.Builder
 	m.mu.Lock()
 	if prev != nil {
 		m.dropLocked(*prev)
 	}
-	p := m.placed[next]
-	if p == nil {
-		if m.placed == nil {
-			m.placed = map[mountPlacement]*mountPlaced{}
+	img := m.held[next.ref]
+	if img == nil {
+		if m.held == nil {
+			m.held = map[string]*mountHeld{}
 		}
-		p = &mountPlaced{id: m.nextIDLocked()}
-		m.placed[next] = p
-		writeKittyVirtualImage(&out, p.id, next.cols, next.rows, png)
+		img = &mountHeld{id: m.nextIDLocked(), cells: map[[2]int]*mountCell{}}
+		m.held[next.ref] = img
+		writeKittyVirtualImage(&out, img.id, next.cols, next.rows, png)
+		img.cells[[2]int{next.cols, next.rows}] = &mountCell{}
 	}
-	p.users++
-	id := p.id
+	cell := img.cells[[2]int{next.cols, next.rows}]
+	if cell == nil {
+		img.lastPID++
+		cell = &mountCell{pid: img.lastPID}
+		img.cells[[2]int{next.cols, next.rows}] = cell
+		writeKittyPlacement(&out, img.id, cell.pid, next.cols, next.rows)
+	}
+	cell.users++
+	id, pid = img.id, cell.pid
 	m.sweepLocked(&out)
 	m.mu.Unlock()
 	if out.Len() > 0 {
 		m.Write(out.String())
 	}
-	return id
+	return id, pid
 }
 
 // release gives up a held placement. The terminal keeps the image until the next sweep, so the frame that follows an
@@ -293,8 +311,10 @@ func (m *MountImages) release(held mountPlacement) {
 }
 
 func (m *MountImages) dropLocked(held mountPlacement) {
-	if p := m.placed[held]; p != nil && p.users > 0 {
-		p.users--
+	if img := m.held[held.ref]; img != nil {
+		if cell := img.cells[[2]int{held.cols, held.rows}]; cell != nil && cell.users > 0 {
+			cell.users--
+		}
 	}
 }
 
@@ -309,19 +329,37 @@ func (m *MountImages) sweep() {
 	}
 }
 
+// sweepLocked deletes what no component holds: an image none of whose placements is held, and the placements of an
+// image that is held which are not. The placement the transmission made (id 0) cannot be deleted alone, since a
+// delete without a placement id names all of the image's placements: it stays, unused, until its image is freed, and
+// serves the next component that draws the image at its cells.
 func (m *MountImages) sweepLocked(out *strings.Builder) {
-	var ids []int
-	for key, p := range m.placed {
-		if p.users == 0 {
-			ids = append(ids, p.id)
-			delete(m.placed, key)
+	for _, ref := range slices.Sorted(maps.Keys(m.held)) {
+		img := m.held[ref]
+		users := 0
+		for _, cell := range img.cells {
+			users += cell.users
+		}
+		if users == 0 {
+			out.WriteString(tui.DeleteKittyImage(img.id))
+			delete(m.held, ref)
+			continue
+		}
+		for key, cell := range img.cells {
+			if cell.users == 0 && cell.pid != 0 {
+				deleteKittyPlacement(out, img.id, cell.pid)
+				delete(img.cells, key)
+			}
 		}
 	}
-	slices.Sort(ids)
-	for _, id := range ids {
-		out.WriteString(tui.DeleteKittyImage(id))
-	}
 }
+
+// The Kitty forms this file writes (https://sw.kovidgoyal.net/kitty/graphics-protocol/), all with q=2 (no reply):
+//   - the image, once: a=T,U=1,f=100,i=<id>,c=<cols>,r=<rows> transmits it and makes its virtual placement 0;
+//   - a new size of the held image: a=p,U=1,i=<id>,p=<placement>,c=<cols>,r=<rows>, no bytes; the cells of that
+//     placement carry its id as their underline colour (SGR 58), the first placement's cells carry none;
+//   - a placement dropped: a=d,d=i,i=<id>,p=<placement>, lower case: the placement goes, the image stays;
+//   - the image freed: a=d,d=I,i=<id> (tui.DeleteKittyImage), upper case, only when no placement has a user.
 
 // writeKittyVirtualImage writes the transmission of a PNG as image id with a virtual placement of cols by rows cells
 // (a=T,U=1): the terminal stores the image and draws it wherever placeholder cells name it. q=2 asks for no reply.
@@ -345,11 +383,26 @@ func writeKittyVirtualImage(out *strings.Builder, id, cols, rows int, png string
 	}
 }
 
+// writeKittyPlacement writes a virtual placement of the image id, numbered pid, of cols by rows cells.
+func writeKittyPlacement(out *strings.Builder, id, pid, cols, rows int) {
+	out.WriteString("\x1b_Ga=p,U=1,q=2,i=" + strconv.Itoa(id) + ",p=" + strconv.Itoa(pid) + ",c=" + strconv.Itoa(cols) + ",r=" + strconv.Itoa(rows) + "\x1b\\")
+}
+
+// deleteKittyPlacement deletes the placement pid of the image id and keeps the image.
+func deleteKittyPlacement(out *strings.Builder, id, pid int) {
+	out.WriteString("\x1b_Ga=d,d=i,i=" + strconv.Itoa(id) + ",p=" + strconv.Itoa(pid) + ",q=2\x1b\\")
+}
+
 // kittyPlaceholderRows returns rows of cols placeholder cells for the image id. Each cell carries its row and its
 // column, so a row that is cut or covered in part still draws the right part of the image; the foreground colour is
-// the id.
-func kittyPlaceholderRows(id, cols, rows int) []string {
+// the id, and for a placement other than the first (pid not 0) the underline colour is its id, reset after the cells.
+func kittyPlaceholderRows(id, pid, cols, rows int) []string {
 	color := "\x1b[38;2;" + strconv.Itoa(id>>16&0xff) + ";" + strconv.Itoa(id>>8&0xff) + ";" + strconv.Itoa(id&0xff) + "m"
+	end := "\x1b[39m"
+	if pid != 0 {
+		color += "\x1b[58;2;" + strconv.Itoa(pid>>16&0xff) + ";" + strconv.Itoa(pid>>8&0xff) + ";" + strconv.Itoa(pid&0xff) + "m"
+		end += "\x1b[59m"
+	}
 	lines := make([]string, rows)
 	var b strings.Builder
 	for row := range rows {
@@ -360,7 +413,7 @@ func kittyPlaceholderRows(id, cols, rows int) []string {
 			b.WriteRune(kittyDiacritics[row])
 			b.WriteRune(kittyDiacritics[col])
 		}
-		b.WriteString("\x1b[39m")
+		b.WriteString(end)
 		lines[row] = b.String()
 	}
 	return lines
@@ -378,6 +431,7 @@ type mountImage struct {
 	waiting bool
 	held    *mountPlacement
 	heldID  int
+	heldPID int
 	key     mountImageKey
 	lines   []string
 }
@@ -499,10 +553,10 @@ func (c *mountImage) Render(width int) []string {
 		size := tui.CalculateImageCellSize(*dims, maxWidth, maxHeight, cell)
 		next := mountPlacement{ref: c.img.ref, cols: min(size.Columns, len(kittyDiacritics)), rows: min(size.Rows, len(kittyDiacritics))}
 		if c.held == nil || *c.held != next {
-			c.heldID = images.place(c.held, next, data.png)
+			c.heldID, c.heldPID = images.place(c.held, next, data.png)
 			c.held = &next
 		}
-		c.lines = kittyPlaceholderRows(c.heldID, next.cols, next.rows)
+		c.lines = kittyPlaceholderRows(c.heldID, c.heldPID, next.cols, next.rows)
 	default:
 		c.unplace()
 		id := c.imageID
