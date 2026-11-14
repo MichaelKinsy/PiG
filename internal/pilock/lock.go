@@ -29,6 +29,8 @@ const (
 	// proper-lockfile 4.1.2 lib/lockfile.js:208.
 	SyncStale  = 10 * time.Second
 	asyncStale = 30 * time.Second
+	// asyncUpdate is the heartbeat of an async lock. Pi's is proper-lockfile's stale/2 = 15 s, longer than the 10 s after which a sync acquirer takes any lock, so a refresh that outlasts 10 s loses its lock to the next process that opens a store. A tick every 5 s keeps the lock's mtime fresher than SyncStale (pig divergence D651, pending the owner).
+	asyncUpdate = 5 * time.Second
 	maxDelay   = 2 * time.Second
 )
 
@@ -214,7 +216,7 @@ func tryAcquireResolved(ctx context.Context, path string) (*Lock, error) {
 	if err != nil {
 		return nil, err
 	}
-	return tryAcquire(ctx, resolved, asyncStale)
+	return tryAcquireWithUpdate(ctx, resolved, asyncStale, asyncUpdate, nil)
 }
 
 // attemptErrors is the retry module 0.13.1's error record (lib/retry_operation.js retry and mainError), kept as counts per message: main is the error whose message is most frequent, and a message that reaches the current maximum count again replaces it.
