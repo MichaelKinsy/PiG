@@ -13556,6 +13556,30 @@
       ]
     },
     {
+      "id": "BF-5d250f8",
+      "title": "fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is…",
+      "symptom": "fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is refused as Pi does",
+      "rootCause": "Pi uses a built-in provider own stream only when the provider catalog lists a model of the request api (compat.ts:236-239 getBuiltinProviderForModel); every other api, a missing one included, is looked up in the API registry and refused when nothing is registered (compat.ts:244-247). It has no rule that names a provider. The Copilot gate of listed the three Copilot APIs by hand. The rule is now the shape Pi has: ai.ProviderCatalogServesAPI(provider, api) is true when the provider built-in catalog lists a model of that api, and the Copilot provider is built only then. Rows: the helper for four provider shapes, a Copilot model with no api or an unknown api, and a bare model of six API-key…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5d250f88c1",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/provider_api_test.go::TestProviderCatalogServesAPI",
+        "coding/bare_model_default_host_test.go::TestBareModelSendsNothingToTheDefaultOpenAIHost",
+        "coding/bare_model_default_host_test.go::TestDefaultHostProxyControlSeesAChatCompletionsRequest",
+        "coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused"
+      ]
+    },
+    {
       "id": "BF-5d36a58",
       "title": "fix(agent): end the tool flow at custom user messages and hold system messages mid-flow",
       "symptom": "fix(agent): end the tool flow at custom user messages and hold system messages mid-flow",
@@ -17993,6 +18017,28 @@
         "internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter",
         "internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant",
         "internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead"
+      ]
+    },
+    {
+      "id": "BF-6830edc",
+      "title": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a…",
+      "symptom": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data. Behavior is unchanged: a Copilot model whose api the Copilot catalog does not list is refused when the request starts. \u003c!-- cause: the gate that kept the Copilot provider to the apis its catalog lists compared the provider id with a literal in shared code, where Pi has no provider special case --\u003e \u003c!-- tests: TestProviderHasOwnStreamFor, TestCopilotModelWithNoCopilotAPIIsRefused --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6830edce78",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/provider_api_test.go::TestProviderHasOwnStreamFor"
       ]
     },
     {
@@ -28556,6 +28602,26 @@
       ]
     },
     {
+      "id": "BF-9f893e0",
+      "title": "A provider or model whose `api` is not the name of a registered API is refused when its first request starts…",
+      "symptom": "PiG sent the conversation, the system prompt and the credential of the entry to its `baseUrl` as an OpenAI chat-completions request.",
+      "rootCause": "A model whose api is none of the built-in APIs now reaches the API registry when its request starts (ai.GetAPIProvider, Pi's getApiProvider), after the request's credential is resolved, and is refused with Pi's \"No API provider registered for api: \u003capi\u003e\" when nothing is registered; nothing is built for or sent to its endpoint (provider-composer.ts:603-604). ai.StreamSimple reports the same text for an api without an implementation (compat.ts:244-247).",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider or model whose `api` is not the name of a registered API is refused when its first request starts, with the message of Pi, `No API provider registered for api: \u003cname\u003e`, and nothing is sent. Before, PiG sent the conversation, the system prompt and the credential of the entry to its `baseUrl` as an OpenAI chat-completions request. Affects 0.3.0 through 0.7.0. \u003c!-- cause: the default branch of the api switch that builds a model's provider built an OpenAI chat-completions provider for any name outside the API constants, where Pi looks the name up in its API registry and refuses --\u003e \u003c!-- tests: TestStreamSimpleRefusesAnUnknownAPINameWithPiText, TestUnknownAPINameIsRefusedBeforeAnyRequest, TestRegisteredAPINameRunsItsImplementationUntilUnregistered, TestUnknownAPINamePrintSendsNothingAndReportsPiText, TestUnknownAPINameJSONModeSendsNothingAndReportsPiText, TestUnknownAPINameResumedSessionSendsNothing, TestUnknownAPINameRPCSendsNothingAndReportsPiText, TestUnknownAPINameInteractiveShowsPiTextAndSendsNothing, TestExtensionProviderWithAnUnregisteredAPIIsRefusedAcrossSDKs, model-runtime-store-catalog/33-unknown-api-name-refused --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9f893e05d0",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9faf2de",
       "title": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…",
       "symptom": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand.",
@@ -31739,6 +31805,28 @@
         "coding/pigletbuild/node_cell_test.go::TestBuildNodeCellRefusesALinkWithAParentStepAfterAName",
         "internal/archivepath/archivepath_test.go::TestCheckLink",
         "internal/archivepath/archivepath_test.go::TestMember"
+      ]
+    },
+    {
+      "id": "BF-b266326",
+      "title": "The Go `ai.StreamSimple` reports `No API provider registered for api: \u003cname\u003e` for a model whose api has no…",
+      "symptom": "The Go `ai.StreamSimple` reports `No API provider registered for api: \u003cname\u003e` for a model whose api has no implementation even when the request has no key, as `streamSimple` of Pi does; it reported the missing key first.",
+      "rootCause": "Pi streamSimple resolves the api of the model in its API registry first and throws \"No API provider registered for api: \u003capi\u003e\" (compat.ts:290-293, resolveApiProvider :244-247); the key is asserted inside the provider, which an unregistered api never reaches. ai.StreamSimple asserted the key first, so a request with an unregistered api and no key reported \"No API key for provider\". The api is now checked before the key.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go `ai.StreamSimple` reports `No API provider registered for api: \u003cname\u003e` for a model whose api has no implementation even when the request has no key, as `streamSimple` of Pi does; it reported the missing key first. \u003c!-- cause: streamSimpleAs resolved the key before it looked at the api, where Pi looks the api up first, and the earlier refusal of an unknown api kept the key check ahead of it --\u003e \u003c!-- tests: TestStreamSimpleRefusesAnUnknownAPINameWithPiText --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b266326bd3",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/direct_simple_unknown_api_test.go::TestStreamSimpleRefusesAnUnknownAPINameWithPiText"
       ]
     },
     {
@@ -43237,6 +43325,31 @@
       ],
       "tests": [
         "ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream"
+      ]
+    },
+    {
+      "id": "BF-f006666",
+      "title": "A model with no api (an empty api name) and a GitHub Copilot model whose api is not one the Copilot catalog…",
+      "symptom": "A model with no api went to the default OpenAI host as chat completions with the provider's credential, and a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.",
+      "rootCause": "Pi takes a model object whose api is undefined to the stream and throws \"No API provider registered for api: undefined\" (compat.ts:244-247, getApiProvider is a Map miss). The Go model with no api (the bare model of buildModel, api \"\") was refused with an empty name, and a github-copilot model whose api was empty or none of anthropic-messages, openai-responses and openai-completions was sent as OpenAI chat completions to the Copilot endpoint with the Copilot token, the conversation and the system prompt. ai.NoAPIProviderError is the one constructor of the refusal; the Copilot provider is built only for the three APIs Copilot serves, any other name takes the registry path.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model with no api (an empty api name) and a GitHub Copilot model whose api is not one the Copilot catalog lists are refused when the request starts, with `No API provider registered for api: undefined` for the empty name and the same text with the name otherwise, and nothing is sent. Before, a model with no api went to the default OpenAI host as chat completions with the provider's credential, and a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token. \u003c!-- cause: the Copilot branch of buildLeafProviderForEntry defaulted to chat completions for every api name, and the refusal of an unknown name printed a missing api as nothing where Pi reads it as undefined --\u003e \u003c!-- tests: TestEmptyAPINameIsRefusedAtEveryStreamEntry, TestBareModelIsRefusedAtItsRequest, TestCopilotModelWithNoCopilotAPIIsRefused, TestBareModelSendsNothingToTheDefaultOpenAIHost, TestProviderCatalogServesAPI --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f00666666b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/empty_api_refused_test.go::TestEmptyAPINameIsRefusedAtEveryStreamEntry",
+        "coding/unknown_api_refused_test.go::TestBareModelIsRefusedAtItsRequest",
+        "coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused",
+        "coding/unknown_api_refused_test.go::TestUnknownAPINameIsRefusedBeforeAnyRequest"
       ]
     },
     {

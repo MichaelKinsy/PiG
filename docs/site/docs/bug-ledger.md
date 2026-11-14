@@ -478,6 +478,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5c9d23f](#bf-5c9d23f) | A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5cbecb0](#bf-5cbecb0) | In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-5cc630e](#bf-5cc630e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-5d250f8](#bf-5d250f8) | fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is… | PiG's own defect | All platforms | Unreleased |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-5d4c432](#bf-5d4c432) | A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
@@ -649,6 +650,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-677ded1](#bf-677ded1) | An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6785b03](#bf-6785b03) | The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read… | PiG's own defect | macOS | Unreleased |
 | [BF-67eccd7](#bf-67eccd7) | Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-6830edc](#bf-6830edc) | The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-68a4ed2](#bf-68a4ed2) | PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68a63f2](#bf-68a63f2) | A tool namespace registered with `aliases: []` keeps the empty array in `pi.getAllTools()` and the replicated… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68b129d](#bf-68b129d) | `/export` to a directory that cannot be created on a read-only file system (such as macOS's root) reports… | PiG's own defect | macOS | 0.5.0 |
@@ -1033,6 +1035,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9e95660](#bf-9e95660) | A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401… | PiG's own defect | All platforms | Unreleased |
 | [BF-9eda512](#bf-9eda512) | The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9f4702c](#bf-9f4702c) | A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9f893e0](#bf-9f893e0) | A provider or model whose `api` is not the name of a registered API is refused when its first request starts… | PiG's own defect | All platforms | Unreleased |
 | [BF-9faf2de](#bf-9faf2de) | Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)… | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-D110](#bf-d110) | Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D150](#bf-d150) | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1141,6 +1144,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b18a7ff](#bf-b18a7ff) | `ctx.compact` answers `onComplete` with the compaction result's members in Pi's order (`summary`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b1ff77a](#bf-b1ff77a) | The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b22120f](#bf-b22120f) | A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into | PiG's own defect | All platforms | 0.7.0 |
+| [BF-b266326](#bf-b266326) | The Go `ai.StreamSimple` reports `No API provider registered for api: <name>` for a model whose api has no… | PiG's own defect | All platforms | Unreleased |
 | [BF-b2b0c63](#bf-b2b0c63) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | 0.5.2 |
@@ -1506,6 +1510,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eeee29b](#bf-eeee29b) | `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f006666](#bf-f006666) | A model with no api (an empty api name) and a GitHub Copilot model whose api is not one the Copilot catalog… | PiG's own defect | All platforms | Unreleased |
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f051c65](#bf-f051c65) | fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of… | PiG's own defect | All platforms | Unreleased |
@@ -7959,6 +7964,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `144341e42a` (2026-10-27), `5cc630eba0` (2026-10-27)
 - **Tests:** `tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs`, `tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs`
 
+### BF-5d250f8
+
+**fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is refused as Pi does
+- **Root cause:** Pi uses a built-in provider own stream only when the provider catalog lists a model of the request api (compat.ts:236-239 getBuiltinProviderForModel); every other api, a missing one included, is looked up in the API registry and refused when nothing is registered (compat.ts:244-247). It has no rule that names a provider. The Copilot gate of listed the three Copilot APIs by hand. The rule is now the shape Pi has: ai.ProviderCatalogServesAPI(provider, api) is true when the provider built-in catalog lists a model of that api, and the Copilot provider is built only then. Rows: the helper for four provider shapes, a Copilot model with no api or an unknown api, and a bare model of six API-key…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5d250f88c1` (2026-11-14)
+- **Tests:** `ai/provider_api_test.go::TestProviderCatalogServesAPI`, `coding/bare_model_default_host_test.go::TestBareModelSendsNothingToTheDefaultOpenAIHost`, `coding/bare_model_default_host_test.go::TestDefaultHostProxyControlSeesAChatCompletionsRequest`, `coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused`
+
 ### BF-5d36a58
 
 **fix(agent): end the tool flow at custom user messages and hold system messages mid-flow**
@@ -10341,6 +10359,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `67eccd768a` (2026-10-31)
 - **Tests:** `ai/openrouter_variants_allocs_norace_test.go::TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries`, `ai/openrouter_variants_allocs_norace_test.go::TestListingOpenRouterRoutingVariantsAllocatesNothingPerVariant`, `ai/openrouter_variants_test.go::TestDerivedOpenRouterVariantsAreBuiltOnce`, `internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead`
 - **Release note:** Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.
+
+### BF-6830edc
+
+**The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6830edce78` (2026-11-14)
+- **Tests:** `ai/provider_api_test.go::TestProviderHasOwnStreamFor`
+- **Release note:** The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data. Behavior is unchanged: a Copilot model whose api the Copilot catalog does not list is refused when the request starts. <!-- cause: the gate that kept the Copilot provider to the apis its catalog lists compared the provider id with a literal in shared code, where Pi has no provider special case --> <!-- tests: TestProviderHasOwnStreamFor, TestCopilotModelWithNoCopilotAPIIsRefused -->
 
 ### BF-68a4ed2
 
@@ -15667,6 +15699,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/interactive_command_error_test.go::TestInteractiveShortcutDiagnosticOwnership`
 - **Release note:** A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error color, as in Pi. Previously it was shown as a warning.
 
+### BF-9f893e0
+
+**A provider or model whose `api` is not the name of a registered API is refused when its first request starts…**
+
+- **Source:** PiG's own defect
+- **Symptom:** PiG sent the conversation, the system prompt and the credential of the entry to its `baseUrl` as an OpenAI chat-completions request.
+- **Root cause:** A model whose api is none of the built-in APIs now reaches the API registry when its request starts (ai.GetAPIProvider, Pi's getApiProvider), after the request's credential is resolved, and is refused with Pi's "No API provider registered for api: <api>" when nothing is registered; nothing is built for or sent to its endpoint (provider-composer.ts:603-604). ai.StreamSimple reports the same text for an api without an implementation (compat.ts:244-247).
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9f893e05d0` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** A provider or model whose `api` is not the name of a registered API is refused when its first request starts, with the message of Pi, `No API provider registered for api: <name>`, and nothing is sent. Before, PiG sent the conversation, the system prompt and the credential of the entry to its `baseUrl` as an OpenAI chat-completions request. Affects 0.3.0 through 0.7.0. <!-- cause: the default branch of the api switch that builds a model's provider built an OpenAI chat-completions provider for any name outside the API constants, where Pi looks the name up in its API registry and refuses --> <!-- tests: TestStreamSimpleRefusesAnUnknownAPINameWithPiText, TestUnknownAPINameIsRefusedBeforeAnyRequest, TestRegisteredAPINameRunsItsImplementationUntilUnregistered, TestUnknownAPINamePrintSendsNothingAndReportsPiText, TestUnknownAPINameJSONModeSendsNothingAndReportsPiText, TestUnknownAPINameResumedSessionSendsNothing, TestUnknownAPINameRPCSendsNothingAndReportsPiText, TestUnknownAPINameInteractiveShowsPiTextAndSendsNothing, TestExtensionProviderWithAnUnregisteredAPIIsRefusedAcrossSDKs, model-runtime-store-catalog/33-unknown-api-name-refused -->
+
 ### BF-9faf2de
 
 **Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…**
@@ -17173,6 +17219,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9155fc460c` (2026-11-01), `b22120fdb8` (2026-11-01)
 - **Tests:** `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesKeepsLinksThatStayInsideTheTree`, `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesRefusesALinkReachedByAnotherSpellingOfItsName`, `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesRefusesWritesThroughSymbolicLinks`, `coding/pigletbuild/node_cell_test.go::TestBuildNodeCellNamesTheExtensionDirectoryForALinkThatLeavesIt`, `coding/pigletbuild/node_cell_test.go::TestBuildNodeCellRefusesALinkWithAParentStepAfterAName`, `internal/archivepath/archivepath_test.go::TestCheckLink`, `internal/archivepath/archivepath_test.go::TestMember`
 - **Release note:** A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into. The extraction checked link names as text, but the kernel resolves `z/..` through a link `z`, so a link such as `z/../z/../..` passed the check while resolving above the directory, and a later archive member under it was written there. The extraction now writes through `os.Root`, refuses a member whose path passes through a link the archive wrote, and accepts only a link target that climbs (`..`) before it names anything; the check reads the tree on disk, so a file system that folds case cannot reach a link by another spelling, and a link target holding `:` is refused. `pig piglet build` refuses the same links instead of embedding them.
+
+### BF-b266326
+
+**The Go `ai.StreamSimple` reports `No API provider registered for api: <name>` for a model whose api has no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Go `ai.StreamSimple` reports `No API provider registered for api: <name>` for a model whose api has no implementation even when the request has no key, as `streamSimple` of Pi does; it reported the missing key first.
+- **Root cause:** Pi streamSimple resolves the api of the model in its API registry first and throws "No API provider registered for api: <api>" (compat.ts:290-293, resolveApiProvider :244-247); the key is asserted inside the provider, which an unregistered api never reaches. ai.StreamSimple asserted the key first, so a request with an unregistered api and no key reported "No API key for provider". The api is now checked before the key.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b266326bd3` (2026-11-14)
+- **Tests:** `ai/direct_simple_unknown_api_test.go::TestStreamSimpleRefusesAnUnknownAPINameWithPiText`
+- **Release note:** The Go `ai.StreamSimple` reports `No API provider registered for api: <name>` for a model whose api has no implementation even when the request has no key, as `streamSimple` of Pi does; it reported the missing key first. <!-- cause: streamSimpleAs resolved the key before it looked at the api, where Pi looks the api up first, and the earlier refusal of an unknown api kept the key check ahead of it --> <!-- tests: TestStreamSimpleRefusesAnUnknownAPINameWithPiText -->
 
 ### BF-b2b0c63
 
@@ -22223,6 +22283,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ef0f95ab0e` (2026-10-14)
 - **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`
 - **Release note:** OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models failing with a 404; OpenCode Go MiniMax M2.7 uses the Anthropic Messages API, and OpenCode Go DeepSeek V4 Flash is no longer listed (carried Pi fix, Pi 195120a9).
+
+### BF-f006666
+
+**A model with no api (an empty api name) and a GitHub Copilot model whose api is not one the Copilot catalog…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A model with no api went to the default OpenAI host as chat completions with the provider's credential, and a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.
+- **Root cause:** Pi takes a model object whose api is undefined to the stream and throws "No API provider registered for api: undefined" (compat.ts:244-247, getApiProvider is a Map miss). The Go model with no api (the bare model of buildModel, api "") was refused with an empty name, and a github-copilot model whose api was empty or none of anthropic-messages, openai-responses and openai-completions was sent as OpenAI chat completions to the Copilot endpoint with the Copilot token, the conversation and the system prompt. ai.NoAPIProviderError is the one constructor of the refusal; the Copilot provider is built only for the three APIs Copilot serves, any other name takes the registry path.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f00666666b` (2026-11-14)
+- **Tests:** `ai/empty_api_refused_test.go::TestEmptyAPINameIsRefusedAtEveryStreamEntry`, `coding/unknown_api_refused_test.go::TestBareModelIsRefusedAtItsRequest`, `coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused`, `coding/unknown_api_refused_test.go::TestUnknownAPINameIsRefusedBeforeAnyRequest`
+- **Release note:** A model with no api (an empty api name) and a GitHub Copilot model whose api is not one the Copilot catalog lists are refused when the request starts, with `No API provider registered for api: undefined` for the empty name and the same text with the name otherwise, and nothing is sent. Before, a model with no api went to the default OpenAI host as chat completions with the provider's credential, and a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token. <!-- cause: the Copilot branch of buildLeafProviderForEntry defaulted to chat completions for every api name, and the refusal of an unknown name printed a missing api as nothing where Pi reads it as undefined --> <!-- tests: TestEmptyAPINameIsRefusedAtEveryStreamEntry, TestBareModelIsRefusedAtItsRequest, TestCopilotModelWithNoCopilotAPIIsRefused, TestBareModelSendsNothingToTheDefaultOpenAIHost, TestProviderCatalogServesAPI -->
 
 ### BF-f00bf6c
 
