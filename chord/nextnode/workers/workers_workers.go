@@ -877,13 +877,15 @@ func (c *Workers) rollout(scripts []plugins.PluginScript, ctx context.Context) (
 			failed = append(failed, record)
 		}
 	})
-	retried := make([]bool, len(failed))
-	for index, record := range failed {
-		retried[index] = c.route.Retry(record.address)
+	// A retried address lists the start it has once Retry returns (Pi: `routed.starting` after `retry`, workers.ts:598-601),
+	// whoever began it: Retry starts none when a resolve of the address already runs (the route starts one itself when a
+	// worker's link closes), and that resolve's start is the one the address waits for. Retry's answer is not asked.
+	for _, record := range failed {
+		c.route.Retry(record.address)
 	}
 	c.loop.Run(func() {
-		for index, record := range failed {
-			if started := record.starting; retried[index] && started != nil {
+		for _, record := range failed {
+			if started := record.starting; started != nil {
 				entries = append(entries, entry{record.address.Key, c.retried(record, started)})
 			} else {
 				c.forget(record)
