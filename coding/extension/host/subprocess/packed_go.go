@@ -751,7 +751,9 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 	extLogPath := ""
 	if stderrFile != nil {
 		extLogPath = stderrFile.Name()
+		h.mu.Lock()
 		processState.stderrLog = &processStderrLog{path: extLogPath, writer: stderrFile}
+		h.mu.Unlock()
 		stderrLog = processState.stderrLog
 	}
 	cmd.Env = withExtLog(env, extLogPath)
@@ -797,8 +799,19 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 		}
 		return loadErr
 	}
+	// The state is published under h.mu, which killProcesses reads: an exit that began before this point killed nothing of this process, so the process ends here.
+	h.mu.Lock()
 	processState.cmd = cmd
 	processState.processTree = processTree
+	exiting := h.shuttingDown.Load()
+	h.mu.Unlock()
+	if exiting {
+		if processTree != nil {
+			_ = processTree.Kill()
+		} else if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+	}
 	processState.share = newProcessShare(h.retentionKey(ctx, cell.BinaryPath, nodeRuntime), processState, processState.startWait(), admissionWriter, func() {
 		cancel()
 		if processTree != nil {
@@ -983,7 +996,7 @@ func (h *Host) watchPackedProcess(process *packedProcessState) {
 func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Listener) (_ *extension.Extension, err error) {
 	defer func() {
 		if loadErr, ok := errors.AsType[*LoadError](err); ok {
-			if ctx.Err() != nil {
+			if ctx.Err() != nil || h.shuttingDown.Load() {
 				loadErr.StderrLog = ""
 			} else {
 				loadErr.StderrLog = me.retainStderrLog()
