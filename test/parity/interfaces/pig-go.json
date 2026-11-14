@@ -79261,6 +79261,50 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "apiRegistryProvider",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "apiRegistryProvider"
+      },
+      "shapeHash": "sha256:ed1e59e7e86dbe41d7c9528d6c4497e67bd45d4d532c26c763b33438c70f6ebd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Close",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "apiRegistryProvider.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.ID",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "apiRegistryProvider.ID",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "apiRegistryProvider.Stream",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, transcript github.com/MichaelKinsy/PiG/ai.TranscriptContext, options github.com/MichaelKinsy/PiG/ai.StreamOptions) (*github.com/MichaelKinsy/PiG/ai.AssistantMessageEventStream, error)"
+      },
+      "shapeHash": "sha256:3ad688308391858a4693f3db3647121c772e4c8993e8d4a58d0f062c0d433f62"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "apiStreamProvider",
