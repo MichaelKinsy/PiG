@@ -124,7 +124,7 @@ var beforeObject = setOf("( [ , = ? : ! & | + - * % ^ ~ < >")
 func setOf(words ...string) map[string]bool {
 	set := map[string]bool{}
 	for _, w := range words {
-		for _, f := range strings.Fields(w) {
+		for f := range strings.FieldsSeq(w) {
 			set[f] = true
 		}
 	}

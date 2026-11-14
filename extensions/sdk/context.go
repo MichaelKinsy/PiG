@@ -1590,9 +1590,7 @@ func snapshotEvent(event map[string]any, finalKey string, final map[string]any) 
 		return nil, nil, err
 	}
 	shown := make(map[string]any, len(event))
-	for key, value := range event {
-		shown[key] = value
-	}
+	maps.Copy(shown, event)
 	shown[finalKey] = finalWire
 	wire, err = json.MarshalJS(shown)
 	return wire, finalWire, err
