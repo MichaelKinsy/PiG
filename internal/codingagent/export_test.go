@@ -66,6 +66,8 @@ func NewTestHarnessWithOutput(t testing.TB, opts InteractiveModeOptions, onEvent
 	m.agent = opts.SessionHandle.Agent()
 	m.installRunPromptTurnRefresh()
 	m.eventCh = opts.SessionHandle.Events()
+	m.subscribeSessionListener()
+	t.Cleanup(m.unsubscribeSessionListener)
 	ctx, cancel := context.WithCancel(context.Background())
 	m.runCtx = ctx
 	m.abortCtx, m.abortFn = context.WithCancel(ctx)

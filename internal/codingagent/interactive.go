@@ -518,6 +518,10 @@ type InteractiveMode struct {
 	heldPrompts []heldPrompt
 	heldWaiting bool
 
+	// unsubscribeSession removes the mode's synchronous Session listener (handleSessionEvent); the owner loop sets and calls it.
+	unsubscribeSession func()
+	// sessionStreaming is Pi's `this.streamingComponent` as the Session listener needs it: set by an assistant message_start, cleared by that message's message_end and by agent_end. The listener runs on the goroutine that executes the Session's events, so it keeps this itself instead of reading evCurrentBlock, which the owner loop sets when the event reaches it.
+	sessionStreaming atomic.Bool
 	// eventCh is the agent's live event stream (m.opts.SessionHandle.Events()).
 	// The inputLoop select drains it and calls handleAgentEvent on the main
 	// goroutine. evCurrentBlock/evTurnIndex are that handler's
@@ -1912,6 +1916,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.installRunPromptTurnRefresh()
 	m.rebuildToolSystemPrompt()
 	m.eventCh = m.opts.SessionHandle.Events()
+	m.subscribeSessionListener()
 	extCtx.Session = m.currentSession()
 
 	m.reconfigureRemoteEditor()
