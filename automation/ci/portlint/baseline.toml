@@ -4397,12 +4397,6 @@ snippet = "case \"github-copilot\":"
 
 [[hit]]
 check = "providerliteral"
-file = "coding/model.go"
-func = "buildLeafProviderForEntry"
-snippet = "if providerID == \"github-copilot\" && !resolvedAuth {"
-
-[[hit]]
-check = "providerliteral"
 file = "internal/codingagent/auth_warnings.go"
 func = "InteractiveMode.canWarnAboutAnthropicSubscriptionAuth"
 snippet = "return model != nil && model.Provider != nil && model.Provider.ID() == \"anthropic\""
