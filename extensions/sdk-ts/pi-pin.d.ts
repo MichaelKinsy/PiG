@@ -22101,6 +22101,15 @@ supportsStore: boolean;
 supportsDeveloperRole: boolean;
 supportsReasoningEffort: boolean;
 };
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
 inputLimits: {
 images: {
 resize: {
@@ -22140,6 +22149,15 @@ supportsStrictMode: boolean;
 supportsStore: boolean;
 supportsDeveloperRole: boolean;
 supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
 };
 inputLimits: {
 images: {
@@ -22181,6 +22199,15 @@ supportsStore: boolean;
 supportsDeveloperRole: boolean;
 supportsReasoningEffort: boolean;
 supportsMidConvoSystemMessages: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: null;
+max: string;
 };
 inputLimits: {
 images: {

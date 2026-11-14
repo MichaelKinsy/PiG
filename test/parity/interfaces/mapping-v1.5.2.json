@@ -190890,8 +190890,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/crash_log_test.go#TestRunRecordsACrashAndReportsErrInteractiveCrashed",
-        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild",
-        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithASlashCommandChild"
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -190913,8 +190913,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/crash_log_test.go#TestRunRecordsACrashAndReportsErrInteractiveCrashed",
-        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild",
-        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithASlashCommandChild"
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -191343,9 +191343,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.drawsOnProcessTerminal"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild",
         "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption",
-        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame",
-        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterSettingChangeWaitsForTheNextStart"
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame"
       ]
     },
     {
