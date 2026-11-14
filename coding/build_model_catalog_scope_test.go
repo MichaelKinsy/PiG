@@ -13,7 +13,7 @@ func TestBuildModelIgnoresOtherProvidersCatalog(t *testing.T) {
 		t.Fatal("the generated catalog no longer has azure/gpt-6-astra: pick another model id that one provider catalogs and the test's extension provider does not")
 	}
 	services := newTestServices(t)
-	if err := services.Registry().RegisterExtensionProvider("proxy", extension.ProviderConfig{BaseURL: "http://127.0.0.1:1/v1", API: ai.APIOpenAIResponses, APIKey: "test-key"}); err != nil {
+	if err := services.Registry().RegisterExtensionProvider("proxy", extension.ProviderConfig{BaseURL: "http://127.0.0.1:1/v1", API: ai.APIOpenAIResponses, APIKey: "test-key", Models: []extension.ProviderModelConfig{{ID: "gpt-6-astra", Name: "GPT 6 Astra", Input: []string{"text"}}}}); err != nil {
 		t.Fatal(err)
 	}
 	model, err := BuildModel("proxy/gpt-6-astra", services)

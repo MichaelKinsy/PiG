@@ -704,20 +704,19 @@ call = "json.Unmarshal"
 dest = "any"
 count = 1
 
-# the shared JS-semantics decode helper: one place for what five call-site entries held (net -3 on the baseline)
+# the shared JS-semantics decode helper: one place for what five call-site entries held (net -3 on the baseline); the generic wrapper UnmarshalKeepingSurrogates hands the target on as any
 [[hit]]
 file = "internal/jsstring/surrogate_json.go"
-func = "UnmarshalKeepingSurrogates"
+func = "unmarshalKeepingSurrogates"
 call = "json.Unmarshal"
-dest = "*T"
+dest = "any"
 count = 1
 
-# the shared JS-semantics decode helper: one place for what five call-site entries held (net -3 on the baseline)
 [[hit]]
 file = "internal/jsstring/surrogate_json.go"
-func = "UnmarshalKeepingSurrogates"
+func = "unmarshalKeepingSurrogates"
 call = "sdkjson.Unmarshal"
-dest = "*T"
+dest = "any"
 count = 1
 
 [[hit]]

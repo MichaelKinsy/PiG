@@ -337,7 +337,7 @@ var codemode_default = createCodemodeExtension();
 
 // pi-dist/pi-coding-agent/extensions/mcp/index.js
 import { join as join2, resolve } from "node:path";
-import { createMcpToolName, mcpNamespace } from "../../pi-mcp/index.js";
+import { createMcpToolName, mcpNamespace, mcpServerSummary } from "../../pi-mcp/index.js";
 
 // pi-dist/pi-coding-agent/extensions/mcp/resources.js
 import { limitMcpContent as limitMcpContent2 } from "../../pi-mcp/index.js";
@@ -1307,11 +1307,6 @@ function truncate(text, max) {
   return max <= 1 ? "" : `${sliceHead(text, max - 1).trimEnd()}\u2026`;
 }
 __name(truncate, "truncate");
-function serverSummary(server) {
-  const text = server.entry.config.description?.trim() || server.connection?.instructions || "";
-  return (text.split("\n", 1)[0] ?? "").trim();
-}
-__name(serverSummary, "serverSummary");
 function renderServersSection(servers) {
   const listed2 = servers.filter((server) => isEnabled(server) && hasIndirectTools(server.entry)).sort((a, b) => a.entry.name.localeCompare(b.entry.name));
   if (listed2.length === 0)
@@ -1326,7 +1321,7 @@ function renderServersSection(servers) {
     kept--;
   const perServer = kept === 0 ? 0 : Math.min(MAX_SERVER_DESCRIPTION_CHARS, Math.floor((MAX_SERVERS_SECTION_CHARS - size(kept)) / kept) - 2);
   const lines = listed2.slice(0, kept).map((server, index) => {
-    const summary = perServer > 0 ? truncate(serverSummary(server), perServer) : "";
+    const summary = perServer > 0 ? truncate(mcpServerSummary(server.entry.config.description, server.connection?.instructions), perServer) : "";
     return summary ? `${heads[index]}: ${summary}` : heads[index];
   });
   return [intro, ...lines, ...omitted(listed2.length - kept)].join("\n");

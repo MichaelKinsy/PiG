@@ -60,3 +60,18 @@ func TestMcpNamespaceIsMcpServerWithDashReplacedByUnderscore(t *testing.T) {
 		t.Fatal("the namespace is not the prefix of the tool name")
 	}
 }
+
+func TestMcpServerSummaryTakesTheFirstLineOfTheConfiguredDescriptionElseOfTheInstructions(t *testing.T) {
+	if got := mcp.McpServerSummary(" Docs search.\nMore. ", "Ignored."); got != "Docs search." {
+		t.Fatalf("summary = %q", got)
+	}
+	if got := mcp.McpServerSummary("", "\n  Web search for current information.\nDetails."); got != "Web search for current information." {
+		t.Fatalf("summary = %q", got)
+	}
+	if got := mcp.McpServerSummary("  ", "From instructions."); got != "From instructions." {
+		t.Fatalf("summary = %q", got)
+	}
+	if got := mcp.McpServerSummary("", ""); got != "" {
+		t.Fatalf("summary = %q", got)
+	}
+}

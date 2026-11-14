@@ -1,12 +1,13 @@
 package docsdrift
 
 import (
-	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // upstreamDocsDir is the pinned upstream Pi documentation in the local mirror.

@@ -1,6 +1,7 @@
+import { writeFileSync } from "node:fs";
 import { connect } from "node:net";
 
-// The agent_settled handler and the hold command wait on a plain TCP read: they dial RPC_SETTLE_ADDR, announce themselves with a "waiting" line and return when the peer writes a line. The input handler dials RPC_SETTLE_INPUT_ADDR instead. Without the address they return at once.
+// The agent_settled handler and the hold command wait on a plain TCP read: they dial RPC_SETTLE_ADDR, announce themselves with a "waiting" line and return when the peer writes a line. The input handler dials RPC_SETTLE_INPUT_ADDR instead. Without the address they return at once. With RPC_SETTLE_DONE the hold command writes that file once its wait returned.
 function wait(env) {
   const addr = process.env[env];
   if (!addr) return Promise.resolve();
@@ -19,5 +20,8 @@ function wait(env) {
 export default function (pi) {
   pi.on("agent_settled", () => wait("RPC_SETTLE_ADDR"));
   pi.on("input", () => wait("RPC_SETTLE_INPUT_ADDR"));
-  pi.registerCommand("hold", { description: "Wait on a socket read", handler: () => wait("RPC_SETTLE_ADDR") });
+  pi.registerCommand("hold", { description: "Wait on a socket read", handler: async () => {
+    await wait("RPC_SETTLE_ADDR");
+    if (process.env.RPC_SETTLE_DONE) writeFileSync(process.env.RPC_SETTLE_DONE, "done\n");
+  } });
 }

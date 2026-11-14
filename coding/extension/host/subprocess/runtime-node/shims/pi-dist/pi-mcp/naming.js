@@ -1,7 +1,7 @@
 /**
- * Names of MCP tools and of their servers' namespaces as models and code mode scripts see them.
- * Applications that name tools the same way rank and group them the same way in tool search and
- * code mode.
+ * Names of MCP tools and of their servers' namespaces, and the servers' one-line summaries, as models
+ * and code mode scripts see them. Applications that name tools the same way rank and group them the
+ * same way in tool search and code mode.
  */
 import { createHash } from "node:crypto";
 /** Provider tool names are limited to 64 characters of `[A-Za-z0-9_-]`. */
@@ -25,5 +25,14 @@ export function createMcpToolName(server, tool, isTaken = () => false) {
  */
 export function mcpNamespace(server) {
     return `mcp__${server.replace(/-/g, "_")}`;
+}
+// Pi 3567987250 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+/**
+ * A server's one-line summary for the system prompt: the first line of its configured `description`,
+ * else of the instructions it sent in `initialize`; empty when it has neither.
+ */
+export function mcpServerSummary(description, instructions) {
+    const text = description?.trim() || instructions?.trim() || "";
+    return (text.split("\n", 1)[0] ?? "").trim();
 }
 //# sourceMappingURL=naming.js.map

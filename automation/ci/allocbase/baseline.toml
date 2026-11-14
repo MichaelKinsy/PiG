@@ -110,6 +110,16 @@ allocs = 14
 
 [[benchmark]]
 package = "./agent"
+benchmark = "BenchmarkToolResultMessageStringify/nestedCalls"
+allocs = 31
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkToolResultMessageStringify/plain"
+allocs = 6
+
+[[benchmark]]
+package = "./agent"
 benchmark = "BenchmarkUserContentUnion/0"
 allocs = 34
 
@@ -122,6 +132,26 @@ allocs = 25
 package = "./agent"
 benchmark = "BenchmarkUserContentUnion/65536"
 allocs = 30
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/escape"
+allocs = 4
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/escaped_pair"
+allocs = 4
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/first_half"
+allocs = 26
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/plain"
+allocs = 3
 
 [[benchmark]]
 package = "./ai"
@@ -2060,6 +2090,11 @@ allocs = 31
 
 [[benchmark]]
 package = "./coding/extension/host/inproc"
+benchmark = "BenchmarkCoerceBeforeAgentStartResult"
+allocs = 17
+
+[[benchmark]]
+package = "./coding/extension/host/inproc"
 benchmark = "BenchmarkEmitContextPerRequest/exchanges=50"
 allocs = 2163
 
@@ -2240,6 +2275,46 @@ allocs = 12
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/AgentBeforeSettleEvent"
+allocs = 218
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/BeforeAgentStartEvent"
+allocs = 31
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/McpServersChangeEvent"
+allocs = 9
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ModelSelectEvent"
+allocs = 198
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionEndEvent"
+allocs = 6
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionStartEvent"
+allocs = 8
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionUpdateEvent"
+allocs = 9
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/TurnEndEvent"
+allocs = 254
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/cross-cwd"
 allocs = 717
 
@@ -2266,32 +2341,32 @@ allocs = 845
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/16_extensions,_one_at_a_time"
-allocs = 72190
+allocs = 63412
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/16_extensions,_together"
-allocs = 72229
+allocs = 63449
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/1_extensions,_one_at_a_time"
-allocs = 4513
+allocs = 3964
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/1_extensions,_together"
-allocs = 4517
+allocs = 3964
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/4_extensions,_one_at_a_time"
-allocs = 18048
+allocs = 15853
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/4_extensions,_together"
-allocs = 18060
+allocs = 15865
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2571,7 +2646,7 @@ allocs = 2134
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkStagedSDKWalkHash"
-allocs = 3475
+allocs = 3135
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -3047,6 +3122,11 @@ allocs = 63
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelThinkingSubmenu"
 allocs = 1901
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelsJSONLoad"
+allocs = 4956
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3817,6 +3897,16 @@ allocs = 6
 package = "./tui"
 benchmark = "BenchmarkLanguageFromPath"
 allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLoginDialogIsDirty"
+allocs = 21
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLoginDialogSettledFrame"
+allocs = 65
 
 [[benchmark]]
 package = "./tui"

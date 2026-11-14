@@ -1,0 +1,121 @@
+from = "1.5.2+1cfb326b"
+to = "1.5.2+35679872"
+# Pi 3567987250d8 (2026-11-14): feat(p2): MCP servers per conversation location, with pi's server summaries. Its packages/ half is ported here; its apps/p2 half is on the p2 line.
+# Left out of this range because they touch only apps/p3 or apps/p2 / apps/p2-mac and are accounted on their own lines: 364cca8e2 (p2: the outermost host owns the light/dark theme), 00c411ee0 (p2-mac: appearance setting),
+# 3b90e84d0, 95bbb5ff4, 3f5b77965 (p3 slice 1 documents, private copy).
+
+[[files]]
+path = "packages/mcp/src/naming.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/naming_pi_test.go#TestMcpServerSummaryTakesTheFirstLineOfTheConfiguredDescriptionElseOfTheInstructions"]
+rationale = "3567987250: mcpServerSummary(description, instructions) is the first line of the trimmed description, else of the TRIMMED instructions, else empty. internal/mcpshared/naming.go McpServerSummary (re-exported as mcp.McpServerSummary) takes strings, where \"\" is Pi's undefined (both fall through `||`), and trims with String.prototype.trim (jsstring.Trim)."
+oracle = "carried: 3567987250 (pi-mcp/naming.js: the oracle's and the vendored runtime's pi-mcp export mcpServerSummary; mcp.McpServerSummary is compared with it by mcp/naming_oracle_test.go TestMcpServerSummaryMatchesPiOracle)"
+
+[[files]]
+path = "packages/mcp/src/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/naming_pi_test.go#TestMcpServerSummaryTakesTheFirstLineOfTheConfiguredDescriptionElseOfTheInstructions"]
+rationale = "3567987250: mcpServerSummary joins the exports of createMcpToolName and mcpNamespace; mcp.McpServerSummary is the Go export."
+oracle = "carried: 3567987250 (pi-mcp/index.js re-exports mcpServerSummary, as the oracle's pi-mcp root does)"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/mcpext/servers_section_test.go#TestMCPServersSectionSummarizesInstructionsThatStartWithABlankLine"]
+rationale = "3567987250: renderServersSection reads the summary through mcpServerSummary and the local serverSummary is deleted; coding/mcpext/extension.go calls mcp.McpServerSummary. Instructions that start with a blank line now give their first non-blank line (the old reading left the summary empty); asserted through RenderServersSection, the mcp_servers prompt section."
+oracle = "carried: 3567987250 (pi-coding-agent/extensions/mcp/index.js reads mcpServerSummary; coding/mcpext/servers_section_oracle_test.go TestMCPServersSectionMatchesPiOracle compares the section with the oracle's renderServersSection, and the oracle's `pi` bundle is rebuilt with it)"
+
+[[files]]
+path = "packages/mcp/test/naming.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:mcp/naming_pi_test.go#TestMcpServerSummaryTakesTheFirstLineOfTheConfiguredDescriptionElseOfTheInstructions"]
+rationale = "3567987250: describe mcpServerSummary, one case of four assertions (description with surrounding space and a second line over instructions; instructions starting with a blank line; a blank description falls through; both absent give empty), the four assertions of the Go test with the same inputs and results."
+oracle = "not carried: packages/mcp/test is not shipped; the oracle runs the package itself, on the same four inputs and more, in mcp/naming_oracle_test.go"
+
+[[files]]
+path = "packages/mcp/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3567987250: Pi's changelog entry (Added mcpServerSummary). PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "apps/p2/docs/handoff.md"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/docs/p2-notes.md"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/plugins/mcp/contract.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/plugins/mcp/instances.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/plugins/mcp/placement.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/plugins/mcp/server.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/plugins/mcp/tools.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/plugins/mcp/worker.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/mcp-instances.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/mcp-tools.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/mcp-worker.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (3567987250: MCP servers per conversation location, Mcp contract version 4): the app p2 is ported on its own line (Go module apps/p2, rules in ~/lanes/P2-BACKLOG-RULES.md), not on this one."

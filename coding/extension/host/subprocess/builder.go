@@ -417,15 +417,19 @@ func hashDirSources(h hash.Hash, root string, exts []string) error {
 // hashDirSourcesStamped is hashDirSources that mixes the same files into stamp too, except the lock files a compiler writes into the
 // source directory. A nil stamp is skipped.
 func hashDirSourcesStamped(h, stamp hash.Hash, root string, exts []string) error {
+	// relBytes carries each relative path to the hashes. Writing []byte(rel) to a hash.Hash allocates a copy per call, two per source
+	// file; the walk of an extension that replaces the pig SDK visits every SDK source file, so the copies were about a sixth of its allocations.
+	var relBytes []byte
 	return walkDirSources(root, exts, func(path, rel string) error {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		h.Write([]byte(rel))
+		relBytes = append(relBytes[:0], rel...)
+		h.Write(relBytes)
 		h.Write(data)
 		if stamp != nil && !strings.HasSuffix(path, ".lock") {
-			stamp.Write([]byte(rel))
+			stamp.Write(relBytes)
 			stamp.Write(data)
 		}
 		return nil

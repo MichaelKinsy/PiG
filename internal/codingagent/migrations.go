@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -65,7 +66,8 @@ func migrateKeybindingsConfigFile(agentDir string) {
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(path, out, 0o666) // upstream: packages/coding-agent/src/migrations.ts:migrateKeybindingsConfigFile
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
+	_ = atomicfile.WriteFile(path, out, 0o666) // upstream: packages/coding-agent/src/migrations.ts:migrateKeybindingsConfigFile
 }
 
 // marshalMigratedKeybindings retains the TUI_KEYBINDINGS and app definition order before UTF-16-sorted extras, including lone surrogates, as core/keybindings.ts:342-358 requires. Raw values retain nested object order through JSON.parse/stringify canonicalization.
@@ -182,7 +184,8 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 				}
 				settings.Delete("apiKeys")
 				if updated, err := stringifyIndented(rawObject(settings)); err == nil {
-					_ = os.WriteFile(settingsPath, updated, 0644) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
+					// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
+					_ = atomicfile.WriteFile(settingsPath, updated, 0o644) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
 				}
 			}
 		}
@@ -196,7 +199,8 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("migrate credentials to auth.json: %w", err)
 		}
-		if err := os.WriteFile(authPath, out, 0o600); err != nil {
+		// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
+		if err := atomicfile.WriteFile(authPath, out, 0o600); err != nil {
 			return nil, fmt.Errorf("migrate credentials to auth.json: %w", err)
 		}
 	}

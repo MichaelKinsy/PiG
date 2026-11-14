@@ -13954,8 +13954,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/extensions/mcp/index.js",
-      "sourceSha256": "4c497e8fa0de6b52116c2196ab6cf933780b1fdf441865c82c70a0b93eedb2ab",
-      "sha256": "20faabcfe60dc9c9a4507b3cd5aa1bbde63542a0b70e25199fbaf79f03adb1cc",
+      "sourceSha256": "c6a894092332186687a19a4699bcf9d333307531b0c670ee19823f9787c44ef3",
+      "sha256": "61569eab9d9f1cc36949ceb15b7d65897606cc0e8edb6c33fd12aff3dc211653",
       "rewrite": "module specifiers"
     },
     {
@@ -15203,7 +15203,7 @@
         "version": "1.5.2",
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
-      "sha256": "a3153eed7c8107acc5aba47a40a8eec714e5f84cd803773cacd5634874bf75ca",
+      "sha256": "b9a89155476892b132049738259ba7267026da9975cb8ac9f2c74081186bbb67",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15213,7 +15213,7 @@
         "version": "1.5.2",
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
-      "sha256": "9bb2ac8b189c767e23fb9927b89c5075178e251242f586ce12a922c329fb81a9",
+      "sha256": "096d640d915ab6ba68339cb19a850c1c30c4807bf3b67ffde7fddae433a18233",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15684,8 +15684,8 @@
         "integrity": "sha512-zU1UgeXDlbixPqGEWD7Ql0brEMIpYr7aEWjoEE5h5enJbM/kQ2jIr7lN8JoR80oUnq1fJSU7SC8kLx2Fx/IZYg=="
       },
       "source": "dist/index.js",
-      "sourceSha256": "7119a8b2a32d8e5e0d5f01318c6fae7535e137a55719c6c4955121ae41dfa967",
-      "sha256": "7119a8b2a32d8e5e0d5f01318c6fae7535e137a55719c6c4955121ae41dfa967"
+      "sourceSha256": "9716e9afc8a2740bc58229f12e212c54b57698180d3adb0336bacbb2feb07a04",
+      "sha256": "9716e9afc8a2740bc58229f12e212c54b57698180d3adb0336bacbb2feb07a04"
     },
     {
       "path": "pi-dist/pi-mcp/input-schema.js",
@@ -15706,8 +15706,8 @@
         "integrity": "sha512-zU1UgeXDlbixPqGEWD7Ql0brEMIpYr7aEWjoEE5h5enJbM/kQ2jIr7lN8JoR80oUnq1fJSU7SC8kLx2Fx/IZYg=="
       },
       "source": "dist/naming.js",
-      "sourceSha256": "d2a7964be3c8e38313347709ce7b3c79128135466397b53da11546703a233064",
-      "sha256": "d2a7964be3c8e38313347709ce7b3c79128135466397b53da11546703a233064"
+      "sourceSha256": "df8a3e0089c37512b0e8abd39c902f1b2e4b063173e8de6822ca836249a0f665",
+      "sha256": "df8a3e0089c37512b0e8abd39c902f1b2e4b063173e8de6822ca836249a0f665"
     },
     {
       "path": "pi-dist/pi-mcp/oauth/auth-provider.js",
