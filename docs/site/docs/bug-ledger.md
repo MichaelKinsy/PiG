@@ -472,6 +472,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e00494](#bf-3e00494) | fix(session): a custom message entry whose content is null projects an empty list | PiG's own defect | All platforms | Unreleased |
+| [BF-3e66fd5](#bf-3e66fd5) | A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-3ebb315](#bf-3ebb315) | Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack… | PiG's own defect | All platforms | Unreleased |
@@ -8508,6 +8509,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3e004947f7` (2026-11-13)
 - **Tests:** None recorded.
+
+### BF-3e66fd5
+
+**A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** GitHub Copilot, OpenAI Codex and every other OAuth login kept the dialog open with `Login failed: <message>` inside it until Escape, and anything typed went nowhere.
+- **Root cause:** Pi restores the editor when a login rejects and shows the message with showError (interactive-mode.ts:6564-6573). The three PiG login flows kept the dialog open with Login failed: inside it. One loginRejection carries the error to the caller; the dialog closes without cancelling. Scenarios oauth/34-37, unit tests at the /login command path, the old pins rewritten.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1accad07e9` (2026-11-12), `210ff7a814` (2026-11-12), `45f0a84d9e` (2026-11-12), `8190b3ebd8` (2026-11-12), `93a20e6393` (2026-11-12), `93d41f24a6` (2026-11-12), `3e66fd5b36` (2026-11-14)
+- **Tests:** `coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi`, `coding/extension/host/subprocess/runtime_node_vendor_script_test.go::TestVendorPiDistIsIdempotentOnTheCommittedTree`, `durable/codemode/describe_test.go::TestTheExtensionsSectionListsWhatDefaultInlineBudgetFitsUnlessTheOptionsNameABudget`, `durable/harness/harness_signals_test.go::TestSleepingOnSignals`, `durable/interop/interop_test.go::TestScriptedSessionJsonlFilesMatchPiDurable`, `durable/interop/interop_test.go::TestScriptedSessionStoresMatchPiDurable`, `durable/interop/interop_test.go::TestScriptedSessionsViewIdentically`, `durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable` and 16 more in docs/bug-ledger.json
+- **Release note:** A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the transcript shows the error as `Error: Failed to login to <provider name>: <message>` in the error colour (for example `Error: Failed to login to GitHub Copilot: 401 Unauthorized: {"message":"Bad credentials"}`). Before, GitHub Copilot, OpenAI Codex and every other OAuth login kept the dialog open with `Login failed: <message>` inside it until Escape, and anything typed went nowhere. A credential that cannot be stored is reported the same way.
 
 ### BF-3e755ef
 

@@ -214,12 +214,15 @@ func (m *InteractiveMode) probeOAuthCopilot() (string, error) {
 
 func loginGitHubCopilotForParity(ctx context.Context, cb ai.CopilotLoginCallbacks) (ai.Credential, error) {
 	mode := os.Getenv("PIG_PARITY_LOGIN_DIALOG")
-	if mode != "1" && mode != "complete" {
+	if mode != "1" && mode != "complete" && mode != "unauthorized" {
 		return ai.LoginGitHubCopilot(ctx, cb)
 	}
 	return withMockDefaultClient(func(req *http.Request) (*http.Response, error) {
 		switch {
 		case req.URL.Host == "github.com" && req.URL.Path == "/login/device/code":
+			if mode == "unauthorized" {
+				return jsonResponse(401, `{"message":"Bad credentials"}`), nil
+			}
 			if mode == "complete" {
 				return jsonResponse(200, `{"device_code":"dialog-device","user_code":"ABCD-EFGH","verification_uri":"https://github.com/login/device","interval":0,"expires_in":60}`), nil
 			}

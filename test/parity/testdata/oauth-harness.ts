@@ -81,11 +81,13 @@ const withMockFetch = async <T>(handler: (url: URL, init?: RequestInit) => Promi
 
 const installLoginDialogFetch = () => {
   const mode = process.env.PI_PARITY_LOGIN_DIALOG;
-  if (mode !== "1" && mode !== "complete") return;
+  if (mode !== "1" && mode !== "complete" && mode !== "unauthorized") return;
   const oldFetch = globalThis.fetch;
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url);
     if (url.hostname === "github.com" && url.pathname === "/login/device/code") {
+      // A real server's HTTP/1.1 reason phrase is the response's statusText; PiG's stub answers with "401 Unauthorized".
+      if (mode === "unauthorized") return new Response(JSON.stringify({ message: "Bad credentials" }), { status: 401, statusText: "Unauthorized", headers: { "content-type": "application/json" } });
       return jsonResponse(200, { device_code: "dialog-device", user_code: "ABCD-EFGH", verification_uri: "https://github.com/login/device", interval: mode === "complete" ? 0 : 30, expires_in: 60 });
     }
     if (url.hostname === "github.com" && url.pathname === "/login/oauth/access_token") {

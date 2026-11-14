@@ -12650,6 +12650,75 @@
       "tests": []
     },
     {
+      "id": "BF-3e66fd5",
+      "title": "A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the…",
+      "symptom": "GitHub Copilot, OpenAI Codex and every other OAuth login kept the dialog open with `Login failed: \u003cmessage\u003e` inside it until Escape, and anything typed went nowhere.",
+      "rootCause": "Pi restores the editor when a login rejects and shows the message with showError (interactive-mode.ts:6564-6573). The three PiG login flows kept the dialog open with Login failed: inside it. One loginRejection carries the error to the caller; the dialog closes without cancelling. Scenarios oauth/34-37, unit tests at the /login command path, the old pins rewritten.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the transcript shows the error as `Error: Failed to login to \u003cprovider name\u003e: \u003cmessage\u003e` in the error colour (for example `Error: Failed to login to GitHub Copilot: 401 Unauthorized: {\"message\":\"Bad credentials\"}`). Before, GitHub Copilot, OpenAI Codex and every other OAuth login kept the dialog open with `Login failed: \u003cmessage\u003e` inside it until Escape, and anything typed went nowhere. A credential that cannot be stored is reported the same way.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1accad07e9",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "210ff7a814",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "45f0a84d9e",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "8190b3ebd8",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "93a20e6393",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "93d41f24a6",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "3e66fd5b36",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/host/subprocess/runtime_node_vendor_script_test.go::TestVendorPiDistIsIdempotentOnTheCommittedTree",
+        "durable/codemode/describe_test.go::TestTheExtensionsSectionListsWhatDefaultInlineBudgetFitsUnlessTheOptionsNameABudget",
+        "durable/harness/harness_signals_test.go::TestSleepingOnSignals",
+        "durable/interop/interop_test.go::TestScriptedSessionJsonlFilesMatchPiDurable",
+        "durable/interop/interop_test.go::TestScriptedSessionStoresMatchPiDurable",
+        "durable/interop/interop_test.go::TestScriptedSessionsViewIdentically",
+        "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable",
+        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder",
+        "internal/codingagent/auth_warnings_test.go::TestOpenAICodexLoginReceivesSettingsDeviceID",
+        "internal/codingagent/export/ansi_html_oracle_test.go::TestAnsiToHTMLMatchesPiOracle",
+        "internal/codingagent/login_failure_test.go::TestRegisteredOAuthLoginRejectedReturnsPiFailure",
+        "internal/codingagent/login_failure_test.go::TestSlashLoginRejectedGitHubCopilotClosesDialogAndReportsError",
+        "internal/codingagent/login_failure_test.go::TestSlashLoginRejectedOpenAICodexClosesDialogAndReportsError",
+        "internal/codingagent/tools/bash_executor_oracle_test.go::TestBashOracleReadsPiSpillFileOnlyOnceItsStreamHasClosed",
+        "internal/codingagent/tools/bash_executor_oracle_test.go::TestExecuteBashWithOperationsMatchesPi",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsAcrossSDKs",
+        "test/integration/login_test.go::TestAnthropicLoginAcceptsPastedRedirectURL",
+        "test/parity/interface-closure/autobind/mirror_guard_test.go::TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild",
+        "test/parity/scenarios/oauth/34-login-failure-device-unauthorized.toml",
+        "test/parity/scenarios/oauth/35-login-failure-code-exchange-400.toml",
+        "test/parity/scenarios/oauth/36-login-failure-connection-refused.toml",
+        "test/parity/scenarios/oauth/37-login-cancel-mid-device-flow.toml",
+        "tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce"
+      ]
+    },
+    {
       "id": "BF-3e755ef",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
