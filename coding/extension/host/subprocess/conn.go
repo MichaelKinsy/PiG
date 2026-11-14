@@ -330,6 +330,14 @@ func NewConn(name string, c net.Conn) *Conn {
 	return newConnWithOptions(name, c, connOptions{})
 }
 
+// setLazy stores value under key in *m and makes the map on its first entry. The maps of per-request state that newConnWithOptions leaves nil are filled through it, so a connection makes a map only for a kind of state that one of its requests brings. A read, a delete and a range over a map that was never made find nothing, as over an empty one.
+func setLazy[K comparable, V any](m *map[K]V, key K, value V) {
+	if *m == nil {
+		*m = make(map[K]V)
+	}
+	(*m)[key] = value
+}
+
 func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 	if options.Clock == nil {
 		options.Clock = realLivenessClock{}
@@ -352,28 +360,13 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		parts:              parts,
 		outCh:              make(chan outboundFrame, 64),
 		pending:            make(map[string]chan *Envelope),
-		abandoned:          make(map[string]chan struct{}),
 		updates:            make(map[string]func(json.RawMessage)),
-		toolRequests:       make(map[string]struct{}),
-		startWindows:       make(map[string]requestWindowHandle),
-		earlierWindows:     make(map[string][]*agent.StartWindow),
 		toolUpdates:        newCallLanes(),
-		answered:           make(map[string]func()),
-		arrived:            make(map[string]func()),
-		hostCallCounts:     make(map[string]func(dialog bool, delta int)),
-		drainable:          make(map[string]*drainableRequest),
-		drainCovered:       make(map[*Envelope][]func()),
 		inCh:               make(chan *Envelope, 32),
 		done:               make(chan struct{}),
 		requestStates:      make(map[string]requestStateSink),
 		suspending:         make(map[string]int),
-		suspendedRequests:  make(map[string]bool),
 		suspensionsSettled: make(chan struct{}),
-		hostCalls:          make(map[string]map[string]context.CancelFunc),
-		cancelledParent:    make(map[string]struct{}),
-		abortedParent:      make(map[string]struct{}),
-		nestedCallIDs:      make(map[string]struct{}),
-		reservedCalls:      make(map[string]reservedHostCall),
 		clock:              options.Clock,
 		heartbeatInterval:  options.HeartbeatInterval,
 		heartbeatTimeout:   options.HeartbeatTimeout,
@@ -388,12 +381,11 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 // controls their lifetime. Cancellation stops all three goroutines.
 func (c *Conn) Start(ctx context.Context) {
 	ctx, stop := context.WithCancel(ctx)
-	// The connection's cancel ends the lifetime itself, before it stops the goroutines and before a Close or a failure answers the pending requests, so a request under the lifetime always finds it ended; only the parent's end reaches it through AfterFunc.
+	// The connection's cancel ends the lifetime itself, before it stops the goroutines and before a Close or a failure answers the pending requests, so a request under the lifetime always finds it ended. The parent's end reaches the lifetime through the goroutine below that waits for ctx, which ends the lifetime before it fails the connection.
 	c.cancel = func() {
 		c.endLifetime()
 		stop()
 	}
-	context.AfterFunc(ctx, c.endLifetime)
 	var wg sync.WaitGroup
 	wg.Add(3)
 	go func() {
@@ -414,6 +406,7 @@ func (c *Conn) Start(ctx context.Context) {
 	}
 	go func() {
 		<-ctx.Done()
+		c.endLifetime()
 		if c.closing.Load() {
 			_ = c.conn.Close()
 			return
@@ -844,25 +837,25 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	c.pendingMu.Lock()
 	c.pending[env.ID] = respCh
 	if env.Request != nil && env.Request.Method == MethodToolCall {
-		c.toolRequests[env.ID] = struct{}{}
+		setLazy(&c.toolRequests, env.ID, struct{}{})
 	}
 	if fn := requestAnswered(ctx); fn != nil {
-		c.answered[env.ID] = fn
+		setLazy(&c.answered, env.ID, fn)
 	}
 	if fn := requestArrived(ctx); fn != nil {
-		c.arrived[env.ID] = fn
+		setLazy(&c.arrived, env.ID, fn)
 	}
 	if fn := requestHostCalls(ctx); fn != nil {
-		c.hostCallCounts[env.ID] = fn
+		setLazy(&c.hostCallCounts, env.ID, fn)
 	}
 	if window := requestWindow(ctx); window != nil {
-		c.startWindows[env.ID] = window
+		setLazy(&c.startWindows, env.ID, window)
 	}
 	if earlier := requestEarlierWindows(ctx); len(earlier) > 0 {
-		c.earlierWindows[env.ID] = earlier
+		setLazy(&c.earlierWindows, env.ID, earlier)
 	}
 	if fn := requestDrained(ctx); fn != nil {
-		c.drainable[env.ID] = &drainableRequest{drained: fn}
+		setLazy(&c.drainable, env.ID, &drainableRequest{drained: fn})
 	}
 	c.pendingMu.Unlock()
 	if start := c.onRequestStart.Load(); start != nil {
@@ -1746,7 +1739,7 @@ func (c *Conn) deliverRequestState(state RequestStatePayload) {
 	c.stateMu.Lock()
 	sink, ok := c.requestStates[state.RequestID]
 	if ok && state.State == "suspended" {
-		c.suspendedRequests[state.RequestID] = true
+		setLazy(&c.suspendedRequests, state.RequestID, true)
 	}
 	c.stateMu.Unlock()
 	if !ok {
@@ -2036,7 +2029,7 @@ type reservedHostCall struct {
 func (c *Conn) reserveHostCall(parentRequestID, callID string) {
 	ctx, release := c.openHostCall(parentRequestID, callID)
 	c.hostCallMu.Lock()
-	c.reservedCalls[callID] = reservedHostCall{ctx: ctx, release: release}
+	setLazy(&c.reservedCalls, callID, reservedHostCall{ctx: ctx, release: release})
 	c.hostCallMu.Unlock()
 }
 
@@ -2086,7 +2079,7 @@ func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, fu
 	calls := c.hostCalls[parentRequestID]
 	if calls == nil {
 		calls = make(map[string]context.CancelFunc)
-		c.hostCalls[parentRequestID] = calls
+		setLazy(&c.hostCalls, parentRequestID, calls)
 	}
 	calls[callID] = cancel
 	c.hostCallMu.Unlock()
@@ -2104,7 +2097,7 @@ func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, fu
 
 func (c *Conn) cancelHostCalls(parentRequestID string) {
 	c.hostCallMu.Lock()
-	c.cancelledParent[parentRequestID] = struct{}{}
+	setLazy(&c.cancelledParent, parentRequestID, struct{}{})
 	var cancels []context.CancelFunc
 	for _, cancel := range c.hostCalls[parentRequestID] {
 		cancels = append(cancels, cancel)
@@ -2124,14 +2117,14 @@ func nestedAbortMethod(method string) bool {
 // markNestedCall records, as the read loop admits the call frame callID, that the call runs a nested tool of its request, before the host opens the call's context.
 func (c *Conn) markNestedCall(callID string) {
 	c.hostCallMu.Lock()
-	c.nestedCallIDs[callID] = struct{}{}
+	setLazy(&c.nestedCallIDs, callID, struct{}{})
 	c.hostCallMu.Unlock()
 }
 
 // abortNestedHostCalls is the abort of a request whose AbortSignal alone ended (a tool_call): it ends the nested tool calls of the request, which take the abort as their signal, and the nested calls it makes later, and spares every other host call of the request, as Pi's in-process calls never fail with the abort. cancelHostCalls ends the rest when the request is abandoned.
 func (c *Conn) abortNestedHostCalls(parentRequestID string) {
 	c.hostCallMu.Lock()
-	c.abortedParent[parentRequestID] = struct{}{}
+	setLazy(&c.abortedParent, parentRequestID, struct{}{})
 	var cancels []context.CancelFunc
 	for callID, cancel := range c.hostCalls[parentRequestID] {
 		if _, nested := c.nestedCallIDs[callID]; nested {
@@ -2157,7 +2150,7 @@ func (c *Conn) cancelAllHostCalls() {
 	c.hostCallMu.Lock()
 	var cancels []context.CancelFunc
 	for parent, calls := range c.hostCalls {
-		c.cancelledParent[parent] = struct{}{}
+		setLazy(&c.cancelledParent, parent, struct{}{})
 		for _, cancel := range calls {
 			cancels = append(cancels, cancel)
 		}
@@ -2368,7 +2361,7 @@ func (c *Conn) abandon(id string) <-chan struct{} {
 		close(done)
 		return done
 	}
-	c.abandoned[id] = done
+	setLazy(&c.abandoned, id, done)
 	return done
 }
 
@@ -2459,7 +2452,7 @@ func (c *Conn) routeResponseFrame(data []byte) bool {
 func (c *Conn) settleAllAbandoned() {
 	c.pendingMu.Lock()
 	abandoned := c.abandoned
-	c.abandoned = make(map[string]chan struct{})
+	c.abandoned = nil
 	c.abandonedClosed = true
 	c.pendingMu.Unlock()
 	for _, done := range abandoned {
@@ -2779,7 +2772,7 @@ func (c *Conn) coverDrainReport(report *Envelope) {
 			fns = append(fns, r.drained)
 		}
 	}
-	c.drainCovered[report] = fns
+	setLazy(&c.drainCovered, report, fns)
 }
 
 // requestsDrained runs the drained function of every request the drain report report covers (coverDrainReport). The host calls it when it handles the report, after the calls the runtime sent before it.
