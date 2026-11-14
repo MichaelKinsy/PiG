@@ -530,7 +530,7 @@ func TestSurfacePollsEveryIsDirtyOverride(t *testing.T) {
 			return err
 		}
 		if d.IsDir() {
-			if name := d.Name(); path != root && (strings.HasPrefix(name, ".") || name == "node_modules" || name == "testdata") {
+			if name := d.Name(); path != root && (strings.HasPrefix(name, ".") || name == "node_modules" || name == "testdata" || name == "tmp") {
 				return filepath.SkipDir
 			}
 			return nil
