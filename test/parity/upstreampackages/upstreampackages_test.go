@@ -4,6 +4,7 @@
 package upstreampackages
 
 import (
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"os"
 	"path/filepath"
 	"slices"
@@ -28,7 +29,7 @@ func TestListEqualsMirrorPackages(t *testing.T) {
 	mirror := filepath.Join("..", "..", "..", ".upstream", "current", "packages")
 	entries, err := os.ReadDir(mirror)
 	if err != nil {
-		t.Skipf("upstream mirror not present: %v", err)
+		pioracle.Missing(t, "the upstream mirror", err)
 	}
 	var dirs []string
 	for _, entry := range entries {

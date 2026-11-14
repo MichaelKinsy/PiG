@@ -3,6 +3,7 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,7 +30,7 @@ func loadPublishedCatalog(t *testing.T) publishedCatalog {
 	}
 	source := filepath.Join(dist, "models.generated.js")
 	if _, err := os.Stat(source); err != nil {
-		t.Skipf("published pi-ai %s is not installed: %v", UpstreamVersionString(), err)
+		pioracle.Missing(t, "published pi-ai "+UpstreamVersionString(), err)
 	}
 	manifest, err := os.ReadFile(filepath.Join(dist, "..", "package.json"))
 	if err != nil {

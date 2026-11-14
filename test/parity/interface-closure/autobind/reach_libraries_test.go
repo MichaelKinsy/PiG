@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"github.com/MichaelKinsy/PiG/test/parity/interface-closure/autobind/rules"
 )
 
@@ -48,7 +49,7 @@ func TestReachLibrariesPortPublishedEntryPoints(t *testing.T) {
 	for _, pkg := range []string{"env", "durable", "chord"} {
 		data, err := os.ReadFile(filepath.Join(mirror, pkg, "package.json"))
 		if err != nil {
-			t.Skipf("pinned Pi mirror absent: %v", err)
+			pioracle.Missing(t, "the pinned Pi mirror", err)
 		}
 		var manifest struct {
 			Exports map[string]json.RawMessage `json:"exports"`

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // TestImageCatalogPin binds the image catalog to @earendil-works/pi-ai's IMAGE_MODELS at the pinned version.
@@ -650,7 +651,7 @@ func TestCodegenByteIdentical(t *testing.T) {
 	}
 	src := resolveModelSource(repoRoot)
 	if src == "" {
-		t.Skip("no model source found (published pi-ai and upstream mirror not present)")
+		pioracle.Missing(t, "a model source (the published pi-ai or the upstream mirror)", nil)
 	}
 	dir := t.TempDir()
 	outputs := map[string]string{
