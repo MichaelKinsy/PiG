@@ -24,12 +24,17 @@ import (
 //   - "openai/<model>"          : OPENAI_API_KEY (or registry override)
 //   - "openrouter/<model>"      : OPENROUTER_API_KEY
 //   - "groq/<model>"            : GROQ_API_KEY
-//   - "ollama/<model>"          : OLLAMA_HOST or http://localhost:11434/v1
 //   - any other "<id>/<model>"  : treated as OpenAI-compatible;
 //     API key from <ID_UPPER>_API_KEY env var
 //
 // A bare "<model>" with no slash is interpreted as "openai/<model>"
 // for backward compatibility with environments that hardcode OpenAI.
+//
+// No provider id has a base URL of its own, as in Pi: a model is sent to
+// the base URL its models.json or catalog entry states, and an
+// OpenAI-compatible model whose entry states none goes to the OpenAI
+// default, https://api.openai.com/v1. A local server such as Ollama is a
+// models.json provider with its "baseUrl" and an "apiKey".
 //
 // The catalog (context window, cost, capabilities) is resolved via
 // ai.LookupModel; if the spec isn't in the codegen registry, the
@@ -330,9 +335,6 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 	}
 	switch apiKind {
 	case ai.APIOpenAICompletions:
-		if providerID == "ollama" && baseURL == "" {
-			baseURL = firstNonEmpty(os.Getenv("OLLAMA_HOST"), "http://localhost:11434/v1")
-		}
 		return ai.NewOpenAIProvider(ai.OpenAIConfig{
 			ModelMetadata:                      modelFromEntry(entry, nil),
 			BaseURL:                            baseURL,
@@ -524,15 +526,6 @@ func storedAPIKey(authPath, providerID, fallback string) func(context.Context) (
 		}
 		return fallback, nil
 	}
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
-		}
-	}
-	return ""
 }
 
 func googleAPIVersionForBaseURL(baseURL string) string {

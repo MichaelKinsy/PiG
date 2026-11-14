@@ -2040,6 +2040,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f19efb1](#bf-f19efb1) | A `session_compact` handler's passive custom message reaches the overflow retry (D138, Pi #9051) | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f1a59f9](#bf-f1a59f9) | An OpenAI Responses event's `output_index` matches an output item as a key of Pi's `Map` does: a string… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f1ed7db](#bf-f1ed7db) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-f1fc6ab](#bf-f1fc6ab) | A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode… | PiG's own defect | All platforms | Unreleased |
 | [BF-f20cc08](#bf-f20cc08) | A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f21be69](#bf-f21be69) | `pig status` no longer lists the resources of an untrusted project as enabled | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f21be69-2](#bf-f21be69-2) | `pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use | PiG's own defect | All platforms | 0.7.0 |
@@ -2077,6 +2078,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f4d85f8](#bf-f4d85f8) | A large file written through a tool call no longer slows down as it streams: each streamed piece of the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f4daf25](#bf-f4daf25) | fix(chord): drop principal_same.go: follow/pi-main ported samePrincipal into principal.go | PiG's own defect | All platforms | Unreleased |
 | [BF-f51de47](#bf-f51de47) | ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so… | PiG's own defect | All platforms | Unreleased |
+| [BF-f56733c](#bf-f56733c) | The provider id `ollama` no longer has a base URL of its own | PiG's own defect | All platforms | Unreleased |
 | [BF-f589900](#bf-f589900) | fix(tui): delete D155; PageUp and PageDown paging follows Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-f5dd13f](#bf-f5dd13f) | fix(photonimage): lint findings of the PNG inflater and the GIF decoder | PiG's own defect | All platforms | Unreleased |
 | [BF-f5ecdc2](#bf-f5ecdc2) | Settings and `models.json` compat objects keep the members PiG does not model, as Pi 1.2.0 does | PiG's own defect | All platforms | 0.5.0 |
@@ -30205,6 +30207,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f1ed7db72d` (2026-11-10)
 - **Tests:** None recorded.
 
+### BF-f1fc6ab
+
+**A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode (`pig -p`) and interactive mode, where Pi answers `No API key found for ollama.` and PiG's own RPC mode did too: PiG exempted that one provider name from the check for configured credentials (releases 0.2.0 to 0.7.0).
+- **Root cause:** Pi refuses a prompt for a provider without configured auth in every mode: hasConfiguredAuth(provider) || checkAuth(provider) !== undefined, else No API key found for <provider>. (agent-session.ts:2247-2259, auth-guidance.ts:22-25). A models.json provider without an apiKey is such a provider whatever its name (provider-composer.ts:422-457), and Pi has no provider that needs no auth method (provider-composer.ts:585).
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f1fc6abc88` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode (`pig -p`) and interactive mode, where Pi answers `No API key found for ollama.` and PiG's own RPC mode did too: PiG exempted that one provider name from the check for configured credentials (releases 0.2.0 to 0.7.0). PiG now applies Pi's one rule to every provider in every mode: a provider without configured credentials is refused before any request is sent, whatever it is called and whether or not `OLLAMA_HOST` is set. **If your local Ollama provider has no key, add one line to it in `~/.pig/agent/models.json`: `"apiKey": "ollama"`** (any text works; Ollama ignores it). That is the form the models and custom provider pages of PiG's docs and Pi's `docs/models.md` show, and a setup that already has it is unchanged, as is a keyless provider under any other name (it was always refused). The same name no longer passes the other credential gates either: selecting the model reports `No API key for ollama/<model>`, an extension's `setModel` answers `false`, a virtual model route to it fails with `which has no credentials.`, and a model object an extension builds for the provider gets no request.
+
 ### BF-f20cc08
 
 **A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of…**
@@ -30719,6 +30735,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f51de47842` (2026-11-12)
 - **Tests:** `ai/anthropic_root_additional_properties_port_test.go::TestAnthropicNonStrictInputSchemaKeepsRootAdditionalPropertiesPiAa47cedce`, `ai/anthropic_root_additional_properties_port_test.go::TestAnthropicStrictInputSchemaStillSendsAdditionalPropertiesPiAa47cedce`, `ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas`, `ai/anthropic_test.go::TestAnthropicConvertToolsStrict`, `ai/tool_schema_wire_order_test.go::TestToolSchemaKeepsAuthoredOrderInProviderRequests`
 - **Release note:** ai: a non-strict Anthropic tool schema keeps its root `additionalProperties` (false, true or a schema), so Claude is told whether extra arguments are allowed; root `anyOf`, `oneOf` and `allOf` stay out (Pi aa47cedce, #12100).
+
+### BF-f56733c
+
+**The provider id `ollama` no longer has a base URL of its own**
+
+- **Source:** PiG's own defect
+- **Symptom:** The provider id `ollama` no longer has a base URL of its own.
+- **Root cause:** BuildModel's request building gave an OpenAI-completions model of the provider id ollama without a base URL the value of OLLAMA_HOST, or http://localhost:11434/v1. Pi has no such default: a model carries the base URL its definition, provider or catalog entry states (provider-composer.ts:224-225) and the request hands it to the OpenAI client unchanged (packages/ai/src/api/openai-completions.ts:778-780); OLLAMA_HOST is read nowhere in Pi. The default is removed (owner's decision of 2026-11-13T21:34Z, option A), with firstNonEmpty, which had no other caller; the BuildModel doc comment and the SDK example no longer name it.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f56733c5a4` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** The provider id `ollama` no longer has a base URL of its own. `coding.BuildModel` and the request path gave an OpenAI-compatible model of that provider without a base URL the value of `OLLAMA_HOST`, or `http://localhost:11434/v1`; Pi has no such default and never reads `OLLAMA_HOST`, so that model is now addressed like a model of any other provider without a base URL (the OpenAI client's default, `https://api.openai.com/v1`). **If you relied on the default, state `"baseUrl": "http://localhost:11434/v1"` (or the value of your `OLLAMA_HOST`) in the provider's entry in `~/.pig/agent/models.json`**, as the models and custom provider pages show. A `models.json` provider that defines models already had to state its `baseUrl`, in PiG as in Pi; the Go SDK's `BuildModelFromEntry` and a model object an extension builds for the provider without a `baseUrl` are the callers that change.
 
 ### BF-f589900
 

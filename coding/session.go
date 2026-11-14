@@ -1292,7 +1292,7 @@ func (s *Session) CheckModelAuth(m *ai.Model) error {
 }
 
 func (s *Session) checkModelAuth(ctx context.Context, m *ai.Model) error {
-	if m != nil && m.ProviderMeta.ProviderID != "" && modelRuntimeRequiresAuth(providerID(m)) {
+	if m != nil && m.ProviderMeta.ProviderID != "" {
 		check, err := s.modelRuntime.CheckAuth(ctx, providerID(m))
 		if err != nil {
 			return err
