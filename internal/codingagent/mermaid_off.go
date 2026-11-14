@@ -3,6 +3,8 @@
 package codingagent
 
 import (
+	"sync/atomic"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -13,5 +15,9 @@ import (
 func init() { pigstrip.Strip(pigstrip.ListFeatures, pigstrip.Mermaid) }
 
 func createMermaidMarkdownTransformer(func() string, *tui.Theme) extension.MarkdownTransformer {
+	return rawMermaidMarkdown
+}
+
+func createCountedMermaidMarkdownTransformer(func() string, *tui.Theme, *atomic.Int64) extension.MarkdownTransformer {
 	return rawMermaidMarkdown
 }

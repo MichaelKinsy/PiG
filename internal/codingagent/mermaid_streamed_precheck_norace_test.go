@@ -8,14 +8,15 @@ import "testing"
 // before any parse (containsFoldMermaid). A streamed answer grows at its end, so the transformer checks only the bytes a
 // frame added after the text it last found plain, and the len("mermaid")-1 bytes before them, and the render after the
 // turn ends checks the whole answer once. Bound: over a 20,000-character answer streamed 24 bytes a frame, the pre-check
-// reads at most frames*(24+len("mermaid")-1)+len(answer) bytes.
+// reads at most frames*(24+len("mermaid")-1)+len(answer) bytes. The count is the one of this test's mode: a count of the process also took
+// what the modes of earlier tests still rendered (a user message of 13 bytes among them), 16 bytes over the bound under one shuffle seed.
 func TestStreamedAnswerMermaidPrecheckReadsOnlyTheDelta(t *testing.T) {
 	m, _ := newTickRenderProbe(t, "fullscreen")
 	interactiveLongAnswerRuns++
 	answer := interactiveLongAnswer(20000, interactiveLongAnswerRuns)
-	before := mermaidFoldScanned.Load()
+	before := m.mermaidFoldScanned.Load()
 	frames := streamInteractiveAnswer(m, answer)
-	scanned := mermaidFoldScanned.Load() - before
+	scanned := m.mermaidFoldScanned.Load() - before
 	ceiling := int64(frames*(24+len("mermaid")-1) + len(answer))
 	t.Logf("%d frames, pre-check read %.1f bytes a frame", frames, float64(scanned)/float64(frames))
 	if scanned > ceiling {
