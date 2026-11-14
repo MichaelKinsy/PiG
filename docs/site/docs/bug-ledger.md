@@ -169,6 +169,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-163f7b7](#bf-163f7b7) | Empty quoted prompt-template arguments (`""` or `''`) are kept as empty arguments, so later positional… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-165cf58](#bf-165cf58) | `pig package publish --to npm` and `pig piglet publish --to npm` no longer run an `npm` that the published… | PiG's own defect | Windows | 0.5.0 |
 | [BF-165cf58-2](#bf-165cf58-2) | On Windows, publishing to npm now works when npm is an `npm.cmd` at a path with spaces, such as `C:\Program… | PiG's own defect | Windows | 0.5.0 |
+| [BF-1662063](#bf-1662063) | When a provider's server resets or closes the connection before it answers, the retry notice and the turn's… | PiG's own defect | All platforms | Unreleased |
+| [BF-1662063-2](#bf-1662063-2) | Google (`google-generative-ai`): a connection that fails before the response starts is reported with its… | PiG's own defect | All platforms | Unreleased |
 | [BF-167dae3](#bf-167dae3) | fix(codingagent): the idle collection runs two GC cycles again so pool victims are freed (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-168d095](#bf-168d095) | fix(photonimage): decode farbfeld as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-16d0758](#bf-16d0758) | A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -4253,6 +4255,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2e0f88f794` (2026-10-06, #160), `56c3f85350` (2026-10-06, #172), `9a95b36b11` (2026-10-06, #162), `ba9c37b247` (2026-10-06, #171), `c019ea9155` (2026-10-06, #163), `165cf5884d` (2026-10-07, #180), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179)
 - **Tests:** `agent/tool_argument_order_test.go::TestAgentLoopDeliversEditedToolArgumentsInTheHooksOrder`, `coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure` and 113 more in docs/bug-ledger.json
 - **Release note:** On Windows, publishing to npm now works when npm is an `npm.cmd` at a path with spaces, such as `C:\Program Files\nodejs`. Arguments now reach the shim the way Pi's package commands pass them. An `npmCommand` that names a script now fails with a hint to name its interpreter first.
+
+### BF-1662063
+
+**When a provider's server resets or closes the connection before it answers, the retry notice and the turn's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** When a provider's server resets or closes the connection before it answers, the retry notice and the turn's error now name what happened the same way every time, as Pi does: `Connection error.: read ECONNRESET` for a reset and `Connection error.: other side closed (UND_ERR_SOCKET)` for a close.
+- **Root cause:** net/http returns the request body write's error and drops the read side's, and the error mapping named only the "write" and "read" operations, not the vectored "writev" of a request body
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1662063665` (2026-11-13)
+- **Tests:** `ai/socket_failure_test.go::TestSocketFailureReportsTheConnectionsEndInNodesOrder`, `ai/socket_failure_test.go::TestSocketFailureWaitEndsWhenTheConnectionIsClosed`, `ai/socket_failure_test.go::TestSocketFailureWriteWaitsForAReadThatHasNotBegun`, `ai/socket_failure_test.go::TestSocketFailureWriteWaitsForTheReadInFlight`
+- **Release note:** When a provider's server resets or closes the connection before it answers, the retry notice and the turn's error now name what happened the same way every time, as Pi does: `Connection error.: read ECONNRESET` for a reset and `Connection error.: other side closed (UND_ERR_SOCKET)` for a close. A reset that arrived while the request was still being sent was shown, depending on timing, as a bare `Connection error.`, as `other side closed (UND_ERR_SOCKET)`, as `write ECONNRESET` or as `write EPIPE`; with a large request that was nearly every time. The turn was retried in each case and still is.
+
+### BF-1662063-2
+
+**Google (`google-generative-ai`): a connection that fails before the response starts is reported with its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Google (`google-generative-ai`): a connection that fails before the response starts is reported with its cause, as Pi does, for example `fetch failed: read ECONNRESET` or `fetch failed: other side closed (UND_ERR_SOCKET)`.
+- **Root cause:** the cause detail was switched on only for the stream builder made after the response headers, so a failure before them was formatted without it
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1662063665` (2026-11-13)
+- **Tests:** `ai/socket_failure_test.go::TestSocketFailureReportsTheConnectionsEndInNodesOrder`, `ai/socket_failure_test.go::TestSocketFailureWaitEndsWhenTheConnectionIsClosed`, `ai/socket_failure_test.go::TestSocketFailureWriteWaitsForAReadThatHasNotBegun`, `ai/socket_failure_test.go::TestSocketFailureWriteWaitsForTheReadInFlight`
+- **Release note:** Google (`google-generative-ai`): a connection that fails before the response starts is reported with its cause, as Pi does, for example `fetch failed: read ECONNRESET` or `fetch failed: other side closed (UND_ERR_SOCKET)`. It was a bare `fetch failed`.
 
 ### BF-167dae3
 
