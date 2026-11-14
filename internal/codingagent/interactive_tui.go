@@ -387,6 +387,10 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	m.tuiStopped.Store(true)
 	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
 	m.disposeActiveSelector()
+	// upstream: interactive-mode.ts stop() turns the terminal progress off before the TUI stops (`this.ui.terminal.setProgress(false)`). The dispose of a quit by keys follows the stop and can wait, for the run it aborts and for extension handlers: a progress still on would go on writing its keep-alive to the restored terminal.
+	if m.opts.Settings.GetShowTerminalProgress() {
+		m.setTerminalProgress(false)
+	}
 	m.disposeTheme()
 	if m.statusLine != nil {
 		// upstream: interactive-mode.ts:7098 (stop() disposes the footer)
