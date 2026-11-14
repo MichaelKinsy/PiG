@@ -537,13 +537,13 @@ func TestReloadDisposesEveryExtensionDialog(t *testing.T) {
 	}
 }
 
-// countdownGoroutines counts the goroutines of the dialogs' countdowns (tui.CountdownTimer).
+// countdownGoroutines counts the goroutines of the dialogs' countdowns (tui.CountdownTimer): the ones tui.NewCountdownTimer started. A stack names the function that created its goroutine from the go statement on, and the countdown's own run function only once the scheduler has run it, so a countdown is counted as soon as its dialog is open.
 func countdownGoroutines() int {
 	buf := make([]byte, 1<<20)
 	buf = buf[:runtime.Stack(buf, true)]
 	count := 0
 	for block := range strings.SplitSeq(string(buf), "\n\n") {
-		if strings.Contains(block, "tui.(*CountdownTimer).run") {
+		if strings.Contains(block, "\ncreated by github.com/MichaelKinsy/PiG/tui.NewCountdownTimer in goroutine ") {
 			count++
 		}
 	}
