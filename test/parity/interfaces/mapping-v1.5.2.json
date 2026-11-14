@@ -225174,7 +225174,7 @@
       "evidence": [
         "test:internal/codingagent/ext_theme_settings_upstream_test.go#TestExtensionSetThemeDoesNotPersistInvalidNamesUpstream",
         "test:internal/codingagent/ext_theme_settings_upstream_test.go#TestExtensionSetThemePersistsToSettingsManagerUpstream",
-        "test:internal/codingagent/first_time_setup_oracle_test.go#TestFirstTimeSetupMatchesPi"
+        "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback"
       ]
     },
     {
