@@ -337,11 +337,9 @@ func AddMcpServerConfigJSON(path, name string, config json.RawMessage) (bool, er
 		if servers == nil {
 			servers = orderedjson.New()
 		}
-		replaced = plainObjectDefines(servers, name)
-		// Assigning "__proto__" on a plain object sets its prototype instead of adding a member, so the file gets no such server.
-		if name != "__proto__" || servers.Has(name) {
-			servers.Set(name, config)
-		}
+		// pig divergence (D645): the servers are own entries, so a server named like an Object.prototype member (constructor, toString, __proto__) is added, replaced and written like any other; Pi's `target[name] !== undefined` on a plain object reports it replaced the first time, and its `target[name] = config` writes no server named __proto__.
+		replaced = servers.Has(name)
+		servers.Set(name, config)
 		serversRaw, _ := servers.MarshalJSON()
 		parsed.Set("mcpServers", serversRaw)
 		return true, nil
@@ -357,26 +355,15 @@ func RemoveMcpServerConfig(path, name string) (bool, error) {
 	}
 	removed := false
 	err := editMcpServers(path, func(servers, _ *orderedjson.Object) (bool, error) {
-		if servers == nil || !plainObjectDefines(servers, name) {
+		// pig divergence (D645): only a server the file defines is removed; Pi's `target[name] !== undefined` on a plain object also finds the members it inherits and reports a server named like one (constructor, hasOwnProperty, __proto__) removed when the file has none.
+		if servers == nil || !servers.Has(name) {
 			return false, nil
 		}
-		servers.Delete(name) // a name that is only inherited deletes nothing, but Pi counts it as removed and rewrites the file
+		servers.Delete(name)
 		removed = true
 		return true, nil
 	})
 	return removed, err
-}
-
-// objectPrototypeNames are the properties a plain JavaScript object inherits from Object.prototype.
-var objectPrototypeNames = map[string]bool{
-	"constructor": true, "__defineGetter__": true, "__defineSetter__": true, "hasOwnProperty": true, "__lookupGetter__": true, "__lookupSetter__": true,
-	"isPrototypeOf": true, "propertyIsEnumerable": true, "toString": true, "valueOf": true, "__proto__": true, "toLocaleString": true,
-}
-
-// plainObjectDefines is `servers[name] !== undefined` on the plain object Pi parses mcp.json into: an own member, or one inherited from
-// Object.prototype (a server named "constructor" or "__proto__" reads as already defined).
-func plainObjectDefines(servers *orderedjson.Object, name string) bool {
-	return servers.Has(name) || objectPrototypeNames[name]
 }
 
 var indentPattern = lazyregexp.New(`(?m)^([ \t]+)\S`)

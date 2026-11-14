@@ -3999,6 +3999,7 @@ func deepMergeJSONObjects(base, override json.RawMessage) json.RawMessage {
 // either true or false.
 func mergeSettings(global, project Settings) Settings {
 	m := cloneSettings(global)
+	// pig divergence (D645): the unknown keys of the project file are merged as own entries, so a settings key `__proto__` is one more unknown key and nothing under it is a setting; Pi's `result[key] = ...` on a plain object sets the merged object's prototype with it and reads its members as settings.
 	m.extra = mergeSettingsExtra(m.extra, project.extra)
 	if project.DefaultProvider != "" || project.emptyStrings.defaultProvider {
 		m.DefaultProvider, m.emptyStrings.defaultProvider = project.DefaultProvider, project.emptyStrings.defaultProvider
