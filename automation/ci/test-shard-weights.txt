@@ -422,3 +422,12 @@ shards 8
 7 TestStreamedMarkdownEqualsAFreshRender
 8 TestMarkedBlockLexerEqualsMarkedOnTokenizerSources
 8 TestModelSelectorInputMatchesPi
+
+# The mutation-replay and evidence tests of portmapcheck take 585 s in one process (measured alone with go test -json on a 4-CPU job): 216 s, 131 s, 92 s, 80 s and 51 s, the rest under 9 s together. The largest test cannot be split, so the placement keeps every shard at or under it.
+package ./test/parity/cmd/portmapcheck
+shards 4
+1 TestMarkerRowIsProvenByCoverageAndAKilledMutant
+2 TestAKilledMutantIsCachedWithItsRecord
+3 TestShardsJudgeEveryRowOnce
+3 TestRowsSharingAPackageKeepTheirOwnVerdicts
+4 TestInfrastructureFailuresAreNotFindingsAboutARow
