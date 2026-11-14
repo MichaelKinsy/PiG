@@ -1,4 +1,4 @@
-// Azure OpenAI Responses start state through the real Pi CLI RPC path. Pi 1.1.0 / OpenAI 7.19.0.
+// Azure OpenAI Responses start state through the real Pi CLI RPC path. Pi 1.5.2 / OpenAI 7.19.0.
 // Usage: node rpc.mjs <rpc.json> [runs]
 //
 // Runs `pi --mode rpc` (dist/bundle/cli.js) against one loopback server whose provider is api "azure-openai-responses".

@@ -31858,6 +31858,29 @@
       ]
     },
     {
+      "id": "BF-8b15be3",
+      "title": "Tests: the read barrier, which lets a fixture server write its next record only when the client is reading…",
+      "symptom": "Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address.",
+      "rootCause": "So the red needs several live connections at once and grows with the square of their number: two subtests alone never show it, the whole test shows it about once in a hundred runs, a loaded machine more often because its connections live longer. The 5.00 s of the failure is the test's own guard (rpc33_azure_ticks_test.go, context.WithTimeout) ending a wait that could never end: the server waited for a count that cannot be reached. A longer guard, a retry or a pause cures nothing here.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address. Linux gives one local port to live connections to different servers, so two parallel fixture servers could see the same client address; one of them then waited until its test's deadline, or wrote two records into one read. `TestRPC33AzureTickOrder` failed that way in about one run in a hundred, more often on a loaded machine. The barrier now counts per connection (client and server address).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b15be354a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/abort_text_pi_test.go::TestProviderAbortTextsMatchPi",
+        "coding/rpc33_azure_ticks_test.go::TestRPC33AzureTickOrder"
+      ]
+    },
+    {
       "id": "BF-8b75dc0",
       "title": "Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection…",
       "symptom": "Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection to the first item even when the query is unchanged, Tab no longer edits the search when project mode is unavailable, and the search is a callback-mode Input so Enter no longer freezes it, all as in Pi's `ResourceList.handleInput` (`tui/config_selector_oracle_test.go`, 648 probes against pinned Pi).",

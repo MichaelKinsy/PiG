@@ -1173,6 +1173,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8ab86c8](#bf-8ab86c8) | RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8ac653e](#bf-8ac653e) | The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native… | PiG's own defect | Windows | Unreleased |
 | [BF-8aff02e](#bf-8aff02e) | `grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-8b15be3](#bf-8b15be3) | Tests: the read barrier, which lets a fixture server write its next record only when the client is reading… | PiG's own defect | Linux | Unreleased |
 | [BF-8b75dc0](#bf-8b75dc0) | Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b792f9](#bf-8b792f9) | Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the… | PiG's own defect | Windows, WSL | Unreleased |
 | [BF-8b8b8d3](#bf-8b8b8d3) | A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in… | PiG's own defect | All platforms | Unreleased |
@@ -18163,6 +18164,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8aff02e0d4` (2026-10-27)
 - **Tests:** `internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort`
 - **Release note:** `grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no longer adds a line, so the context lines after it keep their line numbers and the match is no longer shown on the wrong line. The carriage return is dropped from the printed line.
+
+### BF-8b15be3
+
+**Tests: the read barrier, which lets a fixture server write its next record only when the client is reading…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address.
+- **Root cause:** So the red needs several live connections at once and grows with the square of their number: two subtests alone never show it, the whole test shows it about once in a hundred runs, a loaded machine more often because its connections live longer. The 5.00 s of the failure is the test's own guard (rpc33_azure_ticks_test.go, context.WithTimeout) ending a wait that could never end: the server waited for a count that cannot be reached. A longer guard, a retry or a pause cures nothing here.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `8b15be354a` (2026-11-13)
+- **Tests:** `ai/abort_text_pi_test.go::TestProviderAbortTextsMatchPi`, `coding/rpc33_azure_ticks_test.go::TestRPC33AzureTickOrder`
+- **Release note:** Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address. Linux gives one local port to live connections to different servers, so two parallel fixture servers could see the same client address; one of them then waited until its test's deadline, or wrote two records into one read. `TestRPC33AzureTickOrder` failed that way in about one run in a hundred, more often on a loaded machine. The barrier now counts per connection (client and server address).
 
 ### BF-8b75dc0
 
