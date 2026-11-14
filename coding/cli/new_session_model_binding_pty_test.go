@@ -134,7 +134,9 @@ func TestInteractiveModelPickedAfterNewSessionKeepsItsListedWindowAndCredential(
 				writeJSON(filepath.Join(agentDir, "auth.json"), m{})
 				writeJSON(filepath.Join(agentDir, "models.json"), customModels(base, "cm-1"))
 			},
-			list: func(agentDir, base string) { writeJSON(filepath.Join(agentDir, "models.json"), customModels(base, "cm-1", "cm-2")) },
+			list: func(agentDir, base string) {
+				writeJSON(filepath.Join(agentDir, "models.json"), customModels(base, "cm-1", "cm-2"))
+			},
 		},
 	}
 	for _, shape := range shapes {
