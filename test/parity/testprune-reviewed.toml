@@ -2143,3 +2143,31 @@ path = "internal/pioracle/bin_test.go"
 commit = "0022dfc94a0e68a24ec51f1a3566b0827cce9e9b"
 class = "NOBEHAVIOR"
 reason = "internal/pioracle is PiG-original test support (it finds and checks the installed Pi oracle), so no Pi line governs the test. The commit makes the durable check read the vendored packs: the eight values are the fixture of the check and its refusals, which were a package.json version and a build stamp file and are the packs' manifest.json (commit and package version) and the installed .package-lock.json (resolved file and sha512 integrity); the case `another commit of the same package version` (`build of Pi commit`) becomes `packs of another commit` (`want <the pinned commit>`), and the messages name checkDurable where they named CheckDurable."
+
+[[entry]]
+path = "coding/extension/host/subprocess/generation_supersede_test.go"
+commit = "6f9fe4304ad1246a6358e2b265183bc0fcb5ad3b"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The subprocess extension host and the acknowledgement of a reload are PiG-additive (docs/additive-features.md D19, the paragraph `Reload acknowledgement`, and D21): Pi's runner.invalidate() is synchronous (agent-session.ts:3825-3826) and Pi has no runtime that can fail to acknowledge, so no Pi line governs the test. The commit changes what the host does when a Node runtime misses the deadline of the acknowledgement and writes it into that paragraph in the same commit: the failure is an ExtensionUnresponsiveError with ReloadDeadline set (it was told apart by an Operation that named the acknowledgement), supersedeGenerations returns the generations that did not acknowledge, and the end no longer goes through the crash path, which the commit message describes as the defect (a crash notice, a counted crash, a detached packed member). The expectations follow: the test no longer waits for a crash report that holds extension_unresponsive, and it requires the deadline on the error, the returned generation, the one answer of the request in flight (`did not acknowledge a reload within 1s`), one request ended, and the lines of the report."
+
+[[entry]]
+path = "coding/extension/host/subprocess/retention_dead_share_reload_test.go"
+commit = "7c24a924a9f3b784e3748673bb1982fc9bdb7b62"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Runtime cells of the subprocess extension host are PiG-additive (docs/additive-features.md D19; docs/runtime-cell-reload.md): Pi runs an extension in its own process, so no Pi line governs the test. The commit makes the connection loop of a Node member wait for its process and leave the end of the process to its watcher, so a member of a killed cell is no longer reported at once as disabled and then again as restarting (four notices for a cell of two in 86 of 100 kills). The test reached its window by counting those crash notices; it reaches the same window through Host.deathGate (each member's closed connection handled) and then requires that the end of the process the reload replaced is reported for no member, as docs/runtime-cell-reload.md states (`restarted by that reload without a notice of the exit`). The rest of the test, the refusal of the unreaped process, is unchanged."
+
+[[entry]]
+path = "coding/extension/host/subprocess/packed_go_test.go"
+commit = "cac3d13e176abfd6b2bec101744387ad16e4277d"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Runtime cells of the subprocess extension host are PiG-additive (docs/additive-features.md D19; docs/runtime-cell-reload.md, one notice for each extension in load order): no Pi line governs the test. The commit is the test side of 7c24a924a9 and adds Host.deathGate, nil outside tests. TestHost_KillingPackedProcessNeverClaimsItRemainedAlive accepted, for each member, whichever notice the first observer of the end gave (the plain connection-closed notice, a quarantine notice naming both members, or one naming only that member) and excluded `remained alive`; it now requires the one quarantine notice `packed process exited: signal: killed; kill-a, kill-b stopped; /reload restarts them (stderr: <path>)` for both members, which the host gives a Go cell since its members wait for the process (34f110f09d). The required text holds the stderr path and `/reload restarts` and cannot hold `remained alive`: stricter, not weaker."
+
+[[entry]]
+path = "test/parity/correspondence/compare_test.go"
+commit = "f93f99dd65a8b1054cfc7ca972079dc13646dd85"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "test/parity/correspondence is PiG-original parity tooling (the comparison behind `make correspondence-check`), so no Pi line governs the test. The commit gives Rules the lineage rule TableDescriptionTexts (table, item, Pi's fragment, PiG's fragment, the divergence) for the D2 pair of the settings row show-hardware-cursor (docs/parity/divergences/D2.md: `instead of Pi's drawn cursor`, `instead of PiG's drawn cursor`). The expected mapping count adds the declared pairs, as it adds the additive table items, and the failure message names the description text lineage. A description with no declared pair is still compared byte for byte, a declared pair that replaces nothing is a finding of its own, and nothing is added to known-gaps.toml."
