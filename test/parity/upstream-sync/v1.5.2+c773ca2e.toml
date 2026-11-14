@@ -1,0 +1,16 @@
+from = "1.5.2+a309480a"
+to = "1.5.2+c773ca2e"
+
+[[files]]
+path = "apps/p3/docs/locks/design.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3e5a6c1eb, 6de6f44bb, c773ca2e5: a p3 design document. docs/parity/PORT_MAP.md: apps/p3 holds design documents only (the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing). The owner decision of 2026-11-13 keeps the document in a private copy outside every PiG repository; its text is not quoted here."
+
+[[files]]
+path = "apps/p3/docs/status-2026-11-13.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "8a21980ec, c773ca2e5: a p3 status document. Same record and the same private copy as apps/p3/docs/locks/design.md; no text of it is quoted here."
