@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
@@ -269,7 +270,7 @@ func (s *ProjectTrustStore) write(data map[string]*bool) error {
 	if err := nodeerrno.MkdirAll(filepath.Dir(s.trustPath), 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(s.trustPath, append(encoded, '\n'), 0o644); err != nil {
+	if err := atomicfile.WriteFile(s.trustPath, append(encoded, '\n'), 0o644); err != nil {
 		return nodeerrno.FromPathError(err)
 	}
 	return nil

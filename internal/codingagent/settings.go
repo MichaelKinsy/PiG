@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/allocsize"
+	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
@@ -3739,7 +3740,7 @@ func saveSettingsPatchReplacing(path string, before, after Settings, order, repl
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, encoded, 0o644); err != nil {
+	if err := atomicfile.WriteFile(path, encoded, 0o644); err != nil {
 		return nodeerrno.FromPathError(err)
 	}
 	return nil
