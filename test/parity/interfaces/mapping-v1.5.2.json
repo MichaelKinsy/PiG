@@ -173227,7 +173227,7 @@
       "evidence": [
         "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
         "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare",
-        "test:coding/load_time_completion_test.go#TestDiscoverAndLoadExtensionsAnswersLoadTimeCompletions"
+        "test:coding/load_time_completion_strip_test.go#TestLoadTimeCompletionsAnsweredWithAnAPIStrippedAtRunTime"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -192782,7 +192782,7 @@
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
         "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/load_time_completion_test.go#TestDiscoverAndLoadExtensionsAnswersLoadTimeCompletions"
+        "test:coding/load_time_completion_strip_test.go#TestLoadTimeCompletionsAnsweredWithAnAPIStrippedAtRunTime"
       ]
     },
     {
