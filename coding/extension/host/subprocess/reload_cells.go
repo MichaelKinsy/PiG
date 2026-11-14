@@ -49,6 +49,9 @@ func reasonFor(cell CellSpec) string {
 		if len(cell.Extensions) == 1 {
 			cfg := cell.Extensions[0]
 			switch {
+			case cfg.fusedRebuiltFrom != "":
+				// pig additive (D31): a fused member whose source changed runs from its source.
+				return "subprocess, rebuilt from " + cfg.fusedRebuiltFrom
 			case cfg.EntrypointKind == "factory":
 				return "factory isolated (strict or unpackable)"
 			case cfg.RuntimeKind == "subprocess":

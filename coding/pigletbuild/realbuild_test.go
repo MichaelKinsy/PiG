@@ -49,6 +49,13 @@ func writeSmallPiglet(t *testing.T, root string) string {
 // path.
 func buildSmallPigletBinary(t *testing.T, extraArgs ...string) string {
 	t.Helper()
+	return buildSmallPigletBinaryWith(t, "", extraArgs...)
+}
+
+// buildSmallPigletBinaryWith is buildSmallPigletBinary of the small Piglet with manifest appended to its source. The Piglet and its
+// extension's source stay beside the artifact.
+func buildSmallPigletBinaryWith(t *testing.T, manifest string, extraArgs ...string) string {
+	t.Helper()
 	root := t.TempDir()
 	t.Setenv("PIG_HOME", filepath.Join(root, "home"))
 	t.Setenv("HOME", filepath.Join(root, "home"))
@@ -60,7 +67,17 @@ func buildSmallPigletBinary(t *testing.T, extraArgs ...string) string {
 		name += ".exe"
 	}
 	artifact := filepath.Join(root, name)
-	args := append([]string{writeSmallPiglet(t, root), "--format", "binary", "--builder", "native", "--out", artifact}, extraArgs...)
+	pigletPath := writeSmallPiglet(t, root)
+	if manifest != "" {
+		source, err := os.ReadFile(pigletPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(pigletPath, append(source, manifest...), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	args := append([]string{pigletPath, "--format", "binary", "--builder", "native", "--out", artifact}, extraArgs...)
 	var stdout, stderr strings.Builder
 	if code := runBuild(args, &stdout, &stderr); code != 0 {
 		t.Fatalf("pig piglet build exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout.String(), stderr.String())
