@@ -11062,10 +11062,10 @@
       "rootCause": "auth.json is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed) instead of being truncated and rewritten in place: a full disk, a size limit or a killed process during the write leaves the old file whole. The mode, and the owner where the process may set it, are kept; a symlinked auth.json is followed; on Windows ReplaceFileW keeps the replaced file's DACL. A read-only auth.json is refused as before. Not carried over: a hard link to the old file, and extended attributes on Unix.",
       "rootCauseSource": "commit",
       "userImpact": "Credential or permission exposure",
-      "platform": "Windows",
+      "platform": "Windows, Linux",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, a symlinked `auth.json` and, on Windows, its access rights are kept; a hard link to the old file and extended attributes on Unix are not carried over. \u003c!-- cause: the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials. --\u003e",
+      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, owner, extended attributes (the POSIX ACL on Linux), a symlinked `auth.json` and, on Windows, its access rights are kept. pig replaces a file only when that changes nothing but the file itself: where a credential file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, or a file with more than one hard link, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so. \u003c!-- cause: the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials. --\u003e",
       "origin": "release note",
       "commits": [
         {
@@ -11076,7 +11076,6 @@
       "tests": [
         "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
         "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
-        "internal/atomicfile/atomicfile_test.go::TestWriteFileInReadOnlyDirectoryKeepsFile",
         "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile"
       ]
     },

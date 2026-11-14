@@ -64153,9 +64153,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "func(path string, data []byte, perm os.FileMode) (err error)"
+        "type": "func(path string, data []byte, perm os.FileMode) error"
       },
-      "shapeHash": "sha256:c8d18c0fa5685cca09e935ae9377be53b94452be2febc73c185465e43610ea83"
+      "shapeHash": "sha256:f3edfada1023535619d05718f80854b63610ed7af4e056e2ac15bb15ab23eb00"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#writeFauxMessageText",
