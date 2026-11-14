@@ -2772,6 +2772,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/98-aborted-provider-turn-author-error.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "HOLD the stream",
+            "capture_end": "Operation aborted"
+          },
+          "reason": "Owned visible surface: Escape during an extension provider's response keeps the partial and the error its author's stream ends with",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/98-overlay-invalidate-set-theme.toml",
       "transforms": [
         {
@@ -2798,6 +2816,24 @@
             "capture_start": "parity-snap-cwd-"
           },
           "reason": "Owned visible surface: A status and a footer an extension set are gone after /reload when it does not set them again",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/99-aborted-provider-turn-author-ignores.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "HOLD the stream",
+            "capture_end": "alpha beta gamma"
+          },
+          "reason": "Owned visible surface: Escape during an extension provider's response shows what its author's stream pushes afterwards and keeps the completed message",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

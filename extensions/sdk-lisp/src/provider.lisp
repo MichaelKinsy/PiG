@@ -421,19 +421,26 @@ extension drops the functions it held for it."
 
 (def-request "provider_stream_simple" (ext ctx req)
   (let* ((ps (prov-of ext)) (args (prov-object (jget req "args")))
-         (callback (with-prov (ps) (gethash (jget req "tool" "") (ps-streams ps)))) (signal (ctx-cancel ctx)))
+         (callback (with-prov (ps) (gethash (jget req "tool" "") (ps-streams ps)))) (request (ctx-request ctx)))
     (unless callback (error "unknown provider stream ~S" (jget req "tool")))
-    (let* ((stream (funcall callback ctx (jget args "model") (jget args "context") (jget args "options")))
-           (unsubscribe (abort-signal-subscribe signal (lambda () (model-stream-end stream nil)))))
-      (unwind-protect
-           (progn
-             (loop (multiple-value-bind (event more) (model-stream-next stream :wire t)
-                     (unless more (return))
-                     (when (abort-signal-set-p signal) (error "provider stream aborted"))
-                     (notify-host ext "provider_stream_event" (obj "request_id" (ctx-request-id ctx) "result" event))))
-             (when (abort-signal-set-p signal) (error "provider stream aborted"))
-             (model-stream-wire-result stream))
-        (funcall unsubscribe)))))
+    ;; An ordinary cancel ends the request: handle-cancel marks it cancelled and calls its on-end, which ends the author's stream, so the loop stops and the answer is the
+    ;; abort. A signal-only cancel, the abort of a turn, sets the signal the author holds and nothing else: Pi's consumer has no check of the signal
+    ;; (packages/agent/src/agent-loop.ts:424-478), so what the author's stream gives after it is forwarded and its result is the answer.
+    (let ((stream (funcall callback ctx (jget args "model") (jget args "context") (jget args "options"))))
+      (flet ((ended-p () (sb-thread:with-mutex ((extension-state-lock ext)) (eq (request-state request) :cancelled))))
+        (when (sb-thread:with-mutex ((extension-state-lock ext))
+                (setf (request-on-end request) (lambda () (model-stream-end stream nil)))
+                (eq (request-state request) :cancelled))
+          (model-stream-end stream nil))
+        (unwind-protect
+             (progn
+               (loop (multiple-value-bind (event more) (model-stream-next stream :wire t)
+                       (unless more (return))
+                       (when (ended-p) (error "provider stream aborted"))
+                       (notify-host ext "provider_stream_event" (obj "request_id" (ctx-request-id ctx) "result" event))))
+               (when (ended-p) (error "provider stream aborted"))
+               (model-stream-wire-result stream))
+          (sb-thread:with-mutex ((extension-state-lock ext)) (setf (request-on-end request) nil)))))))
 
 ;;; ---------------------------------------------------------------- Providers other extensions registered
 

@@ -604,6 +604,8 @@ struct RequestCancel {
     flag: Arc<AtomicBool>,
     reason: Arc<Mutex<Option<String>>>,
     provider_stream: Arc<Mutex<Option<Arc<ModelEventStream>>>>,
+    // Set by an ordinary cancel and by the end of the runtime: the request has ended. A signal-only cancel leaves it clear.
+    ended: Arc<AtomicBool>,
 }
 
 impl RequestCancel {
@@ -613,16 +615,28 @@ impl RequestCancel {
             reason: Arc::new(Mutex::new(None)),
             signal: crate::ProviderSignal::new(),
             provider_stream: Arc::new(Mutex::new(None)),
+            ended: Arc::new(AtomicBool::new(false)),
         }
     }
 
+    // Aborts the signal the handler holds, which is all a signal-only cancel does: the request goes on. The stream of a provider_stream_simple request is left to its author, as Pi's consumer has no check of the signal (packages/agent/src/agent-loop.ts:424-478).
     fn cancel(&self, reason: impl Into<String>) {
         self.flag.store(true, Ordering::Relaxed);
         *self.reason.lock().unwrap() = Some(reason.into());
         self.signal.cancel();
+    }
+
+    // An ordinary cancel, or the end of the runtime: the request has ended. Its signal aborts and the stream of a provider_stream_simple request is ended, so its forwarder stops and answers the abort. The flag is set before the stream ends, so a stream this ended is never answered as one its author ended.
+    fn end_request(&self, reason: impl Into<String>) {
+        self.ended.store(true, Ordering::Relaxed);
+        self.cancel(reason);
         if let Some(stream) = self.provider_stream.lock().unwrap().as_ref() {
             stream.end(Value::Null);
         }
+    }
+
+    fn request_ended(&self) -> bool {
+        self.ended.load(Ordering::Relaxed)
     }
 }
 
@@ -2076,7 +2090,7 @@ impl Extension {
             width_deliveries.stop();
             base_ctx.host_subs.stop();
             for cancel in active_requests.lock().unwrap().values() {
-                cancel.cancel(reason);
+                cancel.end_request(reason);
             }
             // The sessions end with the connection, as the host disposes them: no listener runs after it.
             conn.children.close_all();
@@ -2265,7 +2279,11 @@ impl Extension {
                             .as_ref()
                             .map(|c| c.reason.clone())
                             .unwrap_or_default();
-                        cancel.cancel(reason);
+                        if signal_only {
+                            cancel.cancel(reason);
+                        } else {
+                            cancel.end_request(reason);
+                        }
                     }
                 }
                 "notify" => {
@@ -3261,15 +3279,16 @@ impl Extension {
                         args["context"].clone(),
                         args["options"].clone(),
                     )?;
+                    // An ordinary cancel ends the request (RequestCancel::end_request): the stream is ended, the loop stops and the answer is the abort. A signal-only cancel, the abort of a turn, aborts the signal the author holds and nothing else: what its stream gives after it is forwarded and its result is the answer.
                     {
                         let mut active = cancel.provider_stream.lock().unwrap();
                         *active = Some(stream.clone());
-                        if ctx.is_cancelled() {
+                        if cancel.request_ended() {
                             stream.end(Value::Null);
                         }
                     }
                     while let Some(event) = stream.next() {
-                        if ctx.is_cancelled() {
+                        if cancel.request_ended() {
                             return Err("provider stream aborted".into());
                         };
                         conn.notify(
@@ -3278,7 +3297,7 @@ impl Extension {
                         )
                         .map_err(|error| error.to_string())?;
                     }
-                    if ctx.is_cancelled() {
+                    if cancel.request_ended() {
                         return Err("provider stream aborted".into());
                     };
                     Ok(stream.result().unwrap_or(Value::Null))
@@ -4546,6 +4565,178 @@ mod tests {
         );
         handle.join().unwrap().unwrap();
         let _ = std::fs::remove_file(sock);
+    }
+
+    // Runs one provider_stream_simple request of an author that pushes start, waits until its request's signal aborts, then (when `release` is given) for the test's word, and goes on: it pushes a text_delta and ends its stream with a result. `host` plays the host from the request's first frame to its response.
+    fn run_provider_stream_probe(
+        tag: &str,
+        release: Option<mpsc::Receiver<()>>,
+        host: impl FnOnce(&mut UnixStream),
+    ) {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let sock = std::env::temp_dir().join(format!("pig-sdk-rs-{tag}-{unique}.sock"));
+        let _ = std::fs::remove_file(&sock);
+        let listener = UnixListener::bind(&sock).unwrap();
+        let mut ext = Extension::new("stream-cancel-kinds");
+        let release = std::sync::Mutex::new(release);
+        ext.register_provider_stream(
+            "probe",
+            serde_json::json!({"api":"probe-api","baseUrl":"https://extension.invalid","apiKey":"probe-key","models":[]}),
+            move |ctx, _model, _request, _options| {
+                let stream = std::sync::Arc::new(crate::ModelEventStream::new());
+                let producer = stream.clone();
+                let ctx = ctx.clone();
+                let release = release.lock().unwrap().take();
+                std::thread::spawn(move || {
+                    producer.push(serde_json::json!({"type":"start","partial":{"role":"assistant","content":[]}}));
+                    while !ctx.is_cancelled() {
+                        std::thread::sleep(Duration::from_millis(2));
+                    }
+                    if let Some(release) = release {
+                        let _ = release.recv_timeout(Duration::from_secs(5));
+                    }
+                    producer.push(serde_json::json!({"type":"text_delta","contentIndex":0,"delta":"after the abort","partial":{"role":"assistant","content":[{"type":"text","text":"after the abort"}]}}));
+                    producer.end(serde_json::json!({"role":"assistant","content":[{"type":"text","text":"the author's result"}],"stopReason":"stop"}));
+                });
+                Ok(stream)
+            },
+        );
+        let sock_for_ext = sock.clone();
+        let handle =
+            std::thread::spawn(move || ext.run_with_socket(sock_for_ext.to_str().unwrap()));
+        let (mut stream, _) = listener.accept().unwrap();
+        assert_eq!(read_env(&mut stream).msg_type, "register");
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "ready".to_string(),
+                ready: Some(ReadyMsg {
+                    cwd: "/tmp".to_string(),
+                    mode: "tui".to_string(),
+                    width: 80,
+                    height: 24,
+                    source_info: None,
+                    state: None,
+                }),
+                ..Default::default()
+            },
+        );
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "request".to_string(),
+                id: Some("req-stream".to_string()),
+                request: Some(RequestMsg {
+                    signal_aborted: false,
+                    child_session: None,
+                    terminal_input: None,
+                    stream: None,
+                    stream_error: None,
+                    args_error: None,
+                    deep_args: false,
+                    tool_call_index: None,
+                    args_raw: None,
+                    method: "provider_stream_simple".to_string(),
+                    tool: Some("probe".to_string()),
+                    event: None,
+                    handler_id: 0,
+                    tool_call_id: None,
+                    batch: None,
+                    args: Some(serde_json::json!({"model":{},"context":{},"options":{}})),
+                }),
+                ..Default::default()
+            },
+        );
+        host(&mut stream);
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "shutdown".to_string(),
+                ..Default::default()
+            },
+        );
+        handle.join().unwrap().unwrap();
+        let _ = std::fs::remove_file(sock);
+    }
+
+    // Reads frames up to the next stream event of the request, whose type it returns, or up to the request's response.
+    fn next_stream_frame(
+        stream: &mut UnixStream,
+    ) -> (Option<String>, Option<crate::protocol::ResponseMsg>) {
+        loop {
+            let env = read_env(stream);
+            match env.msg_type.as_str() {
+                "notify" => {
+                    if let Some(notify) = env
+                        .notify
+                        .as_ref()
+                        .filter(|notify| notify.method == "provider_stream_event")
+                    {
+                        let kind = notify
+                            .args
+                            .as_ref()
+                            .and_then(|args| args["result"]["type"].as_str());
+                        return (Some(kind.unwrap_or_default().to_string()), None);
+                    }
+                }
+                "response" => return (None, env.response),
+                "call" => answer_call(stream, &env),
+                _ => {}
+            }
+        }
+    }
+
+    // Pi's consumer of a response has no check of the abort signal (packages/agent/src/agent-loop.ts:424-478): after the abort of a turn, a signal-only cancel, the author's signal is aborted, the events its stream gives are forwarded and its result is the answer.
+    #[test]
+    fn provider_stream_goes_on_after_a_signal_only_cancel_and_answers_the_authors_result() {
+        run_provider_stream_probe("stream-signal-only", None, |stream| {
+            assert_eq!(next_stream_frame(stream).0.as_deref(), Some("start"));
+            write_env(stream, &cancel_env("req-stream", "context canceled", true));
+            assert_eq!(
+                next_stream_frame(stream).0.as_deref(),
+                Some("text_delta"),
+                "the event the author pushed after the abort of its signal is forwarded"
+            );
+            let (event, response) = next_stream_frame(stream);
+            assert_eq!(event, None);
+            let response = response.unwrap();
+            assert_eq!(response.error.map(|error| error.message), None);
+            assert_eq!(
+                response.result.unwrap()["content"][0]["text"],
+                "the author's result"
+            );
+        });
+    }
+
+    // An ordinary cancel ends the request, also after a signal-only cancel: the author's stream is ended, nothing more is forwarded and the answer is the abort.
+    #[test]
+    fn ordinary_cancel_after_a_signal_only_cancel_ends_the_provider_stream_request() {
+        let (release_tx, release_rx) = mpsc::channel();
+        run_provider_stream_probe("stream-ordinary-after", Some(release_rx), |stream| {
+            assert_eq!(next_stream_frame(stream).0.as_deref(), Some("start"));
+            write_env(stream, &cancel_env("req-stream", "context canceled", true));
+            write_env(
+                stream,
+                &cancel_env("req-stream", "the host ends the request", false),
+            );
+            let (event, response) = next_stream_frame(stream);
+            assert_eq!(
+                event, None,
+                "no event is forwarded after the ordinary cancel"
+            );
+            assert_eq!(
+                response
+                    .unwrap()
+                    .error
+                    .map(|error| error.message)
+                    .as_deref(),
+                Some("provider stream aborted")
+            );
+            let _ = release_tx.send(());
+        });
     }
 
     #[test]

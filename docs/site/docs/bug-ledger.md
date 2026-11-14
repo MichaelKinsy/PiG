@@ -242,6 +242,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-21649a0](#bf-21649a0) | fix(chord): sync bounds a log line at V8's string length in UTF-16 units and counts sizes in them; a closed… | PiG's own defect | All platforms | Unreleased |
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
 | [BF-2173cc1](#bf-2173cc1) | A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`)… | PiG's own defect | All platforms | Unreleased |
+| [BF-218bd82](#bf-218bd82) | fix(interactive): the quit by keys ends as Pi's process ends when the extension runtimes report a drained loop | PiG's own defect | All platforms | Unreleased |
 | [BF-21c27bf](#bf-21c27bf) | A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-21cdff7](#bf-21cdff7) | A row that fills the terminal and holds an unpaired UTF-16 surrogate, for example text cut inside an emoji… | PiG's own defect | All platforms | Unreleased |
 | [BF-21d2227](#bf-21d2227) | tui: a frame request that lost that race to the stop no longer arms a frame timer on the stopped renderer, or… | PiG's own defect | All platforms | Unreleased |
@@ -600,6 +601,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4e5b684](#bf-4e5b684) | A list item whose first line is another list item is rendered as a nested list with no bullet of its own, and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e8c517](#bf-4e8c517) | fix(runtimecell): keep the Python runner's _run callable without the built event | PiG's own defect | All platforms | Unreleased |
 | [BF-4ed1d72](#bf-4ed1d72) | A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a… | PiG's own defect | All platforms | Unreleased |
+| [BF-4ef5612](#bf-4ef5612) | Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f079a7](#bf-4f079a7) | An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-4f3cc2e](#bf-4f3cc2e) | `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f62143](#bf-4f62143) | `/copy`, the copy key, RPC `get_last_assistant_text` and a child session's `getLastAssistantText` now skip a… | PiG's own defect | All platforms | Unreleased |
@@ -1506,6 +1508,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ab1d070](#bf-ab1d070) | A durable code mode script's journal now records the calls a script had issued after a batch of results in… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ab1d070-2](#bf-ab1d070-2) | A script that ends in its first run while a journaled tool call replays after a restart no longer shows that… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ab68fb7](#bf-ab68fb7) | When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits | PiG's own defect | All platforms | Unreleased |
 | [BF-ab8e9e4](#bf-ab8e9e4) | Tool output and `!` command output no longer show the parameters of control sequences with a `<`, `=` or `>`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ab99da4](#bf-ab99da4) | fix(chord/delta): the tracker holds its one open change without a weak registration | PiG's own defect | All platforms | Unreleased |
 | [BF-abc54d0](#bf-abc54d0) | `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context… | PiG's own defect | All platforms | Unreleased |
@@ -1720,6 +1723,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
 | [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cbf4a52](#bf-cbf4a52) | The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-cc05ab3](#bf-cc05ab3) | Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-cc38705](#bf-cc38705) | An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a… | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ccaade2](#bf-ccaade2) | The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer… | PiG's own defect | All platforms | 0.5.0 |
@@ -5279,6 +5283,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2173cc13ed` (2026-11-07)
 - **Tests:** `test/extension-conformance/replicated_accessors_test.go::TestNodeReplicatedWritesReadBackAfterAwait`, `test/extension-conformance/replicated_accessors_test.go::TestReplicatedAccessorsReadYourWritesAcrossSDKs`
 - **Release note:** A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`) after an `await` read back a session log without the entry it had just written (`ctx.sessionManager.getEntries()` still ended in the earlier entry), and the replicated log later lost all but one entry, where Pi's in-process log shows every write to the next read. Every handler of an extension that registers `pi.onLoaded` is such a handler: its requests first await the loaded handlers. The runtime applied the host's state push for a write after the push for the next write, because the receive loop that held the first push (handed to it while it waited, or taken from its queue) is unable to read it during the synchronous call that follows an `await`. The runtime now applies the state in the order the host sent it.
+
+### BF-218bd82
+
+**fix(interactive): the quit by keys ends as Pi's process ends when the extension runtimes report a drained loop**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(interactive): the quit by keys ends as Pi's process ends when the extension runtimes report a drained loop
+- **Root cause:** Pi's quit stops the TUI, which takes stdin out of its event loop, and then awaits runtimeHost.dispose(). A dispose that waits for an aborted run whose author never reacts, or for a session_shutdown handler that never settles, ends with the process (exit 0, no resume hint) once nothing keeps the loop alive. pig waited without end and its Node runtime stayed.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `218bd820a7` (2026-11-13)
+- **Tests:** `coding/runtime_quit_input_end_test.go::TestInputEndedDisposeArmsTheDrainBeforeItTellsTheHostThatInputEnded`, `coding/runtime_quit_input_end_test.go::TestInputEndedDisposeEndsWithADrainReportWhileItIsPending`, `coding/runtime_quit_input_end_test.go::TestInputEndedDisposeWithoutAnExtensionHostIsThePlainDispose`
 
 ### BF-21c27bf
 
@@ -10224,6 +10241,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4ed1d7213d` (2026-11-09)
 - **Tests:** None recorded.
 - **Release note:** A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a clone that reads whether the session has a file, and a routed request stores a virtual model's router state on the session it read the state from, not on one a swap installed meanwhile.
+
+### BF-4ef5612
+
+**Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end`, `agent_end` and `agent_settled` before `session_shutdown`.
+- **Root cause:** Since the quit's dispose awaits session.abort() (Pi). In interactive mode it runs on the owner loop, and the aborted run needs that loop to end: Session.RunAgentPrompt waits until the loop acknowledged its event flush, and the turn's cleanup is posted to the loop. Each waited for the other, so a quit while a turn streamed never exited, for every provider kind.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4ef5612c00` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end`, `agent_end` and `agent_settled` before `session_shutdown`. PiG exited at once: the interrupted turn was missing from the session file, and extensions saw `session_shutdown` in the middle of the turn. A `!` command that is still running is not waited for, and nothing of the interrupted turn is drawn after the screen was restored. PiG 0.2.0 through 0.7.0 have the defect.
 
 ### BF-4f079a7
 
@@ -22838,6 +22869,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/complexity_scaling_norace_test.go::TestScalingProviderRequestPerTurn`, `ai/complexity_scaling_norace_test.go::TestScalingProviderStreamPerDelta`, `coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush`, `coding/complexity_scaling_norace_test.go::TestScalingSessionTurn`, `coding/extension/host/subprocess/complexity_scaling_norace_test.go::TestScalingMessageUpdatePayload`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_norace_test.go::TestScalingSessionLogOperations`, `internal/codingagent/tools/complexity_scaling_norace_test.go::TestScalingTools` and 10 more in docs/bug-ledger.json
 - **Release note:** Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and inline text that changed since the last frame, with the same output.
 
+### BF-ab68fb7
+
+**When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits**
+
+- **Source:** PiG's own defect
+- **Symptom:** When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits.
+- **Root cause:** A quit by keys that waits for an author keeps its dispose pending. The ctrl+c that then ends pig (exit 130) ran no dispose, so the runtime of a Node author that holds a timer stayed behind. handleInterruptSignal terminates the extension processes before it exits, as the emergency exit does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `851af29834` (2026-11-13), `ab68fb7b65` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits. The runtime process of a Node extension whose event loop was still alive, for example one that holds a timer, stayed behind. Nothing more is written to the session file at that exit. PiG 0.2.0 through 0.7.0 have the defect.
+
 ### BF-ab8e9e4
 
 **Tool output and `!` command output no longer show the parameters of control sequences with a `<`, `=` or `>`…**
@@ -25796,6 +25841,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cbf4a52c17` (2026-11-04)
 - **Tests:** `extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire`, `test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs`
 - **Release note:** The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of `Input`/`input` as given, as Pi's `ctx.ui.editor(title, "")` and `ctx.ui.input(title, "")` do (an RPC client sees `prefill: ""`). They used to drop it, so a port of Pi's plan-mode example wrote a different RPC request than Pi. Pi's `editor(title)` and `input(title)`, which write no such member, are now `EditorWithoutPrefill`, `InputWithoutPlaceholder` and `InputWithoutPlaceholderWithOptions` in Go and `editor_without_prefill`, `input_without_placeholder` and `input_without_placeholder_with_options` in Rust, as `ClearStatus` is for `SetStatus`. `TestConformance_UIEmptyMembersAgreeAcrossSDKs` now requires every SDK (isolated, packed, fused) to tell the empty string from the unset member.
+
+### BF-cc05ab3
+
+**Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now keeps what the provider's stream does after the abort, as Pi does: the text already shown, the provider's own stop reason and error message, or its complete answer when it ignores the abort.
+- **Root cause:** An aborted turn whose model is served by an extension's streamSimple lost the text the user had seen: the host ended the stream at the cancel with a message of its own (empty content, aborted, "context canceled") and discarded whatever the author's stream did next. Pi's consumer has no check of the abort signal (packages/agent/src/agent-loop.ts:424-478): the author's later events, its terminal event, its result or its error decide the turn's final message.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `452127f75d` (2026-11-13), `cc05ab3196` (2026-11-13), `f362f57ac0` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now keeps what the provider's stream does after the abort, as Pi does: the text already shown, the provider's own stop reason and error message, or its complete answer when it ignores the abort. PiG's extension host ended such a stream at the abort with a message of its own (empty content, `aborted`, `context canceled`), so the text the user had seen was gone from the turn, from the session file and from the next request's context. The abort now only aborts the signal the provider holds, in the Go, Node, Python, Rust and Lisp SDKs, and the provider's stream decides how the turn ends; a provider that never reacts holds the turn, as in Pi, and no time limit is added. In RPC mode, when stdin closes while a Node provider's aborted stream never reacts, the process exits 0 once the runtime's event loop is empty, as Pi's process does, and leaves no runtime process. PiG 0.3.0 through 0.7.0 have the defect.
 
 ### BF-cc38705
 

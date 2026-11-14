@@ -6271,6 +6271,29 @@
       ]
     },
     {
+      "id": "BF-218bd82",
+      "title": "fix(interactive): the quit by keys ends as Pi's process ends when the extension runtimes report a drained loop",
+      "symptom": "fix(interactive): the quit by keys ends as Pi's process ends when the extension runtimes report a drained loop",
+      "rootCause": "Pi's quit stops the TUI, which takes stdin out of its event loop, and then awaits runtimeHost.dispose(). A dispose that waits for an aborted run whose author never reacts, or for a session_shutdown handler that never settles, ends with the process (exit 0, no resume hint) once nothing keeps the loop alive. pig waited without end and its Node runtime stayed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "218bd820a7",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/runtime_quit_input_end_test.go::TestInputEndedDisposeArmsTheDrainBeforeItTellsTheHostThatInputEnded",
+        "coding/runtime_quit_input_end_test.go::TestInputEndedDisposeEndsWithADrainReportWhileItIsPending",
+        "coding/runtime_quit_input_end_test.go::TestInputEndedDisposeWithoutAnExtensionHostIsThePlainDispose"
+      ]
+    },
+    {
       "id": "BF-21c27bf",
       "title": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog…",
       "symptom": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog, the `/hotkeys` block, the text a slash command appends and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta.",
@@ -16238,6 +16261,26 @@
         {
           "hash": "4ed1d7213d",
           "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-4ef5612",
+      "title": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn…",
+      "symptom": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end`, `agent_end` and `agent_settled` before `session_shutdown`.",
+      "rootCause": "Since the quit's dispose awaits session.abort() (Pi). In interactive mode it runs on the owner loop, and the aborted run needs that loop to end: Session.RunAgentPrompt waits until the loop acknowledged its event flush, and the turn's cleanup is posted to the loop. Each waited for the other, so a quit while a turn streamed never exited, for every provider kind.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end`, `agent_end` and `agent_settled` before `session_shutdown`. PiG exited at once: the interrupted turn was missing from the session file, and extensions saw `session_shutdown` in the middle of the turn. A `!` command that is still running is not waited for, and nothing of the interrupted turn is drawn after the screen was restored. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4ef5612c00",
+          "date": "2026-11-13"
         }
       ],
       "tests": []
@@ -41317,6 +41360,30 @@
       ]
     },
     {
+      "id": "BF-ab68fb7",
+      "title": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits",
+      "symptom": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits.",
+      "rootCause": "A quit by keys that waits for an author keeps its dispose pending. The ctrl+c that then ends pig (exit 130) ran no dispose, so the runtime of a Node author that holds a timer stayed behind. handleInterruptSignal terminates the extension processes before it exits, as the emergency exit does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits. The runtime process of a Node extension whose event loop was still alive, for example one that holds a timer, stayed behind. Nothing more is written to the session file at that exit. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "851af29834",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "ab68fb7b65",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-ab8e9e4",
       "title": "Tool output and `!` command output no longer show the parameters of control sequences with a `\u003c`, `=` or `\u003e`…",
       "symptom": "Tool output and `!` command output no longer show the parameters of control sequences with a `\u003c`, `=` or `\u003e` prefix as text, for example `35;59;1M` from a mouse report `ESC[\u003c35;59;1M` or `0;276;0c` from a terminal reply `ESC[\u003e0;276;0c`.",
@@ -47440,6 +47507,34 @@
         "extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire",
         "test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs"
       ]
+    },
+    {
+      "id": "BF-cc05ab3",
+      "title": "Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now…",
+      "symptom": "Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now keeps what the provider's stream does after the abort, as Pi does: the text already shown, the provider's own stop reason and error message, or its complete answer when it ignores the abort.",
+      "rootCause": "An aborted turn whose model is served by an extension's streamSimple lost the text the user had seen: the host ended the stream at the cancel with a message of its own (empty content, aborted, \"context canceled\") and discarded whatever the author's stream did next. Pi's consumer has no check of the abort signal (packages/agent/src/agent-loop.ts:424-478): the author's later events, its terminal event, its result or its error decide the turn's final message.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now keeps what the provider's stream does after the abort, as Pi does: the text already shown, the provider's own stop reason and error message, or its complete answer when it ignores the abort. PiG's extension host ended such a stream at the abort with a message of its own (empty content, `aborted`, `context canceled`), so the text the user had seen was gone from the turn, from the session file and from the next request's context. The abort now only aborts the signal the provider holds, in the Go, Node, Python, Rust and Lisp SDKs, and the provider's stream decides how the turn ends; a provider that never reacts holds the turn, as in Pi, and no time limit is added. In RPC mode, when stdin closes while a Node provider's aborted stream never reacts, the process exits 0 once the runtime's event loop is empty, as Pi's process does, and leaves no runtime process. PiG 0.3.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "452127f75d",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "cc05ab3196",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "f362f57ac0",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-cc38705",

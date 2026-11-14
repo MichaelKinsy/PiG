@@ -31,6 +31,10 @@ type InteractiveRuntime interface {
 	ExtensionCommandActions(session InteractiveSessionHandle) extension.CommandActions
 	// EmitQuitShutdown emits session_shutdown for quit once; closing the runtime does not repeat it.
 	EmitQuitShutdown()
+	// EmitQuitShutdownAfterStop is EmitQuitShutdown for the quit by keys, which stops the TUI first: no input can arrive any more, and when nothing can make progress under the pending dispose the runtime ends the process, as Pi's process ends, and the call does not return.
+	EmitQuitShutdownAfterStop()
+	// SetBeforeQuitDispose installs the settle of the mode's active run, which EmitQuitShutdownAfterStop runs on the calling goroutine, the owner loop, before the dispose awaits the Session's abort.
+	SetBeforeQuitDispose(settle func())
 	// SetBeforeSessionReplacement installs the drain that runs after a replacement is approved and before the outgoing Session aborts.
 	SetBeforeSessionReplacement(drain func(context.Context) error)
 	// SetBeforeSessionInvalidate installs the synchronous hook that runs after session_shutdown and before the outgoing Session's extension contexts go stale.
@@ -93,6 +97,7 @@ func (m *InteractiveMode) installRuntimeHooks() {
 	})
 	rt.SetBeforeSessionInvalidate(m.resetExtensionUIForReplacement)
 	rt.SetRebindSession(m.rebindFromRuntime)
+	rt.SetBeforeQuitDispose(m.settleRunAtQuit)
 }
 
 // resetWorkingStatus returns the working message, visibility and indicator to their defaults, as Pi does when a Session replacement resets extension UI (interactive-mode.ts:2474-2482).
@@ -351,6 +356,15 @@ func (i runtimeImporter) ImportFromJsonl(ctx context.Context, inputPath, cwdOver
 func (m *InteractiveMode) emitQuitShutdown() {
 	if rt := m.runtimeHost; rt != nil {
 		rt.EmitQuitShutdown()
+		return
+	}
+	emitSessionShutdown(m.newRunner, "quit")
+}
+
+// emitQuitShutdownAfterStop is emitQuitShutdown for the quit by keys. Pi's shutdown() stops the TUI and then awaits runtimeHost.dispose() (interactive-mode.ts shutdown: drainInput, this.stop(), `await this.runtimeHost.dispose()`): stop() takes stdin out of the event loop, so a dispose that waits for an aborted run whose author never reacts, or for a session_shutdown handler that never settles, ends with the process (exit 0, no resume hint) once nothing else keeps the loop alive. The runtime host carries that end. The signal shutdown disposes before it stops the TUI and keeps the plain dispose.
+func (m *InteractiveMode) emitQuitShutdownAfterStop() {
+	if rt := m.runtimeHost; rt != nil {
+		rt.EmitQuitShutdownAfterStop()
 		return
 	}
 	emitSessionShutdown(m.newRunner, "quit")
