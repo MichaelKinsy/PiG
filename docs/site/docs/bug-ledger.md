@@ -1032,6 +1032,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9e95660](#bf-9e95660) | A compaction, branch summary or bug report summary no longer fails with "Summarization failed: 401… | PiG's own defect | All platforms | Unreleased |
 | [BF-9eda512](#bf-9eda512) | The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9f4702c](#bf-9f4702c) | A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9f893e0](#bf-9f893e0) | fix: refuse a model whose api has no registered implementation, as Pi does | PiG's own defect | All platforms | Unreleased |
 | [BF-9faf2de](#bf-9faf2de) | Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)… | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-D110](#bf-d110) | Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D150](#bf-d150) | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -15651,6 +15652,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9f4702c4e1` (2026-10-13)
 - **Tests:** `internal/codingagent/interactive_command_error_test.go::TestInteractiveShortcutDiagnosticOwnership`
 - **Release note:** A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error color, as in Pi. Previously it was shown as a warning.
+
+### BF-9f893e0
+
+**fix: refuse a model whose api has no registered implementation, as Pi does**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: refuse a model whose api has no registered implementation, as Pi does
+- **Root cause:** A model whose api is none of the built-in APIs now reaches the API registry when its request starts (ai.GetAPIProvider, Pi's getApiProvider), after the request's credential is resolved, and is refused with Pi's "No API provider registered for api: <api>" when nothing is registered; nothing is built for or sent to its endpoint (provider-composer.ts:603-604). ai.StreamSimple reports the same text for an api without an implementation (compat.ts:244-247).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9f893e05d0` (2026-11-13)
+- **Tests:** None recorded.
 
 ### BF-9faf2de
 

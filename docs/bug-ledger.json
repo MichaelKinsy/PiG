@@ -28525,6 +28525,25 @@
       ]
     },
     {
+      "id": "BF-9f893e0",
+      "title": "fix: refuse a model whose api has no registered implementation, as Pi does",
+      "symptom": "fix: refuse a model whose api has no registered implementation, as Pi does",
+      "rootCause": "A model whose api is none of the built-in APIs now reaches the API registry when its request starts (ai.GetAPIProvider, Pi's getApiProvider), after the request's credential is resolved, and is refused with Pi's \"No API provider registered for api: \u003capi\u003e\" when nothing is registered; nothing is built for or sent to its endpoint (provider-composer.ts:603-604). ai.StreamSimple reports the same text for an api without an implementation (compat.ts:244-247).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9f893e05d0",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9faf2de",
       "title": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…",
       "symptom": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand.",
