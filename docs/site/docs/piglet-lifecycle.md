@@ -234,7 +234,7 @@ Provenance: matches ~/.pig/piglets/reviewer.yaml
 Signed manifest:
   Piglet: reviewer 0.1.0
   target: linux/amd64
-  Pig: 0.5.3
+  PiG: 0.5.3
   Piglet definition: sha256:<digest>
   resolution record: sha256:<digest>
   component plan: sha256:<digest>
@@ -263,7 +263,7 @@ The signed manifest above names the parts of the release record. Each edit chang
 | The extensions or their origins | The component plan and the resolution record. |
 | `build.closed` | The Piglet definition digest. |
 | The target (`--targets`) | A separate record and Binary for each target. |
-| The PiG version that builds the Binary | The `Pig:` line of the manifest. |
+| The PiG version that builds the Binary | The `PiG:` line of the manifest. |
 
 A script never has a record. Rebuild a Binary after every change in this table.
 

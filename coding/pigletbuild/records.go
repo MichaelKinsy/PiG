@@ -688,7 +688,7 @@ func pigSourceIdentity(source pigSource) (string, string, error) {
 			continue
 		}
 		if err != nil {
-			return "", "", fmt.Errorf("lock Pig source %s: %w", relative, err)
+			return "", "", fmt.Errorf("lock PiG source %s: %w", relative, err)
 		}
 		if info.IsDir() {
 			continue
@@ -700,11 +700,11 @@ func pigSourceIdentity(source pigSource) (string, string, error) {
 		if info.Mode()&os.ModeSymlink != 0 {
 			target, err := os.Readlink(path)
 			if err != nil {
-				return "", "", fmt.Errorf("read Pig source symlink %s: %w", relative, err)
+				return "", "", fmt.Errorf("read PiG source symlink %s: %w", relative, err)
 			}
 			_, _ = hash.Write([]byte(target))
 		} else if err := copyFileInto(hash, path, buffer); err != nil {
-			return "", "", fmt.Errorf("read Pig source %s: %w", relative, err)
+			return "", "", fmt.Errorf("read PiG source %s: %w", relative, err)
 		}
 		_, _ = hash.Write([]byte{0})
 	}

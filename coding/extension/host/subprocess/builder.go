@@ -951,7 +951,7 @@ func rejectNonExecutableArtifact(path, srcDir string) error {
 		"%s compiled to a library archive, not a program: its package is not `main`.\n"+
 			"An extension built this way cannot be executed. Either give the package "+
 			"`package main` with a `func main()`, or expose "+
-			"`func Extension() *sdk.Extension` so Pig builds it through the factory path",
+			"`func Extension() *sdk.Extension` so PiG builds it through the factory path",
 		srcDir)
 }
 

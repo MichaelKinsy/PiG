@@ -1,6 +1,6 @@
 # Get started with PiG
 
-Stock Pig includes the reference documentation required to configure models,
+Stock PiG includes the reference documentation required to configure models,
 author extensions, use Packages, and compose Piglets. It does not register an
 onboarding extension.
 

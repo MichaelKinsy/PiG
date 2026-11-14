@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-// TestReloadAfterNodeCellCrashNoticeRefusesUnreapedProcess drives Reload through the window TestNodeCellCrashThenReloadRestoresOneProcess hits only under load: the Node cell was killed and the host has reported every member's crash, but the process's exit and closed stdin are not yet observed, so the retained share still looks alive to the exit channel and to the noop probe. The crash notices must already keep the share out of retention claims, so the reload starts the cell in a new process and every member registers. The test holds the exit unobserved by replacing the share's exit channel and control stdin after the kill, and keeps the automatic recovery out by invalidating the dead process's generation, as Reload itself does.
-func TestReloadAfterNodeCellCrashNoticeRefusesUnreapedProcess(t *testing.T) {
+// TestReloadOfAKilledNodeCellRefusesItsUnreapedProcess drives Reload through the window TestNodeCellCrashThenReloadRestoresOneProcess hit under load: the Node cell was killed and the host has handled every member's closed connection, but the process's exit and closed stdin are not yet observed, so the retained share still looks alive to the exit channel and to the noop probe. A closed connection must already keep the share out of retention claims, so a reload that begins then starts the cell in a new process and every member registers. The end of the process is its watcher's to report, and the reload replaced the cell before the watcher's recovery ran, so nothing is reported. The test holds the exit unobserved by replacing the share's exit channel and control stdin after the kill, and keeps the automatic recovery out by invalidating the dead process's generation, as Reload itself does.
+func TestReloadOfAKilledNodeCellRefusesItsUnreapedProcess(t *testing.T) {
 	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
@@ -30,6 +30,14 @@ func TestReloadAfterNodeCellCrashNoticeRefusesUnreapedProcess(t *testing.T) {
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
 	crashed := make(chan string, len(configs)*4)
 	h.SetCrashHandler(func(name string, _ time.Duration, _ bool, _ string) { crashed <- name })
+	// closed receives each member whose connection loop has handled its closed connection: it has withdrawn the process from retention claims.
+	closed := make(chan string, len(configs)*4)
+	h.deathGate = func(seenBy deathObserver, name string) func() {
+		if seenBy != deathSeenByConnection {
+			return func() {}
+		}
+		return func() { closed <- name }
+	}
 	t.Cleanup(func() { h.Shutdown("test done") })
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
@@ -64,11 +72,11 @@ func TestReloadAfterNodeCellCrashNoticeRefusesUnreapedProcess(t *testing.T) {
 	deadline := time.After(20 * time.Second)
 	for len(seen) < len(names) {
 		select {
-		case name := <-crashed:
+		case name := <-closed:
 			seen[name] = true
 		case <-deadline:
 			h.transitionMu.Unlock()
-			t.Fatalf("crash notices after killing the Node cell = %v, want %d", seen, len(names))
+			t.Fatalf("members whose closed connection the host handled after the Node cell was killed = %v, want %d", seen, len(names))
 		}
 	}
 	h.armPackedProcessGenerations()
@@ -98,5 +106,10 @@ func TestReloadAfterNodeCellCrashNoticeRefusesUnreapedProcess(t *testing.T) {
 	}
 	if after := nodeCellProcessesForMarker(t, root); len(after) != 1 || after[0] == pids[0] {
 		t.Fatalf("node processes after reload = %v (killed %v), want one fresh Node cell", after, pids)
+	}
+	select {
+	case name := <-crashed:
+		t.Fatalf("the end of the process the reload replaced was reported for %s", name)
+	default:
 	}
 }

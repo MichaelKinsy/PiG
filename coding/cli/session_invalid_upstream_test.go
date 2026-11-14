@@ -36,7 +36,7 @@ func TestInvalidSessionFilePrintsFriendlyErrorAndPreservesContent(t *testing.T) 
 	if !errors.As(run.err, &exit) || exit.ExitCode() != 1 {
 		t.Fatalf("error=%v stderr=%s", run.err, run.stderr)
 	}
-	if !strings.Contains(run.stderr, "Error: Session file is not a valid pi session: "+path) {
+	if !strings.Contains(run.stderr, d2Text("Error: Session file is not a valid pi session: ")+path) {
 		t.Fatal(run.stderr)
 	}
 	for _, unexpected := range []string{"SessionManager.open", "at ", "goroutine ", "panic:"} {

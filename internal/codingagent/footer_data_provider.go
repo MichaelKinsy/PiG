@@ -87,7 +87,7 @@ func (d *FooterDataProvider) GetExtensionStatuses() map[string]string {
 	return maps.Clone(d.extensionStatuses)
 }
 
-// SetExtensionStatus sets, or with empty text clears, a keyed status entry (setExtensionStatus, clearExtensionStatuses).
+// SetExtensionStatus sets, or with empty text clears, a keyed status entry (setExtensionStatus).
 func (d *FooterDataProvider) SetExtensionStatus(key, text string) {
 	d.mu.Lock()
 	if text == "" {
@@ -95,6 +95,13 @@ func (d *FooterDataProvider) SetExtensionStatus(key, text string) {
 	} else {
 		d.extensionStatuses[key] = text
 	}
+	d.mu.Unlock()
+}
+
+// ClearExtensionStatuses removes every extension status (clearExtensionStatuses).
+func (d *FooterDataProvider) ClearExtensionStatuses() {
+	d.mu.Lock()
+	clear(d.extensionStatuses)
 	d.mu.Unlock()
 }
 

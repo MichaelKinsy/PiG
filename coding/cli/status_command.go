@@ -351,7 +351,7 @@ func renderStatus(status statusOutput) {
 	if !status.Healthy {
 		state = "invalid"
 	}
-	fmt.Printf("Pig status: %s\n", state)
+	fmt.Printf("PiG status: %s\n", state)
 	fmt.Printf("  paths: home=%s agent=%s project=%s\n", status.Paths.Home, status.Paths.Agent, status.Paths.Project)
 	fmt.Printf("  project trust: %s (%s)\n", status.Trust.State, status.Trust.Reason)
 	if status.ActivePiglet != nil {

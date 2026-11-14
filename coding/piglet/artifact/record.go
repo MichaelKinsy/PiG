@@ -356,7 +356,7 @@ func validateBinary(binary Binary) error {
 		{"graph", binary.GraphDigest},
 		{"Resource closure", binary.ResourceClosureDigest},
 		{"component plan", binary.ComponentPlanDigest},
-		{"Pig source", binary.PigSourceDigest},
+		{"PiG source", binary.PigSourceDigest},
 		{"artifact", binary.Artifact.Digest},
 	} {
 		if err := validateDigest(check.digest); err != nil {
@@ -370,10 +370,10 @@ func validateBinary(binary Binary) error {
 		return fmt.Errorf("Piglet Binary target %q must be os/arch", binary.Target)
 	}
 	if binary.PigVersion == "" || binary.PigSourceRevision == "" || binary.Builder == "" || binary.BuilderIdentity == "" {
-		return fmt.Errorf("Piglet Binary Pig and builder identities are required")
+		return fmt.Errorf("Piglet Binary PiG and builder identities are required")
 	}
 	if binary.PigVersion != strings.TrimSpace(binary.PigVersion) || binary.PigSourceRevision != strings.TrimSpace(binary.PigSourceRevision) || binary.Builder != strings.TrimSpace(binary.Builder) || binary.BuilderIdentity != strings.TrimSpace(binary.BuilderIdentity) {
-		return fmt.Errorf("Piglet Binary Pig or builder identity is not canonical")
+		return fmt.Errorf("Piglet Binary PiG or builder identity is not canonical")
 	}
 	for name, version := range binary.Toolchains {
 		if name == "" || version == "" || name != strings.TrimSpace(name) || version != strings.TrimSpace(version) {

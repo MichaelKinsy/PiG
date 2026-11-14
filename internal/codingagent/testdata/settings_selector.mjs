@@ -1,6 +1,7 @@
 // Drive the installed Pi's SettingsSelectorComponent, never a translated oracle. Pi has no PiG "Mask secret input" row (D80), so the
 // driver loads a copy of Pi's settings-selector.js with that one row and its callback inserted where Pig puts them. PiG's /share uploads
 // only to pi-in-go.dev (D64), so /settings has no "Session share destination" row (Pi cea25743): the copy drops that row and its case.
+// The hardware cursor row's description names the product (D2): the caller passes Pi's sentence and PiG's, and the copy states PiG's.
 import { mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -40,6 +41,9 @@ const shareRow = /            \{\n                id: "share-destination",\n[^]*
 const shareCase = /                case "share-destination":\n                    callbacks\.onSessionShareDestinationChange\(newValue\);\n                    break;\n/;
 if (!shareRow.test(source) || !shareCase.test(source)) throw new Error("settings-selector.js share-destination layout changed");
 source = source.replace(shareRow, "").replace(shareCase, "");
+const [piCursorDescription, pigCursorDescription] = process.argv.slice(3).map((text) => JSON.stringify(text));
+if (!pigCursorDescription || source.split(piCursorDescription).length !== 2) throw new Error("settings-selector.js hardware cursor description changed");
+source = source.replace(piCursorDescription, pigCursorDescription);
 const patched = join(mkdtempSync(join(tmpdir(), "pi-settings-oracle-")), "settings-selector.mjs");
 writeFileSync(patched, source);
 const { SettingsSelectorComponent } = await import(url(patched));

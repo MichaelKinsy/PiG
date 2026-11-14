@@ -25,6 +25,12 @@ type TestHarness struct {
 	onEvent func(h *TestHarness, ev agent.AgentEvent)
 }
 
+// ObserveTerminalTitles reports each title the mode writes on its renderer's terminal to notify, on the goroutine that writes it.
+func (h *TestHarness) ObserveTerminalTitles(t testing.TB, notify func(title string)) {
+	t.Helper()
+	h.Do(func() { recordTerminalCalls(t, h.m).onTitle = notify })
+}
+
 // NewTestHarness builds a mode around opts.SessionHandle and starts its owner
 // loop. onEvent, when non-nil, runs on the loop after the mode handles each
 // Session event.

@@ -40,7 +40,7 @@ func TestCompactionSettingsCorrespondenceCurrentPin(t *testing.T) {
 	rules := CompactionSettingsRules()
 	wantMappings := len(source.Constants) + len(rules.CallContracts)
 	for _, table := range source.Tables {
-		wantMappings += len(table.Items) + len(rules.AdditiveTableItems[rules.TableTargets[table.ID]])
+		wantMappings += len(table.Items) + len(rules.AdditiveTableItems[rules.TableTargets[table.ID]]) + len(rules.TableDescriptionTexts[rules.TableTargets[table.ID]])
 	}
 	// Every finding must be a listed known gap, and every listed gap must still
 	// be observed; test/parity/known-gaps.toml is the denominator.
@@ -57,7 +57,7 @@ func TestCompactionSettingsCorrespondenceCurrentPin(t *testing.T) {
 		}
 	}
 	if len(report.Mappings) != wantMappings {
-		t.Fatalf("mapping count = %d, want %d from Pi inventory and explicit additive lineage, less the listed missing table items", len(report.Mappings), wantMappings)
+		t.Fatalf("mapping count = %d, want %d from Pi inventory and explicit additive and description text lineage, less the listed missing table items", len(report.Mappings), wantMappings)
 	}
 	observed := make(map[string]struct{}, len(report.Findings))
 	for _, finding := range report.Findings {

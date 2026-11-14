@@ -68,7 +68,7 @@ The preview requires exactly one extension. Use `/reload` after an edit. A
 login remains an extension Resource. Activate it through a Piglet `extensions`
 entry, user extension policy, or `pig -e <path>`. Verify activation by starting
 or reloading through that path and checking the identity name. Keep product
-identities outside Stock Pig and select them through an ordinary Piglet
+identities outside Stock PiG and select them through an ordinary Piglet
 extension entry. See `extension-api.md` for the exact grids, palette,
 validation errors, and SDK calls.
 

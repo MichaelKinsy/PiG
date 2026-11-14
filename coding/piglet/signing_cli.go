@@ -191,7 +191,7 @@ func renderVerify(stdout io.Writer, output pigletVerifyOutput) {
 		return
 	}
 	m := output.Manifest
-	_, _ = fmt.Fprintf(stdout, "Signed manifest:\n  Piglet: %s %s\n  target: %s\n  Pig: %s\n  Piglet definition: %s\n  resolution record: %s\n  component plan: %s\n  executable: %s (%d bytes)\n",
+	_, _ = fmt.Fprintf(stdout, "Signed manifest:\n  Piglet: %s %s\n  target: %s\n  PiG: %s\n  Piglet definition: %s\n  resolution record: %s\n  component plan: %s\n  executable: %s (%d bytes)\n",
 		m.Piglet, m.ReleaseVersion, m.Target, m.PigVersion, m.PigletDigest, m.ResolutionDigest, m.ComponentPlanDigest, m.Executable.Digest, m.Executable.Size)
 	for _, component := range m.Components {
 		_, _ = fmt.Fprintf(stdout, "  component %s/%s  %s  %s  %s\n", component.Kind, component.Name, component.Realization, component.Materialization, component.Digest)
