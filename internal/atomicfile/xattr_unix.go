@@ -20,6 +20,9 @@ const accessACL = "system.posix_acl_access"
 // listAttributes names the extended attributes of the file at path; tests inject a file system that keeps none.
 var listAttributes = listXattrs
 
+// getxattr is getxattr(2), which gives the size of an attribute when called with no buffer; tests inject an attribute that grows between two calls.
+var getxattr = unix.Getxattr
+
 // carryAttributes makes the extended attributes of temp those of the file at from: on Linux they carry the POSIX ACLs (system.posix_acl_access) and the
 // security labels, on macOS the user's own attributes. A file system that keeps no attributes has none to copy; any other failure to list, read or
 // set one is returned, because dropping an ACL silently is worse than writing the file in place. An attribute the new file already has with the same
@@ -86,12 +89,12 @@ func listXattrs(path string) ([]string, error) {
 
 func getXattr(path, name string) ([]byte, error) {
 	for range 4 {
-		size, err := unix.Getxattr(path, name, nil)
+		size, err := getxattr(path, name, nil)
 		if err != nil {
 			return nil, err
 		}
 		buf := make([]byte, size)
-		n, err := unix.Getxattr(path, name, buf)
+		n, err := getxattr(path, name, buf)
 		if errors.Is(err, unix.ERANGE) {
 			continue
 		}
