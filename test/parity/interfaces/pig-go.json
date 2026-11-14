@@ -139684,9 +139684,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(img *viewImage, dims *github.com/MichaelKinsy/PiG/tui.ImageDimensions, half mountHalf) []string"
+        "type": "func(img *viewImage, dims *github.com/MichaelKinsy/PiG/tui.ImageDimensions, half mountHalf) (rows []string, missing string)"
       },
-      "shapeHash": "sha256:c0d0688b99cea98beabf1dba52b1c7f9105530ba3afec453b9a2e839f3705846"
+      "shapeHash": "sha256:65191021cda035ee423e7b7815376277bb6f886fa31a560dab0828165bb2d8b9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.id",
@@ -139728,9 +139728,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(img *viewImage, png bool, half mountHalf, waiter func() func()) (*mountImageData, []string, bool)"
+        "type": "func(img *viewImage, png bool, half mountHalf, waiter func() func()) (*mountImageData, []string, string, bool)"
       },
-      "shapeHash": "sha256:ca85da004d31cc7e0be2e2fabe1d4b99f2e5bdeb77aa58ed10770766014cb698"
+      "shapeHash": "sha256:96901d0e19fbcd4dfc178d15bb730156357cceecaa304ddf63e330680a791258"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MountImages.release",

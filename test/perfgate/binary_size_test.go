@@ -156,8 +156,8 @@ func binaryLE(b []byte) uint64 { return binary.LittleEndian.Uint64(b) }
 
 // The image of a plugin mount (D614) is drawn by the terminal view client: subprocess.NewMountSurface gives the surface
 // the builder of the image's component, and behind that builder are the half-block cells and the Kitty placeholder rows;
-// the program that draws mounts passes Go's JPEG and GIF decoders (subprocess.EnableMountImageDecoders). A program that
-// makes no mount surface links none of them. The size gate only notices when the program grows past its ceiling; this
+// the pixels come from MountImages.Decode, which the terminal view client sets to photonimage.Decode, so package subprocess
+// imports no Go decoder. A program that makes no mount surface links none of them. The size gate only notices when the program grows past its ceiling; this
 // reads the symbol table of the embed, plain and with the strip tags, built unstripped (the code is the same), and names
 // what is linked and should not be, with its bytes.
 func TestHeadlessEmbedLinksNoMountImage(t *testing.T) {
@@ -176,7 +176,7 @@ func TestHeadlessEmbedLinksNoMountImage(t *testing.T) {
 				linked := sizereport.Sum(symbols).File
 				for _, pkg := range decoders {
 					if linked[pkg] > 0 {
-						t.Errorf("the headless embed links %s (%d bytes of symbols), which only the image of a mount surface is decoded with. Its initializer registers the decoder, so the package is linked whole as soon as a package of the embed imports it: the program that draws mounts passes the decoder (subprocess.EnableMountImageDecoders)", pkg, linked[pkg])
+						t.Errorf("the headless embed links %s (%d bytes of symbols), which only the image of a mount surface is decoded with. Its initializer registers the decoder, so the package is linked whole as soon as a package of the embed imports it: a decoder reaches the half-block drawing as MountImages.Decode (set by the terminal view client), not by an import of this package", pkg, linked[pkg])
 					}
 				}
 				for _, symbol := range symbols {
