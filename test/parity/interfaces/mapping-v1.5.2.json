@@ -204195,8 +204195,8 @@
         "call:durable/core/session/errorf.go#appendArg"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_project_proto_key_oracle_test.go#TestAProjectSettingsKeyNamedProtoSetsNoSetting",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupValueSpelling",
         "test:coding/services_test.go#TestServicesAreImmutableAfterConstruction"
       ]
     },
@@ -204443,6 +204443,7 @@
       ],
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
+        "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
         "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
       ]
     },
@@ -204464,6 +204465,7 @@
       ],
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
+        "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
         "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
       ]
     },
@@ -219000,8 +219002,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupSettingReadsAsPi"
+        "test:internal/codingagent/settings_project_proto_key_oracle_test.go#TestAProjectSettingsKeyNamedProtoSetsNoSetting",
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -219022,8 +219024,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupSettingReadsAsPi"
+        "test:internal/codingagent/settings_project_proto_key_oracle_test.go#TestAProjectSettingsKeyNamedProtoSetsNoSetting",
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -224710,9 +224712,9 @@
         "call:tui/theme.go#Theme.Bg"
       ],
       "evidence": [
+        "test:test/extension-conformance/prototype_names_test.go#TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs",
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
+        "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream"
       ]
     },
     {
@@ -224732,9 +224734,9 @@
         "call:tui/theme.go#Theme.Bg"
       ],
       "evidence": [
+        "test:test/extension-conformance/prototype_names_test.go#TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs",
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
+        "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream"
       ]
     },
     {
@@ -224908,9 +224910,9 @@
         "call:tui/theme.go#Theme.GetBgAnsi"
       ],
       "evidence": [
+        "test:test/extension-conformance/prototype_names_test.go#TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs",
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel"
+        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
       ]
     },
     {
@@ -224930,9 +224932,9 @@
         "call:tui/theme.go#Theme.GetBgAnsi"
       ],
       "evidence": [
+        "test:test/extension-conformance/prototype_names_test.go#TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs",
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel"
+        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
       ]
     },
     {
@@ -300207,8 +300209,8 @@
       ],
       "evidence": [
         "test:tui/keybinding_definitions_upstream_test.go#TestKeybindingDefinitionsDriveManager",
-        "test:tui/editor_input_copy_pi_test.go#TestEditorInputCopyKeyIsLeftToTheParent",
-        "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+        "test:tui/theme_and_keybinding_names_prototype_oracle_test.go#TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "test:tui/editor_input_copy_pi_test.go#TestEditorInputCopyKeyIsLeftToTheParent"
       ]
     },
     {
@@ -300228,7 +300230,8 @@
         "call:tui/keybindings.go#NewKeybindingsManager"
       ],
       "evidence": [
-        "test:tui/keybinding_definitions_upstream_test.go#TestKeybindingDefinitionsDriveManager"
+        "test:tui/keybinding_definitions_upstream_test.go#TestKeybindingDefinitionsDriveManager",
+        "test:tui/theme_and_keybinding_names_prototype_oracle_test.go#TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey"
       ]
     },
     {
@@ -301338,8 +301341,8 @@
       ],
       "evidence": [
         "test:tui/keybindings_matches_oracle_test.go#TestKeybindingsManagerMatchesPi",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/theme_and_keybinding_names_prototype_oracle_test.go#TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts"
       ]
     },
     {
@@ -301360,8 +301363,8 @@
       ],
       "evidence": [
         "test:tui/keybindings_matches_oracle_test.go#TestKeybindingsManagerMatchesPi",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/theme_and_keybinding_names_prototype_oracle_test.go#TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts"
       ]
     },
     {
