@@ -60,13 +60,14 @@ fn callback(context: &Context, override_fn: &Option<LoaderOverride>) -> Value {
 #[derive(Clone)]
 pub struct LoadedExtension {
     data: Value,
-    loader: String,
+    /// The loader object, not its handle: the loader is released when nothing refers to it, and these extensions are what still names it.
+    loader: Arc<GraphObject>,
 }
 
 impl LoadedExtension {
     /// The handle of the loader the extension was read from, which `ExtensionRunner::new` names to the host.
     pub(crate) fn loader(&self) -> &str {
-        &self.loader
+        self.loader.handle()
     }
 }
 
@@ -95,7 +96,7 @@ impl Deref for LoadExtensionsResult {
 
 /// Pi's `DefaultResourceLoader`. Dropping it releases the host's reference; a session created from it keeps its own.
 pub struct DefaultResourceLoader {
-    object: GraphObject,
+    object: Arc<GraphObject>,
 }
 
 impl DefaultResourceLoader {
@@ -155,7 +156,12 @@ impl DefaultResourceLoader {
             wire["runtime"] = json!(runtime.handle());
         }
         Ok(DefaultResourceLoader {
-            object: GraphObject::construct(context, "DefaultResourceLoader", "new", vec![wire])?,
+            object: Arc::new(GraphObject::construct(
+                context,
+                "DefaultResourceLoader",
+                "new",
+                vec![wire],
+            )?),
         })
     }
 
@@ -170,19 +176,19 @@ impl DefaultResourceLoader {
     }
 
     fn extensions_result(&self, data: Value) -> io::Result<LoadExtensionsResult> {
-        let loader = self.object.handle().to_string();
+        let loader = Arc::clone(&self.object);
         let extensions = data["extensions"]
             .as_array()
             .map(|list| {
                 list.iter()
                     .map(|extension| LoadedExtension {
                         data: extension.clone(),
-                        loader: loader.clone(),
+                        loader: Arc::clone(&loader),
                     })
                     .collect()
             })
             .unwrap_or_default();
-        let runtime = ExtensionRuntime::of_loader(self.object.context(), &loader)?;
+        let runtime = ExtensionRuntime::of_loader(self.object.context(), loader.handle())?;
         Ok(LoadExtensionsResult {
             data,
             extensions,

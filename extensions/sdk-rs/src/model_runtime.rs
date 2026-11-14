@@ -30,7 +30,7 @@ pub struct ModelRuntimeCreateOptions {
 
 /// Pi's `ModelRuntime`. Dropping it releases the host's reference.
 pub struct ModelRuntime {
-    object: GraphObject,
+    object: Arc<GraphObject>,
 }
 
 fn provider_arg(provider: Option<&str>) -> Value {
@@ -96,17 +96,22 @@ impl ModelRuntime {
             wire.insert("refreshOnCreate".into(), json!(refresh));
         }
         Ok(ModelRuntime {
-            object: GraphObject::construct(
+            object: Arc::new(GraphObject::construct(
                 context,
                 "ModelRuntime",
                 "create",
                 vec![Value::Object(wire)],
-            )?,
+            )?),
         })
     }
 
     pub(crate) fn context(&self) -> &Context {
         self.object.context()
+    }
+
+    /// The runtime's object, which a stream keeps until the host has answered it.
+    pub(crate) fn object(&self) -> Arc<GraphObject> {
+        Arc::clone(&self.object)
     }
 
     /// The host's name for the runtime, which an option that takes the runtime (`create_agent_session`) puts on the wire.
@@ -401,7 +406,7 @@ impl ModelRuntime {
     /// Streams a model response through the runtime (`request` and `options` as for `ModelRegistry::stream`).
     pub fn stream(&self, model: Value, request: Value, options: Value) -> Arc<ModelEventStream> {
         self.object.context().model_registry().stream_on_runtime(
-            self.handle(),
+            self.object(),
             model,
             request,
             options,
@@ -416,7 +421,7 @@ impl ModelRuntime {
         options: Value,
     ) -> Arc<ModelEventStream> {
         self.object.context().model_registry().stream_on_runtime(
-            self.handle(),
+            self.object(),
             model,
             request,
             options,
