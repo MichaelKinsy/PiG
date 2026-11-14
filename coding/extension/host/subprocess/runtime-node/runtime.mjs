@@ -1048,12 +1048,13 @@ export class ThemeShim {
 // The requests whose author the host goes on awaiting after their abort, as Pi awaits them, and whose drained loop this runtime reports: an extension's streamSimple stream. pig additive (D19): after stdin ended, such a request, aborted and unanswered, lets this process's loop drain while it waits for its author, and the drain is reported as a pending quit handler's is (runtime_drained): Pi's process exits when its loop empties while its shutdown awaits the aborted run. The host awaits a native Provider's stream (provider_stream) and a user_bash exec the same way (Conn.request); they are not in the set, because every wait of their handlers on this runtime's own transport must be marked first, as the streamSimple loop marks its one (forwarding).
 const AUTHOR_HELD_REQUESTS = new Set(["provider_stream_simple"]);
 
-// pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, with an unanswered command it has not reported yet (runtime_commands_drained: the host then knows the process cannot answer the commands it had started, as Pi's single loop would not either). A command that arrives after a report makes the loop reportable again.
+// pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, whatever it has left unanswered, also nothing at all (runtime_commands_drained: the host then knows that nothing keeps this process's loop alive, and that the process cannot answer the commands it had started, as Pi's single loop would not either). Pi has one loop for every extension: a quit whose dispose cannot return exits when no extension holds a timer, a socket or a child process, so the host needs each process's own drained loop before it acts on one process's pending handler. A process reports once per drained loop: anything that reaches it or that it starts afterwards (refreshQuitDrain) makes the loop reportable again. Before runtime_input_end it reports nothing and its sockets stay referenced.
 const quitDrain = newQuitDrain();
 // pig additive (D232): a connection end drains only its own group; the group-less runtime keeps the process-wide drain.
 const groupDrains = new Map();
 function newQuitDrain() {
-  return { active: false, inputEnded: false, reported: false, listening: false, tailCheck: false, runtimes: new Set() };
+  // loopReported: the process reported its drained loop and nothing has happened in the drain's runtimes since.
+  return { active: false, inputEnded: false, reported: false, loopReported: false, listening: false, tailCheck: false, runtimes: new Set() };
 }
 function drainFor(group) {
   if (!group) return quitDrain;
@@ -1085,6 +1086,7 @@ function quitDrainState(drain) {
   let tail = false;
   let hostWaits = false;
   let held = false;
+  let forwarding = false;
   for (const runtime of drain.runtimes) {
     for (const request of runtime.requestRecords.values()) {
       if (request.responded) continue;
@@ -1093,20 +1095,24 @@ function quitDrainState(drain) {
       held ||= request.authorHeld && !request.forwarding && request.controller?.signal.aborted === true;
       commands ||= request.command && !request.drainReported;
       tail ||= request.quitTail;
+      // The request waits on this runtime's transport, which is not a drained loop.
+      forwarding ||= request.forwarding === true;
     }
     for (const pending of runtime.conn?.pending.values() ?? []) {
       if (pending.synchronous || !USER_BLOCKING_CALLS.has(pending.method)) hostWaits = true;
     }
   }
-  return { outstanding, commands, tail, hostWaits, held };
+  return { outstanding, commands, tail, hostWaits, held, forwarding };
 }
 
 function refreshQuitDrain(drain) {
   if (!drain.inputEnded) return;
-  const { outstanding, commands, tail, hostWaits, held } = quitDrainState(drain);
+  // A request arrived or settled, or a host call started or ended: the runtimes ran, so the loop's next drain is reported again.
+  drain.loopReported = false;
+  const { outstanding, commands, tail, hostWaits, held, forwarding } = quitDrainState(drain);
   const quitWaits = !drain.reported && ((drain.active && outstanding) || held);
-  // pig additive (D232): a group still serving keeps the provider sockets referenced.
-  setProviderSocketsRef(!(quitWaits || commands) || hostWaits || otherGroupServing(drain));
+  // The transports stop keeping the loop alive, so beforeExit tells when nothing else does. A host call the host is serving is work Pi's loop waits for, and a request that waits on this runtime's own transport (forwarding) needs it referenced unless a pending quit handler or a command has a drain to report. pig additive (D232): a group still serving keeps the provider sockets referenced.
+  setProviderSocketsRef(hostWaits || (forwarding && !quitWaits && !commands) || otherGroupServing(drain));
   // Pi flushRawStdout lets immediately fulfilled Promise continuations run, but does not await a post-disposal handler's future timer or I/O. IPC must not turn that suspension into a Session join.
   if (drain.active && !drain.reported && tail && !outstanding && !hostWaits && !drain.tailCheck) {
     drain.tailCheck = true;
@@ -1215,10 +1221,11 @@ function resumeRequestWindows(drain) {
 
 function drainQuitRequests(drain) {
   if (!drain.inputEnded) return;
-  const { outstanding, commands, hostWaits, held } = quitDrainState(drain);
+  const { outstanding, commands, hostWaits, held, forwarding } = quitDrainState(drain);
   if (hostWaits) return;
   if (!drain.reported && ((outstanding && drain.active) || held)) reportQuitExit("runtime_drained", drain, held);
-  else if (commands) reportQuitExit("runtime_commands_drained", drain);
+  // A group other than this one that still serves keeps the transports referenced (refreshQuitDrain), so a drained loop is not observable while it does: the idle report waits for it as the sockets do. pig additive (D232).
+  else if (commands || (!drain.loopReported && !forwarding && !otherGroupServing(drain))) reportQuitExit("runtime_commands_drained", drain);
 }
 
 // held reports the drain of a loop that an aborted author-held request left empty (quitDrainState), which needs no pending quit handler.
@@ -1230,6 +1237,7 @@ function reportQuitExit(method, drain, held = false) {
   }
   // The report covers the commands the process started before it: the host marks those whose started state precedes the report on their connection. A drained loop with a pending quit handler cannot answer its commands either.
   if (method !== "runtime_quit_yield") {
+    drain.loopReported = true;
     for (const runtime of drain.runtimes) {
       for (const request of runtime.requestRecords.values()) {
         if (request.command && !request.responded) request.drainReported = true;
