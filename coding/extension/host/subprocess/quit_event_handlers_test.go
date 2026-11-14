@@ -208,7 +208,9 @@ func TestNodeToolThatNeverSettlesDoesNotHoldTheQuit(t *testing.T) {
 	if !ok {
 		t.Fatal("tool hang not registered")
 	}
-	go func() { _, _ = tool.Definition.Execute(ctx, "call_1", json.RawMessage(`{}`), func(extension.AgentToolResult) {}) }()
+	go func() {
+		_, _ = tool.Definition.Execute(ctx, "call_1", json.RawMessage(`{}`), func(extension.AgentToolResult) {})
+	}()
 	awaitExtensionRequest(t, h, "never")
 	h.EndInput()
 	select {
