@@ -15,6 +15,9 @@ import (
 	"testing"
 )
 
+// text sends literal text to the pane.
+func (p *qsPane) text(literal string) { p.must("send-keys", "-t", "pig", "-l", literal) }
+
 // qsAssistantMessages is the text, stopReason and errorMessage of each assistant message in the session files under sessions.
 func qsAssistantMessages(t *testing.T, sessions string) []string {
 	t.Helper()
