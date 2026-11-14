@@ -286,7 +286,7 @@ func TestExtensionAbortFromAHandlerInInteractiveMode(t *testing.T) {
 					}
 				}
 			}
-			// The faux provider streams this answer in 24 parts and ends it aborted when its signal aborts.
+			// The faux provider streams this answer in 24 parts. Go's test-faux checks its context before each part and ends the answer aborted (ai/test_faux.go, TUI_LIVE_STREAM); Pi's fixture has no signal check in this script (test/parity/testdata/test-faux-provider.ts ends it `stop` with all 24 parts) and honors the signal only in its held compaction summaries, which are not turns. The rows rely on the Go twin's check: they hold that ctx.abort() returns to the handler, that the turn ends aborted and that the next prompt runs. The aborted message's own text is the twin's and is not asserted.
 			if _, err := master.WriteString("TUI_LIVE_STREAM once\r"); err != nil {
 				t.Fatal(err)
 			}
