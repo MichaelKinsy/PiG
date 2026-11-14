@@ -91,7 +91,7 @@ func secondGoroutineWaitsForALock() bool {
 		}
 		buf = make([]byte, 2*len(buf))
 	}
-	for _, goroutine := range strings.Split(string(buf), "\n\n") {
+	for goroutine := range strings.SplitSeq(string(buf), "\n\n") {
 		header, _, _ := strings.Cut(goroutine, "\n")
 		if strings.Contains(goroutine, "tui.secondGoroutine(") && (strings.Contains(header, "[sync.") || strings.Contains(header, "[semacquire")) {
 			return true
