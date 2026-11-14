@@ -2393,6 +2393,10 @@ func (t *TuiMainScreen) applyLineResetsCachedWithCursor(lines []string, cursorRo
 func (t *TuiMainScreen) doRender() {
 	t.lockFrame()
 	defer t.unlockFrame()
+	// A frame whose timer callback passed renderScheduled's check is not stopped by a Stop that runs before this lock: Stop has shown the cursor and parked it below the content, and a frame drawn now would hide it again. Stop sets stopped under mu, which the frame holds here, and Start clears it under mu (TuiAltScreen.doRender and TuiSurface.doRender make the same check). Pi runs its timer callback on the one event loop, where nothing runs between the callback's `stopped` check and its render (tui.ts:1075-1080).
+	if t.stopped.Load() {
+		return
+	}
 	t.frameBeganLocked()
 
 	t.updateSize()

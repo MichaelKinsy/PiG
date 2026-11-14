@@ -106,6 +106,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0b13d8b](#bf-0b13d8b) | `pig auth --help` names `pig auth ...` instead of `pi auth ...` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b13d8b-2](#bf-0b13d8b-2) | `pig extension --help` lists `pig extension init --login` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b13d8b-3](#bf-0b13d8b-3) | `pig --help` lists `pig login`, `pig logout`, `pig package`, `pig extension upgrade`, `pig reload`, and `pig… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0b2baca](#bf-0b2baca) | A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped… | PiG's own defect | All platforms | Unreleased |
 | [BF-0b4e1e3](#bf-0b4e1e3) | The OpenAI Codex base URL keeps the whitespace around it, as Pi does (only an all-blank value falls back to… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b674b3](#bf-0b674b3) | Gemini model-id checks follow Pi's lowercasing: an id spelled with a dotted capital İ or a long ſ is no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b85f55](#bf-0b85f55) | The Rust SDK keeps every session entry when one entry of the session file holds an unpaired surrogate (it… | PiG's own defect | All platforms | 0.5.0 |
@@ -1758,6 +1759,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cc05ab3](#bf-cc05ab3) | Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-cc38705](#bf-cc38705) | An extension's `SessionManager.branchWithSummary(id, summary)` without the `fromHook` argument writes a… | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-cc9cc2f](#bf-cc9cc2f) | A pig that ended while an extension cell was still starting, or right after one had started, left an empty… | PiG's own defect | All platforms | Unreleased |
 | [BF-ccaade2](#bf-ccaade2) | The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cd7fa1c](#bf-cd7fa1c) | A read-only config root no longer prints warnings at every start | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cd9a34f](#bf-cd9a34f) | integration: fix the staticcheck De Morgan finding in the autocomplete trigger test | PiG's own defect | All platforms | Unreleased |
@@ -3452,6 +3454,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `0b13d8bc58` (2026-10-13)
 - **Tests:** None recorded.
 - **Release note:** `pig --help` lists `pig login`, `pig logout`, `pig package`, `pig extension upgrade`, `pig reload`, and `pig diagnose`.
+
+### BF-0b2baca
+
+**A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped, could draw after the stop.
+- **Root cause:** The start-up pickers (`--resume` and the others in `startup_ui.go`) run on such a renderer; the interleaving is forced in a test with the frame parked at its first clock read, and it was not observed in a real terminal.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0b2baca2ce` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped, could draw after the stop. Its hide of the cursor then undid the cursor show of the stop, and the shell prompt that followed was left without a cursor. The start-up pickers (`--resume` and the others in `startup_ui.go`) run on such a renderer; the interleaving is forced in a test with the frame parked at its first clock read, and it was not observed in a real terminal. As Pi's timer callback runs on its one event loop, where nothing runs between its `stopped` check and its render (`tui.ts` `scheduleRender`), a stopped screen now draws nothing: the frame lock checks the flag, as the alternate screen's already did.
 
 ### BF-0b4e1e3
 
@@ -26369,6 +26385,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1848633092` (2026-10-13), `2a055a7a3a` (2026-10-13), `a9058bf992` (2026-10-13), `ab0ee713e2` (2026-10-13), `cc9370b309` (2026-10-13), `d87b70c54c` (2026-10-13), `ec2080a75f` (2026-10-13)
 - **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/node_library_bundle_test.go::TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeFactoryTuiShowOverlayHandleIsSynchronous`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeSurfaceFactoryTuiShowsOverlays`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayEndsWithItsConnection`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayShowsAtOnceAndEndsWithItsHide`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayWithoutTUIIsNotShown` and 22 more in docs/bug-ledger.json
 - **Release note:** A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a `ctx.ui.custom` factory, as in Pi: `showOverlay`, `hideOverlay`, `setFocus` and `terminal` work there, and `tui.requestRender()` also redraws the overlays the extension shows.
+
+### BF-cc9cc2f
+
+**A pig that ended while an extension cell was still starting, or right after one had started, left an empty…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A pig that ended while an extension cell was still starting, or right after one had started, left an empty `pig-packed-*.log` file in the temporary directory: the exit killed only the processes it already knew of, and the removal of the log of a killed process ran in a goroutine the exit outran.
+- **Root cause:** TerminateProcesses (the exit of every mode) killed only the processes it knew of in h.exts and watchedPacked: a cell still starting was in neither, and the log of a killed process was removed by a goroutine the exit outran. The host now reads every packed state under h.mu (the spawn publishes its process and log under it and ends a process it spawned after the exit began), and removes the logs of the processes it ended before the exit; a log kept for a reported failure stays.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cc9cc2f3e8` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/packed_log_stop_race_test.go::TestPackedStderrLogTerminateProcessesLeavesNoLog`
+- **Release note:** A pig that ended while an extension cell was still starting, or right after one had started, left an empty `pig-packed-*.log` file in the temporary directory: the exit killed only the processes it already knew of, and the removal of the log of a killed process ran in a goroutine the exit outran. The exit now ends every packed cell process, including one still starting, and removes its log before the pig exits; the log of a failure that was reported stays.
 
 ### BF-ccaade2
 

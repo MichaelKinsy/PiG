@@ -137693,9 +137693,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() []\u003c-chan struct{}"
+        "type": "func() ([]\u003c-chan struct{}, []*processStderrLog)"
       },
-      "shapeHash": "sha256:eb3a45aa51608d135b417512e34d1d9b5b8c80a0abee09f661f1ff703eace26b"
+      "shapeHash": "sha256:756ec6e7d7f6175dc2235c928c602df7685cda0ef4d5cfec4390a2ee8a9a9ef6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.lispCommand",
