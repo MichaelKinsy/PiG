@@ -182,8 +182,8 @@ type more struct {
 	limits *link.PartLimits
 	// offline: the server never answers, the client's sockets never open.
 	offline bool
-	// notFollowing: the client's follow never starts (the scripts object's first set never arrives: a part past the limits), so
-	// setup does not wait for it.
+	// notFollowing: setup does not wait for the client's follow to start, as Pi's setup does not (its follow is `void`): the
+	// scripts object's first set never arrives when it is past the limits (client.test.ts "part limits").
 	notFollowing bool
 	// shown is the set the server shows from the start (nil: initial's).
 	shown []RegisteredScript
