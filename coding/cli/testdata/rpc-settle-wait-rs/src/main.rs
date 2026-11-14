@@ -1,6 +1,6 @@
 //! rpc-settle-wait-rs: the agent_settled handler and the hold command wait on a plain TCP read.
 //! They dial RPC_SETTLE_ADDR, announce themselves with a "waiting" line and return when the peer
-//! writes a line. The input handler dials RPC_SETTLE_INPUT_ADDR instead. Without the address they return at once. The wait is no SDK call, so nothing but the read itself tells the extension
+//! writes a line. The input handler dials RPC_SETTLE_INPUT_ADDR instead. Without the address they return at once. With RPC_SETTLE_DONE the hold command writes that file once its wait returned. The wait is no SDK call, so nothing but the read itself tells the extension
 //! runtime from a handler that computes.
 use pig_sdk::{CommandResult, Extension};
 use std::io::{BufRead, BufReader, Write};
@@ -28,7 +28,12 @@ fn main() {
     });
     ext.command("hold", "wait on a socket read", |_, _| {
         match wait("RPC_SETTLE_ADDR") {
-            Ok(()) => CommandResult::Ok,
+            Ok(()) => {
+                if let Ok(done) = std::env::var("RPC_SETTLE_DONE") {
+                    let _ = std::fs::write(done, "done\n");
+                }
+                CommandResult::Ok
+            }
             Err(error) => CommandResult::Error(error.to_string()),
         }
     });

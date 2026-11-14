@@ -14,7 +14,7 @@ type drainRecordingHost struct {
 	handler func()
 }
 
-func (h *drainRecordingHost) SetRuntimeDrainHandler(fn func()) {
+func (h *drainRecordingHost) SetRuntimeLoopDrainHandler(fn func()) {
 	h.calls = append(h.calls, "drain handler")
 	h.handler = fn
 }
@@ -82,5 +82,42 @@ func TestInputEndedDisposeWithoutAnExtensionHostIsThePlainDispose(t *testing.T) 
 	}
 	if !reflect.DeepEqual(reasons, []string{"quit"}) {
 		t.Fatalf("shutdown reasons = %v, want one quit", reasons)
+	}
+}
+
+// loopDrainRecordingHost is a host that tells the two reports apart: handler takes a drained loop and a quit yield alike, loop a drained loop alone.
+type loopDrainRecordingHost struct {
+	*recordingExtensionHost
+	handler func()
+	loop    func()
+}
+
+func (h *loopDrainRecordingHost) SetRuntimeDrainHandler(fn func())     { h.handler = fn }
+func (h *loopDrainRecordingHost) SetRuntimeLoopDrainHandler(fn func()) { h.loop = fn }
+func (h *loopDrainRecordingHost) EndInput()                            {}
+
+// A quit yield (runtime_quit_yield) is Pi's RPC exit at the stdout flush: a turn_end or agent_settled handler that suspended after the disposal. Pi's interactive quit
+// has no such exit: its dispose ends in the drained loop or returns. So the quit's exit is installed as the handler of a drained loop alone, and a yield report, which
+// the host gives only to the handler of both kinds, does not end the mode.
+func TestInputEndedDisposeDoesNotEndWithAQuitYield(t *testing.T) {
+	host := &loopDrainRecordingHost{}
+	exits := 0
+	h := newRuntimeTestHarness(t, runtimeTestOptions{extension: func() extension.Extension {
+		return extension.Extension{Handlers: map[string][]extension.HandlerFn{
+			"session_shutdown": {func(...any) (any, error) {
+				// The yield report: the host runs the handler of both kinds, if one is installed.
+				if host.handler != nil {
+					host.handler()
+				}
+				return nil, nil
+			}},
+		}}
+	}})
+	h.runtime.Session().extensionHost = host
+	if h.runtime.emitQuitShutdownAfterInputEnd(func() { exits++ }) || exits != 0 {
+		t.Fatalf("a quit yield while the dispose was pending ran the exit %d times: the quit must end with a drained loop only", exits)
+	}
+	if host.loop == nil {
+		t.Fatal("the quit installed no handler of a drained loop")
 	}
 }

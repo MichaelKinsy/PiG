@@ -64,6 +64,23 @@ assert.equal(drainFor("").inputEnded, false, "the group-less drain is untouched"
 `)
 }
 
+// A drained loop of a shared process says nothing about one Host while another Host's input has not ended: the idle report of the closing Host waits until no other group serves, as the transports stay referenced meanwhile (refreshQuitDrain).
+func TestSharedNodeCellReportsAnIdleLoopOnlyWhenNoOtherHostServes(t *testing.T) {
+	nodeGroupScript(t, `
+const a = member("a", "g1");
+const b = member("b", "g2");
+const sent = [];
+a.conn.notify = (method) => sent.push("a:" + method);
+b.conn.notify = (method) => sent.push("b:" + method);
+a.handleNotify({ method: "runtime_input_end" });
+process.emit("beforeExit", 0);
+assert.deepEqual(sent, [], "g2 still serves: g1's loop says nothing about its Host");
+b.handleNotify({ method: "runtime_input_end" });
+process.emit("beforeExit", 0);
+assert.deepEqual(sent.sort(), ["a:runtime_commands_drained", "b:runtime_commands_drained"], "no other Host serves any more: each Host's idle loop is reported");
+`)
+}
+
 func TestSharedNodeCellAbortsOnlyTheEmittingHostsRun(t *testing.T) {
 	nodeGroupScript(t, `
 const a = member("a", "g1");
