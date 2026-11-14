@@ -5,6 +5,7 @@ import (
 	"maps"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // BuildSystemPromptOptions mirrors upstream
@@ -65,7 +66,7 @@ func (o *BuildSystemPromptOptions) UnmarshalJSON(data []byte) error {
 		fields
 		CustomPrompt *string `json:"customPrompt"`
 	}
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 		return err
 	}
 	*o = BuildSystemPromptOptions(wire.fields)
@@ -152,7 +153,7 @@ func (o BuildSystemPromptOptions) MarshalJSON() ([]byte, error) {
 		}
 		sections = encoded
 	}
-	return json.Marshal(struct {
+	return jsstring.MarshalKeepingSurrogates(struct {
 		CustomPrompt       *string                   `json:"customPrompt,omitempty"`
 		ForceSystemPrompt  *string                   `json:"forceSystemPrompt,omitempty"`
 		SelectedTools      []string                  `json:"selectedTools"`

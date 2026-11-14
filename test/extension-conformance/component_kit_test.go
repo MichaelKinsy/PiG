@@ -679,6 +679,8 @@ type wireTap struct {
 	stall atomic.Int64 // time.Duration
 	mu    sync.Mutex
 	calls []wireCall
+	// lone, when set, is handed every frame of both directions (lone_surrogate_passthrough_test.go).
+	lone atomic.Pointer[loneTap]
 }
 
 type wireCall struct {
@@ -699,6 +701,9 @@ func observeWire(t *testing.T, host *subprocess.Host) *wireTap {
 			tap.order.outbound(extName, frame)
 		}
 		tap.frames.observe(extName, frame)
+		if lone := tap.lone.Load(); lone != nil {
+			lone.outbound(frame)
+		}
 	})
 	return tap
 }
@@ -706,6 +711,9 @@ func observeWire(t *testing.T, host *subprocess.Host) *wireTap {
 func (w *wireTap) observe(extName string, env *subprocess.Envelope) {
 	if d := w.stall.Load(); d > 0 {
 		time.Sleep(time.Duration(d))
+	}
+	if lone := w.lone.Load(); lone != nil {
+		lone.inbound(env)
 	}
 	if !w.on.Load() {
 		return

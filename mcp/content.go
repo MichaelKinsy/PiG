@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/mcp/src/protocol/content.ts.
@@ -248,7 +249,7 @@ func jsString(raw json.RawMessage, present bool) string {
 		return "undefined"
 	}
 	var v any
-	decode := func(data []byte) error { return json.Unmarshal(data, &v) }
+	decode := func(data []byte) error { return jsstring.UnmarshalKeepingSurrogates(data, &v) }
 	if err := deepFallback(decode(raw), raw, &v, decode); err != nil {
 		return "undefined"
 	}
