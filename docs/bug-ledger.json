@@ -48665,6 +48665,62 @@
       ]
     },
     {
+      "id": "BF-d2a1d95",
+      "title": "A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is…",
+      "symptom": "A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is one character again in the reply, in the session file, in RPC output and in the next request for OpenAI Responses, Azure OpenAI Responses, OpenAI Codex, Amazon Bedrock and pi-messages models too, and the `text_delta`, `thinking_delta` and `toolcall_delta` events of RPC mode carry each half as Pi writes it.",
+      "rootCause": "Pi reads a stream event with JSON.parse, which reads the escape of a surrogate as that unit, and copies a value as the object it is. PiG read these events with encoding/json, which reads the escape as U+FFFD, and copied four values through an encoding/json round trip, which writes the three bytes of the unit as three U+FFFD.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is one character again in the reply, in the session file, in RPC output and in the next request for OpenAI Responses, Azure OpenAI Responses, OpenAI Codex, Amazon Bedrock and pi-messages models too, and the `text_delta`, `thinking_delta` and `toolcall_delta` events of RPC mode carry each half as Pi writes it. PiG read each half as U+FFFD in these streams. A half that stays alone is kept in the session file and in RPC output.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d2a1d9594e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "agent/messages_surrogate_test.go::TestCustomMessageBlocksKeepALoneSurrogate",
+        "ai/providers/bedrock/bedrock_surrogate_stream_test.go::TestBedrockStreamKeepsSurrogatesAsPi",
+        "ai/stream_surrogate_read_test.go::TestStreamDeltaEventsKeepSurrogatesAsPi",
+        "ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi",
+        "ai/tool_surrogate_wire_test.go::TestStrictToolSchemaLoneSurrogatesReachTheWireAsPi",
+        "coding/extension/marshalling_surrogate_test.go::TestInputEventResultKeepsALoneSurrogate",
+        "internal/codingagent/tool_result_content_surrogate_test.go::TestToolResultEventOverrideKeepsALoneSurrogate"
+      ]
+    },
+    {
+      "id": "BF-d2a1d95-2",
+      "title": "A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an…",
+      "symptom": "A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an extension returns, in the text and images that an `input` handler returns, in the content array of a custom message, and in the schema of a tool that asks for strict sampling.",
+      "rootCause": "Pi reads a stream event with JSON.parse, which reads the escape of a surrogate as that unit, and copies a value as the object it is. PiG read these events with encoding/json, which reads the escape as U+FFFD, and copied four values through an encoding/json round trip, which writes the three bytes of the unit as three U+FFFD.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an extension returns, in the text and images that an `input` handler returns, in the content array of a custom message, and in the schema of a tool that asks for strict sampling. PiG wrote U+FFFD in its place: three in a tool result, in a custom message and in a strict schema, one in the transformed input.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d2a1d9594e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "agent/messages_surrogate_test.go::TestCustomMessageBlocksKeepALoneSurrogate",
+        "ai/providers/bedrock/bedrock_surrogate_stream_test.go::TestBedrockStreamKeepsSurrogatesAsPi",
+        "ai/stream_surrogate_read_test.go::TestStreamDeltaEventsKeepSurrogatesAsPi",
+        "ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi",
+        "ai/tool_surrogate_wire_test.go::TestStrictToolSchemaLoneSurrogatesReachTheWireAsPi",
+        "coding/extension/marshalling_surrogate_test.go::TestInputEventResultKeepsALoneSurrogate",
+        "internal/codingagent/tool_result_content_surrogate_test.go::TestToolResultEventOverrideKeepsALoneSurrogate"
+      ]
+    },
+    {
       "id": "BF-d2b1fc1",
       "title": "GitHub Copilot login reads an enterprise domain the way Pi does: an IPv6 host keeps its brackets, an…",
       "symptom": "GitHub Copilot login reads an enterprise domain the way Pi does: an IPv6 host keeps its brackets, an internationalized name becomes its `xn--` form, a numeric host is normalized (`1.2.3` is `1.2.0.3`) or refused when out of range, a backslash ends the host, and a port above 65535 refuses the domain.",
