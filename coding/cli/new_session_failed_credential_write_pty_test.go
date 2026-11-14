@@ -66,9 +66,9 @@ func TestInteractiveNewSessionAfterFailedCredentialWriteKeepsTheLogin(t *testing
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/copilot_internal/v2/token":
-			fmt.Fprintf(w, `{"token":"tid=fresh;exp=4102444800;proxy-ep=127.0.0.1:%d","expires_at":4102444800}`, port)
+			_, _ = fmt.Fprintf(w, `{"token":"tid=fresh;exp=4102444800;proxy-ep=127.0.0.1:%d","expires_at":4102444800}`, port)
 		case r.URL.Path == "/models":
-			fmt.Fprint(w, `{"data":[{"id":"gemini-3.8-flash","model_picker_enabled":true,"policy":{"state":"enabled"},"capabilities":{"supports":{"tool_calls":true}}}]}`)
+			_, _ = fmt.Fprint(w, `{"data":[{"id":"gemini-3.8-flash","model_picker_enabled":true,"policy":{"state":"enabled"},"capabilities":{"supports":{"tool_calls":true}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/chat/completions"):
 			recorder.ServeHTTP(w, r)
 		default:

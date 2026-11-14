@@ -40,9 +40,9 @@ func (r *modelCallRecorder) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 	n := len(r.requests)
 	r.mu.Unlock()
 	w.Header().Set("Content-Type", "text/event-stream")
-	fmt.Fprintf(w, "data: {\"id\":\"c%d\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":%q,\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"ANSWER-NUMBER-%d\"},\"finish_reason\":null}]}\n\n", n, body.Model, n)
-	fmt.Fprintf(w, "data: {\"id\":\"c%d\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":%q,\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3,\"total_tokens\":8}}\n\n", n, body.Model)
-	fmt.Fprint(w, "data: [DONE]\n\n")
+	_, _ = fmt.Fprintf(w, "data: {\"id\":\"c%d\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":%q,\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"ANSWER-NUMBER-%d\"},\"finish_reason\":null}]}\n\n", n, body.Model, n)
+	_, _ = fmt.Fprintf(w, "data: {\"id\":\"c%d\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":%q,\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3,\"total_tokens\":8}}\n\n", n, body.Model)
+	_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 }
 
 func (r *modelCallRecorder) all() []modelCallRequest {
@@ -134,9 +134,7 @@ func TestInteractiveModelPickedAfterNewSessionKeepsItsListedWindowAndCredential(
 				writeJSON(filepath.Join(agentDir, "auth.json"), m{})
 				writeJSON(filepath.Join(agentDir, "models.json"), customModels(base, "cm-1"))
 			},
-			list: func(agentDir, base string) {
-				writeJSON(filepath.Join(agentDir, "models.json"), customModels(base, "cm-1", "cm-2"))
-			},
+			list: func(agentDir, base string) { writeJSON(filepath.Join(agentDir, "models.json"), customModels(base, "cm-1", "cm-2")) },
 		},
 	}
 	for _, shape := range shapes {
