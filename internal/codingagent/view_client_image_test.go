@@ -1,10 +1,16 @@
 package codingagent
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"image"
+	"image/draw"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"maps"
 	"os"
 	"path/filepath"
@@ -105,6 +111,67 @@ func TestViewClientDrawsAPhotographInAPanel(t *testing.T) {
 	}
 	if notices := f.notices("photo"); len(notices) != 0 {
 		t.Fatalf("the plugin reads notices %+v, want none", notices)
+	}
+}
+
+// pig additive (D614): in a terminal without an image protocol the production client draws a JPEG, a GIF and a PNG as
+// rows of half-block cells, through the client's own ToPNG and Decode (photonimage): none is the text fallback or the
+// line that names a missing decoder.
+func TestViewClientDrawsImagesAsHalfBlocksWithPhotonimage(t *testing.T) {
+	previous, cell := tui.GetCapabilities(), tui.GetCellDimensions()
+	t.Cleanup(func() { tui.SetCapabilities(previous); tui.SetCellDimensions(cell) })
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
+	tui.SetCellDimensions(tui.CellDimensions{WidthPx: 10, HeightPx: 20})
+	data, err := os.ReadFile(filepath.Join("..", "photonimage", "testdata", "photon-jpegdecode-tower.jpg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := jpeg.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var asGIF, asPNG bytes.Buffer
+	if err := gif.Encode(&asGIF, decoded, nil); err != nil {
+		t.Fatal(err)
+	}
+	// An 8-bit PNG of a corner that fits the client's snapshot limit.
+	corner := image.NewNRGBA(image.Rect(0, 0, 128, 128))
+	draw.Draw(corner, corner.Bounds(), decoded, decoded.Bounds().Min, draw.Src)
+	if err := png.Encode(&asPNG, corner); err != nil {
+		t.Fatal(err)
+	}
+	for mime, picture := range map[string][]byte{"image/jpeg": data, "image/gif": asGIF.Bytes(), "image/png": asPNG.Bytes()} {
+		t.Run(mime, func(t *testing.T) {
+			f := newViewFixture(t)
+			sum := sha256.Sum256(picture)
+			ref := hex.EncodeToString(sum[:])
+			view, err := json.Marshal(map[string]any{
+				"root":   map[string]any{"kind": "image", "ref": ref, "mimeType": mime, "maxWidthCells": 20, "maxHeightCells": 6},
+				"images": []any{map[string]any{"ref": ref, "mimeType": mime, "data": base64.StdEncoding.EncodeToString(picture)}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			f.mount("photo", uiview.SlotPanel, uiview.Content{View: view})
+			drawn := f.loop.drawn()
+			if len(drawn) != 1 {
+				t.Fatalf("the layout holds %d mounts, want the image's", len(drawn))
+			}
+			var rows []string
+			for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(time.Millisecond) {
+				f.loop.run()
+				rows = drawn[0].Render(40)
+				if slices.ContainsFunc(rows, func(row string) bool { return strings.Contains(row, "\u2580") }) {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatalf("the mount draws no half-block cells: %.300q", rows)
+				}
+			}
+			if joined := strings.Join(rows, "\n"); strings.Contains(joined, "decoder") {
+				t.Fatalf("the mount names a missing decoder: %.300q", rows)
+			}
+		})
 	}
 }
 
