@@ -26,13 +26,19 @@ const (
 // transient, and the one that exhausts the budget, are returned unchanged. A
 // wait that ctx ends returns the last rename error together with ctx's error.
 func Rename(ctx context.Context, oldpath, newpath string, wait func(context.Context, time.Duration) error) error {
+	return Retry(ctx, wait, func() error { return os.Rename(oldpath, newpath) })
+}
+
+// Retry runs op, a rename or a replacement of a file, and retries it as Rename does: while TransientRename classifies its failure as a transient
+// lock, until it succeeds or RenameBudget is spent.
+func Retry(ctx context.Context, wait func(context.Context, time.Duration) error, op func() error) error {
 	if wait == nil {
 		wait = waitTimer
 	}
 	delay := RenameFirstDelay
 	remaining := RenameBudget
 	for {
-		err := os.Rename(oldpath, newpath)
+		err := op()
 		if err == nil || !TransientRename(err) || remaining <= 0 {
 			return err
 		}
