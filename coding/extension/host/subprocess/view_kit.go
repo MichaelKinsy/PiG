@@ -57,6 +57,11 @@ type viewSurface struct {
 	rowBudget func() int
 	// mountImages draws the image nodes of a mount's surface (nil: a D107 surface, whose image is Pi's component).
 	mountImages *MountImages
+	// buildMountImage returns the component of an image node of a mount's surface (nil: a D107 surface). Only
+	// NewMountSurface sets it. The builder calls it as a value and not by name: a call by name links Go's JPEG and GIF
+	// decoders and the mount's drawing into every program that builds a view, also one that makes no mount surface
+	// (test/perfgate TestHeadlessStrippedEmbedLinksNoMountImage).
+	buildMountImage func(b *viewBuilder, n *ViewNode, img *viewImage, fallback func(string) string) tui.Component
 
 	frame     *viewFrame
 	instances map[string]*viewInstance
@@ -907,8 +912,8 @@ func (b *viewBuilder) build(n *ViewNode, out *frontend.ViewNode) (tui.Component,
 		if fallback == nil {
 			fallback = identity
 		}
-		if b.s.mountImages != nil {
-			c = b.mountImage(n, img, fallback)
+		if build := b.s.buildMountImage; build != nil {
+			c = build(b, n, img, fallback)
 		} else {
 			c = tui.NewImage(img.b64, n.MimeType, tui.ImageTheme{FallbackColor: fallback}, opts, nil)
 		}
