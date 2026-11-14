@@ -1828,6 +1828,7 @@ func TestDynamicProviderInModelSurfaces(t *testing.T) {
 // buildChatViewport must install the live-themed scrollbar track and thumb (not
 // the ScrollView defaults), and a live theme change must repaint them.
 func TestBuildChatViewportWiresLiveThemedScrollbar(t *testing.T) {
+	restoreStartupTheme(t)
 	prev := tui.ActiveTheme().Name
 	t.Cleanup(func() { tui.SetTheme(prev) })
 
@@ -1920,6 +1921,9 @@ func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveModeOptions) *In
 // mounting it, so a caller can order raw mode before the first mount as Run does.
 func newUnmountedSwitchTuiProbe(t *testing.T, opts InteractiveModeOptions, out io.Writer) *InteractiveMode {
 	t.Helper()
+	// A probe's test may select a theme, and /reload applies the theme of the settings, the system theme when none is set
+	// (interactive-mode.ts:6680): the test ends with the theme it began with.
+	restoreStartupTheme(t)
 	m := NewInteractiveMode(nil, opts)
 	m.runCtx = context.Background()
 	m.rendererOut = out

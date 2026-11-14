@@ -14,8 +14,7 @@ func renderArminAt(a *ArminComponent, width int) []string { return (*ArminCompon
 // padded the same way (never clipped); the result is cached for a width until invalidate() clears the cached width (:84-86), so a theme change shows only after it.
 func TestArminRenderClipsRowsToTheWidthPadsThemAndCachesUntilInvalidated(t *testing.T) {
 	restoreStartupTheme(t)
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetThemeByName("dark")
 	a := newArminComponent(arminTestRandom(1))

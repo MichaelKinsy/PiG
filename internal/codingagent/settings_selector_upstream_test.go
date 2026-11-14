@@ -17,10 +17,11 @@ import (
 // initSettingsSelectorTheme is the test file's beforeAll: initTheme("dark") and setKeybindings(new KeybindingsManager()).
 func initSettingsSelectorTheme(t *testing.T) {
 	t.Helper()
-	previousKeys, previousTheme := tui.GetTUIKeybindings(), tui.ActiveTheme().Name
+	restoreStartupTheme(t)
+	previousKeys := tui.GetTUIKeybindings()
 	_ = DefaultKeybindingsManager()
 	tui.SetThemeByName("dark")
-	t.Cleanup(func() { tui.SetTUIKeybindings(previousKeys); tui.SetThemeByName(previousTheme) })
+	t.Cleanup(func() { tui.SetTUIKeybindings(previousKeys) })
 }
 
 // packages/ai/src/providers/faux.ts:141-154,668 (FauxProviderHandle.appendResponses, unregister).

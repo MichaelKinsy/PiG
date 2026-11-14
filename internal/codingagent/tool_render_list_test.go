@@ -32,7 +32,7 @@ func TestListLimitNumberRendering(t *testing.T) {
 			}
 			th := tui.ActiveTheme()
 			body := toolBodyRenderer(tool.name, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "hit"}}, Details: details}, nil)
-			assertRows(t, body(80, false), shellRows(80, th.ToolOutput+"hit"+tui.SGRFgReset, th.Warning+"[Truncated: "+want+"]"+tui.SGRFgReset))
+			assertRows(t, body(80, false), shellRows(80, themeFg(th.ToolOutput, "hit"), themeFg(th.Warning, "[Truncated: "+want+"]")))
 			observations = append(observations, warnings[0])
 		}
 	}
@@ -47,9 +47,12 @@ func TestListLimitNumberRendering(t *testing.T) {
 // a "more lines" hint, every line when expanded, then the warning row built
 // from matchLimitReached, the byte truncation, and linesTruncated.
 func TestGrepBodyRenderer(t *testing.T) {
+	// The rows below are those of the dark theme. Under a theme whose muted token carries an attribute (the system theme's is the default foreground, dim) the wrap continues the row of the hint with the attribute alone (ESC[2m), not with the token.
+	restoreStartupTheme(t)
+	tui.SetTheme("dark")
 	th := tui.ActiveTheme()
-	out := func(s string) string { return th.ToolOutput + s + tui.SGRFgReset }
-	muted := func(s string) string { return th.Muted + s + tui.SGRFgReset }
+	out := func(s string) string { return themeFg(th.ToolOutput, s) }
+	muted := func(s string) string { return themeFg(th.Muted, s) }
 	var content strings.Builder
 	var lines []string
 	for i := 1; i <= 17; i++ {
@@ -58,12 +61,12 @@ func TestGrepBodyRenderer(t *testing.T) {
 	}
 	details := &tools.GrepDetails{MatchLimitReached: 100, LinesTruncated: true,
 		Truncation: &tools.TruncationResult{Truncated: true}}
-	warning := th.Warning + "[Truncated: 100 matches limit, 50.0KB limit, some lines truncated]" + tui.SGRFgReset
+	warning := themeFg(th.Warning, "[Truncated: 100 matches limit, 50.0KB limit, some lines truncated]")
 	r := toolBodyRenderer("grep", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content.String()}}, Details: details}, nil)
 
 	// Upstream opens the muted hint before its newline, so the color code
 	// trails the last preview line (wrapTextWithAnsi keeps it on that row).
-	hint := muted("... (2 more lines,") + " " + th.Dim + "ctrl+o" + tui.SGRFgReset + muted(" to expand") + muted(")")
+	hint := muted("... (2 more lines,") + " " + themeFg(th.Dim, "ctrl+o") + muted(" to expand") + muted(")")
 	preview := append([]string(nil), lines[:15]...)
 	preview[14] += th.Muted
 	collapsed := append(shellRows(90, preview...), shellRows(90, hint, warning)...)
@@ -74,9 +77,12 @@ func TestGrepBodyRenderer(t *testing.T) {
 // find and ls show 20 lines while collapsed; their warnings name the result
 // and entry limits. Persisted results carry the upstream JSON shape.
 func TestFindAndLsBodyRenderers(t *testing.T) {
+	// The rows below are those of the dark theme. Under a theme whose muted token carries an attribute (the system theme's is the default foreground, dim) the wrap continues the row of the hint with the attribute alone (ESC[2m), not with the token.
+	restoreStartupTheme(t)
+	tui.SetTheme("dark")
 	th := tui.ActiveTheme()
-	out := func(s string) string { return th.ToolOutput + s + tui.SGRFgReset }
-	muted := func(s string) string { return th.Muted + s + tui.SGRFgReset }
+	out := func(s string) string { return themeFg(th.ToolOutput, s) }
+	muted := func(s string) string { return themeFg(th.Muted, s) }
 	var content strings.Builder
 	var lines []string
 	for i := 1; i <= 21; i++ {
@@ -88,18 +94,18 @@ func TestFindAndLsBodyRenderers(t *testing.T) {
 	for i := 1; i < len(lines); i++ {
 		lines[i] = out(fmt.Sprintf("  entry%d", i+1))
 	}
-	hint := muted("... (1 more lines,") + " " + th.Dim + "ctrl+o" + tui.SGRFgReset + muted(" to expand") + muted(")")
+	hint := muted("... (1 more lines,") + " " + themeFg(th.Dim, "ctrl+o") + muted(" to expand") + muted(")")
 
 	find := toolBodyRenderer("find", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content.String()}}, Details: &tools.FindDetails{ResultLimitReached: new(1000.0)}}, nil)
 	preview := append([]string(nil), lines[:20]...)
 	preview[19] += th.Muted
 	assertRows(t, find(60, false), append(shellRows(60, preview...),
-		shellRows(60, hint, th.Warning+"[Truncated: 1000 results limit]"+tui.SGRFgReset)...))
+		shellRows(60, hint, themeFg(th.Warning, "[Truncated: 1000 results limit]"))...))
 
 	persisted := map[string]any{"entryLimitReached": float64(500), "truncation": map[string]any{"truncated": true, "maxBytes": float64(1024)}}
 	ls := toolBodyRenderer("ls", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content.String()}}, Details: persisted}, nil)
 	assertRows(t, ls(60, true), append(shellRows(60, lines...),
-		shellRows(60, th.Warning+"[Truncated: 500 entries limit, 1.0KB limit]"+tui.SGRFgReset)...))
+		shellRows(60, themeFg(th.Warning, "[Truncated: 500 entries limit, 1.0KB limit]"))...))
 
 	// No output and no warnings renders no body at all.
 	if got := toolBodyRenderer("ls", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "  \n"}}}, nil)(60, false); len(got) != 0 {
