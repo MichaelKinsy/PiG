@@ -111,18 +111,39 @@ func TestRegisteredAPINameRunsItsImplementationUntilUnregistered(t *testing.T) {
 	}
 }
 
-// A model that no catalog, models.json or extension lists is built bare, with no api and no endpoint (the fallback of buildModel). Pi takes such an object to the stream and
-// refuses it there with the api undefined; the request goes nowhere.
+// A model that no catalog, models.json or extension lists is no model: Pi's registry returns nothing for its provider and id (model-runtime.ts:454-455 getModel over ai/src/models.ts:498 getModel, which
+// answers undefined; rpc-mode.ts:492-495 set_model answers "Model not found: provider/id"), so BuildModel and buildModel refuse it at the build with that text and no model, and nothing is built that
+// could send. (Stale before: these two entries built a bare object and refused it at the stream; BuildModel has refused at the build since a1af4d7dd.)
+func TestBareModelIsRefusedAtTheBuild(t *testing.T) {
+	services := newRuntimeTestServices(t)
+	for name, build := range map[string]func() (*ai.Model, error){
+		"BuildModel":              func() (*ai.Model, error) { return BuildModel("bare-provider-nobody-lists/x", services) },
+		"buildModel-explicit-key": func() (*ai.Model, error) { return buildModel("bare-provider-nobody-lists/x", services, "k") },
+	} {
+		model, err := build()
+		if want := "Model not found: bare-provider-nobody-lists/x"; err == nil || err.Error() != want || model != nil {
+			t.Errorf("%s: model %+v, error %v; want no model and %q", name, model, err, want)
+		}
+	}
+}
+
+// A model OBJECT with no api that an extension or an embedder hands over reaches a request without passing the build by id (buildRequestModel). Pi takes such an object to the stream and refuses it there,
+// resolveApiProvider throwing the api undefined (compat.ts:244-247): the refusal is still at the request, and the endpoint the object names is never contacted.
 func TestBareModelIsRefusedAtItsRequest(t *testing.T) {
 	services := newRuntimeTestServices(t)
-	model, err := buildModel("bare-provider-nobody-lists/x", services, "k")
+	baseURL, requests := unknownAPIListener(t)
+	object := &ai.Model{ID: "x", ProviderMeta: ai.ProviderMetadata{ProviderID: "bare-provider-nobody-lists", BaseURL: baseURL}}
+	model, err := buildRequestModel(object, services, "k")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = model.Provider.Close() })
 	err = unknownAPIStream(t, model.Provider)
 	if want := "No API provider registered for api: undefined"; err.Error() != want {
-		t.Errorf("error = %q, want %q", err, want)
+		t.Errorf("model object: error = %q, want %q", err, want)
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("requests at the endpoint = %d, want 0", got)
 	}
 }
 

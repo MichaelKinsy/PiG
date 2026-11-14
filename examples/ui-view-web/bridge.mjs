@@ -63,6 +63,8 @@ const files = { "/": ["index.html", "text/html; charset=utf-8"], "/client.js": [
 // Where the lines of a page go, by the session it was told: deliver(line) passes one line on or returns the refusal
 // [status, text], and close() ends the session.
 const sessions = new Map();
+// The pigs this bridge started and that have not ended.
+const children = new Set();
 // With --connect, the pages with an open stream: each holds its connection, or the tries for one, and at most one timer.
 const pages = new Set();
 
@@ -84,6 +86,7 @@ function own(req) {
 function events(req, res) {
   const id = randomBytes(8).toString("hex");
   const child = spawn(pig, ["--mode", "rpc", ...rest], { stdio: ["pipe", "pipe", "inherit"] });
+  children.add(child);
   sessions.set(id, { deliver: (line) => void child.stdin.write(line + "\n"), close: () => child.kill() });
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
   res.write(`event: session\ndata: ${id}\n\n`);
@@ -99,8 +102,12 @@ function events(req, res) {
       res.once("drain", () => child.stdout.resume());
     }
   });
-  child.on("error", (err) => res.end(`event: end\ndata: ${JSON.stringify({ error: String(err) })}\n\n`));
+  child.on("error", (err) => {
+    children.delete(child);
+    res.end(`event: end\ndata: ${JSON.stringify({ error: String(err) })}\n\n`);
+  });
   child.on("exit", (code) => {
+    children.delete(child);
     sessions.delete(id);
     res.end(`event: end\ndata: ${JSON.stringify({ code })}\n\n`);
   });
@@ -328,9 +335,15 @@ const server = createServer(async (req, res) => {
 server.listen(port, "127.0.0.1", () => {
   console.log(`ui-view-web: http://127.0.0.1:${server.address().port}/?token=${token}`);
 });
+// A signal ends the sessions and then waits for the pigs it started: a pig's own teardown (it removes the files it made in
+// the temporary directory) runs after its stdin or its signal, and the bridge's exit must not outrun it.
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
     for (const session of sessions.values()) session.close();
-    process.exit(0);
+    const killer = setTimeout(() => children.forEach((child) => child.kill("SIGKILL")), 10000);
+    Promise.all([...children].map((child) => new Promise((resolve) => child.once("close", resolve)))).then(() => {
+      clearTimeout(killer);
+      process.exit(0);
+    });
   });
 }
