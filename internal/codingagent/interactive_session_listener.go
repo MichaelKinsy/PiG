@@ -11,6 +11,10 @@ func (m *InteractiveMode) subscribeSessionListener() {
 	session := m.opts.SessionHandle
 	// A new subscription follows renderCurrentSessionState, which drops the streaming component (interactive-mode.ts:2226, :2343).
 	m.sessionStreaming.Store(false)
+	// upstream: interactive-mode.ts:2097-2099 (bindExtensions hands the Session the abort handler with each binding).
+	if binder, ok := session.(interface{ SetExtensionAbortHandler(func()) }); ok {
+		binder.SetExtensionAbortHandler(m.extensionAbort)
+	}
 	m.unsubscribeSession = session.SubscribeFunc(func(event agent.AgentEvent) { m.handleSessionEvent(session, event) })
 }
 
