@@ -255,4 +255,3 @@ func TestStdinBufferEscapeBoundaries(t *testing.T) {
 		}
 	}
 }
-

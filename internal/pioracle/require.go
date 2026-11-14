@@ -3,7 +3,6 @@
 package pioracle
 
 import (
-	"fmt"
 	"os"
 	"testing"
 )
@@ -21,5 +20,5 @@ func Missing(t testing.TB, what string, err error) {
 	if v := os.Getenv(RequireEnv); v != "" && v != "0" {
 		t.Fatalf("pioracle: %s is not installed (%s) and %s=%s says this gate installs the Pi oracle: an unavailable oracle is a blocker, not passing evidence; run `make upstream-mirror`", what, reason, RequireEnv, v)
 	}
-	t.Skip(fmt.Sprintf("%s is not installed: %s", what, reason))
+	t.Skipf("%s is not installed: %s", what, reason)
 }
