@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -583,40 +584,172 @@ func TestPluginsWarmStartsTheSpareLoadTakesAndCloseClosesAnUntakenOne(t *testing
 	}
 }
 
-// Close is Pi's close of the host: every object ends at once, then each drains and closes in turn, each step up to the host's
-// closeTimeout, and then the app's store closes. A process that is running that close (it answered `closing`) is not killed when the stop grace passes: here
-// a call that needs 2 s to finish drains while the grace is 200 ms, and Close returns with no exit.
-func TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout(t *testing.T) {
-	grace := 200 * time.Millisecond
+// closeClock is the timers of one Close under test. Close starts the timer of each kill deadline through NodeHost.startAfter;
+// a test that sets it to closeClock.after decides when each deadline passes, so what it orders is the process's answer to the
+// close against a deadline. With wall time the order is how long the process takes to answer against the grace, which the
+// test does not choose: a process that answers 200 ms late (starved on a loaded machine, as the Windows CI runners are) has
+// not answered within a grace of 200 ms, and Close kills it as it kills one that never answers.
+type closeClock struct {
+	timers chan *closeTimer
+}
+
+// closeTimer is one deadline Close started: its length, and what it passes on.
+type closeTimer struct {
+	length time.Duration
+	passed chan time.Time
+
+	mu      sync.Mutex
+	stopped bool
+}
+
+func (c *closeClock) after(length time.Duration) (<-chan time.Time, func()) {
+	timer := &closeTimer{length: length, passed: make(chan time.Time, 1)}
+	c.timers <- timer
+	return timer.passed, func() {
+		timer.mu.Lock()
+		timer.stopped = true
+		timer.mu.Unlock()
+	}
+}
+
+// next is the next timer Close started.
+func (c *closeClock) next(t *testing.T) *closeTimer {
+	t.Helper()
+	select {
+	case timer := <-c.timers:
+		return timer
+	case <-time.After(30 * time.Second):
+		t.Fatal("Close started no timer")
+		return nil
+	}
+}
+
+// pass is the moment the deadline passes. It reports whether Close still waited for it: a timer Close stopped passes nothing.
+func (timer *closeTimer) pass() bool {
+	timer.mu.Lock()
+	defer timer.mu.Unlock()
+	if timer.stopped {
+		return false
+	}
+	timer.passed <- time.Time{}
+	return true
+}
+
+// closingHost is a Node host with one call running that does not end until release, and its Close under way: the process was
+// sent the close and Close started the timer of the grace.
+type closingHost struct {
+	node  *NodeHost
+	clock *closeClock
+	// grace is the timer of the answer, started when Close sent the close.
+	grace *closeTimer
+	// closed gets what Close returns; called what the call returns.
+	closed  chan error
+	called  chan error
+	release func()
+}
+
+func startClosing(t *testing.T, grace time.Duration) *closingHost {
+	t.Helper()
+	gate := filepath.Join(t.TempDir(), "release")
+	quoted, err := json.Marshal(gate)
+	if err != nil {
+		t.Fatal(err)
+	}
 	started := make(chan struct{})
 	var once sync.Once
 	options := NodeOptions{StopGrace: &grace, OnOutput: func(_ NodeStream, chunk []byte) {
-		if strings.Contains(string(chunk), "slow call running") {
+		if strings.Contains(string(chunk), "held call running") {
 			once.Do(func() { close(started) })
 		}
 	}}
-	_, node := probeNode(t, `slow: async () => { console.log("slow call running"); await new Promise((resolve) => setTimeout(resolve, 2000)); return "finished"; }`, options, nil)
+	_, node := probeNode(t, `held: async () => { const { existsSync } = await import("node:fs"); console.log("held call running"); while (!existsSync(`+string(quoted)+`)) await new Promise((resolve) => setTimeout(resolve, 5)); return "finished"; }`, options, nil)
+	release := func() { _ = os.WriteFile(gate, nil, 0o644) }
+	// Runs before the host's own cleanup, so a test that failed does not leave its Close waiting for the call.
+	t.Cleanup(release)
 	p := probeOn(t, serverFor(t, workerRoute(node)))
-	result := make(chan error, 1)
+	called := make(chan error, 1)
 	go func() {
-		_, err := p.call("slow", nil)
-		result <- err
+		_, err := p.call("held", nil)
+		called <- err
 	}()
 	select {
 	case <-started:
 	case <-time.After(30 * time.Second):
 		t.Fatal("the call never started")
 	}
-	if err := node.Close(background); err != nil {
+	clock := &closeClock{timers: make(chan *closeTimer, 4)}
+	node.startAfter = clock.after
+	closed := make(chan error, 1)
+	go func() { closed <- node.Close(background) }()
+	return &closingHost{node: node, clock: clock, grace: clock.next(t), closed: closed, called: called, release: release}
+}
+
+// answered waits until the process answered the close (`closing`) and Close took the answer, and returns the timer Close
+// started for the exit of a host that is closing.
+func (h *closingHost) answered(t *testing.T) *closeTimer {
+	t.Helper()
+	select {
+	case <-h.node.closeBegun:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the process did not answer the close")
+	}
+	return h.clock.next(t)
+}
+
+func (h *closingHost) closeResult(t *testing.T) error {
+	t.Helper()
+	select {
+	case err := <-h.closed:
+		return err
+	case <-time.After(30 * time.Second):
+		t.Fatal("Close did not return")
+		return nil
+	}
+}
+
+// Close is Pi's close of the host: every object ends at once, then each drains and closes in turn, each step up to the host's
+// closeTimeout, and then the app's store closes. A process that is running that close (it answered `closing`) is not killed when the stop grace passes: here
+// the host answers while a call is running that does not end, the grace passes after the answer, and Close waits on: for
+// the closeTimeout and the grace, from the answer, not the grace from the close. The order is the test's, not the machine's.
+func TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout(t *testing.T) {
+	grace := 200 * time.Millisecond
+	h := startClosing(t, grace)
+	if h.grace.length != grace {
+		t.Fatalf("Close waits %v for the answer, want the grace %v", h.grace.length, grace)
+	}
+	exit := h.answered(t)
+	if want := h.node.closeTimeout + grace; exit.length != want {
+		t.Fatalf("Close waits %v for the exit of a host that is closing, want its closeTimeout %v and the grace %v", exit.length, h.node.closeTimeout, grace)
+	}
+	// The grace passes now, with the call still running: it was the deadline of the answer, and the host answered.
+	if h.grace.pass() {
+		t.Fatal("Close still waited for the grace after the host answered")
+	}
+	h.release()
+	if err := h.closeResult(t); err != nil {
 		if exit, ok := errors.AsType[*NodeExit](err); ok {
-			t.Fatalf("Close = %v, want nil: the host was closing within its closeTimeout; exit %+v, stderr:\n%s", err, exit, exit.Stderr)
+			t.Fatalf("Close = %v, want nil: the host was closing within its closeTimeout; exit %+v (signal %q, reason %q), stderr:\n%s", err, exit, exit.Signal, exit.Reason, exit.Stderr)
 		}
 		t.Fatalf("Close = %v, want nil: the host was closing within its closeTimeout", err)
 	}
-	if exit, ok := errors.AsType[*NodeExit](node.Err()); ok {
+	if exit, ok := errors.AsType[*NodeExit](h.node.Err()); ok {
 		t.Fatalf("the process ended with %+v, want a clean exit", exit)
 	}
-	<-result
+	<-h.called
+}
+
+// A host still running its close when its closeTimeout and the grace have passed since it answered is killed.
+func TestNodeCloseKillsAHostThatIsStillClosingPastItsCloseTimeoutAndTheGrace(t *testing.T) {
+	h := startClosing(t, 200*time.Millisecond)
+	exit := h.answered(t)
+	if !exit.pass() {
+		t.Fatal("Close did not wait for the exit")
+	}
+	err := h.closeResult(t)
+	if killed, ok := errors.AsType[*NodeExit](err); !ok || killed.Signal != "SIGKILL" {
+		t.Fatalf("Close = %v, want the SIGKILL exit of a host that was still closing past its closeTimeout and the grace", err)
+	}
+	<-h.called
 }
 
 // A process that never answers the close (its loop is stalled) is killed once the grace passed, as before.
