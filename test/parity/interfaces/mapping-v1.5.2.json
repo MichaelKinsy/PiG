@@ -315578,7 +315578,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
-        "test:tui/tui_input_pipeline_test.go#TestAltScreenColorSchemeNotificationsFollowTheRendererLifecycle"
+        "test:tui/terminal_writer_ownership_test.go#TestOneGoroutineAtATimeIsInTheTerminalWriter"
       ]
     },
     {
@@ -315600,7 +315600,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
-        "test:tui/tui_input_pipeline_test.go#TestAltScreenColorSchemeNotificationsFollowTheRendererLifecycle"
+        "test:tui/terminal_writer_ownership_test.go#TestOneGoroutineAtATimeIsInTheTerminalWriter"
       ]
     },
     {
@@ -317258,7 +317258,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
-        "test:tui/tui_input_pipeline_test.go#TestAltScreenColorSchemeNotificationsFollowTheRendererLifecycle"
+        "test:tui/terminal_writer_ownership_test.go#TestOneGoroutineAtATimeIsInTheTerminalWriter"
       ]
     },
     {
@@ -317280,7 +317280,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
-        "test:tui/tui_input_pipeline_test.go#TestAltScreenColorSchemeNotificationsFollowTheRendererLifecycle"
+        "test:tui/terminal_writer_ownership_test.go#TestOneGoroutineAtATimeIsInTheTerminalWriter"
       ]
     },
     {
