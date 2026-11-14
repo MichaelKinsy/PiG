@@ -138,14 +138,15 @@ func (c *idleTimeoutConn) Read(p []byte) (int, error) {
 
 // read reads the dialed socket.
 func (c *idleTimeoutConn) read(p []byte) (int, error) {
-	if !bodyreadhook.BeforeRead(c.Conn) {
+	connection, observed := bodyreadhook.BeforeRead(c.Conn)
+	if !observed {
 		if c.socketRead != nil {
 			return c.socketRead(p)
 		}
 		return c.Conn.Read(p)
 	}
 	n, err := c.Conn.Read(p)
-	bodyreadhook.AfterRead(c.LocalAddr().String(), n)
+	bodyreadhook.AfterRead(connection, n)
 	return n, err
 }
 
