@@ -782,9 +782,46 @@ func registryOracleClearedEnv() map[string]struct{} {
 	return cleared
 }
 
+// registryOracleScenarioNames reports whether the scenario's files, environment or ops name one of the providers or a model of one.
+func registryOracleScenarioNames(scenario registryOracleScenario, providers []string) bool {
+	encoded, _ := json.Marshal(scenario)
+	// models.json and auth.json are strings of the scenario, so their quotes are escaped in its JSON.
+	text := strings.ReplaceAll(string(encoded), `\"`, `"`)
+	return slices.ContainsFunc(providers, func(provider string) bool {
+		return strings.Contains(text, `"`+provider+`"`) || strings.Contains(text, `"`+provider+`/`)
+	})
+}
+
+// registryOracleWithoutProviders is Pi's answers as a Piglet that offers neither the providers nor their models gives them: every list
+// without the providers and the models of each.
+func registryOracleWithoutProviders(answers []any, providers []string) []any {
+	out := make([]any, len(answers))
+	for i, answer := range answers {
+		list, ok := answer.([]any)
+		if !ok {
+			out[i] = answer
+			continue
+		}
+		kept := make([]any, 0, len(list))
+		for _, entry := range list {
+			ref, ok := entry.(string)
+			if ok && slices.ContainsFunc(providers, func(provider string) bool { return ref == provider || strings.HasPrefix(ref, provider+"/") }) {
+				continue
+			}
+			kept = append(kept, entry)
+		}
+		out[i] = kept
+	}
+	return out
+}
+
 // ModelRegistry (model-registry.ts) over a real ModelRuntime against pinned Pi for seeded scenarios of temp auth.json and models.json files, environment keys, and operation sequences: the load error text,
 // the catalog and its availability, a model's fields, configured-auth checks, resolved request headers, the provider auth status, display names, OAuth use, provider registration and removal, and refresh after
 // a models.json rewrite. Every op's result must agree.
+//
+// Pi has no strip. A Piglet that strips the API of a provider's whole catalog offers neither the provider nor its models (ai.ProviderStripped), so that
+// build must give Pi's answers with every list short of them. A scenario whose files, environment or ops name such a provider asks for what the build does
+// not have, and leaves it.
 func TestModelRegistryMatchesPi(t *testing.T) {
 	scenarios := registryOracleScenarios()
 	input, err := json.Marshal(scenarios)
@@ -803,10 +840,24 @@ func TestModelRegistryMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
+	var stripped []string
+	for _, provider := range ai.ListProviders() {
+		if ai.ProviderStripped(provider) {
+			stripped = append(stripped, provider)
+		}
+	}
+	left := 0
 	failures := 0
 	for i, scenario := range scenarios {
 		if only := os.Getenv("ORACLE_ONLY"); only != "" && only != fmt.Sprint(i) {
 			continue
+		}
+		if len(stripped) > 0 {
+			if registryOracleScenarioNames(scenario, stripped) {
+				left++
+				continue
+			}
+			expected[i] = registryOracleWithoutProviders(expected[i], stripped)
 		}
 		got := runRegistryOracleWithPig(t, scenario)
 		gotJSON, _ := json.Marshal(got)
@@ -864,5 +915,8 @@ func TestModelRegistryMatchesPi(t *testing.T) {
 	}
 	if failures > 5 {
 		t.Errorf("%d of %d scenarios differ from Pi", failures, len(scenarios))
+	}
+	if left > 0 {
+		t.Logf("%d of %d scenarios name a stripped provider and left this build", left, len(scenarios))
 	}
 }

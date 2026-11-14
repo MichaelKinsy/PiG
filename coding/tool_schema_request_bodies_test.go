@@ -60,8 +60,12 @@ func fakeCodexToken() string {
 	return enc([]byte(`{"alg":"none"}`)) + "." + enc([]byte(`{"https://api.openai.com/auth":{"chatgpt_account_id":"acct_1"}}`)) + ".sig"
 }
 
+// strippableRequestShapes holds the rows of the providers a Piglet strip tag leaves out of the build; the file with that
+// tag's constraint adds its row (tool_schema_request_bodies_mistral_test.go).
+var strippableRequestShapes []requestShape
+
 func requestShapes() []requestShape {
-	return []requestShape{
+	return append([]requestShape{
 		{name: "openai-completions", reply: chatReply, path: "/v1", provider: func(base string) ai.Provider {
 			return ai.NewOpenAIProvider(ai.OpenAIConfig{BaseURL: base + "/v1", APIKey: "k", Model: "model-a"})
 		}},
@@ -80,10 +84,7 @@ func requestShapes() []requestShape {
 		{name: "google", reply: googleReply, path: "", provider: func(base string) ai.Provider {
 			return ai.NewGoogleProvider(ai.GoogleConfig{BaseURL: base, APIKey: "k", Model: "model-a"})
 		}},
-		{name: "mistral", reply: chatReply, path: "", provider: func(base string) ai.Provider {
-			return ai.NewMistralProvider(ai.MistralConfig{BaseURL: base, APIKey: "k", Model: "model-a"})
-		}},
-	}
+	}, strippableRequestShapes...)
 }
 
 // requestToolDefinition is an extension tool; the schema of "ext_norm" needs normalisation for strict providers: an untyped

@@ -3134,15 +3134,12 @@ func (h *customOverlayHost) OnInvalidate(count int) {
 	if h.owner == nil || count < 1 {
 		return
 	}
-	ctx := h.ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	if h.ui != nil {
 		if theme := h.ui.Theme(); theme != nil {
+			//portlint:allow jsonescape host-runtime IPC frame argument, not Pi output: the runtime reads it with JSON.parse (runtime-node/runtime.mjs theme_change), and the string is only the equality key of the palette last sent
 			if palette, err := json.Marshal(theme); err == nil && string(palette) != h.sentPalette {
 				h.sentPalette = string(palette)
-				if h.owner.SendContext(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "theme_change", Args: palette}}) != nil {
+				if h.owner.SendContext(h.ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "theme_change", Args: palette}}) != nil {
 					// Not queued (the component's context ended or the connection closed): the palette counts as not sent.
 					h.sentPalette = ""
 					return
@@ -3151,7 +3148,7 @@ func (h *customOverlayHost) OnInvalidate(count int) {
 		}
 	}
 	args, _ := json.Marshal(RemoteOverlayInvalidatePayload{Key: h.key, Count: count})
-	_ = h.owner.SendContext(ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyUICustomInvalidate, Args: args}})
+	_ = h.owner.SendContext(h.ctx, &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyUICustomInvalidate, Args: args}})
 }
 
 // overlayProxy is the buffering RemoteOverlayHandle registered
