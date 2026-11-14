@@ -18020,6 +18020,28 @@
       ]
     },
     {
+      "id": "BF-6830edc",
+      "title": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a…",
+      "symptom": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data. Behavior is unchanged: a Copilot model whose api the Copilot catalog does not list is refused when the request starts. \u003c!-- cause: the gate that kept the Copilot provider to the apis its catalog lists compared the provider id with a literal in shared code, where Pi has no provider special case --\u003e \u003c!-- tests: TestProviderHasOwnStreamFor, TestCopilotModelWithNoCopilotAPIIsRefused --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6830edce78",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/provider_api_test.go::TestProviderHasOwnStreamFor"
+      ]
+    },
+    {
       "id": "BF-68a4ed2",
       "title": "PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model…",
       "symptom": "PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model, extension, session, tree, trust, login and the open editor autocomplete) and no longer scroll the fullscreen transcript behind them (Pi #7629, PR #7680).",

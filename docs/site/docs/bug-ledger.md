@@ -650,6 +650,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-677ded1](#bf-677ded1) | An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6785b03](#bf-6785b03) | The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read… | PiG's own defect | macOS | Unreleased |
 | [BF-67eccd7](#bf-67eccd7) | Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-6830edc](#bf-6830edc) | The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-68a4ed2](#bf-68a4ed2) | PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68a63f2](#bf-68a63f2) | A tool namespace registered with `aliases: []` keeps the empty array in `pi.getAllTools()` and the replicated… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68b129d](#bf-68b129d) | `/export` to a directory that cannot be created on a read-only file system (such as macOS's root) reports… | PiG's own defect | macOS | 0.5.0 |
@@ -10357,6 +10358,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `67eccd768a` (2026-10-31)
 - **Tests:** `ai/openrouter_variants_allocs_norace_test.go::TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries`, `ai/openrouter_variants_allocs_norace_test.go::TestListingOpenRouterRoutingVariantsAllocatesNothingPerVariant`, `ai/openrouter_variants_test.go::TestDerivedOpenRouterVariantsAreBuiltOnce`, `internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead`
 - **Release note:** Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.
+
+### BF-6830edc
+
+**The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6830edce78` (2026-11-14)
+- **Tests:** `ai/provider_api_test.go::TestProviderHasOwnStreamFor`
+- **Release note:** The choice to build the GitHub Copilot provider for a model no longer names the provider in shared code: a provider with a stream of its own registers itself in `ai`, and `ai.ProviderHasOwnStreamFor` answers by that table and the provider catalog, as Pi's `getBuiltinProviderForModel` chooses from provider data. Behavior is unchanged: a Copilot model whose api the Copilot catalog does not list is refused when the request starts. <!-- cause: the gate that kept the Copilot provider to the apis its catalog lists compared the provider id with a literal in shared code, where Pi has no provider special case --> <!-- tests: TestProviderHasOwnStreamFor, TestCopilotModelWithNoCopilotAPIIsRefused -->
 
 ### BF-68a4ed2
 
