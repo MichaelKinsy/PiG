@@ -200,7 +200,7 @@ func newTuiSurface(out io.Writer, session frontend.Session, onApplyError func(er
 		onApplyError:   onApplyError,
 		surfaceMain:    newSurfaceMain(),
 	}
-	t.render = t.doRender
+	t.render = t.drawFrame
 	t.mountedRoots = t.getMountedRoots
 	return t
 }
@@ -435,14 +435,20 @@ func regionWidth(cols, width int) int {
 }
 
 //perf:hot
-func (t *TuiSurface) doRender() {
+func (t *TuiSurface) doRender() { t.drawFrame(frameGate{}) }
+
+// drawFrame is the surface's frame: gate says which frame started it (frameGate). It reports whether the frame began.
+//
+//perf:hot
+func (t *TuiSurface) drawFrame(gate frameGate) (began bool) {
 	mainCols, dockCols := t.session.Columns()
 	t.lockFrame()
-	if t.stopped.Load() || !t.started {
+	if t.stopped.Load() || !t.started || t.frameSupersededLocked(gate) {
 		t.unlockFrame()
-		return
+		return false
 	}
 	t.frameBeganLocked()
+	began = true
 	t.updateSize()
 	columns, rows := t.size()
 	width, height := max(1, columns), max(1, rows)
