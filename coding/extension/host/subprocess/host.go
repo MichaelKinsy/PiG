@@ -4720,6 +4720,11 @@ func beforeEventSignal(event any) context.Context {
 	return nil
 }
 
+// runAwaitsEvent reports the events whose handlers Pi's run awaits with no race against its abort: tool_call (agent-loop.ts:738 beforeToolCall = agent-session.ts:719-729 = runner.ts:1256-1274 emitToolCall), tool_result and context. The request is sent without the run's cancel and the abort reaches the handler as its signal, as for session_before_compact and session_before_tree.
+func runAwaitsEvent(event string) bool {
+	return event == "tool_call" || event == "tool_result" || event == "context"
+}
+
 // reloadChainEvent reports whether args carry an event Pi's reload awaits in its chain: session_shutdown, session_start or resources_discover with reason reload.
 func reloadChainEvent(args []any) bool {
 	if len(args) == 0 {
@@ -4842,7 +4847,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		// The state push and the request are one stretch of outstanding work, so the heartbeat sees one idle/busy transition per dispatch rather than one per frame.
 		conn.beginWork()
 		defer conn.endWork()
-		if err := me.host.pushStateTo(parent, me, conn); err != nil {
+		stateCtx := parent
+		if runAwaitsEvent(event) {
+			// The state push of a handler Pi awaits through the abort is part of the awaited dispatch: the abort must not end it either.
+			stateCtx = context.WithoutCancel(parent)
+		}
+		if err := me.host.pushStateTo(stateCtx, me, conn); err != nil {
 			return nil, me.dispatchError(fmt.Errorf("sync extension state for event %s: %w", event, me.host.invocationError(err)))
 		}
 
@@ -4878,6 +4888,10 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 						// runner.ts emit awaits every handler with event.signal aborted: the abort reaches the handler as its cancel, not as the end of the wait.
 						requestCtx = withRequestSignal(requestCtx, signal)
 					}
+				}
+				if runAwaitsEvent(event) && parent.Done() != nil {
+					// agent-loop.ts:738 awaits beforeToolCall, tool_result and context hooks with no race against the abort (runner.ts:1256-1274 emitToolCall): the run's abort reaches the handler as ctx.signal, not as the end of the wait.
+					requestCtx = withRequestSignal(context.WithoutCancel(requestCtx), parent)
 				}
 				resp, err = conn.Request(requestCtx, envelope)
 			}

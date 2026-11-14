@@ -1118,6 +1118,8 @@ export class ThemeShim {
 
 // The requests whose author the host goes on awaiting after their abort, as Pi awaits them, and whose drained loop this runtime reports: an extension's streamSimple stream. pig additive (D19): after stdin ended, such a request, aborted and unanswered, lets this process's loop drain while it waits for its author, and the drain is reported as a pending quit handler's is (runtime_drained): Pi's process exits when its loop empties while its shutdown awaits the aborted run. The host awaits a native Provider's stream (provider_stream) and a user_bash exec the same way (Conn.request); they are not in the set, because every wait of their handlers on this runtime's own transport must be marked first, as the streamSimple loop marks its one (forwarding).
 const AUTHOR_HELD_REQUESTS = new Set(["provider_stream_simple"]);
+// The events whose handlers the run awaits (message_end, turn_end, agent_end, and tool_call, tool_result, context, which an abort does not race): an unanswered one at stdin's end lets the loop drain, which the runtime reports (quitDrainState).
+const RUN_AWAITED_EVENTS = new Set(["message_end", "turn_end", "agent_end", "tool_call", "tool_result", "context"]);
 
 // pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, whatever it has left unanswered, also nothing at all (runtime_commands_drained: the host then knows that nothing keeps this process's loop alive, and that the process cannot answer the commands it had started, as Pi's single loop would not either). Pi has one loop for every extension: a quit whose dispose cannot return exits when no extension holds a timer, a socket or a child process, so the host needs each process's own drained loop before it acts on one process's pending handler. A process reports once per drained loop: anything that reaches it or that it starts afterwards (refreshQuitDrain) makes the loop reportable again. Before runtime_input_end it reports nothing and its sockets stay referenced.
 const quitDrain = newQuitDrain();
@@ -1164,6 +1166,8 @@ function quitDrainState(drain) {
       outstanding ||= request.quit;
       // An aborted request whose author the host goes on awaiting: Pi awaits the run's end at stdin's end (dispose awaits session.abort()), and its process exits when its loop empties, which is what an author that holds no timer and no I/O leaves.
       held ||= request.authorHeld && !request.forwarding && request.controller?.signal.aborted === true;
+      // A run handler or a tool the run awaits that has not answered at stdin's end: Pi's dispose awaits the aborted run (agent-session.ts abort -> waitForIdle), which awaits that handler, and a promise that settles nothing holds no handle, so the process exits when its loop empties (Pi 1.5.2: 15 ms over RPC). A handler with a timer, a socket or a host call keeps the loop and reports nothing here.
+      held ||= !request.forwarding && (request.toolCall || RUN_AWAITED_EVENTS.has(request.event));
       commands ||= request.command && !request.drainReported;
       tail ||= request.quitTail;
       // The request waits on this runtime's transport, which is not a drained loop.

@@ -94,8 +94,14 @@ const (
     throw new Error("boom after the abort");
   });
 }`
-	// quitToolCallNeverSource awaits a promise that never settles.
-	quitToolCallNeverSource = `export default function (pi) { pi.on("tool_call", () => new Promise(() => {})); }`
+	// quitToolCallCrashSource waits for the run's abort and then kills its own process: a crash of the extension while the host awaits its handler.
+	quitToolCallCrashSource = `export default function (pi) {
+  pi.on("tool_call", async (_event, ctx) => {
+    if (!ctx.signal.aborted) await new Promise((resolve) => ctx.signal.addEventListener("abort", resolve, { once: true }));
+    process.kill(process.pid, "SIGKILL");
+    await new Promise(() => {});
+  });
+}`
 )
 
 // tool_call event of the abort test: the handler's own error after the abort surfaces as the request's error, as it does without an abort.
@@ -122,13 +128,14 @@ func TestToolCallEventHandlerThrowingAfterTheAbortSurfaces(t *testing.T) {
 	}
 }
 
-// TestToolCallEventAwaitedAfterTheAbortEndsWhenTheExtensionProcessDies: the wait for a handler that Pi awaits must not become a hang when the extension's process ends: the
-// request ends with the connection's error and the run goes on.
+// TestToolCallEventAwaitedAfterTheAbortEndsWhenTheExtensionProcessDies: the wait for a handler that Pi awaits must not become a hang when the extension's process dies (a crash, not
+// pig's own exit): the request ends with the connection's error and the run goes on.
 func TestToolCallEventAwaitedAfterTheAbortEndsWhenTheExtensionProcessDies(t *testing.T) {
 	t.Parallel()
 	budget := testbudget.Wait(t)
-	h, exts, _, ctx := startQuitRuntimes(t, []string{"never"}, map[string]string{"never": quitToolCallNeverSource})
+	h, exts, _, ctx := startQuitRuntimes(t, []string{"never"}, map[string]string{"never": quitToolCallCrashSource})
 	run, abort := context.WithCancel(ctx)
+	holdRunSignal(h, run)
 	errs := make(chan error, 1)
 	go func() {
 		_, err := exts["never"].EventHandlers("tool_call")[0](extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "call_1", ToolName: "probe", Input: map[string]any{}}, run)
@@ -136,7 +143,7 @@ func TestToolCallEventAwaitedAfterTheAbortEndsWhenTheExtensionProcessDies(t *tes
 	}()
 	awaitExtensionRequest(t, h, "never")
 	abort()
-	h.TerminateProcesses()
+	// The handler kills its process when it sees the abort.
 	select {
 	case err := <-errs:
 		if err == nil || errors.Is(err, context.Canceled) {

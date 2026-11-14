@@ -2307,7 +2307,7 @@ func Extension() *sdk.Extension {
 			if err != nil {
 				answer = "failed: " + err.Error()
 			}
-			return map[string]any{"block": true, "reason": "tool_call_abort:" + mode + ":" + answer}, nil
+			return map[string]any{"block": true, "reason": "tool_call_abort:" + mode + ":" + fmt.Sprint(answer)}, nil
 		})
 		return nil
 	})

@@ -47,7 +47,17 @@ func TestConformance_ToolCallHandlerIsAwaitedThroughTheAbort(t *testing.T) {
 						emitted <- outcome{result, err}
 					}
 					pending := "tool_call_abort:" + mode + ":pending"
-					held := func() bool { return slices.Contains(h.ui.dialogs.openTitles(), pending) }
+					held := func() bool {
+						if slices.Contains(h.ui.dialogs.openTitles(), pending) {
+							return true
+						}
+						select {
+						case o := <-emitted:
+							t.Fatalf("EmitToolCall returned before the handler reached its host call: result %+v, err %v", o.result, o.err)
+						default:
+						}
+						return false
+					}
 					if mode == "first" {
 						abort()
 						go emit()
