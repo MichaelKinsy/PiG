@@ -2845,7 +2845,7 @@ func (c *Conn) clearLoopDrained() {
 //
 // A Node process tells it itself: it reports when its loop drained (loopDrained). Another runtime (Go, Rust, Python, Lisp) has no event loop to report, so the host reads what it can see of it: a command the runtime has not answered is work that runs apart from the dispose, as the command join of RPC mode counts it (Host.countsSuspended). A command for which the host serves only dialogs waits on what nothing can answer any more, as Pi's handler awaits a promise with no handle; it holds nothing. A handler of the run or of its settle tail is not counted: the dispose awaits the run itself, and a settle-tail handler of such a runtime counts as waiting once input ended, because it may wait for the very shutdown to cancel it (TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown). A goroutine, thread or timer such a runtime started outside a request is not visible to the host and holds nothing either.
 //
-// pig divergence (D650): a command of a native runtime that waits on nothing holds the quit, where Pi's process exits at once; the host cannot tell that wait from a timer's (docs/parity/divergences/D650.md).
+// A command of a native runtime that waits on nothing holds the quit where Pi's process exits at once: the host cannot tell that wait from a timer's. The divergence record awaits the owner's sign-off.
 func (c *Conn) holdsLoop(node bool) bool {
 	c.pendingMu.Lock()
 	defer c.pendingMu.Unlock()
