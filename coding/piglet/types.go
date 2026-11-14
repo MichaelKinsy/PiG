@@ -381,6 +381,13 @@ type BuildSpec struct {
 	Targets              []string `yaml:"targets,omitempty"`
 	OutputName           string   `yaml:"outputName,omitempty"`
 	ExtensionRealization string   `yaml:"extensionRealization,omitempty"`
+	// FusedReload selects what the Piglet Binary built from this Piglet does with a fused member whose source changed after the
+	// build. Absent: the compiled copy runs. FusedReloadSource: the build bakes each fused member's source digest, and a start
+	// or a /reload that is given the member's source (a configuration of the same name, such as `-e ./member`) with another
+	// digest runs the member as a subprocess built from that source, until `pig piglet build` fuses it again.
+	//
+	// pig additive (D31): a fused member whose source changed runs from its source.
+	FusedReload string `yaml:"fusedReload,omitempty"`
 	// Closed makes the Piglet Binary built from this Piglet run only its baked Piglet: it refuses a Piglet selected at
 	// launch (--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME) and --system-prompt, and discovers no ambient extensions or
 	// skills. Default false: the Binary behaves as stock pig started with its Piglet. Like all of build it is authored on
@@ -389,6 +396,9 @@ type BuildSpec struct {
 	// pig additive (D202): a Piglet Binary accepts overlay Piglets unless built closed.
 	Closed bool `yaml:"closed,omitempty"`
 }
+
+// FusedReloadSource is the build.fusedReload value that runs a fused member whose source changed from that source.
+const FusedReloadSource = "source"
 
 // ReleaseSpec carries Piglet release identity, separate from portable build
 // defaults. release.version is the distributed artifact's SemVer.
@@ -642,6 +652,8 @@ var (
 	viewEndpoints = []string{ViewEndpointNone, ViewEndpointSocket}
 	// extensionRealizations are the build.extensionRealization values.
 	extensionRealizations = []string{"fused"}
+	// fusedReloads are the build.fusedReload values.
+	fusedReloads = []string{FusedReloadSource}
 )
 
 // validateSlots checks that each member is a relative path inside the
@@ -943,6 +955,9 @@ func validateBuildSpec(build *BuildSpec) error {
 	}
 	if build.ExtensionRealization != "" && !slices.Contains(extensionRealizations, build.ExtensionRealization) {
 		return fmt.Errorf("build.extensionRealization %q must be fused", build.ExtensionRealization)
+	}
+	if build.FusedReload != "" && !slices.Contains(fusedReloads, build.FusedReload) {
+		return fmt.Errorf("build.fusedReload %q must be %s", build.FusedReload, FusedReloadSource)
 	}
 	if build.OutputName != "" {
 		if build.OutputName == "." || build.OutputName == ".." || filepath.Base(build.OutputName) != build.OutputName || strings.ContainsAny(build.OutputName, `/\\`) {

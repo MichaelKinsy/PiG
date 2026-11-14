@@ -2,7 +2,6 @@
 package readbarrier
 
 import (
-	"context"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -16,30 +15,33 @@ import (
 type Barrier struct {
 	mu      sync.Mutex
 	changed chan struct{}
-	written map[string]int
-	read    map[string]int
-	blocked map[string]int
+	// The counts are per connection, not per client address: parallel fixture servers share a barrier, and the kernel gives one local port to live connections to different servers.
+	written map[bodyreadhook.Connection]int
+	read    map[bodyreadhook.Connection]int
+	blocked map[bodyreadhook.Connection]int
 }
 
-// New installs read hooks until t ends. Install it once per test function; parallel subtests share it and are told apart by client address.
+// New installs read hooks until t ends. Install it once per test function; parallel subtests share it and are told apart by connection.
 func New(t *testing.T) *Barrier {
 	t.Helper()
-	barrier := &Barrier{changed: make(chan struct{}), written: map[string]int{}, read: map[string]int{}, blocked: map[string]int{}}
+	barrier := &Barrier{changed: make(chan struct{}), written: map[bodyreadhook.Connection]int{}, read: map[bodyreadhook.Connection]int{}, blocked: map[bodyreadhook.Connection]int{}}
 	restore := bodyreadhook.Install(&bodyreadhook.Hooks{
-		BeforeRead: func(local string) {
+		BeforeRead: func(connection bodyreadhook.Connection) {
 			barrier.update(func() {
-				if barrier.read[local] == barrier.written[local] {
-					barrier.blocked[local] = barrier.written[local]
+				if barrier.read[connection] == barrier.written[connection] {
+					barrier.blocked[connection] = barrier.written[connection]
 				}
 			})
 		},
-		AfterRead: func(local string, n int) { barrier.update(func() { barrier.read[local] += n }) },
+		AfterRead: func(connection bodyreadhook.Connection, n int) {
+			barrier.update(func() { barrier.read[connection] += n })
+		},
 	})
 	t.Cleanup(restore)
 	return barrier
 }
 
-// Server starts handler on a listener that counts bytes written per client.
+// Server starts handler on a listener that counts bytes written per connection.
 func (barrier *Barrier) Server(t *testing.T, handler http.Handler) *httptest.Server {
 	t.Helper()
 	server := httptest.NewUnstartedServer(handler)
@@ -57,11 +59,12 @@ func (barrier *Barrier) update(change func()) {
 	barrier.mu.Unlock()
 }
 
-// WaitReading returns once the client at remote has read everything written to it and has started another socket read.
-func (barrier *Barrier) WaitReading(ctx context.Context, remote string) bool {
+// WaitReading returns once the client of r has read everything written to it and has started another socket read. It reports false when the request ends first.
+func (barrier *Barrier) WaitReading(r *http.Request) bool {
+	connection := bodyreadhook.Connection{Client: r.RemoteAddr, Server: r.Context().Value(http.LocalAddrContextKey).(net.Addr).String()}
 	for {
 		barrier.mu.Lock()
-		reached := barrier.blocked[remote] == barrier.written[remote] && barrier.read[remote] == barrier.written[remote]
+		reached := barrier.blocked[connection] == barrier.written[connection] && barrier.read[connection] == barrier.written[connection]
 		changed := barrier.changed
 		barrier.mu.Unlock()
 		if reached {
@@ -69,7 +72,7 @@ func (barrier *Barrier) WaitReading(ctx context.Context, remote string) bool {
 		}
 		select {
 		case <-changed:
-		case <-ctx.Done():
+		case <-r.Context().Done():
 			return false
 		}
 	}
@@ -85,28 +88,28 @@ func (listener countingListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	remote := conn.RemoteAddr().String()
-	// A client port can be reused once its earlier connection closed. That connection's counts are stale: the server writes a chunked terminator after an abort that the client never reads.
+	connection := bodyreadhook.Connection{Client: conn.RemoteAddr().String(), Server: conn.LocalAddr().String()}
+	// A client port can be reused for the same server once its earlier connection closed. That connection's counts are stale: the server writes a chunked terminator after an abort that the client never reads.
 	listener.barrier.update(func() {
-		delete(listener.barrier.written, remote)
-		delete(listener.barrier.read, remote)
-		delete(listener.barrier.blocked, remote)
+		delete(listener.barrier.written, connection)
+		delete(listener.barrier.read, connection)
+		delete(listener.barrier.blocked, connection)
 	})
-	return countingConn{Conn: conn, barrier: listener.barrier, remote: remote}, nil
+	return countingConn{Conn: conn, barrier: listener.barrier, connection: connection}, nil
 }
 
 type countingConn struct {
 	net.Conn
-	barrier *Barrier
-	remote  string
+	barrier    *Barrier
+	connection bodyreadhook.Connection
 }
 
 // Write counts the bytes before sending them: a client can read them before Write returns, and a read must never appear to outrun the count.
 func (conn countingConn) Write(p []byte) (int, error) {
-	conn.barrier.update(func() { conn.barrier.written[conn.remote] += len(p) })
+	conn.barrier.update(func() { conn.barrier.written[conn.connection] += len(p) })
 	n, err := conn.Conn.Write(p)
 	if n < len(p) {
-		conn.barrier.update(func() { conn.barrier.written[conn.remote] -= len(p) - n })
+		conn.barrier.update(func() { conn.barrier.written[conn.connection] -= len(p) - n })
 	}
 	return n, err
 }

@@ -281,6 +281,50 @@ func TestAFixMadeBeforeTheCauseRuleIsNotAsked(t *testing.T) {
 	}
 }
 
+// The cause rule starts with the day causeRequiredFrom names and reads the date of the fix commit, never the clock: a fix dated before the day passes the check without a cause, a fix dated on or after it fails with the rule's text, and a fix that states its cause passes on both sides.
+func TestTheCauseRuleStartsOnItsDay(t *testing.T) {
+	for _, tc := range []struct {
+		name, date string
+		asked      bool
+	}{
+		{"the last second before the day", "2026-11-13T23:59:59Z", false},
+		{"the first second of the day", "2026-11-14T00:00:00Z", true},
+		{"a later year", "2027-01-02T03:04:05Z", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newFixture(t)
+			r.write("b.go", "package x\n")
+			fix := commitAt(t, r, tc.date, "Fix a crash in b", "b.go")
+			if err := run(r.root, "0.4.1", false, false); err != nil {
+				t.Fatal(err)
+			}
+			err := run(r.root, "0.4.1", true, false)
+			switch {
+			case !tc.asked && err != nil:
+				t.Fatalf("a fix dated %s without a cause must pass the check: %v", tc.date, err)
+			case tc.asked && (err == nil || !strings.Contains(err.Error(), "has no root cause") || !strings.Contains(err.Error(), "commit "+fix[:10])):
+				t.Fatalf("a fix dated %s without a cause must fail the check with the rule's text and its commit %s, got %v", tc.date, fix[:10], err)
+			}
+			stated := newFixture(t)
+			stated.write("b.go", "package x\n")
+			commitAt(t, stated, tc.date, "Fix a crash in b\n\nRoot-Cause: b read a nil map.\nSigned-off-by: T <t@example.com>", "b.go")
+			if err := run(stated.root, "0.4.1", false, false); err != nil {
+				t.Fatal(err)
+			}
+			if err := run(stated.root, "0.4.1", true, false); err != nil {
+				t.Fatalf("a fix dated %s that states its cause must pass the check: %v", tc.date, err)
+			}
+			l, _, err := readCommitted(stated.root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(l.Entries) != 1 || l.Entries[0].RootCause != "b read a nil map." {
+				t.Fatalf("entries = %+v, want the cause the commit states", l.Entries)
+			}
+		})
+	}
+}
+
 // An entry the committed ledger keeps takes its impact from the rules as they are, and the check says when the committed class is not the one its text reads as.
 func TestAKeptEntryTakesItsImpactFromTheRulesAsTheyAre(t *testing.T) {
 	r := newFixture(t)

@@ -155,7 +155,7 @@ func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageComp
 		Invalidate: m.requestRender,
 		Prepare: func(markdown string, width int) func(context.Context) string {
 			mode, theme := m.mermaidRenderingMode(), tui.ActiveTheme()
-			transformers := []extension.MarkdownTransformer{createMermaidMarkdownTransformer(func() string { return mode }, theme)}
+			transformers := []extension.MarkdownTransformer{createCountedMermaidMarkdownTransformer(func() string { return mode }, theme, &m.mermaidFoldScanned)}
 			transformers = append(transformers, m.newRunner.GetMarkdownTransformers()...)
 			streaming := block != nil && m.evCurrentBlock == block && m.hasActiveAgentTurn()
 			// Logical replacement revokes publication, not admitted chain execution. The captured Mode context owns invocation cancellation; subprocess inactivity and disconnect remain independent exit conditions.
@@ -226,7 +226,7 @@ func (m *InteractiveMode) markdownTransformers() []extension.MarkdownTransformer
 		return m.markdownTransformerList
 	}
 	transformers := []extension.MarkdownTransformer{
-		createMermaidMarkdownTransformer(m.mermaidRenderingMode, theme),
+		createCountedMermaidMarkdownTransformer(m.mermaidRenderingMode, theme, &m.mermaidFoldScanned),
 	}
 	if m.newRunner != nil {
 		transformers = append(transformers, m.newRunner.GetMarkdownTransformers()...)

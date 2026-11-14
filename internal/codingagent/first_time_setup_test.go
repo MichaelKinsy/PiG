@@ -171,10 +171,12 @@ func (keysStartupTerminal) Write(string) {}
 // saves the theme, the analytics opt-in and the highlighted sprite.
 // Pi: packages/coding-agent/src/core/settings-manager.ts:1151 (SettingsManager.getEnableAnalytics).
 func TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI(t *testing.T) {
+	restoreTUIKeybindings(t)
+	restoreStartupTheme(t)
 	pigHome, cwd := t.TempDir(), t.TempDir()
 	t.Setenv("PIG_HOME", pigHome)
 	piglogin.Refresh()
-	t.Cleanup(func() { tui.SetTheme("dark"); piglogin.Refresh() })
+	t.Cleanup(func() { piglogin.Refresh() })
 	agentDir := filepath.Join(pigHome, "agent")
 	settings := NewSettingsManager(cwd, agentDir)
 	sprites := piglogin.All()
@@ -207,6 +209,8 @@ func TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI(t *testing.T) {
 
 // Esc skips setup: nothing is saved.
 func TestShowFirstTimeSetupSkipSavesNothing(t *testing.T) {
+	restoreStartupTheme(t)
+	restoreTUIKeybindings(t)
 	pigHome, cwd := t.TempDir(), t.TempDir()
 	t.Setenv("PIG_HOME", pigHome)
 	piglogin.Refresh()
@@ -267,6 +271,8 @@ func TestFirstTimeSetupHintUsesLowercaseKeyText(t *testing.T) {
 // "Create your own..." in the sprite step shows how to create a sprite, keeps the active sprite and continues setup: it
 // starts no model turn and saves no sprite.
 func TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite(t *testing.T) {
+	restoreStartupTheme(t)
+	restoreTUIKeybindings(t)
 	pigHome, cwd := t.TempDir(), t.TempDir()
 	t.Setenv("PIG_HOME", pigHome)
 	piglogin.Refresh()
@@ -379,6 +385,8 @@ func TestFirstTimeSetupRendersPisStepsAndNavigates(t *testing.T) {
 // startup-ui.ts showFirstTimeSetup: setTheme and setEnableAnalytics queue their writes, and a failure is recorded on the startup settings
 // manager after main.ts:670 collected its diagnostics, so a settings file that cannot be written fails nothing and prints nothing.
 func TestShowFirstTimeSetupReportsNoSettingsWriteFailure(t *testing.T) {
+	restoreStartupTheme(t)
+	restoreTUIKeybindings(t)
 	pigHome, cwd := t.TempDir(), t.TempDir()
 	t.Setenv("PIG_HOME", pigHome)
 	piglogin.Refresh()

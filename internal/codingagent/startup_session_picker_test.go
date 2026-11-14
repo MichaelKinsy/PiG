@@ -19,6 +19,7 @@ type startupPickResult struct {
 // runStartupSessionPicker starts selectStartupSession over one persisted session and a fake terminal, and returns the terminal, the frames and the result channel. The agent dir holds the user's keybindings.json, as Pi's KeybindingsManager.create() reads it (session-picker.ts:22).
 func runStartupSessionPicker(t *testing.T, agentDir, cwd string) (*fakeStartupTerminal, *startupPickerOutput, <-chan startupPickResult) {
 	t.Helper()
+	restoreStartupTheme(t)
 	previous := tui.GetTUIKeybindings()
 	t.Cleanup(func() { tui.SetKeybindings(previous) })
 	manager := NewSessionManager(cwd)

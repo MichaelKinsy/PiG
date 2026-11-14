@@ -1,6 +1,6 @@
 # Azure OpenAI Responses observation oracle
 
-Pi 1.1.0 drives `packages/ai/src/api/azure-openai-responses.ts` through the OpenAI SDK 7.19.0 `AzureOpenAI` client and the shared `processResponsesStream`. Nothing here is Go output. Do not regenerate a file from PiG.
+Pi 1.5.2 drives `packages/ai/src/api/azure-openai-responses.ts` through the OpenAI SDK 7.19.0 `AzureOpenAI` client and the shared `processResponsesStream`. Nothing here is Go output. Do not regenerate a file from PiG.
 
 | File | Producer | Contents |
 |---|---|---|
@@ -14,16 +14,16 @@ The probe results are identical on Node 24.19.0 and 26.7.0 in every run.
 
 ## Tick measurement
 
-A self-rescheduling `queueMicrotask` chain adds one microtask per FIFO generation and adds no await, so it never reorders Pi's reactions. It restarts at every delivery. `gap` counts the chain steps between two deliveries. The first gap starts at the synchronous `onResponse` hook (`azure-openai-responses.ts:127-128`). A gap that reaches the cap (`gapCap`, 64) means a macrotask (socket read) intervened, and the record has `io: true`.
+A self-rescheduling `queueMicrotask` chain adds one microtask per FIFO generation and adds no await, so it never reorders Pi's reactions. It restarts at every delivery. `gap` counts the chain steps between two deliveries. The first gap starts at the synchronous `onResponse` hook (`azure-openai-responses.ts:99-100`). A gap that reaches the cap (`gapCap`, 64) means a macrotask (socket read) intervened, and the record has `io: true`.
 
 Observed for the buffered fixture (the first delivery is `start`):
 
 | Path | start | first block event | later block events |
 |---|---:|---:|---:|
-| direct provider | 4 | 17 | 6 each |
-| Model Runtime | 13 | 17 | 6 each |
+| direct provider | 4 | 19 | 7 each |
+| Model Runtime | 13 | 19 | 7 each |
 
-The pending fixture's first block event follows an I/O turn, and later events inside one chunk are 6 apart. This equals the OpenAI Responses row of the parent oracle; the Azure client adds no delivery-side tick (`json` difference against the `openai-responses` rows of `../../pi.json` is empty modulo the API name).
+The pending fixture's first block event follows an I/O turn, and later events inside one chunk are 7 apart. This equals the OpenAI Responses row of the parent oracle; the Azure client adds no delivery-side tick (`json` difference against the `openai-responses` rows of `../../pi.json` is empty modulo the API name).
 
 ## Reproduce
 

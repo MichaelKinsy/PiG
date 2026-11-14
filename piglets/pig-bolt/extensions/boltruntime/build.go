@@ -265,7 +265,7 @@ func runCompiler(ctx context.Context, opts buildOptions, stageDir, config, meta,
 // filterCompilerOutput drops the compiler's per-function progress lines and a known harmless diagnostic about the configuration path.
 func filterCompilerOutput(text string) string {
 	var kept []string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.HasPrefix(line, "AOT: ") || strings.HasPrefix(line, "Internal error: directory mismatch for directory") {
 			continue
 		}
@@ -275,7 +275,7 @@ func filterCompilerOutput(text string) string {
 }
 
 func firstLine(text, containing string) string {
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.Contains(line, containing) {
 			return strings.TrimSpace(line)
 		}
@@ -392,7 +392,7 @@ func train(ctx context.Context, opts buildOptions, bytecodeHost, orderFile strin
 		if err != nil {
 			continue
 		}
-		for _, line := range strings.Split(string(data), "\n") {
+		for line := range strings.SplitSeq(string(data), "\n") {
 			if line != "" && !seen[line] {
 				seen[line] = true
 				merged = append(merged, line)

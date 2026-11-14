@@ -80,6 +80,7 @@ func TestGitLinesPassesLinesBeforeGitExits(t *testing.T) {
 
 // gitLines splits what git prints as strings.SplitSeq(git(...), "\n") does, without the empty last element a final newline leaves.
 func TestGitLinesMatchesTheBufferedSplit(t *testing.T) {
+	fixedGitDates(t)
 	r := testRepo{t: t, root: t.TempDir()}
 	r.run("init", "-q", "-b", "main")
 	contents := map[string]string{
@@ -112,6 +113,7 @@ func TestGitLinesMatchesTheBufferedSplit(t *testing.T) {
 
 // A failing git is an error with git's message, as repo.git reports it.
 func TestGitLinesReportsAGitFailure(t *testing.T) {
+	fixedGitDates(t)
 	r := testRepo{t: t, root: t.TempDir()}
 	r.run("init", "-q")
 	called := false

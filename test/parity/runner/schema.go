@@ -228,6 +228,13 @@ func (step TmuxStep) visibleContains(label string) []string {
 	return slices.Concat(step.WaitVisibleContains, step.WaitVisibleContainsPig)
 }
 
+// visibleWaitIsOnlyEvidence reports whether the visible-state wait (visible and WaitNotContains) is all the step has to show that its keys took
+// effect: it sends keys and has no new-output wait, stable window, settle, frame watch or final frame.
+func (step TmuxStep) visibleWaitIsOnlyEvidence(visible []string) bool {
+	return len(step.Keys) > 0 && (len(visible) > 0 || len(step.WaitNotContains) > 0) &&
+		len(step.WaitContains) == 0 && step.WaitStableMilliseconds == 0 && step.SettleSeconds == 0 && step.FrameWatch == nil && step.FinalFrame == nil
+}
+
 // EnvOverrides lets a scenario inject per-binary environment variables
 // and extra extension paths. This enables faux-provider parity tests
 // without live LLM calls.

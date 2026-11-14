@@ -868,8 +868,7 @@ func encodeResponse(id string, result any, respErr error) ([]byte, error) {
 	if respErr != nil {
 		resp.Error = &errorInfo{Message: respErr.Error()}
 		// Pi's bash tool tells the error of the local backend by class, so only that error, rethrown unchanged, keeps the shell's exit.
-		var timeout *shellTimeoutError
-		if errors.As(respErr, &timeout) {
+		if timeout, ok := errors.AsType[*shellTimeoutError](respErr); ok {
 			resp.Error.ShellExit = &shellExitInfo{ExitCode: timeout.exitCode, AfterSeconds: timeout.afterSeconds}
 		}
 	}

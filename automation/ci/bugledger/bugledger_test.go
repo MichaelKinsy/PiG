@@ -173,6 +173,7 @@ type testRepo struct {
 
 func (r testRepo) run(args ...string) string {
 	r.t.Helper()
+	requirePinnedDates(r.t)
 	cmd := exec.Command("git", append([]string{"-C", r.root, "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false"}, args...)...)
 	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
 	out, err := cmd.CombinedOutput()
@@ -204,6 +205,7 @@ const divergenceFixture = "# DIVERGENCES\n\n## D1 Old\n\nWhat: old.\n\nRemove wh
 
 func newFixture(t *testing.T) testRepo {
 	t.Helper()
+	fixedGitDates(t)
 	r := testRepo{t: t, root: t.TempDir()}
 	r.run("init", "-q", "-b", "main")
 	r.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.4.1] - 2026-01-01\n")
@@ -439,6 +441,7 @@ func TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed(t *testing.T) {
 }
 
 func TestBuildNeedsTheReleaseCommit(t *testing.T) {
+	fixedGitDates(t)
 	r := testRepo{t: t, root: t.TempDir()}
 	r.run("init", "-q", "-b", "main")
 	r.write("CHANGELOG.md", "# Changelog\n")
@@ -1255,12 +1258,63 @@ func TestAReachableFixMarkerIgnoresFixCommitTrailers(t *testing.T) {
 	}
 }
 
-// fixedGitDates makes every commit of a test repository reproducible: a commit hash is the ID of its entries, and a test about where an
-// entry lands among the others must not depend on the clock.
+// fixedGitDates makes every commit of a test repository reproducible: a commit hash is the ID of its entries, and a rule of the check
+// starts on a day (causeRequiredFrom), so no test may depend on the clock. newFixture pins this date, a day before that rule; a test
+// about a later day names it with commitAt.
 func fixedGitDates(t *testing.T) {
 	t.Helper()
 	t.Setenv("GIT_AUTHOR_DATE", "2026-02-03T04:05:06Z")
 	t.Setenv("GIT_COMMITTER_DATE", "2026-02-03T04:05:06Z")
+}
+
+// gitDateVars are the variables that pin the dates of the commits git writes.
+var gitDateVars = []string{"GIT_AUTHOR_DATE", "GIT_COMMITTER_DATE"}
+
+// TestMain drops the commit dates the caller's environment pins, so that only a test's own pin (fixedGitDates, commitAt) satisfies
+// requirePinnedDates.
+func TestMain(m *testing.M) {
+	for _, name := range gitDateVars {
+		if err := os.Unsetenv(name); err != nil {
+			panic(err)
+		}
+	}
+	os.Exit(m.Run())
+}
+
+// unpinnedDates names the commit dates the test has left to the clock, or returns "".
+func unpinnedDates() string {
+	var missing []string
+	for _, name := range gitDateVars {
+		if os.Getenv(name) == "" {
+			missing = append(missing, name)
+		}
+	}
+	return strings.Join(missing, ", ")
+}
+
+// requirePinnedDates fails a test that runs git in a test repository without pinning the author and committer dates: such a commit
+// is dated by the clock, and the seven tests that made one failed from the first day of the cause rule on.
+func requirePinnedDates(t *testing.T) {
+	t.Helper()
+	if missing := unpinnedDates(); missing != "" {
+		t.Fatalf("the test runs git in a test repository without pinning %s: call fixedGitDates or commitAt first, a commit must not be dated by the clock", missing)
+	}
+}
+
+// The guard names each date a test leaves to the clock.
+func TestAnUnpinnedCommitDateIsNamed(t *testing.T) {
+	fixedGitDates(t)
+	if got := unpinnedDates(); got != "" {
+		t.Fatalf("with both dates pinned the guard names %q", got)
+	}
+	t.Setenv("GIT_COMMITTER_DATE", "")
+	if got := unpinnedDates(); got != "GIT_COMMITTER_DATE" {
+		t.Fatalf("the guard names %q, want the committer date", got)
+	}
+	t.Setenv("GIT_AUTHOR_DATE", "")
+	if got := unpinnedDates(); got != "GIT_AUTHOR_DATE, GIT_COMMITTER_DATE" {
+		t.Fatalf("the guard names %q, want both dates", got)
+	}
 }
 
 // addFix writes a changelog fragment for one fix, adds its entry to the ledger the way a contributor does (make bug-ledger), and commits.
@@ -1289,6 +1343,7 @@ func ledgerIDs(t *testing.T, r testRepo) []string {
 // merge merges branch into the checked-out branch, failing the test on a conflict.
 func merge(t *testing.T, r testRepo, branch string) {
 	t.Helper()
+	requirePinnedDates(t)
 	cmd := exec.Command("git", "-C", r.root, "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", "merge", "-q", "--no-ff", "--no-edit", branch)
 	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
 	if out, err := cmd.CombinedOutput(); err != nil {

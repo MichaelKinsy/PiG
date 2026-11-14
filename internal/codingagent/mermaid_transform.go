@@ -76,11 +76,16 @@ func topLevelMermaidFences(markdown string) []*markedCodeBlock {
 // Mermaid code blocks with terminal diagrams. theme may be nil (plain art).
 // While a message streams, the transformer keeps the last text it found plain (mermaidPlainText), so the frames of one streamed message read only what each delta added.
 func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) extension.MarkdownTransformer {
+	return createCountedMermaidMarkdownTransformer(getMode, theme, nil)
+}
+
+// createCountedMermaidMarkdownTransformer is createMermaidMarkdownTransformer whose pre-check adds the bytes it reads to scanned, the count of the interactive mode that owns the transformer. A nil scanned counts nothing.
+func createCountedMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme, scanned *atomic.Int64) extension.MarkdownTransformer {
 	// pig additive (D92): a Piglet that strips mermaid leaves every block raw, as mermaid_off.go does.
 	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.Mermaid) {
 		return rawMermaidMarkdown
 	}
-	var plain mermaidPlainText
+	plain := mermaidPlainText{scanned: scanned}
 	return func(markdown string, context extension.MarkdownTransformContext) string {
 		mode := getMode()
 		if mode == "off" ||
@@ -93,7 +98,7 @@ func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) e
 		} else if plain.holds(markdown) {
 			return markdown
 		}
-		return transformMermaidBlocks(markdown, context, theme)
+		return transformMermaidBlocksCounted(markdown, context, theme, scanned)
 	}
 }
 
@@ -101,6 +106,8 @@ func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) e
 type mermaidPlainText struct {
 	mu   sync.Mutex
 	text string
+	// scanned takes the bytes the pre-check reads; nil counts nothing.
+	scanned *atomic.Int64
 }
 
 // holds reports whether transformMermaidBlocks returns markdown unchanged because it holds neither a carriage return nor the word, and keeps markdown when it does.
@@ -112,7 +119,7 @@ func (p *mermaidPlainText) holds(markdown string) bool {
 		//portlint:allow utf16units the pre-check scans bytes (containsFoldMermaid is an ASCII scan), so the rest to scan starts at a byte offset
 		rest = markdown[max(0, len(p.text)-len("mermaid")+1):]
 	}
-	if strings.IndexByte(rest, '\r') >= 0 || containsFoldMermaid(rest) {
+	if strings.IndexByte(rest, '\r') >= 0 || containsFoldMermaid(rest, p.scanned) {
 		return false
 	}
 	p.text = markdown
@@ -127,12 +134,17 @@ func (p *mermaidPlainText) forget() {
 
 // transformMermaidBlocks selects direct document code tokens, as Pi mermaid.ts:72-76 does with Marked. Non-code containers retain their raw text; only the selected fence bodies reach the diagram renderer.
 func transformMermaidBlocks(markdown string, context extension.MarkdownTransformContext, theme *tui.Theme) string {
+	return transformMermaidBlocksCounted(markdown, context, theme, nil)
+}
+
+// transformMermaidBlocksCounted is transformMermaidBlocks whose pre-check adds the bytes it reads to scanned.
+func transformMermaidBlocksCounted(markdown string, context extension.MarkdownTransformContext, theme *tui.Theme, scanned *atomic.Int64) string {
 	// Marked's lexer normalizes line endings before producing raw tokens.
 	markdown = strings.ReplaceAll(strings.ReplaceAll(markdown, "\r\n", "\n"), "\r", "\n")
 	// A fence is selected only when its info string's first word equals "mermaid" ignoring case (isMermaidInfo), so text with no such
 	// run holds none and the parse, repeated on every streaming frame, is skipped. No non-ASCII rune simple-folds to a letter of
 	// "mermaid", so the ASCII scan is exact.
-	if !containsFoldMermaid(markdown) {
+	if !containsFoldMermaid(markdown, scanned) {
 		return markdown
 	}
 	fences := topLevelMermaidFences(markdown)
@@ -161,12 +173,11 @@ func transformMermaidBlocks(markdown string, context extension.MarkdownTransform
 	return out.String()
 }
 
-// mermaidFoldScanned counts the bytes containsFoldMermaid has read, the work of the pre-check on each frame.
-var mermaidFoldScanned atomic.Int64
-
-// containsFoldMermaid reports whether s holds "mermaid" in any letter case.
-func containsFoldMermaid(s string) bool {
-	mermaidFoldScanned.Add(int64(len(s)))
+// containsFoldMermaid reports whether s holds "mermaid" in any letter case, and adds the bytes it reads, the work of the pre-check on a frame, to scanned. The count belongs to one interactive mode (InteractiveMode.mermaidFoldScanned): a count of the process would also take the frames other modes render. A nil scanned counts nothing.
+func containsFoldMermaid(s string, scanned *atomic.Int64) bool {
+	if scanned != nil {
+		scanned.Add(int64(len(s)))
+	}
 	const word = "mermaid"
 	for i := 0; i+len(word) <= len(s); i++ {
 		if (s[i] == 'm' || s[i] == 'M') && strings.EqualFold(s[i:i+len(word)], word) {

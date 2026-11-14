@@ -1,0 +1,54 @@
+# Behavior family: interactive-rendering
+# Surface: the cards of scenario 74-unknown-extension-path-cards, drawn from stored entries when a session is reopened.
+#
+# The control of scenario 71-resume-prototype-named-path-cards: the same stored turn with the extensions `unknownext`, `UNKNOWNEXT` and `__plain__`, which
+# neither side knows, beside the cards of control.ts. Both sides draw every write and read card itself, and the two captures are equal byte for byte. PiG draws
+# the cards of scenario 71's paths the same way (D645); Pi draws its fallbacks there.
+#
+# Upstream evidence (pi 1.5.2 at b4afdddf oracle build, Node 24.22.2, 100x70 tmux, three runs, 2026-11-13): `write out.unknownext`, `write Unknown.UNKNOWNEXT`,
+# `read notes.unknownext` and `read x.__plain__` are drawn as the cards of control.ts are, without its colors.
+#
+# Crop: the capture runs from the first stored user message (`Unknown extension redraw start`) to the last (`Unknown extension redraw end`). It holds every
+# card of the stored turn, expanded. Inside the crop the escaped bytes are compared. The runner's cwd_snapshot_digits step (D2) replaces the digits of the
+# per-run cwd copy by the same number of placeholders; the cards show the stored relative paths, so no row of the crop holds the cwd and the step changes
+# nothing here. The pane is 70 rows: the expanded cards and both markers are then in the visible pane, which the step's wait reads.
+
+name = "75-resume-unknown-extension-path-cards"
+description = "Reopened write and read cards of paths whose extension neither side knows draw the cards from the stored entries, byte for byte."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 70
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/unknown-extension-path-resume-cwd"
+capture_start = "Unknown extension redraw start"
+capture_end = "Unknown extension redraw end"
+
+[[tmux.steps]]
+keys = ["C-o"]
+settle_seconds = 1
+# The wait reads the visible pane: these rows of the expanded read results are in it on both sides.
+wait_contains = ["gamma line", "plain line"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+escaped_output_equal = true
+both_contain = ["write out.unknownext", "write Unknown.UNKNOWNEXT", "read notes.unknownext", "read x.__plain__", "plain line", "write control.ts", "read control.ts"]
+both_not_contain = ["panic:", "goroutine ", "TypeError", "Successfully wrote", "path: out.unknownext"]
+runs = 3

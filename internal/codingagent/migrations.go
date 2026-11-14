@@ -169,6 +169,7 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 				apiKeys, _ := orderedJSONObject(apiKeysRaw)
 				for _, provider := range apiKeys.Keys() {
 					raw, _ := apiKeys.Get(provider)
+					// pig divergence (D645): the migrated credentials are own entries, so a legacy settings.json apiKeys entry of a provider named like an Object.prototype member (constructor, toString) is moved to auth.json like any other; Pi's `!migrated[provider]` on a plain object finds the inherited member and drops the key while it deletes apiKeys.
 					if migrated.Has(provider) {
 						continue
 					}

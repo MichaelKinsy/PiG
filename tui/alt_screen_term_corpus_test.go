@@ -62,11 +62,18 @@ type termSession struct {
 	rec *termRecorder
 	out *strings.Builder
 	ui  *TuiAltScreen
+	// draw, when set, stands in for frame: the scenario is a stream whose frames the renderer's scheduler draws (frame_pacing_replay_test.go). quiet then runs before the screen's size or viewport is changed, which a scenario does to the screen as it was last drawn: the stream waits there for the frame that draws its newest state.
+	draw  func(resize []int)
+	quiet func()
 }
 
 // frame draws a frame (after the screen changed size to resize, when set) and records its bytes as one step.
 func (s *termSession) frame(resize ...int) {
 	s.t.Helper()
+	if s.draw != nil {
+		s.draw(resize)
+		return
+	}
 	s.ui.Render()
 	s.rec.add(resize, s.out.String())
 	s.out.Reset()
@@ -74,6 +81,9 @@ func (s *termSession) frame(resize ...int) {
 
 func (s *termSession) resize(cols, rows int) {
 	s.t.Helper()
+	if s.quiet != nil {
+		s.quiet()
+	}
 	s.ui.SetFixedSize(cols, rows)
 	s.frame(cols, rows)
 }
@@ -81,6 +91,9 @@ func (s *termSession) resize(cols, rows int) {
 // scrollBack scrolls the viewport by lines and records the frame, requiring that the viewport moved.
 func (s *termSession) scrollBack(lines int) {
 	s.t.Helper()
+	if s.quiet != nil {
+		s.quiet()
+	}
 	before := s.ui.ViewportTop()
 	s.ui.ScrollBy(lines)
 	if s.ui.ViewportTop() == before {
@@ -92,6 +105,9 @@ func (s *termSession) scrollBack(lines int) {
 // input sends data to the viewport as the driver does and records the frame, requiring that the viewport handled it and moved.
 func (s *termSession) input(data string) {
 	s.t.Helper()
+	if s.quiet != nil {
+		s.quiet()
+	}
 	before := s.ui.ViewportTop()
 	if !s.ui.HandleViewportInput(data) {
 		s.t.Fatalf("the viewport did not handle %q", data)

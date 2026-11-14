@@ -115,6 +115,7 @@ func jsonParent(parent string) string {
 // and the LabelInput (confirm saves a trimmed label, cancel hides it, everything else edits). Every frame is compared byte for byte, colours,
 // the selected row's background and the unpadded rows included.
 func TestTreeSelectorInputMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	fixtures := treeOracleFixtures()
 	scripts := [][]string{
 		{},
@@ -213,10 +214,9 @@ func TestTreeSelectorInputMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
+	restoreStartupTheme(t)
+	previousKeys := tui.GetTUIKeybindings()
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetTUIKeybindings(previousKeys)
 	})
 	var toSession func(n *treeOracleNode) *SessionTreeNode

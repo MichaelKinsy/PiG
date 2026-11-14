@@ -79,6 +79,7 @@ func sessionOracleFixtures() (small, big, all []sessionOracleInfo) {
 // session-selector.ts handleInput against pinned Pi: delete confirmation swallows keys, tab/sort/named/path toggle, rename mode
 // owns its keys, up/down/page/confirm/cancel drive the list, and every other key edits the search whose query refilters.
 func TestSessionSelectorInputMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	restoreTUIKeybindings(t)
 	small, big, all := sessionOracleFixtures()
 	scripts := [][]string{
@@ -163,10 +164,9 @@ func TestSessionSelectorInputMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
+	restoreStartupTheme(t)
+	previousKeys := tui.GetTUIKeybindings()
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetTUIKeybindings(previousKeys)
 	})
 	toGo := func(infos []sessionOracleInfo) []SessionInfo {

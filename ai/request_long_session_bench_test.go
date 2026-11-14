@@ -73,14 +73,13 @@ func largeWriteHistory() []Message {
 	}
 }
 
-// BenchmarkRequestLargeWriteFollowUp converts and encodes the request after a 200 KB write call, on completions and Responses.
+// BenchmarkRequestLargeWriteFollowUp converts and encodes the request after a 200 KB write call, on completions and Responses. Each case builds the request once before the timed loop. The first build of a process makes what every later request reuses: the JSON encoders of the request types, the index of the generated models, the splice plan of the payload type and the request string cache's entry of the 200 KB arguments. Another benchmark of the package makes some of these when it runs first, so a loop that held the first build would count one number alone and another after the rest of the package.
 func BenchmarkRequestLargeWriteFollowUp(b *testing.B) {
 	messages := largeWriteHistory()
 	b.Run("completions", func(b *testing.B) {
 		transcript := NormalizeContext(Context{Messages: messages, Frozen: true})
 		provider := NewOpenAIProvider(OpenAIConfig{ProviderID: "fake", Model: "fake-model", BaseURL: "http://127.0.0.1:1/v1", APIKey: "fake"}).(*openAIProvider)
-		b.ReportAllocs()
-		for b.Loop() {
+		build := func() {
 			conversion, err := provider.convertTranscript(transcript, nil, false)
 			if err != nil {
 				b.Fatal(err)
@@ -89,11 +88,15 @@ func BenchmarkRequestLargeWriteFollowUp(b *testing.B) {
 				b.Fatal(err)
 			}
 		}
+		build()
+		b.ReportAllocs()
+		for b.Loop() {
+			build()
+		}
 	})
 	b.Run("responses", func(b *testing.B) {
 		provider := &openAIResponsesProvider{}
-		b.ReportAllocs()
-		for b.Loop() {
+		build := func() {
 			items, err := provider.convertMessages(messages, nil)
 			if err != nil {
 				b.Fatal(err)
@@ -101,6 +104,11 @@ func BenchmarkRequestLargeWriteFollowUp(b *testing.B) {
 			if _, err := marshalSpliced(items, requestStrings, marshalRequestBody); err != nil {
 				b.Fatal(err)
 			}
+		}
+		build()
+		b.ReportAllocs()
+		for b.Loop() {
+			build()
 		}
 	})
 }

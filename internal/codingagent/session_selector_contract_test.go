@@ -201,10 +201,9 @@ func runSessionContracts(t *testing.T, cases []sessionContractCase) []sessionCon
 	if len(expected) != len(cases) {
 		t.Fatalf("Pi answered %d of %d cases", len(expected), len(cases))
 	}
-	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
+	restoreStartupTheme(t)
+	previousKeys := tui.GetTUIKeybindings()
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetTUIKeybindings(previousKeys)
 	})
 	traces := make([]sessionContractTrace, len(cases))
@@ -725,10 +724,9 @@ func TestSessionSelectorSharedKeysFollowRebinding(t *testing.T) {
 // their own messages, a failure in the error colour with "Failed to delete: " and the error text ("Unknown error" when there is none). Pi's trash
 // path cannot fail in the oracle, so the outcomes are driven through the injected delete operation.
 func TestSessionSelectorDeleteOutcomeReportsInTheHeader(t *testing.T) {
-	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
+	restoreStartupTheme(t)
+	previousKeys := tui.GetTUIKeybindings()
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetTUIKeybindings(previousKeys)
 	})
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})

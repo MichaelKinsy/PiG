@@ -82417,7 +82417,8 @@
         "public-api:ai/compat.go#UnregisterAPIProviders"
       ],
       "evidence": [
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset",
+        "test:coding/unknown_api_refused_test.go#TestRegisteredAPINameRunsItsImplementationUntilUnregistered"
       ]
     },
     {
@@ -82437,7 +82438,8 @@
         "public-api:ai/compat.go#UnregisterAPIProviders"
       ],
       "evidence": [
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset",
+        "test:coding/unknown_api_refused_test.go#TestRegisteredAPINameRunsItsImplementationUntilUnregistered"
       ]
     },
     {
@@ -110429,8 +110431,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello",
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
       ]
     },
     {
@@ -110451,8 +110453,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello",
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
       ]
     },
     {
@@ -174972,7 +174974,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext",
         "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerToolRendererResolversThatClaimTheSameToolAreWonByTheFirstLoaded",
-        "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestNewToolCardIsBuiltWithTheRegisteredDefinition"
+        "test:internal/codingagent/frame_pacing_test.go#TestFramePacingGateFollowsToolRendererResolvers"
       ]
     },
     {
@@ -189501,8 +189503,8 @@
       ],
       "evidence": [
         "test:tui/language_from_path_oracle_test.go#TestLanguageFromPathMatchesPi",
-        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy",
-        "test:tui/highlight_test.go#TestLanguageFromPath"
+        "test:tui/language_from_path_prototype_names_oracle_test.go#TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage",
+        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy"
       ]
     },
     {
@@ -189523,8 +189525,8 @@
       ],
       "evidence": [
         "test:tui/language_from_path_oracle_test.go#TestLanguageFromPathMatchesPi",
-        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy",
-        "test:tui/highlight_test.go#TestLanguageFromPath"
+        "test:tui/language_from_path_prototype_names_oracle_test.go#TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage",
+        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy"
       ]
     },
     {
@@ -191345,7 +191347,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild",
         "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption",
-        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame"
+        "test:internal/codingagent/frame_pacing_test.go#TestStartupNoticeWhenAdaptivePacingLacksTheScreenWriter"
       ]
     },
     {
@@ -204197,8 +204199,8 @@
         "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_project_proto_key_oracle_test.go#TestAProjectSettingsKeyNamedProtoSetsNoSetting",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupValueSpelling",
         "test:coding/services_test.go#TestServicesAreImmutableAfterConstruction"
       ]
     },
@@ -204445,6 +204447,7 @@
       ],
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
+        "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
         "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
       ]
     },
@@ -204466,6 +204469,7 @@
       ],
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
+        "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
         "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
       ]
     },
@@ -219002,8 +219006,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupSettingReadsAsPi"
+        "test:internal/codingagent/settings_project_proto_key_oracle_test.go#TestAProjectSettingsKeyNamedProtoSetsNoSetting",
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -219024,8 +219028,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
-        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/quiet_startup_setting_test.go#TestQuietStartupSettingReadsAsPi"
+        "test:internal/codingagent/settings_project_proto_key_oracle_test.go#TestAProjectSettingsKeyNamedProtoSetsNoSetting",
+        "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi"
       ]
     },
     {
@@ -224712,9 +224716,9 @@
         "call:tui/theme.go#Theme.Bg"
       ],
       "evidence": [
+        "test:test/extension-conformance/prototype_names_test.go#TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs",
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
+        "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream"
       ]
     },
     {
@@ -224734,9 +224738,9 @@
         "call:tui/theme.go#Theme.Bg"
       ],
       "evidence": [
+        "test:test/extension-conformance/prototype_names_test.go#TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs",
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
+        "test:tui/theme_style_upstream_test.go#TestThemeStylesUpstream"
       ]
     },
     {
@@ -224910,9 +224914,9 @@
         "call:tui/theme.go#Theme.GetBgAnsi"
       ],
       "evidence": [
+        "test:test/extension-conformance/prototype_names_test.go#TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs",
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel"
+        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
       ]
     },
     {
@@ -224932,9 +224936,9 @@
         "call:tui/theme.go#Theme.GetBgAnsi"
       ],
       "evidence": [
+        "test:test/extension-conformance/prototype_names_test.go#TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs",
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel"
+        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
       ]
     },
     {
@@ -225176,7 +225180,7 @@
       "evidence": [
         "test:internal/codingagent/ext_theme_settings_upstream_test.go#TestExtensionSetThemeDoesNotPersistInvalidNamesUpstream",
         "test:internal/codingagent/ext_theme_settings_upstream_test.go#TestExtensionSetThemePersistsToSettingsManagerUpstream",
-        "test:internal/codingagent/first_time_setup_oracle_test.go#TestFirstTimeSetupMatchesPi"
+        "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback"
       ]
     },
     {
@@ -229022,7 +229026,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext",
         "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerToolRendererResolversThatClaimTheSameToolAreWonByTheFirstLoaded",
-        "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestNewToolCardIsBuiltWithTheRegisteredDefinition"
+        "test:internal/codingagent/frame_pacing_test.go#TestFramePacingGateFollowsToolRendererResolvers"
       ]
     },
     {
@@ -229044,7 +229048,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext",
         "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerToolRendererResolversThatClaimTheSameToolAreWonByTheFirstLoaded",
-        "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestNewToolCardIsBuiltWithTheRegisteredDefinition"
+        "test:internal/codingagent/frame_pacing_test.go#TestFramePacingGateFollowsToolRendererResolvers"
       ]
     },
     {
@@ -300209,8 +300213,8 @@
       ],
       "evidence": [
         "test:tui/keybinding_definitions_upstream_test.go#TestKeybindingDefinitionsDriveManager",
-        "test:tui/editor_input_copy_pi_test.go#TestEditorInputCopyKeyIsLeftToTheParent",
-        "test:tui/keybindings_inventory_test.go#TestTUIKeybindingDefinitionsMatchUpstreamInventory"
+        "test:tui/theme_and_keybinding_names_prototype_oracle_test.go#TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "test:tui/editor_input_copy_pi_test.go#TestEditorInputCopyKeyIsLeftToTheParent"
       ]
     },
     {
@@ -300230,7 +300234,8 @@
         "call:tui/keybindings.go#NewKeybindingsManager"
       ],
       "evidence": [
-        "test:tui/keybinding_definitions_upstream_test.go#TestKeybindingDefinitionsDriveManager"
+        "test:tui/keybinding_definitions_upstream_test.go#TestKeybindingDefinitionsDriveManager",
+        "test:tui/theme_and_keybinding_names_prototype_oracle_test.go#TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey"
       ]
     },
     {
@@ -301340,8 +301345,8 @@
       ],
       "evidence": [
         "test:tui/keybindings_matches_oracle_test.go#TestKeybindingsManagerMatchesPi",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/theme_and_keybinding_names_prototype_oracle_test.go#TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts"
       ]
     },
     {
@@ -301362,8 +301367,8 @@
       ],
       "evidence": [
         "test:tui/keybindings_matches_oracle_test.go#TestKeybindingsManagerMatchesPi",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/theme_and_keybinding_names_prototype_oracle_test.go#TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_Conflicts"
       ]
     },
     {
@@ -303245,7 +303250,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
+        "test:coding/extension/host/subprocess/render_proxy_early_click_test.go#TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder"
       ]
     },
     {
@@ -303267,7 +303272,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
+        "test:coding/extension/host/subprocess/render_proxy_early_click_test.go#TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder"
       ]
     },
     {
@@ -313224,7 +313229,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tree.go#InteractiveMode.navigateTree"
+        "call:internal/codingagent/frame_pacing.go#InteractiveMode.extensionDrawsOnScreen"
       ],
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
@@ -313246,7 +313251,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tree.go#InteractiveMode.navigateTree"
+        "call:internal/codingagent/frame_pacing.go#InteractiveMode.extensionDrawsOnScreen"
       ],
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
@@ -313273,7 +313278,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences"
+        "test:internal/codingagent/frame_pacing_test.go#TestFramePacingGateIsClosedWhileAnExtensionDrawsOnScreen"
       ]
     },
     {
@@ -313295,7 +313300,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences"
+        "test:internal/codingagent/frame_pacing_test.go#TestFramePacingGateIsClosedWhileAnExtensionDrawsOnScreen"
       ]
     },
     {
@@ -318473,7 +318478,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tree.go#InteractiveMode.navigateTree"
+        "call:internal/codingagent/frame_pacing.go#InteractiveMode.extensionDrawsOnScreen"
       ],
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
@@ -318495,7 +318500,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tree.go#InteractiveMode.navigateTree"
+        "call:internal/codingagent/frame_pacing.go#InteractiveMode.extensionDrawsOnScreen"
       ],
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
@@ -318522,7 +318527,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences"
+        "test:internal/codingagent/frame_pacing_test.go#TestFramePacingGateIsClosedWhileAnExtensionDrawsOnScreen"
       ]
     },
     {
@@ -318544,7 +318549,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences"
+        "test:internal/codingagent/frame_pacing_test.go#TestFramePacingGateIsClosedWhileAnExtensionDrawsOnScreen"
       ]
     },
     {

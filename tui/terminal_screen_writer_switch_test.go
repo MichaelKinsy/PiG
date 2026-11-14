@@ -255,3 +255,31 @@ func TestScreenWriterActiveWhileTheWriterIsDropped(t *testing.T) {
 		t.Errorf("active after the writer was dropped and a frame was written")
 	}
 }
+
+// ScreenWriterSelected answers as the choice SetScreenWriter makes: a set PIG_TUI_SCREEN_WRITER decides, `pi` or `0` against the
+// writer and any other value for it, and the setting decides when the variable is unset or empty.
+func TestScreenWriterSelected(t *testing.T) {
+	for _, tc := range []struct {
+		writer bool
+		env    string
+		want   bool
+	}{
+		{true, "", true}, {false, "", false},
+		{true, "pi", false}, {true, "0", false}, {false, "pi", false},
+		{false, "writer", true}, {false, "1", true}, {true, "writer", true},
+	} {
+		getenv := func(name string) string {
+			if name == screenWriterEnv {
+				return tc.env
+			}
+			return ""
+		}
+		choice := screenWriterOff
+		if tc.writer {
+			choice = screenWriterOn
+		}
+		if got := ScreenWriterSelected(tc.writer, getenv); got != tc.want || got != screenWriterWanted(getenv, choice) {
+			t.Errorf("setting selects the writer = %v, %s=%q: selected = %v, want %v (a terminal gets one: %v)", tc.writer, screenWriterEnv, tc.env, got, tc.want, screenWriterWanted(getenv, choice))
+		}
+	}
+}

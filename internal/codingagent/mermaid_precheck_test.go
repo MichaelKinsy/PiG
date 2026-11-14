@@ -34,7 +34,7 @@ func TestMermaidPreCheckNeverSkipsATextWithAMermaidFence(t *testing.T) {
 			text = strings.ReplaceAll(text, "\n", "\r\n")
 		}
 		normalized := strings.ReplaceAll(strings.ReplaceAll(text, "\r\n", "\n"), "\r", "\n")
-		if len(topLevelMermaidFences(normalized)) > 0 && !containsFoldMermaid(normalized) {
+		if len(topLevelMermaidFences(normalized)) > 0 && !containsFoldMermaid(normalized, nil) {
 			t.Fatalf("the pre-check would skip a text with a mermaid fence:\n%q", normalized)
 		}
 	}
@@ -45,7 +45,7 @@ func TestContainsFoldMermaidMatchesAnyLetterCaseOnly(t *testing.T) {
 		"": false, "merma": false, "mermai d": false, "mermaid": true, "MERMAID": true, "xx MeRmAiD yy": true,
 		"```mermaid\n": true, "ᴍermaid": false, "mermaİd": false, "mermaıd": false,
 	} {
-		if got := containsFoldMermaid(text); got != want {
+		if got := containsFoldMermaid(text, nil); got != want {
 			t.Errorf("containsFoldMermaid(%q) = %v, want %v", text, got, want)
 		}
 	}

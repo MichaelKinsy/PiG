@@ -344,18 +344,24 @@ journeys-changed: parity-deps ## Run only the PTY journeys whose Touches prefixe
 # Every maintained nested Go module must pass without workspace assistance.
 # Fixture modules are included because they exercise the same clean-clone
 # dependency boundaries as independently distributed modules.
+# GO_NESTED_MODULES is the list of them. test-sdk-go and test-go-modules test
+# each one and go-fix-clean runs go fix in each one, always with GOWORK=off.
+GO_NESTED_MODULES := \
+	extensions/sdk \
+	coding/cli/testdata/login-preview \
+	coding/extension/host/subprocess/testdata/sdk-fixture \
+	examples/extensions/go-factory \
+	examples/extensions/plan-mode \
+	piglets/pig-bolt \
+	piglets/porter/extensions/pig-porter \
+	piglets/standard
+
 test-sdk-go: ## Test the Go extension SDK module on its own
 	@cd extensions/sdk && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...
 
 test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWORK=off
 	@set -eu; \
-	for module in \
-		coding/cli/testdata/login-preview \
-		coding/extension/host/subprocess/testdata/sdk-fixture \
-		examples/extensions/go-factory \
-		piglets/pig-bolt \
-		piglets/porter/extensions/pig-porter \
-		piglets/standard; do \
+	for module in $(filter-out extensions/sdk,$(GO_NESTED_MODULES)); do \
 		echo "testing Go module: $$module"; \
 		(cd "$$module" && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...); \
 	done
@@ -501,26 +507,37 @@ test-oracle-sweeps-nightly: ## Full Pi-oracle sweeps that the fast tier runs as 
 .PHONY: test-race-nightly fuzz-nightly test-oracle-sweeps-nightly
 
 # go-fix-clean enforces AGENTS.md rule #3 (Go 1.27 idiom compliance).
-# `go fix -diff ./...` must produce zero output. If this target fails,
-# run `go fix ./...`, manually validate any suggestions that would
-# change observable behavior (e.g. type changes like
-# `slices.Contains` returning bool vs a string flag), then commit.
-go-fix-clean: ## Fail when go fix would change any file
+# `go fix -diff ./...` must produce zero output in the root module and in
+# every maintained nested Go module (GO_NESTED_MODULES): ./... stops at a
+# nested go.mod, so the root run alone never reads those. If this target
+# fails, run `go fix ./...` in the module it names (GOWORK=off in a nested
+# one), manually validate any suggestions that would change observable
+# behavior (e.g. type changes like `slices.Contains` returning bool vs a
+# string flag), then commit.
+go-fix-clean: ## Fail when go fix would change any file of the root module or of a maintained nested Go module
 	@# Judge the diff on stdout; stderr (tool warnings) passes through. go fix
-	@# exits non-zero when it has a diff, so a failure without one is an error.
-	@# third_party holds vendored upstream source kept byte-identical except for
-	@# the edits its FORK.md lists, so go fix does not modernize it.
-	@packages=$$(go list ./...) || exit 1; packages=$$(printf '%s\n' $$packages | grep -v '/third_party/'); \
-	status=0; diff_output=$$(go fix -diff $$packages) || status=$$?; \
-	if [ -n "$$diff_output" ]; then \
-		echo "FAIL: go fix -diff produced output (AGENTS.md rule #3)."; \
-		echo "Run \`go fix ./...\` and validate suggestions before committing."; \
-		echo "First 40 lines of diff:"; \
-		echo "$$diff_output" | head -40; \
-		exit 1; \
-	fi; \
-	if [ "$$status" -ne 0 ]; then echo "FAIL: go fix -diff exited $$status without a diff."; exit 1; fi
-	@echo "go fix: clean (Go 1.27 idioms compliant)"
+	@# exits non-zero when it has a diff, so a failure without one is an error
+	@# (a go list that fails is one). third_party holds vendored upstream source
+	@# kept byte-identical except for the edits its FORK.md lists, so go fix
+	@# does not modernize it.
+	@for module in . $(GO_NESTED_MODULES); do \
+		status=0; diff_output=$$( \
+			if [ "$$module" != . ]; then cd "$$module" || exit 1; export GOWORK=off; fi; \
+			packages=$$(go list ./...) || exit 1; packages=$$(printf '%s\n' $$packages | grep -v '/third_party/'); \
+			go fix -diff $$packages) || status=$$?; \
+		if [ -n "$$diff_output" ]; then \
+			echo "FAIL: go fix -diff produced output in Go module $$module (AGENTS.md rule #3)."; \
+			if [ "$$module" = . ]; then echo "Run \`go fix ./...\` and validate suggestions before committing."; \
+			else echo "Run \`(cd $$module && GOWORK=off go fix ./...)\` and validate suggestions before committing."; fi; \
+			echo "Files go fix would change:"; \
+			echo "$$diff_output" | sed -n 's/^+++ \(.*\) (new)$$/  \1/p'; \
+			echo "First 40 lines of diff:"; \
+			echo "$$diff_output" | head -40; \
+			exit 1; \
+		fi; \
+		if [ "$$status" -ne 0 ]; then echo "FAIL: go fix -diff exited $$status without a diff in Go module $$module."; exit 1; fi; \
+	done
+	@echo "go fix: clean (Go 1.27 idioms compliant) in the root module and $(words $(GO_NESTED_MODULES)) nested Go modules"
 
 # compliance checks the evidence behind the README badges and the OpenSSF
 # Best Practices criteria (docs/project/compliance.md): required files,

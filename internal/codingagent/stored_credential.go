@@ -37,6 +37,7 @@ func ReadStoredCredentialEntryAt(providerID, authPath string) json.RawMessage {
 	if json.Unmarshal(text.StripBomBytes(data), &entries) != nil {
 		return nil
 	}
+	// pig divergence (D645): the file's own entries are read, so a provider named like an Object.prototype member (constructor, toString, __proto__) has no stored credential; Pi's `data[providerId]` on a plain object returns the inherited function or object.
 	entry := entries[providerID]
 	switch string(entry) {
 	case "null", "false", `""`:

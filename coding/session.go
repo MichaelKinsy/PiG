@@ -2416,6 +2416,11 @@ func (s *Session) Subscribe(listener AgentSessionEventListener) func() {
 	}
 }
 
+// SubscribeFunc is Subscribe for a caller that cannot name AgentSessionEventListener: the interactive mode's Session handle.
+func (s *Session) SubscribeFunc(listener func(agent.AgentEvent)) func() {
+	return s.Subscribe(listener)
+}
+
 // notifyListeners walks the listener list as it is at each step, as agent-session.ts:1039-1043 _emit iterates the live _eventListeners array: a listener
 // subscribed during delivery is called in the same delivery, and an unsubscribe during delivery shifts the later listeners down one place, so the one
 // after the removed entry's position is skipped when that entry was at or before the current one.

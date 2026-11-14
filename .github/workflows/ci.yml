@@ -1284,7 +1284,7 @@ jobs:
         run: |
           set -euo pipefail
           case "$EXTENSION_SHARD" in
-            extension-host-*) package=./coding/extension/host/subprocess shards=3 ;;
+            extension-host-*) package=./coding/extension/host/subprocess shards=5 ;;
             extension-conformance-*) package=./test/extension-conformance shards=6 ;;
             *) echo "unexpected shard $EXTENSION_SHARD" >&2; exit 1 ;;
           esac
@@ -1304,7 +1304,7 @@ jobs:
           $env:TMP = $acceptanceRoot
           $env:TMPDIR = $acceptanceRoot
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
-          # runtimecell runs whole, in extension-host-1; the subprocess tests are split in three.
+          # runtimecell runs whole, in extension-host-1; the subprocess tests are split in the five shards of make test-subprocess.
           if ($env:MATRIX_SHARD -eq 'extension-host-1') {
             go test -v -timeout 30m ./coding/extension/host/runtimecell
             if ($LASTEXITCODE -ne 0) { throw "Windows runtimecell tests failed" }
@@ -1367,7 +1367,7 @@ jobs:
         # measured run times) and run in one wave. Each unit still runs in its own go test process and timeout.
         # native: the smoke run of the packages with macOS-specific code.
         # cli-1 to cli-8: the eight cmd/pig shards that make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
-        # extension-host-1 to extension-host-3: the subprocess extension host tests, split in three.
+        # extension-host-1 to extension-host-5: the subprocess extension host tests, in the five shards of make test-subprocess.
         # packages: the remaining packages whose tests bind Unix sockets, watch paths or resolve symlinked temporary
         # directories, which macOS spells differently from Linux (104-byte socket paths, /var -> /private/var).
         # The shards come from automation/ci/ci-tiers.txt through the changes job: the light pull-request run keeps native,
@@ -1499,7 +1499,7 @@ jobs:
           UNITS: ${{ matrix.shard }}
         run: automation/ci/macos-units.sh cli
       - name: Test the extension host units of ${{ matrix.shard }}
-        # Each extension-host-N unit runs its third of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one unit.
+        # Each extension-host-N unit runs shard N of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one unit.
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' && contains(matrix.shard, 'extension-host-') }}
         env:
           UNITS: ${{ matrix.shard }}
