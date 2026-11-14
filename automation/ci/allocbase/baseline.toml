@@ -4020,6 +4020,16 @@ allocs = 12
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkScheduleRender/adaptive"
+allocs = 1
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkScheduleRender/pi"
+allocs = 1
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkSoutheastAsianWordNavigation/Burmese/1"
 allocs = 6
 

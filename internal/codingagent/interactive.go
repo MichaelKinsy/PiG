@@ -403,6 +403,11 @@ type InteractiveMode struct {
 	eventRegionOpen   bool
 	eventRegion       []agent.AgentEvent
 	eventRegionUpdate int
+	// framePacingInstalled is whether the renderer has the adaptive frame pacing policy (installFramePacing); framePacingAllowed is the policy's gate, stored by the owner loop before each throttled frame (allowFramePacing) and loaded by the renderer.
+	framePacingInstalled bool
+	framePacingAllowed   atomic.Bool
+	// extensionRendersTranscript is whether the transcript holds a tool card, a custom message or a custom entry drawn by an extension's renderer; the adaptive policy's gate is closed while it is (extensionRenderersMounted, transcriptEmptied). Owner loop only.
+	extensionRendersTranscript bool
 
 	// Bash-prefix execution state.
 	// bashCancel cancels the currently-running `!cmd` (Esc routes
@@ -813,6 +818,7 @@ func (m *InteractiveMode) installRenderDispatcher() {
 	}
 	m.tuiInst.SetRenderDeadline(m.armFrameTimer)
 	m.tuiInst.SetOwnerDispatcher(m.postToMain)
+	m.installFramePacing()
 }
 
 // useFrameTimer makes timer the one that keeps the owner loop's frame deadline and releases the one it replaces. The goroutine of the owner loop
@@ -854,6 +860,7 @@ func (m *InteractiveMode) runScheduledRender() {
 	if m.frameHold {
 		return
 	}
+	m.allowFramePacing()
 	m.tuiInst.RunDueRender()
 	if due := m.frameDue.Load(); due != 0 && time.Until(time.Unix(0, due)) <= 0 {
 		// RunDueRender ran the frame of that deadline; a frame requested while it ran has a later one.

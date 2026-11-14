@@ -819,8 +819,17 @@ type tuiBase struct {
 	frameRenderRequest atomic.Uint32
 	renderGeneration   uint64
 	lastRenderAt       time.Time
-	now                func() time.Time
-	afterFunc          func(time.Duration, func()) stoppableTimer
+	// pacing answers scheduleRenderLocked's interval from lastFrameCost, what the last throttled frame took from its start to the return of its write; nil is Pi's constant (frame_pacing.go).
+	pacing        *FramePacing
+	lastFrameCost time.Duration
+	now           func() time.Time
+	afterFunc     func(time.Duration, func()) stoppableTimer
+
+	// quietAt is lastRenderAt of a frame that sent the terminal nothing, quietRun how many such frames ended there in a row, and shownAt and shownCost are lastRenderAt and lastFrameCost of the last frame before them; frameIntervalLocked reads them under the adaptive policy only (frame_pacing.go).
+	quietAt   time.Time
+	quietRun  int
+	shownAt   time.Time
+	shownCost time.Duration
 
 	// renderOnMain, when set, marshals a scheduled render onto the owner's
 	// main loop instead of running doRender on the throttle-timer
@@ -2136,6 +2145,7 @@ func (t *tuiBase) runDeferredRender(generation uint64) {
 
 // frameBeganLocked is what a frame does first: it draws the changes RequestRenderWithin was set for, so their timer is not needed. mu must be held.
 func (t *tuiBase) frameBeganLocked() {
+	t.frameBeforeLocked()
 	t.lastRenderAt = t.now()
 	if t.deferredRenderTimer != nil {
 		t.deferredRenderTimer.Stop()
@@ -2151,8 +2161,8 @@ func (t *tuiBase) scheduleRenderLocked() {
 	delay := time.Duration(0)
 	if !t.lastRenderAt.IsZero() {
 		elapsed := t.now().Sub(t.lastRenderAt)
-		if elapsed < minRenderInterval {
-			delay = minRenderInterval - elapsed
+		if interval := t.frameIntervalLocked(); elapsed < interval {
+			delay = interval - elapsed
 		}
 	}
 	generation := t.renderGeneration
@@ -2199,9 +2209,17 @@ func (t *tuiBase) renderScheduled(generation uint64) {
 // frame if more render requests arrived. It must run on whichever goroutine
 // owns component-tree mutation (the main loop when renderOnMain is set).
 func (t *tuiBase) renderAndReschedule() {
+	began := t.now()
+	terminal, counted := t.Terminal().(screenWriterTerminal)
+	var sent uint64
+	if counted {
+		sent = terminal.writesSent()
+	}
 	t.render()
 
 	t.mu.Lock()
+	t.lastFrameCost = t.now().Sub(began)
+	t.frameSentLocked(!counted || !terminal.ScreenWriterActive() || terminal.writesSent() != sent)
 	t.scheduleRenderLocked()
 	t.mu.Unlock()
 }

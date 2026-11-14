@@ -253,6 +253,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			m.disposeArminComponents()
 			m.disposeMarkdownBlocks()
 			m.chatContainer.Clear()
+			m.transcriptEmptied()
 		},
 		// Snapshot prompt templates so /help can list them.
 		PromptTemplates: m.promptTemplates,
