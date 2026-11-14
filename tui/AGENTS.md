@@ -24,6 +24,7 @@ The Main Screen preserves scrollback. The Editor changes only the required visib
 | Wrapped input enters history early | Move Up within wrapped input | Keep Pi's cursor and history state |
 | Resize corrupts layout | Change width and height with ANSI, wide text, and images | Match Pi's final screen |
 | A hidden-row change cannot be repaired locally | Change content above the viewport | Use Pi's recovery render |
+| A cursor or raw write lands among the bytes of a frame, or two goroutines are in the terminal writer | Park a frame in the writer and call `ShowOverlay`, `HideCursor`, `ShowCursor` or `WriteRaw` from another goroutine (`terminal_writer_ownership_test.go`) | Every write to the terminal holds the writer lock of the renderer; a frame keeps it from its first write to its last; a write from a `Render` goes before the bytes of its frame |
 
 ## Evidence
 
