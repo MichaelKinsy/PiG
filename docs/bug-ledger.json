@@ -1135,15 +1135,15 @@
     },
     {
       "id": "BF-0635f23",
-      "title": "A login refresh that took longer than ten seconds while another pig process opened the credential file was…",
-      "symptom": "A login refresh that took longer than ten seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "title": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential…",
+      "symptom": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
       "rootCause": "Modify treated a lock taken over while the refresh ran as a failure of the whole write, though the refreshed credential, possibly the only copy of a single-use refresh token, was already in hand.",
       "rootCauseSource": "release note",
       "userImpact": "Credential or permission exposure",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A login refresh that took longer than ten seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "releaseNote": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
       "origin": "release note",
       "commits": [
         {
@@ -4417,6 +4417,26 @@
         "internal/photonimage/farbfelddecode_test.go::TestDecodeFarbfeldRefusesWhatImageRefuses",
         "internal/photonimage/farbfelddecode_test.go::TestDecodeRoutesFarbfeld"
       ]
+    },
+    {
+      "id": "BF-16c1901",
+      "title": "A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the…",
+      "symptom": "A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the file empty, and the next change then saved it with that one setting or decision alone, so every other setting or trust decision was lost.",
+      "rootCause": "settings.json and trust.json were written with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file and the next change was saved on top of that.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the file empty, and the next change then saved it with that one setting or decision alone, so every other setting or trust decision was lost. Both files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched; the bytes written are the same.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "16c1901a48",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-16d0758",
@@ -32823,6 +32843,26 @@
         "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
         "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
       ]
+    },
+    {
+      "id": "BF-8d4e7f2",
+      "title": "A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during…",
+      "symptom": "A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during the legacy API-key migration could leave the file empty or cut short and lose your keybindings, your MCP servers or your settings.",
+      "rootCause": "these files were written with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during the legacy API-key migration could leave the file empty or cut short and lose your keybindings, your MCP servers or your settings. These files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d4e7f2452",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-8d6fb83",

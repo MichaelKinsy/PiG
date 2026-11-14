@@ -44165,6 +44165,17 @@
       "shapeHash": "sha256:6b25c6d3fef8ce1be2de7f5596863d59e149c12bb745f004a64753adc2b9e137"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#heartbeatCompromise",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "heartbeatCompromise",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#heldFile",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "heldFile",
