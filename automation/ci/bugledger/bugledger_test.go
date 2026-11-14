@@ -204,6 +204,9 @@ const divergenceFixture = "# DIVERGENCES\n\n## D1 Old\n\nWhat: old.\n\nRemove wh
 
 func newFixture(t *testing.T) testRepo {
 	t.Helper()
+	// A commit made now is after the cause rule (causeRequiredFrom), and the fixes of most tests state no cause: they are dated before the rule, so that no test starts to fail on the day the clock passes it. commitAt dates the commits of a test that is about the rule.
+	t.Setenv("GIT_AUTHOR_DATE", "2026-11-13T12:00:00Z")
+	t.Setenv("GIT_COMMITTER_DATE", "2026-11-13T12:00:00Z")
 	r := testRepo{t: t, root: t.TempDir()}
 	r.run("init", "-q", "-b", "main")
 	r.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.4.1] - 2026-01-01\n")

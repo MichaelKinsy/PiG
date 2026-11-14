@@ -64,3 +64,23 @@ func TestACommittedEntryIsJudgedByItsCommitInstant(t *testing.T) {
 		t.Fatalf("a committed entry whose commit is after the rule's instant must be asked for its cause, got %v", err)
 	}
 }
+
+// A committed entry that records no cause, whose commit message now gives one, is reported as stale when its commit is after the instant of the rule, whatever author-zone date the committed ledger holds for the commit.
+func TestAStaleCommittedEntryWithoutACauseIsReportedByItsCommitInstant(t *testing.T) {
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	commitAt(t, r, "2026-11-14T06:00:00Z", "Fix a crash in a\n\nCause: the length was read before it was checked.", "a.go")
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	l, _, err := readCommitted(r.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.Entries[0].RootCause, l.Entries[0].CauseFrom = "", ""
+	l.Entries[0].Commits[0].Date = "2026-11-13"
+	writeLedger(t, r, l)
+	if err := run(r.root, "0.4.1", true, false); err == nil || !strings.Contains(err.Error(), "its sources now give one") {
+		t.Fatalf("the stale committed entry must be reported, got %v", err)
+	}
+}
