@@ -73,7 +73,7 @@ func TestExample47FitImages(t *testing.T) {
 		t.Fatal(err)
 	}
 	screenshot := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "screenshot", Description: "Take a screenshot", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "screenshot", Description: "Take a screenshot", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.ImageContent{Data: tools.ToBase64(greyPng(t, 3000, 1000)), MimeType: "image/png"}}}, nil
 		},

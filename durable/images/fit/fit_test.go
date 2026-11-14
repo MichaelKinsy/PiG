@@ -251,8 +251,8 @@ func newFitSetup(t *testing.T, photon tools.ImageProcessor) *fitSetup {
 func (setup *fitSetup) addTool(t *testing.T, name string, execute func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error)) {
 	t.Helper()
 	tool := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: "A picture", Parameters: pictureParameters},
-		Execute:    execute,
+		Name: name, Description: "A picture", Parameters: pictureParameters,
+		Execute: execute,
 	})
 	if err := setup.registry.Install(new(durable.Extension{Name: name, Tools: []*durable.ToolRegistration{tool}})); err != nil {
 		t.Fatal(err)
