@@ -12,18 +12,18 @@ import (
 func TestMcpServerSummaryMatchesPiOracle(t *testing.T) {
 	// Each pair is {description, instructions}; null is Pi's undefined, which the Go port spells "".
 	inputs := [][2]*string{
-		{ptr(" Docs search.\nMore. "), ptr("Ignored.")},
-		{nil, ptr("\n  Web search for current information.\nDetails.")},
-		{ptr("  "), ptr("From instructions.")},
+		{new(" Docs search.\nMore. "), new("Ignored.")},
+		{nil, new("\n  Web search for current information.\nDetails.")},
+		{new("  "), new("From instructions.")},
 		{nil, nil},
-		{ptr(""), ptr("")},
-		{ptr("\n"), ptr(" \n\t ")},
-		{nil, ptr("   \n  second\nthird")},
-		{ptr("\u00a0First\u00a0line\u00a0\nrest"), nil},
-		{ptr("\ufeffBom\nnext"), nil},
-		{nil, ptr("\r\nCRLF first\r\nsecond")},
-		{ptr("one line"), nil},
-		{ptr("é\u2028not a newline for split"), nil},
+		{new(""), new("")},
+		{new("\n"), new(" \n\t ")},
+		{nil, new("   \n  second\nthird")},
+		{new("\u00a0First\u00a0line\u00a0\nrest"), nil},
+		{new("\ufeffBom\nnext"), nil},
+		{nil, new("\r\nCRLF first\r\nsecond")},
+		{new("one line"), nil},
+		{new("é\u2028not a newline for split"), nil},
 	}
 	var want []string
 	pioracle.Run(t, `
@@ -42,5 +42,3 @@ emit(input.map(([description, instructions]) => mod.mcpServerSummary(description
 		}
 	}
 }
-
-func ptr(s string) *string { return &s }
