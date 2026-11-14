@@ -2528,7 +2528,9 @@ func (h *Host) endTailFlight(f *tailFlight) {
 
 // tailWaitsLocked reports whether the handler waits on something Pi serves stdin during: a Node handler whose window closed, or, once input ended, a still-running handler of a runtime with no microtask continuation, as FlushCommands counts its commands. The caller holds commandFlightMu.
 //
-// A settle-tail handler of a runtime with no microtask continuation does not hold the RPC exit after input ended, where Pi's process stays while the handler holds a handle. The divergence record awaits the owner's sign-off.
+// A settle-tail handler of a runtime with no microtask continuation does not hold the RPC exit after input ended, where Pi's process stays while the handler holds a handle.
+//
+// pig divergence (D649): a settle-tail handler of a runtime with no microtask continuation (Go, Rust, Python, Lisp) does not hold the RPC exit after input ended, where Pi's process stays while the handler holds a handle (docs/parity/divergences/D649.md).
 func (h *Host) tailWaitsLocked(f *tailFlight) bool {
 	return f.suspended || (!f.node && h.inputEnded)
 }
