@@ -199,6 +199,21 @@ def new_extension() -> pig_sdk.Extension:
     return extension
 `
 
+// quitProbeTimerSibling is a second Node extension that holds a timer from the moment it is loaded.
+const quitProbeTimerSibling = `export default function (pi) {
+  setInterval(() => {}, 1 << 30);
+  pi.registerCommand("timer-sibling", { description: "nothing", handler: async () => {} });
+}
+`
+
+// quitProbeIdleGo is a Go extension that registers nothing and does nothing.
+const quitProbeIdleGo = `package idlego
+
+import sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+
+func Extension() *sdk.Extension { return sdk.New("idle-go") }
+`
+
 // quitPane is one pig in interactive mode in the pane of a tmux server of its own. The pane stays when its program exits, so the exit status can be read.
 type quitPane struct {
 	t      *testing.T
@@ -418,6 +433,17 @@ func quitProbeExtensions(t *testing.T, root, author, seen string) []string {
 		return []string{"-e", source}
 	case "node-packed":
 		return []string{"-e", write(filepath.Join(root, "provider-abort.mjs"), quitProbeNode), "-e", write(filepath.Join(root, "provider-abort-sibling.mjs"), providerStreamAbortSibling)}
+	case "node-packed-timer":
+		return []string{"-e", write(filepath.Join(root, "provider-abort.mjs"), quitProbeNode), "-e", write(filepath.Join(root, "timer-sibling.mjs"), quitProbeTimerSibling)}
+	case "node-and-idle-go":
+		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "extensions", "sdk"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		source := filepath.Join(root, "idle-go")
+		write(filepath.Join(source, "go.mod"), strings.Replace(fmt.Sprintf(quitProbeGoModule, sdkDir), "module provider-abort-go", "module idle-go", 1))
+		write(filepath.Join(source, "extension.go"), quitProbeIdleGo)
+		return []string{"-e", write(filepath.Join(root, "provider-abort.mjs"), quitProbeNode), "-e", source}
 	case "node-shutdown-never":
 		return []string{"-e", write(filepath.Join(root, "provider-abort.mjs"), quitProbeNode), "-e", write(filepath.Join(root, "shutdown-never.mjs"), quitProbeShutdownNever)}
 	}
@@ -502,6 +528,12 @@ func TestInteractiveQuitWithAnExtensionProviderTurnInFlight(t *testing.T) {
 	// A Node author that never reacts and holds a timer: its loop is alive, so it holds the quit as it holds Pi's (Pi 1.5.2 does not exit, 10 s watched), and the ctrl+c
 	// that ends pig must not leave its runtime behind.
 	rows = append(rows, row{author: "node", model: "author-held", key: "ctrl-d", escape: true, held: true})
+	// Mixed sets. A second Node extension that holds a timer is packed into the author's runtime process: its timer keeps that loop alive, as it keeps Pi's one loop
+	// alive, so the quit waits. An idle Go extension beside the Node author has nothing in flight and does not hold the quit.
+	rows = append(rows,
+		row{author: "node-packed-timer", model: "author-never", key: "ctrl-d", escape: true, held: true},
+		row{author: "node-and-idle-go", model: "author-never", key: "ctrl-d", escape: true},
+	)
 	for _, author := range []string{"node", "node-packed", "go", "python"} {
 		rows = append(rows, row{author: author, model: "author-ignores", key: "ctrl-d", persisted: completed}, row{author: author, model: "author-error", key: "ctrl-d", persisted: answered})
 	}
@@ -588,7 +620,11 @@ const quitEventRecorder = `import { appendFileSync } from "node:fs";
 export default function (pi) {
   const log = (line) => appendFileSync("@EVENTS@", line + "\n");
   pi.on("message_end", (event) => { if (event.message?.role === "assistant") log("message_end " + event.message.stopReason); });
-  for (const name of ["turn_end", "agent_end", "agent_settled"]) pi.on(name, () => log(name));
+  for (const name of ["turn_end", "agent_end"]) pi.on(name, () => log(name));
+  pi.on("agent_settled", async () => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    log("agent_settled");
+  });
   pi.on("session_shutdown", async (event) => {
     await new Promise((resolve) => setTimeout(resolve, 200));
     log("session_shutdown " + event.reason);
@@ -608,7 +644,8 @@ var quitBytesAfterStop = regexp.MustCompile(`^(\x1b\]0;[^\x07]*\x07)?To resume t
 // aborted, errorMessage "Request was aborted"; an extension sees message_end, turn_end, agent_end, agent_settled and then session_shutdown; the provider's connection is
 // closed; the resume hint is printed, and nothing of the run is drawn after the TUI stopped (stop() unsubscribes the mode from the Session), so the screen never shows
 // the mode's "Operation aborted". The rows run with the terminal progress setting on, which makes an agent_end that the mode applied after its stop visible in the
-// terminal's bytes (the progress sequence), and with a session_shutdown handler that takes 200 ms, which the dispose awaits.
+// terminal's bytes (the progress sequence), with an agent_settled handler that takes a second, which the quit's abort awaits before session_shutdown as Pi's does
+// (agent-session.ts _emitAgentSettled), and with a session_shutdown handler that takes 200 ms, which the dispose awaits.
 //
 // pig did not exit (10 s watched): its dispose awaited the aborted run on the owner loop, and the run's event flush waited for that loop.
 func TestInteractiveQuitWhileABuiltInProviderTurnStreams(t *testing.T) {
