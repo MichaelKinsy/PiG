@@ -1995,10 +1995,10 @@ impl ModelRegistry {
     ) -> Arc<ModelEventStream> {
         self.stream_with_method(model, request, options, true, callbacks, None)
     }
-    /// A stream on the session graph `ModelRuntime` the handle names.
+    /// A stream on the session graph `ModelRuntime` whose object is given.
     pub(crate) fn stream_on_runtime(
         &self,
-        runtime: &str,
+        runtime: Arc<crate::graph::GraphObject>,
         model: serde_json::Value,
         request: serde_json::Value,
         options: serde_json::Value,
@@ -2010,7 +2010,7 @@ impl ModelRegistry {
             options,
             simple,
             ModelStreamCallbacks::default(),
-            Some(runtime.to_string()),
+            Some(runtime),
         )
     }
     fn stream_with_method(
@@ -2020,13 +2020,10 @@ impl ModelRegistry {
         options: serde_json::Value,
         simple: bool,
         callbacks: ModelStreamCallbacks,
-        runtime: Option<String>,
+        runtime: Option<Arc<crate::graph::GraphObject>>,
     ) -> Arc<ModelEventStream> {
-        let runtime = runtime.or_else(|| {
-            self.runtime
-                .as_ref()
-                .map(|runtime| runtime.handle().to_string())
-        });
+        // The thread below owns the runtime's object until the host's stream call is answered: the object's release names the handle.
+        let runtime = runtime.or_else(|| self.runtime.as_ref().map(|runtime| runtime.object()));
         let id = format!(
             "model-stream-{}",
             self.sequence.fetch_add(1, Ordering::Relaxed) + 1
@@ -2065,7 +2062,7 @@ impl ModelRegistry {
                 {
                     let mut call = serde_json::json!({"streamId": id, "model": model, "request": merged, "simple":simple});
                     if let Some(runtime) = &runtime {
-                        call["runtime"] = serde_json::Value::String(runtime.clone());
+                        call["runtime"] = serde_json::Value::String(runtime.handle().to_string());
                     }
                     for (set, name) in [(flags.0, "onPayload"), (flags.1, "onResponse"), (flags.2, "transformHeaders"), (flags.3, "fetch")] {
                         if set {
