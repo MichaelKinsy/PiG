@@ -3,6 +3,7 @@ package subprocess
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"maps"
@@ -37,9 +38,11 @@ type UIBridge struct {
 	// waitForIdleBlocks reports whether a waitForIdle call waits now (extension.CommandActions.WaitForIdleBlocks); guarded by mu.
 	waitForIdleBlocks   func() bool
 	modelCatalogEncoder func() (json.RawMessage, error)
-	// modelCatalogBatches counts open BatchModelCatalogPublication calls; modelCatalogPending records a publication one of them deferred.
-	modelCatalogBatches int
-	modelCatalogPending bool
+	// modelCatalogBatches counts open BatchModelCatalogPublication calls; modelCatalogPending records a publication one of them deferred, and
+	// modelCatalogPendingAll that a deferred one was a PublishModelCatalog, which reaches every replica.
+	modelCatalogBatches    int
+	modelCatalogPending    bool
+	modelCatalogPendingAll bool
 	// commandsCache memoizes the encoded command catalog between matching GetCommandsVersion readings; version 0 is empty.
 	commandsCache struct {
 		version uint64
@@ -1724,7 +1727,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	case "generateImages":
 		return b.handleGenerateImages(ctx, actions, call.Args)
 	case "refreshModelRegistry":
-		return b.handleRefreshModelRegistry(ctx, actions, call.Args)
+		return b.handleRefreshModelRegistry(ctx, actions, extName, owner, call.Args)
 	case "sessionRead":
 		return b.handleSessionRead(actions, call.Args)
 	case "complete":
@@ -2051,10 +2054,21 @@ func (b *UIBridge) ModelCatalog() []json.RawMessage {
 // extension that replicates the model registry (RegisterPayload.WantsModelRegistry).
 // With no such connection it builds nothing: a later one receives its own
 // snapshot from RegisterExtConn.
-func (b *UIBridge) PublishModelCatalog() {
+func (b *UIBridge) PublishModelCatalog() { b.publishModelCatalog(true) }
+
+// PublishModelCatalogChange is PublishModelCatalog for a publisher that knows the registry committed something, not that anything differs: a
+// refresh notifies once it reloaded models.json and once its catalog refresh ended, changed or not. A replica whose last catalog frame holds the
+// same bytes is sent nothing: its reads answer the same either way, and it is spared decoding and applying the whole catalog once per step.
+// A publication that answers an extension's own registry write stays a PublishModelCatalog: the replica keeps that write over the snapshot until
+// a frame shows it (runtime.mjs applyModelRegistryState), whatever bytes the frame holds.
+// pig additive (D19): Pi's extensions read its ModelRegistry in process, so a refresh sends them nothing.
+func (b *UIBridge) PublishModelCatalogChange() { b.publishModelCatalog(false) }
+
+func (b *UIBridge) publishModelCatalog(all bool) {
 	b.mu.Lock()
 	if b.modelCatalogBatches > 0 {
 		b.modelCatalogPending = true
+		b.modelCatalogPendingAll = b.modelCatalogPendingAll || all
 		b.mu.Unlock()
 		return
 	}
@@ -2071,17 +2085,33 @@ func (b *UIBridge) PublishModelCatalog() {
 	if len(connections) == 0 {
 		return
 	}
-	message := b.modelCatalogUpdate()
-	if message == nil {
+	state, err := b.modelRegistryState(true)
+	if err != nil {
 		return
 	}
+	update, err := newModelRegistryUpdate(state)
+	if err != nil {
+		return
+	}
+	digest := update.digest()
+	var message encodedEnvelope
 	for _, connection := range connections {
-		_ = connection.sendEncoded(message)
+		connection.modelCatalogMu.Lock()
+		if all || connection.modelCatalogAlways || !connection.modelCatalogSentSet || connection.modelCatalogSent != digest {
+			if message == nil {
+				message = update.encode()
+			}
+			// A frame that was not queued says nothing about the replica.
+			connection.modelCatalogSentSet = connection.sendEncoded(message) == nil
+			connection.modelCatalogSent = digest
+		}
+		connection.modelCatalogMu.Unlock()
 	}
 }
 
 // BatchModelCatalogPublication defers every PublishModelCatalog, including the ones SetModelCatalog and binding getModels or
-// getModelRegistryState make, until the returned function runs; that function then publishes once if any publication was deferred.
+// getModelRegistryState make, until the returned function runs; that function then publishes once if any publication was deferred, as a
+// PublishModelCatalogChange when every deferred one was.
 // Binding the model operations together so sends each replica one snapshot of the finished binding instead of one per step: an
 // extension idle until session_start would otherwise decode the whole catalog several times on the startup path.
 // pig additive (D19): Pi's extensions read its ModelRegistry in process, so no snapshot crosses a process boundary there.
@@ -2094,13 +2124,13 @@ func (b *UIBridge) BatchModelCatalogPublication() func() {
 		once.Do(func() {
 			b.mu.Lock()
 			b.modelCatalogBatches--
-			publish := b.modelCatalogBatches == 0 && b.modelCatalogPending
+			publish, all := b.modelCatalogBatches == 0 && b.modelCatalogPending, b.modelCatalogPendingAll
 			if publish {
-				b.modelCatalogPending = false
+				b.modelCatalogPending, b.modelCatalogPendingAll = false, false
 			}
 			b.mu.Unlock()
 			if publish {
-				b.PublishModelCatalog()
+				b.publishModelCatalog(all)
 			}
 		})
 	}
@@ -2123,14 +2153,40 @@ func (b *UIBridge) modelCatalogUpdate() encodedEnvelope {
 // and are copied once. Marshaling the whole state would run the catalog through a pooled encode buffer that grows by doubling, so a publication's allocation
 // would depend on the capacity the pool happened to hand out: one publication cost from one to several catalog sizes.
 func encodeModelRegistryUpdate(state map[string]any) (encodedEnvelope, error) {
-	const prefix = `{"type":"notify","notify":{"method":"model_registry_update","args":{`
+	update, err := newModelRegistryUpdate(state)
+	if err != nil {
+		return nil, err
+	}
+	return update.encode(), nil
+}
+
+// modelCatalogDigest identifies the bytes of a model_registry_update frame.
+type modelCatalogDigest [sha256.Size]byte
+
+// modelRegistryUpdate is a model_registry_update frame before its bytes are put together: the members of the registry state in sorted key order,
+// each name and value encoded, and the size of the frame.
+type modelRegistryUpdate struct {
+	members [][2][]byte
+	size    int
+}
+
+var (
+	modelRegistryUpdatePrefix = []byte(`{"type":"notify","notify":{"method":"model_registry_update","args":{`)
+	modelRegistryUpdateSuffix = []byte("}}}")
+	modelRegistryUpdateComma  = []byte(",")
+	modelRegistryUpdateColon  = []byte(":")
+)
+
+func newModelRegistryUpdate(state map[string]any) (modelRegistryUpdate, error) {
 	keys := slices.Sorted(maps.Keys(state))
-	members := make([][2][]byte, len(keys))
-	size := len(prefix) + len("}}}") + max(len(keys)-1, 0)
+	update := modelRegistryUpdate{
+		members: make([][2][]byte, len(keys)),
+		size:    len(modelRegistryUpdatePrefix) + len(modelRegistryUpdateSuffix) + max(len(keys)-1, 0),
+	}
 	for i, key := range keys {
 		name, err := json.Marshal(key)
 		if err != nil {
-			return nil, err
+			return modelRegistryUpdate{}, err
 		}
 		var value []byte
 		switch raw, isRaw := state[key].(json.RawMessage); {
@@ -2138,26 +2194,48 @@ func encodeModelRegistryUpdate(state map[string]any) (encodedEnvelope, error) {
 			value = []byte("null")
 		case isRaw:
 			if !json.Valid(raw) {
-				return nil, fmt.Errorf("model registry state %s is not JSON", key)
+				return modelRegistryUpdate{}, fmt.Errorf("model registry state %s is not JSON", key)
 			}
 			value = raw
 		default:
 			if value, err = json.Marshal(state[key]); err != nil {
-				return nil, err
+				return modelRegistryUpdate{}, err
 			}
 		}
-		members[i] = [2][]byte{name, value}
-		size += len(name) + 1 + len(value)
+		update.members[i] = [2][]byte{name, value}
+		update.size += len(name) + 1 + len(value)
 	}
-	data := make(encodedEnvelope, 0, size)
-	data = append(data, prefix...)
-	for i, member := range members {
+	return update, nil
+}
+
+// encode puts the frame together in one buffer of its exact size.
+func (u modelRegistryUpdate) encode() encodedEnvelope {
+	data := make(encodedEnvelope, 0, u.size)
+	data = append(data, modelRegistryUpdatePrefix...)
+	for i, member := range u.members {
 		if i > 0 {
-			data = append(data, ',')
+			data = append(data, modelRegistryUpdateComma...)
 		}
-		data = append(append(append(data, member[0]...), ':'), member[1]...)
+		data = append(append(append(data, member[0]...), modelRegistryUpdateColon...), member[1]...)
 	}
-	return append(data, "}}}"...), nil
+	return append(data, modelRegistryUpdateSuffix...)
+}
+
+// digest hashes the bytes encode writes without putting them together: a publication that repeats the frame a replica holds builds no frame.
+func (u modelRegistryUpdate) digest() (sum modelCatalogDigest) {
+	hash := sha256.New()
+	hash.Write(modelRegistryUpdatePrefix)
+	for i, member := range u.members {
+		if i > 0 {
+			hash.Write(modelRegistryUpdateComma)
+		}
+		hash.Write(member[0])
+		hash.Write(modelRegistryUpdateColon)
+		hash.Write(member[1])
+	}
+	hash.Write(modelRegistryUpdateSuffix)
+	hash.Sum(sum[:0])
+	return sum
 }
 
 // ModelRegistryState is the registry snapshot an extension's synchronous
@@ -2324,9 +2402,15 @@ func (b *UIBridge) RegisterExtConn(extName string, conn *Conn, wantsModelRegistr
 	if !wantsModelRegistry {
 		return
 	}
-	if message := b.modelCatalogUpdate(); message != nil {
+	message := b.modelCatalogUpdate()
+	// The runtime applies the ready frame's catalog (ReadyPayload.Models, read before this registration) after this frame, so the frame is not
+	// recorded as what the replica holds: the first publication reaches the connection whatever it carries.
+	conn.modelCatalogMu.Lock()
+	conn.modelCatalogSentSet = false
+	if message != nil {
 		_ = conn.sendEncoded(message)
 	}
+	conn.modelCatalogMu.Unlock()
 }
 
 // HandleNotify routes a Node→Go fire-and-forget notification. Currently
@@ -4511,7 +4595,7 @@ func (b *UIBridge) handleGenerateImages(ctx context.Context, actions *HostCallba
 	return &CallResultPayload{Result: result}, nil
 }
 
-func (b *UIBridge) handleRefreshModelRegistry(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleRefreshModelRegistry(ctx context.Context, actions *HostCallbacks, extName string, owner *Conn, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
 		AllowNetwork *bool    `json:"allowNetwork"`
 		Providers    []string `json:"providers"`
@@ -4533,6 +4617,18 @@ func (b *UIBridge) handleRefreshModelRegistry(ctx context.Context, actions *Host
 	// The caller's synchronous reads after `await refresh()` see the
 	// refreshed registry, so the result carries the state it applies.
 	refreshed["state"] = b.ModelRegistryState()
+	// The replica applies that state in place of its last catalog frame, and the host cannot tell where among the frames: from here on it is sent
+	// every publication (Conn.modelCatalogAlways).
+	if owner == nil {
+		b.mu.RLock()
+		owner = b.extConns[extName]
+		b.mu.RUnlock()
+	}
+	if owner != nil {
+		owner.modelCatalogMu.Lock()
+		owner.modelCatalogAlways = true
+		owner.modelCatalogMu.Unlock()
+	}
 	result, err := json.Marshal(refreshed)
 	if err != nil {
 		return nil, err

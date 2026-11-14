@@ -132,4 +132,6 @@ def new_extension() -> pig_sdk.Extension:
         threading.Thread(target=produce, daemon=True).start()
         return result
     extension.register_provider("cancel-never-provider",{"api":"cancel-never-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_never})
+    # A provider whose model names an api that no extension registers and that has no streamSimple.
+    extension.register_provider("unknown-api-provider",{"api":"unknown-api-no-extension-registered","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]})
     return extension

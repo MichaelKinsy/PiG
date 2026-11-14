@@ -284,7 +284,9 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 		return svcs.testFauxProvider()
 	}
 
-	if providerID == "github-copilot" && !resolvedAuth {
+	// Pi uses a built-in provider own stream only for an api that provider catalog lists (compat.ts:236-239 getBuiltinProviderForModel); any other api, no api at all included, goes to the
+	// API registry, which refuses a name nothing is registered for (compat.ts:244-247). The Copilot provider sends every api name it is given as chat completions, so it is built only for such an api.
+	if providerID == "github-copilot" && !resolvedAuth && ai.ProviderCatalogServesAPI(providerID, apiKind) {
 		// Re-open auth from disk so this provider has its own handle
 		// (the Services-owned handle is shared and may be in-use).
 		auth, err := ai.NewAuthStorage(filepath.Join(svcs.AgentDir(), "auth.json"))

@@ -180,8 +180,16 @@ type Conn struct {
 	conn         net.Conn
 	closing      atomic.Bool
 	closed       atomic.Bool
+	terminating  atomic.Bool // Host.TerminateProcesses killed the extension's process: its end fails no pending request
 	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
 	modelRegistry bool
+	// modelCatalogMu orders the catalog frames queued for this connection and guards the record of the last one: modelCatalogSent is the digest
+	// of the last frame a publication queued, when modelCatalogSentSet. modelCatalogAlways is set once the replica applied a registry state
+	// that was not a catalog frame (the result of its own refresh call): it is then sent every publication.
+	modelCatalogMu      sync.Mutex
+	modelCatalogSent    modelCatalogDigest
+	modelCatalogSentSet bool
+	modelCatalogAlways  bool
 
 	// Outgoing message queue. Writer goroutine drains this. A frame that is
 	// queued or being written is outstanding work, so the heartbeat runs while
@@ -2477,6 +2485,10 @@ func (c *Conn) fail(err error) {
 		c.pendingMu.Lock()
 		c.requestsFailed = len(c.pending)
 		for id, ch := range c.pending {
+			if c.terminating.Load() {
+				// pig additive (D19): the process of the extension was killed because pig is about to exit. Pi's extension runs in pig's own process, so an end of pig never fails its pending request; the request stays pending until the process exits.
+				break
+			}
 			select {
 			case ch <- &Envelope{Type: MsgResponse, ID: id, Response: &ResponsePayload{Error: &ErrorInfo{Code: code, Message: err.Error()}}}:
 			default:

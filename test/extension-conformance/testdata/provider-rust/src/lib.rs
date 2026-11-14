@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 pub fn new_extension() -> Extension {
     let mut extension = Extension::new("provider-producer");
+    // A provider whose model names an api that no extension registers and that has no streamSimple.
+    extension.register_provider("unknown-api-provider",json!({"api":"unknown-api-no-extension-registered","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]}));
     extension.register_provider_stream("extension-provider",json!({"api":"issue-8964-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]}),|ctx,model,request,options|{
   if options["apiKey"]!="extension-key"{return Err("wrong key".into())}
   if request["messages"].as_array().and_then(|messages|messages.last()).and_then(|message|message.get("content")).and_then(|content|content.as_str().or_else(||content.get(0).and_then(|block|block.get("text")).and_then(|text|text.as_str())))==Some("cancel"){ctx.exec("provider-started", &[])?;while !ctx.is_cancelled(){std::thread::sleep(std::time::Duration::from_millis(1));}return Err("provider stream aborted".into());}

@@ -26,6 +26,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // noEscapeJSON encodes v as JSON without HTML-escaping `&`, `<`, `>`.
@@ -106,7 +108,7 @@ func UnmarshalInputEventResult(data []byte) (InputEventResult, error) {
 		return InputEventResultHandled{}, nil
 	case "transform":
 		var v InputEventResultTransform
-		if err := json.Unmarshal(data, &v); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(data, &v); err != nil {
 			return nil, fmt.Errorf("UnmarshalInputEventResult transform: %w", err)
 		}
 		return v, nil

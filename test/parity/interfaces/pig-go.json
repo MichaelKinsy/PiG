@@ -19712,6 +19712,17 @@
       "shapeHash": "sha256:5405a853d2dd217cc1c6a4c86331cd6dffd27035b7175af0037756eb8c41dd0a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#NoAPIProviderError",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "NoAPIProviderError",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(api API) error"
+      },
+      "shapeHash": "sha256:a6f45501f2b01dc4c591a93f4046c5810183231b6919d2054460960cbebae7fc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#NodeFetch",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "NodeFetch",
@@ -21624,6 +21635,17 @@
         "type": "func(providerID string) string"
       },
       "shapeHash": "sha256:6ea887270ea826e3cc47c2484eb6ed6fcbc31478607fab5c49a0f4df812cf442"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderCatalogServesAPI",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ProviderCatalogServesAPI",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, api API) bool"
+      },
+      "shapeHash": "sha256:f4a135d3b4775ac2e7642b9a339feccafc73df4dc3389ea35066f3c7ecf596df"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderClassifier",
@@ -40544,6 +40566,17 @@
         "type": "func(conn net.Conn) *idleTimeoutConn"
       },
       "shapeHash": "sha256:33acab4a454e45d737ccbf4633e1dab3e96504d8b26c7c4f994b5fd003a2fa58"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#directAPIKnown",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "directAPIKnown",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(api API) bool"
+      },
+      "shapeHash": "sha256:d77d863149e9226377cafae2aed66aa8b5d08496c31443629689009a3be9e9d5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#directAPIProvider",
@@ -137522,6 +137555,17 @@
       "shapeHash": "sha256:dd569238ff20176c7292e9991f8096cecc890e42e291dcf4f3431e2f9d254085"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.killProcesses",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.killProcesses",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []\u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:eb3a45aa51608d135b417512e34d1d9b5b8c80a0abee09f661f1ff703eace26b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.lispCommand",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.lispCommand",
@@ -137949,6 +137993,17 @@
         "type": "func(ctx context.Context) context.Context"
       },
       "shapeHash": "sha256:366d096859c2719867db797767571a760dd33d980fb8931079e27bb882464837"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.processWaitDelay",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.processWaitDelay",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.providerConfigFor",
@@ -142890,6 +142945,17 @@
       "shapeHash": "sha256:32bd5aa2c78791ec04a1300c1bbd537ee9d972495d052794c9e7e4cbe2c73ed0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#TerminateHostProcesses",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "TerminateHostProcesses",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(hosts ...*Host)"
+      },
+      "shapeHash": "sha256:e903dbe0b87a9a964681efe55968f854cb1d0f5c51e2b45952ed7f2e34a8bfe6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#TimerDeferAckArgs",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "TimerDeferAckArgs",
@@ -143498,6 +143564,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.PublishModelCatalog",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.PublishModelCatalog",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.PublishModelCatalogChange",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.PublishModelCatalogChange",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -144678,9 +144755,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, actions *HostCallbacks, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
+        "type": "func(ctx context.Context, actions *HostCallbacks, extName string, owner *Conn, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
       },
-      "shapeHash": "sha256:b5b55586595cef6275b349dd5b15a694ffd6d01101a24ea1795f6ca02b52b08f"
+      "shapeHash": "sha256:d6d7c118aa14e85ccd8e766a481a5142fa29edff08d0367f800e288297ccd26e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleRefreshTools",
@@ -145154,6 +145231,17 @@
         "type": "func(extName string, owner *Conn, request RemoteOverlayTargetPayload) (github.com/MichaelKinsy/PiG/coding/extension.RemoteOverlayFocusTarget, error)"
       },
       "shapeHash": "sha256:9f580571a3f83ab16dc61e1d43aaa239f9944a221c289878e598477fd48e4d01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.publishModelCatalog",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.publishModelCatalog",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(all bool)"
+      },
+      "shapeHash": "sha256:eaabe828b154e632ab3e6a08e460ebec2c07cb23d1fe5daa0dbf1dd38b06e89f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.recordNativeProviderRegistration",
@@ -147046,6 +147134,17 @@
         "type": "func(ctx context.Context, conn *Conn, method string, args any, result any) error"
       },
       "shapeHash": "sha256:e183963e42379820da9a56118d1642deba99660a2961764544e00c295825966b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#awaitReaped",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "awaitReaped",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(reaped []\u003c-chan struct{}, timer *time.Timer, bound time.Duration)"
+      },
+      "shapeHash": "sha256:563780f64a7a87a5dc87dec0f6290ff8cf1a505c63e4050df455cfca8ccf4dc4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#awaitStderrDrained",
@@ -154891,6 +154990,17 @@
       "shapeHash": "sha256:830de060a8b739a9588e121b626edb8b1aa12d9169bc4a3d08fbd9cf0dd4113a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelCatalogDigest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelCatalogDigest",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "modelCatalogDigest"
+      },
+      "shapeHash": "sha256:79d28888b428cdccaeffed98eded7d1bf7cc54d967da7edcf3eaf4cac7d9eaac"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelFetchBody",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "modelFetchBody",
@@ -154977,6 +155087,83 @@
         "type": "modelFetchResponse"
       },
       "shapeHash": "sha256:9065e5e5a3feb4489b58a45d954aa392daae2b5e5f53208aa23d7ce74e1989c0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdate",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "modelRegistryUpdate"
+      },
+      "shapeHash": "sha256:4c0add271fab9ab1b4e59df343033e6dadccb3bf4c4918e6a8da04337627b269"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdate.digest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdate.digest",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (sum modelCatalogDigest)"
+      },
+      "shapeHash": "sha256:f595f2940756de6d9ee4b9a53d81b359d48f9072481003a17fb49ec956e648de"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdate.encode",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdate.encode",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() encodedEnvelope"
+      },
+      "shapeHash": "sha256:4e23c2c753376b05b3453af054a332886d110b877fea3cf4691e945092fa6339"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdateColon",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdateColon",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]byte"
+      },
+      "shapeHash": "sha256:32a9615b107e58af7794a1f07ecd55a815fb3487ce86dbeb88068a575a12b5c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdateComma",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdateComma",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]byte"
+      },
+      "shapeHash": "sha256:32a9615b107e58af7794a1f07ecd55a815fb3487ce86dbeb88068a575a12b5c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdatePrefix",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdatePrefix",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]byte"
+      },
+      "shapeHash": "sha256:32a9615b107e58af7794a1f07ecd55a815fb3487ce86dbeb88068a575a12b5c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelRegistryUpdateSuffix",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "modelRegistryUpdateSuffix",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]byte"
+      },
+      "shapeHash": "sha256:32a9615b107e58af7794a1f07ecd55a815fb3487ce86dbeb88068a575a12b5c3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#modelSelectWire",
@@ -156110,6 +156297,17 @@
         "type": "func(invoke modelFetchInvoke) github.com/MichaelKinsy/PiG/ai.FetchFunction"
       },
       "shapeHash": "sha256:a849b2bfecacce18226458daf3b9edae8a3f348e34e3a35ebbbd725925bf5fb8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#newModelRegistryUpdate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "newModelRegistryUpdate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(state map[string]any) (modelRegistryUpdate, error)"
+      },
+      "shapeHash": "sha256:c2312ec6e42e7275c8e4f03af97c700c4e32ddc4a7ff17fc8f203fb5374719f3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#newOverlayProxy",
@@ -158134,6 +158332,138 @@
         "type": "func() error"
       },
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processWaitDelay.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processWaitDelay.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#productVersionEnv",

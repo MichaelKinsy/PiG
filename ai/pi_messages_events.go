@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -98,7 +99,7 @@ func (c *piMessagesEventConverter) convert(raw json.RawMessage) ([]AssistantMess
 		return nil, nil
 	}
 	var wire piMessagesWireEvent
-	if err := json.Unmarshal(jsjson.NormalizeIntegers(raw), &wire); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(jsjson.NormalizeIntegers(raw), &wire); err != nil {
 		return nil, err
 	}
 	event := wire.PiMessagesEvent

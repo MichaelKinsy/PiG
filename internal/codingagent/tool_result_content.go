@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // ToolResultEventContent preserves text and images at the extension boundary.
@@ -70,12 +71,12 @@ func ToolResultEventOverride(result *extension.ToolResultEventResult) agent.Afte
 // with no JSON object form has no type, which the caller treats like an
 // unknown block type.
 func toolResultBlockFields(block any) map[string]any {
-	raw, err := json.Marshal(block)
+	raw, err := jsstring.MarshalKeepingSurrogates(block)
 	if err != nil {
 		return nil
 	}
 	var fields map[string]any
-	if err := json.Unmarshal(raw, &fields); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(raw, &fields); err != nil {
 		return nil
 	}
 	return fields
