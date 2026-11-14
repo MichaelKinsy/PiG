@@ -4,7 +4,7 @@
 # Pi sends the text to the model as an ordinary user message (interactive-mode.ts onSubmit has no unknown-command branch). The faux
 # provider has no script for it and answers with its own error, which both binaries show under the user message.
 #
-# Measured (Pi 1.5.2 pin, PiG 5283d279a, tmux 100x35, 2026-11-14): both binaries show the user message "/neww" and then
+# Upstream evidence (Pi 1.5.2 pin, PiG 5283d279a, tmux 100x35, 2026-11-14): both binaries show the user message "/neww" and then
 #   Error: test-faux: unhandled request "/neww"
 # with no "Unknown command" notice and no login text. RPC (prompt "/neww": success:true, a user message_start with text "/neww")
 # and print mode agree.

@@ -6,7 +6,7 @@
 # core/auth-guidance.ts, which says "Use /login ...". That reads as "the editor asked me to log in", but it is the no-model prompt
 # error, not a /login dispatch (there is no prefix or fuzzy match to /login).
 #
-# Measured (Pi 1.5.2 pin, PiG 5283d279a, tmux 100x35, 2026-11-14): both binaries show, after "/neww" Enter,
+# Upstream evidence (Pi 1.5.2 pin, PiG 5283d279a, tmux 100x35, 2026-11-14): both binaries show, after "/neww" Enter,
 #   Error: No API key found for the selected model.
 #   Use /login to log into a provider via OAuth or API key. See:
 # and no "Unknown command" notice. The same prompt in print mode and RPC gives the same text (print rc 1; RPC success:false).
