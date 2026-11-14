@@ -50055,7 +50055,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -50083,6 +50083,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -52031,7 +52032,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -52059,6 +52060,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -53166,7 +53168,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -53194,6 +53196,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -56064,7 +56067,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -56092,6 +56095,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -58004,7 +58008,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -58032,6 +58036,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -59746,7 +59751,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -59774,6 +59779,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -61332,7 +61338,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -61360,6 +61366,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -62388,7 +62395,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -62416,6 +62423,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -63572,7 +63580,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -63600,6 +63608,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -65682,7 +65691,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -65710,6 +65719,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -109924,7 +109934,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -109952,6 +109962,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.Stream",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.Stream",
@@ -317414,6 +317425,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#BedrockProvider.ID",
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockHeadersMiddleware.ID",
         "go:github.com/MichaelKinsy/PiG/coding#Session.ID",
+        "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.ID",
         "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider.ID",
         "go:github.com/MichaelKinsy/PiG/coding#catalogModelBackend.ID",
         "go:github.com/MichaelKinsy/PiG/coding#composedStreamProvider.ID",

@@ -82417,7 +82417,8 @@
         "public-api:ai/compat.go#UnregisterAPIProviders"
       ],
       "evidence": [
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset",
+        "test:coding/unknown_api_refused_test.go#TestRegisteredAPINameRunsItsImplementationUntilUnregistered"
       ]
     },
     {
@@ -82437,7 +82438,8 @@
         "public-api:ai/compat.go#UnregisterAPIProviders"
       ],
       "evidence": [
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset",
+        "test:coding/unknown_api_refused_test.go#TestRegisteredAPINameRunsItsImplementationUntilUnregistered"
       ]
     },
     {

@@ -373,6 +373,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-32ce7ad](#bf-32ce7ad) | The Termux page shows the `[Context]` line as PiG prints it, `~/.pig/agent/AGENTS.md` | PiG's own defect | Android and Termux | 0.5.0 |
 | [BF-32e86a8](#bf-32e86a8) | Go, Python and Rust SDK: `theme.bold`, `italic`, `underline`, `inverse` and `strikethrough` now draw as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-32fe8c4](#bf-32fe8c4) | The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-3300e6d](#bf-3300e6d) | fix: refuse a model whose api has no registered implementation, as Pi does | PiG's own defect | All platforms | Unreleased |
 | [BF-331ab59](#bf-331ab59) | `pig status` reports the agent and project directories by the same resolved path before and after a run… | PiG's own defect | macOS | 0.7.0 |
 | [BF-333229c](#bf-333229c) | An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-334bb4b](#bf-334bb4b) | A Gemini or Mistral stream chunk with a member of an unexpected type no longer sorts the members of a tool… | PiG's own defect | All platforms | 0.5.0 |
@@ -7095,6 +7096,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `32fe8c41e7` (2026-10-27)
 - **Tests:** `durable/core/driver/docs_core_watches_test.go::TestCoreWatchOpenWaitsBehindTheTransactionHoldingTheLine`
 - **Release note:** The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the Session line, so an attachment made after a commit was queued starts at that commit's value; `watchDoc` and `observeDoc` reject on a closed Session with `Session is closed`; a watch keeps its Session alive while it runs and, once stopped or retired, no earlier incarnation's value; a Session subclass's `report(error, info)` receives the reports of its watches and observers.
+
+### BF-3300e6d
+
+**fix: refuse a model whose api has no registered implementation, as Pi does**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: refuse a model whose api has no registered implementation, as Pi does
+- **Root cause:** the default branch of the api switch in buildLeafProviderForEntry built an OpenAI chat-completions provider for any name outside the API constants, where Pi looks the name up in its API registry and refuses.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3300e6d394` (2026-11-13)
+- **Tests:** None recorded.
 
 ### BF-331ab59
 
