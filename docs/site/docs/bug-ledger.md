@@ -140,6 +140,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-105a93f](#bf-105a93f) | An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-10818f5](#bf-10818f5) | Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-108cb7d](#bf-108cb7d) | An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its… | PiG's own defect | Windows | 0.7.0 |
+| [BF-1147e77](#bf-1147e77) | A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc`… | PiG's own defect | All platforms | Unreleased |
 | [BF-114f195](#bf-114f195) | Chord plugins (internal, the tests' seam): a tree the plugins component's file watcher watches on request… | PiG's own defect | All platforms | Unreleased |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
 | [BF-11866f8](#bf-11866f8) | `WaitForIdle` on the Harness or a Conversation no longer fails with "Harness is closed" when a close begins… | PiG's own defect | All platforms | 0.7.0 |
@@ -150,6 +151,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-123827b](#bf-123827b) | Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell… | PiG's own defect | All platforms | Unreleased |
 | [BF-1239dac](#bf-1239dac) | fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as… | PiG's own defect | All platforms | Unreleased |
 | [BF-1268115](#bf-1268115) | fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not… | PiG's own defect | All platforms | Unreleased |
+| [BF-1296e60](#bf-1296e60) | fix(extensions): ending the extension processes at exit does not fail the request a provider turn waits on | PiG's own defect | All platforms | Unreleased |
 | [BF-12d5c56](#bf-12d5c56) | A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-12f281b](#bf-12f281b) | fix(chord/next/registries): drop the second NewestContribution, which the merge of fix/chord-host-tests… | PiG's own defect | All platforms | Unreleased |
 | [BF-1356aae](#bf-1356aae) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
@@ -665,6 +667,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-56731e9-2](#bf-56731e9-2) | An extension's API-key login no longer shows "Waiting for authentication..." after an authorization URL | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5689853](#bf-5689853) | `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-56a0400](#bf-56a0400) | Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-56b463c](#bf-56b463c) | fix(extensions): the exit of several extension hosts waits one bound in all | PiG's own defect | All platforms | Unreleased |
 | [BF-56e30a4](#bf-56e30a4) | The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide… | PiG's own defect | All platforms | Unreleased |
 | [BF-56e30a4-2](#bf-56e30a4-2) | A selected session row with no text no longer draws an empty bold span | PiG's own defect | All platforms | Unreleased |
 | [BF-56f1d3c](#bf-56f1d3c) | A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do | PiG's own defect | All platforms | 0.5.0 |
@@ -3897,6 +3900,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitDoesNotDropWhatTheProcessWrote`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsARequestInFlight`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsAnIdleOrLoadingRead`, `coding/extension/host/subprocess/peer_exit_test.go::TestIsolatedExtensionExitIsReportedWhenTheSocketCloseIsNotSeen`
 - **Release note:** An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.
 
+### BF-1147e77
+
+**A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc` (stdin ended, a signal, `ctx.shutdown()`), with Ctrl+C in the interactive mode, when the terminal went away, and when a replaced session's extension was still running at exit, pig stopped the extension processes and exited without waiting for the copy of their output to reach its own stderr and the extension's log.
+- **Root cause:** the exit paths assumed that killing a process ends its output, but the host copies that output on its own goroutines, and only Cmd.Wait (the reaper) joins them; Pi writes in its own process, where a write made before exit cannot be lost.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1147e7735a` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc` (stdin ended, a signal, `ctx.shutdown()`), with Ctrl+C in the interactive mode, when the terminal went away, and when a replaced session's extension was still running at exit, pig stopped the extension processes and exited without waiting for the copy of their output to reach its own stderr and the extension's log. Seen as a failing listener's `Event handler error (...)` line that was sometimes missing from the output of a docs example. Pig now waits for that copy, for Node, Python, Go and Rust extensions alike, isolated or packed. The wait ends after five seconds for all extension processes of all sessions together, so an extension whose descendant keeps the output open cannot hold pig back; pig then prints one line saying how many extension processes had not finished and that their undelivered output is dropped. The extension's own log file gets the same lines. The ordinary quit paths (print mode, an interactive quit by keys, `/quit`) already waited for the processes and are unchanged.
+
 ### BF-114f195
 
 **Chord plugins (internal, the tests' seam): a tree the plugins component's file watcher watches on request…**
@@ -4031,6 +4048,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1268115b91` (2026-10-10)
 - **Tests:** `coding/model_runtime_setup_abort_upstream_test.go::TestCancelledRequestToAnUnregisteredCallerProviderIsAborted`, `test/parity/scenarios/providers-faux-streaming/14-provider-immediate-abort.toml`, `test/parity/scenarios/rpc/55-rpc-abort-during-tool-next-request.toml`
+
+### BF-1296e60
+
+**fix(extensions): ending the extension processes at exit does not fail the request a provider turn waits on**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): ending the extension processes at exit does not fail the request a provider turn waits on
+- **Root cause:** the exit used to outrun the failure of the pending request after the kill, and nothing stated that a killed extension process must not fail its requests; waiting for the process made the race visible.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1296e60509` (2026-11-14)
+- **Tests:** None recorded.
 
 ### BF-12d5c56
 
@@ -11138,6 +11168,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `56a0400b9c` (2026-10-07), `f2a2b3409b` (2026-10-07)
 - **Tests:** `internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`, `tui/editor_bindings_oracle_test.go::TestEditorRebindingsMatchPi`, `tui/input_oracle_test.go::TestInputHandleInputMatchesPi`, `tui/key_csiu_text_test.go::TestTextInputIgnoresModifyOtherKeysText`, `tui/scoped_models_list_test.go::TestScopedModels_SearchAcceptsKittyAndPasteInput`, `tui/select_list_oracle_test.go::TestSelectListInputMatchesPi`
 - **Release note:** Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input does; the multi-line editor still accepts them.
+
+### BF-56b463c
+
+**fix(extensions): the exit of several extension hosts waits one bound in all**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): the exit of several extension hosts waits one bound in all
+- **Root cause:** the bound of the output join was written per host, and the exit walked the hosts one after another, so N hosts with a stuck pipe held the exit N bounds.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `56b463c20b` (2026-11-14)
+- **Tests:** None recorded.
 
 ### BF-56e30a4
 
