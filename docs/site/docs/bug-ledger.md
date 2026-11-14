@@ -129,6 +129,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-0e360a0](#bf-0e360a0) | The `tui` package's default keybindings no longer depend on the platform: undo is `ctrl+-` and the alt-screen… | PiG's own defect | Windows, WSL | 0.5.0 |
 | [BF-0e8761b](#bf-0e8761b) | A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
+| [BF-0f48556](#bf-0f48556) | A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-0f8866c](#bf-0f8866c) | fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+ | PiG's own defect | All platforms | Unreleased |
 | [BF-0f8bc0f](#bf-0f8bc0f) | `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ff9f4a](#bf-0ff9f4a) | A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh… | PiG's own defect | All platforms | Unreleased |
@@ -3736,6 +3737,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0e8761be47` (2026-10-05), `b728733998` (2026-10-05)
 - **Tests:** `ai/system_message_sections_test.go::TestSystemMessageWritesAnEmptySectionsObjectButNotAnAbsentOne`, `durable/examples/tasks_compaction_examples_test.go::TestExample24Compaction`, `durable/interop/interop_test.go::TestGoOpensAndResumesAStoreWrittenByPiDurable`, `durable/interop/interop_test.go::TestPiDurableOpensAndResumesAStoreWrittenByGo`, `durable/interop/interop_test.go::TestScriptedSessionJsonlFilesMatchPiDurable`, `durable/interop/interop_test.go::TestScriptedSessionStoresMatchPiDurable`, `durable/interop/interop_test.go::TestScriptedSessionsViewIdentically`, `durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable` and 1 more in docs/bug-ledger.json
 - **Release note:** A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset.
+
+### BF-0f48556
+
+**A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a prompt shown without its input row or its hint, a masked key preview built from the previous prompt's input, or the device-code hint row in its old state after the clipboard write had finished, until the next frame repainted it.
+- **Root cause:** the dialog's lock was assumed to cover every way a frame reads it because Render takes it, but the settle scan added with the per-child render cache asks the embedded container's IsDirty, which renders the dialog's children without the lock
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0f48556b87` (2026-11-14)
+- **Tests:** `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt`, `tui/locked_container_guard_test.go::TestEveryLockedContainerComponentTakesItsLockInRenderAndIsDirty`, `tui/locked_container_guard_test.go::TestTheLockedContainerGuardFailsOnAMissingOrUnlockedOverride`, `tui/login_dialog_lock_test.go::TestAuthURLCopyOutcomeRendersRaceFreeThroughAParent`, `tui/login_dialog_lock_test.go::TestLoginDialogChildrenRenderUnderTheDialogLockWhenAParentScansForChanges` and 2 more in docs/bug-ledger.json
+- **Release note:** A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a prompt shown without its input row or its hint, a masked key preview built from the previous prompt's input, or the device-code hint row in its old state after the clipboard write had finished, until the next frame repainted it. The frame's change check read the dialog's prompt input and redaction state without the dialog's lock, while the sign-in's own goroutines (the provider's prompt and progress callbacks, and the clipboard writer of a confirmed device code) wrote them. The change check now holds the same lock as the dialog's render, and a source guard fails any component that embeds a container, has its own lock and skips it in `Render` or `IsDirty`.
 
 ### BF-0f8866c
 
