@@ -3,6 +3,8 @@ package readbarrier
 import (
 	"context"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/bodyreadhook"
@@ -45,15 +47,17 @@ func (l link) accept() net.Conn {
 
 // startRead is the client's transport entering a socket read. The returned function is that read returning n bytes.
 func (l link) startRead() (finish func(n int)) {
-	bodyreadhook.BeforeRead(addressConn{local: l.client, remote: l.server})
-	return func(n int) { bodyreadhook.AfterRead(l.client.String(), n) }
+	connection, _ := bodyreadhook.BeforeRead(addressConn{local: l.client, remote: l.server})
+	return func(n int) { bodyreadhook.AfterRead(connection, n) }
 }
 
 // released reports, without waiting, whether the server may write its next record: WaitReading for a request that has already ended returns its first reading of the counts.
 func (l link) released() bool {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), http.LocalAddrContextKey, l.server))
 	cancel()
-	return l.barrier.WaitReading(ctx, l.client.String())
+	request := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	request.RemoteAddr = l.client.String()
+	return l.barrier.WaitReading(request)
 }
 
 // A client port reused by a later connection to the same server must not inherit the earlier connection's counts. The server writes a chunked terminator after an abort that the client never reads, so the earlier connection ends with written > read; the next connection on the same port then never reads "everything written".

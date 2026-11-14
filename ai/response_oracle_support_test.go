@@ -158,7 +158,7 @@ func compareResponses(t *testing.T, module, apiName string, api ai.API, run func
 			_, _ = w.Write([]byte(step.SSE))
 			if p.AbortAfterMs > 0 {
 				w.(http.Flusher).Flush()
-				if abortAtRead != nil && barrier.WaitReading(r.Context(), r.RemoteAddr) {
+				if abortAtRead != nil && barrier.WaitReading(r) {
 					abortAtRead()
 				}
 				<-r.Context().Done()

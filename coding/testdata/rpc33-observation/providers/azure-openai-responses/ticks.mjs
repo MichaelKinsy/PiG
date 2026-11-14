@@ -1,15 +1,15 @@
-// Azure OpenAI Responses microtask-tick probe. Pi 1.1.0 / OpenAI 7.19.0.
+// Azure OpenAI Responses microtask-tick probe. Pi 1.5.2 / OpenAI 7.19.0.
 // Usage: node ticks.mjs <ticks.json>
 //
 // Drives the real Pi provider (packages/ai/src/api/azure-openai-responses.ts) and, for the runtime path, the real
-// ModelRuntime.streamSimple (coding-agent/src/core/model-runtime.ts:638-643, two lazyStream layers on top of the provider).
-// A consumer iterates the EventStream with `for await` (ai/src/utils/event-stream.ts:44-91).
+// ModelRuntime.streamSimple (coding-agent/src/core/model-runtime.ts:744-776, two lazyStream layers on top of the provider).
+// A consumer iterates the EventStream with `for await` (ai/src/utils/event-stream.ts:43-84).
 //
 // Tick measurement: a self-rescheduling queueMicrotask chain adds exactly one microtask per FIFO generation and adds no
 // await or reaction to Pi's code, so it never reorders Pi's reactions. The chain restarts at every delivery. `gap` is the
 // number of chain steps that ran between the previous delivery's synchronous body and this delivery, i.e. the microtask
 // generations Pi needed to reach the next event. The first gap is measured from the synchronous `onResponse` hook
-// (azure-openai-responses.ts:127-128, `await options?.onResponse?.(...)` then `stream.push(start)`).
+// (azure-openai-responses.ts:99-100, `await options?.onResponse?.(...)` then `stream.push(start)`).
 // A gap that reaches GAP_CAP means a macrotask (socket read) intervened; it is recorded as `io: true`.
 //
 // Fixtures (server writes are real sockets):
