@@ -64,7 +64,7 @@ func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Res
 	}
 	prepared := request
 	var responseMu sync.Mutex
-	var owner *bodyReadOwner
+	var dialed *idleTimeoutConn
 	var observed *observedResponseBody
 	gotConn := false
 	if transport.connectionIdle {
@@ -73,7 +73,7 @@ func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Res
 			GotConn: func(info httptrace.GotConnInfo) {
 				activateHTTPIdleTimeout(info.Conn)
 				responseMu.Lock()
-				owner = httpBodyReadOwner(info.Conn)
+				dialed = dialedConn(info.Conn)
 				gotConn = true
 				responseMu.Unlock()
 			},
@@ -96,14 +96,15 @@ func (transport *nodeFetchTransport) RoundTrip(request *http.Request) (*http.Res
 		}
 		responseMu.Lock()
 		headersTimeout := gotConn && isHeadersTimeout(err)
+		failed := dialed
 		responseMu.Unlock()
-		return response, &nodeTransportError{message: "fetch failed", cause: err, headersTimeout: headersTimeout}
+		return response, &nodeTransportError{message: "fetch failed", cause: nodeSocketFailure(failed, err), headersTimeout: headersTimeout}
 	}
 	if response.Body != nil {
 		response.Body = &nodeFetchBody{ReadCloser: response.Body, ctx: request.Context()}
 		responseMu.Lock()
-		if owner != nil && response.ProtoMajor == 1 {
-			observed = &observedResponseBody{ReadCloser: response.Body, owner: owner}
+		if dialed != nil && response.ProtoMajor == 1 {
+			observed = &observedResponseBody{ReadCloser: response.Body, owner: &dialed.bodyRead}
 			response.Body = observed
 		} else {
 			// A caller-supplied fetch or HTTP/2 body does not expose whether bytes are buffered. Treating every read as awaiting the network keeps the observation deterministic: the consumer never sees data the producer has not yet been resumed for.

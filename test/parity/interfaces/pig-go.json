@@ -40513,6 +40513,17 @@
       "shapeHash": "sha256:1b2650e1ca318400af8e52fb98914a95c8b9b6300ca95de1a695409c58a3f81c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#dialedConn",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "dialedConn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn net.Conn) *idleTimeoutConn"
+      },
+      "shapeHash": "sha256:33acab4a454e45d737ccbf4633e1dab3e96504d8b26c7c4f994b5fd003a2fa58"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#directAPIProvider",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "directAPIProvider",
@@ -44902,6 +44913,28 @@
       "shapeHash": "sha256:48d6fec6945366db651b1d044218cf8f10dc179edbd193a495136aafd43ae933"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#idleTimeoutConn.established",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "idleTimeoutConn.established",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#idleTimeoutConn.read",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "idleTimeoutConn.read",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p []byte) (int, error)"
+      },
+      "shapeHash": "sha256:48d6fec6945366db651b1d044218cf8f10dc179edbd193a495136aafd43ae933"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#idleTimeoutConn.setReadDeadline",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "idleTimeoutConn.setReadDeadline",
@@ -45681,6 +45714,17 @@
         "type": "func(err error, codes ...string) bool"
       },
       "shapeHash": "sha256:a3103778837df305cb24d135239e6400da3c12d578fa688f4ebe4fc4f7b50c42"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#isSocketWrite",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "isSocketWrite",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(op string) bool"
+      },
+      "shapeHash": "sha256:7f0905ae35f5c3a2c007677f28877dac43a4ccb6f38ba5bb62b5045f7ad1fcf9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#isStrictToolLimitErrorMessage",
@@ -52644,6 +52688,17 @@
         "type": "nodeReadableOptions"
       },
       "shapeHash": "sha256:f4dab3b8bf95450bee7aaf6af8dd82c9443948f99706419182e123d968916ffd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#nodeSocketFailure",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "nodeSocketFailure",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *idleTimeoutConn, err error) error"
+      },
+      "shapeHash": "sha256:62e9e65b06133b2bc6a89fd13bfc738c07fc481f6c4af4d5cd44523b2f40aebd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#nodeTimerDuration",
@@ -62544,6 +62599,94 @@
         "type": "func(value any, depth int) (any, bool)"
       },
       "shapeHash": "sha256:c38b50cbd21ce834feea30ca95df57ce40d4ebf44cfec162e3370cbaabbc7489"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#socketFailure",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "socketFailure",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "socketFailure"
+      },
+      "shapeHash": "sha256:a4968724a7a222a4905cb3baab2f03dfba8ef227a3b53839a88fcd67adc32bc8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#socketFailure.awaitRead",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "socketFailure.awaitRead",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(established bool)"
+      },
+      "shapeHash": "sha256:c66734dbb8371a7656fcd5906f11018df0cc132e5c5022ea7cd8d29e6e276bc2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#socketFailure.connClosed",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "socketFailure.connClosed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#socketFailure.readEnded",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "socketFailure.readEnded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error)"
+      },
+      "shapeHash": "sha256:93a6c6c514b3d04f95e2b5274d3e899928348deef941bd76a022f9ea0f5ed2eb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#socketFailure.readFailed",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "socketFailure.readFailed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error)"
+      },
+      "shapeHash": "sha256:93a6c6c514b3d04f95e2b5274d3e899928348deef941bd76a022f9ea0f5ed2eb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#socketFailure.reported",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "socketFailure.reported",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) error"
+      },
+      "shapeHash": "sha256:757366f347b77fab18c96d624ec5206676e19d18aa9ceb4a88a9343171f303d5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#socketFailure.wakeWaiting",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "socketFailure.wakeWaiting",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(closed bool)"
+      },
+      "shapeHash": "sha256:faa2d66808644524db836d9f751b1e0ccd849d38c87372d67d1e7b6e21068eac"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#socketFailure.writeEnded",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "socketFailure.writeEnded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error, established bool)"
+      },
+      "shapeHash": "sha256:a82bcdffa1dca62f8c00ddb8a2b344f2da01faa0439fd25eab264adc49b287c7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#socketReader",

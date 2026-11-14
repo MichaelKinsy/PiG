@@ -277,9 +277,10 @@ func isSocketReset(err error, codes ...string) bool {
 
 // nodeConnectionFailure is the message and code of the cause undici attaches to "fetch failed" for a failed connection: Node's
 // `connect ECONNREFUSED 127.0.0.1:8080` for a refused or unreachable dial and `getaddrinfo ENOTFOUND host` for a name that does not
-// resolve, and the socket errors undici's connection reports before the response headers: `write ECONNRESET` and `write EPIPE` for a request
-// the peer reset while it was written, `read ECONNRESET` for a reset while the response was awaited, and SocketError `other side closed`
-// (UND_ERR_SOCKET) for a connection the peer closed. It is empty for a failure with no such Node counterpart.
+// resolve, and the socket errors undici's connection reports before the response headers: `write ECONNRESET` and `write EPIPE` for a write
+// that met the peer's reset, `read ECONNRESET` for a read that met it, and SocketError `other side closed` (UND_ERR_SOCKET) for a
+// connection the peer closed. Which of them Node reports for a request is its connection's first, in Node's order (nodeSocketFailure).
+// It is empty for a failure with no such Node counterpart.
 //
 // A peer that resets on accept is reported by Node mostly as `connect ECONNRESET <addr>` (libuv sees the reset before the connect completes) but by Go
 // as `read ECONNRESET`, because Go's dial returns first and the request write lands in the socket buffer; D520 records the difference.
@@ -298,15 +299,23 @@ func nodeConnectionFailure(cause error) (message, code string) {
 			}
 		// Node's read and write errors name the syscall and the code, not an address.
 		// pig divergence (D520): a reset on accept reaches Go's response read, where Node mostly reports it on the connect.
-		case op.Op == "write" && isSocketReset(op.Err, "ECONNRESET", "EPIPE"), op.Op == "read" && isSocketReset(op.Err, "ECONNRESET"):
+		case isSocketWrite(op.Op) && isSocketReset(op.Err, "ECONNRESET", "EPIPE"):
 			code = nodeerrno.ErrorCode(op.Err)
-			return op.Op + " " + code, code
+			return "write " + code, code
+		case op.Op == "read" && isSocketReset(op.Err, "ECONNRESET"):
+			return "read ECONNRESET", "ECONNRESET"
 		}
 	}
 	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, net.ErrClosed) || isServerClosedIdle(cause) {
 		return "other side closed", "UND_ERR_SOCKET"
 	}
 	return "", ""
+}
+
+// isSocketWrite reports whether op is a name package net gives a write to a socket: "write", and for the vectored write of a request
+// body (net.Buffers) "writev" on Unix and "wsasend" on Windows. Node names each of them `write`.
+func isSocketWrite(op string) bool {
+	return op == "write" || op == "writev" || op == "wsasend"
 }
 
 // isServerClosedIdle reports net/http's unexported errServerClosedIdle, the error a transport gives a request whose connection the server

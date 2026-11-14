@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/bodyreadhook"
@@ -115,16 +116,28 @@ type idleTimeoutConn struct {
 	bodyRead bodyReadOwner
 	// socketRead, when set, reads the dialed socket with net.Conn.Read's results but without a blocking system call entry (socketReader).
 	socketRead func([]byte) (int, error)
+	// failure is how the connection ended, as Node's socket reports it.
+	failure socketFailure
 }
 
 // newIdleTimeoutConn wraps a connection dialed on network for the provider transports.
 func newIdleTimeoutConn(conn net.Conn, network string) *idleTimeoutConn {
-	return &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout, ready: new(atomic.Bool), socketRead: newSocketReader(conn, network)}
+	tracked := &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout, ready: new(atomic.Bool), socketRead: newSocketReader(conn, network)}
+	_, tracked.failure.socket = conn.(syscall.Conn)
+	return tracked
 }
 
 func (c *idleTimeoutConn) Read(p []byte) (int, error) {
 	c.bodyRead.pending()
 	c.setReadDeadline()
+	c.failure.reading.Add(1)
+	n, err := c.read(p)
+	c.failure.readEnded(err)
+	return n, err
+}
+
+// read reads the dialed socket.
+func (c *idleTimeoutConn) read(p []byte) (int, error) {
 	connection, observed := bodyreadhook.BeforeRead(c.Conn)
 	if !observed {
 		if c.socketRead != nil {
@@ -139,7 +152,21 @@ func (c *idleTimeoutConn) Read(p []byte) (int, error) {
 
 func (c *idleTimeoutConn) Write(p []byte) (int, error) {
 	c.setWriteDeadline()
-	return c.Conn.Write(p)
+	n, err := c.Conn.Write(p)
+	c.failure.writeEnded(err, c.established())
+	return n, err
+}
+
+// established reports whether connection establishment has completed (GotConn), after which net/http's read loop reads the connection.
+func (c *idleTimeoutConn) established() bool {
+	return c.ready != nil && c.ready.Load()
+}
+
+// Close closes the connection, which ends a write's wait for the read side (socketFailure).
+func (c *idleTimeoutConn) Close() error {
+	err := c.Conn.Close()
+	c.failure.connClosed()
+	return err
 }
 
 // requestWriteBatch bounds the bytes one vectored write of a request body carries, so the write deadline restarts for each batch as it does for each write.
@@ -207,6 +234,7 @@ func (w *requestBatchWriter) flush() error {
 	w.conn.setWriteDeadline()
 	send := w.queue
 	n, err := send.WriteTo(w.conn.Conn)
+	w.conn.failure.writeEnded(err, w.conn.established())
 	clear(w.queue)
 	w.queue, w.queued = w.queue[:0], 0
 	w.written += n
