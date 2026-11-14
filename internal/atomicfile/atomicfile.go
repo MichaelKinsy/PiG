@@ -13,6 +13,8 @@ var (
 	replaceTemp = replace
 	// copyAttributes carries the extended attributes of the file being replaced onto its replacement; tests inject the failures of a file system.
 	copyAttributes = carryAttributes
+	// syncFile flushes an open file or directory to its device; tests inject the failures of a file system.
+	syncFile = func(file *os.File) error { return file.Sync() }
 )
 
 // inPlaceReporter is told of every write that went in place; the embedding program points it at its debug log.
@@ -140,7 +142,7 @@ func syncDirectory(path string) bool {
 	if err != nil {
 		return false
 	}
-	synced := dir.Sync() == nil
+	synced := syncFile(dir) == nil
 	_ = dir.Close()
 	return synced
 }
