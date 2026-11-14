@@ -329,7 +329,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `selectors` | 17 | 17 | 0 | 0 | 1 | 15 | not run |
 | `session` | 47 | 47 | 0 | 0 | 0 | 20 | not run |
 | `settings` | 17 | 17 | 0 | 0 | 0 | 21 | not run |
-| `slash-commands` | 31 | 30 | 1 | 0 | 0 | 21 | not run |
+| `slash-commands` | 33 | 32 | 1 | 0 | 0 | 22 | not run |
 | `startup` | 27 | 26 | 1 | 0 | 0 | 10 | not run |
 | `tools` | 40 | 40 | 0 | 0 | 0 | 40 | not run |
 | `tree` | 12 | 11 | 1 | 0 | 0 | 10 | not run |

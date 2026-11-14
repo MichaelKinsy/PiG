@@ -10829,6 +10829,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/slash-commands/29-unknown-slash-no-model.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: No API key found for the selected model.",
+            "capture_end": "OAuth or API key. See:"
+          },
+          "reason": "Owned visible surface: Both binaries answer an unknown slash command with no model by sending it as a prompt: the no-API-key guidance, no unknown-command notice.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/30-unknown-slash-faux-model.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "/neww",
+            "capture_end": "unhandled request"
+          },
+          "reason": "Owned visible surface: Both binaries send an unknown slash command to the selected model as a user message.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/startup/00-startup-banner.toml",
       "transforms": [
         {
