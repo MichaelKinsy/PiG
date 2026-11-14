@@ -304458,17 +304458,6 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loginDialogOutcome",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "loginDialogOutcome",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(dlg *github.com/MichaelKinsy/PiG/tui.LoginDialogComponent, failed *sync/atomic.Bool, providerName string) error"
-      },
-      "shapeHash": "sha256:f3b31131e0872edc56dc04ce520df579faf45cb512aae1053697450f0e7f9f61"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loginFullWidth",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "loginFullWidth",
@@ -304610,6 +304599,39 @@
         "type": "loginProviderCompletionOption"
       },
       "shapeHash": "sha256:96cb4dec436a0c8cc61c3ff5f4329349a18d427a9deaed93bc670bca5cea1df1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loginRejection",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loginRejection",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "loginRejection"
+      },
+      "shapeHash": "sha256:0083bdfeea1b7f71a1d4ed1b752cce1b27eb1bed7349a3fd5865846097576650"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loginRejection.outcome",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loginRejection.outcome",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dlg *github.com/MichaelKinsy/PiG/tui.LoginDialogComponent, providerName string) error"
+      },
+      "shapeHash": "sha256:699a7139a1698587e1543e2fadefccdea1e462dd69f9fb59b2b5745254efa2cb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loginRejection.reject",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loginRejection.reject",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dlg *github.com/MichaelKinsy/PiG/tui.LoginDialogComponent, err error)"
+      },
+      "shapeHash": "sha256:504ddc41edfb5b5a238e41063a7d7b5505377b4be26cb94dab4501474d255cc9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loginReset",
@@ -357558,6 +357580,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.Clear",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "LoginDialogComponent.Clear",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.Close",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "LoginDialogComponent.Close",
       "kind": "function",
       "exported": true,
       "shape": {
