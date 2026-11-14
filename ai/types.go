@@ -419,6 +419,11 @@ func (s OrderedSections) MarshalJSON() ([]byte, error) {
 	jsstring.SortOwnKeys(s, func(section PromptSection) string { return section.Name })
 	var buf bytes.Buffer
 	writeString := func(value string) error {
+		if jsstring.HoldsSurrogate(value) {
+			// JSON.stringify writes a lone surrogate as its escape; the encoder below writes each of its bytes as U+FFFD.
+			buf.Write(jsstring.AppendString(nil, value))
+			return nil
+		}
 		var encoded bytes.Buffer
 		encoder := json.NewEncoder(&encoded)
 		encoder.SetEscapeHTML(false)

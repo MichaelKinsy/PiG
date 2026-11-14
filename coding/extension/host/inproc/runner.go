@@ -46,7 +46,7 @@ func coerceResult[T any](handlerResult any) (T, bool) {
 	}
 	if raw, ok := handlerResult.(json.RawMessage); ok {
 		var out T
-		if err := json.Unmarshal(raw, &out); err == nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(raw, &out); err == nil {
 			return out, true
 		}
 	}

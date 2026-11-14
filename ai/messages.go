@@ -246,7 +246,7 @@ func (record NestedToolCallRecord) MarshalJSON() ([]byte, error) {
 		}
 		wire.Arguments = arguments
 	}
-	return json.Marshal(wire)
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // UnmarshalJSON decodes the record and keeps the member order of its arguments.

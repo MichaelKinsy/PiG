@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -360,7 +361,7 @@ func (p *SystemPrompt) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(prompt) //perf:ok a getter value: the prompt exists only once rendered, once per before_agent_start event encoded (a user prompt)
+	return jsstring.MarshalKeepingSurrogates(prompt) //perf:ok a getter value: the prompt exists only once rendered, once per before_agent_start event encoded (a user prompt)
 }
 
 // MarshalJSON writes the run's trigger members, then type, systemPromptOptions and systemPrompt, the order Pi's event has (V8 defines the getter of runner.ts's object literal, which spreads the trigger, after its data members). systemPrompt is the prompt the options render now.
@@ -370,7 +371,7 @@ func (e BeforeAgentStartEvent) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	if e.MessageType == BeforeAgentStartCustom {
-		return json.Marshal(struct {
+		return jsstring.MarshalKeepingSurrogates(struct {
 			MessageType         BeforeAgentStartMessageType `json:"messageType"`
 			Message             *CustomMessage              `json:"message"`
 			Type                string                      `json:"type"`
@@ -378,7 +379,7 @@ func (e BeforeAgentStartEvent) MarshalJSON() ([]byte, error) {
 			SystemPrompt        string                      `json:"systemPrompt"`
 		}{BeforeAgentStartCustom, e.Message, e.Type, e.SystemPromptOptions, systemPrompt})
 	}
-	return json.Marshal(struct {
+	return jsstring.MarshalKeepingSurrogates(struct {
 		MessageType         BeforeAgentStartMessageType `json:"messageType"`
 		Prompt              string                      `json:"prompt"`
 		Images              []ImageContent              `json:"images,omitzero"`
@@ -463,7 +464,7 @@ type AgentBeforeSettleEvent struct {
 // MarshalJSON writes the members in Pi's order: type, outcome, then the boundary's entries, continue and context (extensions/runner.ts emitBoundary).
 func (e AgentBeforeSettleEvent) MarshalJSON() ([]byte, error) {
 	//perf:ok once per agent settle, not per delta: the wrapper only fixes Pi's member order
-	return json.Marshal(struct {
+	return jsstring.MarshalKeepingSurrogates(struct {
 		Type     string                 `json:"type"`
 		Outcome  AgentActivityOutcome   `json:"outcome"`
 		Entries  []SessionBoundaryDraft `json:"entries"`
@@ -579,13 +580,13 @@ type SessionBoundaryDraft struct {
 func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 	switch d.Type {
 	case SessionBoundaryDraftCustom:
-		return json.Marshal(struct {
+		return jsstring.MarshalKeepingSurrogates(struct {
 			Type       SessionBoundaryDraftType `json:"type"`
 			CustomType string                   `json:"customType"`
 			Data       any                      `json:"data,omitempty"`
 		}{d.Type, d.CustomType, d.Data})
 	case SessionBoundaryDraftCustomMessage:
-		return json.Marshal(struct {
+		return jsstring.MarshalKeepingSurrogates(struct {
 			Type       SessionBoundaryDraftType `json:"type"`
 			CustomType string                   `json:"customType"`
 			Content    any                      `json:"content,omitempty"`
@@ -603,13 +604,13 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 		case len(replacement) == 0:
 			replacement = json.RawMessage("null")
 		}
-		return json.Marshal(struct {
+		return jsstring.MarshalKeepingSurrogates(struct {
 			Type        SessionBoundaryDraftType `json:"type"`
 			TargetID    string                   `json:"targetId"`
 			Replacement json.RawMessage          `json:"replacement,omitempty"`
 		}{d.Type, d.TargetID, replacement})
 	case SessionBoundaryDraftCompaction:
-		return json.Marshal(struct {
+		return jsstring.MarshalKeepingSurrogates(struct {
 			Type             SessionBoundaryDraftType `json:"type"`
 			Summary          string                   `json:"summary"`
 			FirstKeptEntryID *string                  `json:"firstKeptEntryId"`
@@ -618,7 +619,7 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 		}{d.Type, d.Summary, d.FirstKeptEntryID, d.Details, draftUsage(d.Usage, d.UsageRaw, d.UsageNull)})
 	default:
 		type plain SessionBoundaryDraft
-		return json.Marshal(plain(d))
+		return jsstring.MarshalKeepingSurrogates(plain(d))
 	}
 }
 
@@ -774,7 +775,7 @@ func (e TurnEndEvent) MarshalJSON() ([]byte, error) {
 		out.Outcome, out.Entries, out.Continue, out.Context = &state.Outcome, &state.Entries, &state.Continue, &state.Context
 	}
 	//perf:ok once per turn end, not per delta: the wrapper only fixes Pi's member order
-	return json.Marshal(out)
+	return jsstring.MarshalKeepingSurrogates(out)
 }
 
 // MessageStartEvent: upstream types.ts MessageStartEvent.
@@ -821,7 +822,7 @@ func (e ToolExecutionStartEvent) MarshalJSON() ([]byte, error) {
 	if e.WireArgs != nil {
 		e.Args = e.WireArgs
 	}
-	return json.Marshal(plain(e))
+	return jsstring.MarshalKeepingSurrogates(plain(e))
 }
 
 // WireMembers is a wire value that encodes as a JSON object. It names the members in the order the object writes them and holds each value, so the host can compare one such value with the one it sent before without encoding it again. Its MarshalJSON writes the same object.
@@ -854,7 +855,7 @@ func (e ToolExecutionUpdateEvent) MarshalJSON() ([]byte, error) {
 	if e.WirePartialResult != nil {
 		e.PartialResult = e.WirePartialResult
 	}
-	return json.Marshal(plain(e))
+	return jsstring.MarshalKeepingSurrogates(plain(e))
 }
 
 // ToolExecutionEndEvent: upstream types.ts ToolExecutionEndEvent.
@@ -880,7 +881,7 @@ func (e ToolExecutionEndEvent) MarshalJSON() ([]byte, error) {
 	if e.WireResult != nil {
 		e.Result = e.WireResult
 	}
-	return json.Marshal(plain(e))
+	return jsstring.MarshalKeepingSurrogates(plain(e))
 }
 
 // ─── Model Events ────────────────────────────────────────────────────────

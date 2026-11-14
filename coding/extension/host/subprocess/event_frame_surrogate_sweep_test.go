@@ -22,12 +22,17 @@ type sweepFill struct {
 	n        int
 	paths    map[string]string
 	unfilled []string
+	// clean fills the members with plain text instead (the benchmark of an ordinary frame).
+	clean bool
 }
 
 func (f *sweepFill) label(path string) string {
 	f.n++
 	label := fmt.Sprintf("L%03d", f.n)
 	f.paths[label] = path
+	if f.clean {
+		return label + "[ok]"
+	}
 	return label + "[" + sweepUnit + "]"
 }
 
@@ -327,8 +332,8 @@ func TestEventFrameSurrogateSweep(t *testing.T) {
 		if err != nil {
 			t.Errorf("%s: the event did not encode: %v", name, err)
 		}
-		if replaced+other > 0 {
-			t.Errorf("%s: %d text members are not written as the escape of the unit: %s", name, replaced+other, strings.Join(damaged, "; "))
+		if len(damaged) > 0 {
+			t.Errorf("%s: %d text members are not written as the escape of the unit: %q", name, len(damaged), damaged)
 		}
 	}
 	for _, eventType := range types {
