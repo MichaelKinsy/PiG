@@ -20,13 +20,24 @@ import (
 const abortProbeNode = `import { appendFileSync } from "node:fs";
 export default function (pi) {
   const log = (line) => appendFileSync(process.env.ABORT_PROBE_LOG, line + "\n");
+  const state = (signal) => (signal === undefined ? "none" : signal.aborted ? "aborted" : "live");
   let fired = false;
+  let again = false;
   pi.on("message_update", async (_event, ctx) => {
     if (fired) return;
     fired = true;
-    log("abort");
+    const held = ctx.signal;
+    log("abort:" + state(held));
     ctx.abort();
-    log("returned");
+    log("returned:" + state(held) + ":" + state(ctx.signal));
+  });
+  // A second handler of the same event runs after the first one's call returned: the run's signal is aborted for it too, and its own abort is a no-op.
+  pi.on("message_update", async (_event, ctx) => {
+    if (!fired || again) return;
+    again = true;
+    log("second:" + state(ctx.signal));
+    ctx.abort();
+    log("second again:" + state(ctx.signal));
   });
   pi.on("agent_end", async (event) => {
     const last = [...event.messages].reverse().find((message) => message.role === "assistant");
@@ -39,13 +50,14 @@ export default function (pi) {
 const abortProbeGo = `package abortprobe
 
 import (
+	"context"
 	"os"
 	"sync/atomic"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
-var fired atomic.Bool
+var fired, again atomic.Bool
 
 func logLine(line string) {
 	file, err := os.OpenFile(os.Getenv("ABORT_PROBE_LOG"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
@@ -56,13 +68,32 @@ func logLine(line string) {
 	_, _ = file.WriteString(line + "\n")
 }
 
+func state(signal context.Context) string {
+	switch {
+	case signal == nil:
+		return "none"
+	case signal.Err() != nil:
+		return "aborted"
+	}
+	return "live"
+}
+
 func Extension() *sdk.Extension {
 	e := sdk.New("abortprobe")
 	e.OnEvent("message_update", func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if fired.CompareAndSwap(false, true) {
-			logLine("abort")
+			held := ctx.Signal()
+			logLine("abort:" + state(held))
 			ctx.Abort()
-			logLine("returned")
+			logLine("returned:" + state(held) + ":" + state(ctx.Signal()))
+		}
+		return nil, nil
+	})
+	e.OnEvent("message_update", func(ctx sdk.Context, _ map[string]any) (any, error) {
+		if fired.Load() && again.CompareAndSwap(false, true) {
+			logLine("second:" + state(ctx.Signal()))
+			ctx.Abort()
+			logLine("second again:" + state(ctx.Signal()))
 		}
 		return nil, nil
 	})
@@ -87,6 +118,7 @@ const abortProbePython = `import os
 import pig_sdk
 
 fired = []
+again = []
 
 
 def log(line):
@@ -97,6 +129,10 @@ def log(line):
         file.write(line + "\n")
 
 
+def state(signal):
+    return "none" if signal is None else "aborted" if signal.is_set() else "live"
+
+
 def new_extension() -> pig_sdk.Extension:
     ext = pig_sdk.Extension("abortprobe")
 
@@ -104,9 +140,18 @@ def new_extension() -> pig_sdk.Extension:
         if fired:
             return
         fired.append(True)
-        log("abort")
+        held = ctx.signal
+        log("abort:" + state(held))
         ctx.abort()
-        log("returned")
+        log("returned:" + state(held) + ":" + state(ctx.signal))
+
+    def second_update(ctx, event):
+        if not fired or again:
+            return
+        again.append(True)
+        log("second:" + state(ctx.signal))
+        ctx.abort()
+        log("second again:" + state(ctx.signal))
 
     def agent_end(ctx, event):
         reason = ""
@@ -117,6 +162,7 @@ def new_extension() -> pig_sdk.Extension:
         log("agent_end:" + reason)
 
     ext.on_event("message_update", message_update)
+    ext.on_event("message_update", second_update)
     ext.on_event("agent_end", agent_end)
     return ext
 `
@@ -137,6 +183,7 @@ use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static FIRED: AtomicBool = AtomicBool::new(false);
+static AGAIN: AtomicBool = AtomicBool::new(false);
 
 fn log_line(line: &str) {
     let path = std::env::var("ABORT_PROBE_LOG").unwrap_or_default();
@@ -145,13 +192,34 @@ fn log_line(line: &str) {
     }
 }
 
+fn state(cancelled: Option<bool>) -> &'static str {
+    match cancelled {
+        None => "none",
+        Some(true) => "aborted",
+        Some(false) => "live",
+    }
+}
+
 pub fn new_extension() -> Extension {
     let mut ext = Extension::new("abortprobe");
     ext.on_event("message_update", |ctx, _event| {
         if !FIRED.swap(true, Ordering::SeqCst) {
-            log_line("abort");
+            let held = ctx.signal();
+            log_line(&format!("abort:{}", state(held.as_ref().map(|signal| signal.is_cancelled()))));
             ctx.abort();
-            log_line("returned");
+            log_line(&format!(
+                "returned:{}:{}",
+                state(held.as_ref().map(|signal| signal.is_cancelled())),
+                state(ctx.signal().map(|signal| signal.is_cancelled()))
+            ));
+        }
+        None
+    });
+    ext.on_event("message_update", |ctx, _event| {
+        if FIRED.load(Ordering::SeqCst) && !AGAIN.swap(true, Ordering::SeqCst) {
+            log_line(&format!("second:{}", state(ctx.signal().map(|signal| signal.is_cancelled()))));
+            ctx.abort();
+            log_line(&format!("second again:{}", state(ctx.signal().map(|signal| signal.is_cancelled()))));
         }
         None
     });
@@ -173,6 +241,10 @@ const abortProbeLisp = `(defpackage "abortprobe" (:use "COMMON-LISP"))
 (in-package "abortprobe")
 
 (defvar *fired* nil)
+(defvar *again* nil)
+
+(defun signal-state (signal)
+  (cond ((null signal) "none") ((pig:abort-signal-set-p signal) "aborted") (t "live")))
 
 (defun log-line (line)
   (with-open-file (out (sb-posix:getenv "ABORT_PROBE_LOG") :direction :output :if-exists :append :if-does-not-exist :create :external-format :utf-8)
@@ -194,9 +266,19 @@ const abortProbeLisp = `(defpackage "abortprobe" (:use "COMMON-LISP"))
               (declare (ignore data))
               (unless *fired*
                 (setf *fired* t)
-                (log-line "abort")
+                (let ((held (pig:ctx-signal ctx)))
+                  (log-line (concatenate 'string "abort:" (signal-state held)))
+                  (pig:ctx-abort ctx)
+                  (log-line (concatenate 'string "returned:" (signal-state held) ":" (signal-state (pig:ctx-signal ctx))))))
+              nil))
+    (pig:on ext "message_update"
+            (lambda (ctx data)
+              (declare (ignore data))
+              (when (and *fired* (not *again*))
+                (setf *again* t)
+                (log-line (concatenate 'string "second:" (signal-state (pig:ctx-signal ctx))))
                 (pig:ctx-abort ctx)
-                (log-line "returned"))
+                (log-line (concatenate 'string "second again:" (signal-state (pig:ctx-signal ctx)))))
               nil))
     (pig:on ext "agent_end"
             (lambda (ctx data)
@@ -260,10 +342,12 @@ func buildRustSDKFixture(t *testing.T, name string) string {
 	return filepath.Join(target, "release", testExecutable(name))
 }
 
-// An extension's ctx.abort() from a handler the run awaits, in the TUI of the real binary, in every SDK: the call returns, the turn ends aborted and the next
-// prompt is answered. Pi starts the abort and returns (interactive-mode.ts:2097-2099, :4935-4937 `void this.session.abort()`); the interactive host action
-// waited for the run that awaited the handler, so the call never returned and the session answered nothing more. Every SDK reaches the one host action
-// through subprocess.UIBridge.handleAbort.
+// An extension's ctx.abort() from a handler the run awaits, in the TUI of the real binary, in every SDK: the call returns, the run's signal is aborted by the time
+// it returns (for the signal the handler held before the call, for ctx.signal read again, and for a second handler of the same event queued behind it, whose own
+// abort is a no-op), the turn ends aborted and the next prompt is answered. Pi aborts the run's AbortController before abort() returns and awaits nothing
+// (interactive-mode.ts:4840-4857 `void this.session.abort()`, agent-session.ts:2519-2530, agent.ts:350-352); the interactive host action waited for the run that
+// awaited the handler, so the call never returned and the session answered nothing more, and a version that only queued the abort replied before the run's
+// signal was aborted. Every SDK reaches the one host action through subprocess.UIBridge.handleAbort.
 func TestExtensionAbortFromAHandlerInInteractiveMode(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the pig binary and extensions")
@@ -332,11 +416,11 @@ func TestExtensionAbortFromAHandlerInInteractiveMode(t *testing.T) {
 			if _, err := master.WriteString("TUI_LIVE_STREAM once\r"); err != nil {
 				t.Fatal(err)
 			}
-			awaitLog("abort", "returned", "agent_end:aborted")
+			awaitLog("abort:live", "returned:aborted:aborted", "second:aborted", "second again:aborted", "agent_end:aborted")
 			if _, err := master.WriteString("TUI_LIVE_STREAM again\r"); err != nil {
 				t.Fatal(err)
 			}
-			awaitLog("abort", "returned", "agent_end:aborted", "agent_end:stop")
+			awaitLog("abort:live", "returned:aborted:aborted", "second:aborted", "second again:aborted", "agent_end:aborted", "agent_end:stop")
 		})
 	}
 }
