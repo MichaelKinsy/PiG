@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/allocsize"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // JSONNames returns the member names encoding/json reads and writes for the exported fields of the struct type t, which has no embedded
@@ -50,7 +51,7 @@ func AppendMembers(object []byte, members map[string]json.RawMessage) ([]byte, e
 		if len(out) > 1 {
 			out = append(out, ',')
 		}
-		name, err := json.Marshal(key)
+		name, err := jsstring.MarshalKeepingSurrogates(key)
 		if err != nil {
 			return nil, err
 		}

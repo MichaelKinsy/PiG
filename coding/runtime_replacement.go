@@ -70,6 +70,8 @@ type runtimeReplacement struct {
 	reload func(context.Context, *Session) error
 	// drain settles mode-owned work of the outgoing Session after cancellable before hooks approved the replacement and before the Session aborts and shuts down.
 	drain func(context.Context) error
+	// quitSettle is the mode's settle of its active run for the dispose of a quit whose input ended (SetBeforeQuitDispose).
+	quitSettle func()
 }
 
 // NewAgentSessionRuntime is upstream's `new AgentSessionRuntime(session, services, createRuntime, diagnostics, modelFallbackMessage)` (agent-session-runtime.ts:81-93):

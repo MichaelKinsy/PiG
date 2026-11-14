@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -98,6 +99,10 @@ var marshalerCensus = map[string]censusRow{
 		return compatObject{value: map[string]any{"sort": loneSurrogateProbe, "order": []any{loneSurrogateProbe}, loneSurrogateProbe: map[string]any{"k": loneSurrogateProbe}},
 			order: schemaObjectOrder{"/openRouterRouting": {"sort", "order", loneSurrogateProbe}}, path: "/openRouterRouting"}
 	}},
+	// A compat is copied through its JSON form (a model record, an extension's registration), so its marshaler writes the unit its reader keeps.
+	"ai.OpenAICompat": {probe: func() any {
+		return OpenAICompat{OpenRouterRouting: OpenRouterRouting{"sort": loneSurrogateProbe}, Extra: map[string]json.RawMessage{loneSurrogateProbe: json.RawMessage(`1`)}}
+	}},
 	"ai.ToolCall":    {probe: func() any { return ToolCall{ID: "call_1", Name: loneSurrogateProbe} }, sameUnderEncodingJSON: true},
 	"ai.TextContent": {probe: func() any { return TextContent{Text: loneSurrogateProbe} }, sameUnderEncodingJSON: true},
 
@@ -137,7 +142,7 @@ var marshalerCensus = map[string]censusRow{
 	"ai.SystemOneImageAsset": {other: censusSystemOne}, "ai.SystemOneImageAssets": {other: censusSystemOne}, "ai.SystemOneWireQuestions": {other: censusSystemOne},
 	"ai.SystemOneWireRequest": {other: censusSystemOne},
 
-	"ai.ClientIdentity": {other: censusSettings}, "ai.UserAgentMode": {other: censusSettings}, "ai.DeferredOption": {other: censusSettings}, "ai.OpenAICompat": {other: censusSettings},
+	"ai.ClientIdentity": {other: censusSettings}, "ai.UserAgentMode": {other: censusSettings}, "ai.DeferredOption": {other: censusSettings},
 	"ai.ThinkingBudgets": {other: censusSettings},
 
 	"agent.AgentMessage":               {other: censusSessionRecord},
@@ -153,8 +158,13 @@ type marshalerMethod struct {
 	at   string
 }
 
-// marshalerReceivers parses the non-test files of ai, ai/providers/bedrock and agent and returns the methods of each receiver.
+// marshalerReceivers are the receivers of MarshalJSON and MarshalJSONTo.
 func marshalerReceivers(t *testing.T) map[string][]marshalerMethod {
+	return censusReceivers(t, "MarshalJSON", "MarshalJSONTo")
+}
+
+// censusReceivers parses the non-test files of ai, ai/providers/bedrock and agent and returns the methods of each receiver that are named in methods.
+func censusReceivers(t *testing.T, methods ...string) map[string][]marshalerMethod {
 	t.Helper()
 	receivers := map[string][]marshalerMethod{}
 	files := token.NewFileSet()
@@ -173,7 +183,7 @@ func marshalerReceivers(t *testing.T) map[string][]marshalerMethod {
 			}
 			for _, declaration := range file.Decls {
 				method, ok := declaration.(*ast.FuncDecl)
-				if !ok || method.Recv == nil || len(method.Recv.List) != 1 || method.Name.Name != "MarshalJSON" && method.Name.Name != "MarshalJSONTo" {
+				if !ok || method.Recv == nil || len(method.Recv.List) != 1 || !slices.Contains(methods, method.Name.Name) {
 					continue
 				}
 				receiver := method.Recv.List[0].Type

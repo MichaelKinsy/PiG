@@ -514,6 +514,7 @@ func TestSurfacePollsEveryIsDirtyOverride(t *testing.T) {
 		"tui.AssistantMessageComponent":     true, // own flag only; its nodes are built from its segments and error state, which every mutator changes through updateContent -> Invalidate, so the surface receives each change
 		"tui.UserMessageComponent":          true, // own flag only; its MarkdownText node is its content and images, which every mutator changes and Invalidates (the inner Markdown's transform never reaches a node)
 		"tui.Container":                     true, // the scan of its children is for a parent container's cache; the surface walks a Container into its children, claims its own flag for structure changes, and polls a Container that is a tool card's result
+		"tui.LoginDialogComponent":          true, // Container.IsDirty under the dialog's lock; the surface never calls IsDirty, and every mutator of the dialog Invalidates its embedded Container, which the surface receives
 		"tui.ToolExecutionComponent":        true, // the surface tracks its result component
 		"tui.StaticText":                    true, // never dirty, embeds no invalidatable
 		"subprocess.toolRenderProxy":        true, // embeds no invalidatable

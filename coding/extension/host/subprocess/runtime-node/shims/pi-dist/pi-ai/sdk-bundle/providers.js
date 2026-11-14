@@ -11,7 +11,7 @@ import {
   getBuiltinModels,
   getBuiltinProviders,
   radiusProvider
-} from "./chunk-NWI4KRZW.js";
+} from "./chunk-V2K2QGIX.js";
 import "./chunk-KPOW7NYG.js";
 import "./chunk-VLLDVPPZ.js";
 import "./chunk-TG7FIA7M.js";

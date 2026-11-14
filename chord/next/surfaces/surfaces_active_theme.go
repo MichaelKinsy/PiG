@@ -36,16 +36,17 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 	var stopped atomic.Bool
 	var out outbox
 	update := func() {
-		mu.Lock()
-		if stopped.Load() {
-			mu.Unlock()
-			return
-		}
-		theme := ActiveTheme(themes, pick, current)
-		mu.Unlock()
-		out.run(func() {
-			if !stopped.Load() {
-				changed(theme)
+		out.update(func() func() {
+			mu.Lock()
+			defer mu.Unlock()
+			if stopped.Load() {
+				return nil
+			}
+			theme := ActiveTheme(themes, pick, current)
+			return func() {
+				if !stopped.Load() {
+					changed(theme)
+				}
 			}
 		})
 	}
