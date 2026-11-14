@@ -3048,6 +3048,29 @@
       ]
     },
     {
+      "id": "BF-0f669b1",
+      "title": "The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread…",
+      "symptom": "The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread for 25 to 60 ms, while the host waits for an answer.",
+      "rootCause": "the runtime started the registration pass as soon as the grammars were imported, as if nothing waited for its thread after start-up, while the host asks for the renders of a resumed transcript at that time",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread for 25 to 60 ms, while the host waits for an answer. On a resume that step could fall between the host's first render requests for an extension's transcript cards and their answers, and the cards stayed placeholders for that time. The step now starts once a host request has been answered and none is outstanding, 250 ms after the grammars were imported when the host asks nothing, and at the latest 2 s after they were imported.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0f669b1c95",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_highlight_gate_test.go::TestNodeHighlightRegistrationWaitsForHostRequests",
+        "coding/extension/host/subprocess/node_highlight_gate_test.go::TestNodeRenderRequestAfterReadyIsAnsweredBeforeTheHighlightRegistration"
+      ]
+    },
+    {
       "id": "BF-0f8866c",
       "title": "fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+",
       "symptom": "fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+",
@@ -35884,6 +35907,33 @@
       "commitsFrom": "release note",
       "tests": [
         "test/docs-drift/docs_drift_test.go::TestDocumentedSlashCommandsExist"
+      ]
+    },
+    {
+      "id": "BF-935b371",
+      "title": "A start with a Node extension no longer writes the whole model catalog to the extension once per step of the…",
+      "symptom": "A start with a Node extension no longer writes the whole model catalog to the extension once per step of the start-up catalog refresh.",
+      "rootCause": "the registry notifies its observers after every commit of a refresh, changed or not, and the host forwarded each notification as a full catalog without comparing it with the frame the extension already held",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A start with a Node extension no longer writes the whole model catalog to the extension once per step of the start-up catalog refresh. The host sent the catalog (about 1.5 MB) when it bound the model operations and again after the refresh reloaded `models.json` and after it refreshed the catalogs, changed or not: three equal frames in interactive mode and two in RPC mode, each decoded and applied by the extension's process on the thread that answers the host. A frame equal to the last one sent on a connection is now left out when a registry notification asks for it; a changed registry and the answer to an extension's own registry write reach the extension as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "935b371168",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/model_catalog_change_test.go::TestBatchedModelCatalogPublicationKeepsItsKind",
+        "coding/extension/host/subprocess/model_catalog_change_test.go::TestModelCatalogRecordBelongsToTheConnection",
+        "coding/extension/host/subprocess/model_catalog_change_test.go::TestModelRegistryUpdateDigestIsOfTheFrame",
+        "coding/extension/host/subprocess/model_catalog_change_test.go::TestPublishModelCatalogChangeSendsNothingAReplicaHolds",
+        "coding/extension/host/subprocess/model_catalog_change_test.go::TestRefreshResultEndsTheCatalogRecord",
+        "internal/codingagent/extension_catalog_refresh_publication_test.go::TestCatalogRefreshSendsAReplicaOnlyAChangedCatalog"
       ]
     },
     {

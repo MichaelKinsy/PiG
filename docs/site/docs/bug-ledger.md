@@ -132,6 +132,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0e360a0](#bf-0e360a0) | The `tui` package's default keybindings no longer depend on the platform: undo is `ctrl+-` and the alt-screen… | PiG's own defect | Windows, WSL | 0.5.0 |
 | [BF-0e8761b](#bf-0e8761b) | A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0f48556](#bf-0f48556) | A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a… | PiG's own defect | All platforms | Unreleased |
+| [BF-0f669b1](#bf-0f669b1) | The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread… | PiG's own defect | All platforms | Unreleased |
 | [BF-0f8866c](#bf-0f8866c) | fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+ | PiG's own defect | All platforms | Unreleased |
 | [BF-0f8bc0f](#bf-0f8bc0f) | `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ff9f4a](#bf-0ff9f4a) | A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh… | PiG's own defect | All platforms | Unreleased |
@@ -1329,6 +1330,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-930c88e](#bf-930c88e) | Claude models with per-message effort no longer fail with `Invalid effort level` on accounts whose… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9327bc7](#bf-9327bc7) | A closed Harness or Session no longer stays reachable from Go's timer heap | PiG's own defect | All platforms | 0.7.0 |
 | [BF-93319f4](#bf-93319f4) | The terminal UI worked example now describes the typed `/model` prefix in words | PiG's own defect | All platforms | 0.5.0 |
+| [BF-935b371](#bf-935b371) | A start with a Node extension no longer writes the whole model catalog to the extension once per step of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-93c09d6](#bf-93c09d6) | A local package source that is a file Node cannot import, such as a packed `.tgz`, fails to load as in Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c09d6-2](#bf-93c09d6-2) | `pig install --validate-only` on a Package root validates every extension the Package names in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c5def](#bf-93c5def) | A built-in extension named with `-e builtin:<name>` loads before the extensions from settings and the… | PiG's own defect | All platforms | 0.5.0 |
@@ -3791,6 +3793,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0f48556b87` (2026-11-14)
 - **Tests:** `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt`, `tui/locked_container_guard_test.go::TestEveryLockedContainerComponentTakesItsLockInRenderAndIsDirty`, `tui/locked_container_guard_test.go::TestTheLockedContainerGuardFailsOnAMissingOrUnlockedOverride`, `tui/login_dialog_lock_test.go::TestAuthURLCopyOutcomeRendersRaceFreeThroughAParent`, `tui/login_dialog_lock_test.go::TestLoginDialogChildrenRenderUnderTheDialogLockWhenAParentScansForChanges` and 2 more in docs/bug-ledger.json
 - **Release note:** A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a prompt shown without its input row or its hint, a masked key preview built from the previous prompt's input, or the device-code hint row in its old state after the clipboard write had finished, until the next frame repainted it. The frame's change check read the dialog's prompt input and redaction state without the dialog's lock, while the sign-in's own goroutines (the provider's prompt and progress callbacks, and the clipboard writer of a confirmed device code) wrote them. The change check now holds the same lock as the dialog's render, and a source guard fails any component that embeds a container, has its own lock and skips it in `Render` or `IsDirty`.
+
+### BF-0f669b1
+
+**The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread for 25 to 60 ms, while the host waits for an answer.
+- **Root cause:** the runtime started the registration pass as soon as the grammars were imported, as if nothing waited for its thread after start-up, while the host asks for the renders of a resumed transcript at that time
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0f669b1c95` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/node_highlight_gate_test.go::TestNodeHighlightRegistrationWaitsForHostRequests`, `coding/extension/host/subprocess/node_highlight_gate_test.go::TestNodeRenderRequestAfterReadyIsAnsweredBeforeTheHighlightRegistration`
+- **Release note:** The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread for 25 to 60 ms, while the host waits for an answer. On a resume that step could fall between the host's first render requests for an extension's transcript cards and their answers, and the cards stayed placeholders for that time. The step now starts once a host request has been answered and none is outstanding, 250 ms after the grammars were imported when the host asks nothing, and at the latest 2 s after they were imported.
 
 ### BF-0f8866c
 
@@ -20368,6 +20384,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `93319f4284` (2026-10-11)
 - **Tests:** `test/docs-drift/docs_drift_test.go::TestDocumentedSlashCommandsExist`
 - **Release note:** The terminal UI worked example now describes the typed `/model` prefix in words. A docs check no longer reports a nonexistent command from that page.
+
+### BF-935b371
+
+**A start with a Node extension no longer writes the whole model catalog to the extension once per step of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A start with a Node extension no longer writes the whole model catalog to the extension once per step of the start-up catalog refresh.
+- **Root cause:** the registry notifies its observers after every commit of a refresh, changed or not, and the host forwarded each notification as a full catalog without comparing it with the frame the extension already held
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `935b371168` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/model_catalog_change_test.go::TestBatchedModelCatalogPublicationKeepsItsKind`, `coding/extension/host/subprocess/model_catalog_change_test.go::TestModelCatalogRecordBelongsToTheConnection`, `coding/extension/host/subprocess/model_catalog_change_test.go::TestModelRegistryUpdateDigestIsOfTheFrame`, `coding/extension/host/subprocess/model_catalog_change_test.go::TestPublishModelCatalogChangeSendsNothingAReplicaHolds`, `coding/extension/host/subprocess/model_catalog_change_test.go::TestRefreshResultEndsTheCatalogRecord`, `internal/codingagent/extension_catalog_refresh_publication_test.go::TestCatalogRefreshSendsAReplicaOnlyAChangedCatalog`
+- **Release note:** A start with a Node extension no longer writes the whole model catalog to the extension once per step of the start-up catalog refresh. The host sent the catalog (about 1.5 MB) when it bound the model operations and again after the refresh reloaded `models.json` and after it refreshed the catalogs, changed or not: three equal frames in interactive mode and two in RPC mode, each decoded and applied by the extension's process on the thread that answers the host. A frame equal to the last one sent on a connection is now left out when a registry notification asks for it; a changed registry and the answer to an extension's own registry write reach the extension as before.
 
 ### BF-93c09d6
 
