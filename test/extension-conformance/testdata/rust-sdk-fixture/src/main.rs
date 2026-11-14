@@ -2561,7 +2561,7 @@ fn main() {
         },
     );
     ext.command("provider_probe_register", "Register a provider with one model", |ctx, _| {
-        let config: Value = serde_json::from_str(r#"{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}"#).unwrap();
+        let config: Value = serde_json::from_str(r#"{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":true,"input":["text","image"],"cost":{"input":3.5,"output":4.5,"cacheRead":0.35,"cacheWrite":0.45},"contextWindow":54321,"maxTokens":4321}]}"#).unwrap();
         match ctx.model_registry().register_provider("conformance-probe", config) {
             Ok(_) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),

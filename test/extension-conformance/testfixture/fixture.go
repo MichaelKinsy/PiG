@@ -579,7 +579,7 @@ func Extension() *sdk.Extension {
 	// provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
 	ext.Command("provider_probe_register", "Register a provider with one model", func(ctx sdk.Context, _ string) error {
 		var config sdk.ProviderConfig
-		if err := json.Unmarshal([]byte(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`), &config); err != nil {
+		if err := json.Unmarshal([]byte(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":true,"input":["text","image"],"cost":{"input":3.5,"output":4.5,"cacheRead":0.35,"cacheWrite":0.45},"contextWindow":54321,"maxTokens":4321}]}`), &config); err != nil {
 			return err
 		}
 		ext.RegisterProvider("conformance-probe", config)

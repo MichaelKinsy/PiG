@@ -256,7 +256,7 @@ pub fn new_extension() -> Extension {
         "apiKey": "conformance-key",
         "api": "openai-completions",
         "models": [
-            {"id": "chat-1", "name": "Chat", "reasoning": true, "input": ["text"], "cost": cost, "contextWindow": 128000, "maxTokens": 4096},
+            {"id": "chat-1", "name": "Chat", "reasoning": true, "input": ["text"], "cost": cost, "contextWindow": 54321, "maxTokens": 4321},
             {"id": "image-1", "name": "Image", "type": "image", "api": "openrouter-images", "input": ["text"], "cost": cost, "output": ["image", "text"]},
             {"id": "classifier-1", "name": "Classifier", "type": "classifier", "api": "llama-cpp-classify", "input": ["text"], "cost": cost, "contextWindow": 8192},
         ],
