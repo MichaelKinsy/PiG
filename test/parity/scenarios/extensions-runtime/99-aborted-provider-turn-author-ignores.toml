@@ -1,0 +1,50 @@
+# Behavior family: extensions-runtime
+# Scenario: the user aborts a turn whose model is served by an extension's streamSimple, and the author's stream ignores the abort, pushes more text and completes.
+#
+# Upstream evidence (Pi 1.5.2, run with this extension in RPC and interactive mode): packages/agent/src/agent-loop.ts:424-478 consumes the response with no check of the
+# abort signal, so what the author's stream gives after the abort is the turn: its later events are shown and its terminal event, or its result, is the final message
+# (agent-loop.ts:470-478). The extension's streamSimple receives the run's signal as options.signal (types.ts ProviderConfig.streamSimple, model-registry.ts). Escape is
+# interactive-mode.ts's abort of the run. Input: "HOLD the stream", Enter; once "alpha beta" shows, Escape. Observable: the settled screen from the prompt down: the
+# text pushed after the abort shows and no abort line follows it.
+
+name = "99-aborted-provider-turn-author-ignores"
+description = "Escape during an extension provider's response shows what its author's stream pushes afterwards and keeps the completed message"
+covers = [
+  "packages/coding-agent/src/core/extensions/types.ts",
+  "packages/coding-agent/src/core/model-registry.ts",
+  "packages/agent/src/agent-loop.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "abort-probe/author-ignores"
+
+[env]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/provider-abort.mjs"]
+pi_extensions = ["testdata/ext/provider-abort.mjs"]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "HOLD the stream"
+capture_end = "alpha beta gamma"
+
+[[tmux.steps]]
+keys = ["HOLD the stream", "Enter"]
+wait_contains = ["alpha beta"]
+wait_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["alpha beta gamma"]
+wait_stable_milliseconds = 1000
+wait_timeout_seconds = 20
+
+[assert]
+both_contain = ["alpha beta gamma"]
+output_equal = true
+runs = 3

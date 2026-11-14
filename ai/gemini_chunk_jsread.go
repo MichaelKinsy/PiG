@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -37,7 +38,7 @@ type geminiChunkRead struct {
 // it rejects for a member's type, or one with a part that has no members (a null text reads as nothing), takes the JS read.
 func decodeGeminiChunk(text string, chunk *geminiStreamChunk) error {
 	data := jsjson.NormalizeIntegers([]byte(text))
-	err := json.Unmarshal(data, chunk)
+	err := jsstring.UnmarshalKeepingSurrogates(data, chunk)
 	var mismatch *json.UnmarshalTypeError
 	if err == nil && !geminiChunkHasEmptyPart(chunk) || err != nil && !errors.As(err, &mismatch) {
 		return err

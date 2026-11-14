@@ -389,7 +389,7 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	m.unsubscribeSessionListener()
 	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
 	m.disposeActiveSelector()
-	// upstream: interactive-mode.ts:7285-7287: stop() then clears the progress indicator, only when the setting shows it, and before the renderer stops. Nothing clears the title: Pi never writes an empty one.
+	// upstream: interactive-mode.ts stop() at the pin (:7283-7300): disposes the active selector (:7284), then turns the terminal progress off (`this.ui.terminal.setProgress(false)`, :7285-7287) only when the setting shows it, before the footer and the renderer stop. This is the stop path's one progress-off, in Pi's order and under Pi's condition; nothing clears the title: Pi never writes an empty one. The dispose of a quit by keys follows the stop and can wait, for the run it aborts and for extension handlers: a progress still on would go on writing its keep-alive to the restored terminal.
 	if m.opts.Settings.GetShowTerminalProgress() {
 		m.setTerminalProgress(false)
 	}
@@ -498,6 +498,14 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	tui.RestoreTerminalOnExit()
 	tui.RestoreTerminalFromSignal()
 	BeforeExit()
+	// pig additive (D19): Pi's extensions end with its process. Here they are processes of their own, and this exit runs no dispose that would end them: a quit by keys that waits for an author (finishInteractiveShutdown) holds its dispose when the ctrl+c arrives, so the runtime of that author would stay behind. Ending the processes fails that author's pending request with an error of the host's own, which Pi's process, dead at the signal, never produces, and the owner loop still serves the waiting quit: so the Session stops persisting and the quit's resume hint is withheld first, or that error would be written into the session file as the turn's message and the quit would go on to its hint beside this exit.
+	m.interruptExiting.Store(true)
+	if session, ok := m.opts.SessionHandle.(interface{ Dispose() }); ok {
+		session.Dispose()
+	}
+	if m.opts.TerminateExtensionProcesses != nil {
+		m.opts.TerminateExtensionProcesses()
+	}
 	EndSessionMarker()
 	os.Exit(130)
 }

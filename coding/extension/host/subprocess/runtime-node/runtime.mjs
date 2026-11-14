@@ -1045,6 +1045,9 @@ export class ThemeShim {
   getBashModeBorderColor() { return (text) => this.fg("bashMode", text); }
 }
 
+// The requests whose author the host goes on awaiting after their abort, as Pi awaits them, and whose drained loop this runtime reports: an extension's streamSimple stream. pig additive (D19): after stdin ended, such a request, aborted and unanswered, lets this process's loop drain while it waits for its author, and the drain is reported as a pending quit handler's is (runtime_drained): Pi's process exits when its loop empties while its shutdown awaits the aborted run. The host awaits a native Provider's stream (provider_stream) and a user_bash exec the same way (Conn.request); they are not in the set, because every wait of their handlers on this runtime's own transport must be marked first, as the streamSimple loop marks its one (forwarding).
+const AUTHOR_HELD_REQUESTS = new Set(["provider_stream_simple"]);
+
 // pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, with an unanswered command it has not reported yet (runtime_commands_drained: the host then knows the process cannot answer the commands it had started, as Pi's single loop would not either). A command that arrives after a report makes the loop reportable again.
 const quitDrain = newQuitDrain();
 // pig additive (D232): a connection end drains only its own group; the group-less runtime keeps the process-wide drain.
@@ -1081,10 +1084,13 @@ function quitDrainState(drain) {
   let commands = false;
   let tail = false;
   let hostWaits = false;
+  let held = false;
   for (const runtime of drain.runtimes) {
     for (const request of runtime.requestRecords.values()) {
       if (request.responded) continue;
       outstanding ||= request.quit;
+      // An aborted request whose author the host goes on awaiting: Pi awaits the run's end at stdin's end (dispose awaits session.abort()), and its process exits when its loop empties, which is what an author that holds no timer and no I/O leaves.
+      held ||= request.authorHeld && !request.forwarding && request.controller?.signal.aborted === true;
       commands ||= request.command && !request.drainReported;
       tail ||= request.quitTail;
     }
@@ -1092,13 +1098,13 @@ function quitDrainState(drain) {
       if (pending.synchronous || !USER_BLOCKING_CALLS.has(pending.method)) hostWaits = true;
     }
   }
-  return { outstanding, commands, tail, hostWaits };
+  return { outstanding, commands, tail, hostWaits, held };
 }
 
 function refreshQuitDrain(drain) {
   if (!drain.inputEnded) return;
-  const { outstanding, commands, tail, hostWaits } = quitDrainState(drain);
-  const quitWaits = drain.active && !drain.reported && outstanding;
+  const { outstanding, commands, tail, hostWaits, held } = quitDrainState(drain);
+  const quitWaits = !drain.reported && ((drain.active && outstanding) || held);
   // pig additive (D232): a group still serving keeps the provider sockets referenced.
   setProviderSocketsRef(!(quitWaits || commands) || hostWaits || otherGroupServing(drain));
   // Pi flushRawStdout lets immediately fulfilled Promise continuations run, but does not await a post-disposal handler's future timer or I/O. IPC must not turn that suspension into a Session join.
@@ -1209,16 +1215,17 @@ function resumeRequestWindows(drain) {
 
 function drainQuitRequests(drain) {
   if (!drain.inputEnded) return;
-  const { outstanding, commands, hostWaits } = quitDrainState(drain);
+  const { outstanding, commands, hostWaits, held } = quitDrainState(drain);
   if (hostWaits) return;
-  if (outstanding && drain.active && !drain.reported) reportQuitExit("runtime_drained", drain);
+  if (!drain.reported && ((outstanding && drain.active) || held)) reportQuitExit("runtime_drained", drain, held);
   else if (commands) reportQuitExit("runtime_commands_drained", drain);
 }
 
-function reportQuitExit(method, drain) {
+// held reports the drain of a loop that an aborted author-held request left empty (quitDrainState), which needs no pending quit handler.
+function reportQuitExit(method, drain, held = false) {
   if (!drain.inputEnded) return;
   if (method !== "runtime_commands_drained") {
-    if (!drain.active || drain.reported) return;
+    if ((!drain.active && !held) || drain.reported) return;
     drain.reported = true;
   }
   // The report covers the commands the process started before it: the host marks those whose started state precedes the report on their connection. A drained loop with a pending quit handler cannot answer its commands either.
@@ -1482,6 +1489,7 @@ export class Connection {
         if (controller) controller.signalOnly = false;
         this.cancelParent(requestId, true);
       }
+      refreshQuitDrain(drainFor(this.owner?.group));
     }
     if (env.type === "notify" && env.notify?.method === "model_stream_event" && env.notify.args?.started) {
       this.streamStarts.get(env.notify.args.streamId)?.();
@@ -3390,7 +3398,7 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = drainFor(this.group).active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
+    const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", authorHeld: AUTHOR_HELD_REQUESTS.has(env.request?.method), event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain(drainFor(this.group));
@@ -3479,6 +3487,7 @@ export class Runtime {
             controller?.abort(env.cancel?.reason || "cancelled");
             this.conn.cancelParent(requestId);
           }
+          refreshQuitDrain(drainFor(this.group));
           continue;
         }
         if (env.type === "request") this.startRequest(env);
@@ -5289,15 +5298,28 @@ export class Runtime {
           const {model, context, options} = request.args;
           // Pi's composer calls extension.streamSimple with the effective registered root as its receiver (provider-composer.ts:500-501).
           const stream = await callback.call(this.registeredProviderConfig(request.tool), model, context, {...options, signal:ctx[requestSignal]});
+          // Pi's consumer has no check of the signal (agent-loop.ts:424-478): what the author's stream gives after the abort of its signal, a signal-only cancel, is forwarded, and its result is the answer. An ordinary cancel ends the request.
+          const controller = this.activeRequests.get(id);
           for await (const event of stream) {
-            if (ctx[requestSignal].aborted) throw new Error("provider stream aborted");
+            if (cancelsHostCalls(controller)) throw new Error("provider stream aborted");
             const accepted = this.conn.send({type:"notify", notify:{method:"provider_stream_event",args:{request_id:id,result:event}}});
-            if (!accepted) await new Promise((resolve,reject)=>{
-              const finish=(error)=>{this.conn.socket.off("drain",drain);this.conn.socket.off("close",closed);ctx[requestSignal].removeEventListener("abort",aborted);error?reject(error):resolve();};
-              const drain=()=>finish();const closed=()=>finish(new Error("extension connection closed"));const aborted=()=>finish(new Error("provider stream aborted"));
-              this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx[requestSignal].addEventListener("abort",aborted,{once:true});if(ctx[requestSignal].aborted)aborted();
-            });
+            if (!accepted) {
+              // The request waits for this runtime's transport here, not for its author: meanwhile it is not held by its author (quitDrainState), the transport keeps the process alive, and a loop that is empty but for this wait is not reported as drained.
+              const record = this.requestRecords.get(id);
+              if (record) { record.forwarding = true; refreshQuitDrain(drainFor(this.group)); }
+              try {
+                await new Promise((resolve,reject)=>{
+                  const finish=(error)=>{this.conn.socket.off("drain",drain);this.conn.socket.off("close",closed);ctx[requestSignal].removeEventListener("abort",aborted);error?reject(error):resolve();};
+                  const drain=()=>finish();const closed=()=>finish(new Error("extension connection closed"));const aborted=()=>{if(cancelsHostCalls(controller))finish(new Error("provider stream aborted"));};
+                  this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx[requestSignal].addEventListener("abort",aborted,{once:true});if(ctx[requestSignal].aborted)aborted();
+                });
+              } finally {
+                if (record) { record.forwarding = false; refreshQuitDrain(drainFor(this.group)); }
+              }
+            }
           }
+          // The stream ended. An ordinary cancel that arrived first has ended the request, and the answer is the abort, as in the Go, Python, Rust and Lisp SDKs, which read the cancel once more after their forwarding loop; one that arrives later finds the stream ended and forwarded, and the request keeps its result.
+          if (cancelsHostCalls(controller)) throw new Error("provider stream aborted");
           await this.respond(id, await stream.result());
           return;
         }

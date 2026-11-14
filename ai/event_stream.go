@@ -308,3 +308,15 @@ func eventPartial(event AssistantMessageEvent) *AssistantMessage {
 		return nil
 	}
 }
+
+// SettledResult returns the stream's final message without waiting, and whether the stream has one: Pi's `await response.result()` of a result that is already resolved.
+func (s *AssistantMessageEventStream) SettledResult() (*AssistantMessage, bool) {
+	select {
+	case <-s.done:
+	default:
+		return nil, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.result, true
+}

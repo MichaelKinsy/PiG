@@ -85,11 +85,7 @@ func (m *InteractiveMode) deliverUserMessage(content any, deliverAs extension.De
 // extensionAbort is an extension's ctx.abort() in interactive mode, for subprocess and in-process extensions alike. It is Pi's restoreQueuedMessagesToEditor({ abort: true }): the queued steering and follow-up messages go back to the editor, then `void this.session.abort()` cancels the retry delay, compaction, branch summary and run. Both happened when it returns, as in Pi, where they run before abort()'s first await: ctx.hasPendingMessages() is false and the run's signal is aborted. Nothing waits for the end of the run, so a handler the run awaits can call it. The owner loop runs it as one of its tasks (inline for a caller on the loop), and a mode that stops first drops it.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:2399-2401, :4925-4941
 func (m *InteractiveMode) extensionAbort() {
-	ctx := m.runCtx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	_ = m.runOnMainAndWait(ctx, func() error {
+	_ = m.runOnMainAndWait(m.runCtx, func() error {
 		m.restoreQueuedMessagesToEditor(false)
 		if m.opts.SessionHandle != nil {
 			m.opts.SessionHandle.AbortRetry()

@@ -10,6 +10,10 @@ import (
 
 // The SSE data lines are decoded in place (json.Unmarshal(jsonwire.Bytes(line), ...)) where json.Unmarshal([]byte(line)) copied each one first. These tests hold the
 // results to what the copying decode gave, the error text included.
+//
+// One difference is Pi's: the escape of a lone UTF-16 surrogate. Pi reads each event with JSON.parse (the pinned SDK, packages/ai/package.json:78
+// "@anthropic-ai/sdk": "0.129.0", core/streaming.js:49 `yield JSON.parse(sse.data)`), which keeps the unit, where encoding/json reads U+FFFD. The rows of
+// anthropicDeltaPiText name the text Pi holds; every other row, a whole pair included, is the copying decode's.
 
 // referenceAnthropicDelta is decodeAnthropicDeltaEventReflect as it was written with the copy.
 func referenceAnthropicDelta(sse anthropicStreamEvent, ev *anthEventContentBlockDelta) error {
@@ -36,11 +40,19 @@ func errorAsUnmarshalType(err error) (*json.UnmarshalTypeError, bool) {
 	return errors.AsType[*json.UnmarshalTypeError](err)
 }
 
+// anthropicDeltaPiText is the delta text JSON.parse gives for the rows whose text holds the escape of a lone surrogate: the unit, in its three-byte form.
+var anthropicDeltaPiText = map[string]string{
+	`{"delta":{"type":"text_delta","text":"\ud800 \u00e9 \" \\ "}}`: "\xed\xa0\x80 \u00e9 \" \\ ",
+	`{"index":0,"delta":{"type":"text_delta","text":"H[\ud83d"}}`:   "H[\xed\xa0\xbd",
+	`{"index":0,"delta":{"type":"text_delta","text":"\ude00]"}}`:    "\xed\xb8\x80]",
+}
+
 func TestAnthropicDeltaReflectDecodesAsTheCopyingDecodeDid(t *testing.T) {
 	for _, text := range []string{
 		`{"index":0,"delta":{"type":"text_delta","text":"hi"}}`, `{"index":1e0,"delta":{"type":"text_delta","text":"x"}}`, `{"index":"1","delta":{"type":"text_delta","text":"x"}}`,
 		`{"index":0,"delta":{"type":"text_delta","text":null}}`, `{"index":0,"delta":{"type":"input_json_delta"}}`, `{"index":0,"delta":{"type":"thinking_delta","thinking":5}}`,
 		`{"delta":{"type":"text_delta","text":"\ud800 \u00e9 \" \\ "}}`, "{\"delta\":{\"type\":\"text_delta\",\"text\":\"a\xffb\xed\xa0\x80\"}}",
+		`{"index":0,"delta":{"type":"text_delta","text":"H[\ud83d"}}`, `{"index":0,"delta":{"type":"text_delta","text":"\ude00]"}}`, `{"index":0,"delta":{"type":"text_delta","text":"\ud83d\ude00"}}`,
 		`{"index":0,"d\u0065lta":{"type":"signature_delta","signature":"s"}}`, `{"INDEX":2,"DELTA":{"TEXT":"x"}}`, `[]`, `null`, `5`, `{"delta":[]}`, `{"delta":`,
 		`{"index":-0,"delta":{"type":"text_delta","text":"x"}}`, `{"index":9007199254740993,"delta":{"type":"text_delta","text":"x"}}`,
 	} {
@@ -51,8 +63,14 @@ func TestAnthropicDeltaReflectDecodesAsTheCopyingDecodeDid(t *testing.T) {
 			t.Errorf("%q: error %v, want %v", text, gotErr, wantErr)
 			continue
 		}
+		if piText, ok := anthropicDeltaPiText[text]; ok {
+			if want.Delta.Text == piText {
+				t.Errorf("%q: the copying decode reads Pi's text; the row needs no entry in anthropicDeltaPiText", text)
+			}
+			want.Delta.Text = piText
+		}
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("%q:\n got: %+v\nwant: %+v", text, got, want)
+			t.Errorf("%q:\n got: %+v (text %q)\nwant: %+v (text %q)", text, got, got.Delta.Text, want, want.Delta.Text)
 		}
 	}
 }

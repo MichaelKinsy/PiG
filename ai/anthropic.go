@@ -1938,10 +1938,11 @@ func decodeAnthropicDeltaEvent(sse anthropicStreamEvent, ev *anthEventContentBlo
 	return decodeAnthropicDeltaEventReflect(sse, ev)
 }
 
-// decodeAnthropicDeltaEventReflect is the decode with json.Unmarshal and the second look, for every record the fast decode leaves.
+// decodeAnthropicDeltaEventReflect is the decode by reflection and the second look, for every record the fast decode leaves. JSON.parse keeps a lone
+// UTF-16 surrogate of a string (the half of a character a server split over two deltas), so the decode does.
 func decodeAnthropicDeltaEventReflect(sse anthropicStreamEvent, ev *anthEventContentBlockDelta) error {
 	text := sse.JSON
-	err := json.Unmarshal(jsonwire.Bytes(text), ev)
+	err := jsstring.UnmarshalKeepingSurrogates(jsonwire.Bytes(text), ev)
 	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		if coerced, ok := coerceAnthropicDelta([]byte(text)); ok {
 			*ev, err = coerced, nil

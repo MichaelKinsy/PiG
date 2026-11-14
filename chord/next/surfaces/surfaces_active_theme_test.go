@@ -66,10 +66,10 @@ func TestFollowsTheRegistryThePrincipalsPickAndTheMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	until(t, func() bool { return last() == "dusk" })
+	// SetMode may return while the callback of dusk still runs on the pick watch's goroutine (the test is woken from inside it):
+	// the change is queued behind that delivery and is delivered when it returns, last (outbox.update).
 	follower.SetMode("light")
-	if got := last(); got != "paper" {
-		t.Errorf("after the mode changed = %q, want paper", got)
-	}
+	until(t, func() bool { return last() == "paper" })
 }
 
 func TestThemeChoicesRefuseAnIDOver128Characters(t *testing.T) {

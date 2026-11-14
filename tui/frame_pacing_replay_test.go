@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright Michael Kinsy
 // SPDX-License-Identifier: MIT
 
+//go:build linux || darwin
+
 package tui
 
 import (
