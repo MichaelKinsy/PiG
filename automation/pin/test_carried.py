@@ -553,6 +553,58 @@ dependency("f00d", "pi-ai", { name: "@google/genai", from: "2.21.0", to: "2.32.0
         self.assertEqual(json.loads(self.node("--dependencies")), [])
 
 
+@unittest.skipUnless(HAVE_NODE, "node is required")
+class ProviderDataManifestTests(unittest.TestCase):
+    """Pi writes pi-ai's provider data and its hidden manifest in one generation: applying the backports fails when a data file and its manifest entry differ
+    afterwards (the Copilot data file changed by a backport while .manifest.json named the release's bytes was the red of TestPublishedModelDataValidates)."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.script = self.root / "backports.mjs"
+        self.script.write_text(backport_fixture.text(""), encoding="utf-8")
+        self.package = self.root / "pi-ai"
+        self.data = self.package / "dist" / "providers" / "data"
+        self.data.mkdir(parents=True)
+        self.files = {"a.json": b'{"a":1}\n', "b.json": b'{"b":2}\n'}
+        for name, body in self.files.items():
+            (self.data / name).write_bytes(body)
+        self.write_manifest({name: hashlib.sha256(body).hexdigest() for name, body in self.files.items()})
+
+    def write_manifest(self, files):
+        (self.data / ".manifest.json").write_text(json.dumps({"schemaVersion": 6, "generatedAt": "2026-01-01T00:00:00.000Z", "structureHash": "0" * 64, "files": files}), encoding="utf-8")
+
+    def apply(self) -> subprocess.CompletedProcess:
+        return subprocess.run(["node", str(self.script), "--packages", f"pi-ai={self.package}"], capture_output=True, text=True)
+
+    def test_data_that_matches_its_manifest_passes(self):
+        self.assertEqual(self.apply().returncode, 0)
+
+    def test_a_data_file_changed_without_its_manifest_entry_fails_naming_the_file(self):
+        (self.data / "b.json").write_bytes(b'{"b":3}\n')
+        done = self.apply()
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("b.json does not match its manifest hash", done.stderr)
+        self.assertNotIn("a.json does not match", done.stderr)
+
+    def test_a_data_file_the_manifest_does_not_name_and_a_named_file_that_is_gone_fail(self):
+        (self.data / "c.json").write_bytes(b"{}\n")
+        self.assertIn("c.json is not in the manifest", self.apply().stderr)
+        (self.data / "c.json").unlink()
+        (self.data / "a.json").unlink()
+        self.assertIn("a.json is in the manifest and not in the directory", self.apply().stderr)
+
+    def test_the_vendored_directory_is_checked_the_same_way(self):
+        dist = self.root / "dist"
+        (dist / "pi-ai" / "providers").mkdir(parents=True)
+        shutil.copytree(self.data, dist / "pi-ai" / "providers" / "data")
+        self.assertEqual(subprocess.run(["node", str(self.script), str(dist)], capture_output=True, text=True).returncode, 0)
+        (dist / "pi-ai" / "providers" / "data" / "a.json").write_bytes(b"{}\n")
+        done = subprocess.run(["node", str(self.script), str(dist)], capture_output=True, text=True)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("a.json does not match its manifest hash", done.stderr)
+
+
 class OracleLedgerTests(unittest.TestCase):
     """A followed Pi commit that changes what the oracle installs or runs must be carried by the oracle or say why not."""
 
