@@ -5,7 +5,9 @@ package ai
 import (
 	"io"
 	"runtime"
+	"runtime/debug"
 	"runtime/metrics"
+	"sync/atomic"
 	"testing"
 )
 
@@ -29,6 +31,29 @@ func schedulerWakeSamples(t *testing.T) uint64 {
 	return total
 }
 
+// wakeSamples runs window and returns the goroutine wakes the runtime counted while it ran. The runtime counts the whole process, and a collection in
+// progress wakes goroutines of its own: a goroutine that allocates while the collector marks, and cannot repay its assist debt from the workers' credit,
+// parks until a worker has credit for it and parks again at its next allocation, and the sweeper yields between batches of spans. None of that is the
+// code under test: a traced window of a loaded process counted the wakes of this test's own goroutines parked in "GC mark assist wait for work", and one
+// macOS run counted 212 samples, about 1700 wakes, in 4000 reads that wake no goroutine. The window therefore runs with the collector off: runtime.GC
+// ends a collection in progress and leaves the heap swept, SetGCPercent(-1) keeps the next one from starting (and waits out one that started in
+// between), and a window allocates kilobytes. The collector goes off only after the forced collection, which the pacer still slows an allocator down for;
+// with it off the pacer does not. Parallel top-level tests wait until every serial test has ended, so none of them allocates meanwhile, and a memory limit
+// headroom above what the runtime has mapped is the backstop for anything that does: the collector runs again at it. Both settings are restored when the
+// window ends and when a failed check exits the goroutine inside it.
+func wakeSamples(t *testing.T, window func()) uint64 {
+	t.Helper()
+	const headroom = 256 << 20
+	runtime.GC()
+	mapped := []metrics.Sample{{Name: "/memory/classes/total:bytes"}}
+	metrics.Read(mapped)
+	defer debug.SetMemoryLimit(debug.SetMemoryLimit(min(debug.SetMemoryLimit(-1), int64(mapped[0].Value.Uint64())+headroom)))
+	defer debug.SetGCPercent(debug.SetGCPercent(-1))
+	before := schedulerWakeSamples(t)
+	window()
+	return schedulerWakeSamples(t) - before
+}
+
 func noBodyDelivery(bodyReadSignal) { panic("a ready read must not call deliver") }
 
 // A read the transport's buffers serve completes on the caller's turn: the bridge hands it to no goroutine and allocates nothing but the chunk.
@@ -43,12 +68,12 @@ func TestObservedBodyReadinessBufferedReadWakesNoGoroutine(t *testing.T) {
 	}
 	read()
 	const reads = 4000
-	before := schedulerWakeSamples(t)
-	for range reads {
-		read()
-	}
 	// The round trip through a reader goroutine wakes two goroutines per read, about reads/4 samples.
-	samples := schedulerWakeSamples(t) - before
+	samples := wakeSamples(t, func() {
+		for range reads {
+			read()
+		}
+	})
 	t.Logf("%d buffered reads: %d wake samples", reads, samples)
 	if samples > reads/40 {
 		t.Fatalf("%d buffered reads woke goroutines %d times (sampled 1 in 8), want none", reads, samples)
@@ -117,15 +142,85 @@ func TestObservedBodyReadinessPendingReadWakesOneGoroutine(t *testing.T) {
 	}
 	read()
 	const reads = 4000
-	before := schedulerWakeSamples(t)
-	for range reads {
-		read()
-	}
 	// Two wakes per read (the waiting goroutine and this consumer) are reads/4 samples; the request and pending-signal round trip and the hand-off of the completion to a second goroutine add more.
-	samples := schedulerWakeSamples(t) - before
+	samples := wakeSamples(t, func() {
+		for range reads {
+			read()
+		}
+	})
 	t.Logf("%d pending reads: %d wake samples", reads, samples)
 	if samples > reads*5/16 {
 		t.Fatalf("%d pending reads woke goroutines %d times (sampled 1 in 8), want at most 2 per read", reads, samples)
+	}
+}
+
+// A window of wakeSamples runs with no collection, however much garbage the rest of the process makes: a goroutine that allocates as fast as it can
+// starts a collection every few megabytes, and the wakes of each would count against the code under test.
+func TestWakeSamplesWindowRunsWithoutACollection(t *testing.T) {
+	var allocated atomic.Int64
+	var live atomic.Pointer[[]byte]
+	stop, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			garbage := make([]byte, 64<<10)
+			live.Store(&garbage)
+			allocated.Add(int64(len(garbage)))
+		}
+	}()
+	defer func() {
+		close(stop)
+		<-done
+	}()
+	collections := func() uint64 {
+		sample := []metrics.Sample{{Name: "/gc/cycles/total:gc-cycles"}}
+		metrics.Read(sample)
+		return sample[0].Value.Uint64()
+	}
+	var during uint64
+	wakeSamples(t, func() {
+		started := collections()
+		for target := allocated.Load() + 64<<20; allocated.Load() < target; {
+			runtime.Gosched()
+		}
+		during = collections() - started
+	})
+	if during != 0 {
+		t.Fatalf("%d collections ran in a window that allocated 64 MiB, want none", during)
+	}
+}
+
+// The collector and the memory limit are back as they were when a window ends, whether its work returned or a failed check ended the test goroutine inside
+// it (t.Fatal exits the goroutine), and a window runs under a limit that bounds the heap.
+func TestWakeSamplesWindowRestoresTheCollector(t *testing.T) {
+	const percent, limit = 150, 64 << 30
+	defer debug.SetGCPercent(debug.SetGCPercent(percent))
+	defer debug.SetMemoryLimit(debug.SetMemoryLimit(limit))
+	var inside int64
+	for name, window := range map[string]func(){
+		"returns":             func() { inside = debug.SetMemoryLimit(-1) },
+		"exits the goroutine": runtime.Goexit,
+	} {
+		ended := make(chan struct{})
+		go func() {
+			defer close(ended)
+			wakeSamples(t, window)
+		}()
+		<-ended
+		if got := debug.SetGCPercent(percent); got != percent {
+			t.Fatalf("GC percent is %d after a window that %s, want %d", got, name, percent)
+		}
+		if got := debug.SetMemoryLimit(limit); got != limit {
+			t.Fatalf("memory limit is %d after a window that %s, want %d", got, name, limit)
+		}
+	}
+	if inside <= 0 || inside >= limit {
+		t.Fatalf("a window ran under a memory limit of %d, want one below %d that bounds the heap", inside, limit)
 	}
 }
 
