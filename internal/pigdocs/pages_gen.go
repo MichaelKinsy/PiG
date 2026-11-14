@@ -74,7 +74,7 @@ var pageSizes = [...]int{
 	5413,
 	12380,
 	5190,
-	74509,
+	74511,
 	11588,
 	10350,
 	2677,
@@ -121,4 +121,4 @@ var pageSizes = [...]int{
 }
 
 // contentDigest is the digest of the pages: sha256 over "name\x00size\x00contents" of each page in name order, in hex.
-const contentDigest = "75a2f0a89423ca56b3d5f19bd327f6119c4b0a261de6f5ba87257593ecdac0cb"
+const contentDigest = "da8fd599811b2e6b3461861b3ac79ddd3f59cf38c31dda505c068917e442e1fe"

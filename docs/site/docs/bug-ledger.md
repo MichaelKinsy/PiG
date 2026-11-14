@@ -153,6 +153,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-136dab0](#bf-136dab0) | fix(chord/next/host): a route's Resolve calls carry their place in the order of the calls | PiG's own defect | All platforms | Unreleased |
 | [BF-1390c9d](#bf-1390c9d) | fix(ai): the Anthropic event reader matches the type member exactly | PiG's own defect | All platforms | Unreleased |
 | [BF-13f7697](#bf-13f7697) | The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-1407bdf](#bf-1407bdf) | A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or… | PiG's own defect | All platforms | Unreleased |
 | [BF-142baa3](#bf-142baa3) | Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown… | PiG's own defect | All platforms | Unreleased |
 | [BF-14886f9](#bf-14886f9) | A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-14c9304](#bf-14c9304) | fix(schema/internal/ecmaregex): modifier groups, V8's mid-pair and repeated-name rules, lone surrogates, V8… | PiG's own defect | All platforms | Unreleased |
@@ -1856,7 +1857,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dd06fc5](#bf-dd06fc5) | chord: `Plugins.Build` discovers again when a named plugin is unknown to discovery or a file discovery found… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd06fc5-2](#bf-dd06fc5-2) | chord tutorial: chapter VI waits for the app's base code to be watched before it adds the Harbor plugin, so… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd09fd4](#bf-dd09fd4) | Startup now records the changelog version, and each extension package's version, before the UI and the… | PiG's own defect | All platforms | Unreleased |
-| [BF-dd2727b](#bf-dd2727b) | The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for… | PiG's own defect | All platforms | Unreleased |
+| [BF-dd2727b](#bf-dd2727b) | fix(tui): the read and write cards draw Pi's fallback for a path whose extension is constructor or __proto__ | PiG's own defect | All platforms | Unreleased |
 | [BF-dd2f4cb](#bf-dd2f4cb) | The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd7613e](#bf-dd7613e) | Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ddd4772](#bf-ddd4772) | fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse | PiG's own defect | All platforms | Unreleased |
@@ -1966,6 +1967,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ea921ca](#bf-ea921ca) | Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)… | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-ea9fc8b](#bf-ea9fc8b) | fix(chord/nextnode): no context.Background in the browser driver and the terminal launcher (the test's and… | PiG's own defect | All platforms | Unreleased |
 | [BF-eaa4ed7](#bf-eaa4ed7) | F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-eabcdf0](#bf-eabcdf0) | The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for… | PiG's own defect | All platforms | Unreleased |
+| [BF-eabcdf0-2](#bf-eabcdf0-2) | For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with… | PiG's own defect | All platforms | Unreleased |
+| [BF-eabcdf0-3](#bf-eabcdf0-3) | `pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is… | PiG's own defect | All platforms | Unreleased |
 | [BF-ead285d](#bf-ead285d) | Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147) | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eb34085](#bf-eb34085) | The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eb6626f](#bf-eb6626f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -4017,6 +4021,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `13f7697f6c` (2026-10-30, #11368)
 - **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData`, `ai/registry_test.go::TestRegistryHasModels`
 - **Release note:** The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1` (Azure and OpenAI), `gemini-3.1-flash-live-preview` and `gemini-3.1-flash-lite-image` (Google and Google Vertex). Carried forward, as the row removal only, from Pi 2e0f175b (earendil-works/pi#11368), past the 1.4.0+b3a29f11 pin.
+
+### BF-1407bdf
+
+**A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or `A:::__proto__`, in flowcharts, class diagrams and state diagrams) styles its nodes, as it does in Pi.
+- **Root cause:** The table now holds the class like any other. A style property named __proto__ is still dropped, as in the library, where a string assigned to that name creates no property. The class table as JSON, which the model and art comparisons with the library read, leaves the class out, because the library's JSON cannot show a prototype.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1407bdfc73` (2026-11-13)
+- **Tests:** `internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt`, `internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes`
+- **Release note:** A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or `A:::__proto__`, in flowcharts, class diagrams and state diagrams) styles its nodes, as it does in Pi. PiG left the class out and drew the nodes without the style.
 
 ### BF-142baa3
 
@@ -27646,17 +27664,16 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-dd2727b
 
-**The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…**
+**fix(tui): the read and write cards draw Pi's fallback for a path whose extension is constructor or __proto__**
 
 - **Source:** PiG's own defect
-- **Symptom:** The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result.
+- **Symptom:** fix(tui): the read and write cards draw Pi's fallback for a path whose extension is constructor or __proto__
 - **Root cause:** Pi's getLanguageFromPath (theme.ts:993-1062) looks the lowercased extension up in a plain object, so `constructor` and `__proto__` find a member the object inherits from Object.prototype. The value is truthy: read.ts formatReadResult (:124-125) and write.ts renderCall (:55-64, :123-127) pass it to highlightCode, whose supportsLanguage check (theme.ts:937) throws a TypeError before the try, and tool-execution.ts updateDisplay (:303-341) catches the throw and draws the call or result fallback. PiG looked the extension up in a Go map, found no language and drew the write card with its content rows and the expanded read card with its blank row, which Pi does not draw for such a path.
 - **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `dd2727b68a` (2026-11-13)
-- **Tests:** `internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsDrawTheFallbackForAPathNamedLikeAnObjectPrototypeMember`, `internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi`, `test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml`, `test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml`, `tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsForAnInheritedMember`, `tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsLikePi`
-- **Release note:** The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws, and Pi falls back to its generic card; PiG looked the extension up in a Go map, found no language and drew the ordinary cards.
+- **Tests:** `internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi`, `test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml`, `test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml`
 
 ### BF-dd2f4cb
 
@@ -29159,6 +29176,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `eaa4ed7eaa` (2026-10-27)
 - **Tests:** `tui/decode_printable_oracle_test.go::TestDecodePrintableKeyMatchesPi`, `tui/key_repeat_oracle_test.go::TestIsKeyRepeatAndReleaseMatchPi`, `tui/keys_function_keys_upstream_test.go::TestDecodeKittyPrintableIgnoresUnmappedKittyFunctionalKeys`, `tui/keys_function_keys_upstream_test.go::TestMatchesKittyFunctionKeysF1ToF12WithAndWithoutModifiers`, `tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput`
 - **Release note:** F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and `CSI 1;<mod> P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5, so shortcuts bound to `f1` or `ctrl+f5` fire and `parseKey` names them. Releases and repeats of F1, F2 and F4 are no longer taken for presses. F13-F35 and the other Kitty functional keys in the Private Use Area are dropped instead of inserting invisible characters into the prompt. Ports Pi's `matchesKey`, `parseKey`, `isKeyRelease`, `isKeyRepeat` and `decodeKittyPrintable` changes.
+
+### BF-eabcdf0
+
+**The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) are the ordinary cards with the file's text, as for any extension without a known language.
+- **Root cause:** Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eabcdf054a` (2026-11-13)
+- **Tests:** `ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty`, `internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi`, `internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves`, `internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi`, `internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth`, `internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt`, `internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes`, `internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent` and 6 more in docs/bug-ledger.json
+- **Release note:** The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) are the ordinary cards with the file's text, as for any extension without a known language. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws and Pi falls back to its generic card; PiG does not copy that defect (D645). This replaces the change of dd2727b68af, which had made PiG draw Pi's fallback for these cards and is in no release.
+
+### BF-eabcdf0-2
+
+**For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with `uniqueItems` no longer take two objects that differ only in a member named `constructor` for the same item.
+- **Root cause:** Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eabcdf054a` (2026-11-13)
+- **Tests:** `ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty`, `internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi`, `internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves`, `internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi`, `internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth`, `internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt`, `internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes`, `internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent` and 6 more in docs/bug-ledger.json
+- **Release note:** For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with `uniqueItems` no longer take two objects that differ only in a member named `constructor` for the same item. TypeBox leaves that member out of its hash; PiG hashes it like any other (D645).
+
+### BF-eabcdf0-3
+
+**`pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is set, as for any other `TERM` it does not know (D645).
+- **Root cause:** Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eabcdf054a` (2026-11-13)
+- **Tests:** `ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty`, `internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi`, `internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves`, `internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi`, `internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth`, `internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt`, `internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes`, `internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent` and 6 more in docs/bug-ledger.json
+- **Release note:** `pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is set, as for any other `TERM` it does not know (D645).
 
 ### BF-ead285d
 
@@ -32090,7 +32149,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D632 | Resource loader operations that overlap wait for each other, where Pi's reloads interleave and can mix their… | [BF-68dfec5](#bf-68dfec5) |
 | D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
 | D636 | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | [BF-D636](#bf-d636) |
-| D645 | A name that is an `Object.prototype` member is no entry of fifteen Stock lookups, where Pi's plain objects… | [BF-88bbdd2](#bf-88bbdd2) |
+| D645 | A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects… | [BF-88bbdd2](#bf-88bbdd2) |
 
 ## Fix-titled commits that are not bugs in a release
 
