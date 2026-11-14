@@ -79,7 +79,7 @@ func TestExample47FitImages(t *testing.T) {
 		},
 	})
 	registry := harness.CreateRegistry()
-	if err := registry.Install(harness.DefineExtension(durable.Extension{Name: "screen", Tools: []*durable.ToolRegistration{screenshot}})); err != nil {
+	if err := registry.Install(new(durable.Extension{Name: "screen", Tools: []*durable.ToolRegistration{screenshot}})); err != nil {
 		t.Fatal(err)
 	}
 	if err := registry.Install(fit.CreateFitImagesExtension(images)); err != nil {

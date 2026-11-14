@@ -125,7 +125,7 @@ func fitBase64(ctx context.Context, image ai.ImageContent, limits tools.ImageLim
 // it see the images unfitted. Nested calls' results are left as they are: the program that made the call gets them, not the
 // model.
 func CreateFitImagesExtension(processor tools.ImageProcessor) *durable.Extension {
-	return harness.DefineExtension(durable.Extension{
+	return new(durable.Extension{
 		Name: "fit-images",
 		Hooks: []durable.HookRegistration{
 			harness.Hook(harness.ToolTask, &harness.ToolHooks{

@@ -96,6 +96,7 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "76c79d8bbe: the npm subpath export ./images/fit; Go packages are addressed by import path (durable/images/fit)."
+oracle = "not carried: the oracle installs the pin's pi-durable package.json (Pi 1.5.2), which has no ./images/fit subpath export; the export is npm-only and no oracle test imports it"
 
 [[files]]
 path = "scripts/check-entry-graphs.mjs"
@@ -138,6 +139,7 @@ change = "added"
 disposition = "deferred"
 evidence = []
 rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+oracle = "not carried: apps/p2 is not part of the oracle (a new plugin manifest of the app, ported on the p2 line)"
 
 [[files]]
 path = "apps/p2/plugins/fit-images/worker.ts"
