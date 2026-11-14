@@ -21,9 +21,9 @@ func waitsOnOutboxLock() bool {
 			continue
 		}
 		for stack := range strings.SplitSeq(string(buf[:n]), "\n\n") {
-			if strings.Contains(stack, "surfaces.(*outbox).enqueue(") {
-				header, _, _ := strings.Cut(stack, "\n")
-				return strings.Contains(header, "sync.Mutex.Lock") || strings.Contains(header, "semacquire")
+			header, _, _ := strings.Cut(stack, "\n")
+			if strings.Contains(stack, "surfaces.(*outbox).enqueue(") && (strings.Contains(header, "sync.Mutex.Lock") || strings.Contains(header, "semacquire")) {
+				return true
 			}
 		}
 		return false
