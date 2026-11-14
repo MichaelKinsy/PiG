@@ -1782,6 +1782,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d249c70](#bf-d249c70) | SDK: `Session.Dispose` now releases the Session as Pi's `dispose` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d26d494](#bf-d26d494) | fix(tui): Editor.SetText resets the scroll offset | PiG's own defect | All platforms | Unreleased |
 | [BF-d276c00](#bf-d276c00) | `pig piglet schema` lists the `apis` strip list | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d2a1d95](#bf-d2a1d95) | A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is… | PiG's own defect | All platforms | Unreleased |
+| [BF-d2a1d95-2](#bf-d2a1d95-2) | A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an… | PiG's own defect | All platforms | Unreleased |
 | [BF-d2b1fc1](#bf-d2b1fc1) | GitHub Copilot login reads an enterprise domain the way Pi does: an IPv6 host keeps its brackets, an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d2b1fc1-2](#bf-d2b1fc1-2) | Pasting an OAuth authorization into the Anthropic, OpenAI Codex or OpenRouter login now reads it the way Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d2d4384](#bf-d2d4384) | A streamed write card no longer slows down as its content grows | PiG's own defect | All platforms | 0.5.0 |
@@ -26666,6 +26668,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f5190b9c48` (2026-10-04), `591f095784` (2026-10-05), `613c997d21` (2026-10-05), `d1c9dfddbb` (2026-10-05), `171aa56d63` (2026-10-06), `c20aeb351d` (2026-10-06), `ca7160566a` (2026-10-06), `1f98a7c315` (2026-10-07), `c0addf92cc` (2026-10-07), `44f92ab2d8` (2026-10-08), `d276c00c53` (2026-10-08)
 - **Tests:** `ai/google_vertex_option_fields_upstream_test.go::TestGoogleVertexProjectAndLocationOptions`, `ai/mistral_map_tool_choice_test.go::TestMistralToolChoiceMatchesPiMapToolChoice`, `ai/mistral_provider_options_wire_test.go::TestMistralAppliesPreparedHeadersAndRequestSessionID`, `ai/mistral_sse_parity_test.go::TestMistralSSEFramingAndEOFRules`, `ai/mistral_stream_events_upstream_test.go::TestMistralProviderStreamEventsUpstream`, `ai/mistral_transport_error_test.go::TestMistralTransportCancellationRemainsAborted`, `ai/provider_request_shape_test.go::TestGoogleRequestPreservesEmptyText`, `ai/provider_response_test.go::TestProviderResponseBoundaries` and 75 more in docs/bug-ledger.json
 - **Release note:** `pig piglet schema` lists the `apis` strip list.
+
+### BF-d2a1d95
+
+**A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is one character again in the reply, in the session file, in RPC output and in the next request for OpenAI Responses, Azure OpenAI Responses, OpenAI Codex, Amazon Bedrock and pi-messages models too, and the `text_delta`, `thinking_delta` and `toolcall_delta` events of RPC mode carry each half as Pi writes it.
+- **Root cause:** PiG read these stream events and copied these values with encoding/json, which has no form for a lone UTF-16 surrogate and replaces it with U+FFFD, where Pi uses JSON.parse and the object itself
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d2a1d9594e` (2026-11-13)
+- **Tests:** `agent/messages_surrogate_test.go::TestCustomMessageBlocksKeepALoneSurrogate`, `ai/providers/bedrock/bedrock_surrogate_stream_test.go::TestBedrockStreamKeepsSurrogatesAsPi`, `ai/stream_surrogate_read_test.go::TestStreamDeltaEventsKeepSurrogatesAsPi`, `ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi`, `ai/tool_surrogate_wire_test.go::TestStrictToolSchemaLoneSurrogatesReachTheWireAsPi`, `coding/extension/marshalling_surrogate_test.go::TestInputEventResultKeepsALoneSurrogate`, `internal/codingagent/tool_result_content_surrogate_test.go::TestToolResultEventOverrideKeepsALoneSurrogate`
+- **Release note:** A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is one character again in the reply, in the session file, in RPC output and in the next request for OpenAI Responses, Azure OpenAI Responses, OpenAI Codex, Amazon Bedrock and pi-messages models too, and the `text_delta`, `thinking_delta` and `toolcall_delta` events of RPC mode carry each half as Pi writes it. PiG read each half as U+FFFD in these streams. A half that stays alone is kept in the session file and in RPC output.
+
+### BF-d2a1d95-2
+
+**A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an extension returns, in the text and images that an `input` handler returns, in the content array of a custom message, and in the schema of a tool that asks for strict sampling.
+- **Root cause:** PiG read these stream events and copied these values with encoding/json, which has no form for a lone UTF-16 surrogate and replaces it with U+FFFD, where Pi uses JSON.parse and the object itself
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d2a1d9594e` (2026-11-13)
+- **Tests:** `agent/messages_surrogate_test.go::TestCustomMessageBlocksKeepALoneSurrogate`, `ai/providers/bedrock/bedrock_surrogate_stream_test.go::TestBedrockStreamKeepsSurrogatesAsPi`, `ai/stream_surrogate_read_test.go::TestStreamDeltaEventsKeepSurrogatesAsPi`, `ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi`, `ai/tool_surrogate_wire_test.go::TestStrictToolSchemaLoneSurrogatesReachTheWireAsPi`, `coding/extension/marshalling_surrogate_test.go::TestInputEventResultKeepsALoneSurrogate`, `internal/codingagent/tool_result_content_surrogate_test.go::TestToolResultEventOverrideKeepsALoneSurrogate`
+- **Release note:** A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an extension returns, in the text and images that an `input` handler returns, in the content array of a custom message, and in the schema of a tool that asks for strict sampling. PiG wrote U+FFFD in its place: three in a tool result, in a custom message and in a strict schema, one in the transformed input.
 
 ### BF-d2b1fc1
 

@@ -340,7 +340,7 @@ func bedrockStreamEvent(eventType string, body []byte) (bedrockStreamItem, error
 			return bedrockStreamItem{}, &bedrockEventJSONError{err}
 		}
 		// JSON.parse reads 12.0 or 1.2e1 as the number 12, which the SDK's integer members accept (smithy expectInt32).
-		if err := json.Unmarshal(jsjson.NormalizeIntegers(body), &fields); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(jsjson.NormalizeIntegers(body), &fields); err != nil {
 			return bedrockStreamItem{}, err
 		}
 	}
