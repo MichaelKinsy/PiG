@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/mod/semver"
 
@@ -31,11 +32,27 @@ func extractNodeRuntime(dst string) error {
 	return extractRuntimeArchive(nodeRuntimeArchive, dst, os.MkdirAll)
 }
 
-// extractRuntimeArchive writes archive's files under dst; mkdirAll makes each file's directory (os.MkdirAll in production, counted by a test).
+// extractRuntimeArchive writes archive's files under dst; mkdirAll makes each file's directory (os.MkdirAll in production, counted by a test). A directory is made once per call, by the first file that needs it: the archive holds files only, and its blocks are visited concurrently, so the set is guarded and a directory enters it only after it exists.
 func extractRuntimeArchive(archive, dst string, mkdirAll func(string, os.FileMode) error) error {
+	var (
+		mu   sync.Mutex
+		made = map[string]struct{}{}
+	)
+	makeDir := func(dir string) error {
+		mu.Lock()
+		defer mu.Unlock()
+		if _, ok := made[dir]; ok {
+			return nil
+		}
+		if err := mkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+		made[dir] = struct{}{}
+		return nil
+	}
 	return noderuntimepack.Extract(archive, func(name string, data []byte) error {
 		target := filepath.Join(dst, filepath.FromSlash(strings.TrimPrefix(name, "runtime-node/")))
-		if err := mkdirAll(filepath.Dir(target), 0o755); err != nil {
+		if err := makeDir(filepath.Dir(target)); err != nil {
 			return err
 		}
 		return os.WriteFile(target, data, 0o644)
