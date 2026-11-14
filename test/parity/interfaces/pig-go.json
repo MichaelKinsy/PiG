@@ -177485,17 +177485,6 @@
       "shapeHash": "sha256:3062ee9e243d7b065598850f925d452b94af5ac8441a7135894bdc33f17acf37"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#serverSummary",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "serverSummary",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(server McpServerListing) string"
-      },
-      "shapeHash": "sha256:deb393de3f2a9ae51f9436e5d0fdfc6935d53fd2809f9267287173ece5d9163e"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#serversSectionIntro",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "serversSectionIntro",
