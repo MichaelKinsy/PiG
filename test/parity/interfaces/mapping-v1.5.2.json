@@ -88509,8 +88509,8 @@
       ],
       "evidence": [
         "test:ai/registry_test.go#TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime",
-        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits",
-        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath"
+        "test:coding/cli/interactive_replacement_builder_test.go#TestInteractiveReplacementBuildsFromItsOwnServices",
+        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits"
       ]
     },
     {
@@ -88531,8 +88531,8 @@
       ],
       "evidence": [
         "test:ai/registry_test.go#TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime",
-        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits",
-        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath"
+        "test:coding/cli/interactive_replacement_builder_test.go#TestInteractiveReplacementBuildsFromItsOwnServices",
+        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits"
       ]
     },
     {
