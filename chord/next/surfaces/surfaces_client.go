@@ -85,6 +85,8 @@ type ClientOptions struct {
 	Core []host.HostFacet
 	// Open opens one socket to the server and its link; the socket reports to events.
 	Open func(events SocketEvents) link.Link
+	// Limits are the limits per part of what arrives from the server (nil: an untrusted link's, 16 MiB on the wire).
+	Limits *link.PartLimits
 	// FetchScript fetches a plugin's script of a set (at its URL), which registers itself.
 	FetchScript func(ctx context.Context, entry ScriptEntry) (RegisteredScript, error)
 	// ServerBase is the server's current base bundle hash, asked at each reconnect beside the next attempt (nil: unknown, try
@@ -208,7 +210,11 @@ func connect(h host.Host, options ClientOptions, ctx context.Context, serverBase
 			// The loop and the host both follow the link's close; a link has one close listener.
 			shared := newSharedClose(options.Open(events))
 			// A client's parent is the server; the principal only labels the link (a client serves no remote types).
-			if err := h.Connect(shared, host.LinkOptions{Principal: delta.JsonObjectOf("kind", "server")}, ctx); err != nil {
+			linkOptions := host.LinkOptions{Principal: delta.JsonObjectOf("kind", "server")}
+			if options.Limits != nil {
+				linkOptions.Limits = *options.Limits
+			}
+			if err := h.Connect(shared, linkOptions, ctx); err != nil {
 				options.OnError(ClientError{Kind: ClientConnectFailed, Err: err})
 				shared.Close()
 			}
