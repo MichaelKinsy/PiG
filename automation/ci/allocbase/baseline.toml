@@ -110,6 +110,16 @@ allocs = 14
 
 [[benchmark]]
 package = "./agent"
+benchmark = "BenchmarkToolResultMessageStringify/nestedCalls"
+allocs = 31
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkToolResultMessageStringify/plain"
+allocs = 6
+
+[[benchmark]]
+package = "./agent"
 benchmark = "BenchmarkUserContentUnion/0"
 allocs = 34
 
@@ -2080,6 +2090,11 @@ allocs = 31
 
 [[benchmark]]
 package = "./coding/extension/host/inproc"
+benchmark = "BenchmarkCoerceBeforeAgentStartResult"
+allocs = 17
+
+[[benchmark]]
+package = "./coding/extension/host/inproc"
 benchmark = "BenchmarkEmitContextPerRequest/exchanges=50"
 allocs = 2163
 
@@ -2257,6 +2272,46 @@ allocs = 7
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkEnvelopeDecode/response/v2"
 allocs = 12
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/AgentBeforeSettleEvent"
+allocs = 218
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/BeforeAgentStartEvent"
+allocs = 31
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/McpServersChangeEvent"
+allocs = 9
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ModelSelectEvent"
+allocs = 198
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionEndEvent"
+allocs = 6
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionStartEvent"
+allocs = 8
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionUpdateEvent"
+allocs = 9
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/TurnEndEvent"
+allocs = 254
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
