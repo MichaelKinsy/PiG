@@ -344,6 +344,8 @@ func (m *InteractiveMode) finishInteractiveShutdown() error {
 		return err
 	}
 	if !fromSignal {
+		// Pi's dispose awaits session.abort() first (agent-session-runtime.ts dispose, D247): the run that streams at the quit ends on this owner loop.
+		m.settleRunAtQuit()
 		m.emitQuitShutdown()
 		m.printResumeHint()
 	}
@@ -1339,14 +1341,50 @@ func (m *InteractiveMode) settleActiveRun() error {
 	if settled == nil && (session == nil || session.IsIdle()) {
 		return nil
 	}
-	owner := m.runCtx
-	if owner == nil {
-		owner = context.Background()
+	return m.serveOwnerLoopUntil(func(ctx context.Context) error { return waitForSessionIdle(ctx, settled, session) })
+}
+
+// settleRunAtQuit is the first step of Pi's dispose, `await this.session.abort()` (agent-session-runtime.ts dispose, agent-session.ts abort), for the quit by keys, whose dispose runs on the owner loop after the TUI stopped (finishInteractiveShutdown). Pi's loop turns under that await: the aborted run publishes its last events, which the extensions handle and the session file takes, agent_settled follows, and only then is the Session idle (_emitAgentSettled resolves the idle wait) and session_shutdown emitted. Here the run needs the owner loop to end: Session.RunAgentPrompt waits until the loop acknowledged its flush, and the turn's cleanup is posted to the loop. So the mode aborts the run and serves the loop, as settleActiveRun does for a replacement, until the run's goroutine has returned, which is after its agent_settled handlers. A dispose that awaited the run on the loop without serving it never ended.
+//
+// A user's bash command is not joined: Pi's abort does not wait for it.
+func (m *InteractiveMode) settleRunAtQuit() {
+	m.queueMu.Lock()
+	settled, ended, session := m.turnSettled, m.turnEnded, m.opts.SessionHandle
+	m.queueMu.Unlock()
+	if settled != nil || session != nil && !session.IsIdle() {
+		m.abortRun(m.runCtx)
+	} else {
+		// No run is active. One whose goroutine has not returned yet is still joined.
+		if ended == nil {
+			return
+		}
+		select {
+		case <-ended:
+			return
+		default:
+		}
 	}
-	ctx, cancel := context.WithCancel(owner)
+	_ = m.serveOwnerLoopUntil(func(ctx context.Context) error {
+		if err := waitForSessionIdle(ctx, settled, session); err != nil {
+			return err
+		}
+		if ended != nil {
+			select {
+			case <-ended:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		return nil
+	})
+}
+
+// serveOwnerLoopUntil runs wait on a goroutine of its own and meanwhile, on the owner loop, keeps handling Session events, posted UI tasks and scheduled frames, which a settling run needs. It returns wait's result, or an error when the mode shuts down first.
+func (m *InteractiveMode) serveOwnerLoopUntil(wait func(context.Context) error) error {
+	ctx, cancel := context.WithCancel(m.runCtx)
 	var workers sync.WaitGroup
 	idle := make(chan error, 1)
-	workers.Go(func() { idle <- waitForSessionIdle(ctx, settled, session) })
+	workers.Go(func() { idle <- wait(ctx) })
 	defer func() { cancel(); workers.Wait() }()
 	for {
 		select {
