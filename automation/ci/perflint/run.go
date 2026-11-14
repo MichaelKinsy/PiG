@@ -285,7 +285,7 @@ func (s *scanner) scanFunc(fn *ast.FuncDecl) {
 				s.add(owner, "compile-in-func", "regexp."+name, n.Pos())
 			case (p == "text/template" || p == "html/template") && name == "Parse" && fn.Name.Name != "init":
 				s.add(owner, "compile-in-func", "template.Parse", n.Pos())
-			case s.linked && p == "slices" && (name == "SortFunc" || name == "SortStableFunc"):
+			case s.linked && p == "slices" && sortInstance(name):
 				s.add(owner, "sort-instance", "slices."+name, n.Pos())
 			case p == "slices" && name == "Clone" && len(n.Args) == 1 && isMessageSlice(info.TypeOf(n.Args[0])):
 				s.add(owner, "history-clone", "slices.Clone", n.Pos())
@@ -472,6 +472,15 @@ func scan(root string, pkgs []*packages.Package) []finding {
 // sampleHot makes every package hot; the tests set it for their sample module.
 var sampleHot bool
 
+// sortInstance reports whether name is a function of package slices that compiles a copy of the sort for the element shape of its caller: the two sorts in place, and the two that collect a sequence and sort it (slices.SortedFunc is slices.Collect and slices.SortFunc).
+func sortInstance(name string) bool {
+	switch name {
+	case "SortFunc", "SortStableFunc", "SortedFunc", "SortedStableFunc":
+		return true
+	}
+	return false
+}
+
 // scanPackageVars finds sort-instance sites in package-level var initializers (a call or func literal there runs at init and is linked like a function body).
 func (s *scanner) scanPackageVars(d *ast.GenDecl) {
 	if !s.linked {
@@ -486,7 +495,7 @@ func (s *scanner) scanPackageVars(d *ast.GenDecl) {
 		for _, v := range vs.Values {
 			ast.Inspect(v, func(n ast.Node) bool {
 				if call, ok := n.(*ast.CallExpr); ok {
-					if p, name := s.callee(call); p == "slices" && (name == "SortFunc" || name == "SortStableFunc") {
+					if p, name := s.callee(call); p == "slices" && sortInstance(name) {
 						s.add(owner, "sort-instance", "slices."+name, call.Pos())
 					}
 				}
@@ -613,6 +622,15 @@ func compare(found []finding, baseline []finding) (grew, stale []string) {
 	return grew, stale
 }
 
+// loadBaseline reads the baseline at path. A missing file is an empty baseline: every finding is then new and fails.
+func loadBaseline(path string) (baselineFile, error) {
+	var baseline baselineFile
+	if _, err := toml.DecodeFile(path, &baseline); err != nil && !os.IsNotExist(err) {
+		return baselineFile{}, fmt.Errorf("read baseline %s: %w", path, err)
+	}
+	return baseline, nil
+}
+
 func run(root, baselinePath string, patterns []string, report, printBaseline bool) int {
 	found, err := findAll(root, patterns)
 	if err != nil {
@@ -620,8 +638,11 @@ func run(root, baselinePath string, patterns []string, report, printBaseline boo
 		return 2
 	}
 	if printBaseline {
-		var previous baselineFile
-		_, _ = toml.DecodeFile(baselinePath, &previous)
+		previous, err := loadBaseline(baselinePath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "perf-lint:", err)
+			return 2
+		}
 		classes := map[string]string{}
 		for _, b := range previous.Hit {
 			classes[b.key()] = b.Class
@@ -650,8 +671,8 @@ func run(root, baselinePath string, patterns []string, report, printBaseline boo
 		}
 		return 0
 	}
-	var baseline baselineFile
-	if _, err := toml.DecodeFile(baselinePath, &baseline); err != nil && !os.IsNotExist(err) {
+	baseline, err := loadBaseline(baselinePath)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "perf-lint:", err)
 		return 2
 	}

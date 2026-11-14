@@ -13,13 +13,15 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	impl "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade"
 )
 
 // getterSite is one drifted read that moves before its statement: a call of a
 // Context getter, or a string read of before_agent_start's data["systemPrompt"].
 type getterSite struct {
 	call   ast.Expr
-	getter getter
+	getter impl.Getter
 	// rule and symbol name the change, value is the base name of the variable
 	// that holds the moved value, and text is the expression that reads it now.
 	rule, symbol, value, text string
@@ -72,8 +74,8 @@ func (p *filePlanner) planGetters() {
 				break
 			}
 			if g, drifted := p.driftedMethodValue(node); drifted {
-				p.skip(RuleContextGetters, "Context."+g.Name, node.Pos(), "the method value is "+g.shape(g.New)+" now")
-				p.skipped[len(p.skipped)-1].Suggest = "pass a func with the old signature, " + g.shape(g.Old) + ", that calls ctx." + g.Name + "() and handles its error"
+				p.skip(RuleContextGetters, "Context."+g.Name, node.Pos(), "the method value is "+g.Shape(g.New)+" now")
+				p.skipped[len(p.skipped)-1].Suggest = "pass a func with the old signature, " + g.Shape(g.Old) + ", that calls ctx." + g.Name + "() and handles its error"
 			}
 		}
 		return true
@@ -133,45 +135,45 @@ func containsDrifted(outer *getterSite, all []*getterSite) bool {
 
 // driftedGetter reports whether call is a Context getter the compiler rejects
 // for returning two results. parent is the node that holds the call.
-func (p *filePlanner) driftedGetter(call *ast.CallExpr, parent ast.Node) (getter, bool) {
+func (p *filePlanner) driftedGetter(call *ast.CallExpr, parent ast.Node) (impl.Getter, bool) {
 	selector, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
-	g, ok := getterByName(selector.Sel.Name)
+	g, ok := impl.GetterByName(selector.Sel.Name)
 	if !ok || !p.isContextMethod(selector) {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
 	// The compiler positions an arity error at the start of the call.
 	for _, typeErr := range p.errors {
-		if typeErr.Pos == call.Pos() && isArityDiagnostic(typeErr.Msg) {
+		if typeErr.Pos == call.Pos() && impl.IsArityDiagnostic(typeErr.Msg) {
 			return g, true
 		}
 	}
 	// A builtin that takes one argument, such as len(ctx.GetAllTools()), counts the two results as two arguments and reports at its closing parenthesis.
 	if outer, ok := parent.(*ast.CallExpr); ok && len(outer.Args) == 1 && outer.Args[0] == ast.Expr(call) {
 		for _, typeErr := range p.errors {
-			if typeErr.Pos == outer.Rparen && strings.HasPrefix(typeErr.Msg, builtinArityPrefix) {
+			if typeErr.Pos == outer.Rparen && strings.HasPrefix(typeErr.Msg, impl.BuiltinArityPrefix) {
 				return g, true
 			}
 		}
 	}
-	return getter{}, false
+	return impl.Getter{}, false
 }
 
 // driftedMethodValue reports whether selector is a method value of a Context
 // getter the compiler rejects where the getter's old signature is wanted.
-func (p *filePlanner) driftedMethodValue(selector *ast.SelectorExpr) (getter, bool) {
-	g, ok := getterByName(selector.Sel.Name)
+func (p *filePlanner) driftedMethodValue(selector *ast.SelectorExpr) (impl.Getter, bool) {
+	g, ok := impl.GetterByName(selector.Sel.Name)
 	if !ok || !p.isContextMethod(selector) {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
 	for _, typeErr := range p.errors {
 		if typeErr.Pos == selector.Pos() && strings.HasPrefix(typeErr.Msg, "cannot use ") {
 			return g, true
 		}
 	}
-	return getter{}, false
+	return impl.Getter{}, false
 }
 
 // spreadGetter reports whether call is a Context getter that is the only
@@ -183,21 +185,21 @@ func (p *filePlanner) driftedMethodValue(selector *ast.SelectorExpr) (getter, bo
 // error the required SDK already returned is current code, which may print the
 // error on purpose. A call whose parameter for the error has the type error,
 // variadic or not, is the new shape: both are left alone.
-func (p *filePlanner) spreadGetter(call *ast.CallExpr, parent ast.Node) (getter, bool) {
+func (p *filePlanner) spreadGetter(call *ast.CallExpr, parent ast.Node) (impl.Getter, bool) {
 	outer, ok := parent.(*ast.CallExpr)
 	if !ok || len(outer.Args) != 1 || outer.Args[0] != ast.Expr(call) || outer.Ellipsis.IsValid() {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
 	selector, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
-	g, ok := getterByName(selector.Sel.Name)
+	g, ok := impl.GetterByName(selector.Sel.Name)
 	if !ok || g.Since == "" || !releaseBefore(p.sdkVersion, g.Since) || !p.isContextMethod(selector) {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
 	if results, ok := p.pkg.Info.TypeOf(call).(*types.Tuple); !ok || results.Len() != 2 {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
 	if ident, ok := ast.Unparen(outer.Fun).(*ast.Ident); ok {
 		if builtin, ok := p.pkg.Info.Uses[ident].(*types.Builtin); ok {
@@ -206,11 +208,11 @@ func (p *filePlanner) spreadGetter(call *ast.CallExpr, parent ast.Node) (getter,
 	}
 	callee, ok := p.pkg.Info.Types[outer.Fun]
 	if !ok || callee.IsType() || callee.Type == nil {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
 	signature, ok := callee.Type.Underlying().(*types.Signature)
 	if !ok || !signature.Variadic() {
-		return getter{}, false
+		return impl.Getter{}, false
 	}
 	// The error is the second argument: a fixed parameter, or else the
 	// variadic parameter's element.

@@ -143,8 +143,8 @@ func TestInitBuildsTheInteractiveModeFromTheSettingsAndTheSession(t *testing.T) 
 	if !strings.Contains(output, "initial session") {
 		t.Errorf("the first paint shows no session name:\n%q", output[:min(len(output), 600)])
 	}
-	if !strings.Contains(output, "\x1b]0;") {
-		t.Error("Stop did not clear the terminal title")
+	if !strings.Contains(output, "\x1b]0;") || strings.Contains(output, "\x1b]0;\x07") {
+		t.Error("the mode did not write the session's title, or Stop wrote an empty title, which Pi never writes")
 	}
 }
 

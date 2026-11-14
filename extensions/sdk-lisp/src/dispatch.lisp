@@ -471,9 +471,11 @@ The first value is :SHUTDOWN when the host shut the extension down first, whethe
                  (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
                 ((and (equal type "request") (equal (jget (or (jget env "request") (obj)) "method") "events.dispatch"))
                  (push env early))
+                ;; a notify before ready is applied as the main loop applies it: a listener's release, or a state the host pushed to a connection that had not registered
+                ((equal type "notify") (handle-notify ext env))
                 (t nil)))))))
 
-(declaim (ftype function helper-take-shutdown))
+(declaim (ftype function helper-take-shutdown helper-take-notifies))
 
 (defun serve (ext conn)
   "Register EXT over CONN and serve the host until it shuts the extension down or closes the connection.
@@ -484,6 +486,8 @@ The register frame is sent, and the dispatches read before the shutdown are answ
   (let ((stopped t) (early '()) (shutdown nil))
     (unwind-protect
          (progn
+           ;; what the host sent while the factory's calls waited on this connection, in arrival order
+           (dolist (env (helper-take-notifies conn)) (handle-notify ext env))
            (let ((ready nil))
              (sb-thread:with-mutex ((extension-reg-lock ext))
                (send-frame conn (obj "type" "register" "register" (register-payload ext)))

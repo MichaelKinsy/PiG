@@ -3,7 +3,10 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -41,5 +44,19 @@ func TestCompareRejectsRepeatedKeys(t *testing.T) {
 	problems := compare(found, baseline)
 	if len(problems) != 2 {
 		t.Fatalf("problems = %q, want the repeated baseline key A and the repeated result B", problems)
+	}
+}
+
+// A baseline that does not parse is an error that names the file and the line; a missing one is an empty baseline.
+func TestLoadBaselineNamesTheFileThatDoesNotParse(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "baseline.toml")
+	if baseline, err := loadBaseline(path); err != nil || len(baseline.Benchmark) != 0 {
+		t.Fatalf("missing baseline = %+v, %v; want empty and no error", baseline, err)
+	}
+	if err := os.WriteFile(path, []byte("[[benchmark]]\npackage = \"./ai\"\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadBaseline(path); err == nil || !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "line 2") {
+		t.Fatalf("err = %v, want it to name %s and line 2", err, path)
 	}
 }

@@ -95,6 +95,15 @@ func tierRows(t *testing.T) []tierRow {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rows, err := parseTierRows(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rows
+}
+
+// parseTierRows reads the rows of ci-tiers.txt. A table with no rows is an error: every caller ranges over the rows.
+func parseTierRows(data []byte) ([]tierRow, error) {
 	var rows []tierRow
 	for line := range strings.SplitSeq(string(data), "\n") {
 		line = strings.TrimSpace(line)
@@ -110,7 +119,22 @@ func tierRows(t *testing.T) []tierRow {
 		}
 		rows = append(rows, tierRow{fields[0], fields[1], fields[2], fields[3]})
 	}
-	return rows
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("automation/ci/ci-tiers.txt has no rows (%d bytes read)", len(data))
+	}
+	return rows, nil
+}
+
+// A tier table with no rows is an error. The tests that hold ci.yml and .github/AGENTS.md to the table range over its rows, so an emptied table would pass every one of them.
+func TestTierTableWithNoRowsIsAnError(t *testing.T) {
+	for _, table := range []string{"", "# job | shard | tier | light target\n\n"} {
+		if rows, err := parseTierRows([]byte(table)); err == nil || !strings.Contains(err.Error(), "ci-tiers.txt") {
+			t.Errorf("table %q: rows = %v, err = %v; want an error that names ci-tiers.txt", table, rows, err)
+		}
+	}
+	if rows, err := parseTierRows([]byte("# comment\ntest | linux | merge | test-fast\n")); err != nil || len(rows) != 1 || rows[0] != (tierRow{"test", "linux", "merge", "test-fast"}) {
+		t.Fatalf("rows = %v, err = %v; want the one row", rows, err)
+	}
 }
 
 type workflowFile struct {

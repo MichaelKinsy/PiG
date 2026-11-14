@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // upstream: packages/ai/src/api/*.ts call options.onPayload(params, model) with the selected model, whose api names the wire protocol. The
@@ -30,6 +31,14 @@ func TestModelRuntimeStreamPassesSelectedModelAPIToPayloadHook(t *testing.T) {
 				t.Fatal(err)
 			}
 			model, err := BuildModel("hooked/hook-model", services)
+			if pigstrip.Has(pigstrip.ListAPIs, string(api)) {
+				// A Piglet that strips the API sends no request on it, so there is no payload to hook: building the model names the strip.
+				want := "Provider hooked: API " + string(api) + " is stripped from this Piglet (strip.apis: " + string(api) + ")"
+				if err == nil || err.Error() != want {
+					t.Fatalf("BuildModel with %s stripped: model %v, error %v, want the error %q", api, model, err, want)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatal(err)
 			}

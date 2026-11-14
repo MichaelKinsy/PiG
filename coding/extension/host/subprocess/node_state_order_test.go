@@ -21,6 +21,7 @@ import (
 //   - staleHandedOff: the push the loop read is not applied again by a later synchronous call of a handler that pushes no state (the loop clears handedOff).
 //   - replaced: a log is replaced by a page with a lower count that holds the whole log, the page the host sends when a cursor is out of range
 //     (Session.RawEntriesPage), and the following pages extend it. A guard against lower-count pages would break that replacement, and Pi's own log has no stale page to guard against.
+//   - beforeReady: a state the host sends before the ready is applied, not dropped, and the load goes on; a handler reads it after a ready that carries no state.
 func TestNodeAppliesHostStateInFrameOrder(t *testing.T) {
 	nodeCellRequireNode(t)
 	runtime, err := filepath.Abs("runtime-node/runtime.mjs")
@@ -43,6 +44,7 @@ func TestNodeAppliesHostStateInFrameOrder(t *testing.T) {
 		"staleHandedOff": "e1,e2,e3",
 		"nestedHanded":   "started ev | setter returned | c ran",
 		"nestedQueued":   "started ev | setter returned | c ran",
+		"beforeReady":    "named before ready",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("state order\n got %s\nwant %v", out, want)

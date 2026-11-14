@@ -108,3 +108,4 @@ allow = [
 [binary.pig.forbid]
 "github.com/MichaelKinsy/PiG/third_party/jsonschema" = "the generic JSON Schema validator is not part of any binary: internal/typebox checks with its own walker and coding/piglet validates with schema (0.7.1, +146 KB of symbols)"
 "golang.org/x/text/message" = "the localized message printer comes only with the JSON Schema validator (0.7.1, +47 KB of symbols); print with fmt"
+"go/types" = "D272: the type check of an extension upgrade runs in the driver program of the staged SDK (extensions/sdk/upgrade/driver); pig imports extensions/sdk/upgrade/plan, which reads no types, and never extensions/sdk/upgrade (that import kept 106,773 bytes of go/types symbols in the linux_amd64 binary through package initializers)"

@@ -6,13 +6,8 @@ import (
 	"go/ast"
 	"go/constant"
 	"go/types"
-)
 
-const (
-	// systemPromptSince is the SDK release whose before_agent_start data["systemPrompt"] is an *SystemPrompt.
-	systemPromptSince = "0.5.0"
-	// systemPromptSymbol names the change: the value is not a symbol apidiff can report.
-	systemPromptSymbol = `before_agent_start data["systemPrompt"]`
+	impl "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade"
 )
 
 // beforeAgentStartData returns the data parameter of each before_agent_start
@@ -21,7 +16,7 @@ const (
 // 0.5.0. Its data["systemPrompt"] is an *SystemPrompt now: a read as a string
 // compiles, yet it panics or, in the ok form, reads an empty prompt.
 func (p *filePlanner) beforeAgentStartData() map[*types.Var]bool {
-	if p.sdk == "" || !releaseBefore(p.sdkVersion, systemPromptSince) {
+	if p.sdk == "" || !releaseBefore(p.sdkVersion, impl.SystemPromptSince) {
 		return nil
 	}
 	data := map[*types.Var]bool{}
@@ -104,9 +99,9 @@ func (p *filePlanner) systemPromptSite(assert *ast.TypeAssertExpr, stack []ast.N
 	}
 	return &getterSite{
 		call:    assert,
-		getter:  getter{Since: systemPromptSince},
+		getter:  impl.Getter{Since: impl.SystemPromptSince},
 		rule:    RuleSystemPromptGetter,
-		symbol:  systemPromptSymbol,
+		symbol:  impl.SystemPromptSymbol,
 		value:   "systemPrompt",
 		text:    p.text(assert.X.Pos(), assert.X.End()) + ".(*" + p.sdk + ".SystemPrompt).Get()",
 		commaOK: commaOK,

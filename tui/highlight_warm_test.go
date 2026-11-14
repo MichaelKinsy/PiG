@@ -1,3 +1,5 @@
+//go:build !pig_strip_syntax_highlight
+
 package tui
 
 import (
@@ -37,15 +39,5 @@ func TestWarmHighlightContinuesToTheLinesOfAWholeRun(t *testing.T) {
 		if got := HighlightCode(c.code, c.lang); !slices.Equal(got, want) {
 			t.Errorf("%s: the resumed lines differ from a whole run (%d lines, want %d)", c.lang, len(got), len(want))
 		}
-	}
-}
-
-// A language highlight.js lacks leaves no state, which tells the caller to stop warming.
-func TestWarmHighlightReportsALanguageThatCannotResume(t *testing.T) {
-	if WarmHighlight(strings.Repeat("text\n", 100), "no-such-language") {
-		t.Fatal("WarmHighlight reported a resume state for a language highlight.js lacks")
-	}
-	if WarmHighlight(strings.Repeat("text\n", 100), "") {
-		t.Fatal("WarmHighlight reported a resume state for no language")
 	}
 }

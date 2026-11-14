@@ -467,8 +467,11 @@ func init() {
 }
 `
 
-// memProbeBinary is cmd/pig with memProbeSource, built beside pigBinary so TestMain removes it.
-var memProbeBinary = sync.OnceValues(func() (string, error) {
+// memProbeBinary is cmd/pig with memProbeSource.
+var memProbeBinary = sync.OnceValues(func() (string, error) { return probeBinary("memprobe", memProbeSource) })
+
+// probeBinary builds cmd/pig with source added to its package main (go build -overlay) as <name>/pig beside pigBinary, so TestMain removes it.
+func probeBinary(name, source string) (string, error) {
 	pig, err := pigBinary()
 	if err != nil {
 		return "", err
@@ -477,15 +480,15 @@ var memProbeBinary = sync.OnceValues(func() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(filepath.Dir(pig), "memprobe")
+	dir := filepath.Join(filepath.Dir(pig), name)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
-	source := filepath.Join(dir, "memprobe.go")
-	if err := os.WriteFile(source, []byte(memProbeSource), 0o600); err != nil {
+	sourcePath := filepath.Join(dir, name+".go")
+	if err := os.WriteFile(sourcePath, []byte(source), 0o600); err != nil {
 		return "", err
 	}
-	overlay, err := json.Marshal(map[string]any{"Replace": map[string]string{filepath.Join(root, "cmd", "pig", "zz_perfgate_memprobe.go"): source}})
+	overlay, err := json.Marshal(map[string]any{"Replace": map[string]string{filepath.Join(root, "cmd", "pig", "zz_perfgate_"+name+".go"): sourcePath}})
 	if err != nil {
 		return "", err
 	}
@@ -498,10 +501,10 @@ var memProbeBinary = sync.OnceValues(func() (string, error) {
 	build.Dir = root
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if data, err := build.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("go build ./cmd/pig with the memory probe: %w\n%s", err, data)
+		return "", fmt.Errorf("go build ./cmd/pig with %s.go: %w\n%s", name, err, data)
 	}
 	return out, nil
-})
+}
 
 // snapshot signals the probe and returns the runtime/metrics values it wrote.
 func (p *ptyPig) snapshot(dir string, n int) map[string]uint64 {

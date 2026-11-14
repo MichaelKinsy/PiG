@@ -5168,7 +5168,7 @@ class Extension:
         return self._wait_call(call_id, event, method)
 
     def _read_during_load(self, waiting: threading.Event | None = None) -> dict[str, Any] | None:
-        """Read the next message while the extension loads. Pings, call results, listener dispatches and the release of a listener are served as the main loop serves them, as a node runtime serves a dispatch during its factory; any other message is returned. With ``waiting`` given, return None once that call's result has arrived."""
+        """Read the next message while the extension loads. Pings, call results, listener dispatches and notifies are served as the main loop serves them, as a node runtime serves a dispatch during its factory; any other message is returned. With ``waiting`` given, return None once that call's result has arrived."""
         while True:
             env = self._read()
             kind = env.get("type")
@@ -5184,8 +5184,8 @@ class Extension:
                 self._respond(env.get("id", ""), None, {"message": env["refused"]})
             elif kind == "request" and (env.get("request") or {}).get("method") == "events.dispatch":
                 self._start_request(env)
-            elif kind == "notify" and (env.get("notify") or {}).get("method") == "events.release":
-                # A listener that a load-time dispatch unsubscribed is released as soon as its dispatch ends, which can precede ready.
+            elif kind == "notify":
+                # A notify before ready is applied as the main loop applies it: the release of a listener a load-time dispatch unsubscribed, which follows its dispatch, or a state the host pushed to a connection that had not registered.
                 self._handle_notify(env)
             else:
                 return env
@@ -5763,6 +5763,9 @@ class Extension:
 
         self._sock = host_helpers.take_helper_socket(sock_path) or _connect_unix(sock_path)
         self._served_socket = sock_path
+        # What the host sent while the factory's calls waited on this connection is applied before the run reads on, in arrival order.
+        for early in host_helpers.take_early_notifies(sock_path):
+            self._handle_notify(early)
         host_helpers._State.running.append(self)
         try:
             self._serve()

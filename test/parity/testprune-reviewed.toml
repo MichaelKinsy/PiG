@@ -1936,6 +1936,20 @@ cite = "packages/chord/src/node/plugins/install.ts:245"
 reason = "Pi 75d59639a (after the pin v1.5.2, so the mirror's install.ts:245 still shows the old `const [tarball] = JSON.parse(...)`) reads npm's pack output as `Array.isArray(output) ? output[0] : output[name]`: the first tarball of the list npm 11 and earlier print, or the member of the package asked for in the object npm 12 prints. packedTarball takes the package name and does the same, so the expectations that read the object's first member (D501, retired by this commit) now read the member of the name, an object without the name packs nothing, and the errors for a string, a number and a JSON null follow JavaScript's reads."
 
 [[entry]]
+path = "internal/codingagent/view_client_dialog_mode_test.go"
+commit = "7feee9716200bfbca9e49ddbf1e6e0dc808317a8"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The terminal view client and its dialog are PiG-additive (docs/additive-features.md D614, the sub-bullet `Dialog in the terminal client` under `Terminal client`) and have no Pi counterpart, so no Pi line governs the test. The record's sentences on a dialog that does not hold the keyboard were set under the owner's delegation (decision entry of 2026-11-13T16:55:59Z, owner decisions of 0.8.0): a frame is drawn only while a dialog holds the keyboard; while none does, the dialogs are one row directly above the editor, the title of the top one and `: F6 to enter`, and F6 draws every dialog of the stack in its frame again. The commit implements those sentences and the tests of the production renderer move with them, in both TUI modes: after the key that interrupts, and for a dialog shown to an editor that holds text, the renderer holds no frame and no overlay where the tests expected one, and the screen holds the row `Probe map: F6 to enter`; each F6 press is checked for the frame as well as for the focus; a key typed while the dialog waits is the editor's and draws no frame. TestTerminalViewClientEscapeLeavesTheDialogDrawn is renamed TestTerminalViewClientEscapeLeavesTheDialogForItsRow. TestTerminalViewClientClickFocusesTheDialog is deleted: it clicked the frame of a dialog that did not hold the keyboard, and such a dialog has no frame. The three literals the lint counts are the row text (twice) and the F6 failure text that came, for the F6 key (now on a line of its own), the old F6 failure text and the deleted click test's list item `Alpha` that left."
+
+[[entry]]
+path = "internal/codingagent/view_client_dialog_test.go"
+commit = "7feee9716200bfbca9e49ddbf1e6e0dc808317a8"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The terminal view client and its dialog are PiG-additive (docs/additive-features.md D614, the sub-bullet `Dialog in the terminal client` under `Terminal client`) and have no Pi counterpart, so no Pi line governs the test. The record's sentences on a dialog that does not hold the keyboard were set under the owner's delegation (decision entry of 2026-11-13T16:55:59Z, owner decisions of 0.8.0): a frame is drawn only while a dialog holds the keyboard; while none does, the dialogs are one row directly above the editor, the title of the top one, or its key when it has none, and `: F6 to enter`, and F6 draws every dialog of the stack in its frame again, the last on top with the keyboard. The commit implements those sentences and the tests of the scripted loop move with them: after the key that interrupts the loop holds 0 frames where the test expected 1, and the row `d: F6 to enter`; each F6 press is checked for the frame count (1 entered, 0 left) and the row (absent entered, present left) as well as for the focus; a dialog shown while the editor holds text has 0 frames where the test expected 1 and the row `d: F6 to enter`, and F6 gives it its frame and removes the row; a hidden dialog leaves no row. TestViewClientStacksDialogs gains two checks: leaving the top dialog removes both frames and lays the row `two: F6 to enter`, and entering draws the stack of two in order. TestViewClientEscapeLeavesADialogThatStaysDrawn is renamed TestViewClientEscapeLeavesADialogForItsRow. The three literals the lint counts are the failure texts of those three changed checks (after Escape, the F6 presses, the dialog shown while the editor holds text)."
+
+[[entry]]
 path = "env/differential_test.go"
 commit = "e6e4f9acc50b26111b6f83f48ea004ca1fa9927e"
 class = "CITE"
@@ -2143,6 +2157,34 @@ path = "internal/pioracle/bin_test.go"
 commit = "0022dfc94a0e68a24ec51f1a3566b0827cce9e9b"
 class = "NOBEHAVIOR"
 reason = "internal/pioracle is PiG-original test support (it finds and checks the installed Pi oracle), so no Pi line governs the test. The commit makes the durable check read the vendored packs: the eight values are the fixture of the check and its refusals, which were a package.json version and a build stamp file and are the packs' manifest.json (commit and package version) and the installed .package-lock.json (resolved file and sha512 integrity); the case `another commit of the same package version` (`build of Pi commit`) becomes `packs of another commit` (`want <the pinned commit>`), and the messages name checkDurable where they named CheckDurable."
+
+[[entry]]
+path = "coding/extension/host/subprocess/generation_supersede_test.go"
+commit = "6f9fe4304ad1246a6358e2b265183bc0fcb5ad3b"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi behavior changed. PiG-additive behavior changed: a Node runtime that misses the deadline of the reload acknowledgement was ended through the crash path (a crash report holding extension_unresponsive, a crash notice, a counted crash) -> the reload ends that extension instance itself, answers each request in flight once with an ExtensionUnresponsiveError that carries the deadline, returns the unacknowledged generations, names each in one line of the reload report, and records no crash; record: docs/additive-features.md D19 \"Reload acknowledgement\" and D21 (the line of the reload report), changed in the same commit. The ledger has no class for a PiG-additive behavior change; the row is NOBEHAVIOR on the precedent of the rows of 7feee9716200: Pi's runner.invalidate() is synchronous (agent-session.ts:3825-3826) and Pi has no runtime that can fail to acknowledge, so no Pi line governs the test. Old expected values: the connection's failure is an ExtensionUnresponsiveError whose Operation contains `acknowledge`, and the crash handler is told a reason that contains `extension_unresponsive`. New expected values: the error's ReloadDeadline is 1s (the pong deadline of the connection), supersedeGenerations returns exactly the one generation that did not acknowledge with that deadline (and none where the runtime acknowledged), the request in flight is answered once with `did not acknowledge a reload within 1s` and a request id, and the crash handler is told nothing. The new assertion is not weaker: two substring checks become exact values of the error and of the returned generation, the read loop must have ended before the crash handler is checked, and a crash report, which the old test required, now fails the test; the comments name the mutations that turn each check red."
+
+[[entry]]
+path = "coding/extension/host/subprocess/retention_dead_share_reload_test.go"
+commit = "7c24a924a9f3b784e3748673bb1982fc9bdb7b62"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi behavior changed. PiG-additive behavior changed: the connection loop of a member of a killed Node cell reported that member at once as disabled until /reload, and the watcher of the process then reported it again as restarting (four notices for a cell of two in 86 of 100 kills) -> the connection loop waits for the process and leaves the report to the watcher, one notice for each member, and a cell whose process ends just before a /reload is restarted by that reload with no notice; record: docs/additive-features.md D19 (the paragraph on retained processes, which names this test; changed in the same commit) and docs/runtime-cell-reload.md (`restarted by that reload without a notice of the exit`), whose sentence was written after the commit, in dcbd8560aa91 on the same line. The ledger has no class for a PiG-additive behavior change; the row is NOBEHAVIOR on the precedent of the rows of 7feee9716200: Pi runs an extension in its own process and has no runtime cell, so no Pi line governs the test. Old expected value: one crash notice for each member after the kill (`crash notices after killing the Node cell = %v, want %d`), which was how the test reached its window. New expected value: one handled closed connection for each member, counted through Host.deathGate (`members whose closed connection the host handled after the Node cell was killed = %v, want %d`), and after the reload no crash notice for any member. The new assertion is not weaker: the count of members is the same and is taken at the event that withdraws the process from retention claims, the refusal of the unreaped process is unchanged, and the test adds the requirement that the end of the replaced process is reported for no member, which the old test did not check."
+
+[[entry]]
+path = "coding/extension/host/subprocess/packed_go_test.go"
+commit = "cac3d13e176abfd6b2bec101744387ad16e4277d"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Runtime cells of the subprocess extension host are PiG-additive (docs/additive-features.md D19; docs/runtime-cell-reload.md, one notice for each extension in load order): no Pi line governs the test. The commit is the test side of 7c24a924a9 and adds Host.deathGate, nil outside tests. TestHost_KillingPackedProcessNeverClaimsItRemainedAlive accepted, for each member, whichever notice the first observer of the end gave (the plain connection-closed notice, a quarantine notice naming both members, or one naming only that member) and excluded `remained alive`; it now requires the one quarantine notice `packed process exited: signal: killed; kill-a, kill-b stopped; /reload restarts them (stderr: <path>)` for both members, which the host gives a Go cell since its members wait for the process (34f110f09d). The required text holds the stderr path and `/reload restarts` and cannot hold `remained alive`: stricter, not weaker."
+
+[[entry]]
+path = "test/parity/correspondence/compare_test.go"
+commit = "f93f99dd65a8b1054cfc7ca972079dc13646dd85"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "test/parity/correspondence is PiG-original parity tooling (the comparison behind `make correspondence-check`), so no Pi line governs the test. The commit gives Rules the lineage rule TableDescriptionTexts (table, item, Pi's fragment, PiG's fragment, the divergence) for the D2 pair of the settings row show-hardware-cursor (docs/parity/divergences/D2.md: `instead of Pi's drawn cursor`, `instead of PiG's drawn cursor`). The expected mapping count adds the declared pairs, as it adds the additive table items, and the failure message names the description text lineage. A description with no declared pair is still compared byte for byte, a declared pair that replaces nothing is a finding of its own, and nothing is added to known-gaps.toml."
 
 [[entry]]
 path = "ai/tool_surrogate_wire_test.go"

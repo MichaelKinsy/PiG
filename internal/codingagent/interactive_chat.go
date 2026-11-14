@@ -437,7 +437,7 @@ func (m *InteractiveMode) updateTerminalTitle() {
 }
 
 // setTerminalTitle writes title on the terminal the renderer draws on, as every title write of Pi's interactive mode does
-// (interactive-mode.ts `this.ui.terminal.setTitle`): the session's title, an extension's title and the clear when the mode stops. The
+// (interactive-mode.ts `this.ui.terminal.setTitle`): the session's title and an extension's title. The
 // process terminal is that terminal only when the mode was given no other, so the title never goes past the renderer to the process's
 // stdout.
 func (m *InteractiveMode) setTerminalTitle(title string) {

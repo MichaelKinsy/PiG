@@ -387,6 +387,10 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	m.tuiStopped.Store(true)
 	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
 	m.disposeActiveSelector()
+	// upstream: interactive-mode.ts:7285-7287: stop() then clears the progress indicator, only when the setting shows it, and before the renderer stops. Nothing clears the title: Pi never writes an empty one.
+	if m.opts.Settings.GetShowTerminalProgress() {
+		m.setTerminalProgress(false)
+	}
 	m.disposeTheme()
 	if m.statusLine != nil {
 		// upstream: interactive-mode.ts:7098 (stop() disposes the footer)

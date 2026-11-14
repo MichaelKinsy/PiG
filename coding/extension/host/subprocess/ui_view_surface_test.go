@@ -166,7 +166,7 @@ func TestMountSurfaceMouseRegionClick(t *testing.T) {
 }
 
 // pig additive (D614): the kinds a mount surface declares are kinds of the D107 vocabulary, without image.
-func TestMountNodeKindsAreTheViewVocabularyWithoutImage(t *testing.T) {
+func TestMountNodeKindsAreTheViewVocabulary(t *testing.T) {
 	kinds := MountNodeKinds()
 	if !slices.IsSorted(kinds) || len(slices.Compact(slices.Clone(kinds))) != len(kinds) {
 		t.Fatalf("kinds are not sorted and distinct: %v", kinds)
@@ -181,7 +181,8 @@ func TestMountNodeKindsAreTheViewVocabularyWithoutImage(t *testing.T) {
 			t.Errorf("kind %q is not declared", want)
 		}
 	}
-	if slices.Contains(kinds, ViewKindImage) {
-		t.Error("image is declared; a mount's assets do not reach the D107 image store")
+	// A mount's view carries the bytes of its images in its own list, and the surface draws them from there.
+	if !slices.Contains(kinds, ViewKindImage) {
+		t.Error("image is not declared; a mount's view carries its images and the surface draws them")
 	}
 }

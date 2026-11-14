@@ -3,8 +3,10 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -94,4 +96,44 @@ func TestScanFindsLinuxOnlyTrapOnEveryHost(t *testing.T) {
 	if got := scan(root, pkgs); !slices.Equal(got, want) {
 		t.Fatalf("findings\n got %+v\nwant %+v", got, want)
 	}
+}
+
+// A baseline that does not parse stops the gate with the file and the decode error in the message.
+func TestRunFailsOnABaselineThatDoesNotParse(t *testing.T) {
+	t.Setenv("GOWORK", "off") // the sample is its own module, outside the repository workspace
+	root, err := filepath.Abs(filepath.Join("testdata", "sample"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseline := filepath.Join(t.TempDir(), "baseline.toml")
+	if err := os.WriteFile(baseline, []byte("[[hit]]\nfile = \"a.go\"\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var rc int
+	stderr := captureStderr(t, func() { rc = run(root, baseline, []string{"./..."}, false, false) })
+	if rc != 2 || !strings.Contains(stderr, baseline) || !strings.Contains(stderr, "line 2") {
+		t.Fatalf("exit = %d, stderr = %q; want 2 and a message that names %s and line 2", rc, stderr, baseline)
+	}
+}
+
+// captureStderr returns what fn writes to os.Stderr.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	file, err := os.CreateTemp(t.TempDir(), "stderr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stderr
+	os.Stderr = file
+	defer func() { os.Stderr = old }()
+	fn()
+	os.Stderr = old
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(file.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }

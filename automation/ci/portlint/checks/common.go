@@ -82,8 +82,9 @@ func register(name, doc string, sev Severity, incident string, tooling bool, fn 
 			if !tooling && isTooling(p.Pkg.Path()) {
 				return nil, nil
 			}
-			fn(&Pass{Pass: p, Inspect: p.ResultOf[inspect.Analyzer].(*inspector.Inspector), check: name})
-			return nil, nil
+			pass := &Pass{Pass: p, Inspect: p.ResultOf[inspect.Analyzer].(*inspector.Inspector), check: name}
+			fn(pass)
+			return nil, pass.err
 		},
 	}
 	registry = append(registry, Check{Analyzer: a, Severity: sev, Incident: incident})
@@ -95,6 +96,14 @@ type Pass struct {
 	*analysis.Pass
 	Inspect *inspector.Inspector
 	check   string
+	err     error
+}
+
+// Fail makes the pass fail with err: the check could not read what it checks against, so its silence would not mean a clean package. The first error is kept.
+func (p *Pass) Fail(err error) {
+	if p.err == nil {
+		p.err = err
+	}
 }
 
 var allowRe = regexp.MustCompile(`^//\s*portlint:allow\s+(\S+)(?:\s+(.*\S))?\s*$`)

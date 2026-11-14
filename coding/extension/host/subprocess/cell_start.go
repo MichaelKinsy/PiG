@@ -185,8 +185,11 @@ func (me *managedExt) activateNode() error {
 	}
 	ready := me.pendingReady
 	me.pendingReady = nil
+	conn := me.connection()
+	var stateEpoch uint64
 	if me.host != nil && me.host.uiBridge != nil {
 		bridge := me.host.uiBridge
+		stateEpoch = me.host.readyStateEpoch(conn)
 		// Notifications may have arrived during later factories. Activation must not overwrite that state with the earlier registration snapshot.
 		if me.wantsModelRegistry {
 			ready.Ready.Models = bridge.ModelCatalog()
@@ -200,10 +203,9 @@ func (me *managedExt) activateNode() error {
 		me.entryCursorMu.Unlock()
 	}
 	// The geometry is read when the deferred payload is sent: a resize while later factories loaded may have changed it.
-	conn := me.connection()
 	var err error
 	if me.host != nil {
-		err = me.host.sendReady(me, conn, ready)
+		err = me.host.sendReady(me, conn, ready, stateEpoch)
 	} else {
 		err = conn.Send(ready)
 	}

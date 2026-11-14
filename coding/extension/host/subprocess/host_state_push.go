@@ -33,6 +33,49 @@ func (h *Host) behindHostState(me *managedExt) bool {
 	return me.pushedStateEpoch.Load() < h.hostStateEpoch.Load() || h.hostStateInflight.Load() > 0
 }
 
+// statePushedAt records that me received a state that holds every host state change up to epoch.
+func (me *managedExt) statePushedAt(epoch uint64) {
+	for held := me.pushedStateEpoch.Load(); held < epoch && !me.pushedStateEpoch.CompareAndSwap(held, epoch); held = me.pushedStateEpoch.Load() {
+	}
+}
+
+// The ready payload is a connection's first state, so the Host writes no state to a connection before it. A runtime reads the frames that precede its ready while its factory still loads, and a state there has no place in its order: the ready's snapshot can be older than the frame and is applied after it. A call the Host answers before the register handshake (loadingBusCall) replies through replyToCall, and a broadcast reaches a restarting extension's new connection, so a push can find a connection in its handshake: it is withheld and owed, and sendReady pays it after the ready.
+const (
+	// connReady is a connection whose ready is queued, or one that was not adopted through the handshake: it takes state pushes. It is the zero value.
+	connReady uint32 = iota
+	// connAwaitsReady is a connection the Host adopted whose ready is not sent.
+	connAwaitsReady
+	// connOwedState is connAwaitsReady after a state push was withheld that the ready's snapshot, taken earlier, may not hold.
+	connOwedState
+)
+
+// awaitReady marks c as adopted and waiting for its ready. The caller has not published or started c.
+func (c *Conn) awaitReady() { c.readyState.Store(connAwaitsReady) }
+
+// withholdState reports whether a state push to c waits for its ready, and records that the push is owed.
+func (c *Conn) withholdState() bool {
+	for {
+		switch c.readyState.Load() {
+		case connReady:
+			return false
+		case connOwedState:
+			return true
+		}
+		if c.readyState.CompareAndSwap(connAwaitsReady, connOwedState) {
+			return true
+		}
+	}
+}
+
+// readySent opens c to state pushes once its ready is queued, and reports whether one is owed.
+func (c *Conn) readySent() bool { return c.readyState.Swap(connReady) == connOwedState }
+
+// readyStateEpoch begins the snapshot of conn's ready payload and returns the hostStateEpoch it holds: the epoch is read before the snapshot, as pushState reads it, so the snapshot holds every change up to it. A push withheld before now is no longer owed, because the snapshot holds its state too.
+func (h *Host) readyStateEpoch(conn *Conn) uint64 {
+	conn.readyState.CompareAndSwap(connOwedState, connAwaitsReady)
+	return h.hostStateEpoch.Load()
+}
+
 // fanOutStatePush queues a state push to every connected extension. It clears the queued flag before it reads the targets, so a change that arrives while it runs queues another fan-out that pushes the newer state.
 func (h *Host) fanOutStatePush() {
 	h.hostStatePushQueued.Store(false)

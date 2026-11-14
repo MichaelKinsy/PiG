@@ -250,6 +250,15 @@ func compare(found []finding, baseline []finding) (grew, stale []string) {
 	return grew, stale
 }
 
+// loadBaseline reads the baseline at path. A missing file is an empty baseline: every finding is then new and fails.
+func loadBaseline(path string) (baselineFile, error) {
+	var baseline baselineFile
+	if _, err := toml.DecodeFile(path, &baseline); err != nil && !os.IsNotExist(err) {
+		return baselineFile{}, fmt.Errorf("read baseline %s: %w", path, err)
+	}
+	return baseline, nil
+}
+
 func run(root, baselinePath string, patterns []string, report, printBaseline bool) int {
 	pkgs, err := load(root, patterns)
 	if err != nil {
@@ -275,8 +284,8 @@ func run(root, baselinePath string, patterns []string, report, printBaseline boo
 		fmt.Printf("%d decodes into interface values in %d places\n", total, len(found))
 		return 0
 	}
-	var baseline baselineFile
-	if _, err := toml.DecodeFile(baselinePath, &baseline); err != nil && !os.IsNotExist(err) {
+	baseline, err := loadBaseline(baselinePath)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "any-trap:", err)
 		return 2
 	}

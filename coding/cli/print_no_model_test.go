@@ -73,22 +73,26 @@ func TestPrintUnknownModelPreflightFollowsExtensionInput(t *testing.T) {
 
 // AgentSession.prompt (agent-session.ts:2037-2050) checks the selected provider's auth before the request: print and JSON mode
 // fail with Pi's "No API key found" guidance and never start a turn, where PiG used to run the turn and let the provider fail
-// with "provider is not configured".
+// with "provider is not configured". The rule has no provider name in it (agent-session.ts:2247-2259): a provider called ollama without
+// credentials is refused like any other, with OLLAMA_HOST set or not (Pi 1.5.2 print mode, RUN 2026-11-13: `No API key found for ollama.`).
 func TestPrintModeRejectsAProviderWithoutAuthBeforeTheTurn(t *testing.T) {
 	for _, mode := range []string{"text", "json"} {
-		t.Run(mode, func(t *testing.T) {
-			provider := ai.NewFauxProvider(ai.FauxConfig{})
-			provider.SetResponses(fauxSteps(fauxTextResponse("must not run")))
-			host := printModeTestHost(t, provider)
-			host.Session.Model.ProviderMeta.ProviderID = "keyless"
-			result := runPrintModeForTest(t, host, printModeOptions{Mode: mode, InitialMessage: "hello"})
-			if !errors.Is(result.err, errPrintModeHandled) || result.stderr != codingagent.FormatNoAPIKeyFoundMessage("keyless")+"\n" {
-				t.Fatalf("err=%v stderr=%q", result.err, result.stderr)
-			}
-			if strings.Contains(result.stdout, "agent_start") || strings.Contains(result.stdout, "must not run") {
-				t.Fatalf("the turn ran: %s", result.stdout)
-			}
-		})
+		for _, id := range []string{"keyless", "ollama"} {
+			t.Run(mode+"/"+id, func(t *testing.T) {
+				t.Setenv("OLLAMA_HOST", "http://127.0.0.1:9")
+				provider := ai.NewFauxProvider(ai.FauxConfig{})
+				provider.SetResponses(fauxSteps(fauxTextResponse("must not run")))
+				host := printModeTestHost(t, provider)
+				host.Session.Model.ProviderMeta.ProviderID = id
+				result := runPrintModeForTest(t, host, printModeOptions{Mode: mode, InitialMessage: "hello"})
+				if !errors.Is(result.err, errPrintModeHandled) || result.stderr != codingagent.FormatNoAPIKeyFoundMessage(id)+"\n" {
+					t.Fatalf("err=%v stderr=%q", result.err, result.stderr)
+				}
+				if strings.Contains(result.stdout, "agent_start") || strings.Contains(result.stdout, "must not run") {
+					t.Fatalf("the turn ran: %s", result.stdout)
+				}
+			})
+		}
 	}
 }
 

@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"os/exec"
+	"slices"
 	"strings"
 	"testing"
 
@@ -82,8 +83,11 @@ func TestMarkdownInlineLoneSurrogatesMatchPi(t *testing.T) {
 			"<div>"+h+"</div>\n\ntext", "para"+h+"\n\n    code"+h+"\n\n```\nfence"+h+"\n```", "a "+h+" b\n\n---\n\nc "+h,
 			"$x"+h+"$", "$"+h+"$ and $a"+h+"+b$ more", "$x^{"+h+"}$ text", "$\\frac{"+h+"}{2}$", "$$\n"+h+"\n$$", "$$\n\\frac{"+h+"}{y}\n$$", "\\("+h+"\\)", "\\["+h+"\\]",
 			"\\[\n\\begin{matrix} "+h+" & b \\\\ c & d \\end{matrix}\n\\]", "price $"+h+" and $x$ or $5",
-			// A text that holds characters of the private-use area keeps its own.
-			"\U0010F800\n\n```js\nx"+h+"y\n```", "\U0010F83D"+h+"\U0010FFFF text", "[a][b\U0010F83D"+h+"]\n\n[b\U0010F83D"+h+"]: /u",
+		)
+		// A text that holds characters of the private-use area keeps its own.
+		texts = append(texts, withHighlightedCode("\U0010F800\n\n```js\nx"+h+"y\n```")...)
+		texts = append(texts,
+			"\U0010F83D"+h+"\U0010FFFF text", "[a][b\U0010F83D"+h+"]\n\n[b\U0010F83D"+h+"]: /u",
 		)
 	}
 	compareMarkdownTextsWithPi(t, texts)
@@ -93,8 +97,9 @@ func TestMarkdownInlineLoneSurrogatesMatchPi(t *testing.T) {
 // Pi, in a paragraph, a code span and a code fence alike.
 func TestMarkdownAdjacentSurrogateHalvesAreOneCharacterAsInPi(t *testing.T) {
 	high, low := jsstring.FromUTF16([]uint16{0xd83d}), jsstring.FromUTF16([]uint16{0xde00})
-	compareMarkdownTextsWithPi(t, []string{
-		high + low, "a " + high + low + " b", "`" + high + low + "`", "```\n" + high + low + "\n```", "```js\nx" + high + low + "y\n```",
-		"**" + high + low + "** and " + high + low + low, high + high + low + low,
-	})
+	compareMarkdownTextsWithPi(t, slices.Concat(
+		[]string{high + low, "a " + high + low + " b", "`" + high + low + "`", "```\n" + high + low + "\n```"},
+		withHighlightedCode("```js\nx"+high+low+"y\n```"),
+		[]string{"**" + high + low + "** and " + high + low + low, high + high + low + low},
+	))
 }

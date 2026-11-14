@@ -53,6 +53,7 @@ import (
 	"math/bits"
 	"reflect"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1576,24 +1577,8 @@ func typeFields(t reflect.Type) structFields {
 		}
 	}
 
-	slices.SortFunc(fields, func(a, b field) int {
-		// sort field by name, breaking ties with depth, then
-		// breaking ties with "name came from json tag", then
-		// breaking ties with index sequence.
-		if c := strings.Compare(a.name, b.name); c != 0 {
-			return c
-		}
-		if c := cmp.Compare(len(a.index), len(b.index)); c != 0 {
-			return c
-		}
-		if a.tag != b.tag {
-			if a.tag {
-				return -1
-			}
-			return +1
-		}
-		return slices.Compare(a.index, b.index)
-	})
+	// Two fields compare equal only when one is the copy this loop made of the other (count[f.typ] > 1), so any sort gives this order. sort.Slice runs package sort's one copy of the sort; slices.SortFunc compiles one for field, and the result is cached per type.
+	sort.Slice(fields, func(i, j int) bool { return compareFieldsByName(&fields[i], &fields[j]) < 0 })
 
 	// Delete all fields that are hidden by the Go rules for embedded fields,
 	// except that fields with JSON tags are promoted.
@@ -1624,9 +1609,8 @@ func typeFields(t reflect.Type) structFields {
 	}
 
 	fields = out
-	slices.SortFunc(fields, func(i, j field) int {
-		return slices.Compare(i.index, j.index)
-	})
+	// The index sequences of the fields that survive are distinct.
+	sort.Slice(fields, func(i, j int) bool { return slices.Compare(fields[i].index, fields[j].index) < 0 })
 
 	for i := range fields {
 		f := &fields[i]
@@ -1642,6 +1626,25 @@ func typeFields(t reflect.Type) structFields {
 		}
 	}
 	return structFields{fields, exactNameIndex, foldedNameIndex}
+}
+
+// compareFieldsByName orders fields by name, breaking ties with depth, then
+// breaking ties with "name came from json tag", then
+// breaking ties with index sequence.
+func compareFieldsByName(a, b *field) int {
+	if c := strings.Compare(a.name, b.name); c != 0 {
+		return c
+	}
+	if c := cmp.Compare(len(a.index), len(b.index)); c != 0 {
+		return c
+	}
+	if a.tag != b.tag {
+		if a.tag {
+			return -1
+		}
+		return +1
+	}
+	return slices.Compare(a.index, b.index)
 }
 
 // dominantField looks through the fields, all of which are known to
