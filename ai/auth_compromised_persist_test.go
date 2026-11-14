@@ -5,6 +5,7 @@ package ai
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -22,7 +23,9 @@ func TestRefreshedCredentialSurvivesALockTakenMeanwhile(t *testing.T) {
 		}
 		input := bufio.NewReader(os.Stdin)
 		_, err = store.Modify(context.Background(), "openai-codex", func(current *Credential) (*Credential, error) {
-			os.Stdout.WriteString("READY\n") // the network call of the refresh is in flight
+			if _, err := os.Stdout.WriteString("READY\n"); err != nil { // the network call of the refresh is in flight
+				return nil, err
+			}
 			if _, err := input.ReadString('\n'); err != nil {
 				return nil, err
 			}
@@ -31,7 +34,7 @@ func TestRefreshedCredentialSurvivesALockTakenMeanwhile(t *testing.T) {
 			return &next, nil
 		})
 		if err != nil {
-			os.Stderr.WriteString("holder: the refreshed credential was not persisted: " + err.Error() + "\n")
+			fmt.Fprintln(os.Stderr, "holder: the refreshed credential was not persisted:", err)
 			os.Exit(1)
 		}
 		return
