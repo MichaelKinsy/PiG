@@ -89,6 +89,13 @@ type OpenAICompat struct {
 	RequiresThinkingAsText                      *bool  `json:"requiresThinkingAsText,omitempty"`
 	RequiresReasoningContentOnAssistantMessages *bool  `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	SupportsOpenAIGrammarTools                  *bool  `json:"supportsOpenAIGrammarTools,omitempty"`
+	// SendEmptyToolsWithHistory opts back into the upstream wire behavior of
+	// sending `"tools": []` once the transcript carries tool history but no
+	// tools are admitted. The fork's default is to omit the field instead:
+	// current vLLM rejects the empty array (400 "`tools` must not be an empty
+	// array") while older vLLM accepted it; the flag exists for the
+	// Anthropic-via-LiteLLM proxies that require the field present.
+	SendEmptyToolsWithHistory                   *bool  `json:"sendEmptyToolsWithHistory,omitempty"`
 	SupportsExplicitPromptCacheMode             *bool  `json:"supportsExplicitPromptCacheMode,omitempty"`
 	SupportsStrictTools                         *bool  `json:"supportsStrictTools,omitempty"`
 	// ThinkingFormat controls how reasoning/thinking content is sent to the provider.
@@ -1231,11 +1238,12 @@ func hasToolHistory(transcript TranscriptContext) bool {
 	return false
 }
 
-// resolveRequestTools returns the value for the request `tools` field, mirroring
-// upstream openai-completions.ts:729-737: the converted tools when any are
-// present, an explicit empty array when the conversation has tool history so
-// Anthropic-via-proxy backends accept the request, otherwise nil so the field is
-// omitted (some compatible backends reject `tools: []` outright).
+// resolveRequestTools returns the value for the request `tools` field: the
+// converted tools when any are present; otherwise, with a transcript that
+// references tools, an explicit empty array only for backends that require it
+// (compat sendEmptyToolsWithHistory — Anthropic via LiteLLM), where current
+// vLLM and older backends would otherwise reject `"tools": []`; the omitted
+// field everywhere else.
 func (p *openAIProvider) resolveRequestTools(transcript TranscriptContext, tools []ToolSchema) (*[]oaiTool, error) {
 	if len(tools) > 0 {
 		converted, err := p.convertTools(tools)
@@ -1244,7 +1252,7 @@ func (p *openAIProvider) resolveRequestTools(transcript TranscriptContext, tools
 		}
 		return &converted, nil
 	}
-	if hasToolHistory(transcript) {
+	if hasToolHistory(transcript) && p.compatBool(func(c *OpenAICompat) *bool { return c.SendEmptyToolsWithHistory }, false) {
 		return &[]oaiTool{}, nil
 	}
 	return nil, nil
