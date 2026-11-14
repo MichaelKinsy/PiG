@@ -577,6 +577,8 @@ type InteractiveMode struct {
 	tuiStopped atomic.Bool
 	// interruptExiting is set once a SIGINT's exit has begun to end the extension processes (handleInterruptSignal): a quit that the owner loop still serves prints no resume hint beside that exit.
 	interruptExiting atomic.Bool
+	// quitDisposing is set once a quit by keys has stopped the TUI and begun its dispose (finishInteractiveShutdown), which holds shutdownMu until it returns. A SIGINT that arrives then has no shutdown event left to give (interruptShutdown).
+	quitDisposing atomic.Bool
 	// extensionKeybindings is the keybinding table extension state
 	// snapshots carry, republished when the keybindings reload.
 	extensionKeybindings atomic.Pointer[map[string]any]

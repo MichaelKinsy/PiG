@@ -517,7 +517,10 @@ func (m *InteractiveMode) interruptShutdown() bool {
 	// pig additive (D102): Pi dies on SIGINT with no trace.
 	RecordEnding(m.opts.AgentDir, "received SIGINT (exit 130)")
 	// pig divergence (D51): restore terminal state before exit 130.
-	m.shutdownExtensionsBriefly()
+	// A quit by keys whose dispose is pending has emitted session_shutdown already and holds shutdownMu while it waits for its author, so the second that shutdownExtensionsBriefly grants would only wait for that lock: Pi's stop() removed its signal handlers, and the SIGINT ends its process at once (Pi 1.5.2 under tmux: 130 after 28 to 32 ms; pig took 1.01 to 1.03 s).
+	if !m.quitDisposing.Load() {
+		m.shutdownExtensionsBriefly()
+	}
 	return true
 }
 
