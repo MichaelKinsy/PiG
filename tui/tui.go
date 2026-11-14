@@ -2804,6 +2804,7 @@ func (t *TuiMainScreen) drawFrame(gate frameGate) (began bool) {
 	t.prevLines = newLines
 	t.prevWidth = width
 	t.prevHeight = height
+	return true
 }
 
 // differentialOverflowRow returns the row at which upstream's differential

@@ -502,6 +502,7 @@ func (t *TuiSurface) drawFrame(gate frameGate) (began bool) {
 			onApplyError(err)
 		}
 	}
+	return true
 }
 
 // pig additive (D91): a frame carries the palette of the theme PiG draws

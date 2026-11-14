@@ -1039,6 +1039,7 @@ func (t *TuiAltScreen) drawFrame(gate frameGate) (began bool) {
 	t.previousScreenWidth = width
 	t.previousScreenHeight = height
 	t.currentLayout = &nextLayout
+	return true
 }
 
 // altScreenRow returns screen[row], or "" past the end (upstream's
