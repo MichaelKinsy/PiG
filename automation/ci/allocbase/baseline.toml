@@ -125,6 +125,26 @@ allocs = 30
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/escape"
+allocs = 4
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/escaped_pair"
+allocs = 4
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/first_half"
+allocs = 26
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/plain"
+allocs = 3
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkAnthropicDeltaReflect"
 allocs = 19
 
@@ -2266,32 +2286,32 @@ allocs = 845
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/16_extensions,_one_at_a_time"
-allocs = 72190
+allocs = 63412
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/16_extensions,_together"
-allocs = 72229
+allocs = 63449
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/1_extensions,_one_at_a_time"
-allocs = 4513
+allocs = 3964
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/1_extensions,_together"
-allocs = 4517
+allocs = 3964
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/4_extensions,_one_at_a_time"
-allocs = 18048
+allocs = 15853
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/4_extensions,_together"
-allocs = 18060
+allocs = 15865
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2571,7 +2591,7 @@ allocs = 2134
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkStagedSDKWalkHash"
-allocs = 3475
+allocs = 3135
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -3047,6 +3067,11 @@ allocs = 63
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelThinkingSubmenu"
 allocs = 1901
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelsJSONLoad"
+allocs = 4956
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3817,6 +3842,16 @@ allocs = 6
 package = "./tui"
 benchmark = "BenchmarkLanguageFromPath"
 allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLoginDialogIsDirty"
+allocs = 21
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLoginDialogSettledFrame"
+allocs = 65
 
 [[benchmark]]
 package = "./tui"
