@@ -11,10 +11,32 @@ type outbox struct {
 	running bool
 }
 
-// run queues deliver and, when no other caller is delivering, delivers every queued change.
+// update reads the follower's state with read, which returns the change to deliver for it (nil: none), queues the change and
+// delivers every queued change. Reading and queueing are one step under the outbox's lock, so changes are delivered in the order
+// their state was read: a change read from older state is never delivered after one read from newer state, and the last
+// change delivered is the follower's current one (Pi's single thread runs `update` whole, in call order). read runs with that
+// lock held and no callback of the client runs under it: read must not call the client's code or update.
+func (o *outbox) update(read func() func()) {
+	o.enqueue(read)
+	o.drain()
+}
+
+// run queues deliver and delivers every queued change: an event whose state is read when it is delivered (the connection loop's).
 func (o *outbox) run(deliver func()) {
+	o.update(func() func() { return deliver })
+}
+
+func (o *outbox) enqueue(read func() func()) {
 	o.mu.Lock()
-	o.queue = append(o.queue, deliver)
+	defer o.mu.Unlock()
+	if deliver := read(); deliver != nil {
+		o.queue = append(o.queue, deliver)
+	}
+}
+
+// drain delivers every queued change, unless another caller is delivering: that one delivers them.
+func (o *outbox) drain() {
+	o.mu.Lock()
 	if o.running {
 		o.mu.Unlock()
 		return

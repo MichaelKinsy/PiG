@@ -44,30 +44,29 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 	var current *Language
 	var out outbox
 	update := func() {
-		mu.Lock()
-		if stopped.Load() {
-			mu.Unlock()
-			return
-		}
-		locale := ResolveLocale(pick, device, translations.Locales)
-		if current != nil && current.Locale == locale && current.Translations == translations {
-			mu.Unlock()
-			return
-		}
-		language, err := CreateLanguage(locale, translations, once)
-		if err != nil {
-			mu.Unlock()
-			// A locale some catalog offers is a canonical tag (ComposeTranslations checked it).
-			panic(fmt.Sprintf("surfaces: resolved locale %q: %v", locale, err))
-		}
-		current = language
-		mu.Unlock()
-		out.run(func() {
+		out.update(func() func() {
+			mu.Lock()
+			defer mu.Unlock()
 			if stopped.Load() {
-				return
+				return nil
 			}
-			state.Set(language)
-			changed(language)
+			locale := ResolveLocale(pick, device, translations.Locales)
+			if current != nil && current.Locale == locale && current.Translations == translations {
+				return nil
+			}
+			language, err := CreateLanguage(locale, translations, once)
+			if err != nil {
+				// A locale some catalog offers is a canonical tag (ComposeTranslations checked it).
+				panic(fmt.Sprintf("surfaces: resolved locale %q: %v", locale, err))
+			}
+			current = language
+			return func() {
+				if stopped.Load() {
+					return
+				}
+				state.Set(language)
+				changed(language)
+			}
 		})
 	}
 	update()
