@@ -1023,7 +1023,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7475a64](#bf-7475a64) | A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7489735](#bf-7489735) | `pig -e <directory>` now loads a Node extension whose entry file is `index.mjs` and that has no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-74bc69b](#bf-74bc69b) | fix(rpc): every Session replacement aborts the compactions of its batch, and an abort before the request… | PiG's own defect | All platforms | Unreleased |
-| [BF-74be405](#bf-74be405) | A full disk or a killed process during a credential write could sign you out of every provider | PiG's own defect | Windows | Unreleased |
+| [BF-74be405](#bf-74be405) | A full disk or a killed process during a credential write could sign you out of every provider | PiG's own defect | Windows, Linux | Unreleased |
 | [BF-74c3fde](#bf-74c3fde) | Typing fast into an `@`, `#` or provider-trigger token, or while a slow autocomplete provider is still… | PiG's own defect | All platforms | Unreleased |
 | [BF-74e801f](#bf-74e801f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-74f806c](#bf-74f806c) | fix(agent): end the tool flow at custom user messages after /tree navigation (#203) | PiG's own defect | All platforms | Unreleased |
@@ -4375,7 +4375,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `16c1901a48` (2026-11-14)
 - **Tests:** None recorded.
-- **Release note:** A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the file empty, and the next change then saved it with that one setting or decision alone, so every other setting or trust decision was lost. Both files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched; the bytes written are the same.
+- **Release note:** A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the file empty, and the next change then saved it with that one setting or decision alone, so every other setting or trust decision was lost. Both files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched; the bytes written are the same. Where one of them cannot be replaced atomically, for example a single file mounted into a container, pig writes it in place as before.
 
 ### BF-16d0758
 
@@ -16110,11 +16110,11 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Symptom:** A full disk or a killed process during a credential write could sign you out of every provider.
 - **Root cause:** the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials.
 - **User impact:** Credential or permission exposure
-- **Platform:** Windows
+- **Platform:** Windows, Linux
 - **Fixed in:** Unreleased
 - **Fix commits:** `74be4056e2` (2026-11-14)
-- **Tests:** `internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode`, `internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink`, `internal/atomicfile/atomicfile_test.go::TestWriteFileInReadOnlyDirectoryKeepsFile`, `internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile`
-- **Release note:** A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, a symlinked `auth.json` and, on Windows, its access rights are kept; a hard link to the old file and extended attributes on Unix are not carried over.
+- **Tests:** `internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode`, `internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink`, `internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile`
+- **Release note:** A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, owner, extended attributes (the POSIX ACL on Linux), a symlinked `auth.json` and, on Windows, its access rights are kept. pig replaces a file only when that changes nothing but the file itself: where a credential or settings file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, or a file with more than one hard link, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so.
 
 ### BF-74c3fde
 
@@ -18577,7 +18577,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `8d4e7f2452` (2026-11-14)
 - **Tests:** None recorded.
-- **Release note:** A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during the legacy API-key migration could leave the file empty or cut short and lose your keybindings, your MCP servers or your settings. These files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched.
+- **Release note:** A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during the legacy API-key migration could leave the file empty or cut short and lose your keybindings, your MCP servers or your settings. These files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Where one of them cannot be replaced atomically, for example a single file mounted into a container or a file in a directory pig cannot write into, pig writes it in place as before.
 
 ### BF-8d6fb83
 

@@ -74,7 +74,7 @@ func TestWriteFileFollowsSymlink(t *testing.T) {
 	noTemporaryFile(t, filepath.Dir(target))
 }
 
-// A file the caller may not write is refused, as an in-place write refuses it, with its content intact and no temporary file.
+// A file the caller may not write is refused as an in-place write refuses it, with its content intact and no temporary file.
 func TestWriteFileRefusesReadOnlyFile(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root writes any file")
@@ -91,26 +91,4 @@ func TestWriteFileRefusesReadOnlyFile(t *testing.T) {
 		t.Fatalf("content = %q", data)
 	}
 	noTemporaryFile(t, dir)
-}
-
-// A directory that cannot take a new entry fails the write before any byte is written: the file stays as it was.
-func TestWriteFileInReadOnlyDirectoryKeepsFile(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root writes into any directory")
-	}
-	dir := t.TempDir()
-	path := filepath.Join(dir, "auth.json")
-	if err := os.WriteFile(path, []byte("kept"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(dir, 0o500); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
-	if err := WriteFile(path, []byte("lost"), 0o600); err == nil {
-		t.Fatal("WriteFile in a read-only directory succeeded")
-	}
-	if data, _ := os.ReadFile(path); string(data) != "kept" {
-		t.Fatalf("content = %q", data)
-	}
 }
