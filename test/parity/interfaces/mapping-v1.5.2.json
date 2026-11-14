@@ -303243,7 +303243,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
+        "test:coding/extension/host/subprocess/render_proxy_early_click_test.go#TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder"
       ]
     },
     {
@@ -303265,7 +303265,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
+        "test:coding/extension/host/subprocess/render_proxy_early_click_test.go#TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder"
       ]
     },
     {
