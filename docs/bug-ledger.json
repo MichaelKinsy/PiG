@@ -3329,6 +3329,84 @@
       ]
     },
     {
+      "id": "BF-1136763",
+      "title": "A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the…",
+      "symptom": "A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the prompt, the system prompt and every system prompt option of `before_agent_start` and the system prompt a handler returns, the tool names, ids and results of the `tool_execution_start`, `tool_execution_update` and `tool_execution_end` events, the entries of `turn_end` and `agent_before_settle`, the model of `model_select`, the servers of `mcp_servers_change`, and the model name of a provider an extension registers.",
+      "rootCause": "the extension event types and the provider configuration encode and decode their own JSON with encoding/json, which writes each byte of a lone UTF-16 surrogate as U+FFFD and reads its escape as U+FFFD, and no test sent such a string through every event type or through a handler of every SDK",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the prompt, the system prompt and every system prompt option of `before_agent_start` and the system prompt a handler returns, the tool names, ids and results of the `tool_execution_start`, `tool_execution_update` and `tool_execution_end` events, the entries of `turn_end` and `agent_before_settle`, the model of `model_select`, the servers of `mcp_servers_change`, and the model name of a provider an extension registers. PiG wrote three U+FFFD in its place in these event frames and read one U+FFFD from a handler's reply. An extension written with the Rust SDK still receives U+FFFD, because that SDK replaces the unit when it reads a frame.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "11367633b5",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_frame_surrogate_sweep_test.go::TestEventFrameSurrogateSweep",
+        "coding/extension/host/subprocess/prompt_options_surrogate_test.go::TestPromptOptionEditsKeepALoneSurrogate",
+        "coding/mcp_session_lone_surrogate_test.go::TestAgentSessionMCPToolResultKeepsALoneSurrogate",
+        "coding/nested_call_lone_surrogate_test.go::TestSessionNestedCallErrorKeepsALoneSurrogate",
+        "internal/codingagent/extension_provider_surrogate_test.go::TestExtensionProviderRegistrationKeepsALoneSurrogate"
+      ]
+    },
+    {
+      "id": "BF-1136763-2",
+      "title": "A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other…",
+      "symptom": "A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other tool.",
+      "rootCause": "the MCP content reader decoded a result's members with encoding/json, which reads the escape of a lone UTF-16 surrogate as U+FFFD, and no test sent such a text through an MCP server",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other tool. PiG read it as U+FFFD.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "11367633b5",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_frame_surrogate_sweep_test.go::TestEventFrameSurrogateSweep",
+        "coding/extension/host/subprocess/prompt_options_surrogate_test.go::TestPromptOptionEditsKeepALoneSurrogate",
+        "coding/mcp_session_lone_surrogate_test.go::TestAgentSessionMCPToolResultKeepsALoneSurrogate",
+        "coding/nested_call_lone_surrogate_test.go::TestSessionNestedCallErrorKeepsALoneSurrogate",
+        "internal/codingagent/extension_provider_surrogate_test.go::TestExtensionProviderRegistrationKeepsALoneSurrogate"
+      ]
+    },
+    {
+      "id": "BF-1136763-3",
+      "title": "The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's…",
+      "symptom": "The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's error text in the session file, in RPC events and in extension events.",
+      "rootCause": "the nested call record encodes itself with encoding/json inside a message that is otherwise written with JavaScript string semantics, and no test put such a text into a nested call's error",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's error text in the session file, in RPC events and in extension events. PiG wrote three U+FFFD in its place.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "11367633b5",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_frame_surrogate_sweep_test.go::TestEventFrameSurrogateSweep",
+        "coding/extension/host/subprocess/prompt_options_surrogate_test.go::TestPromptOptionEditsKeepALoneSurrogate",
+        "coding/mcp_session_lone_surrogate_test.go::TestAgentSessionMCPToolResultKeepsALoneSurrogate",
+        "coding/nested_call_lone_surrogate_test.go::TestSessionNestedCallErrorKeepsALoneSurrogate",
+        "internal/codingagent/extension_provider_surrogate_test.go::TestExtensionProviderRegistrationKeepsALoneSurrogate"
+      ]
+    },
+    {
       "id": "BF-1147e77",
       "title": "A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc`…",
       "symptom": "A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc` (stdin ended, a signal, `ctx.shutdown()`), with Ctrl+C in the interactive mode, when the terminal went away, and when a replaced session's extension was still running at exit, pig stopped the extension processes and exited without waiting for the copy of their output to reach its own stderr and the extension's log.",
@@ -39556,6 +39634,30 @@
       ]
     },
     {
+      "id": "BF-D648",
+      "title": "A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…",
+      "symptom": "none. (The host-side loss the same rows found, eight event types that wrote U+FFFD on the way out to every SDK, is cured in 0.8.0 and carries no divergence.)",
+      "rootCause": "the lossless alternative is a Rust value type that holds UTF-16 units wherever a `Value` or `String` is in the public API (`serde_json::Value` in `on_event`, `\u0026str` in `args`, `String` in every snapshot field). Until it lands the decode must not refuse the frame, and a replacement is what Go's decoder makes in a `string`.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D648",
+      "removeWhen": "the Rust SDK has a lossless value type for JavaScript strings (UTF-16 units) in its public event, command and snapshot types, so a Rust handler holds the unit and writes it back.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "c9ef4062bc",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/lone_surrogate_passthrough_test.go::TestConformance_LoneSurrogatePassThroughAcrossSDKs",
+        "test/extension-conformance/tool_argument_strings_test.go::TestConformance_ToolArgumentStringsAgreeAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -63491,6 +63593,11 @@
       "id": "D645",
       "title": "A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects…",
       "entry": "BF-88bbdd2"
+    },
+    {
+      "id": "D648",
+      "title": "A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…",
+      "entry": "BF-D648"
     }
   ],
   "exemptCommits": {

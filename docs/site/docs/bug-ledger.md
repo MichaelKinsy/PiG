@@ -143,6 +143,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-105a93f](#bf-105a93f) | An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-10818f5](#bf-10818f5) | Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-108cb7d](#bf-108cb7d) | An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its… | PiG's own defect | Windows | 0.7.0 |
+| [BF-1136763](#bf-1136763) | A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the… | PiG's own defect | All platforms | Unreleased |
+| [BF-1136763-2](#bf-1136763-2) | A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other… | PiG's own defect | All platforms | Unreleased |
+| [BF-1136763-3](#bf-1136763-3) | The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's… | PiG's own defect | All platforms | Unreleased |
 | [BF-1147e77](#bf-1147e77) | A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc`… | PiG's own defect | All platforms | Unreleased |
 | [BF-114f195](#bf-114f195) | Chord plugins (internal, the tests' seam): a tree the plugins component's file watcher watches on request… | PiG's own defect | All platforms | Unreleased |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
@@ -1449,6 +1452,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D633](#bf-d633) | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D636](#bf-d636) | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D648](#bf-d648) | A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -3946,6 +3950,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `108cb7d911` (2026-11-04)
 - **Tests:** `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitDoesNotDropWhatTheProcessWrote`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsARequestInFlight`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsAnIdleOrLoadingRead`, `coding/extension/host/subprocess/peer_exit_test.go::TestIsolatedExtensionExitIsReportedWhenTheSocketCloseIsNotSeen`
 - **Release note:** An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.
+
+### BF-1136763
+
+**A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the prompt, the system prompt and every system prompt option of `before_agent_start` and the system prompt a handler returns, the tool names, ids and results of the `tool_execution_start`, `tool_execution_update` and `tool_execution_end` events, the entries of `turn_end` and `agent_before_settle`, the model of `model_select`, the servers of `mcp_servers_change`, and the model name of a provider an extension registers.
+- **Root cause:** the extension event types and the provider configuration encode and decode their own JSON with encoding/json, which writes each byte of a lone UTF-16 surrogate as U+FFFD and reads its escape as U+FFFD, and no test sent such a string through every event type or through a handler of every SDK
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `11367633b5` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/event_frame_surrogate_sweep_test.go::TestEventFrameSurrogateSweep`, `coding/extension/host/subprocess/prompt_options_surrogate_test.go::TestPromptOptionEditsKeepALoneSurrogate`, `coding/mcp_session_lone_surrogate_test.go::TestAgentSessionMCPToolResultKeepsALoneSurrogate`, `coding/nested_call_lone_surrogate_test.go::TestSessionNestedCallErrorKeepsALoneSurrogate`, `internal/codingagent/extension_provider_surrogate_test.go::TestExtensionProviderRegistrationKeepsALoneSurrogate`
+- **Release note:** A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the prompt, the system prompt and every system prompt option of `before_agent_start` and the system prompt a handler returns, the tool names, ids and results of the `tool_execution_start`, `tool_execution_update` and `tool_execution_end` events, the entries of `turn_end` and `agent_before_settle`, the model of `model_select`, the servers of `mcp_servers_change`, and the model name of a provider an extension registers. PiG wrote three U+FFFD in its place in these event frames and read one U+FFFD from a handler's reply. An extension written with the Rust SDK still receives U+FFFD, because that SDK replaces the unit when it reads a frame.
+
+### BF-1136763-2
+
+**A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other tool.
+- **Root cause:** the MCP content reader decoded a result's members with encoding/json, which reads the escape of a lone UTF-16 surrogate as U+FFFD, and no test sent such a text through an MCP server
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `11367633b5` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/event_frame_surrogate_sweep_test.go::TestEventFrameSurrogateSweep`, `coding/extension/host/subprocess/prompt_options_surrogate_test.go::TestPromptOptionEditsKeepALoneSurrogate`, `coding/mcp_session_lone_surrogate_test.go::TestAgentSessionMCPToolResultKeepsALoneSurrogate`, `coding/nested_call_lone_surrogate_test.go::TestSessionNestedCallErrorKeepsALoneSurrogate`, `internal/codingagent/extension_provider_surrogate_test.go::TestExtensionProviderRegistrationKeepsALoneSurrogate`
+- **Release note:** A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other tool. PiG read it as U+FFFD.
+
+### BF-1136763-3
+
+**The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's error text in the session file, in RPC events and in extension events.
+- **Root cause:** the nested call record encodes itself with encoding/json inside a message that is otherwise written with JavaScript string semantics, and no test put such a text into a nested call's error
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `11367633b5` (2026-11-13)
+- **Tests:** `coding/extension/host/subprocess/event_frame_surrogate_sweep_test.go::TestEventFrameSurrogateSweep`, `coding/extension/host/subprocess/prompt_options_surrogate_test.go::TestPromptOptionEditsKeepALoneSurrogate`, `coding/mcp_session_lone_surrogate_test.go::TestAgentSessionMCPToolResultKeepsALoneSurrogate`, `coding/nested_call_lone_surrogate_test.go::TestSessionNestedCallErrorKeepsALoneSurrogate`, `internal/codingagent/extension_provider_surrogate_test.go::TestExtensionProviderRegistrationKeepsALoneSurrogate`
+- **Release note:** The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's error text in the session file, in RPC events and in extension events. PiG wrote three U+FFFD in its place.
 
 ### BF-1147e77
 
@@ -22075,6 +22121,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `29b020152d` (2026-11-13), `b7eb5ae11d` (2026-11-13)
 - **Tests:** `chord/next/surfaces/surfaces_active_language_test.go::TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted`, `chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted`, `chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick`, `chord/nextnode/app/app_web_stored_pick_test.go::TestAPageAppliesAThemeStoredBeforeItOpens`, `chord/nextnode/app/app_web_stored_pick_test.go::TestThePagesLanguageFollowsAPickStoredBeforeThePageOpens`
 
+### BF-D648
+
+**A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D648)
+- **Symptom:** none. (The host-side loss the same rows found, eight event types that wrote U+FFFD on the way out to every SDK, is cured in 0.8.0 and carries no divergence.)
+- **Root cause:** the lossless alternative is a Rust value type that holds UTF-16 units wherever a `Value` or `String` is in the public API (`serde_json::Value` in `on_event`, `&str` in `args`, `String` in every snapshot field). Until it lands the decode must not refuse the frame, and a replacement is what Go's decoder makes in a `string`.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the Rust SDK has a lossless value type for JavaScript strings (UTF-16 units) in its public event, command and snapshot types, so a Rust handler holds the unit and writes it back.
+- **Fix commits:** `c9ef4062bc` (2026-11-14)
+- **Tests:** `test/extension-conformance/lone_surrogate_passthrough_test.go::TestConformance_LoneSurrogatePassThroughAcrossSDKs`, `test/extension-conformance/tool_argument_strings_test.go::TestConformance_ToolArgumentStringsAgreeAcrossSDKs`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -33001,6 +33062,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
 | D636 | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | [BF-D636](#bf-d636) |
 | D645 | A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects… | [BF-88bbdd2](#bf-88bbdd2) |
+| D648 | A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where… | [BF-D648](#bf-d648) |
 
 ## Fix-titled commits that are not bugs in a release
 
