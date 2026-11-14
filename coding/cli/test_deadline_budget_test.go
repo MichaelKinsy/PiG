@@ -13,11 +13,12 @@ import (
 
 // literalDeadlineAllowed lists, by file and enclosing function, the test sites where a literal duration is the behavior under test or the bound on a build, not the bound on a hang.
 var literalDeadlineAllowed = map[string]string{
-	"session_extension_actions_exec_test.go:buildGoSDKFixture":                                        "bounds one go build of the exec fixture",
-	"auth_embedded_packed_test.go:buildRustPackedAuthFixture":                                         "bounds a packed extension build",
-	"session_replaced_2860_sdk_test.go:replaced2860Fixtures":                                          "bounds one cargo release build of the Rust fixture",
-	"rpc_settle_wait_test.go:buildRustSettleWait":                                                     "bounds one cargo release build of the Rust fixture",
-	"interactive_signal_lifetime_test.go:TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain": "negative window: the process must stay alive for 1.5s after the second signal",
+	"session_extension_actions_exec_test.go:buildGoSDKFixture":                                          "bounds one go build of the exec fixture",
+	"auth_embedded_packed_test.go:buildRustPackedAuthFixture":                                           "bounds a packed extension build",
+	"session_replaced_2860_sdk_test.go:replaced2860Fixtures":                                            "bounds one cargo release build of the Rust fixture",
+	"rpc_settle_wait_test.go:buildRustSettleWait":                                                       "bounds one cargo release build of the Rust fixture",
+	"interactive_signal_lifetime_test.go:TestInteractiveSignalsRetainHandlersThroughDisposalAndDrain":   "negative window: the process must stay alive for 1.5s after the second signal",
+	"rpc_held_quit_native_command_signal_test.go:TestRPCHeldQuitOfANativeCommandEndsOnTheSignalsPiEnds": "negative window: the connection of the command in flight must stay silent for one second while pig holds the quit",
 }
 
 // hangBoundArgument maps a call that bounds a wait to the index of its duration argument. A package-qualified key is `pkg.Func`; an unqualified key matches a method or package-local function of that name.
