@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -21,10 +22,11 @@ type userMessageRenderProbe struct {
 // UserMessageComponent.render (components/user-message.ts) against pinned Pi: the message as markdown on the user background with the ordered-list markers and
 // backslash escapes kept, the vertical padding rows, the output padding (changed by setOutputPad), and the OSC 133 zone marks on the first and last row.
 func TestUserMessageComponentRenderMatchesPi(t *testing.T) {
-	texts := []string{"", "hello", "  \n\n  ", "\ufeff", "\u0085", "\u00a0\u3000", "\ufeff\n\ufeffx", "plain text that is long enough to wrap in the narrower widths of this probe", "line one\nline two\n\nline four",
-		"3. third\n4. fourth\n\n9) paren", "1. a\n1. b\n1. c", "escapes \\* \\_ \\# \\[x\\] \\\\ \\` and \\<b\\>", "**bold** *italic* `code` ~~strike~~ [link](https://x.y)",
-		"# Heading\n\n> quote\n\n- item\n- item two\n\n```go\nfmt.Println(1)\n```", "| a | b |\n|---|---|\n| 1 | 2 |", "日本語のメッセージ 🙂 with wide cells", "trailing spaces   \nand a hard break  \nend",
-		"\x1b[31mraw escape\x1b[0m text", "tab\there", "$x^2$ and \\(y\\)", "https://example.com/a/very/long/url/that/does/not/wrap/anywhere/at/all/in/narrow/widths"}
+	texts := slices.Concat([]string{"", "hello", "  \n\n  ", "\ufeff", "\u0085", "\u00a0\u3000", "\ufeff\n\ufeffx", "plain text that is long enough to wrap in the narrower widths of this probe", "line one\nline two\n\nline four",
+		"3. third\n4. fourth\n\n9) paren", "1. a\n1. b\n1. c", "escapes \\* \\_ \\# \\[x\\] \\\\ \\` and \\<b\\>", "**bold** *italic* `code` ~~strike~~ [link](https://x.y)"},
+		withHighlightedCode("# Heading\n\n> quote\n\n- item\n- item two\n\n```go\nfmt.Println(1)\n```"),
+		[]string{"| a | b |\n|---|---|\n| 1 | 2 |", "日本語のメッセージ 🙂 with wide cells", "trailing spaces   \nand a hard break  \nend",
+			"\x1b[31mraw escape\x1b[0m text", "tab\there", "$x^2$ and \\(y\\)", "https://example.com/a/very/long/url/that/does/not/wrap/anywhere/at/all/in/narrow/widths"})
 	var probes []userMessageRenderProbe
 	for _, theme := range []string{"dark", "light"} {
 		for _, text := range texts {

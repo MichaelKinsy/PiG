@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -64,7 +65,7 @@ func TestAssistantMessageComponentRenderMatchesPi(t *testing.T) {
 	think := func(s string) assistantRenderBlock { return assistantRenderBlock{Kind: "thinking", Text: s} }
 	tool := assistantRenderBlock{Kind: "tool"}
 	str := func(s string) *string { return &s }
-	messages := []assistantRenderMessage{
+	messages := slices.Concat([]assistantRenderMessage{
 		{StopReason: "stop"},
 		{Blocks: []assistantRenderBlock{text("hello world")}, StopReason: "stop"},
 		{Blocks: []assistantRenderBlock{text("  \n ")}, StopReason: "stop"},
@@ -86,9 +87,11 @@ func TestAssistantMessageComponentRenderMatchesPi(t *testing.T) {
 		{StopReason: "error"},
 		{Blocks: []assistantRenderBlock{text("before the failure")}, StopReason: "error", ErrorMessage: "429 rate limited, retry in 20s"},
 		{Blocks: []assistantRenderBlock{tool}, StopReason: "error", ErrorMessage: "hidden by tool call"},
-		{Blocks: []assistantRenderBlock{think("thought"), text("# Heading\n\n- item\n- item two\n\n```go\nx := 1\n```\n\n| a | b |\n|---|---|\n| 1 | 2 |")}, StopReason: "stop"},
+	}, withHighlightedCode(
+		assistantRenderMessage{Blocks: []assistantRenderBlock{think("thought"), text("# Heading\n\n- item\n- item two\n\n```go\nx := 1\n```\n\n| a | b |\n|---|---|\n| 1 | 2 |")}, StopReason: "stop"},
+	), []assistantRenderMessage{
 		{Blocks: []assistantRenderBlock{text("日本語のメッセージ 🙂 wide cells and a very long line that has to wrap around in narrow widths")}, StopReason: "stop"},
-	}
+	})
 	ops := [][]assistantRenderOp{
 		nil,
 		{{Kind: "pad", N: 0}, {Kind: "pad", N: 2}},

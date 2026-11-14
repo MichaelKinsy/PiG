@@ -34,7 +34,8 @@ func warmedSource(lines int) string {
 
 // A text warmed in steps that end anywhere, inside a multi-byte character or a lone surrogate included, and interleaved with the
 // highlights a frame asks for, draws the lines of a run over all of it: what the warm-ups keep of the text's units across steps is
-// the units of a fresh conversion.
+// the units of a fresh conversion. A build that strips syntax-highlight holds what WarmHighlight documents for it instead: no step
+// reports a state and none is left, and the lines are still those of a whole run.
 func TestWarmHighlightStepsAcrossCharacterBoundariesDrawTheLinesOfAWholeRun(t *testing.T) {
 	orig := ActiveTheme().Name
 	defer SetTheme(orig)
@@ -56,11 +57,12 @@ func TestWarmHighlightStepsAcrossCharacterBoundariesDrawTheLinesOfAWholeRun(t *t
 			hlMu.Lock()
 			resetHighlightCacheLocked()
 			hlMu.Unlock()
-			held := 0
+			held, warmed := 0, 0
 			for end := steps.next(); end < len(code); end += steps.next() {
 				if WarmHighlight(code[:end], "typescript") {
 					held++
 				}
+				warmed = end
 				if held%37 == 4 {
 					// a frame draws the text so far, which continues from the state and leaves one without the units
 					want := highlightCodeUncached(highlightRegistry(), code[:end], "typescript", ActiveTheme())
@@ -69,8 +71,12 @@ func TestWarmHighlightStepsAcrossCharacterBoundariesDrawTheLinesOfAWholeRun(t *t
 					}
 				}
 			}
-			if held == 0 {
-				t.Fatal("no step left a state to resume from")
+			if warmHighlightKeepsState() {
+				if held == 0 {
+					t.Fatal("no step left a state to resume from")
+				}
+			} else if left := highlightResumeHeld(code[:warmed], "typescript", ActiveTheme()); held != 0 || left {
+				t.Fatalf("%d steps reported a resume state and one is held after the last = %v, in a build without syntax highlighting: want none reported and none left", held, left)
 			}
 			want := highlightCodeUncached(highlightRegistry(), code, "typescript", ActiveTheme())
 			if got := HighlightCode(code, "typescript"); !slices.Equal(got, want) {

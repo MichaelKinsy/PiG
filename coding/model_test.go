@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
@@ -23,23 +24,34 @@ func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// strip names the strippable API of a row's provider. A Piglet that strips it builds no provider for the row's model: the row then holds
+	// the error that names the strip instead of the provider type.
 	cases := []struct {
 		spec       string
 		providerTy string
+		strip      string
 	}{
-		{"openai/gpt-4", "*ai.openAIResponsesProvider"},
-		{"openai-codex/gpt-5.6-sol", "*ai.openAIResponsesProvider"},
-		{"anthropic/claude-haiku-4-5", "*ai.anthropicProvider"},
-		{"google/gemini-2.5-flash", "*ai.googleProvider"},
-		{"google-vertex/gemini-2.5-flash", "*ai.googleVertexProvider"},
-		{"mistral/codestral-latest", "*ai.mistralProvider"},
-		{"amazon-bedrock/amazon.nova-2-lite-v1:0", "*bedrock.BedrockProvider"},
-		{"xai/grok-4.3", "*ai.openAIResponsesProvider"},
+		{"openai/gpt-4", "*ai.openAIResponsesProvider", ""},
+		{"openai-codex/gpt-5.6-sol", "*ai.openAIResponsesProvider", ""},
+		{"anthropic/claude-haiku-4-5", "*ai.anthropicProvider", ""},
+		{"google/gemini-2.5-flash", "*ai.googleProvider", ""},
+		{"google-vertex/gemini-2.5-flash", "*ai.googleVertexProvider", "google-vertex"},
+		{"mistral/codestral-latest", "*ai.mistralProvider", "mistral-conversations"},
+		{"amazon-bedrock/amazon.nova-2-lite-v1:0", "*bedrock.BedrockProvider", "bedrock-converse-stream"},
+		{"xai/grok-4.3", "*ai.openAIResponsesProvider", ""},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.spec, func(t *testing.T) {
 			model, err := BuildModel(tc.spec, svcs)
+			providerID, _, _ := strings.Cut(tc.spec, "/")
+			if tc.strip != "" && pigstrip.Has(pigstrip.ListAPIs, tc.strip) {
+				want := "Provider " + providerID + ": API " + tc.strip + " is stripped from this Piglet (strip.apis: " + tc.strip + ")"
+				if err == nil || err.Error() != want {
+					t.Fatalf("BuildModel with %s stripped: model %v, error %v, want the error %q", tc.strip, model, err, want)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("BuildModel: %v", err)
 			}
@@ -50,7 +62,6 @@ func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
 			if got := fmt.Sprintf("%T", attributed.Provider); got != tc.providerTy {
 				t.Fatalf("underlying provider type = %s, want %s", got, tc.providerTy)
 			}
-			providerID, _, _ := strings.Cut(tc.spec, "/")
 			if got := model.Provider.ID(); got != providerID {
 				t.Fatalf("provider ID = %q, want %q", got, providerID)
 			}
