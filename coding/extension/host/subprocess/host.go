@@ -2665,14 +2665,22 @@ func TerminateHostProcesses(hosts ...*Host) {
 	}
 	timer := time.NewTimer(bound)
 	var reaped []<-chan struct{}
+	var logs []*processStderrLog
 	for _, h := range hosts {
-		reaped = append(reaped, h.killProcesses()...)
+		hostReaped, hostLogs := h.killProcesses()
+		reaped = append(reaped, hostReaped...)
+		logs = append(logs, hostLogs...)
 	}
 	awaitReaped(reaped, timer, bound)
+	// The host process ends right after this: a log is kept only for a failure that was reported, and this exit is not one. The
+	// processes are ended, so nothing writes to the files, and no goroutine is left to remove them that the exit would outrun.
+	for _, log := range logs {
+		log.remove()
+	}
 }
 
-// killProcesses kills the processes of h and returns the channels that close once each is reaped.
-func (h *Host) killProcesses() []<-chan struct{} {
+// killProcesses kills the processes of h and returns the channels that close once each is reaped, and the stderr logs of the processes it killed.
+func (h *Host) killProcesses() ([]<-chan struct{}, []*processStderrLog) {
 	h.shuttingDown.Store(true)
 	h.mu.Lock()
 	processes := make(map[*os.Process]struct{})
@@ -2691,7 +2699,16 @@ func (h *Host) killProcesses() []<-chan struct{} {
 			reaped = append(reaped, exited)
 		}
 	}
+	logs := make(map[*processStderrLog]struct{})
+	// A cell that is still starting is in packedProcesses only, a started one also in watchedPacked, and a replaced one in watchedPacked only.
+	states := make(map[*packedProcessState]struct{}, len(h.packedProcesses)+len(h.watchedPacked))
+	for _, process := range h.packedProcesses {
+		states[process] = struct{}{}
+	}
 	for process := range h.watchedPacked {
+		states[process] = struct{}{}
+	}
+	for process := range states {
 		if process.processTree != nil {
 			trees[process.processTree] = struct{}{}
 		} else if process.cmd != nil && process.cmd.Process != nil {
@@ -2699,6 +2716,9 @@ func (h *Host) killProcesses() []<-chan struct{} {
 		}
 		if process.cmd != nil && process.cmd.Process != nil {
 			reaped = append(reaped, process.startWait())
+		}
+		if process.stderrLog != nil {
+			logs[process.stderrLog] = struct{}{}
 		}
 	}
 	h.mu.Unlock()
@@ -2708,7 +2728,7 @@ func (h *Host) killProcesses() []<-chan struct{} {
 	for process := range processes {
 		_ = process.Kill()
 	}
-	return reaped
+	return reaped, slices.Collect(maps.Keys(logs))
 }
 
 // awaitReaped waits until every channel in reaped closed or timer fired, and says on stderr when the bound ended the wait with processes unfinished. The timer starts before the first kill, so it fires before the WaitDelay of a process the kill ended can.
