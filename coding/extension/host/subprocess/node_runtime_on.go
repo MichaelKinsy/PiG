@@ -28,9 +28,14 @@ var nodeRuntimeArchive string
 //
 // Ports packages/coding-agent/src/core/extensions/virtual-modules.ts (the modules Pi bundles for compiled runtimes are the shims this archive carries).
 func extractNodeRuntime(dst string) error {
-	return noderuntimepack.Extract(nodeRuntimeArchive, func(name string, data []byte) error {
+	return extractRuntimeArchive(nodeRuntimeArchive, dst, os.MkdirAll)
+}
+
+// extractRuntimeArchive writes archive's files under dst; mkdirAll makes each file's directory (os.MkdirAll in production, counted by a test).
+func extractRuntimeArchive(archive, dst string, mkdirAll func(string, os.FileMode) error) error {
+	return noderuntimepack.Extract(archive, func(name string, data []byte) error {
 		target := filepath.Join(dst, filepath.FromSlash(strings.TrimPrefix(name, "runtime-node/")))
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		if err := mkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
 		return os.WriteFile(target, data, 0o644)
