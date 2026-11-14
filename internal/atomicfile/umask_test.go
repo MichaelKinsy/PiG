@@ -34,10 +34,10 @@ func TestWriteFileNewFileHelper(t *testing.T) {
 
 // A file that does not exist yet gets the mode a writeFileSync(path, data, {mode: perm}) gives it: perm with the umask of the process taken out. A caller
 // that asks for 0666 (the MCP config, the keybindings migration) must not get a world-writable file under umask 022, and one that asks for 0644 must
-// not get a group- and world-readable file under umask 077.
+// not get a group- and world-readable file under umask 077. Under umask 000 nothing is taken out: the credential files (0600) stay 0600.
 func TestWriteFileGivesANewFileTheModeOpenGives(t *testing.T) {
 	for _, perm := range []os.FileMode{0o600, 0o644, 0o666} {
-		for _, umask := range []os.FileMode{0o022, 0o077} {
+		for _, umask := range []os.FileMode{0o000, 0o002, 0o022, 0o077} {
 			t.Run(fmt.Sprintf("perm %04o umask %04o", perm, umask), func(t *testing.T) {
 				dir := t.TempDir()
 				path := filepath.Join(dir, "mcp.json")
