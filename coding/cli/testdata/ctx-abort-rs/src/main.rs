@@ -8,7 +8,11 @@ static FIRED: AtomicBool = AtomicBool::new(false);
 
 fn log_line(line: &str) {
     let path = std::env::var("ABORT_PROBE_LOG").unwrap_or_default();
-    if let Ok(mut file) = std::fs::OpenOptions::new().append(true).create(true).open(path) {
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(path)
+    {
         let _ = writeln!(file, "{line}");
     }
 }
@@ -26,7 +30,12 @@ fn main() {
     ext.on_event("agent_end", |_ctx, event| {
         let reason = event["messages"]
             .as_array()
-            .and_then(|messages| messages.iter().rev().find(|message| message["role"] == "assistant"))
+            .and_then(|messages| {
+                messages
+                    .iter()
+                    .rev()
+                    .find(|message| message["role"] == "assistant")
+            })
             .and_then(|message| message["stopReason"].as_str())
             .unwrap_or("")
             .to_string();
