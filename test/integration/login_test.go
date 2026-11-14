@@ -27,6 +27,8 @@ func TestAnthropicLoginAcceptsPastedRedirectURL(t *testing.T) {
 	h.send("/login\r")
 	h.expectContains(3*time.Second, "Sign in with an account")
 	h.send("\r")
+	// Pi 1.5.1 lists the partners Radius and OpenRouter first (provider-brand.ts); the selector is searched for Anthropic, as the login selector scenarios of test/parity do.
+	h.send("Anthropic")
 	h.expectContains(3*time.Second, "→ Anthropic")
 	h.send("\r")
 	// Pi 1.0.0 asks for the Anthropic login method first (anthropic.ts:273-291) and shows the flow's manual_code message (interactive-mode.ts:6207-6208).
