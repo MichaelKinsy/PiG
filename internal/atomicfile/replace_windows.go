@@ -34,17 +34,26 @@ func carryIdentity(*os.File, os.FileInfo) error { return nil }
 
 var procReplaceFile = windows.NewLazySystemDLL("kernel32.dll").NewProc("ReplaceFileW")
 
-// replace puts temp in place of path. A file that exists is replaced with ReplaceFileW, which keeps the replaced file's DACL, attributes and streams
-// (an administrator's widened DACL, or the owner-only DACL the store created, survive a rewrite, as they survive writeFileSync). A file that does not
-// exist yet is moved with MoveFileEx and written through. Both are retried for fsretry.RenameBudget while another process holds the file open.
-// On a file system without ReplaceFileW the target's DACL is copied onto temp before the move. The target is never truncated in place.
+// replace puts temp in place of path. A file that exists is replaced with ReplaceFileW (see [replaceKeepingBackup] for the files a failure leaves), which
+// keeps the replaced file's DACL, attributes and streams (an administrator's widened DACL, or the owner-only DACL the store created, survive a rewrite, as
+// they survive writeFileSync). A file that does not exist yet is moved with MoveFileEx and written through. Both are retried for fsretry.RenameBudget while
+// another process holds the file open. On a file system without ReplaceFileW the target's DACL is copied onto temp before the move. The target is never
+// truncated in place.
 func replace(temp, path string, existed bool) error {
 	//portlint:allow ctxbackground a credential write has no caller context: the replace must not be abandoned half way, and fsretry bounds it by RenameBudget
 	ctx := context.Background()
 	if !existed {
 		return fsretry.Retry(ctx, nil, func() error { return moveFile(temp, path) })
 	}
-	err := fsretry.Retry(ctx, nil, func() error { return replaceFile(path, temp) })
+	err := replaceKeepingBackup(path, temp, replaceSteps{
+		replaceFile: func(replaced, replacement, backup string) error {
+			return fsretry.Retry(ctx, nil, func() error { return replaceFile(replaced, replacement, backup) })
+		},
+		moveFile: func(from, to string) error {
+			return fsretry.Retry(ctx, nil, func() error { return moveFile(from, to) })
+		},
+		copyDACL: copyDACL,
+	})
 	if !errors.Is(err, windows.ERROR_INVALID_FUNCTION) && !errors.Is(err, windows.ERROR_NOT_SUPPORTED) {
 		return err
 	}
@@ -54,8 +63,8 @@ func replace(temp, path string, existed bool) error {
 	return fsretry.Retry(ctx, nil, func() error { return moveFile(temp, path) })
 }
 
-// replaceFile is ReplaceFileW(replaced, replacement, no backup, no flags).
-func replaceFile(replaced, replacement string) error {
+// replaceFile is ReplaceFileW(replaced, replacement, backup, no flags): the replaced file is kept under the backup name.
+func replaceFile(replaced, replacement, backup string) error {
 	to, err := windows.UTF16PtrFromString(replaced)
 	if err != nil {
 		return err
@@ -64,8 +73,12 @@ func replaceFile(replaced, replacement string) error {
 	if err != nil {
 		return err
 	}
+	kept, err := windows.UTF16PtrFromString(backup)
+	if err != nil {
+		return err
+	}
 	//nolint:gosec // G103: the pointers address UTF-16 buffers that live across the call.
-	if result, _, callErr := procReplaceFile.Call(uintptr(unsafe.Pointer(to)), uintptr(unsafe.Pointer(from)), 0, 0, 0, 0); result == 0 {
+	if result, _, callErr := procReplaceFile.Call(uintptr(unsafe.Pointer(to)), uintptr(unsafe.Pointer(from)), uintptr(unsafe.Pointer(kept)), 0, 0, 0); result == 0 {
 		return &os.LinkError{Op: "replace", Old: replacement, New: replaced, Err: callErr}
 	}
 	return nil
