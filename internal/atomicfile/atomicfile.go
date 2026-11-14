@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"syscall"
 )
 
 var (
@@ -34,7 +35,8 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 //
 // The rule: the file is replaced when that changes nothing but the inode; otherwise it is written in place, with the same bytes, exactly as Pi writes
 // it (writeFileSync), once, and the in-place write is reported to [SetInPlaceReporter]. A symbolic link is followed to its target, as writeFileSync does,
-// so the rename replaces the target and the link stays; the mode and, where the process may set them, the owner and group are kept, and so are the
+// also to a target that does not exist yet (a chain of links ends at the file the last one names, which is created; a loop is ELOOP), so the rename
+// replaces the target and the link stays; the mode and, where the process may set them, the owner and group are kept, and so are the
 // extended attributes of the file (on Linux they hold POSIX ACLs; on macOS the user's attributes), and on Windows the replaced file's DACL, attributes
 // and streams. In place is the answer where
 //   - the file has more than one hard link (a rename would leave the other names with the old bytes);
@@ -47,8 +49,10 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 // full disk, an I/O error) is an error, in place or not. On Windows a rename another process's open handle refuses is retried for
 // [fsretry.RenameBudget] before its error is returned, and a refusal is never turned into an in-place write there.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
-	if resolved, resolveErr := filepath.EvalSymlinks(path); resolveErr == nil {
-		path = resolved
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
+	path, err := followLinks(path)
+	if err != nil {
+		return err
 	}
 	mode := perm.Perm()
 	var existing os.FileInfo
@@ -137,4 +141,32 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		return nil, err
 	}
 	return nil, nil
+}
+
+// maxLinkHops is how many symbolic links the kernel follows in a path before it answers ELOOP (Linux and macOS allow 40 and 32).
+const maxLinkHops = 32
+
+// followLinks is the file writeFileSync writes for path: every symbolic link is followed, to the file or, where the file does not exist, to the path the
+// last link names, which the write creates; the links stay. A link that goes round in a circle is ELOOP, and one that names a file in a directory that
+// does not exist is ENOENT where the file is created, as writeFileSync fails: neither is turned into a regular file.
+func followLinks(path string) (string, error) {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved, nil
+	}
+	followed := path
+	for range maxLinkHops {
+		info, err := os.Lstat(followed)
+		if err != nil || info.Mode()&os.ModeSymlink == 0 {
+			return followed, nil
+		}
+		target, err := os.Readlink(followed)
+		if err != nil {
+			return path, nil
+		}
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(filepath.Dir(followed), target)
+		}
+		followed = target
+	}
+	return "", &os.PathError{Op: "open", Path: path, Err: syscall.ELOOP}
 }
