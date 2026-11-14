@@ -1381,11 +1381,7 @@ func (m *InteractiveMode) settleRunAtQuit() {
 
 // serveOwnerLoopUntil runs wait on a goroutine of its own and meanwhile, on the owner loop, keeps handling Session events, posted UI tasks and scheduled frames, which a settling run needs. It returns wait's result, or an error when the mode shuts down first.
 func (m *InteractiveMode) serveOwnerLoopUntil(wait func(context.Context) error) error {
-	owner := m.runCtx
-	if owner == nil {
-		owner = context.Background()
-	}
-	ctx, cancel := context.WithCancel(owner)
+	ctx, cancel := context.WithCancel(m.runCtx)
 	var workers sync.WaitGroup
 	idle := make(chan error, 1)
 	workers.Go(func() { idle <- wait(ctx) })
