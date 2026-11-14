@@ -43,7 +43,7 @@ copy() {
 }
 
 # The installed oracle already carries the post-release backports (automation/pin/oracle.py applies them when it builds the oracle), so the copies below inherit them: verify before anything is deleted, never apply them a second time.
-node "$root/automation/gen/pi-post-release-backports.mjs" --verify-packages "pi-ai=$ai" "pi-coding-agent=$agent" "pi-tui=$tui" || { echo "vendor-pi-dist: the installed Pi does not carry the post-release backports exactly once; run make parity-deps (pin.py install-oracle --force)" >&2; exit 1; }
+node "$root/automation/gen/pi-post-release-backports.mjs" --verify-packages "pi-ai=$ai" "pi-coding-agent=$agent" "pi-mcp=$mcp" "pi-tui=$tui" || { echo "vendor-pi-dist: the installed Pi does not carry the post-release backports exactly once; run make parity-deps (pin.py install-oracle --force)" >&2; exit 1; }
 
 # The oracle builds are read-only, and cp keeps their modes: make what an earlier run copied owner-writable so rm can remove it.
 if [ -e "$shims" ]; then chmod -R u+w "$shims"; fi # every copy, including the third-party packages the dependency vendoring wrote
