@@ -12,3 +12,16 @@ func ProviderCatalogServesAPI(providerID string, api API) bool {
 	}
 	return false
 }
+
+// ownStreamProviders are the built-in providers that carry a stream implementation of their own besides the shared per-api ones. Each provider registers itself
+// from its own file, so shared code never names a provider: it asks ProviderHasOwnStreamFor.
+var ownStreamProviders = map[string]bool{}
+
+// registerOwnStreamProvider records that providerID has its own stream implementation.
+func registerOwnStreamProvider(providerID string) { ownStreamProviders[providerID] = true }
+
+// ProviderHasOwnStreamFor reports whether providerID has a stream of its own and its catalog lists a model of api, which is when Pi uses the provider own stream
+// (compat.ts:236-239 getBuiltinProviderForModel); any other api goes to the API registry and is refused when nothing is registered for it (compat.ts:244-247).
+func ProviderHasOwnStreamFor(providerID string, api API) bool {
+	return ownStreamProviders[providerID] && ProviderCatalogServesAPI(providerID, api)
+}

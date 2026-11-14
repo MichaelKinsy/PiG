@@ -20961,6 +20961,17 @@
       "shapeHash": "sha256:40a32b97186d9c9429839b3a6c4711e7da1f5120c95ae29c809dc52ad6d32c2c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderHasOwnStreamFor",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ProviderHasOwnStreamFor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, api API) bool"
+      },
+      "shapeHash": "sha256:f4a135d3b4775ac2e7642b9a339feccafc73df4dc3389ea35066f3c7ecf596df"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderHeader",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ProviderHeader",
@@ -54456,6 +54467,17 @@
       "shapeHash": "sha256:cfaa7deb844aa5dc37ba94afae7af08116a225ed40df6ab8eb833f847254cf88"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ownStreamProviders",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ownStreamProviders",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]bool"
+      },
+      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ownedContinuationTurn",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ownedContinuationTurn",
@@ -57424,6 +57446,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#registerOwnStreamProvider",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "registerOwnStreamProvider",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string)"
+      },
+      "shapeHash": "sha256:eb6bd2c66239c05f4aac928c37f8b99e8b0c8f2c00348df68a6fc1c56eff5ee7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#registeredAPIProvider",

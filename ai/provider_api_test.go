@@ -32,3 +32,23 @@ func TestProviderCatalogServesAPI(t *testing.T) {
 		}
 	}
 }
+
+// A provider registered with its own stream is used only for an api its catalog lists; a provider with no stream of its own never is.
+func TestProviderHasOwnStreamFor(t *testing.T) {
+	for _, row := range []struct {
+		provider string
+		api      API
+		want     bool
+	}{
+		{"github-copilot", APIAnthropicMessages, true},
+		{"github-copilot", APIOpenAICompletions, true},
+		{"github-copilot", "", false},
+		{"github-copilot", "nosuchapi", false},
+		{"groq", APIOpenAICompletions, false},
+		{"nobody-lists-this-provider", APIOpenAICompletions, false},
+	} {
+		if got := ProviderHasOwnStreamFor(row.provider, row.api); got != row.want {
+			t.Errorf("ProviderHasOwnStreamFor(%q, %q) = %v, want %v", row.provider, row.api, got, row.want)
+		}
+	}
+}
