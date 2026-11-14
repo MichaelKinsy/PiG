@@ -159806,6 +159806,17 @@
       "shapeHash": "sha256:1634b2c81ab4ff1e012d0055e970cfb921c47a534541bbd4983eb1dab364aaff"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#setLazy",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "setLazy",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[K comparable, V any](m *map[K]V, key K, value V)"
+      },
+      "shapeHash": "sha256:5ba1d59e3dd3180115f56b8b48b3edd35ffe0d96734890e9f63672d7075ae5a7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#setStatus",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "setStatus",
