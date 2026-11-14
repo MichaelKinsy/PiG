@@ -6,13 +6,14 @@ import (
 	"strings"
 	"unicode/utf16"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
-// Ports packages/mcp/src/naming.ts (Pi 76c040a2a, moved from coding-agent's extensions/mcp/tools.ts and core/mcp-servers.ts).
+// Ports packages/mcp/src/naming.ts (Pi 76c040a2a, moved from coding-agent's extensions/mcp/tools.ts and core/mcp-servers.ts; McpServerSummary, Pi 3567987250).
 //
-// Names of MCP tools and of their servers' namespaces as models and code mode scripts see them. Applications that name tools the same way rank
-// and group them the same way in tool search and code mode.
+// Names of MCP tools and of their servers' namespaces, and the servers' one-line summaries, as models and code mode scripts see them. Applications
+// that name tools the same way rank and group them the same way in tool search and code mode.
 
 // maxToolNameLength: provider tool names are limited to 64 characters of `[A-Za-z0-9_-]`.
 const maxToolNameLength = 64
@@ -53,4 +54,16 @@ func CreateMcpToolName(server, tool string, isTaken func(string) bool) string {
 // in `-` and `_` share a namespace, so a configuration must not have both.
 func McpNamespace(server string) string {
 	return "mcp__" + strings.ReplaceAll(server, "-", "_")
+}
+
+// McpServerSummary is a server's one-line summary for the system prompt: the first line of its configured `description`, else of the instructions
+// it sent in `initialize`; empty when it has neither. Pi's `string | undefined` arguments are strings here, where "" is the absent value (both
+// fall through `||` alike).
+func McpServerSummary(description, instructions string) string {
+	text := jsstring.Trim(description)
+	if text == "" {
+		text = jsstring.Trim(instructions)
+	}
+	first, _, _ := strings.Cut(text, "\n")
+	return jsstring.Trim(first)
 }
