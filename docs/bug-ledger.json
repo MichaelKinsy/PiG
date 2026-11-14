@@ -2307,6 +2307,26 @@
       "tests": []
     },
     {
+      "id": "BF-0b2baca",
+      "title": "A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped…",
+      "symptom": "A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped, could draw after the stop.",
+      "rootCause": "The start-up pickers (`--resume` and the others in `startup_ui.go`) run on such a renderer; the interleaving is forced in a test with the frame parked at its first clock read, and it was not observed in a real terminal.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped, could draw after the stop. Its hide of the cursor then undid the cursor show of the stop, and the shell prompt that followed was left without a cursor. The start-up pickers (`--resume` and the others in `startup_ui.go`) run on such a renderer; the interleaving is forced in a test with the frame parked at its first clock read, and it was not observed in a real terminal. As Pi's timer callback runs on its one event loop, where nothing runs between its `stopped` check and its render (`tui.ts` `scheduleRender`), a stopped screen now draws nothing: the frame lock checks the flag, as the alternate screen's already did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0b2baca2ce",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0b4e1e3",
       "title": "The OpenAI Codex base URL keeps the whitespace around it, as Pi does (only an all-blank value falls back to…",
       "symptom": "The OpenAI Codex base URL keeps the whitespace around it, as Pi does (only an all-blank value falls back to the default), and its WebSocket URL is built with the WHATWG URL parser.",
