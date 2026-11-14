@@ -234,9 +234,11 @@ func (h *listenHosts) len() int {
 func (h *listenHosts) terminate() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	hosts := make([]*subprocess.Host, 0, len(h.m))
 	for host := range h.m {
-		host.TerminateProcesses()
+		hosts = append(hosts, host)
 	}
+	subprocess.TerminateHostProcesses(hosts...)
 }
 
 // netErrorCause is the cause inside a *net.OpError, whose address is the private bind path of listenPrivateUnixSocket, a directory that no longer exists once the socket is linked into place. pig additive (D232).

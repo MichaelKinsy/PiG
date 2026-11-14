@@ -2596,7 +2596,27 @@ func (h *Host) EndInput() {
 
 // TerminateProcesses kills hosted processes without running extension callbacks or waiting for their handlers, then waits for each process to be reaped, which includes the copy of what it wrote to its output pipes. It is only for a host process that is about to exit; ordinary owners use Shutdown to release all resources.
 // pig additive (D19): the process exits right after this returns, and an extension's console output the host has not yet copied to the terminal and the extension's log would be lost with it; Pi writes it inside its own process, so a write made before its exit is never lost. The wait is bounded by processWaitDelay for all processes together: a process that does not end, or a descendant that keeps an output pipe open, loses the rest of its output after one line on stderr says so.
-func (h *Host) TerminateProcesses() {
+func (h *Host) TerminateProcesses() { TerminateHostProcesses(h) }
+
+// TerminateHostProcesses is TerminateProcesses for every host of one exiting process: it kills the processes of all hosts first, then waits for them against ONE bound that starts before the first kill, so hosts with a stuck pipe hold the exit for one bound in all, and the dropped-output line comes once with the total count. pig additive (D19).
+func TerminateHostProcesses(hosts ...*Host) {
+	var bound time.Duration
+	for _, h := range hosts {
+		bound = max(bound, h.processWaitDelay())
+	}
+	if len(hosts) == 0 {
+		return
+	}
+	timer := time.NewTimer(bound)
+	var reaped []<-chan struct{}
+	for _, h := range hosts {
+		reaped = append(reaped, h.killProcesses()...)
+	}
+	awaitReaped(reaped, timer, bound)
+}
+
+// killProcesses kills the processes of h and returns the channels that close once each is reaped.
+func (h *Host) killProcesses() []<-chan struct{} {
 	h.shuttingDown.Store(true)
 	h.mu.Lock()
 	processes := make(map[*os.Process]struct{})
@@ -2626,18 +2646,17 @@ func (h *Host) TerminateProcesses() {
 		}
 	}
 	h.mu.Unlock()
-	timer := time.NewTimer(h.processWaitDelay())
 	for tree := range trees {
 		_ = tree.Kill()
 	}
 	for process := range processes {
 		_ = process.Kill()
 	}
-	h.awaitReaped(reaped, timer)
+	return reaped
 }
 
-// awaitReaped waits until every channel in reaped closed or timer fired, and says on stderr when the bound ended the wait with processes unfinished. The timer starts before the kill, so it fires before the WaitDelay of a process the kill ended can.
-func (h *Host) awaitReaped(reaped []<-chan struct{}, timer *time.Timer) {
+// awaitReaped waits until every channel in reaped closed or timer fired, and says on stderr when the bound ended the wait with processes unfinished. The timer starts before the first kill, so it fires before the WaitDelay of a process the kill ended can.
+func awaitReaped(reaped []<-chan struct{}, timer *time.Timer, bound time.Duration) {
 	defer timer.Stop()
 	for _, done := range reaped {
 		select {
@@ -2652,7 +2671,7 @@ func (h *Host) awaitReaped(reaped []<-chan struct{}, timer *time.Timer) {
 				}
 			}
 			if pending > 0 {
-				fmt.Fprintf(os.Stderr, "pig: %d extension process(es) did not finish ending within %s; the output they have not yet delivered is dropped\n", pending, h.processWaitDelay())
+				fmt.Fprintf(os.Stderr, "pig: %d extension process(es) did not finish ending within %s; the output they have not yet delivered is dropped\n", pending, bound)
 			}
 			return
 		}

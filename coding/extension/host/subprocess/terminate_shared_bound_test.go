@@ -41,9 +41,7 @@ export default function(pi) {
 		hosts = append(hosts, h)
 	}
 	start := time.Now()
-	for _, h := range hosts {
-		h.TerminateProcesses()
-	}
+	TerminateHostProcesses(hosts...)
 	elapsed := time.Since(start)
 	if elapsed > 2*bound {
 		t.Errorf("ending %d hosts took %v, want about one bound of %v", hostCount, elapsed, bound)
