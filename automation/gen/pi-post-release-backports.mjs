@@ -683,6 +683,19 @@ patch("1397070024", "pi-ai/providers/qwen-token-plan.js", [
 // END backport 1397070024
 
 // BEGIN backport 1397070024
+// The manifest of the provider data (providers/data/.manifest.json), which Pi's generation writes together with the data: the hashes of the
+// four files the blocks below change, and the structure hash of the catalog with them (the model ids of each provider), so that Pi's
+// check-model-data accepts the directory as it accepts the release's. generatedAt stays the release's: no generation ran.
+patch("1397070024", "pi-ai/providers/data/.manifest.json", [
+    ['"structureHash":"b000db3651d082f3ea87239d65139d76b71656c1b2713944bb4c1cee29b1bb98"', '"structureHash":"b28c256a575de67deaf1c9d9841481885a34906f65b3d10f96f507b24b4ab4b1"'],
+    ['"qwen-token-plan.json":"0630bf7fea9d8579c7ac990e32c40c3685f9db20b6dbfaf745b361fe5203113c"', '"qwen-token-plan.json":"54b2ec9adf8086e5c96845af2059c3335f89ddae8090f345aba0c283e3b1d74e"'],
+    ['"qwen-token-plan-cn.json":"80824536f0c3cd83ab27424df2d664738cbe3f971b4e568a625432288fa53229"', '"qwen-token-plan-cn.json":"89f9e9614e1ea369f849ed3386c6cdcebb37e838f9432e0b94d6b2932874a7d7"'],
+    ['"qwen-token-plan-individual.json":"f83c5ae4dce709924ad03a10c5f9c09a42b3670cb6ee2ed32590b9e0fcbaf8a9"', '"qwen-token-plan-individual.json":"28d425d7808187ed75703f2eccb66cb52b047c14e96d73e9c79a2569919045b7"'],
+    ['"qwen-token-plan-individual-cn.json":"fb74899c770572efbb27eb8d3398a07edaa4d62229655f9a0702ae01af22ac95"', '"qwen-token-plan-individual-cn.json":"a55b1d2aec45da001d6ad758d1d4f4851885263776e7c7a7d50aa26c571739dd"'],
+]);
+// END backport 1397070024
+
+// BEGIN backport 1397070024
 patch("1397070024", "pi-ai/providers/data/qwen-token-plan.json", [
     ['"chat:deepseek-v3.2":{"id":"deepseek-v3.2","name":"DeepSeek V3.2","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":131072,"maxTokens":65536,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":false},"type":"chat"},', ""],
     ['"chat:deepseek-v4-flash":{"id":"deepseek-v4-flash","name":"DeepSeek V4 Flash","api":"openai-completions","provider":"qwen-token-plan","baseUrl":"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1","reasoning":true,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000000,"maxTokens":384000,"compat":{"supportsStrictMode":true,"thinkingFormat":"qwen","supportsDeveloperRole":false,"supportsStore":false,"supportsReasoningEffort":true},"thinkingLevelMap":{"off":null,"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":"max"},"type":"chat"},', ""],
