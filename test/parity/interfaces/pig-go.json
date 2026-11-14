@@ -19069,6 +19069,17 @@
       "shapeHash": "sha256:1c21a2158b5874158f5675d0c6fbd1786e5703b477a3e8f3d91e28296d1f2bf0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#NoAPIProviderError",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "NoAPIProviderError",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(api API) error"
+      },
+      "shapeHash": "sha256:a6f45501f2b01dc4c591a93f4046c5810183231b6919d2054460960cbebae7fc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#NodeFetch",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "NodeFetch",
@@ -20871,6 +20882,17 @@
         "type": "func(providerID string) string"
       },
       "shapeHash": "sha256:6ea887270ea826e3cc47c2484eb6ed6fcbc31478607fab5c49a0f4df812cf442"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderCatalogServesAPI",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ProviderCatalogServesAPI",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, api API) bool"
+      },
+      "shapeHash": "sha256:f4a135d3b4775ac2e7642b9a339feccafc73df4dc3389ea35066f3c7ecf596df"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderClassifier",
@@ -39065,6 +39087,17 @@
         "type": "func(ctx context.Context, network string, address string, dial func(context.Context, string, string) (net.Conn, error), config *crypto/tls.Config, timeout time.Duration) (net.Conn, error)"
       },
       "shapeHash": "sha256:1b2650e1ca318400af8e52fb98914a95c8b9b6300ca95de1a695409c58a3f81c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#directAPIKnown",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "directAPIKnown",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(api API) bool"
+      },
+      "shapeHash": "sha256:d77d863149e9226377cafae2aed66aa8b5d08496c31443629689009a3be9e9d5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#directAPIProvider",
