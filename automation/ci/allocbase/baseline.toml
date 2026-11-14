@@ -3455,6 +3455,11 @@ allocs = 8002
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkCursorWrites"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkDockFrameLongTranscript/keystroke/main-screen/msgs=2000"
 allocs = 12
 
