@@ -2298,6 +2298,19 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// tool_call_abort_probe subscribes to tool_call with a handler that opens a dialog and answers it from the dialog's answer: a run's abort while the dialog is open ("wait"), or before the handler's dispatch ("first"), must neither skip the handler nor cancel its dialog nor drop its reply, as Pi awaits tool_call handlers (runner.ts:1256-1274; TestConformance_ToolCallHandlerIsAwaitedThroughTheAbort). The mode is the event's input.mode.
+	ext.Command("tool_call_abort_probe", "Subscribe to tool_call with a handler that answers from a dialog it opened", func(ctx sdk.Context, args string) error {
+		ext.OnEvent("tool_call", func(hctx sdk.Context, data map[string]any) (any, error) {
+			input, _ := data["input"].(map[string]any)
+			mode, _ := input["mode"].(string)
+			answer, _, err := hctx.Input("tool_call_abort:"+mode+":pending", "p")
+			if err != nil {
+				answer = "failed: " + err.Error()
+			}
+			return map[string]any{"block": true, "reason": "tool_call_abort:" + mode + ":" + answer}, nil
+		})
+		return nil
+	})
 	// event_ordered_result_probe is event_result_probe whose result keeps its members in the order they are written: a Go handler authors an object with
 	// member order as a json.RawMessage (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder proposes a draft this way).
 	ext.Command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", func(ctx sdk.Context, args string) error {

@@ -4,6 +4,7 @@ package subprocess
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -160,4 +161,52 @@ func holdRunSignal(h *Host, run context.Context) {
 	bridge := NewUIBridge(func() {})
 	bridge.SetHostAction("getSignal", func() context.Context { return run })
 	h.SetUIBridge(bridge)
+}
+
+// TestNodeRunHandlersThatNeverSettleDoNotHoldTheQuit: the same for agent_end and message_end (Pi 1.5.2 over RPC: 15 ms; pig held for ever).
+func TestNodeRunHandlersThatNeverSettleDoNotHoldTheQuit(t *testing.T) {
+	t.Parallel()
+	for _, event := range []string{"agent_end", "message_end"} {
+		t.Run(event, func(t *testing.T) {
+			t.Parallel()
+			budget := testbudget.Wait(t)
+			h, exts, drained, _ := startQuitRuntimes(t, []string{"never"}, map[string]string{"never": `export default function (pi) { pi.on("` + event + `", () => new Promise(() => {})); }`})
+			handlers := exts["never"].EventHandlers(event)
+			if len(handlers) != 1 {
+				t.Fatalf("%s handlers = %d, want 1", event, len(handlers))
+			}
+			go func() { _, _ = handlers[0](map[string]any{"type": event}) }()
+			awaitExtensionRequest(t, h, "never")
+			h.EndInput()
+			select {
+			case <-drained:
+			case <-time.After(budget):
+				t.Fatalf("the host never handed the drained loop to its owner: a %s handler that awaits nothing held the quit\n%s", event, quitHoldState(h))
+			}
+		})
+	}
+}
+
+// quitToolNeverSource registers a tool whose execute awaits a promise that never settles.
+const quitToolNeverSource = `export default function (pi) {
+  pi.registerTool({ name: "hang", label: "hang", description: "never settles", parameters: { type: "object", properties: {} }, execute: () => new Promise(() => {}) });
+}`
+
+// TestNodeToolThatNeverSettlesDoesNotHoldTheQuit: Pi's dispose awaits the aborted run, which awaits the tool's execute; a promise that never settles holds no handle and Pi's process exits when its loop empties (Pi 1.5.2 over RPC: 15 ms; pig 3024 ms, the abort grace of D111, which this test does not touch: the quit's drained loop is what ends the wait).
+func TestNodeToolThatNeverSettlesDoesNotHoldTheQuit(t *testing.T) {
+	t.Parallel()
+	budget := testbudget.Wait(t)
+	h, exts, drained, ctx := startQuitRuntimes(t, []string{"never"}, map[string]string{"never": quitToolNeverSource})
+	tool, ok := exts["never"].RegisteredTool("hang")
+	if !ok {
+		t.Fatal("tool hang not registered")
+	}
+	go func() { _, _ = tool.Definition.Execute(ctx, "call_1", json.RawMessage(`{}`), func(extension.AgentToolResult) {}) }()
+	awaitExtensionRequest(t, h, "never")
+	h.EndInput()
+	select {
+	case <-drained:
+	case <-time.After(budget):
+		t.Fatalf("the host never handed the drained loop to its owner: a Node tool that awaits nothing held the quit\n%s", quitHoldState(h))
+	}
 }
