@@ -48,10 +48,13 @@ func TestCredentialWritesGoInPlaceThroughAHardLink(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := store.Set("anthropic", Credential{Type: CredentialOAuth, Access: "access-login", Refresh: "refresh-login", Expires: 4102444800000}); err != nil {
-			t.Fatalf("login through %s: %v", target, err)
+		if err := store.Set(fixtureLiveOAuth[0], Credential{Type: CredentialOAuth, Access: "access-login", Refresh: "refresh-login", Expires: 4102444800000}); err != nil {
+			t.Fatalf("OAuth login through %s: %v", target, err)
 		}
-		if _, err := RefreshStoredOAuth(context.Background(), store, "openai-codex", oauth, func(Credential) bool { return true }); err != nil {
+		if err := store.Set(fixtureAPIKeys[0], Credential{Type: CredentialAPIKey, Key: "key-login"}); err != nil {
+			t.Fatalf("API key login through %s: %v", target, err)
+		}
+		if _, err := RefreshStoredOAuth(context.Background(), store, fixtureExpiredOAuth, oauth, func(Credential) bool { return true }); err != nil {
 			t.Fatalf("refresh through %s: %v", target, err)
 		}
 	}
