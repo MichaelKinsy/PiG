@@ -75,6 +75,26 @@ allocs = 624
 
 [[benchmark]]
 package = "./agent"
+benchmark = "BenchmarkParallelToolBatchWithHistory/calls=2/history=100"
+allocs = 550
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkParallelToolBatchWithHistory/calls=2/history=5000"
+allocs = 5430
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkParallelToolBatchWithHistory/calls=8/history=100"
+allocs = 917
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkParallelToolBatchWithHistory/calls=8/history=5000"
+allocs = 5831
+
+[[benchmark]]
+package = "./agent"
 benchmark = "BenchmarkSystemPromptRead/1"
 allocs = 4
 
@@ -2305,6 +2325,11 @@ allocs = 150
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkQuarantinePackedCell"
+allocs = 139
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkReadFrameLargePayload/16MiB"
 allocs = 11
 
@@ -2392,6 +2417,11 @@ allocs = 11
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkToolParameterSchemaValidation/65536"
 allocs = 11
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkUnacknowledgedNotices"
+allocs = 14
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
