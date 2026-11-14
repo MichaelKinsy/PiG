@@ -43,8 +43,8 @@ func errorAsUnmarshalType(err error) (*json.UnmarshalTypeError, bool) {
 // anthropicDeltaPiText is the delta text JSON.parse gives for the rows whose text holds the escape of a lone surrogate: the unit, in its three-byte form.
 var anthropicDeltaPiText = map[string]string{
 	`{"delta":{"type":"text_delta","text":"\ud800 \u00e9 \" \\ "}}`: "\xed\xa0\x80 \u00e9 \" \\ ",
-	`{"index":0,"delta":{"type":"text_delta","text":"H[\ud83d"}}`:     "H[\xed\xa0\xbd",
-	`{"index":0,"delta":{"type":"text_delta","text":"\ude00]"}}`:      "\xed\xb8\x80]",
+	`{"index":0,"delta":{"type":"text_delta","text":"H[\ud83d"}}`:   "H[\xed\xa0\xbd",
+	`{"index":0,"delta":{"type":"text_delta","text":"\ude00]"}}`:    "\xed\xb8\x80]",
 }
 
 func TestAnthropicDeltaReflectDecodesAsTheCopyingDecodeDid(t *testing.T) {
