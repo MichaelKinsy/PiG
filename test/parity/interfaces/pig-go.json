@@ -272822,6 +272822,17 @@
       "shapeHash": "sha256:1d5811c037bb12e55c9555c0f99e4df5cc764622cd82cde3692342be3db4b97f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.takeReloadTailInput",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.takeReloadTailInput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() ([]byte, bool)"
+      },
+      "shapeHash": "sha256:2c2528e3c2c0c2d72b6976187bb56641d41435de6a1bc8bb177e5b77637252af"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.takeStartedCommand",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.takeStartedCommand",

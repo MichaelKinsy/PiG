@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -86,7 +87,7 @@ func reloadTailRound(t *testing.T, steps int, between, after string) string {
 		readers.Wait()
 		text = m.editor.Text()
 		m.inputErrCh <- io.EOF
-		if err := <-loop; err != io.EOF {
+		if err := <-loop; !errors.Is(err, io.EOF) {
 			t.Fatalf("input loop: %v", err)
 		}
 	})
