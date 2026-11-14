@@ -3,8 +3,10 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -127,4 +129,46 @@ func TestCompareRatchetsInBothDirections(t *testing.T) {
 	if _, stale := compare(found, extra); len(stale) != 1 {
 		t.Fatalf("a baseline entry with no site must fail, got %v", stale)
 	}
+}
+
+// A baseline that does not parse stops the gate and the -print regeneration alike, with the file and the decode error in the message. -print reads the classes of the old entries from it: read as empty, it would write every entry back without its class.
+func TestRunFailsOnABaselineThatDoesNotParse(t *testing.T) {
+	t.Setenv("GOWORK", "off")
+	root, err := filepath.Abs(filepath.Join("testdata", "sample"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseline := filepath.Join(t.TempDir(), "baseline.toml")
+	if err := os.WriteFile(baseline, []byte("[[hit]]\nfile = \"a.go\"\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, printBaseline := range []bool{false, true} {
+		var rc int
+		stderr := captureStderr(t, func() { rc = run(root, baseline, []string{"./..."}, false, printBaseline) })
+		if rc != 2 || !strings.Contains(stderr, baseline) || !strings.Contains(stderr, "line 2") {
+			t.Fatalf("print %v: exit = %d, stderr = %q; want 2 and a message that names %s and line 2", printBaseline, rc, stderr, baseline)
+		}
+	}
+}
+
+// captureStderr returns what fn writes to os.Stderr.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	file, err := os.CreateTemp(t.TempDir(), "stderr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stderr
+	os.Stderr = file
+	defer func() { os.Stderr = old }()
+	fn()
+	os.Stderr = old
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(file.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }

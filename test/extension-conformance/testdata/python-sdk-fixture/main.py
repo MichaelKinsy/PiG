@@ -1979,6 +1979,8 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": "tool_signal_nested:" + text}
 
     ext.tool("big_out", "Return text of the size in the argument", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "a" * int(params["n"])}]})
+    # lone_decl: a description, a parameter name and a parameter's text hold a lone UTF-16 surrogate (TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs).
+    ext.tool("lone_decl", "D[\ud83d]", {"type": "object", "properties": {"K[\ude00\ud83d]": {"type": "string", "description": "PD[\ud83d]", "enum": ["E[\ude00]"], "default": "DF[\ud83d]"}}}, lambda ctx, params: {"content": [{"type": "text", "text": "lone"}]})
     ext.tool("echo_params", "Return the arguments as the result details", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "echoed"}], "details": params})
     ext.tool("nan_out", "Return details holding NaN and Infinity", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "nan"}], "details": {"n": float("nan"), "i": float("-inf"), "l": [float("nan"), 2, {"d": float("inf")}], "ok": 1}})
     ext.tool("update_tool", "Stream two partial results", {"type": "object", "properties": {}}, update_tool)

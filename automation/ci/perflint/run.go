@@ -622,6 +622,15 @@ func compare(found []finding, baseline []finding) (grew, stale []string) {
 	return grew, stale
 }
 
+// loadBaseline reads the baseline at path. A missing file is an empty baseline: every finding is then new and fails.
+func loadBaseline(path string) (baselineFile, error) {
+	var baseline baselineFile
+	if _, err := toml.DecodeFile(path, &baseline); err != nil && !os.IsNotExist(err) {
+		return baselineFile{}, fmt.Errorf("read baseline %s: %w", path, err)
+	}
+	return baseline, nil
+}
+
 func run(root, baselinePath string, patterns []string, report, printBaseline bool) int {
 	found, err := findAll(root, patterns)
 	if err != nil {
@@ -629,8 +638,11 @@ func run(root, baselinePath string, patterns []string, report, printBaseline boo
 		return 2
 	}
 	if printBaseline {
-		var previous baselineFile
-		_, _ = toml.DecodeFile(baselinePath, &previous)
+		previous, err := loadBaseline(baselinePath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "perf-lint:", err)
+			return 2
+		}
 		classes := map[string]string{}
 		for _, b := range previous.Hit {
 			classes[b.key()] = b.Class
@@ -659,8 +671,8 @@ func run(root, baselinePath string, patterns []string, report, printBaseline boo
 		}
 		return 0
 	}
-	var baseline baselineFile
-	if _, err := toml.DecodeFile(baselinePath, &baseline); err != nil && !os.IsNotExist(err) {
+	baseline, err := loadBaseline(baselinePath)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "perf-lint:", err)
 		return 2
 	}

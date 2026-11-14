@@ -462,3 +462,29 @@ func TestExportFromFileWithToolsStateControlsSystemPromptAndTools(t *testing.T) 
 		})
 	}
 }
+
+// The session data of an export is JSON.stringify text before it is base64-encoded (ToHTML), so a lone UTF-16 surrogate reaches the page as
+// its escape: in a session line that names a called tool and holds its arguments, and in the live tools, whose strings hold the unit in the
+// three-byte form of a Go string. U+FFFD in its place would name another tool.
+func TestToHTML_WritesALoneSurrogateAsItsEscape(t *testing.T) {
+	jsonl := `{"type":"session","id":"abc","cwd":"/tmp","timestamp":"2026-05-10T12:00:00Z"}
+{"type":"message","id":"a1","parentId":null,"timestamp":"2026-05-10T12:00:01Z","message":{"role":"assistant","content":[{"type":"toolCall","id":"toolu_1","name":"N[\ude00]","arguments":{"p":"A[\ud83d]"}}]}}
+`
+	sd, err := FromJSONL([]byte(jsonl))
+	if err != nil {
+		t.Fatalf("FromJSONL: %v", err)
+	}
+	sd.Tools = []ToolSchema{{Name: "N[\xed\xb8\x80]", Description: "D[\xed\xa0\xbd]"}}
+	payload, err := base64.StdEncoding.DecodeString(extractSessionDataBase64(t, ToHTML(sd)))
+	if err != nil {
+		t.Fatalf("base64 decode: %v", err)
+	}
+	for _, want := range []string{`"type":"toolCall","id":"toolu_1","name":"N[\ude00]","arguments":{"p":"A[\ud83d]"}`, `"tools":[{"name":"N[\ude00]","description":"D[\ud83d]"`} {
+		if !strings.Contains(string(payload), want) {
+			t.Errorf("the session data lacks %s: %s", want, payload)
+		}
+	}
+	if strings.Contains(string(payload), "\uFFFD") {
+		t.Errorf("the session data holds U+FFFD: %s", payload)
+	}
+}

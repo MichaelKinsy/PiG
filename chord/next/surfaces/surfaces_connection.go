@@ -2,21 +2,22 @@ package surfaces
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 )
 
 // The connection loop (pi: packages/chord/src/surfaces/connection.ts; slice 11 §2, decision "Slice 11, P6"; p2's
 // `keepConnected`): a client keeps one link to the server and replaces it when it ends. After a drop it reconnects after a
 // growing pause (250 ms doubling to 5 s; a connection that stayed open 10 s resets it), at once on a wake (visible again,
-// back online, network changed); it replaces an open socket silent past the server's ping interval on a wake, gives up a
-// socket not open after 20 s, and stops when the app's `CanRetry` says no (an outdated client, a guest's ended share). The
-// environment (time, timers, wakes) is given, so the same loop runs in a page and in a terminal's sandbox.
+// back online, network changed) and for a drop soon after one; it replaces an open socket silent past the server's ping
+// interval on a wake, gives up a socket not open after 20 s, and stops when the app's `CanRetry` says no (an outdated
+// client, a guest's ended share), asked beside the next attempt, never before it (Pi 21e4cb80d). The environment (time,
+// timers, wakes) is given, so the same loop runs in a page and in a terminal's sandbox.
 //
 // Pi runs the loop on one thread: every event (a socket's, a timer's, a wake's, the retry answer) runs to its end before
 // the next. The loop runs each event through an outbox, so the same holds here with no lock held while the app's callbacks
 // (`Open`, `OnState`, a link's `Close`, the environment's methods) run, and one of them may call the loop back (Stop).
-// `CanRetry` is the one blocking call: it runs on a goroutine of its own, its answer delivered as an event.
+// `CanRetry` is the one blocking call: it runs on a goroutine of its own, started after the next attempt is scheduled, its
+// answer delivered as an event.
 
 // The first retry pause after a failed or short-lived connection: 250 ms, doubling from there.
 const RetryInitialMs = 250
@@ -76,8 +77,9 @@ type LoopOptions struct {
 	// Open opens one socket and its link; the socket reports to events.
 	Open    func(events SocketEvents) LoopLink
 	OnState func(state ConnectionState)
-	// CanRetry is asked after every close; false stops the loop. An error counts as true (unreachable, try again). Its context
-	// ends at Stop.
+	// CanRetry is asked after a close, while the next attempt goes ahead, one question at a time (closes while one is open ask
+	// nothing more); false stops the loop (and closes that attempt). An error counts as true (unreachable, try again). Its
+	// context ends at Stop.
 	CanRetry    func(ctx context.Context) (bool, error)
 	Environment LoopEnvironment
 }
@@ -87,22 +89,43 @@ type Connection struct{ loop *loop }
 
 // KeepConnected keeps a client connected until Stop.
 func KeepConnected(options LoopOptions) *Connection {
+	c := newConnection(options)
+	c.start()
+	return c
+}
+
+// newConnection makes a loop that has not started. Pi's client reads the loop it made inside the loop's own `canRetry`
+// (client.ts connect: `loop.stop()`), which runs no earlier than a later turn; a Go question runs on a goroutine, so the
+// client holds the loop before its first event (start).
+func newConnection(options LoopOptions) *Connection {
 	//portlint:allow ctxbackground Pi's `keepConnected(options)` takes no signal: the loop's lifetime is its `stop()`, which cancels this context
 	ctx, cancel := context.WithCancel(context.Background())
-	l := &loop{options: options, env: options.Environment, ctx: ctx, cancel: cancel}
+	return &Connection{loop: &loop{options: options, env: options.Environment, ctx: ctx, cancel: cancel}}
+}
+
+// start listens for wakes and makes the first attempt.
+func (c *Connection) start() {
+	l := c.loop
 	l.box.run(func() {
 		l.removeWake = l.env.OnWake(func() { l.box.run(l.wake) })
 		l.connect()
 	})
-	return &Connection{loop: l}
 }
 
-// Stop stops the loop and closes the current link; no other is opened. It is safe to call from the loop's own callbacks
-// (it then runs once they return).
+// Stop stops the loop and closes the current link; no other is opened. An attempt it ended is reported Waiting (its last
+// state). It is safe to call from the loop's own callbacks (it then runs once they return).
 func (c *Connection) Stop() { c.loop.box.run(c.loop.stop) }
 
-// settled waits for the retry questions in flight (the tests', so a fake clock advances over a settled loop).
-func (c *Connection) settled() { c.loop.asking.Wait() }
+// stopNow is Stop for a caller outside the loop's events (the client's retry question, on its goroutine): it returns once
+// the loop has stopped, as Pi's `loop.stop()` has when it returns. Stop alone only queues the stop while another event runs.
+func (c *Connection) stopNow() {
+	done := make(chan struct{})
+	c.loop.box.run(func() {
+		c.loop.stop()
+		close(done)
+	})
+	<-done
+}
 
 // attempt is one attempt: its link, when it started and opened, its last frame, its timeout's cancel.
 type attempt struct {
@@ -144,17 +167,18 @@ type loop struct {
 	box        outbox
 	ctx        context.Context
 	cancel     context.CancelFunc
-	asking     sync.WaitGroup
 	removeWake func()
 	// The fields below are touched only by events, which run one at a time.
 	failures         int
 	current          *attempt
 	cancelRetry      func()
 	cancelStaleCheck func()
-	// deciding is between a close and CanRetry's answer; a wake meanwhile retries at once.
-	deciding          bool
-	wokeWhileDeciding bool
-	stopped           bool
+	// wokenAt is when the last wake came (woken: there is one), until a close used it (the next attempt then goes at once).
+	woken   bool
+	wokenAt int64
+	// asking is whether CanRetry is being asked: one question at a time, its answer covering the closes meanwhile.
+	asking  bool
+	stopped bool
 }
 
 // connect starts an attempt.
@@ -174,7 +198,7 @@ func (l *loop) connect() {
 	link.OnClose(func() { l.box.run(func() { l.closed(at) }) })
 }
 
-// stop stops the loop and closes the current link.
+// stop stops the loop and closes the current link; an attempt it ended is reported Waiting (its last state).
 func (l *loop) stop() {
 	if l.stopped {
 		return
@@ -186,12 +210,17 @@ func (l *loop) stop() {
 		l.cancelRetry()
 		l.cancelRetry = nil
 	}
-	if l.current != nil && l.current.link != nil {
-		l.current.link.Close()
+	at := l.current
+	if at != nil && at.link != nil {
+		at.link.Close()
+	}
+	if at != nil {
+		l.options.OnState(Waiting)
 	}
 }
 
-// closed is at's link closing: it asks CanRetry, then schedules the next attempt.
+// closed is at's link closing: it schedules the next attempt, at once when the close came soon after a wake (the socket
+// that was away, or its stale check), and asks CanRetry meanwhile.
 func (l *loop) closed(at *attempt) {
 	if l.current != at {
 		return
@@ -206,23 +235,37 @@ func (l *loop) closed(at *attempt) {
 		return
 	}
 	l.options.OnState(Waiting)
-	if at.opened && l.env.Now()-at.openedAt >= StableMs {
+	now := l.env.Now()
+	if at.opened && now-at.openedAt >= StableMs {
 		l.failures = 0
 	}
-	l.deciding = true
-	l.wokeWhileDeciding = false
-	l.asking.Go(func() {
+	// Once per wake: a server down would otherwise be retried in a tight loop.
+	woke := l.woken && now-l.wokenAt <= StaleMs+WakeGraceMs
+	l.woken = false
+	l.schedule(woke)
+	l.ask()
+}
+
+// ask asks CanRetry unless a question is open (its answer covers this close too). Beside the next attempt, not before it:
+// the app's check (a page asks the server's base over HTTP) may take seconds on a network just woken, and its "no" stops
+// the loop whenever it comes.
+func (l *loop) ask() {
+	if l.asking {
+		return
+	}
+	l.asking = true
+	go func() {
 		retry, err := l.options.CanRetry(l.ctx)
 		if err != nil {
 			retry = true
 		}
 		l.box.run(func() {
-			l.deciding = false
-			if retry {
-				l.schedule(l.wokeWhileDeciding)
+			l.asking = false
+			if !retry {
+				l.stop()
 			}
 		})
-	})
+	}()
 }
 
 // schedule schedules the next attempt: at once (now), else after the backoff (offline: the longest pause).
@@ -249,13 +292,10 @@ func (l *loop) schedule(now bool) {
 
 // wake: a pending retry runs now; an open socket silent too long is replaced once its overdue ping is checked.
 func (l *loop) wake() {
+	l.woken, l.wokenAt = true, l.env.Now()
 	if l.cancelRetry != nil {
 		l.cancelRetry()
 		l.connect()
-		return
-	}
-	if l.deciding {
-		l.wokeWhileDeciding = true
 		return
 	}
 	at := l.current

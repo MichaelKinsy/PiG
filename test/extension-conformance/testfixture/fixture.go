@@ -862,6 +862,11 @@ func Extension() *sdk.Extension {
 		n, _ := params["n"].(float64)
 		return sdk.ToolResult{Content: strings.Repeat("a", int(n))}, nil
 	})
+	// lone_decl: a description, a parameter name and a parameter's text hold a lone UTF-16 surrogate, each in the three-byte form a Go string holds
+	// one in (TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs).
+	ext.Tool("lone_decl", "D[\xed\xa0\xbd]", sdk.Schema{"type": "object", "properties": map[string]any{"K[\xed\xb8\x80\xed\xa0\xbd]": map[string]any{"type": "string", "description": "PD[\xed\xa0\xbd]", "enum": []any{"E[\xed\xb8\x80]"}, "default": "DF[\xed\xa0\xbd]"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		return sdk.ToolResult{Content: "lone"}, nil
+	})
 	// echo_params returns the arguments it received as its details (TestConformance_ToolArgumentNumbersAgreeAcrossSDKs).
 	ext.Tool("echo_params", "Return the arguments as the result details", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		return sdk.ToolResult{Content: "echoed", Details: params}, nil

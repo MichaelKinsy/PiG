@@ -125,7 +125,7 @@ Only replies to the seven carrier commands carry `code`.
 
 A reply carries every current snapshot and is therefore bounded by the client's own `limits.mounts` times 4194304 bytes, not by one message bound. Nodes, depth, text, snapshot bytes, mounts and intent argument bytes are the client's `limits`, enforced by the registry as for every client.
 
-Assets ride inline, in the view's `images`. A mount that declares an asset with `delivery: managed` is carried degraded and the plugin reads an `unsupported` notice.
+Assets ride inline, in the view's `images`. The bytes of an image count in the client's `limits.snapshotBytes`, as the base64 they are carried in, and not in `limits.textBytes`: the `data` member of the records of that list is left out of the longest-text figure, and every other string is in it. A mount that declares an asset with `delivery: managed` is carried degraded and the plugin reads an `unsupported` notice.
 
 ## A client that never attaches
 

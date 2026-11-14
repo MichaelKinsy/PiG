@@ -388,6 +388,15 @@ export default function (pi) {
       return { content: [{ type: "text", text: "a".repeat(params.n) }] };
     },
   });
+  // lone_decl: a description, a parameter name and a parameter's text hold a lone UTF-16 surrogate (TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs).
+  pi.registerTool({
+    name: "lone_decl",
+    description: "D[\ud83d]",
+    parameters: { type: "object", properties: { "K[\ude00\ud83d]": { type: "string", description: "PD[\ud83d]", enum: ["E[\ude00]"], default: "DF[\ud83d]" } } },
+    async execute() {
+      return { content: [{ type: "text", text: "lone" }] };
+    },
+  });
   pi.registerTool({
     name: "echo_params",
     description: "Return the arguments as the result details",

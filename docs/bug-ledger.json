@@ -4838,6 +4838,45 @@
       ]
     },
     {
+      "id": "BF-1a6b1ab",
+      "title": "A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider…",
+      "symptom": "A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider, the session file, RPC output and an HTML export as Pi writes it.",
+      "rootCause": "An earlier change made the tool definitions of three API kinds write a lone surrogate as its escape in MarshalJSON, one type at a time, and left the tip red. Each of those types also has a MarshalJSONTo, which the request encoder calls first and which still wrote U+FFFD, so the two methods of one type disagreed and the request was right only through the second encode. Mistral's tool definition was not changed, and since a declaration is now read with the unit kept, its one U+FFFD became three.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider, the session file, RPC output and an HTML export as Pi writes it. A JavaScript, Python or Lisp extension can register such a tool, and so can a Go extension that builds the string. PiG wrote U+FFFD in the unit's place (three for a name or a description, one inside the schema), so two tools whose names differed only in that unit reached the provider under one name, a property name no longer matched its `required` entry, and a call the model made by that name ended in `Tool ... not found`. Now the request of the Anthropic Messages, OpenAI Completions, OpenAI Responses, Azure OpenAI Responses, Google Generative AI, Mistral and Bedrock kinds holds the unit as the `\\uXXXX` escape `JSON.stringify` writes, in the tools it declares and in a history that names a called tool or holds the unit in a call's arguments, also when the body is written from a payload a Go `OnPayload` hook handed back; the system message's session line and its RPC lines hold the same escape. The name of a called tool is read with the unit kept from the Anthropic Messages, OpenAI Completions, OpenAI Responses, Azure OpenAI Responses, Google Generative AI and Mistral streams, so the call finds its tool. A session Pi wrote with the escape is read and sent with it; a session an earlier PiG wrote with U+FFFD is sent as it is. ECMAScript specifies that `JSON.stringify` writes a lone surrogate as its escape, and Anthropic's prompt caching documentation says a cache hit needs an identical prompt prefix. No provider documents whether it accepts a tool name or description that holds such an escape, and this was not tried against a live provider. The Google Vertex and OpenAI Codex requests go through the same encoders as the Google Generative AI and OpenAI Responses ones and were not compared with Pi's. Not changed: an extension in a subprocess still receives U+FFFD in the unit's place in what the host sends it (so a payload its `before_provider_request` handler returns holds U+FFFD), tools of an MCP server are still read with U+FFFD, and so is the name of a called tool in the Bedrock stream.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1a6b1ab3ed",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e95b1a4f11",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "agent/system_message_surrogate_test.go::TestStoredSystemMessageKeepsAToolsLoneSurrogate",
+        "ai/marshaler_census_test.go::TestEveryMarshalerWritesALoneSurrogateAsItsEscape",
+        "ai/providers/bedrock/bedrock_payload_oracle_test.go::TestBedrockConversePayloadMatchesPi",
+        "ai/providers/bedrock/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi",
+        "ai/tool_schema_surrogate_test.go::TestToolParametersWithoutRecordedOrderKeepALoneSurrogate",
+        "ai/tool_schema_surrogate_test.go::TestToolSchemaJSONKeepsALoneSurrogate",
+        "ai/tool_surrogate_wire_test.go::TestCalledToolNameKeepsALoneSurrogateOfTheStream",
+        "ai/tool_surrogate_wire_test.go::TestToolLoneSurrogatesReachTheWireAsPi",
+        "internal/codingagent/export/export_test.go::TestToHTML_WritesALoneSurrogateAsItsEscape",
+        "internal/jsstring/surrogate_json_test.go::TestHoldsSurrogate",
+        "internal/jsstring/surrogate_json_test.go::TestUnmarshalKeepingSurrogatesReportsEncodingJSONErrors",
+        "test/extension-conformance/tool_declaration_surrogates_test.go::TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs",
+        "test/parity/scenarios/tools/34-extension-tool-lone-surrogate.toml",
+        "tui/tool_execution_surrogate_test.go::TestToolCardDrawsANameWithALoneSurrogate"
+      ]
+    },
+    {
       "id": "BF-1a855cd",
       "title": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each…",
       "symptom": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each redraw, as in Pi.",
@@ -12815,6 +12854,27 @@
       ]
     },
     {
+      "id": "BF-40cd4f1",
+      "title": "fix(view): the mount is told on the loop that its image is ready; the three reds of the gates",
+      "symptom": "fix(view): the mount is told on the loop that its image is ready; the three reds of the gates",
+      "rootCause": "The image worker called the mount's repaint from its own goroutine; under -race the view client test showed a data race on the loop's state. MountImages gains Post, which the terminal client sets to its loop's postWait, so the wake runs on the loop. Lint: the longest-text condition without the negated conjunction, and the client's images field in a block of its own. Divergence guard: the default width 60 names Pi's image.ts render.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "40cd4f158e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/view_client_image_test.go::TestViewClientDrawsAPhotographInAPanel"
+      ]
+    },
+    {
       "id": "BF-4106324",
       "title": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the…",
       "symptom": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the context of the tree navigation ended while it ran.",
@@ -15197,6 +15257,39 @@
       ],
       "tests": [
         "internal/codingagent/interactive_user_bash_footer_test.go::TestInteractiveBashRefreshesTheFooterContextUsage"
+      ]
+    },
+    {
+      "id": "BF-4a0c240",
+      "title": "A Go extension that makes a host call in its factory (for example `ext.Events().On`) hung at its first host…",
+      "symptom": "A Go extension that makes a host call in its factory (for example `ext.Events().On`) hung at its first host call after `/reload`, and pig stayed at `Reloading ...`.",
+      "rootCause": "It hung because the host answered the factory's call with a push of its state ahead of the result, on a connection that had not registered, and the Go SDK's factory pump dropped that frame without counting it, while a host call returns only after every notify read before its result is applied.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension that makes a host call in its factory (for example `ext.Events().On`) hung at its first host call after `/reload`, and pig stayed at `Reloading ...`. It hung because the host answered the factory's call with a push of its state ahead of the result, on a connection that had not registered, and the Go SDK's factory pump dropped that frame without counting it, while a host call returns only after every notify read before its result is applied. The host's push was never released (it is not in 0.7.0), so no release hangs; the Go SDK defect under it is in every release since 0.5.2. The same hang followed a first load that came after a host state change, such as a model switch. A fused Go extension did not hang: it failed to load with `expected ready message, got notify`. The host now writes no state to a connection before its ready. The ready payload is the first state, and the host pushes a change that lands while it prepares the ready right after it. Every SDK applies a state notify that reaches it before the ready and goes on loading: the Go SDK also counts it; the Python, Rust and Lisp SDKs dropped it when a factory-time call read it and failed the load (`expected ready, got notify`) when the wait for ready or the registration of a listener read it; the Node runtime already applied it. One conformance row runs a factory host call, a load and a reload after a host state change in every SDK, isolated and packed, and in fused Go.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4a0c240b01",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "9eec774b3e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/state_before_ready_test.go::TestAFactoryCallAfterAHostStateChangeIsAnsweredWithoutAStatePush",
+        "coding/extension/host/subprocess/state_before_ready_test.go::TestAHostStateChangeAfterAFactoryCallIsInTheReadyPayload",
+        "coding/extension/host/subprocess/state_before_ready_test.go::TestAHostStateChangeTheReadySnapshotMissedIsPushedAfterTheReady",
+        "extensions/sdk-py/tests/test_state_before_ready.py",
+        "extensions/sdk/state_before_ready_test.go::TestStateBeforeRegisterIsAppliedAndCountedByTheFactoryPump",
+        "extensions/sdk/state_before_ready_test.go::TestStateBetweenRegisterAndReadyIsAppliedAndTheLoadGoesOn",
+        "extensions/sdk/state_before_ready_test.go::TestTheReadySnapshotReplacesTheStateOfAnEarlierFrame",
+        "test/extension-conformance/reload_after_factory_call_test.go::TestConformance_AFactoryHostCallThenAReload"
       ]
     },
     {
@@ -41303,6 +41396,42 @@
       ]
     },
     {
+      "id": "BF-acc1492",
+      "title": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects…",
+      "symptom": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects at once instead of first waiting for its `CanRetry` check: with a check that takes 3 s, the next attempt went 3 250 ms after the wake and now goes at 0 ms.",
+      "rootCause": "The wait happened because the connection loop scheduled its next attempt only once `CanRetry` had answered.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects at once instead of first waiting for its `CanRetry` check: with a check that takes 3 s, the next attempt went 3 250 ms after the wake and now goes at 0 ms. The wait happened because the connection loop scheduled its next attempt only once `CanRetry` had answered. `KeepConnected` now asks `CanRetry` beside the next attempt, one question at a time (a link that drops while a question is open asks nothing more); a late `false` still stops the loop and ends the attempt made meanwhile, which is reported `waiting`; a drop within 26 s of a wake is retried at once, once per wake, and the replacement of a silent socket no longer waits a pause. `StartClient` stops the loop before it calls `Outdated`, so the app starts over with the link already ended. The vendored page and plugin runtimes carry the same change (Pi 21e4cb80d: `surfaces/connection.ts`, `surfaces/client.ts`, `web/page.ts`). The old loop is in v0.2.0, v0.3.0 and v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6e061374e2",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "acc14924df",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_client_test.go::TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "chord/next/surfaces/surfaces_client_test.go::TestAsksTheServersBaseAtAReconnectAnotherOneStopsTheLoopThenCallsOutdated",
+        "chord/next/surfaces/surfaces_connection_test.go::TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "chord/next/surfaces/surfaces_connection_test.go::TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "chord/next/surfaces/surfaces_connection_test.go::TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped",
+        "chord/next/surfaces/surfaces_connection_test.go::TestAsksCanRetryOneQuestionAtATimeClosesWhileItIsOpenAskNothingMoreTheNextCloseAsksAgain",
+        "chord/next/surfaces/surfaces_connection_test.go::TestDoesNotWaitForCanRetryTheNextAttemptGoesAheadALateNoAfterItOpenedClosesItReportedWaiting",
+        "chord/next/surfaces/surfaces_connection_test.go::TestOneWakeWithASlowCheckTheNextAttemptGoesAtOnceBesideTheOneCheck",
+        "chord/next/surfaces/surfaces_connection_test.go::TestReconnectsAfterAGrowingPauseAndReportsItsStates",
+        "chord/next/surfaces/surfaces_connection_test.go::TestRetriesAtOnceADropSoonAfterAWakeTheSocketThatWasAwayOncePerWake",
+        "chord/next/surfaces/surfaces_connection_test.go::TestStopReportsTheAttemptItEndedAsWaitingOnceAndNothingBetweenAttempts"
+      ]
+    },
+    {
       "id": "BF-ad0c167",
       "title": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and…",
       "symptom": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and emphasis, tool titles, selector titles, diff highlights) now draw only when Pi's chalk would: its stdout color level is above zero.",
@@ -44588,6 +44717,28 @@
         "durable/core/turn/classify_carried_test.go::TestConnectionClosedIsRetryable",
         "durable/core/turn/classify_carried_test.go::TestStreamCutShortMidReplyIsRetryable",
         "extensions/sdk/pi_ai_helpers_test.go::TestConnectionClosedIsRetryable"
+      ]
+    },
+    {
+      "id": "BF-bedd7ec",
+      "title": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead…",
+      "symptom": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead of answering them.",
+      "rootCause": "the Go server host loads its own facets first and its plugins after, in the Node plugin host, and its HTTP component resolved its registries once the first of the two were loaded. Pi's one host loads both in one load, and until then its HTTP component refuses every request and upgrade with 503.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead of answering them. A page that reconnected to a restarted server in that time (about 220 ms in the run that found it; the page's first retry comes after 250 ms) was connected, shown the scripts object's empty set, took its base for another one and reloaded: what the page held was lost (the server's state was kept). This happened because the Go server host loads its own facets first and its plugins after, in the Node plugin host, and its HTTP component answered once the first of the two were loaded, where Pi's one host loads both in one `load` and its HTTP component refuses until that ended (`not_ready`). The HTTP component now sees the server host's registries only once the plugins are loaded. The fix is commit aa77aa9c2f1d3eccb4597259bdf1440915b97215; its message names the divergence of the server's two hosts (number 605 in docs/parity/DIVERGENCES.md) because the defect exists only where those two hosts exist, and the fix does not close or change that divergence. In no release: the app kit (`chord/nextnode/app`) is in none of v0.2.0, v0.3.0 and v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bedd7ec384",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_bases_linux_test.go::TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading"
       ]
     },
     {
@@ -49362,6 +49513,30 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-d636592",
+      "title": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed`…",
+      "symptom": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed` handler runs.",
+      "rootCause": "Session.dispatchUnawaitedEvent is the tree's form of Pi's `void this._extensionRunner.emit(...)` (agent-session.ts setSessionName, setThinkingLevel): the caller waits for the first handler's acknowledgment, so that the handler's synchronous part runs before the caller's next step.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed` handler runs. The input loop waited for the first handler to reach its first wait or to end, and a Go, Rust, Python or Lisp subprocess handler reports neither before its first host call, so no key echoed and nothing was drawn for as long as such a handler ran: 10 s for a handler that slept 10 s, where Pi 1.5.2 echoes at once while a handler awaits. The loop now starts the handler and goes on. Every release from v0.3.0 to v0.7.0 has the wait.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d63659241b",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/session_owner_loop_wait_test.go::TestUnawaitedEventDoesNotHoldTheOwnerLoop",
+        "coding/session_owner_loop_wait_test.go::TestUnawaitedEventKeepsTheFirstPrefixOffTheOwnerLoop",
+        "internal/codingagent/name_handler_sleep_tmux_test.go::TestTypingEchoesWhileASessionNameHandlerSleeps"
       ]
     },
     {

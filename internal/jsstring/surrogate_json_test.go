@@ -3,6 +3,7 @@ package jsstring
 import (
 	"bytes"
 	stdjson "encoding/json"
+	"errors"
 	"math"
 	"testing"
 )
@@ -79,5 +80,32 @@ func TestHasSurrogateEscape(t *testing.T) {
 		if got := HasSurrogateEscape([]byte(text)); got != want {
 			t.Errorf("HasSurrogateEscape(%s) = %v, want %v", text, got, want)
 		}
+	}
+}
+
+// HoldsSurrogate finds a surrogate in its three-byte form and nothing else: U+D7FF and U+E000 are its neighbours, U+FFFD is a character.
+func TestHoldsSurrogate(t *testing.T) {
+	for text, want := range map[string]bool{
+		"": false, "plain": false, "\xed": false, "a\xed\x9f\xbfb": false, "a\xee\x80\x80b": false, "\uFFFD": false, "caf\u00e9 \U0001F600": false,
+		"\xed\xa0\x80": true, "a\xed\xa0\xbdb": true, "\xed\x9f\xbf\xed\xbf\xbf": true, "x\xed\xb8\x80": true,
+	} {
+		if got := HoldsSurrogate(text); got != want {
+			t.Errorf("HoldsSurrogate(%q) = %v, want %v", text, got, want)
+		}
+	}
+}
+
+// A text the keeping decoder refuses is read by encoding/json: the caller gets encoding/json's error type, which it inspects.
+func TestUnmarshalKeepingSurrogatesReportsEncodingJSONErrors(t *testing.T) {
+	var value struct {
+		Name  string `json:"name"`
+		Count int    `json:"count"`
+	}
+	err := UnmarshalKeepingSurrogates([]byte(`{"name":"N[\ud83d]","count":"three"}`), &value)
+	if _, ok := errors.AsType[*stdjson.UnmarshalTypeError](err); !ok {
+		t.Fatalf("error is %T (%v), want *json.UnmarshalTypeError", err, err)
+	}
+	if err := UnmarshalKeepingSurrogates([]byte(`{"name":"N[\ud83d]","count":3}`), &value); err != nil || value.Name != "N[\xed\xa0\xbd]" || value.Count != 3 {
+		t.Fatalf("value %+v, error %v", value, err)
 	}
 }

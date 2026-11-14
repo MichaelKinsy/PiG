@@ -1632,7 +1632,7 @@ func (s *Session) Close() error {
 // Mirrors upstream session.sessionName getter (agent-session.ts:849).
 func (s *Session) SessionName() string { return s.inner.Load().GetSessionName() }
 
-// SetSessionName persists the sanitized Session name, immediately notifies subscribers, and admits the extension handler's synchronous prefix before returning. Suspended extension work belongs to the Session lifetime. An empty name clears the current name; RPC and slash-command boundaries validate their own non-empty input.
+// SetSessionName persists the sanitized Session name, immediately notifies subscribers, and admits the extension handler's synchronous prefix before returning; a caller on the interactive owner loop starts the handler and returns without waiting for the prefix (dispatchUnawaitedEvent). Suspended extension work belongs to the Session lifetime. An empty name clears the current name; RPC and slash-command boundaries validate their own non-empty input.
 func (s *Session) SetSessionName(name string) error {
 	// Pi reads the name synchronously after its own append (agent-session.ts:3559-3560); a concurrent caller's later append cannot change the name this call publishes.
 	s.replicatedBegin.Notify()
@@ -2051,7 +2051,7 @@ func (s *Session) ThinkingLevel() ai.ModelThinkingLevel {
 
 // SetThinkingLevel records a changed, clamped level in the Session transcript.
 // With Persist, it saves the requested level as the global default even when the effective level is unchanged.
-// A change admits the thinking_level_select handlers' synchronous prefix before returning; Pi does not await them (agent-session.ts:2629).
+// A change admits the thinking_level_select handlers' synchronous prefix before returning; Pi does not await them (agent-session.ts:2629). A caller on the interactive owner loop starts them and returns without waiting for the prefix (dispatchUnawaitedEvent).
 // Suspended handler work belongs to the Session lifetime.
 func (s *Session) SetThinkingLevel(level ai.ModelThinkingLevel, options ...ModelMutationOptions) error {
 	notify, err := s.setThinkingLevelState(level, options...)
@@ -2735,6 +2735,8 @@ func (s *Session) dispatchSessionNameEvent(event agent.SessionInfoChangedEvent) 
 }
 
 // dispatchUnawaitedEvent is Pi's `void runner.emit(event)`: it admits the first handler's synchronous prefix on the initiating call, without awaiting suspended extension work. The Session cancels and joins the emissions on Close and reports a dispatch failure under eventType.
+//
+// A caller on the interactive owner loop starts the emission and does not wait for the prefix: the prefix of a subprocess handler ends with a report from the extension process, and the loop that takes input and renders waits for no extension. The handler then runs beside the caller's next step, as a handler in another process always does once it is suspended.
 func (s *Session) dispatchUnawaitedEvent(runner *inproc.Runner, eventType string, event extension.ExtensionEvent) {
 	invoked := make(chan struct{})
 	ctx := invocation.WithAcknowledgment(s.backgroundContext(), func() { close(invoked) })
@@ -2744,6 +2746,9 @@ func (s *Session) dispatchUnawaitedEvent(runner *inproc.Runner, eventType string
 		s.reportRuntimeError(eventType, ignoreCancellation(err))
 	}); err != nil {
 		return // Session shutdown rejects new notifications.
+	}
+	if runner.CallerOnOwnerLoop() {
+		return
 	}
 	select {
 	case <-invoked:

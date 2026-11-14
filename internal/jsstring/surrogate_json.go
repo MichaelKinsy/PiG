@@ -3,6 +3,7 @@ package jsstring
 import (
 	"bytes"
 	stdjson "encoding/json"
+	"strings"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -31,12 +32,14 @@ func MarshalKeepingSurrogates(value any) ([]byte, error) {
 }
 
 // UnmarshalKeepingSurrogates is encoding/json's Unmarshal, except that the escape of a lone surrogate (`\ud83d`) is read as
-// that unit, as JSON.parse does, instead of as U+FFFD.
+// that unit, as JSON.parse does, instead of as U+FFFD. Its errors are encoding/json's.
 func UnmarshalKeepingSurrogates[T any](data []byte, value *T) error {
-	if !HasSurrogateEscape(data) {
-		return stdjson.Unmarshal(data, value)
+	if HasSurrogateEscape(data) && sdkjson.Unmarshal(data, value) == nil {
+		return nil
 	}
-	return sdkjson.Unmarshal(data, value)
+	// A text without such an escape, and one the other decoder refuses: the error is encoding/json's, the one a caller inspects, and value
+	// holds what encoding/json read.
+	return stdjson.Unmarshal(data, value)
 }
 
 // HasSurrogateEscape reports whether data holds the escape of a surrogate unit, `\ud800` to `\udfff`: the only text
@@ -56,5 +59,20 @@ func HasSurrogateEscape(data []byte) bool {
 			}
 		}
 		at++
+	}
+}
+
+// HoldsSurrogate reports whether s holds a UTF-16 surrogate in its three-byte form (0xED, then a byte from 0xA0 to 0xBF): the text
+// encoding/json writes as U+FFFD and JSON.stringify writes as an escape.
+func HoldsSurrogate(s string) bool {
+	for at := 0; ; at++ {
+		index := strings.IndexByte(s[at:], 0xED)
+		if index < 0 {
+			return false
+		}
+		at += index
+		if at+1 < len(s) && s[at+1] >= 0xA0 && s[at+1] <= 0xBF {
+			return true
+		}
 	}
 }

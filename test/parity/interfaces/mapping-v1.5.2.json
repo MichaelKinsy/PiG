@@ -4717,11 +4717,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:agent/proxy.go#ProxyAssistantMessageEvent"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:agent/proxy_partial_arguments_upstream_test.go#TestStreamProxyShowsGrowingPartialArgumentsWithoutKeepingTheRawTextOnTheBlockInLinearTime",
@@ -34681,9 +34681,9 @@
         "call:ai/anthropic.go#anthConvertTools"
       ],
       "evidence": [
+        "test:test/extension-conformance/tool_declaration_surrogates_test.go#TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs",
         "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages",
-        "test:agent/agent_transcript_upstream_test.go#TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState",
-        "test:agent/agent_transcript_upstream_test.go#TestAgent_DeclaresToolLoadoutChangesBeforeNextRequest"
+        "test:agent/agent_transcript_upstream_test.go#TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState"
       ]
     },
     {
@@ -35693,8 +35693,8 @@
       ],
       "evidence": [
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -49346,7 +49346,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/system_one.go#ClassifySystemOne"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:ai/system_one_wire_test.go#TestSystemOneWireRequestImagesKeepAnExplicitEmptyList",
@@ -81597,9 +81597,9 @@
         "call:ai/anthropic.go#anthConvertTools"
       ],
       "evidence": [
+        "test:test/extension-conformance/tool_declaration_surrogates_test.go#TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs",
         "test:agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages",
-        "test:agent/agent_transcript_upstream_test.go#TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState",
-        "test:agent/agent_transcript_upstream_test.go#TestAgent_DeclaresToolLoadoutChangesBeforeNextRequest"
+        "test:agent/agent_transcript_upstream_test.go#TestAgent_ConvertsInitialPromptAndToolsIntoTranscriptState"
       ]
     },
     {
@@ -82649,8 +82649,8 @@
       ],
       "evidence": [
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -101060,8 +101060,8 @@
       ],
       "evidence": [
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -106066,8 +106066,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -106786,9 +106786,9 @@
         "call:chord/next/surfaces/surfaces_client.go#StartClient"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestReconnectsAfterAGrowingPauseAndReportsItsStates",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestStartsThePausesAgainAfterAConnectionThatStayedOpen10s"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
       ]
     },
     {
@@ -109478,14 +109478,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/next/host/host_host.go#Host.Incarnation"
+        "call:chord/next/surfaces/surfaces_client.go#StartClient"
       ],
       "evidence": [
-        "test:chord/next/host/host_member_cites_test.go#TestHostIncarnationIsOneValuePerRunOfAHost"
+        "test:chord/next/host/host_member_cites_test.go#TestHostIncarnationIsOneValuePerRunOfAHost",
+        "test:chord/nextnode/app/app_page_principal_test.go#TestTheAppsIngestFacetStampsAPagesSpansWithTheAppsPrincipalAttributesNotThePagesClaim",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten"
       ]
     },
     {
@@ -111338,9 +111340,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped"
       ]
     },
     {
@@ -111360,9 +111362,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped"
       ]
     },
     {
@@ -112696,8 +112698,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112718,8 +112720,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112740,8 +112742,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112762,8 +112764,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112784,8 +112786,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112806,8 +112808,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112828,8 +112830,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112846,12 +112848,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
+        "call:chord/next/surfaces/surfaces_connection.go#Connection.start"
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112868,12 +112870,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
+        "call:chord/next/surfaces/surfaces_connection.go#Connection.start"
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112893,9 +112895,9 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped"
       ]
     },
     {
@@ -112995,9 +112997,9 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped"
       ]
     },
     {
@@ -116858,8 +116860,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -116880,8 +116882,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppShowsALinkTheEmptySetWhileTheBasesAreBuildingThenTheBuiltOne",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"
       ]
     },
     {
@@ -117761,9 +117763,9 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestClosesTheLinkAtStopAndOpensNoOther"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
       ]
     },
     {
@@ -117783,7 +117785,7 @@
         "public-api:chord/next/surfaces/surfaces_connection.go#SocketEvents.Opened"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger"
       ]
     },
     {
@@ -117803,7 +117805,7 @@
         "public-api:chord/next/surfaces/surfaces_connection.go#SocketEvents.Opened"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger"
       ]
     },
     {
@@ -117823,7 +117825,7 @@
         "public-api:chord/next/surfaces/surfaces_connection.go#SocketEvents.Received"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger"
       ]
     },
     {
@@ -117843,7 +117845,7 @@
         "public-api:chord/next/surfaces/surfaces_connection.go#SocketEvents.Received"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger"
       ]
     },
     {
@@ -117930,8 +117932,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117953,8 +117955,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123576,7 +123578,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
-        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading"
       ]
     },
     {
@@ -123705,9 +123707,9 @@
         "call:chord/nextnode/app/app.go#App.ApplyChanges"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen",
-        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen"
       ]
     },
     {
@@ -124413,9 +124415,9 @@
         "call:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone",
-        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
+        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124436,9 +124438,9 @@
         "call:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone",
-        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
+        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128093,9 +128095,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Listening"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
-        "test:chord/nextnode/http/review_test.go#TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser"
+        "test:chord/nextnode/http/review_test.go#TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses"
       ]
     },
     {
@@ -142304,11 +142306,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -142326,11 +142328,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteReply"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -146699,11 +146701,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -146721,11 +146723,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteReply"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -149460,11 +149462,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#WorkerToHostMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -150686,11 +150688,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -150708,11 +150710,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#RemoteReply"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -153296,11 +153298,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:codemode/remote_protocol.go#WorkerToHostMessage"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
@@ -161006,11 +161008,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#BashToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
@@ -173822,16 +173824,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#EditToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -188313,16 +188315,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/find_tool_input.go#FindToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -190212,16 +190214,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#GrepToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -194226,11 +194228,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#LsToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputOmitsAbsentOptionalMembers",
@@ -202347,11 +202349,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#PowerShellToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
@@ -204192,7 +204194,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/core/session/errorf.go#appendArg"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
@@ -204649,16 +204651,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#ReadToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -232794,16 +232796,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/tool_inputs.go#WriteToolInput"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -246233,8 +246235,8 @@
       ],
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
-        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
-        "test:durable/codemode/describe_pi_oracle_test.go#TestDescribeMatchesPiOnSeededToolSets"
+        "test:test/extension-conformance/tool_declaration_surrogates_test.go#TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs",
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi"
       ]
     },
     {
@@ -270455,7 +270457,7 @@
       "evidence": [
         "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions",
         "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/marshaler_census_test.go#TestEveryMarshalerWritesALoneSurrogateAsItsEscape"
       ]
     },
     {
@@ -279019,7 +279021,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/mcpext/tools.go#CreateMcpToolDefinition"
+        "call:ai/request_body_jsonv2.go#encodeMarshaled"
       ],
       "evidence": [
         "test:mcp/deepjson_test.go#TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",

@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // pi: packages/ai/src/api/bedrock-converse-stream.ts
@@ -232,7 +233,7 @@ func TestBedrockConversePayloadMatchesPi(t *testing.T) {
 		var got string
 		sentinel := errors.New("payload captured")
 		options.OnPayload = func(payload any, _ *ai.Model) (any, error) {
-			encoded, err := json.Marshal(bedrockPayloadJSON(t, reflect.ValueOf(payload)))
+			encoded, err := jsstring.MarshalKeepingSurrogates(bedrockPayloadJSON(t, reflect.ValueOf(payload)))
 			if err != nil {
 				t.Fatal(err)
 			}
