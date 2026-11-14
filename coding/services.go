@@ -615,7 +615,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 		providerID = model.Provider.ID()
 	}
 	if providerID == "" || model.Provider == nil {
-		return nil, nil, ai.StreamOptions{}, fmt.Errorf("unknown provider: %s", providerID)
+		return nil, nil, ai.StreamOptions{}, fmt.Errorf("Unknown provider: %s", providerID)
 	}
 
 	if native := runtime.services.Registry().NativeProvider(providerID); native != nil && registryOwnsModelBackend(model.Provider) {
