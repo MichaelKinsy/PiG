@@ -126,6 +126,11 @@ func (s *Session) extensionAbort() {
 	s.RequestAbort()
 }
 
+// SetExtensionAbortHandler stores the mode's handler for ctx.abort() in the Session's bindings, as Pi's bindExtensions({ abortHandler }) does (agent-session.ts:3259-3276), for a mode that binds its runner itself. Every runner the Session binds, at startup or after a reload, reaches it through extensionAbort. A nil handler keeps the earlier one, as an undefined binding does.
+func (s *Session) SetExtensionAbortHandler(handler func()) {
+	s.mergeExtensionBindings(ExtensionBindings{AbortHandler: handler})
+}
+
 // extensionShutdown is ctx.shutdown() (agent-session.ts:3450-3452): it calls the mode's shutdown handler when one is bound, at call time. Without a bound handler ctx.shutdown stays whatever the mode bound on the runner.
 func (s *Session) extensionShutdown() func() {
 	return func() {

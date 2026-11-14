@@ -60,11 +60,16 @@ func (m *InteractiveMode) presentToolCard(comp *tui.ToolExecutionComponent, tool
 // resolveToolRenderers returns the renderers that draw calls of the named tool, or nil when the tool has none.
 func (m *InteractiveMode) resolveToolRenderers(name string) *extension.ToolRenderers {
 	// upstream: interactive-mode.ts getRegisteredToolDefinition: extension resolvers in load order, then the registered tool.
+	// pig additive (D625): the resolution also notes whether an extension draws the card (toolRenderersOfAnExtension); Pi's keeps no such note.
+	var fromBase *extension.ToolRenderers
+	var plain extension.ToolRenderers
+	registered := false
 	base := func() *extension.ToolRenderers {
 		var definition extension.ToolDefinition
 		var ok bool
 		if m.newRunner != nil {
 			definition, ok = m.newRunner.GetToolDefinition(name)
+			registered = ok && (definition.RenderCall != nil || definition.RenderResult != nil)
 		}
 		if !ok && tui.HasBuiltInToolRenderers(name) {
 			definition, ok = extension.ToolDefinition{Name: name}, true
@@ -81,12 +86,19 @@ func (m *InteractiveMode) resolveToolRenderers(name string) *extension.ToolRende
 			builtIn = definition.BuiltInRenderers
 		}
 		definition = withBuiltInRenderers(builtIn, definition)
-		return &extension.ToolRenderers{RenderShell: definition.RenderShell, RenderCall: definition.RenderCall, RenderResult: definition.RenderResult}
+		plain = extension.ToolRenderers{RenderShell: definition.RenderShell, RenderCall: definition.RenderCall, RenderResult: definition.RenderResult}
+		handed := plain
+		fromBase = &handed
+		return fromBase
 	}
-	if m.newRunner != nil {
-		return m.newRunner.ResolveToolRenderers(name, base)
+	if m.newRunner == nil {
+		return base()
 	}
-	return base()
+	resolved := m.newRunner.ResolveToolRenderers(name, base)
+	if toolRenderersOfAnExtension(resolved, fromBase, plain, registered) {
+		m.extensionRenderersMounted()
+	}
+	return resolved
 }
 
 // toolCardDefinition is the registered tool's renderers bound to the card they draw: the ToolDefinition arm of upstream's
@@ -212,6 +224,11 @@ func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolRende
 		}
 	}
 	renderers := &tui.ToolDefinitionRenderers{Self: definition.RenderShell == extension.ToolRenderShellSelf, CallReadsFields: readsCallFields(definition.RenderCall)}
+	if unchanged := callShowsNoChange(definition.RenderCall); unchanged != nil {
+		renderers.CallUnchanged = func(input tui.ToolRenderInput) bool {
+			return input.Fields != nil && unchanged(input.Fields, context(input, nil))
+		}
+	}
 	if definition.RenderCall != nil {
 		var last extension.Component
 		renderers.Call = func(input tui.ToolRenderInput) (tui.Component, bool) {

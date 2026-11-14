@@ -112,6 +112,11 @@ func viewSlotOf(slot uiview.Slot) *viewSlot {
 // that does not drain them before the registry's gap rule applies.
 var terminalViewLimits = uiview.Limits{Nodes: 512, Depth: 16, SnapshotBytes: 262144, TextBytes: 65536, Mounts: 16, IntentArgBytes: 4096}
 
+// terminalViewImageFormats are the formats of an image node the terminal draws, in the names the web client declares:
+// the formats the image transcoder reads. The terminal declares them whatever it is, because a terminal without an
+// image protocol draws the node too.
+var terminalViewImageFormats = []string{"png", "jpeg", "gif", "webp"}
+
 const viewQueueLimit = 64 // pig additive (D614): deliveries the client keeps for a loop that does not drain them
 
 // pig additive (D614): the key that moves the keyboard focus to the next focusable panel and, after the last, back to the
@@ -130,7 +135,7 @@ type viewSize struct {
 func terminalViewAbilities(size viewSize) uiview.ClientAbilities {
 	integer := func(n int) json.RawMessage { return json.RawMessage(strconv.Itoa(max(n, 0))) }
 	a := uiview.ClientAbilities{
-		Nodes: subprocess.MountNodeKinds(), Markdown: true, ImageFormats: []string{},
+		Nodes: subprocess.MountNodeKinds(), Markdown: true, ImageFormats: slices.Clone(terminalViewImageFormats),
 		Limits: terminalViewLimits,
 		Input:  uiview.Input{Keyboard: true, Pointer: size.pointer, Text: true},
 		Claims: []uiview.Claim{
@@ -188,6 +193,11 @@ type viewClientUI struct {
 	notify func(message, level string)
 	// size returns the terminal's columns and rows and whether it reports the pointer.
 	size func() viewSize
+	// write writes bytes to the terminal ahead of the frame being drawn (nil: no such writer); placeholders reports
+	// that the terminal draws Kitty Unicode placeholders. An image node is transmitted once through write and drawn
+	// as placeholder cells when both hold.
+	write        func(data string)
+	placeholders bool
 }
 
 // viewFloat is the frame of a mount that is drawn over the screen. The renderer's overlay is one.
@@ -221,6 +231,9 @@ type viewClient struct {
 	att  *uiview.Attachment
 	ctx  context.Context
 	end  context.CancelFunc
+
+	// images is what the mounts' surfaces share to draw image nodes.
+	images *subprocess.MountImages
 
 	mu sync.Mutex
 	// queue holds the deliveries and intent results the loop has not applied, in the order they were made. deliveries
@@ -274,6 +287,12 @@ type viewClient struct {
 // registry takes no further client. It runs on the interactive loop.
 func attachViewClient(ctx context.Context, host viewHost, ui viewClientUI) *viewClient {
 	c := &viewClient{host: host, ui: ui, mounts: map[viewMountKey]*viewMount{}}
+	// The conversion of an image to PNG runs off the loop, on the goroutine the surface starts for it, and the mount is
+	// told on the loop that its image is ready.
+	c.images = &subprocess.MountImages{
+		Write: ui.write, Placeholders: ui.placeholders, ToPNG: ConvertImageBytesToPng,
+		Post: func(fn func()) { ui.postWait(c.ctx, fn) },
+	}
 	c.ctx, c.end = context.WithCancel(ctx)
 	c.listener = c.focusKey
 	c.declared = ui.size()
@@ -299,6 +318,8 @@ func (c *viewClient) detach() {
 	for _, m := range slices.Clone(c.order) {
 		c.drop(m)
 	}
+	// The context has ended, so an image being prepared is not posted to the loop: its goroutine ends with its work.
+	c.images.Wait()
 	c.mu.Lock()
 	c.queue, c.deliveries, c.gap = nil, 0, false
 	c.mu.Unlock()
@@ -420,6 +441,7 @@ func (c *viewClient) apply(s *uiview.Snapshot) {
 			Leave:        m.leave,
 			TerminalRows: func() int { return c.ui.size().rows },
 			RowBudget:    func() int { return m.slot.rows(c.ui.size().rows) },
+			Images:       c.images,
 		})
 		c.mounts[key] = m
 		c.order = append(c.order, m)

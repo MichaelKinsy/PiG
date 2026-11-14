@@ -23,8 +23,7 @@ import (
 // in blank lines.
 func TestInteractiveStreamedWriteCardMatchesPiOracle(t *testing.T) {
 	useTreeOracleTUIDefaults(t)
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true, Hyperlinks: true})
 
 	var leading strings.Builder

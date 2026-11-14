@@ -2544,6 +2544,25 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    // mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+    ext.command(
+        "mcp_register_run",
+        "Register two MCP servers and report the active tools after each",
+        |ctx, _| {
+            let mut reads = Vec::new();
+            for name in ["conformance-run-a", "conformance-run-b"] {
+                if let Err(err) = ctx.register_mcp_server(name, json!({"url": format!("https://{name}.invalid/mcp")})) {
+                    return CommandResult::Error(err.to_string());
+                }
+                match ctx.get_active_tools() {
+                    Ok(names) => reads.push(names.join(",")),
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                }
+            }
+            ctx.notify(&format!("mcp_register_run:{}", reads.join("|")), "info");
+            CommandResult::Ok
+        },
+    );
     // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
     ext.command(
         "registry-model-probe",
@@ -2563,7 +2582,7 @@ fn main() {
         },
     );
     ext.command("provider_probe_register", "Register a provider with one model", |ctx, _| {
-        let config: Value = serde_json::from_str(r#"{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}"#).unwrap();
+        let config: Value = serde_json::from_str(r#"{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":true,"input":["text","image"],"cost":{"input":3.5,"output":4.5,"cacheRead":0.35,"cacheWrite":0.45},"contextWindow":54321,"maxTokens":4321}]}"#).unwrap();
         match ctx.model_registry().register_provider("conformance-probe", config) {
             Ok(_) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),

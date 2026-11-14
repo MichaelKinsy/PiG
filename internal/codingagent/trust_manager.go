@@ -25,6 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -251,9 +252,9 @@ func (s *ProjectTrustStore) read() (map[string]*bool, error) {
 func (s *ProjectTrustStore) write(data map[string]*bool) error {
 	// writeTrustFile (trust-manager.ts:126-135) sorts the keys with Array.prototype.sort, which compares UTF-16 code units, and writes JSON.stringify(sorted, null, 2): no HTML escaping, array-index keys first.
 	sorted := orderedjson.New()
-	for _, key := range slices.SortedFunc(maps.Keys(data), func(a, b string) int {
-		return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
-	}) {
+	keys := slices.Collect(maps.Keys(data))
+	sortx.Func(keys, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
+	for _, key := range keys {
 		value := json.RawMessage("null")
 		if data[key] != nil {
 			value = json.RawMessage(strconv.FormatBool(*data[key]))

@@ -8,7 +8,8 @@
 #   PI_CARRIED     Pi commits (comma-separated full ids, in Pi's order) cherry-picked onto PI_COMMIT to make PI_TREE: a tree that is
 #                  the pin plus those commits alone, for a vendored file a carried commit changes while a later Pi commit this port
 #                  does not carry changed the rest of the closure. The manifest records them as `carried`; make PI_TREE with
-#                  `git worktree add --detach <dir> <pin> && git -C <dir> cherry-pick <carried...>`. Drop it when a re-vendor at a
+#                  `automation/gen/vendor-chord-derive.sh <pi clone> <dir> <pin> <carried,...>` (it cherry-picks them; a conflict outside the
+#                  roots the copies read leaves that path as it was and is printed, one inside them fails). Drop it when a re-vendor at a
 #                  later commit takes over (then PI_COMMIT is that commit, a `catchup`). `make vendor-chord-carried-check` proves
 #                  that each vendored tree is its manifest's commit plus its carried commits.
 # PiG's own changes over Pi's files are patches (automation/gen/chord-patches, vendor-chord-patches.mjs): applied after the copy,

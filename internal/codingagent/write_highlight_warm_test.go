@@ -41,6 +41,7 @@ func streamWriteCard(t *testing.T, content string, step int) (collapsed, expande
 // starts from its first line.
 func forgetHighlights(t *testing.T) {
 	t.Helper()
+	restoreStartupTheme(t)
 	name := tui.ActiveTheme().Name
 	tui.SetTheme("light")
 	tui.SetTheme(name)

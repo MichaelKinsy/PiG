@@ -385,8 +385,14 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 	m.tuiTornDown = true
 	m.tuiStopped.Store(true)
+	// upstream: interactive-mode.ts:7293-7295 (stop() unsubscribes from the Session before it stops the TUI). A quit by keys stops the mode and then disposes the runtime (:4505-4506), so the turn that dispose aborts keeps its provider's errorMessage; a signal disposes first (:4491-4494), so that turn's message is still rewritten.
+	m.unsubscribeSessionListener()
 	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
 	m.disposeActiveSelector()
+	// upstream: interactive-mode.ts:7285-7287: stop() then clears the progress indicator, only when the setting shows it, and before the renderer stops. Nothing clears the title: Pi never writes an empty one.
+	if m.opts.Settings.GetShowTerminalProgress() {
+		m.setTerminalProgress(false)
+	}
 	m.disposeTheme()
 	if m.statusLine != nil {
 		// upstream: interactive-mode.ts:7098 (stop() disposes the footer)

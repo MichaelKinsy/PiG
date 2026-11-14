@@ -227,6 +227,15 @@ export default function (pi) {
     ctx.ui.notify(`stored_actions:${await reportSessionActions(keptEventCtx)}`, "info");
   }});
   pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
+  // mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+  pi.registerCommand("mcp_register_run", { description: "Register two MCP servers and report the active tools after each", handler: async (_args, ctx) => {
+    const reads = [];
+    for (const name of ["conformance-run-a", "conformance-run-b"]) {
+      pi.registerMcpServer(name, { url: `https://${name}.invalid/mcp` });
+      reads.push(pi.getActiveTools().join(","));
+    }
+    ctx.ui.notify(`mcp_register_run:${reads.join("|")}`, "info");
+  } });
   // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
   pi.registerCommand("registry-model-probe", {
     description: "Register the active model's provider with a new name, then read the model",
@@ -235,7 +244,7 @@ export default function (pi) {
       ctx.ui.notify("regname=" + (ctx.model?.name ?? ""), "info");
     },
   });
-  pi.registerCommand("provider_probe_register", { description: "Register a provider with one model", handler: async () => pi.registerProvider("conformance-probe", JSON.parse(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`)) });
+  pi.registerCommand("provider_probe_register", { description: "Register a provider with one model", handler: async () => pi.registerProvider("conformance-probe", JSON.parse(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":true,"input":["text","image"],"cost":{"input":3.5,"output":4.5,"cacheRead":0.35,"cacheWrite":0.45},"contextWindow":54321,"maxTokens":4321}]}`)) });
   pi.registerCommand("provider_probe_unregister", { description: "Unregister the provider", handler: async () => pi.unregisterProvider("conformance-probe") });
   pi.registerCommand("commands-probe", { description: "Read the host's slash commands", handler: async (_args, ctx) => {
     ctx.ui.notify(JSON.stringify(pi.getCommands().filter((c) => c.name === "conformance-listed").map((c) => [c.name, c.source, c.description ?? ""])), "info");

@@ -316,8 +316,7 @@ func TestSessionInfoCommandMatchesPi(t *testing.T) {
 			t.Errorf("no probe reached %q", section)
 		}
 	}
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	failures := 0

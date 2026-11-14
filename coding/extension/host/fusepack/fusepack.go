@@ -53,7 +53,27 @@ func registerFactory(name string, factory sdk.Factory) {
 	}
 }
 
+// fusedSources maps a fused extension's name to the digest (subprocess.FusedSourceDigest) of the source it was compiled from. The
+// generated registry fills it through registerSource only for a Piglet built with `build.fusedReload: source`; it is empty otherwise.
+var fusedSources = map[string]string{}
+
+// registerSource records the source digest of one fused extension.
+// pig additive (D31): a fused member whose source changed runs from its source.
+func registerSource(name, digest string) { fusedSources[name] = digest }
+
 type resolver struct{}
+
+func (resolver) BakedSourceDigest(name string) (string, bool) {
+	digest, ok := fusedSources[name]
+	return digest, ok
+}
+
+// BakedSource reports whether the build baked a source digest for the fused extension name. It is false in stock pig and in a
+// Piglet Binary built without `build.fusedReload: source`.
+func BakedSource(name string) bool {
+	_, ok := fusedSources[name]
+	return ok
+}
 
 func (resolver) FusedServe(cfg subprocess.ExtConfig) (func(net.Conn) error, bool) {
 	serve, ok := fusedServes[cfg.Name]

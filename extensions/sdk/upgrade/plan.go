@@ -18,66 +18,14 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	impl "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade"
 )
 
 // maxPasses bounds the plan-apply-recheck loop. A rewrite can reveal a use the
 // compiler could not type before, such as a field read on a value that only
 // has a type once its getter returns two results.
 const maxPasses = 4
-
-// Rewrite is one change the plan makes to a file.
-type Rewrite struct {
-	Rule   string
-	Symbol string
-	Line   int
-}
-
-// FileChange is one rewritten file, or one the plan adds: Created is set for a
-// file with no Before.
-type FileChange struct {
-	Path          string
-	Before, After []byte
-	Rewrites      []Rewrite
-	Created       bool
-}
-
-// Skipped is a use of a rewritable change that needs a hand edit.
-type Skipped struct {
-	Rule   string
-	Symbol string
-	File   string
-	Line   int
-	Reason string
-	// Suggest is the form to write in its place, when the rule has one.
-	Suggest string
-}
-
-// Result is what an upgrade does to an extension's source, and what it leaves
-// for the author. The lines that Skipped, Remaining and Errors name are lines of
-// the source before the rewrites: Skipped and Remaining are uses the compiler
-// still rejects, and an upgrade that does not build restores that source.
-type Result struct {
-	// Files are the rewritten files, in path order. Nothing is written to disk.
-	Files []FileChange
-	// Skipped are uses the rules recognize but cannot rewrite safely.
-	Skipped []Skipped
-	// Remaining is the SDK drift still in the source after the rewrites,
-	// classified from the compiler's errors. It includes the changes that have
-	// no mechanical rewrite.
-	Remaining []Drift
-	// Errors are the compiler errors that are not SDK drift.
-	Errors []string
-}
-
-// Changed reports whether the plan rewrites any file.
-func (r *Result) Changed() bool { return len(r.Files) > 0 }
-
-// Reply is what the analysis driver (command driver in this module) writes for one [LoadOptions]: the plan, or the error that stopped it. The pig command reads it in place of calling [Open], so it does not link the type checker.
-type Reply struct {
-	Result *Result
-	// Error is the text of the error [Open] or [Session.Plan] returned.
-	Error string
-}
 
 // Session is a loaded extension: its packages and the importer that checks
 // them again after a rewrite.
@@ -248,7 +196,7 @@ func (s *Session) Plan() (*Result, error) {
 		}
 	}
 	for _, diagnostic := range diagnostics {
-		if _, _, ok := classifyDiagnostic(diagnostic, read, map[string]*parsedFile{}); !ok {
+		if _, _, ok := impl.ClassifyDiagnostic(diagnostic, read, map[string]*impl.ParsedFile{}); !ok {
 			line := diagnostic.Line
 			if after, edited := overlay[diagnostic.File]; edited {
 				line = originalLine(original[diagnostic.File], after, line)
@@ -261,7 +209,7 @@ func (s *Session) Plan() (*Result, error) {
 
 // originalLine maps a line of after back to the line of before it comes from.
 func originalLine(before, after []byte, line int) int {
-	if lines := originalLines(before, after); line > 0 && line < len(lines) {
+	if lines := impl.OriginalLines(before, after); line > 0 && line < len(lines) {
 		return lines[line]
 	}
 	return line
@@ -312,7 +260,7 @@ func newFilePlanner(pkg *Package, file *File) *filePlanner {
 			planner.errors = append(planner.errors, typeErr)
 		}
 	}
-	for name := range sdkImportNames(file.Syntax) {
+	for name := range impl.SDKImportNames(file.Syntax) {
 		if planner.sdk == "" || name == "sdk" {
 			planner.sdk = name
 		}
@@ -474,44 +422,4 @@ func snippet(statements string) ([]string, error) {
 // was.
 func insertion(lines []string, indent string) string {
 	return strings.Join(lines, "\n"+indent) + "\n" + indent
-}
-
-// Drift lists every SDK change the extension uses: those the plan rewrites,
-// those it lists for the author, and those the compiler still rejects. A change
-// is listed once, in symbol order, at its first use.
-func (r *Result) Drift() []Drift {
-	byRule := map[string]Drift{}
-	note := func(rule, symbol, file string, line, count int) {
-		drift, seen := byRule[symbol]
-		if !seen {
-			ruleInfo, _ := RuleByID(rule)
-			change, _ := changeFor(symbol)
-			drift = Drift{Rule: rule, Symbol: symbol, Old: change.Old, New: change.New, Since: change.Since, Rewrites: ruleInfo.Rewrites, File: file, Line: line}
-		}
-		drift.Count += count
-		byRule[symbol] = drift
-	}
-	for _, change := range r.Files {
-		for _, rewrite := range change.Rewrites {
-			note(rewrite.Rule, rewrite.Symbol, change.Path, rewrite.Line, 1)
-		}
-	}
-	remaining := map[string]bool{}
-	for _, drift := range r.Remaining {
-		remaining[drift.Symbol] = true
-		note(drift.Rule, drift.Symbol, drift.File, drift.Line, drift.Count)
-	}
-	for _, skipped := range r.Skipped {
-		if !remaining[skipped.Symbol] {
-			note(skipped.Rule, skipped.Symbol, skipped.File, skipped.Line, 1)
-		}
-		remaining[skipped.Symbol] = true
-	}
-	// A change with a use left for the author needs a manual edit.
-	for symbol := range remaining {
-		drift := byRule[symbol]
-		drift.Rewrites = false
-		byRule[symbol] = drift
-	}
-	return slices.SortedFunc(maps.Values(byRule), func(a, b Drift) int { return strings.Compare(a.Symbol, b.Symbol) })
 }

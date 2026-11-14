@@ -64,6 +64,8 @@ type InteractiveSessionHandle interface {
 	// Events returns the agent's streaming event channel. Used by
 	// processAgentEvents to drive live UI updates.
 	Events() <-chan agent.AgentEvent
+	// SubscribeFunc registers a synchronous listener of the Session's events and returns its unsubscribe function (agent-session.ts subscribe). The listener runs where Pi's runs: after the event's extension handlers and before the Session persists a message_end, on the goroutine that executes the event, with the message object the Session persists and keeps.
+	SubscribeFunc(listener func(agent.AgentEvent)) func()
 	// IsIdle and WaitForIdle observe the Session-owned operation, including work an extension started.
 	IsIdle() bool
 	WaitForIdle(context.Context) error

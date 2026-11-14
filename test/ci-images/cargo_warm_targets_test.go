@@ -33,7 +33,7 @@ func TestWarmScriptBuildsEverySharedCargoTarget(t *testing.T) {
 		}
 		name := entry.Name()
 		if entry.IsDir() {
-			if file != root && (name == "testdata" || name == "node_modules" || name == "target" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")) {
+			if file != root && (name == "testdata" || name == "node_modules" || name == "target" || name == "tmp" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")) {
 				return fs.SkipDir
 			}
 			return nil

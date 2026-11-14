@@ -877,4 +877,146 @@ mod factory_emit {
             "run dialled a second connection"
         );
     }
+
+    // The ready payload is a connection's first state, and the Host writes no state before it. A state notify that reaches the SDK before ready is still applied to the replica, never dropped and never a load failure, whichever read takes it: a factory-time call on the connection the factory dialled, the registration of a listener before the register frame, or the wait for ready. The Go SDK's tests state the same rows (extensions/sdk/state_before_ready_test.go).
+
+    /// A state_update that names the session: a value the replica's fallback, "", differs from.
+    fn send_state(conn: &Connection, name: &str) {
+        conn.write_envelope(&Envelope {
+            msg_type: "notify".into(),
+            notify: Some(serde_json::from_value(json!({"method": "state_update", "args": {"state": {"session": {"sessionId": "early", "sessionName": name}}}})).unwrap()),
+            ..Default::default()
+        })
+        .unwrap();
+    }
+
+    /// An extension whose probe command keeps the session name its Context reads.
+    fn probe_extension(name: &str) -> (Extension, Arc<Mutex<Vec<String>>>) {
+        let read = Arc::new(Mutex::new(Vec::new()));
+        let sink = read.clone();
+        let mut ext = Extension::new(name);
+        ext.command("probe", "", move |ctx, _| {
+            sink.lock().unwrap().push(ctx.session_name());
+            CommandResult::Ok
+        });
+        (ext, read)
+    }
+
+    /// Sends a ready payload that carries no state and runs the probe command: the name it reads is what the early state brought.
+    fn probe_after_ready(conn: &Connection) {
+        conn.write_envelope(&Envelope {
+            msg_type: "ready".into(),
+            ready: Some(
+                serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80}))
+                    .unwrap(),
+            ),
+            ..Default::default()
+        })
+        .unwrap();
+        conn.write_envelope(&Envelope {
+            msg_type: "request".into(),
+            id: Some("probe".into()),
+            request: Some(
+                serde_json::from_value(json!({"method": "command", "tool": "probe"})).unwrap(),
+            ),
+            ..Default::default()
+        })
+        .unwrap();
+        loop {
+            let env = conn
+                .read_envelope()
+                .expect("the run ended before it answered the probe");
+            if env.msg_type == "response" {
+                assert_eq!(env.id.as_deref(), Some("probe"));
+                assert!(env.response.unwrap().error.is_none());
+                return;
+            }
+        }
+    }
+
+    #[test]
+    fn a_state_between_register_and_ready_is_applied_and_the_load_goes_on() {
+        let _no_host = without_host();
+        let (ext, read) = probe_extension("state-before-ready");
+        let host = Host::start("state-before-ready", ext);
+        while host.next().msg_type != "register" {}
+        send_state(&host.conn, "named before ready");
+        probe_after_ready(&host.conn);
+        assert_eq!(
+            *read.lock().unwrap(),
+            vec!["named before ready".to_string()]
+        );
+        host.stop();
+    }
+
+    #[test]
+    fn a_state_ahead_of_the_result_of_a_listener_registered_at_run_is_applied() {
+        let _no_host = without_host();
+        let (ext, read) = probe_extension("state-before-listener-result");
+        ext.events().on("ch", |_, _| Ok(())).unwrap();
+        let host = Host::start("state-before-listener-result", ext);
+        let call = loop {
+            let env = host.next();
+            if env.msg_type == "call" {
+                break env;
+            }
+        };
+        send_state(&host.conn, "named before the listener's result");
+        host.conn
+            .write_envelope(&Envelope {
+                msg_type: "call_result".into(),
+                id: call.id,
+                call_result: Some(CallResultMsg {
+                    result: None,
+                    error: None,
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        loop {
+            let env = host
+                .conn
+                .read_envelope()
+                .expect("the run ended before it registered");
+            if env.msg_type == "register" {
+                break;
+            }
+        }
+        probe_after_ready(&host.conn);
+        assert_eq!(
+            *read.lock().unwrap(),
+            vec!["named before the listener's result".to_string()]
+        );
+        host.stop();
+    }
+
+    #[test]
+    fn a_state_ahead_of_a_factory_calls_result_is_applied() {
+        let host = FactoryHost::new("fe-state");
+        let (ext, read) = probe_extension("state-before-register");
+        let served = host.serve(|peer| {
+            let on = peer.next_call();
+            // The host flushed its state ahead of the result of the factory's call.
+            send_state(&peer.conn, "named before register");
+            peer.reply(&on, None);
+            let first = peer.conn.read_envelope().unwrap();
+            assert_eq!(first.msg_type, "register");
+            probe_after_ready(&peer.conn);
+            peer.conn
+                .write_envelope(&Envelope {
+                    msg_type: "shutdown".into(),
+                    shutdown: Some(serde_json::from_value(json!({"reason": "test"})).unwrap()),
+                    ..Default::default()
+                })
+                .unwrap();
+        });
+        ext.events().on("ch", |_, _| Ok(())).unwrap();
+        let path = host.path.clone();
+        ext.run_with_socket(&path).unwrap();
+        served.join().unwrap();
+        assert_eq!(
+            *read.lock().unwrap(),
+            vec!["named before register".to_string()]
+        );
+    }
 }

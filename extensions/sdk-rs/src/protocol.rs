@@ -897,6 +897,8 @@ pub struct Connection {
     pump: Mutex<()>,
     /// What serves the requests and notifies a loading connection receives while a call waits (event_bus.rs `serve_loading`); cleared when `run` takes the connection.
     loading_server: Mutex<Option<LoadingServer>>,
+    /// The notifies a loading connection read while a call waited that its loading server does not serve, in arrival order: state the host sent the extension that will run on the connection. `run` takes them (`take_early_notifies`).
+    early_notifies: Mutex<Vec<Envelope<Box<serde_json::value::RawValue>>>>,
     pub(crate) closed_signal: crate::provider::ProviderSignal,
 }
 
@@ -1002,6 +1004,7 @@ impl Connection {
             shutdown_read: AtomicBool::new(false),
             pump: Mutex::new(()),
             loading_server: Mutex::new(None),
+            early_notifies: Mutex::new(Vec::new()),
             closed_signal: crate::provider::ProviderSignal::new(),
             provider_objects: std::sync::OnceLock::new(),
             provider_callbacks: std::sync::OnceLock::new(),
@@ -1056,6 +1059,11 @@ impl Connection {
         *self.loading_server.lock().unwrap() = Some(server);
     }
 
+    /// The notifies the calls made while this connection loaded read and did not serve, in arrival order.
+    pub(crate) fn take_early_notifies(&self) -> Vec<Envelope<Box<serde_json::value::RawValue>>> {
+        std::mem::take(&mut *self.early_notifies.lock().unwrap())
+    }
+
     /// Whether a call made while this connection loaded read the host's shutdown frame.
     pub(crate) fn shutdown_read(&self) -> bool {
         self.shutdown_read.load(Ordering::Acquire)
@@ -1101,6 +1109,16 @@ impl Connection {
             }
             if env.msg_type == "shutdown" {
                 self.shutdown_read.store(true, Ordering::Release);
+                continue;
+            }
+            // A notify other than a listener's release is for the extension that will run on this connection (a state the host pushed before the register): it is kept for `run`, never dropped.
+            if env.msg_type == "notify"
+                && env
+                    .notify
+                    .as_ref()
+                    .is_some_and(|notify| notify.method != "events.release")
+            {
+                self.early_notifies.lock().unwrap().push(env);
                 continue;
             }
             let server = self.loading_server.lock().unwrap().clone();

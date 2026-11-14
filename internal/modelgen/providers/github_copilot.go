@@ -118,14 +118,14 @@ func githubCopilot() ProviderDefinition {
 				SkipDeprecated:       true,
 				DefaultContextWindow: 128000,
 				DefaultMaxTokens:     8192,
-				Map: func(model ChatModel, _ *ModelsDevModel) (ChatModel, error) {
+				Map: func(model ChatModel, source *ModelsDevModel) (ChatModel, error) {
 					api := githubCopilotAPI(model.Str("id"))
 					result := Spread(model).Set("api", api)
 					if api == "openai-completions" {
 						result.Set("compat", O(
 							"supportsStore", false,
 							"supportsDeveloperRole", false,
-							"supportsReasoningEffort", false,
+							"supportsReasoningEffort", source.HasEffortOption(),
 						))
 					}
 					if model.Str("id") == "claude-opus-5.5" {

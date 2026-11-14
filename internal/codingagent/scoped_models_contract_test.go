@@ -18,6 +18,7 @@ import (
 // TestScopedModelsOverlappingBindingsMatchPi binds one key to each pair of the eleven bound actions, and Escape and Ctrl+C to each
 // action, over an unfiltered, a filtered, a single-match and an empty list with a partial and a null enabled set.
 func TestScopedModelsOverlappingBindingsMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	restoreTUIKeybindings(t)
 	models := []scopedOracleModel{
 		{"claude-sonnet", "Claude Sonnet", "anthropic"}, {"claude-haiku", "Claude Haiku", "anthropic"},
@@ -75,11 +76,10 @@ func TestScopedModelsOverlappingBindingsMatchPi(t *testing.T) {
 	if len(expected) != len(probes) {
 		t.Fatalf("Pi answered %d probes, sent %d", len(expected), len(probes))
 	}
-	previousTheme, previousCaps, previousKitty := tui.ActiveTheme(), tui.GetCapabilities(), tui.IsKittyProtocolActive()
+	restoreStartupTheme(t)
+	previousKitty := tui.IsKittyProtocolActive()
 	tui.SetKittyProtocolActive(false)
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetKittyProtocolActive(previousKitty)
 	})
 	failures, crashes := 0, 0

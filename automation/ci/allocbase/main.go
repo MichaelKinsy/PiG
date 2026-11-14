@@ -44,6 +44,15 @@ type baselineFile struct {
 	Benchmark []entry `toml:"benchmark"`
 }
 
+// loadBaseline reads the baseline at path. A missing file is an empty baseline: every benchmark then has no entry and fails.
+func loadBaseline(path string) (baselineFile, error) {
+	var baseline baselineFile
+	if _, err := toml.DecodeFile(path, &baseline); err != nil && !os.IsNotExist(err) {
+		return baselineFile{}, fmt.Errorf("read baseline %s: %w", path, err)
+	}
+	return baseline, nil
+}
+
 // resultLine reads one result line. run sets GOMAXPROCS=1, so go test prints no -N processor suffix and a name ending in -<digits> is a sub-benchmark's own name (BenchmarkToolArgumentValidation/edits-1000), which must stay whole.
 var resultLine = regexp.MustCompile(`^(Benchmark\S+)\s+\d+\s+[\d.]+ ns/op(?:\s+[\d.]+ \S+)*?\s+[\d.]+ B/op\s+(\d+) allocs/op`)
 
@@ -147,8 +156,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "alloc-baseline:", err)
 		os.Exit(2)
 	}
-	var baseline baselineFile
-	if _, err := toml.DecodeFile(*baselinePath, &baseline); err != nil && !os.IsNotExist(err) {
+	baseline, err := loadBaseline(*baselinePath)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "alloc-baseline:", err)
 		os.Exit(2)
 	}

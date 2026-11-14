@@ -61,6 +61,16 @@ func screenWriterWanted(getenv func(string) string, choice int32) bool {
 	return true
 }
 
+// ScreenWriterSelected reports whether a run gets the screen writer in the environment getenv reads when its terminal.screenWriter
+// setting selects the screen writer (writer) or Pi's bytes: the choice SetScreenWriter makes, PIG_TUI_SCREEN_WRITER before the
+// setting, asked without making it. It builds nothing and changes nothing.
+func ScreenWriterSelected(writer bool, getenv func(string) string) bool {
+	if writer {
+		return screenWriterWanted(getenv, screenWriterOn)
+	}
+	return screenWriterWanted(getenv, screenWriterOff)
+}
+
 // SetScreenWriter applies the terminal.screenWriter setting to the process: writer is whether it selects the screen writer.
 // PIG_TUI_SCREEN_WRITER, when set, decides in the setting's place. When the two ask for the writer, the process's terminal gets one
 // unless it has one, and a terminal built afterwards gets one from its constructor. When they ask for byte mode, no terminal built

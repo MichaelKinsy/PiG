@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	upgradeplan "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -86,7 +86,7 @@ func upgradeSummaryLine(report extensionUpgradeReport) string {
 }
 
 // rewriteCount is the number of changes a plan applies.
-func rewriteCount(result *upgrade.Result) int {
+func rewriteCount(result *upgradeplan.Result) int {
 	changes := 0
 	if result != nil {
 		for _, file := range result.Files {
@@ -97,7 +97,7 @@ func rewriteCount(result *upgrade.Result) int {
 }
 
 // manualUses is the number of uses a plan leaves for the author: the uses of the changes the compiler still rejects, or else the uses it listed.
-func manualUses(result *upgrade.Result) int {
+func manualUses(result *upgradeplan.Result) int {
 	if result == nil {
 		return 0
 	}

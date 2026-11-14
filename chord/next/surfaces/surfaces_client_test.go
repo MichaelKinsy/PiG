@@ -125,12 +125,14 @@ type socket struct {
 }
 
 type clientSetup struct {
-	server   host.Host
-	client   *Client
-	mu       sync.Mutex
-	fetched  []string
-	errs     []ClientError
-	outdated int
+	server  host.Host
+	client  *Client
+	mu      sync.Mutex
+	fetched []string
+	errs    []ClientError
+	// outdated is each call of Outdated with the connection state then: the loop has stopped (`waiting`) before the app starts over.
+	outdated []string
+	states   []ConnectionState
 	sockets  []socket
 	base     string
 	asked    []string
@@ -153,8 +155,13 @@ func (s *clientSetup) errorKinds() []ClientErrorKind {
 	}
 	return kinds
 }
-func (s *clientSetup) outdatedCount() int { s.mu.Lock(); defer s.mu.Unlock(); return s.outdated }
-func (s *clientSetup) socketCount() int   { s.mu.Lock(); defer s.mu.Unlock(); return len(s.sockets) }
+func (s *clientSetup) outdatedCount() int { s.mu.Lock(); defer s.mu.Unlock(); return len(s.outdated) }
+func (s *clientSetup) outdatedNow() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.outdated)
+}
+func (s *clientSetup) socketCount() int { s.mu.Lock(); defer s.mu.Unlock(); return len(s.sockets) }
 func (s *clientSetup) socket(i int) socket {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -175,6 +182,8 @@ type more struct {
 	offline bool
 	// shown is the set the server shows from the start (nil: initial's).
 	shown []RegisteredScript
+	// baseAnswers holds the server's base answers until it is closed (a slow network).
+	baseAnswers <-chan struct{}
 }
 
 // setup is a server serving WebScripts with initial, and a client started against it with available to fetch; failing fetches
@@ -285,18 +294,36 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 			}
 			return RegisteredScript{}, fmt.Errorf("no %s", entry.URL)
 		},
-		ServerBase: func(context.Context) (*string, error) {
+		ServerBase: func(ctx context.Context) (*string, error) {
+			s.mu.Lock()
+			s.asked = append(s.asked, s.base)
+			s.mu.Unlock()
+			if opt.baseAnswers != nil {
+				select {
+				case <-opt.baseAnswers:
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			}
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			base := s.base
-			s.asked = append(s.asked, base)
 			return &base, nil
 		},
-		Outdated:    func() { s.mu.Lock(); s.outdated++; s.mu.Unlock() },
-		Styles:      opt.styles,
-		Follow:      opt.follow,
-		Environment: env,
-		OnError:     func(e ClientError) { s.mu.Lock(); s.errs = append(s.errs, e); s.mu.Unlock() },
+		Outdated: func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			last := ConnectionState("undefined")
+			if len(s.states) > 0 {
+				last = s.states[len(s.states)-1]
+			}
+			s.outdated = append(s.outdated, fmt.Sprintf("outdated (%s)", last))
+		},
+		OnConnection: func(state ConnectionState) { s.mu.Lock(); s.states = append(s.states, state); s.mu.Unlock() },
+		Styles:       opt.styles,
+		Follow:       opt.follow,
+		Environment:  env,
+		OnError:      func(e ClientError) { s.mu.Lock(); s.errs = append(s.errs, e); s.mu.Unlock() },
 	}
 	// A client starts without waiting for its server (a start that does not return fails here instead of hanging the package).
 	type started struct {
@@ -804,7 +831,9 @@ func TestCallsOutdatedForASetWithAnotherBase(t *testing.T) {
 	s.finish(t)
 }
 
-func TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops(t *testing.T) {
+// pi: "asks the server's base at a reconnect: another one stops the loop, then calls outdated" (Pi 21e4cb80d; the title before
+// it: "asks the server's base before reconnecting: another one calls outdated and stops").
+func TestAsksTheServersBaseAtAReconnectAnotherOneStopsTheLoopThenCallsOutdated(t *testing.T) {
 	s := setup(t, nil, nil, more{})
 	s.mu.Lock()
 	s.base = "B2"
@@ -813,8 +842,26 @@ func TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops(t *
 	s.socket(0).link.Close()
 	until(t, func() bool { return s.outdatedCount() == 1 })
 	time.Sleep(400 * time.Millisecond)
-	if n := s.socketCount(); n != 1 {
-		t.Fatalf("sockets = %d, want 1", n)
+	if n, outdated := s.socketCount(), s.outdatedNow(); n > 2 || !slices.Equal(outdated, []string{"outdated (waiting)"}) {
+		t.Fatalf("sockets = %d, outdated = %v, want at most 2 sockets and [outdated (waiting)]", n, outdated)
+	}
+	s.finish(t)
+}
+
+// pi: "a slow base answer after the next link opened: that link ends before outdated is called" (Pi 21e4cb80d).
+func TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled(t *testing.T) {
+	gate := make(chan struct{})
+	s := setup(t, nil, nil, more{baseAnswers: gate})
+	s.mu.Lock()
+	s.base = "B2"
+	s.mu.Unlock()
+	s.socket(0).link.Close()
+	until(t, func() bool { return s.socketCount() == 2 })
+	time.Sleep(50 * time.Millisecond)
+	close(gate)
+	until(t, func() bool { return s.outdatedCount() == 1 })
+	if outdated := s.outdatedNow(); !slices.Equal(outdated, []string{"outdated (waiting)"}) {
+		t.Fatalf("outdated = %v, want [outdated (waiting)]", outdated)
 	}
 	s.finish(t)
 }

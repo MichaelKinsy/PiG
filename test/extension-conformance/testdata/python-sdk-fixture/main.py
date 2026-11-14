@@ -1754,6 +1754,15 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("event_session_actions_stored", "Call the session actions through the context an event handler kept", event_session_actions_stored)
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
+    # mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+    def mcp_register_run(ctx, _args):
+        reads = []
+        for name in ("conformance-run-a", "conformance-run-b"):
+            ctx.register_mcp_server(name, {"url": "https://%s.invalid/mcp" % name})
+            reads.append(",".join(ctx.get_active_tools()))
+        ctx.notify("mcp_register_run:%s" % "|".join(reads), "info")
+
+    ext.command("mcp_register_run", "Register two MCP servers and report the active tools after each", mcp_register_run)
     # provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
     # registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
     def registry_model_probe(ctx, name):
@@ -1761,7 +1770,7 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("regname=" + ((ctx.get_model_info() or {}).get("name") or ""), "info")
 
     ext.command("registry-model-probe", "Register the active model's provider with a new name, then read the model", registry_model_probe)
-    ext.command("provider_probe_register", "Register a provider with one model", lambda ctx, _args: ext.register_provider("conformance-probe", json.loads(r'''{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}''')))
+    ext.command("provider_probe_register", "Register a provider with one model", lambda ctx, _args: ext.register_provider("conformance-probe", json.loads(r'''{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":true,"input":["text","image"],"cost":{"input":3.5,"output":4.5,"cacheRead":0.35,"cacheWrite":0.45},"contextWindow":54321,"maxTokens":4321}]}''')))
     ext.command("provider_probe_unregister", "Unregister the provider", lambda ctx, _args: ext.unregister_provider("conformance-probe"))
     ext.command("commands-probe", "Read the host's slash commands", lambda ctx, _args: ctx.notify(json.dumps([[c["name"], c["source"], c.get("description", "")] for c in ctx.get_commands() if c["name"] == "conformance-listed"], separators=(",", ":")), "info"))
     ext.command("session-identity", "Read context identity accessors", lambda ctx, _args: ctx.notify(json.dumps([ctx.get_session_id(), ctx.get_session_file(), ctx.get_leaf_id(), ctx.get_session_name()]), "info"))
@@ -3100,6 +3109,20 @@ def new_extension() -> pig_sdk.Extension:
         for off in event_probe_on_offs.pop(args.strip(), []):
             off()
 
+    # event_probe_fail subscribes to the event named by the argument with a handler that reads the active tools from the host, reports the servers of the event and then fails (TestConformance_McpServersChangeFirstHandlerInAnotherProcessIsSentAndItsFailureReported).
+    def event_probe_fail(ctx, args):
+        name = args.strip()
+
+        def failing(hctx, data):
+            servers = data.get("servers") if isinstance(data, dict) else None
+            # The read is the handler's first host call: nothing of the handler reaches the host before it.
+            hctx.get_active_tools()
+            hctx.notify("event_probe_fail:%s:%s" % (name, ",".join(str(s.get("name")) for s in servers or [])), "info")
+            raise RuntimeError("event_probe_fail: %s handler failed" % name)
+
+        ext.on_event(name, failing)
+
+    ext.command("event_probe_fail", "Subscribe to the event named by the argument with a handler that fails", event_probe_fail)
     ext.command("event_probe_result", "Queue the JSON result the next event_probe_on handler call of an event returns", event_probe_result)
     ext.command("event_probe_on", "Subscribe to the event named by the argument", event_probe_on)
 

@@ -117,6 +117,8 @@ func TestRequestUsesTheModelObjectOfTheSession(t *testing.T) {
 		register func(t *testing.T, services *AgentSessionServices, registryURL string, api ai.API)
 		// credential is the header and value every request of the provider carries.
 		credentialHeader, credential string
+		// refused marks a provider without configured auth: setModel answers false and no request is sent.
+		refused bool
 	}
 	extensionProvider := func(id string, models []extension.ProviderModelConfig) func(*testing.T, *AgentSessionServices, string, ai.API) {
 		return func(t *testing.T, services *AgentSessionServices, registryURL string, api ai.API) {
@@ -157,10 +159,9 @@ func TestRequestUsesTheModelObjectOfTheSession(t *testing.T) {
 		{name: "provider-without-models", provider: "acme-empty", apis: openAIKinds,
 			register:         extensionProvider("acme-empty", nil),
 			credentialHeader: "Authorization", credential: "Bearer registry-key"},
-		// The registry resolves no auth for PiG's keyless ollama provider, so the request is built from the provider's entry (buildRequestModel).
-		{name: "no-auth-provider", provider: "ollama", apis: openAIKinds,
-			prepare:          func(t *testing.T, _, registryURL string, _ ai.API) { t.Setenv("OLLAMA_HOST", registryURL) },
-			credentialHeader: "Authorization", credential: ""},
+		// A provider without configured auth gets no request, whatever its name: the setModel action answers false (agent-session.ts:3584) and a prompt is refused with `No API key found for ollama.` (agent-session.ts:2247-2259, auth-guidance.ts:22-25). OLLAMA_HOST configures nothing in Pi.
+		{name: "no-auth-provider", provider: "ollama", apis: openAIKinds, refused: true,
+			prepare: func(t *testing.T, _, registryURL string, _ ai.API) { t.Setenv("OLLAMA_HOST", registryURL) }},
 	}
 	for _, shape := range shapes {
 		for _, api := range shape.apis {
@@ -211,6 +212,18 @@ func TestRequestUsesTheModelObjectOfTheSession(t *testing.T) {
 								object["compat"] = map[string]any{"maxTokensField": "max_tokens"}
 							}
 						})
+					}
+					if shape.refused {
+						if switched, err := session.ExtensionSetModel(t.Context(), runtime.BindModelObject(model)); err != nil || switched {
+							t.Fatalf("setModel = %t, %v, want false for a provider without configured auth", switched, err)
+						}
+						if got := session.Model(); got.ProviderMeta.ProviderID != "start" {
+							t.Errorf("the refused setModel left the Session on %s/%s", got.ProviderMeta.ProviderID, got.ID)
+						}
+						if sent := len(registryRequests()) + len(objectRequests()); sent != 0 {
+							t.Errorf("%d request(s) were sent for a provider without configured auth", sent)
+						}
+						return
 					}
 					if switched, err := session.ExtensionSetModel(t.Context(), runtime.BindModelObject(model)); err != nil || !switched {
 						t.Fatalf("setModel = %t, %v", switched, err)

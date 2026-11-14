@@ -43,6 +43,9 @@ func TestKeyReleaseChokePoint(t *testing.T) {
 			switch d.Name() {
 			case ".upstream", ".git", "testdata", "node_modules", "target", "parity":
 				return filepath.SkipDir
+			case "tmp":
+				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's code.
+				return filepath.SkipDir
 			}
 			return nil
 		}
@@ -143,6 +146,9 @@ func TestInputDispatchFiltersKeyReleases(t *testing.T) {
 		if d.IsDir() {
 			switch d.Name() {
 			case ".upstream", ".git", "testdata", "node_modules", "target", "parity":
+				return filepath.SkipDir
+			case "tmp":
+				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's code.
 				return filepath.SkipDir
 			}
 			return nil

@@ -93,6 +93,20 @@ leaves the table only when the count reaches zero: while any thread holds or wai
 (defun helper-note-shutdown (conn)
   (sb-thread:with-recursive-lock (*helper-lock*) (pushnew conn *helper-shutdown*)))
 
+(defvar *helper-early-notifies* '() "(conn . frames), newest frame first: the notifies a factory-time call read on CONN, which are state the host sent the extension that will serve it. SERVE applies them before it registers (HELPER-TAKE-NOTIFIES).")
+
+(defun helper-note-notify (conn env)
+  (sb-thread:with-recursive-lock (*helper-lock*)
+    (let ((entry (assoc conn *helper-early-notifies*)))
+      (if entry (push env (cdr entry)) (push (list conn env) *helper-early-notifies*)))))
+
+(defun helper-take-notifies (conn)
+  "The notifies factory-time calls read on CONN, in arrival order."
+  (sb-thread:with-recursive-lock (*helper-lock*)
+    (let ((entry (assoc conn *helper-early-notifies*)))
+      (setf *helper-early-notifies* (remove entry *helper-early-notifies*))
+      (reverse (cdr entry)))))
+
 (declaim (ftype function event-dispatch event-release))
 
 (defun helper-answer-request (owner env)
@@ -135,7 +149,9 @@ connection while it waits, and *HELPER-LOCK* only for the moment each table is r
                                             "response" (helper-answer-request (helper-owner path) env))))
                      ((and (equal type "notify") (equal (jref env "notify" "method") "events.release"))
                       (let ((owner (helper-owner path)))
-                        (when owner (event-release owner (jref env "notify" "args" "handlerId")))))))))
+                        (when owner (event-release owner (jref env "notify" "args" "handlerId")))))
+                     ;; any other notify is for the extension that will serve this connection (a state the host pushed before the register): never dropped
+                     ((equal type "notify") (helper-note-notify conn env))))))
       (let* ((result (prog1 (gethash id *helper-results*) (remhash id *helper-results*))) (err (jget result "error")))
         (when (hash-table-p err)
           (error 'host-call-error :message (frame-error-message err)

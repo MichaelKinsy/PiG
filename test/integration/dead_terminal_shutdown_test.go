@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // deadTerminalRuns is how many terminals each setup of TestDeadTerminalEmitsSessionShutdownToExtensions kills: which of the
@@ -466,7 +468,7 @@ func killTerminalUnderOnePig(t *testing.T, s deadTerminalSession) (took time.Dur
 
 	start := time.Now()
 	// hangUpSession fails the test if a process of the pane's session is still running 30 s after kill-session.
-	if err := hangUpSession(t, session, pane, livePaneProcesses); err != nil {
+	if err := hangUpSession(t, session, pane, testenv.LiveSessionProcesses); err != nil {
 		t.Fatal(err)
 	}
 	took = time.Since(start)

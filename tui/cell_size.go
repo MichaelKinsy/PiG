@@ -20,7 +20,7 @@ func (t *tuiBase) QueryCellSize() {
 	if GetCapabilities().Images == "" {
 		return
 	}
-	WriteToTerminal(t.out, cellSizeQuery)
+	t.writeOwned(t.out, cellSizeQuery)
 }
 
 // ConsumeCellSizeResponse reports whether data is a complete cell-size

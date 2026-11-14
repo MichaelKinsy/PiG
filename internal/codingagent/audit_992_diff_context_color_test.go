@@ -20,9 +20,9 @@ func TestAuditEditDiffContextLinesUseTheToolDiffContextColor(t *testing.T) {
 	}
 	lines := renderDiffString(" 1 before line\n-2 REPLACE_ME\n+2 REPLACED\n 3 after line\nnot a diff line", 100)
 	for i, want := range map[int]string{
-		0: th.ToolDiffContext + " 1 before line" + tui.SGRFgReset,
-		3: th.ToolDiffContext + " 3 after line" + tui.SGRFgReset,
-		4: th.ToolDiffContext + "not a diff line" + tui.SGRFgReset,
+		0: themeFg(th.ToolDiffContext, " 1 before line"),
+		3: themeFg(th.ToolDiffContext, " 3 after line"),
+		4: themeFg(th.ToolDiffContext, "not a diff line"),
 	} {
 		if i >= len(lines) || lines[i] != want {
 			t.Errorf("line %d = %q, want %q", i, auditLineAt(lines, i), want)

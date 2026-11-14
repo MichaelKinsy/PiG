@@ -27,6 +27,7 @@ func TestAssistantThinkingUsesThinkingTransformContext(t *testing.T) {
 
 // Pi interactive-mode.ts:2137-2138,3801-3814 passes the built-in transformer to user messages as well as assistant messages.
 func TestInteractiveUserMessageRunsBuiltinMarkdownTransform(t *testing.T) {
+	restoreStartupTheme(t)
 	previousTheme, previousCaps := tui.ActiveTheme().Name, tui.GetCapabilities()
 	t.Cleanup(func() { tui.SetCapabilities(previousCaps); tui.SetThemeByName(previousTheme) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})

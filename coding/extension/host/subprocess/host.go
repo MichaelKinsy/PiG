@@ -89,6 +89,9 @@ type ExtConfig struct {
 
 	selectedPath string
 	resolveErr   error
+	// fusedRebuiltFrom is the source directory of a member fused into this Piglet Binary that runs as a subprocess because its
+	// source changed (see resolveFused).
+	fusedRebuiltFrom string
 	// sourceCheck is set when this package derived ContentHash from the source files: it reports an error once they no longer hash
 	// to it. A cell build runs it before it publishes (see fillContentHash).
 	sourceCheck func() error
@@ -706,7 +709,7 @@ type managedExt struct {
 	// a push the host would otherwise skip still corrects the runtime. A cache
 	// from an older generation is not trusted.
 	runtimeStateGen atomic.Uint64
-	// pushedStateEpoch is the hostStateEpoch the last completed push to this extension began at: every change up to it is in a state this extension received.
+	// pushedStateEpoch is the hostStateEpoch the last state this extension received began at, a completed push or a ready payload: every change up to it is in that state.
 	pushedStateEpoch   atomic.Uint64
 	providerNames      []string
 	mcpServerNames     []string          // MCP servers this extension registered, guarded by Host.mu
@@ -1240,12 +1243,25 @@ func (h *Host) syncGeometry(mes []*managedExt) {
 }
 
 // sendReady fills ready's geometry and enqueues it on conn, ordered with every
-// other geometry delivery (geometryMu).
-func (h *Host) sendReady(me *managedExt, conn *Conn, ready *Envelope) error {
+// other geometry delivery (geometryMu). The ready payload is conn's first
+// state: stateEpoch is the hostStateEpoch read before its snapshot was taken,
+// so the snapshot holds every change up to it. Pushes to conn were withheld
+// until here (Conn.withholdState); a withheld one, or a change reported after
+// stateEpoch, is pushed now and follows the ready on the connection.
+func (h *Host) sendReady(me *managedExt, conn *Conn, ready *Envelope, stateEpoch uint64) error {
 	h.geometryMu.Lock()
-	defer h.geometryMu.Unlock()
 	ready.Ready.Width, ready.Ready.Height = h.readyGeometryFor(me)
-	return conn.Send(ready)
+	err := conn.Send(ready)
+	h.geometryMu.Unlock()
+	if err != nil {
+		return err
+	}
+	me.statePushedAt(stateEpoch)
+	owed := conn.readySent()
+	if h.uiBridge != nil && (owed || h.behindHostState(me)) {
+		h.queueStatePush(me)
+	}
+	return nil
 }
 
 func geometryEnvelope(method, field string, value int) *Envelope {
@@ -1496,19 +1512,25 @@ func (h *Host) LoadAll(ctx context.Context, configs []ExtConfig) ([]extension.Ex
 	// aliases configs and every extension takes the unchanged cell path.
 	cellConfigs := configs
 	if fusedResolver != nil {
+		// pig additive (D31): a member ranks where its configuration stands, whether it runs fused or, its source changed, as a subprocess.
+		h.recordLoadOrder(configs, false)
 		cellConfigs = cellConfigs[:0:0]
 		for _, cfg := range configs {
-			serve, ok := fusedResolver.FusedServe(cfg)
-			if !ok {
-				cellConfigs = append(cellConfigs, cfg)
+			choice := resolveFused(cfg)
+			if choice.serve == nil {
+				cellConfigs = append(cellConfigs, choice.cellConfig(cfg))
 				continue
 			}
-			ext, err := h.LoadInProcess(ctx, cfg, serve)
+			ext, err := h.LoadInProcess(ctx, cfg, choice.serve)
 			if err != nil {
 				errs = append(errs, &ExtensionLoadError{Name: cfg.Name, Path: extConfigOrigin(cfg), Err: err, fused: true})
 				continue
 			}
 			loaded = append(loaded, *ext)
+			if choice.warning != "" {
+				// pig additive (D31): the member is loaded; the start reports, where it reports a failed load, that its source is not what runs.
+				errs = append(errs, &ExtensionLoadError{Name: cfg.Name, Path: extConfigOrigin(cfg), Err: &FusedSourceWarning{Message: choice.warning}, fused: true})
+			}
 		}
 	}
 	h.recordLoadOrder(configs, false)
@@ -1569,8 +1591,23 @@ func (h *Host) fillContentHashes(cellConfigs []ExtConfig, fill func(*ExtConfig))
 
 // fillTogether runs fill on every config that include accepts (every config when include is nil), a bounded number at a time, and returns when all
 // are done. The extensions are hashed together, as the cells are prepared together (stageCellsInOrder): a Go extension reads the SDK it replaces as
-// well, once per extension. The configs keep their order, and so do the plan and every registration after it.
+// well, once per extension. The configs keep their order, and so do the plan and every registration after it. A lone accepted config has nothing to
+// be filled together with: it is filled on the caller's goroutine, and none is started. include is asked twice about each config.
 func fillTogether(configs []ExtConfig, include func(*ExtConfig) bool, fill func(*ExtConfig)) {
+	lone, included := -1, 0
+	for i := range configs {
+		if include == nil || include(&configs[i]) {
+			lone = i
+			included++
+		}
+	}
+	switch included {
+	case 0:
+		return
+	case 1:
+		fill(&configs[lone])
+		return
+	}
 	var running sync.WaitGroup
 	slots := make(chan struct{}, maxConcurrentCellPreparations())
 	for i := range configs {
@@ -1799,12 +1836,15 @@ func (h *Host) pushState(ctx context.Context, me *managedExt, conn *Conn, cursor
 	if h.uiBridge == nil || me == nil || conn == nil {
 		return nil
 	}
+	if conn.withholdState() {
+		// The ready payload is conn's first state, and sendReady pushes what is owed after it.
+		return nil
+	}
 	// The epoch is read before the snapshot, so the snapshot holds every change up to it.
 	epoch := h.hostStateEpoch.Load()
 	defer func() {
 		if err == nil {
-			for held := me.pushedStateEpoch.Load(); held < epoch && !me.pushedStateEpoch.CompareAndSwap(held, epoch); held = me.pushedStateEpoch.Load() {
-			}
+			me.statePushedAt(epoch)
 		}
 	}()
 	if err := h.syncRunSignal(conn); err != nil {
@@ -2983,18 +3023,23 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 			cellConfigs = append(cellConfigs, cfg)
 			continue
 		}
-		serve, fused := fusedResolver.FusedServe(cfg)
-		if !fused {
-			cellConfigs = append(cellConfigs, cfg)
+		choice := resolveFused(cfg)
+		if choice.serve == nil {
+			cellConfigs = append(cellConfigs, choice.cellConfig(cfg))
 			continue
 		}
-		item, stageErr := h.stageInProcess(ctx, cfg, serve)
+		item, stageErr := h.stageInProcess(ctx, cfg, choice.serve)
 		if stageErr != nil {
 			rep.Issues = append(rep.Issues, reloadIssue(cfg, stageErr))
 			removeOld(cfg.Name)
 			continue
 		}
 		staged = append(staged, item)
+		if choice.warning != "" {
+			// pig additive (D31): one warning and the placement of a fused member whose compiled copy runs although its source differs.
+			rep.Issues = append(rep.Issues, extConfigOrigin(cfg)+": "+choice.warning)
+			rep.Cells = append(rep.Cells, ReloadCellReport{Key: cfg.Name, Strategy: fusedPlacement, Language: "go", Extensions: []string{cfg.Name}, Replaced: oldByName[cfg.Name] != nil, Reason: choice.reason})
+		}
 	}
 	cells := h.planCells(cellConfigs)
 	h.planEventBus(ctx, cells)
@@ -3513,6 +3558,7 @@ func (h *Host) acceptExtConn(ctx context.Context, cancel context.CancelFunc, me 
 func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, extCtx context.Context, cancel context.CancelFunc, isRestart bool) (*extension.Extension, error) {
 	// Wrap in managed connection.
 	conn := NewConn(me.config.Name, rawConn)
+	conn.awaitReady()
 	// The process's exit ends the connection's read when the socket does not (peer_exit.go); the share's exit channel for a process other extensions share.
 	conn.watchPeerExit(me.exited())
 	h.observeXref(conn)
@@ -3582,7 +3628,9 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		Mode:       h.mode,
 		SourceInfo: h.readySourceInfo(me),
 	}
+	var stateEpoch uint64
 	if h.uiBridge != nil {
+		stateEpoch = h.readyStateEpoch(conn)
 		flagNames := make([]string, 0, len(reg.Flags))
 		for _, f := range reg.Flags {
 			flagNames = append(flagNames, f.Name)
@@ -3615,7 +3663,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 	if err := h.sendReady(me, conn, &Envelope{
 		Type:  MsgReady,
 		Ready: readyPayload,
-	}); err != nil {
+	}, stateEpoch); err != nil {
 		cancel()
 		loadErr := newLoadError(me.config.Name, "ready", "send_ready_failed", fmt.Errorf("send ready: %w", err))
 		loadErr.StderrLog = me.stderrLogPath
@@ -4580,6 +4628,10 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			if dispatchContext, ok := args[1].(context.Context); ok && dispatchContext != nil {
 				parent = dispatchContext
 			}
+		}
+		if event == "mcp_servers_change" {
+			// The registration that fired the event waits for its first handler's acknowledgment (inproc Runner.onMcpServersChange). A handler in another process acknowledges here, before a frame is written, so a registration never waits on extension IPC; the request is still sent and its failure reported. Upstream runs that handler's synchronous part inside the registration (runner.ts:465-468).
+			invocation.Acknowledge(parent)
 		}
 		boundaryWire := boundarywire.FromContext(parent)
 		if boundaryWire != nil {

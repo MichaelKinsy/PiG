@@ -18,6 +18,7 @@ import (
 // the picker sees its context cancelled, and has returned by the time
 // selectStartupSession does.
 func TestSelectStartupSessionCancelsAndJoinsBlockedLoaders(t *testing.T) {
+	restoreStartupTheme(t)
 	var loaderStarted = make(chan struct{})
 	observed, release := make(chan struct{}, 2), make(chan struct{})
 	var cancelled, returned atomic.Bool

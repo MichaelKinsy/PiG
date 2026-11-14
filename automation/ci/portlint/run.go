@@ -34,6 +34,11 @@ type Hit struct {
 func (h Hit) Key() string { return h.Check + "|" + h.File + "|" + h.Func + "|" + h.Snippet }
 
 func run(root, baselinePath, tags string, patterns []string, report, printBaseline bool) int {
+	// The ledger asyncorder reads is read here, before any analyzer runs: see checks.LoadAsyncContracts.
+	if err := checks.LoadAsyncContracts(root); err != nil {
+		fmt.Fprintln(os.Stderr, "port-lint:", err)
+		return 2
+	}
 	hits, err := scanAll(root, tags, patterns)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "port-lint:", err)

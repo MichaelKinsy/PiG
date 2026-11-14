@@ -75,6 +75,26 @@ allocs = 624
 
 [[benchmark]]
 package = "./agent"
+benchmark = "BenchmarkParallelToolBatchWithHistory/calls=2/history=100"
+allocs = 550
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkParallelToolBatchWithHistory/calls=2/history=5000"
+allocs = 5430
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkParallelToolBatchWithHistory/calls=8/history=100"
+allocs = 917
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkParallelToolBatchWithHistory/calls=8/history=5000"
+allocs = 5831
+
+[[benchmark]]
+package = "./agent"
 benchmark = "BenchmarkSystemPromptRead/1"
 allocs = 4
 
@@ -956,12 +976,12 @@ allocs = 103
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkRequestLargeWriteFollowUp/completions"
-allocs = 81
+allocs = 72
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkRequestLargeWriteFollowUp/responses"
-allocs = 37
+allocs = 28
 
 [[benchmark]]
 package = "./ai"
@@ -1830,6 +1850,11 @@ allocs = 2294
 
 [[benchmark]]
 package = "./coding/cli"
+benchmark = "BenchmarkServeBridgeStream"
+allocs = 11806
+
+[[benchmark]]
+package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/1ext"
 allocs = 9768
 
@@ -2166,7 +2191,7 @@ allocs = 16
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkHostShutdownProviderCatalog/20"
-allocs = 288
+allocs = 268
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2300,6 +2325,11 @@ allocs = 150
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkQuarantinePackedCell"
+allocs = 139
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkReadFrameLargePayload/16MiB"
 allocs = 11
 
@@ -2387,6 +2417,11 @@ allocs = 11
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkToolParameterSchemaValidation/65536"
 allocs = 11
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkUnacknowledgedNotices"
+allocs = 14
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -3205,6 +3240,11 @@ allocs = 0
 
 [[benchmark]]
 package = "./internal/codingagent"
+benchmark = "BenchmarkToolExecutionStartFileCall"
+allocs = 105
+
+[[benchmark]]
+package = "./internal/codingagent"
 benchmark = "BenchmarkToolsExpansionMountedTranscript/1"
 allocs = 184
 
@@ -3442,6 +3482,11 @@ allocs = 1
 package = "./tui"
 benchmark = "BenchmarkContainerRenderPlusResets"
 allocs = 8002
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkCursorWrites"
+allocs = 0
 
 [[benchmark]]
 package = "./tui"
@@ -3972,6 +4017,16 @@ allocs = 12
 package = "./tui"
 benchmark = "BenchmarkRenderSteadyState/turns=5000"
 allocs = 12
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkScheduleRender/adaptive"
+allocs = 1
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkScheduleRender/pi"
+allocs = 1
 
 [[benchmark]]
 package = "./tui"

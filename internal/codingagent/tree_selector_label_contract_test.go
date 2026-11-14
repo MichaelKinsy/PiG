@@ -76,6 +76,7 @@ func TestTreeLabelInputAndRoutingContractsMatchPi(t *testing.T) {
 // Pi's updateNodeLabel stamps a saved label with new Date().toISOString() and clears the stamp when the label is removed (tree-selector.ts:639-647).
 // Pi renders the stamp only while the timestamp toggle is on, so the clock is the independent denominator here.
 func TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt(t *testing.T) {
+	restoreStartupTheme(t)
 	previousKeys, previousCaps, previousTheme := tui.GetTUIKeybindings(), tui.GetCapabilities(), tui.ActiveTheme()
 	t.Cleanup(func() {
 		tui.SetTUIKeybindings(previousKeys)

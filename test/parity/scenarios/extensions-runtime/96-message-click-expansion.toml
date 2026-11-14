@@ -77,9 +77,12 @@ keys = ["hex:1b 5b 3c 30 3b 35 3b 39 4d 1b 5b 3c 30 3b 35 3b 39 6d"]
 wait_visible_contains = ["This is the test skill body content."]
 wait_timeout_seconds = 10
 
+# The collapsed summary already reads "Compacted from 87,432 tokens (ctrl+o to expand)", so that text says nothing about this click. The summary's
+# body is drawn only by the expanded card, in the frame that also moves the first card to row 33, where the next step clicks. A click sent before
+# that frame lands on the frame before it, where row 33 is the blank row between the cards.
 [[tmux.steps]]
 keys = ["hex:1b 5b 3c 30 3b 35 3b 35 4d 1b 5b 3c 30 3b 35 3b 35 6d"]
-wait_visible_contains = ["Compacted from 87,432 tokens"]
+wait_visible_contains = ["Compacted from 87,432 tokens", "The user greeted the assistant and received a friendly response."]
 wait_timeout_seconds = 10
 
 [[tmux.steps]]

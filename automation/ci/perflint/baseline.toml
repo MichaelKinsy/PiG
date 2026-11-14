@@ -2336,7 +2336,7 @@ file = "coding/model.go"
 func = "buildLeafProviderForEntry"
 pattern = "env-stat"
 detail = "os.Getenv"
-count = 2
+count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
@@ -3506,22 +3506,6 @@ pattern = "sort-instance"
 detail = "slices.SortFunc"
 count = 1
 class = "hot-kept:same []int shape as the session load sorts, already linked"
-
-[[hit]]
-file = "internal/codingagent/auth_filter.go"
-func = "AuthenticatedProviders"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "internal/codingagent/auth_filter.go"
-func = "envOnlyAuthenticated"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
 file = "internal/codingagent/bug_report.go"

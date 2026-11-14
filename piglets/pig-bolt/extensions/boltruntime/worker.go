@@ -210,8 +210,7 @@ func (w *worker) handle(ctx context.Context, req Request) bool {
 // runtime.
 func (w *worker) failBuild(req Request, inputs []inputFile, err error, logPath string) {
 	reason := "build_failed"
-	var sensitive errPathSensitive
-	if errors.As(err, &sensitive) {
+	if _, ok := errors.AsType[errPathSensitive](err); ok {
 		reason = "path_sensitive"
 	}
 	if recordErr := w.store.recordFailure(req.Key, failure{Reason: reason, Detail: err.Error(), When: w.store.now(), Inputs: inputs, Log: logPath}); recordErr != nil {

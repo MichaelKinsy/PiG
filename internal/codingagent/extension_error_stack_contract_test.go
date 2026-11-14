@@ -83,8 +83,7 @@ func TestExtensionErrorStackMatchesPi(t *testing.T) {
 	if len(want) != len(probes) {
 		t.Fatalf("Pi answered %d probes, want %d", len(want), len(probes))
 	}
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	failures := 0
 	for i, probe := range probes {

@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	impl "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade"
 )
 
 // helperFileName is the file that holds the getter helpers of a package. The
@@ -58,7 +60,7 @@ func (r *helperRegistry) qualify(pkg *types.Package) string {
 
 // define returns the helper for the getter, reading its signature from the
 // method the call selects.
-func (r *helperRegistry) define(p *filePlanner, g getter, fn *types.Func) *helperDef {
+func (r *helperRegistry) define(p *filePlanner, g impl.Getter, fn *types.Func) *helperDef {
 	if def, ok := r.defs[g.Name]; ok {
 		return def
 	}

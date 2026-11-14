@@ -403,6 +403,11 @@ type InteractiveMode struct {
 	eventRegionOpen   bool
 	eventRegion       []agent.AgentEvent
 	eventRegionUpdate int
+	// framePacingInstalled is whether the renderer has the adaptive frame pacing policy (installFramePacing); framePacingAllowed is the policy's gate, stored by the owner loop before each throttled frame (allowFramePacing) and loaded by the renderer.
+	framePacingInstalled bool
+	framePacingAllowed   atomic.Bool
+	// extensionRendersTranscript is whether the transcript holds a tool card, a custom message or a custom entry drawn by an extension's renderer; the adaptive policy's gate is closed while it is (extensionRenderersMounted, transcriptEmptied). Owner loop only.
+	extensionRendersTranscript bool
 
 	// Bash-prefix execution state.
 	// bashCancel cancels the currently-running `!cmd` (Esc routes
@@ -521,6 +526,10 @@ type InteractiveMode struct {
 	heldPrompts []heldPrompt
 	heldWaiting bool
 
+	// unsubscribeSession removes the mode's synchronous Session listener (handleSessionEvent); the owner loop sets and calls it.
+	unsubscribeSession func()
+	// sessionStreaming is Pi's `this.streamingComponent` as the Session listener needs it: set by an assistant message_start, cleared by that message's message_end and by agent_end. The listener runs on the goroutine that executes the Session's events, so it keeps this itself instead of reading evCurrentBlock, which the owner loop sets when the event reaches it.
+	sessionStreaming atomic.Bool
 	// eventCh is the agent's live event stream (m.opts.SessionHandle.Events()).
 	// The inputLoop select drains it and calls handleAgentEvent on the main
 	// goroutine. evCurrentBlock/evTurnIndex are that handler's
@@ -809,6 +818,7 @@ func (m *InteractiveMode) installRenderDispatcher() {
 	}
 	m.tuiInst.SetRenderDeadline(m.armFrameTimer)
 	m.tuiInst.SetOwnerDispatcher(m.postToMain)
+	m.installFramePacing()
 }
 
 // useFrameTimer makes timer the one that keeps the owner loop's frame deadline and releases the one it replaces. The goroutine of the owner loop
@@ -850,6 +860,7 @@ func (m *InteractiveMode) runScheduledRender() {
 	if m.frameHold {
 		return
 	}
+	m.allowFramePacing()
 	m.tuiInst.RunDueRender()
 	if due := m.frameDue.Load(); due != 0 && time.Until(time.Unix(0, due)) <= 0 {
 		// RunDueRender ran the frame of that deadline; a frame requested while it ran has a later one.
@@ -1915,6 +1926,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.installRunPromptTurnRefresh()
 	m.rebuildToolSystemPrompt()
 	m.eventCh = m.opts.SessionHandle.Events()
+	m.subscribeSessionListener()
 	extCtx.Session = m.currentSession()
 
 	m.reconfigureRemoteEditor()
@@ -1939,11 +1951,6 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// summary does.
 	m.statusLine.timings = m.agent.Timings()
 
-	// Set terminal title. Mirrors upstream
-	// interactive-mode.ts:634-642 (updateTerminalTitle). Deferred clear
-	// restores the shell's own title on exit.
-	m.onStop(func() error { m.setTerminalTitle(""); return nil })
-	m.onStop(func() error { m.setTerminalProgress(false); return nil })
 	// Pre-populate status-line name from session on resume.
 	if n := m.currentSession().GetSessionName(); n != "" {
 		m.statusLine.SetName(n)
