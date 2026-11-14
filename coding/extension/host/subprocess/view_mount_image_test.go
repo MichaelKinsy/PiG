@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"image/gif"
 	"image/jpeg"
 	"image/png"
 	"os"
@@ -426,5 +427,57 @@ func TestMountImageThatCannotBeDecodedIsTheTextFallback(t *testing.T) {
 	want := tui.ImageFallback("image/jpeg", tui.GetImageDimensions(base64.StdEncoding.EncodeToString(data), "image/jpeg"), "tower.jpg")
 	if drawn := drawnRows(got); len(drawn) != 3 || drawn[1] != want || len(halfBlockCellRows(got)) != 0 || len(p.written) != 0 {
 		t.Fatalf("the mount draws %q and wrote %d times, want the text fallback %q between its texts and 0", drawn, len(p.written), want)
+	}
+}
+
+// pig additive (D614): a JPEG and a GIF that the client's conversion to PNG could not read are decoded by the decoders
+// the program enabled (EnableMountImageDecoders; the pig command enables Go's), and drawn as the half-block rows of the
+// decoded image. In a program that enabled none the node is one line of text that names the missing decoder and the
+// call: not an empty row, and not the fallback of an image that cannot be decoded.
+func TestMountImageNotConvertedIsReadByTheEnabledDecoder(t *testing.T) {
+	photo, err := jpeg.Decode(bytes.NewReader(photoBytes(t)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var asGIF bytes.Buffer
+	if err := gif.Encode(&asGIF, photo, nil); err != nil {
+		t.Fatal(err)
+	}
+	for mime, data := range map[string][]byte{"image/jpeg": photoBytes(t), "image/gif": asGIF.Bytes()} {
+		t.Run(mime, func(t *testing.T) {
+			imageTerminal(t, "")
+			enabled := mountImageDecoders.Swap(nil)
+			t.Cleanup(func() { mountImageDecoders.Store(enabled) })
+			draw := func() []string {
+				p := newImageProbe(false)
+				p.images.ToPNG = func([]byte) []byte { return nil }
+				s := p.surface()
+				defer s.Close()
+				acceptMountView(t, s, json.RawMessage(strings.ReplaceAll(string(mountImageView("round 1", `,"maxWidthCells":20`, data)), "image/jpeg", mime)))
+				s.Render(160)
+				p.run()
+				return s.Render(160)
+			}
+			got := draw()
+			want := "no " + mime + " decoder is enabled in this program: call subprocess.EnableMountImageDecoders"
+			if drawn := drawnRows(got); len(drawn) != 3 || !strings.HasPrefix(drawn[1], want) || len(halfBlockCellRows(got)) != 0 {
+				t.Fatalf("without the decoders the mount draws %.300q, want one line between its texts that starts %q", drawn, want)
+			}
+			EnableMountImageDecoders(jpeg.Decode, gif.Decode)
+			decode := jpeg.Decode
+			if mime == "image/gif" {
+				decode = gif.Decode
+			}
+			decoded, err := decode(bytes.NewReader(data))
+			if err != nil {
+				t.Fatal(err)
+			}
+			cols, rows := halfBlockSize(512, 512, 20, 12)
+			wantRows := strings.Join(halfBlockRows(decoded, cols, rows, halfBlockTrueColor, nil), "\n")
+			got = draw()
+			if cells := halfBlockCellRows(got); strings.Join(cells, "\n") != wantRows {
+				t.Fatalf("with the decoders the mount draws %d rows of half-block cells in %.200q, want the %d rows of halfBlockRows for the decoded image", len(cells), got, rows)
+			}
+		})
 	}
 }

@@ -2,6 +2,8 @@ package subprocess
 
 import (
 	"encoding/json"
+	"image/gif"
+	"image/jpeg"
 	"io"
 	"strings"
 	"sync"
@@ -18,6 +20,7 @@ import (
 func init() {
 	EnableViewWidgets()
 	EnableEditorViews()
+	EnableMountImageDecoders(jpeg.Decode, gif.Decode)
 }
 
 // withoutViewWidgetBuilders makes the test a program that enabled no builder yet. The table is the process's, so the test

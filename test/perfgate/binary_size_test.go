@@ -155,35 +155,36 @@ func dictionarySliceIn(binary, dictionary []byte) (offset, at int) {
 func binaryLE(b []byte) uint64 { return binary.LittleEndian.Uint64(b) }
 
 // The image of a plugin mount (D614) is drawn by the terminal view client: subprocess.NewMountSurface gives the surface
-// the builder of the image's component, and behind that builder are Go's JPEG and GIF decoders, the half-block cells and
-// the Kitty placeholder rows. A program that makes no mount surface links none of them. The size gate only notices when
-// the program grows past its ceiling; this reads the symbol table of the embed with the strip tags, built unstripped (the
-// code is the same), and names what is linked and should not be, with its bytes.
-func TestHeadlessStrippedEmbedLinksNoMountImage(t *testing.T) {
+// the builder of the image's component, and behind that builder are the half-block cells and the Kitty placeholder rows;
+// the program that draws mounts passes Go's JPEG and GIF decoders (subprocess.EnableMountImageDecoders). A program that
+// makes no mount surface links none of them. The size gate only notices when the program grows past its ceiling; this
+// reads the symbol table of the embed, plain and with the strip tags, built unstripped (the code is the same), and names
+// what is linked and should not be, with its bytes.
+func TestHeadlessEmbedLinksNoMountImage(t *testing.T) {
 	root := testenv.ModuleRoot(t)
-	variants := headlessVariants()
-	stripped := variants[slices.IndexFunc(variants, func(v headlessVariant) bool { return v.name == "stripped" })]
 	const host = "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess."
 	decoders := []string{"image/jpeg", "image/gif", "compress/lzw"}
 	drawing := []string{"halfBlockRows", "halfBlockPixels", "writeKittyVirtualImage", "kittyPlaceholderRows", "kittyDiacritics", "(*mountImage).Render", "(*MountImages).prepare"}
-	for _, platform := range releasePlatforms {
-		t.Run(platform.goos+"_"+platform.goarch, func(t *testing.T) {
-			build := sizereport.Build{Root: root, Package: "./examples/headless", GOOS: platform.goos, GOARCH: platform.goarch, Tags: stripped.tags}
-			symbols, err := build.Symbols(t.Context(), t.TempDir())
-			if err != nil {
-				t.Fatal(err)
-			}
-			linked := sizereport.Sum(symbols).File
-			for _, pkg := range decoders {
-				if linked[pkg] > 0 {
-					t.Errorf("the stripped headless embed links %s (%d bytes of symbols), which only the image of a mount surface decodes with; the reference that keeps it must be a value that only subprocess.NewMountSurface sets", pkg, linked[pkg])
+	for _, variant := range headlessVariants() {
+		for _, platform := range releasePlatforms {
+			t.Run(variant.name+"_"+platform.goos+"_"+platform.goarch, func(t *testing.T) {
+				build := sizereport.Build{Root: root, Package: "./examples/headless", GOOS: platform.goos, GOARCH: platform.goarch, Tags: variant.tags}
+				symbols, err := build.Symbols(t.Context(), t.TempDir())
+				if err != nil {
+					t.Fatal(err)
 				}
-			}
-			for _, symbol := range symbols {
-				if name, ok := strings.CutPrefix(symbol.Name, host); ok && slices.Contains(drawing, name) {
-					t.Errorf("the stripped headless embed links subprocess.%s (%d bytes), which only the image of a mount surface draws with", name, symbol.Size)
+				linked := sizereport.Sum(symbols).File
+				for _, pkg := range decoders {
+					if linked[pkg] > 0 {
+						t.Errorf("the headless embed links %s (%d bytes of symbols), which only the image of a mount surface is decoded with. Its initializer registers the decoder, so the package is linked whole as soon as a package of the embed imports it: the program that draws mounts passes the decoder (subprocess.EnableMountImageDecoders)", pkg, linked[pkg])
+					}
 				}
-			}
-		})
+				for _, symbol := range symbols {
+					if name, ok := strings.CutPrefix(symbol.Name, host); ok && slices.Contains(drawing, name) {
+						t.Errorf("the headless embed links subprocess.%s (%d bytes), which only the image of a mount surface draws with; the reference that keeps it must be a value that only subprocess.NewMountSurface sets", name, symbol.Size)
+					}
+				}
+			})
+		}
 	}
 }

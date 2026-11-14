@@ -8,6 +8,8 @@ package cli
 import (
 	"context"
 	"fmt"
+	"image/gif"
+	"image/jpeg"
 	"os"
 	"path/filepath"
 	"slices"
@@ -116,13 +118,15 @@ func withFusedExtensionConfigs(fused, configs []subprocess.ExtConfig) []subproce
 // newSubprocessExtensionHost creates an extension host with no extensions
 // loaded and no config loader.
 // enableViews turns on what the pig command draws for an extension in every mode and on every command: the view kit's
-// widgets, the editors a view holds and the TuiAltScreens an extension constructs. An embedder that draws none of them
-// leaves the calls out and does not link the widget builders, the terminal editor or the alt-screen renderer. Main calls
+// widgets, the editors a view holds, the TuiAltScreens an extension constructs and Go's JPEG and GIF decoders for the
+// image of a mount. An embedder that draws none of them leaves the calls out and does not link the widget builders, the
+// terminal editor, the alt-screen renderer or the decoders. Main calls
 // it before it runs a command, so no path of the command builds a view without it.
 func enableViews() {
 	subprocess.EnableViewWidgets()
 	subprocess.EnableEditorViews()
 	subprocess.EnableTuiAltScreens()
+	subprocess.EnableMountImageDecoders(jpeg.Decode, gif.Decode)
 }
 
 func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, cells *subprocess.CellRegistry) (*subprocess.Host, *subprocess.UIBridge) {

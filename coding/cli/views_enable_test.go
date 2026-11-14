@@ -1,9 +1,16 @@
 package cli
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"image/gif"
+	"image/jpeg"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // viewsEntryEnv names the entry of the pig command the test binary runs as a fresh process (see TestPigEntriesEnableExtensionViews).
@@ -47,6 +55,11 @@ func runViewsEntry(t *testing.T, entry string) {
 	if err := buildExtensionViews(); err == nil || !strings.Contains(err.Error(), "views are not enabled in this program") {
 		t.Fatalf("before the entry ran: err = %v, want the view refused because nothing enabled it yet", err)
 	}
+	for mime, rows := range drawMountImages(t) {
+		if !strings.Contains(rows, "no "+mime+" decoder is enabled in this program: call subprocess.EnableMountImageDecoders") || strings.Contains(rows, "\u2580") {
+			t.Fatalf("before the entry ran: the %s of a mount is drawn as %.300q, want the line that names the missing decoder and the call", mime, rows)
+		}
+	}
 	t.Setenv("PIG_HOME", t.TempDir())
 	switch entry {
 	case "host":
@@ -70,5 +83,52 @@ func runViewsEntry(t *testing.T, entry string) {
 	if err := buildExtensionViews(); err != nil {
 		t.Fatalf("after %s: a view with a grid, an input and an editor does not build: %v", entry, err)
 	}
+	for mime, rows := range drawMountImages(t) {
+		if strings.Count(rows, "\u2580") < 20 || strings.Contains(rows, "decoder") {
+			t.Fatalf("after %s: the %s of a mount whose conversion to PNG failed is drawn as %.300q, want rows of half-block cells", entry, mime, rows)
+		}
+	}
 	t.Log("views-entry-ok " + entry)
+}
+
+// drawMountImages draws a JPEG and a GIF in a mount of a terminal without an image protocol whose conversion to PNG
+// fails, which is where the terminal view client reads them with Go's decoders, and returns the rows by type.
+func drawMountImages(t *testing.T) map[string]string {
+	t.Helper()
+	caps, cell := tui.GetCapabilities(), tui.GetCellDimensions()
+	t.Cleanup(func() {
+		tui.SetCapabilities(caps)
+		tui.SetCellDimensions(cell)
+	})
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
+	tui.SetCellDimensions(tui.CellDimensions{WidthPx: 10, HeightPx: 20})
+	photo, err := os.ReadFile(filepath.Join("..", "..", "internal", "photonimage", "testdata", "photon-jpegdecode-tower.jpg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := jpeg.Decode(bytes.NewReader(photo))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var asGIF bytes.Buffer
+	if err := gif.Encode(&asGIF, decoded, nil); err != nil {
+		t.Fatal(err)
+	}
+	drawn := map[string]string{}
+	for mime, data := range map[string][]byte{"image/jpeg": photo, "image/gif": asGIF.Bytes()} {
+		images := &subprocess.MountImages{ToPNG: func([]byte) []byte { return nil }}
+		surface := subprocess.NewMountSurface(subprocess.MountSurfaceOptions{Repaint: func() {}, Activate: func(subprocess.MountActivation) {}, Leave: func() {}, Images: images})
+		sum := sha256.Sum256(data)
+		ref := hex.EncodeToString(sum[:])
+		view := `{"root":{"kind":"vstack","children":[{"kind":"image","ref":"` + ref + `","mimeType":"` + mime + `","maxWidthCells":20}]},` +
+			`"images":[{"ref":"` + ref + `","mimeType":"` + mime + `","data":"` + base64.StdEncoding.EncodeToString(data) + `"}]}`
+		if err := surface.Accept(json.RawMessage(view), ""); err != nil {
+			t.Fatalf("accept the %s: %v", mime, err)
+		}
+		surface.Render(160)
+		images.Wait()
+		drawn[mime] = strings.Join(surface.Render(160), "\n")
+		surface.Close()
+	}
+	return drawn
 }
