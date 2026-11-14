@@ -20280,6 +20280,28 @@
       ]
     },
     {
+      "id": "BF-6138d19",
+      "title": "chord: a client's active theme or active language could end on an older value than the newest: when the…",
+      "symptom": "chord: a client's active theme or active language could end on an older value than the newest: when the user's pick changed at the moment the client's mode or device languages changed, the two changes could be delivered in the opposite order to the one they were decided in, and the older theme (or language) stayed until the next change.",
+      "rootCause": "the follower read its state under a lock and queued the change after releasing it, assuming the two steps were one, so two goroutines could queue in the opposite order to their reads",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a client's active theme or active language could end on an older value than the newest: when the user's pick changed at the moment the client's mode or device languages changed, the two changes could be delivered in the opposite order to the one they were decided in, and the older theme (or language) stayed until the next change. The followers now deliver in the order they read their state, so the last delivery is the current one, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6138d199ae",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsTheRegistryThePrincipalsPickAndTheMode"
+      ]
+    },
+    {
       "id": "BF-613d8aa",
       "title": "fix(tools): restore the deprecated grep readFile hook in every SDK",
       "symptom": "fix(tools): restore the deprecated grep readFile hook in every SDK",

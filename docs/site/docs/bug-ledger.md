@@ -736,6 +736,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-61300bb](#bf-61300bb) | MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb-2](#bf-61300bb-2) | Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6132277](#bf-6132277) | An MCP OAuth authorization response with an `iss` parameter is now rejected when no authorization server… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
+| [BF-6138d19](#bf-6138d19) | chord: a client's active theme or active language could end on an older value than the newest: when the… | PiG's own defect | All platforms | Unreleased |
 | [BF-613d8aa](#bf-613d8aa) | fix(tools): restore the deprecated grep readFile hook in every SDK | PiG's own defect | All platforms | Unreleased |
 | [BF-618af0a](#bf-618af0a) | `chord/nextnode/plugins`: the directory the plugins' Node runtime is extracted to is named by the manifest… | PiG's own defect | All platforms | Unreleased |
 | [BF-619443a](#bf-619443a) | MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -12092,6 +12093,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `61322774f1` (2026-10-10)
 - **Tests:** `mcp/oauth/absent_test.go::TestOAuthIssuerMismatchErrorNamesAMissingIssAsNone`, `mcp/oauth/absent_test.go::TestOAuthIssuerMismatchErrorQuotesIssuersAsJSONStringify`, `mcp/oauth/behavior_test.go::TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds`, `mcp/oauth/error_constructors_upstream_test.go::TestOAuthErrorConstructorsMatchErrorsTs`, `mcp/oauth/errors_class_test.go::TestOAuthErrorClassesCarryTheirNameAndMessage`
 - **Release note:** An MCP OAuth authorization response with an `iss` parameter is now rejected when no authorization server metadata was discovered, so a malicious MCP server cannot receive a code another authorization server issued (as Pi c5f5b328 does).
+
+### BF-6138d19
+
+**chord: a client's active theme or active language could end on an older value than the newest: when the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a client's active theme or active language could end on an older value than the newest: when the user's pick changed at the moment the client's mode or device languages changed, the two changes could be delivered in the opposite order to the one they were decided in, and the older theme (or language) stayed until the next change.
+- **Root cause:** the follower read its state under a lock and queued the change after releasing it, assuming the two steps were one, so two goroutines could queue in the opposite order to their reads
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6138d199ae` (2026-11-14)
+- **Tests:** `chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsTheRegistryThePrincipalsPickAndTheMode`
+- **Release note:** chord: a client's active theme or active language could end on an older value than the newest: when the user's pick changed at the moment the client's mode or device languages changed, the two changes could be delivered in the opposite order to the one they were decided in, and the older theme (or language) stayed until the next change. The followers now deliver in the order they read their state, so the last delivery is the current one, as in Pi.
 
 ### BF-613d8aa
 
