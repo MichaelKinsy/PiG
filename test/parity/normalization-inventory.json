@@ -1205,6 +1205,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/106-click-pair-in-one-write-hits-drawn-layout.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[compaction]",
+            "capture_end": "details of second card"
+          },
+          "reason": "Owned visible surface: Two clicks written together are both resolved on the frame that was on screen: the second opens the card drawn on its row, not the card the first click moves there",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
@@ -4870,7 +4888,7 @@
             "capture_start": "Run: ext tool write",
             "capture_end": "ext-tool-done: alpha line"
           },
-          "reason": "Owned visible surface: A write and a read of a path whose extension is `constructor` draw Pi's call and result fallbacks, expanded, byte for byte.",
+          "reason": "Owned visible surface: A write and a read of a path whose extension is `constructor`: PiG draws the write and read cards, Pi draws its call and result fallbacks.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -4917,7 +4935,7 @@
             "capture_start": "Prototype path redraw start",
             "capture_end": "Prototype path redraw end"
           },
-          "reason": "Owned visible surface: Reopened write and read cards of paths whose extension is `constructor` or `__proto__` draw Pi's fallbacks from the stored entries.",
+          "reason": "Owned visible surface: Reopened write and read cards of paths whose extension is `constructor` or `__proto__`: PiG draws the cards from the stored entries, Pi draws its fallbacks.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -5012,6 +5030,42 @@
             "capture_end": "Resume marker end"
           },
           "reason": "Owned visible surface: A valid theme file selected by its file name loads although its JSON carries another name.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/74-unknown-extension-path-cards.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool write",
+            "capture_end": "ext-tool-done: alpha line"
+          },
+          "reason": "Owned visible surface: A write and a read of a path whose extension neither side knows draw the write and read cards, expanded, byte for byte.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/75-resume-unknown-extension-path-cards.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Unknown extension redraw start",
+            "capture_end": "Unknown extension redraw end"
+          },
+          "reason": "Owned visible surface: Reopened write and read cards of paths whose extension neither side knows draw the cards from the stored entries, byte for byte.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

@@ -1,5 +1,5 @@
 # Behavior family: interactive-rendering
-# Surface: the same fallbacks as 70-prototype-named-path-cards, drawn from stored entries when a session is reopened.
+# Surface: the cards of scenario 70-prototype-named-path-cards, drawn from stored entries when a session is reopened.
 #
 # The session file holds one assistant message that wrote out.constructor and Constructor.CONSTRUCTOR, read notes.constructor and x.__proto__ (through
 # file_path), and wrote and read control.ts. Each stored write call holds `path` before `content`, the order the model sent.
@@ -9,16 +9,19 @@
 # order) and the reads of the next two as the result fallback, and the control cards as themselves. The cards are the same at every open, and the session
 # continues, exports and compacts. Pi draws the stored file of this scenario the same way in each of its three runs at 100x70.
 #
-# Before the fix PiG drew the reopened call fallback with `content` above `path`: the reopened transcript encoded the argument map, which sorts the keys.
+# pig divergence (D645): PiG's extension table is a Go map with no inherited members, so the four paths are files with no known language, and PiG draws their
+# write and read cards themselves (`write out.constructor`, `write Constructor.CONSTRUCTOR`, a blank row under each read header), as both sides draw the cards of
+# the same stored turn with unknown extensions in scenario 75-resume-unknown-extension-path-cards.
 #
 # Crop: the capture runs from the first stored user message (`Prototype path redraw start`) to the last (`Prototype path redraw end`). It holds every card
-# of the stored turn, expanded. The startup header above it and the editor and footer below it belong to other scenarios and are not claimed here. Inside
-# the crop the escaped bytes are compared. The runner's cwd_snapshot_digits step (D2) replaces the digits of the per-run cwd copy by the same number of
-# placeholders; the cards show the stored relative paths, so no row of the crop holds the cwd and the step changes nothing here.
+# of the stored turn, expanded. The startup header above it and the editor and footer below it belong to other scenarios and are not claimed here.
 # The pane is 70 rows: the expanded cards and both markers are then in the visible pane, which the step's wait reads.
+#
+# lint-known-gap: no equality comparator, because the two captures differ by design under divergence D645 (Pi draws its fallbacks, PiG draws the cards);
+# the assertions state each side's rows. The Go oracle test TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi compares every row of both sides.
 
 name = "71-resume-prototype-named-path-cards"
-description = "Reopened write and read cards of paths whose extension is `constructor` or `__proto__` draw Pi's fallbacks from the stored entries."
+description = "Reopened write and read cards of paths whose extension is `constructor` or `__proto__`: PiG draws the cards from the stored entries, Pi draws its fallbacks."
 covers = [
   "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
 ]
@@ -52,7 +55,15 @@ wait_timeout_seconds = 15
 
 [assert]
 both_reach_ready = true
-escaped_output_equal = true
-both_contain = ["path: out.constructor", "path: Constructor.CONSTRUCTOR", "read notes.constructor", "read x.__proto__", "proto line", "write control.ts", "read control.ts"]
-both_not_contain = ["panic:", "goroutine ", "TypeError", "write out.constructor", "Successfully wrote"]
+both_contain = ["read notes.constructor", "read x.__proto__", "proto line", "write control.ts", "read control.ts"]
+both_not_contain = ["panic:", "goroutine ", "TypeError", "Successfully wrote"]
+pig_contains = ["write out.constructor", "write Constructor.CONSTRUCTOR"]
+pig_not_contain = ["path: out.constructor", "path: Constructor.CONSTRUCTOR"]
+pi_contains = ["path: out.constructor", "path: Constructor.CONSTRUCTOR"]
+pi_not_contain = ["write out.constructor", "write Constructor.CONSTRUCTOR"]
 runs = 3
+
+[diverge]
+pig_contains = ["write out.constructor", "write Constructor.CONSTRUCTOR"]
+pi_contains = ["path: out.constructor", "path: Constructor.CONSTRUCTOR"]
+reason = "D645 SCRUTINIZED:approved. Pi looks the file extension up in a plain object, finds a member inherited from Object.prototype for `constructor` and `__proto__`, its highlighter throws and the card falls back to the generic call and result rows; PiG's Go map has no such entry, so the path is a file with no known language and PiG draws the write and read cards themselves."

@@ -115,20 +115,20 @@ func serveMistralFixture(t *testing.T, barrier *readbarrier.Barrier, body, deliv
 		flusher := w.(http.Flusher)
 		flusher.Flush()
 		if hold {
-			if barrier.WaitReading(r.Context(), r.RemoteAddr) && reading != nil {
+			if barrier.WaitReading(r) && reading != nil {
 				reading()
 			}
 			<-r.Context().Done()
 			return
 		}
 		if delivery == "pending" {
-			if barrier.WaitReading(r.Context(), r.RemoteAddr) {
+			if barrier.WaitReading(r) {
 				_, _ = io.WriteString(w, body)
 			}
 			return
 		}
 		for _, piece := range mistralPieces(body, delivery) {
-			if !barrier.WaitReading(r.Context(), r.RemoteAddr) {
+			if !barrier.WaitReading(r) {
 				return
 			}
 			_, _ = io.WriteString(w, piece)

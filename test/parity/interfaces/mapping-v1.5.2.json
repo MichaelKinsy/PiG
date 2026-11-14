@@ -82417,7 +82417,8 @@
         "public-api:ai/compat.go#UnregisterAPIProviders"
       ],
       "evidence": [
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset",
+        "test:coding/unknown_api_refused_test.go#TestRegisteredAPINameRunsItsImplementationUntilUnregistered"
       ]
     },
     {
@@ -82437,7 +82438,8 @@
         "public-api:ai/compat.go#UnregisterAPIProviders"
       ],
       "evidence": [
-        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset"
+        "test:ai/compat_registry_test.go#TestCompatRegistryOrderReplacementAndReset",
+        "test:coding/unknown_api_refused_test.go#TestRegisteredAPINameRunsItsImplementationUntilUnregistered"
       ]
     },
     {
@@ -189501,8 +189503,8 @@
       ],
       "evidence": [
         "test:tui/language_from_path_oracle_test.go#TestLanguageFromPathMatchesPi",
-        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy",
-        "test:tui/highlight_test.go#TestLanguageFromPath"
+        "test:tui/language_from_path_prototype_names_oracle_test.go#TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage",
+        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy"
       ]
     },
     {
@@ -189523,8 +189525,8 @@
       ],
       "evidence": [
         "test:tui/language_from_path_oracle_test.go#TestLanguageFromPathMatchesPi",
-        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy",
-        "test:tui/highlight_test.go#TestLanguageFromPath"
+        "test:tui/language_from_path_prototype_names_oracle_test.go#TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage",
+        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy"
       ]
     },
     {
@@ -303248,7 +303250,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
+        "test:coding/extension/host/subprocess/render_proxy_early_click_test.go#TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder"
       ]
     },
     {
@@ -303270,7 +303272,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
+        "test:coding/extension/host/subprocess/render_proxy_early_click_test.go#TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder"
       ]
     },
     {

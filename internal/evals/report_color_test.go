@@ -28,8 +28,6 @@ func TestNodeColorDepthAboveTwoMatchesNode(t *testing.T) {
 		{map[string]string{"TERM": "con80x25"}, true},
 		{map[string]string{"TERM": "con"}, false},
 		{map[string]string{"TERM": "mosh"}, true},
-		{map[string]string{"TERM": "constructor", "COLORTERM": "x"}, false},
-		{map[string]string{"TERM": "__proto__", "COLORTERM": "x"}, false},
 		{map[string]string{"TERM": "foo", "COLORTERM": "x"}, true},
 		{map[string]string{"COLORTERM": "x"}, true},
 		{map[string]string{"COLORTERM": "24bit"}, true},

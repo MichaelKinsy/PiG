@@ -37,9 +37,9 @@ type azureTicksFile struct {
 
 // TestAzureResponsesTickOrder replays the direct-provider rows of Pi's Azure OpenAI Responses tick oracle. A FIFO chain that restarts at each delivery counts
 // the microtask generations between deliveries; the first gap starts at the synchronous onResponse hook.
-// upstream: packages/ai/src/api/azure-openai-responses.ts:127-131 (`await options?.onResponse?.(...)`, then push start, then `await processResponsesStream`);
-// upstream: packages/ai/src/api/openai-responses-shared.ts:432 (`for await` over the SDK Stream); openai 6.40.0 core/streaming.mjs:28-48,191-245 and
-// internal/shims.mjs:41-43 (native ReadableStream iterator over undici's body).
+// upstream: packages/ai/src/api/azure-openai-responses.ts:99-102 (`await options?.onResponse?.(...)`, then push start, then `await processResponsesStream`);
+// upstream: packages/ai/src/api/openai-responses-shared.ts:671 (`for await` over the SDK Stream); openai 7.19.0 core/streaming.mjs:76-207,475-594 and
+// internal/shims.mjs:46-48 (native ReadableStream iterator over undici's body).
 func TestAzureResponsesTickOrder(t *testing.T) {
 	data, err := os.ReadFile(azureTicksOracle)
 	if err != nil {
@@ -118,7 +118,7 @@ func azureTickGaps(t *testing.T, barrier *readbarrier.Barrier, fixture string, r
 		}
 		// The probe's timer between records always outlasts the client's microtask drain: write only once the client is reading the socket again.
 		for _, record := range records {
-			if !barrier.WaitReading(r.Context(), r.RemoteAddr) {
+			if !barrier.WaitReading(r) {
 				return
 			}
 			_, _ = io.WriteString(w, record)

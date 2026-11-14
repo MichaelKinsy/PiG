@@ -222,3 +222,65 @@ func TestRendererClickOutsideTheRegionFallsThrough(t *testing.T) {
 		})
 	}
 }
+
+// TestRendererClickBeforeTheFirstFrameAcrossSDKs: Pi runs a renderer inside the render that builds the message or entry, so the card takes a click from
+// the first frame that shows it (custom-message.ts, custom-entry.ts). A subprocess SDK's card is a placeholder until the extension answers its first
+// render. A click made on the frame that first shows the card is counted by the card once it is drawn, with the click's coordinates, in every SDK
+// and for a message and an entry alike.
+func TestRendererClickBeforeTheFirstFrameAcrossSDKs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Parallel()
+	for _, tc := range append(allHarnessCases(), packedSDKHarnessCases()...) {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			for _, kind := range []struct {
+				name    string
+				subject string
+				build   func() extension.Component
+			}{
+				{"message", "clickcard:body", func() extension.Component {
+					renderer := h.runner.MessageRenderer("conformance-click-message")
+					if renderer == nil {
+						t.Fatal("conformance-click-message has no renderer")
+					}
+					return renderer(extension.CustomMessage{CustomType: "conformance-click-message", Content: "body", Display: true}, extension.MessageRenderOptions{Identity: extension.NewRenderIdentity()}, nil)
+				}},
+				{"entry", "clickentry:payload", func() extension.Component {
+					renderer := h.runner.EntryRenderer("conformance-click-entry")
+					if renderer == nil {
+						t.Fatal("conformance-click-entry has no renderer")
+					}
+					return renderer(extension.CustomEntry{CustomType: "conformance-click-entry", Data: "payload"}, extension.EntryRenderOptions{Identity: extension.NewRenderIdentity()}, nil)
+				}},
+			} {
+				t.Run(kind.name, func(t *testing.T) {
+					card, ok := kind.build().(interface {
+						Render(int) []string
+						HandleMouse(tui.TuiMouseEvent) *tui.TuiMouseDispatchResult
+					})
+					if !ok {
+						t.Fatal("the renderer's component takes no mouse")
+					}
+					// The frame that first shows the card: a subprocess SDK's proxy asks the extension here and paints its placeholder.
+					card.Render(72)
+					card.HandleMouse(mouseEvent(tui.MouseClick, 5, 0))
+					want := kind.subject + ":clicks=1:last=5,0:expanded=false"
+					waitFor(t, func() bool {
+						lines := card.Render(72)
+						return len(lines) == 1 && strings.TrimRight(lines[0], " ") == want
+					})
+				})
+			}
+		})
+	}
+}

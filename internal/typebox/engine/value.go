@@ -192,7 +192,8 @@ func jsEqual(a, b any) bool {
 }
 
 // hasKey is Guard.HasPropertyKey: `key in value` (an own member for the unsafe names, whose prototype members are
-// ignored), which throws for a value that is not an object.
+// ignored), which throws for a value that is not an object. A name that is a member of Object.prototype is found as TypeBox finds it: the schema an
+// extension registers is sent to the provider, so every SDK builds the schema TypeBox builds in the Node SDK.
 func hasKey(value any, key string) bool {
 	switch v := value.(type) {
 	case *Obj:

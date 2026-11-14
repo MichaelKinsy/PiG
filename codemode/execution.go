@@ -361,7 +361,7 @@ func parseStoreWrites(writes string) (StoreWrites, error) {
 		if err != nil {
 			return StoreWrites{}, err
 		}
-		// execution.ts assigns `writes.set[key] = value`, which sets the prototype of `set` for `__proto__` and creates no property.
+		// The key `__proto__` is dropped, as execution.ts drops it (`writes.set[key] = value` sets a prototype and creates no property): the keys become members of the JSON objects that extensions and Pi read (the codemode-store session entry, the durable store document), where an own `__proto__` member is what a naive deep merge turns into prototype pollution.
 		if key != "__proto__" {
 			if _, ok := result.Set[key]; !ok {
 				result.setOrder = append(result.setOrder, key)
