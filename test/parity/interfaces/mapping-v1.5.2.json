@@ -36860,7 +36860,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -36882,7 +36882,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -38386,7 +38386,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -38408,7 +38408,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -39277,7 +39277,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -39299,7 +39299,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -41299,7 +41299,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -41321,7 +41321,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -42738,7 +42738,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -42760,7 +42760,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -44053,7 +44053,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -44075,7 +44075,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -45241,7 +45241,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -45263,7 +45263,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -46036,7 +46036,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -46058,7 +46058,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -47483,7 +47483,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -47505,7 +47505,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -48467,7 +48467,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -48489,7 +48489,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -79399,7 +79399,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -79421,7 +79421,7 @@
       "evidence": [
         "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
+        "test:ai/empty_api_refused_test.go#TestEmptyAPINameIsRefusedAtEveryStreamEntry"
       ]
     },
     {
@@ -163593,7 +163593,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/state_push_partial_test.go#TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes"
+        "test:test/extension-conformance/lone_surrogate_passthrough_test.go#TestConformance_LoneSurrogatePassThroughAcrossSDKs"
       ]
     },
     {
@@ -163681,7 +163681,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:coding/extension/host/inproc/before_agent_start_render_test.go#TestBeforeAgentStartPromptFollowsEveryOptionsEdit",
-        "test:coding/session_prompt_options_version_test.go#TestSystemPromptOptionsVersionSeesEveryWrite"
+        "test:coding/extension/host/subprocess/prompt_options_surrogate_test.go#TestPromptOptionEditsKeepALoneSurrogate"
       ]
     },
     {
@@ -184477,7 +184477,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestUpstreamRunnerProviderRegistration",
         "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKProviderConfigWithImageAndClassifierModels",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeProviderConfigWithImageAndClassifierModels"
+        "test:test/extension-conformance/lone_surrogate_passthrough_test.go#TestConformance_LoneSurrogatePassThroughAcrossSDKs"
       ]
     },
     {
@@ -274068,9 +274068,9 @@
         "call:coding/mcpext/extension.go#Extension.registerTools"
       ],
       "evidence": [
+        "test:coding/mcpext/servers_section_oracle_test.go#TestMCPServersSectionMatchesPiOracle",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence",
-        "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthAcceptsAPastedRedirectURLWhenTheBrowserCannotReachTheCallback"
+        "test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence"
       ]
     },
     {
@@ -275128,9 +275128,9 @@
         "call:coding/mcpext/manager.go#describeTransport"
       ],
       "evidence": [
+        "test:coding/mcpext/servers_section_oracle_test.go#TestMCPServersSectionMatchesPiOracle",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIReplicatedStateAndLateRegistrationGo",
-        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKMcpServerRegistration",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeMcpServerRegistration"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKMcpServerRegistration"
       ]
     },
     {
@@ -275170,9 +275170,9 @@
         "call:coding/mcpext/extension.go#Extension.registerTools"
       ],
       "evidence": [
+        "test:coding/mcpext/servers_section_oracle_test.go#TestMCPServersSectionMatchesPiOracle",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence",
-        "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthAcceptsAPastedRedirectURLWhenTheBrowserCannotReachTheCallback"
+        "test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence"
       ]
     },
     {
@@ -315578,7 +315578,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
-        "test:tui/tui_input_pipeline_test.go#TestAltScreenColorSchemeNotificationsFollowTheRendererLifecycle"
+        "test:tui/terminal_writer_ownership_test.go#TestOneGoroutineAtATimeIsInTheTerminalWriter"
       ]
     },
     {
@@ -315600,7 +315600,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
-        "test:tui/tui_input_pipeline_test.go#TestAltScreenColorSchemeNotificationsFollowTheRendererLifecycle"
+        "test:tui/terminal_writer_ownership_test.go#TestOneGoroutineAtATimeIsInTheTerminalWriter"
       ]
     },
     {
@@ -317258,7 +317258,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
-        "test:tui/tui_input_pipeline_test.go#TestAltScreenColorSchemeNotificationsFollowTheRendererLifecycle"
+        "test:tui/terminal_writer_ownership_test.go#TestOneGoroutineAtATimeIsInTheTerminalWriter"
       ]
     },
     {
@@ -317280,7 +317280,7 @@
       "evidence": [
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
-        "test:tui/tui_input_pipeline_test.go#TestAltScreenColorSchemeNotificationsFollowTheRendererLifecycle"
+        "test:tui/terminal_writer_ownership_test.go#TestOneGoroutineAtATimeIsInTheTerminalWriter"
       ]
     },
     {

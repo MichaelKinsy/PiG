@@ -524,7 +524,7 @@ func extensionLoadDiagnostics(errs []error) []codingagent.AgentSessionRuntimeDia
 		if warning, ok := errors.AsType[*subprocess.FusedSourceWarning](err); ok {
 			// pig additive (D31): the fused member is loaded; the warning says its source is not what runs.
 			loadErr, _ := errors.AsType[*subprocess.ExtensionLoadError](err)
-			diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: fmt.Sprintf(`Extension "%s": %s`, loadErr.Name, warning.Message)})
+			diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: `Extension "` + loadErr.Name + `": ` + warning.Message})
 			continue
 		}
 		if loadErr, ok := errors.AsType[*subprocess.ExtensionLoadError](err); ok && loadErr.Path != "" {

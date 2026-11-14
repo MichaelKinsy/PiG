@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -254,98 +253,5 @@ func TestStdinBufferEscapeBoundaries(t *testing.T) {
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("StdinBuffer input %q = %q want %q", tc.in, got, tc.want)
 		}
-	}
-}
-
-// TestThinkingCycleLevels verifies the cycling logic used by cycleThinkingLevel.
-// (updated: "minimal" added between "off" and "low").
-func TestThinkingCycleLevels(t *testing.T) {
-	// Full model (MaxThinking = High) should cycle off→minimal→low→medium→high→off.
-	fullModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}
-	maxIdx := maxThinkingIndex(fullModel)
-	if maxIdx != 4 {
-		t.Fatalf("full model maxIdx: got %d want 4", maxIdx)
-	}
-
-	levels := levelsForModel(fullModel)
-	cur := 0 // "off"
-	wants := []string{"minimal", "low", "medium", "high", "off"}
-	for _, want := range wants {
-		next := (cur + 1) % (maxIdx + 1)
-		got := levels[next]
-		if got != want {
-			t.Errorf("cycle step: got %q want %q", got, want)
-		}
-		cur = next
-	}
-}
-
-func TestThinkingCycleLevels_XHigh(t *testing.T) {
-	// XHigh model cycles through all 6 levels including "xhigh".
-	xh := "xhigh"
-	xhighModel := &ai.Model{
-		Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelXHigh},
-		ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingXHigh: &xh},
-	}
-	maxIdx := maxThinkingIndex(xhighModel)
-	if maxIdx != 5 {
-		t.Fatalf("xhigh model maxIdx: got %d want 5", maxIdx)
-	}
-	levels := levelsForModel(xhighModel)
-	cur := 0
-	wants := []string{"minimal", "low", "medium", "high", "xhigh", "off"}
-	for _, want := range wants {
-		next := (cur + 1) % (maxIdx + 1)
-		if levels[next] != want {
-			t.Errorf("xhigh cycle step: got %q want %q", levels[next], want)
-		}
-		cur = next
-	}
-}
-
-func TestThinkingCycleLevels_NoSupport(t *testing.T) {
-	// Model with no MaxThinking: maxIdx = 0 → no cycling.
-	noneModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ""}}
-	if maxThinkingIndex(noneModel) != 0 {
-		t.Error("non-reasoning model: maxIdx should be 0")
-	}
-	if maxThinkingIndex(nil) != 0 {
-		t.Error("nil model: maxIdx should be 0")
-	}
-}
-
-func TestThinkingCycleLevels_Capped(t *testing.T) {
-	medModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelMedium}}
-	maxIdx := maxThinkingIndex(medModel)
-	if maxIdx != 3 {
-		t.Fatalf("medium model maxIdx: got %d want 3", maxIdx)
-	}
-	levels := levelsForModel(medModel)
-	cur := 0
-	wants := []string{"minimal", "low", "medium", "off"}
-	for _, want := range wants {
-		next := (cur + 1) % (maxIdx + 1)
-		if levels[next] != want {
-			t.Errorf("capped step: got %q want %q", levels[next], want)
-		}
-		cur = next
-	}
-}
-
-func TestThinkingCycleLevels_MinimalOnly(t *testing.T) {
-	// Minimal-cap model should cycle off→minimal→off.
-	minModel := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelMinimal}}
-	maxIdx := maxThinkingIndex(minModel)
-	if maxIdx != 1 {
-		t.Fatalf("minimal model maxIdx: got %d want 1", maxIdx)
-	}
-	levels := levelsForModel(minModel)
-	// One step forward from off: minimal.
-	if levels[(0+1)%(maxIdx+1)] != "minimal" {
-		t.Errorf("minimal model first cycle: got %q want \"minimal\"", levels[1])
-	}
-	// One more step: wraps back to off.
-	if levels[(1+1)%(maxIdx+1)] != "off" {
-		t.Errorf("minimal model wrap: got %q want \"off\"", levels[0])
 	}
 }

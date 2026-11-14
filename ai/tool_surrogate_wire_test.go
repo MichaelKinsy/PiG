@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"maps"
 	"net/http"
 	"regexp"
-	"slices"
 	"strings"
 	"testing"
 
@@ -97,19 +95,30 @@ func toolSurrogateRows() []toolSurrogateRow {
 
 // toolSurrogateResult runs a row's request through transport and returns the message the stream ends with.
 func toolSurrogateResult(t *testing.T, row toolSurrogateRow, transport http.RoundTripper) *ai.AssistantMessage {
+	return toolSurrogateStream(t, row, transport).Result()
+}
+
+// toolSurrogateStream runs a row's request through transport and returns its stream.
+func toolSurrogateStream(t *testing.T, row toolSurrogateRow, transport http.RoundTripper) *ai.AssistantMessageEventStream {
 	t.Helper()
 	model := &ai.Model{ID: row.ID, DisplayName: row.ID, Input: []string{"text"}, Capabilities: ai.ModelCapabilities{ContextWindow: row.ContextWindow, MaxOutputTokens: 16384},
 		ProviderMeta: ai.ProviderMetadata{API: ai.API(row.API), ProviderID: row.Provider, BaseURL: row.BaseURL}}
 	run := map[string]func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error){
 		"anthropic-messages": ai.StreamAnthropic, "openai-completions": ai.StreamOpenAICompletions, "openai-responses": ai.StreamOpenAIResponses,
-		"azure-openai-responses": ai.StreamAzureOpenAIResponses, "google-generative-ai": ai.StreamGoogle, "mistral-conversations": ai.StreamMistral,
+		"azure-openai-responses": ai.StreamAzureOpenAIResponses, "google-generative-ai": ai.StreamGoogle, "mistral-conversations": ai.StreamMistral, "openai-codex-responses": ai.StreamOpenAICodexResponses,
 	}[row.API]
+	if row.API == "pi-messages" {
+		provider := ai.NewPiMessagesProvider(ai.PiMessagesConfig{BaseURL: row.BaseURL, APIKey: row.APIKey, Model: row.ID, ProviderID: row.Provider})
+		t.Cleanup(func() { _ = provider.Close() })
+		run = func(ctx context.Context, _ *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return provider.Stream(ctx, transcript, options)
+		}
+	}
 	if row.Compat != nil {
 		model.ProviderMeta.Compat = &ai.OpenAICompat{}
 		if err := json.Unmarshal(row.Compat, model.ProviderMeta.Compat); err != nil {
 			t.Fatal(err)
 		}
-		withHighUnits(model.ProviderMeta.Compat.OpenRouterRouting)
 	}
 	options := ai.StreamOptions{APIKey: row.APIKey, MaxRetries: new(int), Fetch: &http.Client{Transport: transport}}
 	if row.Hook {
@@ -119,7 +128,7 @@ func toolSurrogateResult(t *testing.T, row toolSurrogateRow, transport http.Roun
 	if err != nil {
 		t.Fatal(err)
 	}
-	return stream.Result()
+	return stream
 }
 
 // A tool reaches the wire of every API kind as Pi sends it when its strings hold a lone UTF-16 surrogate: in the tools a request declares, in a
@@ -145,31 +154,10 @@ func TestToolLoneSurrogatesReachTheWireAsPi(t *testing.T) {
 	}
 }
 
-// withHighUnits writes the three bytes of U+D83D in the place of each U+FFFD of value's strings and member names. Current behavior: the decode
-// of ai.OpenAICompat is encoding/json's, which reads a lone unit as U+FFFD where JSON.parse keeps it, so the test puts the unit back after the
-// decode; a caller that builds the compat's maps in Go can hold the unit.
-func withHighUnits(value any) any {
-	const unit = "\xed\xa0\xbd"
-	switch value := value.(type) {
-	case string:
-		return strings.ReplaceAll(value, "\uFFFD", unit)
-	case []any:
-		for i, item := range value {
-			value[i] = withHighUnits(item)
-		}
-	case map[string]any:
-		for _, name := range slices.Collect(maps.Keys(value)) {
-			member := withHighUnits(value[name])
-			delete(value, name)
-			value[strings.ReplaceAll(name, "\uFFFD", unit)] = member
-		}
-	}
-	return value
-}
-
 // pi: packages/ai/src/api/openai-completions.ts:979-980 hands model.compat.openRouterRouting on as the request's provider member, as it is.
 // PiG writes that member through a marshaler of its own when the compat lists the object's members in an order (ai.compatObject), so a lone
-// UTF-16 surrogate in a value, in an array, in a nested object and in a member name reaches the wire as the bytes Pi posts.
+// UTF-16 surrogate in a value, in an array, in a nested object and in a member name reaches the wire as the bytes Pi posts. The compat is
+// decoded from JSON, as models.json and an extension's registration give it: the decode keeps the unit, as JSON.parse does.
 func TestCompatObjectLoneSurrogatesReachTheWireAsPi(t *testing.T) {
 	row := toolSurrogateRow{Name: "openRouterRouting", API: "openai-completions", ID: "m", Provider: "custom", BaseURL: "http://127.0.0.1:9/v1", APIKey: "k", ContextWindow: 128000,
 		Context: json.RawMessage(`{"systemPrompt":"s","tools":[],"messages":[{"role":"user","content":"go","timestamp":1}]}`),
@@ -267,5 +255,37 @@ func TestCalledToolNameKeepsALoneSurrogateOfTheStream(t *testing.T) {
 				t.Errorf("the message does not name the called tool as Pi's does (%s): %s", piName[1], encoded)
 			}
 		})
+	}
+}
+
+// pi: packages/ai/src/utils/constrained-sampling.ts makeStrictJsonSchema copies the schema of a tool with structuredClone, which keeps every
+// string as it is. PiG copies it through its JSON form, so a lone UTF-16 surrogate in a description or an enum value of a tool that asks
+// for strict sampling reaches the wire of every API kind as the bytes Pi posts.
+func TestStrictToolSchemaLoneSurrogatesReachTheWireAsPi(t *testing.T) {
+	var rows []toolSurrogateRow
+	for _, shape := range toolSurrogateShapes() {
+		shape.Name += ": a tool that prefers strict sampling"
+		shape.Context = json.RawMessage(`{"systemPrompt":"s","tools":[{"name":"N","description":"d","parameters":{"type":"object","properties":{"p":{"type":"string","description":"P[` + highUnit + `]","enum":["E[` + highUnit + `]"]}},"required":["p"],"additionalProperties":false},"constrainedSampling":{"type":"json_schema","strict":"prefer"}}],"messages":[{"role":"user","content":"go","timestamp":1}]}`)
+		rows = append(rows, shape)
+	}
+	want := piPayloads(t, "testdata/tool_surrogate_wire_body.mjs", rows)
+	strict := 0
+	for i, row := range rows {
+		if strings.Contains(want[i], `"strict":true`) {
+			strict++
+		}
+		t.Run(row.Name, func(t *testing.T) {
+			if !strings.Contains(want[i], "E[") {
+				t.Fatalf("the body of Pi does not hold the enum value: %s", want[i])
+			}
+			capture := &wireCapture{}
+			toolSurrogateResult(t, row, capture)
+			if difference := wireDifference(string(capture.body), want[i]); difference != "" {
+				t.Error(difference)
+			}
+		})
+	}
+	if strict < 2 {
+		t.Fatalf("Pi asked for strict sampling in %d bodies, want at least 2", strict)
 	}
 }

@@ -1,0 +1,156 @@
+from = "1.5.2+3035f08d"
+to = "1.5.2+c815ddaa"
+
+[[files]]
+path = "apps/p3/docs/archive/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e4f1e291d (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/names.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/overview.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/01-base-and-sessions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/02-apply.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/03-transcript.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/04-admission.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/05-people-and-apps.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/06-locks.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/07-models.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/08-environments.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/09-prompt.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/10-agents.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/11-questions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/12-files.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/13-mcp.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/14-views.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/15-ui.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/16-org.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "4e1f16c5e, e4f1e291d, c815ddaa3 (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e4f1e291d (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/workflow.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e4f1e291d (4e1f16c5e, e4f1e291d, c815ddaa3: decisions, slice reading lists, names; only the listed commits touching this path). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at c815ddaa37; no text is quoted here."

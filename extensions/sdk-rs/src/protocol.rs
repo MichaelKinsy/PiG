@@ -1662,10 +1662,12 @@ pub(crate) fn on_deep_stack<R: Send>(decode: impl FnOnce() -> R + Send) -> io::R
 /// Decodes one frame body. serde_json refuses an unpaired surrogate, which every other runtime accepts, and refusing a frame ends the
 /// connection (the host sees EOF and the extension is gone). A JavaScript string may carry one (Pi keeps it as the UTF-16 unit) and the
 /// host sends it as a `\ud800` escape. The typed UTF-16 fields (`JsString`) take it losslessly; a `Value` or `String` position cannot
-/// hold it, so a refused frame is decoded again with each unpaired surrogate written as U+FFFD, the replacement Go's decoder makes in a
-/// `string`. A frame that decodes the first time is untouched, so the lossless fields keep their units.
+/// hold it, so a refused frame is decoded again with each unpaired surrogate written as U+FFFD (divergence D648: a Rust extension holds
+/// U+FFFD where Pi's handler holds the unit, and writes U+FFFD back when it echoes the text). A frame that decodes the first time is
+/// untouched, so the lossless fields keep their units.
 fn decode_frame(buf: &[u8]) -> io::Result<Envelope<Box<serde_json::value::RawValue>>> {
     match serde_json::from_slice(buf) {
+        // pig divergence (D648): a lone UTF-16 surrogate becomes U+FFFD here, where Pi's JavaScript string keeps the unit; the lossless Rust value type removes it.
         Err(err) if err.is_data() || err.is_syntax() => {
             match replace_unpaired_surrogate_escapes(buf) {
                 Some(repaired) => serde_json::from_slice(&repaired),
@@ -1720,6 +1722,7 @@ pub(crate) fn decode_json_str<T: serde::de::DeserializeOwned + Send>(
         // A value cut out of a frame (a request's arguments, a host call's result) may spell an unpaired surrogate as an escape, which
         // `decode_frame` let through inside the raw value. Rust text cannot hold the unit, so a refused value is decoded again with each
         // one written as U+FFFD, as `decode_frame` does for the frame; one that decodes the first time keeps its typed UTF-16 fields.
+        // pig divergence (D648): a lone UTF-16 surrogate becomes U+FFFD here, where Pi's JavaScript string keeps the unit.
         Err(err) if err.is_data() || err.is_syntax() => {
             match replace_unpaired_surrogate_escapes(text.as_bytes())
                 .and_then(|repaired| String::from_utf8(repaired).ok())

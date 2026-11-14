@@ -218,3 +218,20 @@ patch("3345c2925", "pi-coding-agent/core/agent-session.js", [
 packageFile("49fe0a237", "pi-coding-agent/schemas/models.schema.json", [messageThreadsDefault]);
 // END backport 49fe0a237
 
+// BEGIN backport 3567987250
+// 3567987250: pi-mcp exports mcpServerSummary (a package the oracle installs nested in the coding agent, patched like the four others).
+patch("3567987250", "pi-mcp/naming.js", [
+    [`export function mcpNamespace(server) {
+    return \`mcp__\${server.replace(/-/g, "_")}\`;
+}
+`, `export function mcpNamespace(server) {
+    return \`mcp__\${server.replace(/-/g, "_")}\`;
+}
+${note("3567987250").trim()}
+export function mcpServerSummary(description, instructions) {
+    return ((description?.trim() || instructions?.trim() || "").split("\\n", 1)[0] ?? "").trim();
+}
+`],
+]);
+// END backport 3567987250
+

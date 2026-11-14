@@ -181,6 +181,9 @@ jobs:
       shards-blocked: ${{ steps.shards.outputs.blocked }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
+    env:
+      PIG_REQUIRE_PI_ORACLE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -375,6 +378,9 @@ jobs:
     if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
+    env:
+      PIG_REQUIRE_PI_ORACLE: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -664,6 +670,9 @@ jobs:
     if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
+    env:
+      PIG_REQUIRE_PI_ORACLE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

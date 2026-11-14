@@ -114,11 +114,10 @@ func nextCycleIndex(currentIndex, length int, backward bool) int {
 
 // CycleThinkingLevel advances through supported levels, returning an empty level for a non-reasoning model.
 func (s *Session) CycleThinkingLevel(options ...ModelMutationOptions) (ai.ModelThinkingLevel, error) {
-	if !s.SupportsThinking() {
+	next, ok := ai.NextThinkingLevel(s.Model(), s.ThinkingLevel())
+	if !ok {
 		return "", nil
 	}
-	levels := s.AvailableThinkingLevels()
-	next := levels[(slices.Index(levels, s.ThinkingLevel())+1)%len(levels)]
 	if err := s.SetThinkingLevel(next, options...); err != nil {
 		return "", err
 	}

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -57,6 +58,7 @@ func BenchmarkMountImage(b *testing.B) {
 			Write:        func(data string) { written += len(data) },
 			Placeholders: true,
 			ToPNG:        func([]byte) []byte { return converted.Bytes() },
+			Decode:       photonimage.Decode,
 			Go:           func(fn func()) { work = append(work, fn) },
 		}
 	}

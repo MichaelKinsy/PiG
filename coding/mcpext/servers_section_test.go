@@ -134,3 +134,20 @@ func TestMCPServersSectionSortsServersByLocaleCompare(t *testing.T) {
 		t.Fatalf("servers = %q, want %q", got, want)
 	}
 }
+
+// The section's summary is mcpServerSummary (packages/mcp/src/naming.ts, Pi 3567987250): instructions that start with a blank line
+// give the first non-blank line, which the coding agent's own first-line reading (before that commit) left empty.
+func TestMCPServersSectionSummarizesInstructionsThatStartWithABlankLine(t *testing.T) {
+	web := sectionServer("web", "", "")
+	web.Instructions = "\n  Web search for current information.\nDetails."
+	blank := sectionServer("blank", "  ", "")
+	blank.Instructions = "  \n "
+	section, ok := mcpext.RenderServersSection([]mcpext.McpServerListing{web, blank})
+	if !ok {
+		t.Fatal("no section")
+	}
+	want := []string{"- mcp__blank (codemode)", "- mcp__web (codemode): Web search for current information."}
+	if got := strings.Split(section, "\n")[1:]; !slices.Equal(got, want) {
+		t.Fatalf("lines = %q, want %q", got, want)
+	}
+}

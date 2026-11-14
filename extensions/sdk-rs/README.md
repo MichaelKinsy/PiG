@@ -52,6 +52,8 @@ Keep the subscription alive until you want to unsubscribe. Return promptly. The 
 
 `JsString::from_units` and `as_units` preserve every unit. `From<&str>` and `From<String>` accept ordinary Rust strings. `to_string` returns an error for unmatched units. `to_string_lossy` explicitly replaces unmatched units for display.
 
+A `String`, `&str` or `serde_json::Value` cannot hold a lone UTF-16 surrogate. A Rust extension receives U+FFFD for a lone surrogate in any frame position that is not a `JsString` and writes it back when it echoes the text, since v0.5.0 (divergence D648); the other SDKs and Pi keep the unit. Use `JsString` where the unit must survive.
+
 Serialize `JsString` directly with `serde_json::to_string` or `serde_json::to_vec`. The result is valid JSON with ordinary `\u` escapes for lone surrogates. Do not first convert it through `serde_json::Value` or `json!`: `Value::String` cannot hold a lone surrogate. The SDK's typed terminal and editor host calls avoid that conversion internally.
 
 ## Mouse input

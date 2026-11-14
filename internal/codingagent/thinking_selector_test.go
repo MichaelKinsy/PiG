@@ -381,3 +381,35 @@ func TestCycleThinkingLevelTwiceBeforeSettlingAdvancesTwice(t *testing.T) {
 		t.Fatalf("two cycles from medium: ui %q, agent %q; want off", m.thinkingLevel, m.agent.ThinkingLevel())
 	}
 }
+
+// pi: packages/coding-agent/src/core/agent-session.ts cycleThinkingLevel (:2594-2604) and interactive-mode.ts cycleThinkingLevel (:4487), which calls it.
+// The next level is levels[(indexOf(current)+1) % levels.length]: from a level the model does not list (off on a model whose thinkingLevelMap has
+// off: null) indexOf is -1 and the shortcut goes to levels[0], the lowest level of the model. A model is a thinking model when it reasons
+// (supportsThinking: model.reasoning), whatever its highest level.
+func TestCycleThinkingLevelGoesToTheLowestLevelOfTheModel(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		model *ai.Model
+		start ai.ModelThinkingLevel
+		want  ai.ModelThinkingLevel
+	}{
+		{"off listed absent", &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}, ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingOff: nil}}, ai.ThinkingOff, ai.ThinkingMinimal},
+		{"off listed absent, forced adaptive shape", &ai.Model{ProviderMeta: ai.ProviderMetadata{Reasoning: true}, ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingOff: nil}}, ai.ThinkingOff, ai.ThinkingMinimal},
+		{"off listed", &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}}, ai.ThinkingOff, ai.ThinkingMinimal},
+		{"reasoning flag only", &ai.Model{ProviderMeta: ai.ProviderMetadata{Reasoning: true}}, ai.ThinkingMedium, ai.ThinkingHigh},
+		{"wraps to the first level", &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh}, ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingOff: nil}}, ai.ThinkingHigh, ai.ThinkingMinimal},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newThinkingTestMode(t)
+			m.opts.Model = tc.model
+			m.agent.SetModel(tc.model)
+			m.agent.SetThinkingLevel(tc.start)
+			settle := startOwnerLoop(t, m)
+			m.cycleThinkingLevel()
+			settle()
+			if m.agent.ThinkingLevel() != tc.want || m.thinkingLevel != string(tc.want) {
+				t.Fatalf("from %q: agent %q, ui %q; want %q", tc.start, m.agent.ThinkingLevel(), m.thinkingLevel, tc.want)
+			}
+		})
+	}
+}

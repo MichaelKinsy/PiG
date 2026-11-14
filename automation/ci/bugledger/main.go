@@ -87,6 +87,9 @@ func runWith(root, since string, check, strict, refresh bool) error {
 			keepPrior(l, prior.Entries, root, moved)
 		}
 	}
+	if err := fillInstants(root, l.Entries); err != nil {
+		return err
+	}
 	canonical(l)
 	data, err := marshalJSON(l)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // ConvertToLLM converts AgentMessages to the wire format expected by the AI provider (convertToLlm, messages.ts:148).
@@ -85,7 +86,7 @@ func customMessageContent(content any) (ai.UserContentBlocks, bool) {
 	case []ai.UserContentBlock:
 		return ai.UserContentBlocks(content), true
 	}
-	raw, err := json.Marshal(map[string]any{"role": RoleUser, "content": content})
+	raw, err := jsstring.MarshalKeepingSurrogates(map[string]any{"role": RoleUser, "content": content})
 	if err != nil {
 		return nil, false
 	}

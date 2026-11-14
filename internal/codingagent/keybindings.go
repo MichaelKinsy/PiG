@@ -546,6 +546,7 @@ func (km *KeybindingsManager) Save(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	return atomicfile.WriteFile(path, buf.Bytes(), 0o644)
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
@@ -465,6 +466,7 @@ func writeStoredModels(path string, entries []storedModels, root modelsRoot) err
 	if err := json.Indent(&indented, canonical, "", "  "); err != nil {
 		return fmt.Errorf("models store: encode: %w", err)
 	}
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	if err := atomicfile.WriteFile(path, indented.Bytes(), 0o600); err != nil {
 		return nodeerrno.FromPathError(err)
 	}
@@ -519,7 +521,14 @@ func marshalStoreJSON(value any) ([]byte, error) {
 	if err := encoder.Encode(value); err != nil {
 		return nil, fmt.Errorf("models store: encode: %w", err)
 	}
-	return bytes.TrimSuffix(buffer.Bytes(), []byte("\n")), nil
+	encoded := bytes.TrimSuffix(buffer.Bytes(), []byte("\n"))
+	// encoding/json writes each byte of a lone UTF-16 surrogate as U+FFFD; JSON.stringify writes the unit as its escape.
+	if bytes.Contains(encoded, []byte("\xef\xbf\xbd")) {
+		if kept, err := jsstring.MarshalKeepingSurrogates(value); err == nil && jsstring.HasSurrogateEscape(kept) {
+			return kept, nil
+		}
+	}
+	return encoded, nil
 }
 
 // withSidecarLock holds the shared Pi directory lease, checks it once acquired as withLockAsync does (compromise, then abort), and hands fn the lease's compromise check, withLockAsync's throwIfCompromised. Like FileAuthStorageBackend.withLockAsync (auth-storage.ts:191-198), it ignores a failure to release the lease.

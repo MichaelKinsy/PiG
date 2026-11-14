@@ -280,9 +280,9 @@ func TestNativeProviderLoginOffersDeclaredMethods(t *testing.T) {
 			check("refreshed")
 
 			done := dispatchLogin(t, m, "SSO Proxy")
-			waitForRender(t, m.editorContainer, "Select authentication method for SSO Proxy:")
-			waitForRender(t, m.editorContainer, "Sign in with SSO Proxy")
-			if got := plainRender(m.editorContainer); strings.Contains(got, "Sign in with an account") {
+			waitForLoopRender(t, m, m.editorContainer, "Select authentication method for SSO Proxy:")
+			waitForLoopRender(t, m, m.editorContainer, "Sign in with SSO Proxy")
+			if got := renderOnLoop(t, m, m.editorContainer); strings.Contains(got, "Sign in with an account") {
 				t.Fatalf("the auth-type menu shows the generic account label instead of the flow's loginLabel:\n%s", got)
 			}
 			deliverModalInput(t, m, []byte("\x1b"))
@@ -299,10 +299,10 @@ func TestNativeProviderOAuthLoginSelectPrompt(t *testing.T) {
 		t.Run(language+"/choose", func(t *testing.T) {
 			m := newNativeLoginMode(t, language)
 			done := dispatchLogin(t, m, "SSO Proxy")
-			waitForRender(t, m.editorContainer, "Sign in with SSO Proxy")
+			waitForLoopRender(t, m, m.editorContainer, "Sign in with SSO Proxy")
 			deliverModalInput(t, m, []byte("\r"))
-			waitForRender(t, m.editorContainer, "Choose a team:")
-			waitForRender(t, m.editorContainer, "Blue team")
+			waitForLoopRender(t, m, m.editorContainer, "Choose a team:")
+			waitForLoopRender(t, m, m.editorContainer, "Blue team")
 			deliverModalInput(t, m, []byte("\x1b[B"))
 			deliverModalInput(t, m, []byte("\r"))
 			awaitLogin(t, done)
@@ -322,12 +322,12 @@ func TestNativeProviderOAuthLoginSelectPrompt(t *testing.T) {
 		t.Run(language+"/cancel", func(t *testing.T) {
 			m := newNativeLoginMode(t, language)
 			done := dispatchLogin(t, m, "SSO Proxy")
-			waitForRender(t, m.editorContainer, "Sign in with SSO Proxy")
+			waitForLoopRender(t, m, m.editorContainer, "Sign in with SSO Proxy")
 			deliverModalInput(t, m, []byte("\r"))
-			waitForRender(t, m.editorContainer, "Choose a team:")
+			waitForLoopRender(t, m, m.editorContainer, "Choose a team:")
 			deliverModalInput(t, m, []byte("\x1b"))
-			waitForRender(t, m.editorContainer, "Select authentication method for SSO Proxy:")
-			if got := plainRender(m.chatContainer); strings.Contains(got, "Failed") {
+			waitForLoopRender(t, m, m.editorContainer, "Select authentication method for SSO Proxy:")
+			if got := renderOnLoop(t, m, m.chatContainer); strings.Contains(got, "Failed") {
 				t.Fatalf("a cancelled select reported a failure:\n%s", got)
 			}
 			deliverModalInput(t, m, []byte("\x1b"))
@@ -348,15 +348,15 @@ func TestNativeProviderAPIKeyLoginRunsDeclaredLogin(t *testing.T) {
 		t.Run(language, func(t *testing.T) {
 			m := newNativeLoginMode(t, language)
 			done := dispatchLogin(t, m, "SSO Proxy")
-			waitForRender(t, m.editorContainer, "Sign in with an API key")
+			waitForLoopRender(t, m, m.editorContainer, "Sign in with an API key")
 			deliverModalInput(t, m, []byte("\x1b[B"))
 			deliverModalInput(t, m, []byte("\r"))
-			waitForRender(t, m.editorContainer, "Proxy base URL:")
-			waitForRender(t, m.editorContainer, "e.g., https://proxy.example")
+			waitForLoopRender(t, m, m.editorContainer, "Proxy base URL:")
+			waitForLoopRender(t, m, m.editorContainer, "e.g., https://proxy.example")
 			deliverModalInput(t, m, []byte("https://sso.example/v1"))
 			deliverModalInput(t, m, []byte("\r"))
-			waitForRender(t, m.editorContainer, "Proxy API key:")
-			got := plainRender(m.editorContainer)
+			waitForLoopRender(t, m, m.editorContainer, "Proxy API key:")
+			got := renderOnLoop(t, m, m.editorContainer)
 			for _, want := range []string{"Proxy base URL:", "> https://sso.example/v1", "Proxy https://sso.example/v1 accepted"} {
 				if !strings.Contains(got, want) {
 					t.Fatalf("the dialog dropped %q while asking for the key:\n%s", want, got)
@@ -383,7 +383,7 @@ func TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt(t *testi
 		t.Run(language, func(t *testing.T) {
 			m := newNativeLoginMode(t, language)
 			done := dispatchLogin(t, m, "Plain Proxy")
-			waitForRender(t, m.editorContainer, "Enter API key")
+			waitForLoopRender(t, m, m.editorContainer, "Enter API key")
 			deliverModalInput(t, m, []byte("plain-key"))
 			deliverModalInput(t, m, []byte("\r"))
 			awaitLogin(t, done)
@@ -416,5 +416,39 @@ func TestNativeProviderLoginRejectsUnknownInteractionTypes(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// renderOnLoop renders component on the goroutine that runs the login's modal loop, which draws every frame in production: the loop runs
+// a posted task between its events, so the render never overlaps a mutation that the login makes through the loop. A render from the test
+// goroutine would be a reader the product does not have.
+func renderOnLoop(t *testing.T, m *InteractiveMode, component tui.Component) string {
+	t.Helper()
+	rendered := make(chan string, 1)
+	if err := m.postToMain(t.Context(), func() { rendered <- plainRender(component) }); err != nil {
+		t.Fatalf("the loop took no render task: %v", err)
+	}
+	select {
+	case got := <-rendered:
+		return got
+	case <-time.After(20 * time.Second):
+		t.Fatal("the modal loop never ran the render task")
+		return ""
+	}
+}
+
+// waitForLoopRender is waitForRender through the loop: the wait ends as soon as the loop's render shows want.
+func waitForLoopRender(t *testing.T, m *InteractiveMode, component tui.Component, want string) {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for {
+		got := renderOnLoop(t, m, component)
+		if strings.Contains(got, want) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("never rendered %q; last render:\n%s", want, got)
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }

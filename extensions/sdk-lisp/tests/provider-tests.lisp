@@ -996,3 +996,55 @@ once the response arrives. A responder that returns (values nil message) answers
                        (pig:to-json (pig:jget login "args")))
           (check-equal "{\"id\":\"s\",\"name\":\"S\",\"tagline\":\"t\",\"mascot\":[\"..\"],\"palette\":{\"x\":\"#000\"}}"
                        (pig:to-json (pig:jget sprite "args"))))))))
+
+;;; ---------------------------------------------------------------- the cancel kinds of a streamSimple request
+
+(defun pt-stream-answer (host)
+  "Read frames up to the response: (values the response member, the types of the provider_stream_event notifications before it)."
+  (let ((types '()))
+    (loop
+      (let* ((frame (hread host)) (type (pig:jget frame "type")))
+        (when (eq frame :eof) (error "end of file waiting for the stream's response"))
+        (cond ((and (equal type "notify") (equal (pig:jref frame "notify" "method") "provider_stream_event"))
+               (push (pig:jref frame "notify" "args" "result" "type") types))
+              ((equal type "response") (return (values (pig:jget frame "response") (nreverse types)))))))))
+
+(deftest a-stream-simple-request-goes-on-after-a-signal-only-cancel
+  ;; Pi's consumer of a response has no check of the abort signal (packages/agent/src/agent-loop.ts:424-478): after the abort of a turn, a signal-only cancel, the author's
+  ;; signal is set, the events its stream gives are forwarded and its result is the answer.
+  (let* ((stream (pig:make-model-event-stream))
+         (seen nil)
+         (ext (pt-ext (lambda (ext)
+                        (pig:register-provider ext "cfg" (pig:obj "streamSimple" (lambda (ctx model context options)
+                                                                                    (declare (ignore model context options))
+                                                                                    (setf seen ctx)
+                                                                                    stream)))))))
+    (with-host (host ext)
+      (request host "r" "provider_stream_simple" "tool" "cfg" "args" (pig:obj "model" (pt-model "m") "context" (pig:obj) "options" (pig:obj)))
+      (hread-type host "request_state")
+      (hsend host "type" "cancel" "cancel" (pig:obj "request_id" "r" "reason" "context canceled" "signal_only" t))
+      (loop repeat 1000 until (and seen (pig:ctx-cancelled-p seen)) do (sleep 0.005))
+      (check-equal t (and seen (pig:ctx-cancelled-p seen) t))
+      (pig:model-stream-push stream (pig:obj "type" "text_delta" "contentIndex" 0 "delta" "after" "partial" (pt-message "after")))
+      (pig:model-stream-end stream (pt-message "the author's result"))
+      (multiple-value-bind (response types) (pt-stream-answer host)
+        (check-equal '("text_delta") types)
+        (check-equal nil (pig:jref response "error" "message"))
+        (let ((result (pig:jget response "result")))
+          (check-equal "the author's result" (and (hash-table-p result) (pig:jref result "content" 0 "text"))))))))
+
+(deftest an-ordinary-cancel-after-a-signal-only-cancel-ends-a-stream-simple-request
+  ;; An ordinary cancel ends the request, also after a signal-only cancel: the author's stream is ended, nothing is forwarded and the answer is the abort.
+  (let* ((stream (pig:make-model-event-stream))
+         (ext (pt-ext (lambda (ext)
+                        (pig:register-provider ext "cfg" (pig:obj "streamSimple" (lambda (ctx model context options)
+                                                                                    (declare (ignore ctx model context options))
+                                                                                    stream)))))))
+    (with-host (host ext)
+      (request host "r" "provider_stream_simple" "tool" "cfg" "args" (pig:obj "model" (pt-model "m") "context" (pig:obj) "options" (pig:obj)))
+      (hread-type host "request_state")
+      (hsend host "type" "cancel" "cancel" (pig:obj "request_id" "r" "reason" "context canceled" "signal_only" t))
+      (hsend host "type" "cancel" "cancel" (pig:obj "request_id" "r" "reason" "the host ends the request"))
+      (multiple-value-bind (response types) (pt-stream-answer host)
+        (check-equal '() types)
+        (check-equal "provider stream aborted" (pig:jref response "error" "message"))))))

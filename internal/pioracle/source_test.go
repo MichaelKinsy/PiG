@@ -88,6 +88,10 @@ func (o *outcome) Fatalf(format string, args ...any) {
 	o.failed = fmt.Sprintf(format, args...)
 	runtime.Goexit()
 }
+func (o *outcome) Skipf(format string, args ...any) {
+	o.skipped = fmt.Sprintf(format, args...)
+	runtime.Goexit()
+}
 
 func endOf(run func(testing.TB)) *outcome {
 	o := &outcome{}

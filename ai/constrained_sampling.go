@@ -1,7 +1,6 @@
 package ai
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -368,12 +367,12 @@ func MakeStrictJSONSchema(parameters map[string]any, isUnsupportedKeyword Unsupp
 // makeStrictJSONSchemaWithOrder returns the strict schema and the member order JSON.stringify writes for it. The authored order is not
 // modified.
 func makeStrictJSONSchemaWithOrder(parameters map[string]any, order schemaObjectOrder, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) (map[string]any, schemaObjectOrder, error) {
-	body, err := json.Marshal(parameters)
+	body, err := jsstring.MarshalKeepingSurrogates(parameters)
 	if err != nil {
 		return nil, nil, err
 	}
 	var cloned map[string]any
-	if err := json.Unmarshal(body, &cloned); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(body, &cloned); err != nil {
 		return nil, nil, err
 	}
 	if order = maps.Clone(order); order == nil {

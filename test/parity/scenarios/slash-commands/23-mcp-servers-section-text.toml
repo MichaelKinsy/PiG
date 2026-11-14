@@ -7,7 +7,7 @@
 # its tools are reached and its description. testdata/mcp-prompt-section.ts prints that text through `/mcp-section-text`. The
 # crop is the printed text. The comparator is output_equal.
 
-# Mutation (compiling): the server line without its description (coding/mcpext/extension.go serverSummary) fails this scenario.
+# Mutation (compiling): the server line without its description (internal/mcpshared/naming.go McpServerSummary) fails this scenario.
 name = "23-mcp-servers-section-text"
 description = "Both binaries render the same mcp_servers prompt section for a configured codemode server."
 covers = [

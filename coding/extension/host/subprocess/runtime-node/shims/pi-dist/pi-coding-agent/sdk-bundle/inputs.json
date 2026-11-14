@@ -511,7 +511,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/index.js",
-      "sha256": "20faabcfe60dc9c9a4507b3cd5aa1bbde63542a0b70e25199fbaf79f03adb1cc"
+      "sha256": "61569eab9d9f1cc36949ceb15b7d65897606cc0e8edb6c33fd12aff3dc211653"
     },
     {
       "path": "pi-dist/pi-coding-agent/extensions/mcp/log.js",

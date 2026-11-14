@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // publishedCatalogScript imports the published pi-ai barrel (dist/models.generated.js) and lists every provider's chat,
@@ -29,7 +31,7 @@ func loadPublishedCatalog(t *testing.T) publishedCatalog {
 	}
 	source := filepath.Join(dist, "models.generated.js")
 	if _, err := os.Stat(source); err != nil {
-		t.Skipf("published pi-ai %s is not installed: %v", UpstreamVersionString(), err)
+		pioracle.Missing(t, "published pi-ai "+UpstreamVersionString(), err)
 	}
 	manifest, err := os.ReadFile(filepath.Join(dist, "..", "package.json"))
 	if err != nil {

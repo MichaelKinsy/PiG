@@ -280,11 +280,12 @@ sdk-bundles-drift: ## Fail when a packed SDK bundle differs from its sources (re
 
 ##@ Test and lint
 
-vet: ## Run go vet on every package, natively and for every shipped Windows architecture and for Android (Termux)
+vet: ## Run go vet on every package: natively, once for each platform and once with every build tag the tree declares (automation/ci/vet-tags.txt; vet-tags.sh check fails on a tag or an operating system without a row)
 	./automation/ci/go-vet.sh
-	GOOS=windows GOARCH=amd64 ./automation/ci/go-vet.sh
-	GOOS=windows GOARCH=arm64 ./automation/ci/go-vet.sh
-	CGO_ENABLED=0 GOOS=android GOARCH=arm64 ./automation/ci/go-vet.sh
+	./automation/ci/vet-tags.sh check
+	python3 -B -m unittest discover -s automation/ci -p test_vet_tags.py
+	./automation/ci/vet-tags.sh platforms | while read -r vars; do env $$vars ./automation/ci/go-vet.sh || exit 1; done
+	./automation/ci/go-vet.sh -tags "$$(./automation/ci/vet-tags.sh tags)"
 
 LINT_BASE ?= main
 
@@ -646,7 +647,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
@@ -827,6 +828,15 @@ upstream-mirror: parity-deps ## Mirror the pinned Pi source into .upstream/curre
 	@./automation/gen/mirror-upstream.sh
 	@python3 -B automation/ci/check-port-map-drift.py --apps
 
+# model-data-check runs TestPublishedModelDataValidates, which compares the published model data and its hidden manifest with the pinned Pi source. The test skips where the oracle is not installed, and a skip is not a pass: this gate installs the oracle (upstream-mirror), sets PIG_REQUIRE_PI_ORACLE so that a missing source fails the test, and fails when the test did not pass. MODEL_DATA_ORACLE=skip is the one opt-out; it says so and no gate sets it.
+model-data-check: ## Check the published model data against the pinned Pi source; fails when the oracle or the data is not installed (MODEL_DATA_ORACLE=skip opts out, loudly)
+	@if [ "$(MODEL_DATA_ORACLE)" = skip ]; then echo "model-data-check: SKIPPED by MODEL_DATA_ORACLE=skip: the published model data was NOT checked" >&2; exit 0; fi; \
+		[ -f .upstream/current/packages/ai/src/models.generated.ts ] || $(MAKE) upstream-mirror || exit 1; \
+		out=$$(PIG_REQUIRE_PI_ORACLE=1 go test ./cmd/check-model-data -run '^TestPublishedModelDataValidates$$' -count=1 -v 2>&1) || { printf '%s\n' "$$out"; exit 1; }; \
+		printf '%s\n' "$$out"; \
+		printf '%s\n' "$$out" | grep -q -- '--- PASS: TestPublishedModelDataValidates ' || { echo "model-data-check: TestPublishedModelDataValidates did not pass" >&2; exit 1; }; \
+		if printf '%s\n' "$$out" | grep -q -- '--- SKIP'; then echo "model-data-check: a test of the check skipped; a skip is not a pass" >&2; exit 1; fi
+
 # Oracle tests of Pi work the Go port carries ahead of the committed pin: Pi 473515f9c, suspendable work (signals, tool parks, hook tasks, the
 # generation at task version 3), and Pi 5e24c6b1f, code mode namespaces declared by extensions (Extension.namespace). The pin's own Pi has none
 # of it, so these tests (durable/harness/suspendable_oracle_test.go and the scripted-session comparisons of durable/interop, which skip through
@@ -964,7 +974,7 @@ parity-deps: interface-deps durable-interop-deps ## Build the Pi comparator from
 	@test -d "$(PI_PACKAGE_ROOT)" || { echo "exact Pi package not found: $(PI_PACKAGE_ROOT)" >&2; exit 1; }
 	@$(PIN_TOOL) check-oracle
 
-.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-check-vendored-rebuild vendor-pi-packs vendor-sdk-ts-declarations vendor-sdk-ts-pin-declarations pin-bump pin-ledgers vendor-pi-dist regenerate-alt-screen-oracle vendor-chord-plugins-node vendor-chord-surfaces-client vendor-chord-carried-check bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
+.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-check-vendored-rebuild vendor-pi-packs vendor-sdk-ts-declarations vendor-sdk-ts-pin-declarations pin-bump pin-ledgers vendor-pi-dist regenerate-alt-screen-oracle vendor-chord-plugins-node vendor-chord-surfaces-client vendor-chord-carried-check bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check model-data-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
 
 include automation/make/parity.mk
 include automation/make/ci.mk

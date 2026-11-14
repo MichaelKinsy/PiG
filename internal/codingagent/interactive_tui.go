@@ -389,7 +389,7 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	m.unsubscribeSessionListener()
 	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
 	m.disposeActiveSelector()
-	// upstream: interactive-mode.ts:7285-7287: stop() then clears the progress indicator, only when the setting shows it, and before the renderer stops. Nothing clears the title: Pi never writes an empty one.
+	// upstream: interactive-mode.ts stop() at the pin (:7283-7300): disposes the active selector (:7284), then turns the terminal progress off (`this.ui.terminal.setProgress(false)`, :7285-7287) only when the setting shows it, before the footer and the renderer stop. This is the stop path's one progress-off, in Pi's order and under Pi's condition; nothing clears the title: Pi never writes an empty one. The dispose of a quit by keys follows the stop and can wait, for the run it aborts and for extension handlers: a progress still on would go on writing its keep-alive to the restored terminal.
 	if m.opts.Settings.GetShowTerminalProgress() {
 		m.setTerminalProgress(false)
 	}
@@ -494,12 +494,35 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	if !m.interruptShutdown() {
 		return
 	}
+	m.exitAtSignal(130)
+}
+
+// ExitIfQuitting ends the process with status when a quit by keys has stopped the TUI and awaits its dispose (quitDisposing): Pi's stop() removed its signal
+// handlers, so SIGTERM and SIGHUP end its process at once, as SIGINT does (Pi 1.5.2 under tmux with a held quit: exit 143 and 129 after 26 ms). pig's signal shutdown
+// would wait for ever on the shutdownMu that the pending dispose holds. The caller has recorded the ending. It returns when no such quit is pending.
+func (m *InteractiveMode) ExitIfQuitting(status int) {
+	if m == nil || !m.quitDisposing.Load() {
+		return
+	}
+	m.exitAtSignal(status)
+}
+
+// exitAtSignal hands the terminal back and ends the process, and its extension processes, with status.
+func (m *InteractiveMode) exitAtSignal(status int) {
 	// The exit handler of Pi's process.exit (9df819de, #11170): a shutdown that timed out left the alternate screen and its modes on.
 	tui.RestoreTerminalOnExit()
 	tui.RestoreTerminalFromSignal()
 	BeforeExit()
+	// pig additive (D19): Pi's extensions end with its process. Here they are processes of their own, and this exit runs no dispose that would end them: a quit by keys that waits for an author (finishInteractiveShutdown) holds its dispose when the ctrl+c arrives, so the runtime of that author would stay behind. Ending the processes fails that author's pending request with an error of the host's own, which Pi's process, dead at the signal, never produces, and the owner loop still serves the waiting quit: so the Session stops persisting and the quit's resume hint is withheld first, or that error would be written into the session file as the turn's message and the quit would go on to its hint beside this exit.
+	m.interruptExiting.Store(true)
+	if session, ok := m.opts.SessionHandle.(interface{ Dispose() }); ok {
+		session.Dispose()
+	}
+	if m.opts.TerminateExtensionProcesses != nil {
+		m.opts.TerminateExtensionProcesses()
+	}
 	EndSessionMarker()
-	os.Exit(130)
+	os.Exit(status)
 }
 
 // interruptShutdown records the SIGINT and gives extensions their shutdown event, for at most a second. It reports false when a suspended session ignores the signal.
@@ -511,7 +534,10 @@ func (m *InteractiveMode) interruptShutdown() bool {
 	// pig additive (D102): Pi dies on SIGINT with no trace.
 	RecordEnding(m.opts.AgentDir, "received SIGINT (exit 130)")
 	// pig divergence (D51): restore terminal state before exit 130.
-	m.shutdownExtensionsBriefly()
+	// A quit by keys whose dispose is pending has emitted session_shutdown already and holds shutdownMu while it waits for its author, so the second that shutdownExtensionsBriefly grants would only wait for that lock: Pi's stop() removed its signal handlers, and the SIGINT ends its process at once (Pi 1.5.2 under tmux: 130 after 28 to 32 ms; pig took 1.01 to 1.03 s).
+	if !m.quitDisposing.Load() {
+		m.shutdownExtensionsBriefly()
+	}
 	return true
 }
 

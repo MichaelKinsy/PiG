@@ -6,6 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"image"
+	"image/draw"
+	"image/gif"
 	"image/jpeg"
 	"image/png"
 	"os"
@@ -15,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -60,6 +64,7 @@ func newImageProbe(placeholders bool) *imageProbe {
 	p.images = &MountImages{
 		Write:        func(data string) { p.written = append(p.written, data) },
 		Placeholders: placeholders,
+		Decode:       photonimage.Decode,
 		ToPNG: func(data []byte) []byte {
 			p.conversions++
 			img, err := jpeg.Decode(bytes.NewReader(data))
@@ -382,7 +387,7 @@ func TestMountImageIsHalfBlockCellsWithoutAProtocol(t *testing.T) {
 			if p.repaints != 1 || p.conversions != 1 {
 				t.Fatalf("after the work: %d frames asked for, %d conversions, want 1 and 1", p.repaints, p.conversions)
 			}
-			decoded, err := png.Decode(bytes.NewReader(p.images.ToPNG(photoBytes(t))))
+			decoded, err := photonimage.Decode(p.images.ToPNG(photoBytes(t)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -426,5 +431,92 @@ func TestMountImageThatCannotBeDecodedIsTheTextFallback(t *testing.T) {
 	want := tui.ImageFallback("image/jpeg", tui.GetImageDimensions(base64.StdEncoding.EncodeToString(data), "image/jpeg"), "tower.jpg")
 	if drawn := drawnRows(got); len(drawn) != 3 || drawn[1] != want || len(halfBlockCellRows(got)) != 0 || len(p.written) != 0 {
 		t.Fatalf("the mount draws %q and wrote %d times, want the text fallback %q between its texts and 0", drawn, len(p.written), want)
+	}
+}
+
+// pig additive (D614): an image that the client's conversion to PNG could not read is decoded by MountImages.Decode
+// (the terminal view client sets photonimage.Decode, the port of Pi's Photon decode) and drawn as the half-block rows of
+// the decoded image: a JPEG, a GIF and a PNG. Where the set Decode is nil the node is one line of text that names the
+// missing decoder and the field: not an empty row, and not the fallback of an image that cannot be decoded.
+func TestMountImageNotConvertedIsReadByDecode(t *testing.T) {
+	photo, err := jpeg.Decode(bytes.NewReader(photoBytes(t)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An 8-bit PNG: Go writes a 16-bit one for the decoded JPEG, whose low byte Go's decoder keeps and Photon's drops.
+	eight := image.NewNRGBA(photo.Bounds())
+	draw.Draw(eight, eight.Bounds(), photo, photo.Bounds().Min, draw.Src)
+	var asGIF, asPNG bytes.Buffer
+	if err := gif.Encode(&asGIF, photo, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(&asPNG, eight); err != nil {
+		t.Fatal(err)
+	}
+	for mime, data := range map[string][]byte{"image/jpeg": photoBytes(t), "image/gif": asGIF.Bytes(), "image/png": asPNG.Bytes()} {
+		t.Run(mime, func(t *testing.T) {
+			imageTerminal(t, "")
+			draw := func(decode func([]byte) (image.Image, error)) []string {
+				p := newImageProbe(false)
+				p.images.ToPNG = func([]byte) []byte { return nil }
+				p.images.Decode = decode
+				s := p.surface()
+				defer s.Close()
+				acceptMountView(t, s, json.RawMessage(strings.ReplaceAll(string(mountImageView("round 1", `,"maxWidthCells":20`, data)), "image/jpeg", mime)))
+				s.Render(160)
+				p.run()
+				return s.Render(160)
+			}
+			got := draw(nil)
+			want := "no " + mime + " decoder is set on the MountImages of this program: set MountImages.Decode"
+			if drawn := drawnRows(got); len(drawn) != 3 || !strings.HasPrefix(drawn[1], want) || len(halfBlockCellRows(got)) != 0 {
+				t.Fatalf("without Decode the mount draws %.300q, want one line between its texts that starts %q", drawn, want)
+			}
+			decoded, err := photonimage.Decode(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cols, rows := halfBlockSize(512, 512, 20, 12)
+			wantRows := strings.Join(halfBlockRows(decoded, cols, rows, halfBlockTrueColor, nil), "\n")
+			got = draw(photonimage.Decode)
+			if cells := halfBlockCellRows(got); strings.Join(cells, "\n") != wantRows {
+				t.Fatalf("with Decode the mount draws %d rows of half-block cells in %.200q, want the %d rows of halfBlockRows for the photonimage pixels", len(cells), got, rows)
+			}
+			if mime == "image/png" || mime == "image/gif" {
+				// An 8-bit PNG and a palette GIF are read to the same pixels by Go's decoder and photonimage: the rows are those of the old path.
+				goDecoded, err := png.Decode(bytes.NewReader(data))
+				if mime == "image/gif" {
+					goDecoded, err = gif.Decode(bytes.NewReader(data))
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if old := strings.Join(halfBlockRows(goDecoded, cols, rows, halfBlockTrueColor, nil), "\n"); old != wantRows {
+					t.Errorf("%s: the rows of Go's decoder differ from the rows of photonimage", mime)
+				}
+			}
+		})
+	}
+}
+
+// pig additive (D614): bytes that photonimage cannot decode are the text fallback of the image, not a blank.
+func TestMountImageUndecodableIsTheFallback(t *testing.T) {
+	data := photoBytes(t)
+	data = append(append([]byte{}, data[:len(data)/3]...), bytes.Repeat([]byte{0}, 64)...)
+	imageTerminal(t, "")
+	p := newImageProbe(false)
+	p.images.ToPNG = func([]byte) []byte { return nil }
+	s := p.surface()
+	defer s.Close()
+	acceptMountView(t, s, mountImageView("round 1", `,"maxWidthCells":20`, data))
+	s.Render(160)
+	p.run()
+	got := s.Render(160)
+	if _, err := photonimage.Decode(data); err == nil {
+		t.Fatal("photonimage decodes the damaged JPEG: the test needs bytes it refuses")
+	}
+	drawn := drawnRows(got)
+	if len(drawn) != 3 || !strings.Contains(drawn[1], "[Image") || len(halfBlockCellRows(got)) != 0 {
+		t.Fatalf("the mount draws %.300q, want the text fallback of the image between its texts", drawn)
 	}
 }

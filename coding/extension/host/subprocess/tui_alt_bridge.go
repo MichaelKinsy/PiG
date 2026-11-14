@@ -693,10 +693,11 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 		if err := s.term.Start(func(data string) { screen.HandleTerminalInput(data) }, func() { screen.RequestRender() }); err != nil {
 			return nil, err
 		}
-		s.term.HideCursor()
+		// Through the screen, which takes the writer lock: a frame of the screen's timer may be writing.
+		screen.HideCursor()
 		return empty()
 	case "stop":
-		s.term.ShowCursor()
+		screen.ShowCursor()
 		screen.StopWithOptions(tui.StopOptions{PreserveScreen: call.PreserveScreen})
 		s.term.Stop()
 		return empty()

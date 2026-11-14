@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // overlayNote is the release note of the Kitty overlay fix. It says an image is "drawn again when it closes"; the impact rule found "loses" inside "closes" and classed a display fix as lost data.
@@ -281,14 +282,15 @@ func TestAFixMadeBeforeTheCauseRuleIsNotAsked(t *testing.T) {
 	}
 }
 
-// The cause rule starts with the day causeRequiredFrom names and reads the date of the fix commit, never the clock: a fix dated before the day passes the check without a cause, a fix dated on or after it fails with the rule's text, and a fix that states its cause passes on both sides.
+// The cause rule starts at the instant causeRequiredFrom names and reads the date of the fix commit, never the clock: a fix dated before the instant passes the check without a cause, a fix dated at or after it fails with the rule's text, and a fix that states its cause passes on both sides. The rows are written from the constant, so they follow the rule if its instant moves; the test names no zone, and TestTheCauseRuleHoldsInEveryProcessZone runs it under three.
 func TestTheCauseRuleStartsOnItsDay(t *testing.T) {
+	at := func(d time.Duration) string { return causeRequiredFrom.Add(d).Format(time.RFC3339) }
 	for _, tc := range []struct {
 		name, date string
 		asked      bool
 	}{
-		{"the last second before the day", "2026-11-13T23:59:59Z", false},
-		{"the first second of the day", "2026-11-14T00:00:00Z", true},
+		{"the last second before the rule", at(-time.Second), false},
+		{"the first second of the rule", at(0), true},
 		{"a later year", "2027-01-02T03:04:05Z", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

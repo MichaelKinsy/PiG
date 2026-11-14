@@ -6387,24 +6387,30 @@ class Extension:
                 result = _run_user_bash_exec(self._bash_operations, req, cancel, lambda data: self._notify("tool_update", {"request_id": req_id, "result": _data_update(data)}))
                 self._respond(req_id, result, None)
             elif method == "provider_stream_simple":
-                cancel = ctx._cancelled
                 args = req.get("args") or {}
                 stream = self._provider_streams[req.get("tool", "")](ctx, args["model"], args["context"], args["options"])
+
+                # An ordinary cancel ends the request: the read loop marks the request's parent cancelled and ends its stream, under the state lock, so the loop below stops and
+                # the answer is the abort. A signal-only cancel, the abort of a turn, sets the signal the author holds (ctx.is_cancelled()) and nothing else: Pi's consumer has no
+                # check of the signal (packages/agent/src/agent-loop.ts:424-478), so what the author's stream gives after it is forwarded and its result is the answer.
+                def request_ended() -> bool:
+                    with self._state_lock:
+                        parent = self._request_parents.get(req_id)
+                        return parent is not None and parent.state == "cancelled"
+
                 with self._state_lock:
                     self._provider_active[req_id] = stream
-                    if cancel.is_set():
+                    parent = self._request_parents.get(req_id)
+                    if parent is not None and parent.state == "cancelled":
                         stream.end(None)
                 try:
                     for event in _wire_events(stream):
-                        if cancel.is_set():
+                        if request_ended():
                             raise RuntimeError("provider stream aborted")
                         self._notify("provider_stream_event", {"request_id": req_id, "result": event})
-                    # The read loop ends the stream of a cancelled request before it sets the request's signal, and writes the request's state with that end under the state lock:
-                    # the state shows a cancel the signal does not show yet, so a stream the cancel ended is never answered as one its author ended.
-                    with self._state_lock:
-                        parent = self._request_parents.get(req_id)
-                        aborted = cancel.is_set() or (parent is not None and parent.state == "cancelled")
-                    if aborted:
+                    # The read loop writes the request's state with the end of its stream under the state lock, before it sets the request's signal: a stream the cancel ended
+                    # is never answered as one its author ended.
+                    if request_ended():
                         raise RuntimeError("provider stream aborted")
                     self._respond(req_id, _wire_result_of(stream), None)
                 finally:

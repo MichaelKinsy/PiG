@@ -1,0 +1,16 @@
+from = "1.5.2+c55ab367"
+to = "1.5.2+1cfb326b"
+
+[[files]]
+path = "apps/p3/docs/slices/13-mcp.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ec337279f (slice 13 records p2's MCP behaviour). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3/docs at 1cfb326bfc; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/01-base-and-sessions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "1cfb326bf (slice 1 built, in review). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3/docs at 1cfb326bfc; no text is quoted here."

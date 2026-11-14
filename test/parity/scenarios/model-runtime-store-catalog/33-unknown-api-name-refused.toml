@@ -7,6 +7,9 @@
 # writes that line to stderr and exits 1, with no request at the provider's base URL. PiG 0.3.0 through 0.7.0 built an OpenAI
 # chat-completions provider for any unknown name and sent the conversation to the base URL.
 #
+# The refusal line is written to stderr, and both_contain reads stdout only: stderr_equal pins the whole stderr text (Pi's refusal line) against
+# the oracle and output_equal pins the empty stdout.
+#
 # The base URL is the discard port on the loopback interface, where nothing listens: a binary that sends the request reports a
 # connection error instead of the refusal, so the equal output is the "no request" assertion this driver can make.
 
@@ -28,7 +31,6 @@ pi = ["PI_CODING_AGENT_DIR=testdata/unknown-api/pi-home/agent", "PI_SKIP_VERSION
 
 [assert]
 exit_code = 1
-both_contain = ["No API provider registered for api: nosuchapi"]
 both_not_contain = ["Connection error", "connection refused", "ECONNREFUSED"]
 output_equal = true
 stderr_equal = true

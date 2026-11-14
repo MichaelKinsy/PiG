@@ -180,8 +180,16 @@ type Conn struct {
 	conn         net.Conn
 	closing      atomic.Bool
 	closed       atomic.Bool
+	terminating  atomic.Bool // Host.TerminateProcesses killed the extension's process: its end fails no pending request
 	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
 	modelRegistry bool
+	// modelCatalogMu orders the catalog frames queued for this connection and guards the record of the last one: modelCatalogSent is the digest
+	// of the last frame a publication queued, when modelCatalogSentSet. modelCatalogAlways is set once the replica applied a registry state
+	// that was not a catalog frame (the result of its own refresh call): it is then sent every publication.
+	modelCatalogMu      sync.Mutex
+	modelCatalogSent    modelCatalogDigest
+	modelCatalogSentSet bool
+	modelCatalogAlways  bool
 
 	// Outgoing message queue. Writer goroutine drains this. A frame that is
 	// queued or being written is outstanding work, so the heartbeat runs while
@@ -220,8 +228,16 @@ type Conn struct {
 	// hostCalls counts, per request, the host calls the host applies for it.
 	hostCallCounts map[string]func(dialog bool, delta int)
 	// drainable holds, per request, the function that records that its runtime reported its event loop drained with the request unanswered, and whether the runtime's started state for the request has been read. drainCovered holds, per drain report the read loop passed to the host and the host has not handled, the drained functions of the requests the report covers.
-	drainable     map[string]*drainableRequest
-	drainCovered  map[*Envelope][]func()
+	drainable    map[string]*drainableRequest
+	drainCovered map[*Envelope][]func()
+	// started holds the pending requests whose started state the read loop has read: the runtime holds them. loopDrained records that the connection's Node process reported its event loop drained after input ended (runtime_drained, runtime_commands_drained) and that nothing has reached the process or come from it on this connection since. A report covers the requests the runtime held when it sent it, so a pending request whose started state the report does not follow crossed it on the wire: the process had not seen it, runs again and reports again. requestCalls counts, per pending request, the host calls the host serves for it. All three are guarded by pendingMu.
+	started      map[string]struct{}
+	loopDrained  bool
+	requestCalls map[string]*requestCallCount
+	// commands holds the pending requests that are extension commands. Guarded by pendingMu.
+	commands map[string]struct{}
+	// onRequestEnd, when set, runs on a request's goroutine once the request has left the pending set (Host.handleIncoming sets it for a runtime that reports no event loop: the end of its request is what the quit waited for).
+	onRequestEnd  atomic.Pointer[func()]
 	producerTasks sync.WaitGroup
 
 	// Incoming messages that aren't responses go here for the host to process.
@@ -836,6 +852,11 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	received := false
 	c.pendingMu.Lock()
 	c.pending[env.ID] = respCh
+	// The request makes the process run again: its drained loop is not known until it reports again.
+	c.loopDrained = false
+	if env.Request != nil && env.Request.Method == "command" {
+		setLazy(&c.commands, env.ID, struct{}{})
+	}
 	if env.Request != nil && env.Request.Method == MethodToolCall {
 		setLazy(&c.toolRequests, env.ID, struct{}{})
 	}
@@ -888,7 +909,13 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.startWindows, env.ID)
 		delete(c.earlierWindows, env.ID)
 		delete(c.drainable, env.ID)
+		delete(c.started, env.ID)
+		delete(c.requestCalls, env.ID)
+		delete(c.commands, env.ID)
 		c.pendingMu.Unlock()
+		if end := c.onRequestEnd.Load(); end != nil {
+			(*end)()
+		}
 		if received {
 			// The request is unregistered, so nothing sends to the channel any more; a second answer that arrived after the first (a failure racing the response) is dropped with the channel's content.
 			select {
@@ -1024,6 +1051,10 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				c.beforeCancel()
 			}
 			toolCall := env.Request != nil && env.Request.Method == MethodToolCall
+			// The requests whose handler Pi goes on awaiting after the abort: a native stream, a streamSimple stream and a user_bash exec, when the context ended by a cancel or a deadline.
+			awaitsAuthor := env.Request != nil && (env.Request.Method == MethodProviderStream || env.Request.Method == RequestProviderStream || env.Request.Method == RequestUserBashExec) && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded))
+			// A streamSimple stream's cancel is, like a tool_call's, the abort of its AbortSignal alone: Pi's consumer has no check of the signal and takes what the author's stream gives after the abort, its later events, its terminal event, its result or its error (agent-loop.ts:424-478). The author's events go on being forwarded and its calls answered until it answers.
+			streamSimple := awaitsAuthor && env.Request.Method == RequestProviderStream
 			// pig additive (D19): the cancel is queued before the request's calls are cancelled, so a call's cancellation result follows it on the wire. The extension cancels its own pending calls on the cancel, and the result finds none.
 			// A tool_call's cancel is the abort of its AbortSignal alone: Pi's executePreparedToolCall awaits tool.execute with the signal aborted and nothing else is cancelled (agent-loop.ts:817-853), so the tool's pending and later host calls are answered. Only its nested tool calls take the abort, as the signal they run with; the rest of the request's calls end with the request, when the grace period does.
 			_ = c.Send(&Envelope{
@@ -1032,15 +1063,15 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				Cancel: &CancelPayload{
 					RequestID:  env.ID,
 					Reason:     ctx.Err().Error(),
-					SignalOnly: toolCall,
+					SignalOnly: toolCall || streamSimple,
 				},
 			})
 			if toolCall {
 				c.abortNestedHostCalls(env.ID)
-			} else {
+			} else if !streamSimple {
 				c.cancelHostCalls(env.ID)
 			}
-			if env.Request != nil && (env.Request.Method == MethodProviderStream || env.Request.Method == RequestUserBashExec) && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
+			if awaitsAuthor {
 				// Pi forwards the native stream's own terminal event after signaling
 				// abort, and executeBashWithOperations awaits operations.exec until it
 				// settles after its signal aborts (bash-executor.ts:120-128). The
@@ -1445,6 +1476,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 
 		if env.Type == MsgNotify && env.Notify != nil && coversStartedRequests(env.Notify.Method) {
 			c.coverDrainReport(&env)
+		}
+		if env.Type == MsgCall {
+			c.clearLoopDrained()
 		}
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
 		if env.Type == MsgCall && env.Call != nil && env.ID != "" {
@@ -2473,6 +2507,10 @@ func (c *Conn) fail(err error) {
 		c.pendingMu.Lock()
 		c.requestsFailed = len(c.pending)
 		for id, ch := range c.pending {
+			if c.terminating.Load() {
+				// pig additive (D19): the process of the extension was killed because pig is about to exit. Pi's extension runs in pig's own process, so an end of pig never fails its pending request; the request stays pending until the process exits.
+				break
+			}
 			select {
 			case ch <- &Envelope{Type: MsgResponse, ID: id, Response: &ResponsePayload{Error: &ErrorInfo{Code: code, Message: err.Error()}}}:
 			default:
@@ -2754,6 +2792,9 @@ func (c *Conn) markRequestStarted(requestID string) {
 	if r := c.drainable[requestID]; r != nil {
 		r.started = true
 	}
+	if _, pending := c.pending[requestID]; pending {
+		setLazy(&c.started, requestID, struct{}{})
+	}
 	c.pendingMu.Unlock()
 }
 
@@ -2773,6 +2814,56 @@ func (c *Conn) coverDrainReport(report *Envelope) {
 		}
 	}
 	setLazy(&c.drainCovered, report, fns)
+	// The process's loop was empty when it sent the report, with every request it held unanswered. A pending request it did not hold is on its way to it.
+	c.loopDrained = true
+	for id := range c.pending {
+		if _, held := c.started[id]; !held {
+			c.loopDrained = false
+			break
+		}
+	}
+}
+
+// requestCallCount counts the host calls the host serves for one request: the dialogs, which nothing can answer once input ended, and the others, which are work Pi's event loop stays alive for.
+type requestCallCount struct {
+	dialogs int
+	calls   int
+}
+
+func (n *requestCallCount) add(dialog bool, delta int) {
+	if dialog {
+		n.dialogs += delta
+	} else {
+		n.calls += delta
+	}
+}
+
+// clearLoopDrained records, on the read loop, that the process made a call: it runs, so a drained loop it reported earlier is no longer known.
+func (c *Conn) clearLoopDrained() {
+	c.pendingMu.Lock()
+	c.loopDrained = false
+	c.pendingMu.Unlock()
+}
+
+// holdsLoop reports whether the connection's runtime holds what Pi's one event loop would stay alive for after input ended: a timer, a socket, a child process, a handler that waits on one of them (Pi 1.5.2 under tmux: a quit whose dispose cannot return exits 0 when the last such handle is gone, and a pending promise holds nothing).
+//
+// A Node process tells it itself: it reports when its loop drained (loopDrained). Another runtime (Go, Rust, Python, Lisp) has no event loop to report, so the host reads what it can see of it: a command the runtime has not answered is work that runs apart from the dispose, as the command join of RPC mode counts it (Host.countsSuspended). A command for which the host serves only dialogs waits on what nothing can answer any more, as Pi's handler awaits a promise with no handle; it holds nothing. A handler of the run or of its settle tail is not counted: the dispose awaits the run itself, and a settle-tail handler of such a runtime counts as waiting once input ended, because it may wait for the very shutdown to cancel it (TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown). A goroutine, thread or timer such a runtime started outside a request is not visible to the host and holds nothing either.
+//
+// A command of a native runtime that waits on nothing holds the quit where Pi's process exits at once: the host cannot tell that wait from a timer's.
+//
+// pig divergence (D650): a command of a native runtime (Go, Rust, Python, Lisp) that waits on nothing holds a quit whose dispose cannot return, where Pi's process exits at once; ctrl+c and the signals end it (docs/parity/divergences/D650.md).
+func (c *Conn) holdsLoop(node bool) bool {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	if node {
+		return !c.loopDrained
+	}
+	for id := range c.commands {
+		if count := c.requestCalls[id]; count == nil || count.dialogs == 0 || count.calls > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // requestsDrained runs the drained function of every request the drain report report covers (coverDrainReport). The host calls it when it handles the report, after the calls the runtime sent before it.
@@ -2793,12 +2884,28 @@ func (c *Conn) countHostCall(parentRequestID string, dialog bool) func() {
 	}
 	c.pendingMu.Lock()
 	fn := c.hostCallCounts[parentRequestID]
-	c.pendingMu.Unlock()
-	if fn == nil {
-		return func() {}
+	count := c.requestCalls[parentRequestID]
+	if _, pending := c.pending[parentRequestID]; pending && count == nil {
+		count = &requestCallCount{}
+		setLazy(&c.requestCalls, parentRequestID, count)
 	}
-	fn(dialog, 1)
-	return func() { fn(dialog, -1) }
+	if count != nil {
+		count.add(dialog, 1)
+	}
+	c.pendingMu.Unlock()
+	if fn != nil {
+		fn(dialog, 1)
+	}
+	return func() {
+		if count != nil {
+			c.pendingMu.Lock()
+			count.add(dialog, -1)
+			c.pendingMu.Unlock()
+		}
+		if fn != nil {
+			fn(dialog, -1)
+		}
+	}
 }
 
 // requestSuspensionDecides reports whether the request's response must wait for the suspensions that preceded it.

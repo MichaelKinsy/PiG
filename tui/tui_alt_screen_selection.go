@@ -527,8 +527,9 @@ func (t *TuiAltScreen) activeSelectionTextLocked() (string, bool) {
 }
 
 // copyTextToClipboard copies through the injected clipboard, or OSC 52, and
-// flashes the outcome. It runs without t.mu. Mirrors upstream
-// copyTextToClipboard.
+// flashes the outcome. It runs without t.mu; the OSC 52 write takes outMu, so it
+// is before the bytes of a frame or after them (Pi writes it with terminal.write
+// on its one thread). Mirrors upstream copyTextToClipboard.
 func (t *TuiAltScreen) copyTextToClipboard(text string) bool {
 	if t.copySelection != nil {
 		if err := t.copySelection(text); err != nil {
@@ -540,7 +541,7 @@ func (t *TuiAltScreen) copyTextToClipboard(text string) bool {
 			return false
 		}
 	} else {
-		WriteToTerminal(t.out, fmt.Sprintf("\x1b]52;c;%s\x07", base64.StdEncoding.EncodeToString([]byte(jsstring.StreamText(text)))))
+		t.writeOwned(t.out, fmt.Sprintf("\x1b]52;c;%s\x07", base64.StdEncoding.EncodeToString([]byte(jsstring.StreamText(text)))))
 	}
 	t.flash("Copied!", altScreenFlashDefaultDurationMS)
 	return true

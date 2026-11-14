@@ -224,7 +224,7 @@ func (b *builder) commitRef(hash string) (Commit, error) {
 	if err != nil {
 		return Commit{}, err
 	}
-	c := Commit{Hash: ci.Hash[:10], Date: ci.Date}
+	c := Commit{Hash: ci.Hash[:10], Date: ci.Date, at: ci.At}
 	if m := prNumber.FindStringSubmatch(ci.Subject); m != nil {
 		c.PR = m[1]
 	}

@@ -190,6 +190,12 @@ func (h *cliExtensionHost[S]) SetRuntimeDrainHandler(fn func()) {
 	}
 }
 
+func (h *cliExtensionHost[S]) SetRuntimeLoopDrainHandler(fn func()) {
+	if h.host != nil {
+		h.host.SetRuntimeLoopDrainHandler(fn)
+	}
+}
+
 func (h *cliExtensionHost[S]) SetSettleTailHandler(fn func(suspended int)) {
 	if h.host != nil {
 		h.host.SetSettleTailHandler(fn)
@@ -266,9 +272,7 @@ func (f *cliSessionFactory[S]) HoldRetirements() {
 
 // TerminateProcesses kills the extension processes of every live host. Only a process about to exit calls it.
 func (f *cliSessionFactory[S]) TerminateProcesses() {
-	for _, host := range f.liveHosts() {
-		host.TerminateProcesses()
-	}
+	subprocess.TerminateHostProcesses(f.liveHosts()...)
 }
 
 // Close ends pending retirements and waits for them. Call it after the Runtime closes.

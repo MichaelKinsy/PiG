@@ -776,6 +776,46 @@
                      (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
                        (dolist (off (reverse (gethash name offs))) (funcall off))
                        (remhash name offs))))
+      ;; lone_passthrough subscribes to the event named by the argument with a handler that returns the value it received, and lone_send sends the
+      ;; argument's text back through sendUserMessage, sendMessage or registerProvider (TestConformance_LoneSurrogatePassThroughAcrossSDKs).
+      (pig:command ext "lone_passthrough" "Subscribe to the event named by the argument with a handler that returns the value it received"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (pig:on ext (if (equal name "context_edit") "context" name)
+                               (lambda (hctx data)
+                                 (flet ((seen (text)
+                                          (core-info hctx (format nil "lone_seen:~A:~A" name
+                                                                  (if (stringp text) (format nil "~{~(~X~)~^.~}" (map 'list #'char-code text)) "none"))))
+                                        (first-of (items) (if (and (vectorp items) (not (stringp items)) (plusp (length items))) (aref items 0) (pig:obj))))
+                                   (cond ((equal name "input")
+                                          (seen (pig:jget data "text"))
+                                          (pig:obj "action" "transform" "text" (pig:jget data "text")))
+                                         ((equal name "before_agent_start")
+                                          (seen (pig:jget data "systemPrompt"))
+                                          (pig:obj "systemPrompt" (pig:jget data "systemPrompt")))
+                                         ((equal name "tool_result")
+                                          (seen (pig:jget (first-of (pig:jget data "content")) "text"))
+                                          (pig:obj "content" (pig:jget data "content")))
+                                         (t
+                                          (let ((content (pig:jget (first-of (pig:jget data "messages")) "content")))
+                                            (seen (if (stringp content) content (pig:jget (first-of content) "text"))))
+                                          (if (equal name "context_edit")
+                                              (pig:obj "messages" (vector (first-of (pig:jget data "messages")) (pig:obj "role" "user" "content" "edited" "timestamp" 2)))
+                                              (pig:obj "messages" (pig:jget data "messages"))))))))
+                       nil)))
+      (pig:command ext "lone_send" "Send the argument's text back through sendUserMessage, sendMessage or registerProvider"
+                   (lambda (ctx args)
+                     (multiple-value-bind (kind value) (split-first args)
+                       (core-info ctx (format nil "lone_seen:~A:~A" kind (format nil "~{~(~X~)~^.~}" (map 'list #'char-code value))))
+                       (cond ((equal kind "user") (pig:ctx-send-user-message ctx value :deliver-as "followUp"))
+                             ((equal kind "custom") (pig:ctx-send-message ctx "lone" value :display t))
+                             (t (pig:register-provider ext "lone-compat"
+                                                       (pig:obj "baseUrl" "https://probe.invalid/v1" "api" "openai-completions" "apiKey" "probe-key"
+                                                                "models" (vector (pig:obj "id" "m" "name" value "reasoning" :false "input" (vector "text")
+                                                                                          "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                                                          "contextWindow" 1000 "maxTokens" 100
+                                                                                          "compat" (pig:obj "openRouterRouting" (pig:obj "sort" value))))))))
+                       nil)))
       (pig:command ext "event_result_probe" "Subscribe to an event with a handler that returns the given JSON"
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)

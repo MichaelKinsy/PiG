@@ -53,7 +53,6 @@ import (
 	"math/bits"
 	"reflect"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1577,8 +1576,8 @@ func typeFields(t reflect.Type) structFields {
 		}
 	}
 
-	// Two fields compare equal only when one is the copy this loop made of the other (count[f.typ] > 1), so any sort gives this order. sort.Slice runs package sort's one copy of the sort; slices.SortFunc compiles one for field, and the result is cached per type.
-	sort.Slice(fields, func(i, j int) bool { return compareFieldsByName(&fields[i], &fields[j]) < 0 })
+	// Two fields compare equal only when one is the copy this loop made of the other (count[f.typ] > 1), so any sort gives this order.
+	sortFields(fields, compareFieldsByName)
 
 	// Delete all fields that are hidden by the Go rules for embedded fields,
 	// except that fields with JSON tags are promoted.
@@ -1610,7 +1609,7 @@ func typeFields(t reflect.Type) structFields {
 
 	fields = out
 	// The index sequences of the fields that survive are distinct.
-	sort.Slice(fields, func(i, j int) bool { return slices.Compare(fields[i].index, fields[j].index) < 0 })
+	sortFields(fields, compareFieldsByIndex)
 
 	for i := range fields {
 		f := &fields[i]
@@ -1645,6 +1644,46 @@ func compareFieldsByName(a, b *field) int {
 		return +1
 	}
 	return slices.Compare(a.index, b.index)
+}
+
+// compareFieldsByIndex orders fields by index sequence.
+func compareFieldsByIndex(a, b *field) int {
+	return slices.Compare(a.index, b.index)
+}
+
+// sortFields sorts fields in place by cmp with a heap sort: no allocation, no reflection, and no copy of package slices' sort compiled for field. typeFields runs it twice for each struct type, in the first use of the type:
+//   - sort.Slice allocated three objects a call (the slice in an interface, reflectlite's swapper and its temporary), six for each type: BenchmarkAgentMessageMarshalJSON read 145 allocs/op in the alloc-baseline gate where 136 is the baseline;
+//   - slices.SortFunc allocates nothing, but compiles a copy of pdqsort for field (28,672 bytes of the stripped pig);
+//   - internal/sortx, which does neither, cannot be imported from this module.
+//
+// A heap sort is not stable. Both calls give it keys that differ, except for the copy of a field that typeFields appends (a field reached twice at one depth), which is byte for byte the field it copies: every correct sort leaves the same fields in every place.
+func sortFields(fields []field, cmp func(a, b *field) int) {
+	n := len(fields)
+	for i := (n - 1) / 2; i >= 0; i-- {
+		siftDownFields(fields, i, n, cmp)
+	}
+	for end := n - 1; end > 0; end-- {
+		fields[0], fields[end] = fields[end], fields[0]
+		siftDownFields(fields, 0, end, cmp)
+	}
+}
+
+// siftDownFields restores the max-heap property of fields[:hi] below root.
+func siftDownFields(fields []field, root, hi int, cmp func(a, b *field) int) {
+	for {
+		child := 2*root + 1
+		if child >= hi {
+			return
+		}
+		if child+1 < hi && cmp(&fields[child], &fields[child+1]) < 0 {
+			child++
+		}
+		if cmp(&fields[root], &fields[child]) >= 0 {
+			return
+		}
+		fields[root], fields[child] = fields[child], fields[root]
+		root = child
+	}
 }
 
 // dominantField looks through the fields, all of which are known to

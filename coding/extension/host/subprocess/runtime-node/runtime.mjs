@@ -25,6 +25,8 @@ import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-d
 import { EditorComponentHost } from "./editor-component.mjs";
 import { setCapabilities as setTerminalCapabilities } from "./shims/pi-dist/pi-tui/terminal-image.js";
 import { loadAllHighlightLanguages } from "./shims/syntax-highlight.mjs";
+// The timers of node:timers are not the globals installTimerOrigin wraps: the runtime's own delays are no extension timer.
+import { clearTimeout as rawClearTimeout, setImmediate as rawSetImmediate, setTimeout as rawSetTimeout } from "node:timers";
 import { themeFromPalette, wireColors } from "./theme-palette.mjs";
 import { Chalk } from "./shims/chalk/source/index.js";
 import { classifierErrorResult, imageErrorResult } from "./shims/pi-dist/pi-ai/utils/model-operations.js";
@@ -59,6 +61,75 @@ setHandlersRunning(() => {
 // Host shares it: this process's listeners stay in its own heap, and
 // payloads cross to other realms by reference (xref.mjs).
 const liveRuntimes = new Set();
+
+// pig additive (D20): the last step of the highlight.js load (shims/syntax-highlight.mjs: the first load of Pi's highlighter and its registration pass) holds this thread for tens of milliseconds. Pi starts it once the startup transcript is rendered (interactive-mode.ts init: renderInitialMessages, then loadAllHighlightLanguages); the host renders that transcript through requests to this process, which the pass would keep waiting. So the pass starts only while no host request is being handled or waits to be read, and once one has been answered or, when the host asks nothing, idleDelay after the grammars were imported: an extension the host never asks still gets every language. maxWait after the grammars were imported the pass starts whatever is outstanding, so requests that leave no gap cannot keep the languages away.
+export class HighlightLoadGate {
+  constructor(outstanding, { idleDelay = 250, maxWait = 2000, setTimer = rawSetTimeout, clearTimer = rawClearTimeout, defer = rawSetImmediate } = {}) {
+    this.outstanding = outstanding;
+    this.idleDelay = idleDelay;
+    this.maxWait = maxWait;
+    this.setTimer = setTimer;
+    this.clearTimer = clearTimer;
+    this.defer = defer;
+    this.answered = false;
+    this.idle = false;
+    this.checking = false;
+  }
+
+  // wait resolves when the pass may start. The first call starts the two delays.
+  wait() {
+    this.waiting ??= new Promise((resolve) => {
+      this.open = resolve;
+      this.timers = [
+        this.setTimer(() => {
+          this.idle = true;
+          this.check();
+        }, this.idleDelay),
+        this.setTimer(() => this.release(), this.maxWait),
+      ];
+      // The delays are no work of their own: they do not keep the process alive.
+      for (const timer of this.timers) timer?.unref?.();
+      this.check();
+    });
+    return this.waiting;
+  }
+
+  // requestAnswered tells the gate that the handling of a host request ended.
+  requestAnswered() {
+    this.answered = true;
+    this.check();
+  }
+
+  // check opens the gate a turn later if nothing is outstanding then: a request the host wrote behind the answered one has been read by that turn.
+  check() {
+    if (!this.open || this.checking) return;
+    this.checking = true;
+    this.defer(() => {
+      this.checking = false;
+      if ((this.answered || this.idle) && !this.outstanding()) this.release();
+    });
+  }
+
+  release() {
+    if (!this.open) return;
+    for (const timer of this.timers) this.clearTimer(timer);
+    const open = this.open;
+    this.open = undefined;
+    open();
+  }
+}
+
+// hostRequestOutstanding reports whether a runtime of this process handles a host request or holds one it has not read.
+function hostRequestOutstanding() {
+  const request = (env) => env.type === "request";
+  for (const runtime of liveRuntimes) {
+    if (runtime.requestRecords.size > 0 || runtime.conn?.queue.some(request) || runtime.conn?.held.some(request)) return true;
+  }
+  return false;
+}
+
+// One load serves every runtime of the process, so one gate does.
+export const highlightLoadGate = new HighlightLoadGate(hostRequestOutstanding);
 
 // siblingToolPending reports whether a tool call of group is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does. pig additive (D232): a member with a group counts only its own Host's tools, because another session's tool is no sibling of its session; a group-less member counts the whole process, as before.
 function siblingToolPending(group) {
@@ -1045,12 +1116,16 @@ export class ThemeShim {
   getBashModeBorderColor() { return (text) => this.fg("bashMode", text); }
 }
 
-// pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, with an unanswered command it has not reported yet (runtime_commands_drained: the host then knows the process cannot answer the commands it had started, as Pi's single loop would not either). A command that arrives after a report makes the loop reportable again.
+// The requests whose author the host goes on awaiting after their abort, as Pi awaits them, and whose drained loop this runtime reports: an extension's streamSimple stream. pig additive (D19): after stdin ended, such a request, aborted and unanswered, lets this process's loop drain while it waits for its author, and the drain is reported as a pending quit handler's is (runtime_drained): Pi's process exits when its loop empties while its shutdown awaits the aborted run. The host awaits a native Provider's stream (provider_stream) and a user_bash exec the same way (Conn.request); they are not in the set, because every wait of their handlers on this runtime's own transport must be marked first, as the streamSimple loop marks its one (forwarding).
+const AUTHOR_HELD_REQUESTS = new Set(["provider_stream_simple"]);
+
+// pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, whatever it has left unanswered, also nothing at all (runtime_commands_drained: the host then knows that nothing keeps this process's loop alive, and that the process cannot answer the commands it had started, as Pi's single loop would not either). Pi has one loop for every extension: a quit whose dispose cannot return exits when no extension holds a timer, a socket or a child process, so the host needs each process's own drained loop before it acts on one process's pending handler. A process reports once per drained loop: anything that reaches it or that it starts afterwards (refreshQuitDrain) makes the loop reportable again. Before runtime_input_end it reports nothing and its sockets stay referenced.
 const quitDrain = newQuitDrain();
 // pig additive (D232): a connection end drains only its own group; the group-less runtime keeps the process-wide drain.
 const groupDrains = new Map();
 function newQuitDrain() {
-  return { active: false, inputEnded: false, reported: false, listening: false, tailCheck: false, runtimes: new Set() };
+  // loopReported: the process reported its drained loop and nothing has happened in the drain's runtimes since.
+  return { active: false, inputEnded: false, reported: false, loopReported: false, listening: false, tailCheck: false, runtimes: new Set() };
 }
 function drainFor(group) {
   if (!group) return quitDrain;
@@ -1081,26 +1156,34 @@ function quitDrainState(drain) {
   let commands = false;
   let tail = false;
   let hostWaits = false;
+  let held = false;
+  let forwarding = false;
   for (const runtime of drain.runtimes) {
     for (const request of runtime.requestRecords.values()) {
       if (request.responded) continue;
       outstanding ||= request.quit;
+      // An aborted request whose author the host goes on awaiting: Pi awaits the run's end at stdin's end (dispose awaits session.abort()), and its process exits when its loop empties, which is what an author that holds no timer and no I/O leaves.
+      held ||= request.authorHeld && !request.forwarding && request.controller?.signal.aborted === true;
       commands ||= request.command && !request.drainReported;
       tail ||= request.quitTail;
+      // The request waits on this runtime's transport, which is not a drained loop.
+      forwarding ||= request.forwarding === true;
     }
     for (const pending of runtime.conn?.pending.values() ?? []) {
       if (pending.synchronous || !USER_BLOCKING_CALLS.has(pending.method)) hostWaits = true;
     }
   }
-  return { outstanding, commands, tail, hostWaits };
+  return { outstanding, commands, tail, hostWaits, held, forwarding };
 }
 
 function refreshQuitDrain(drain) {
   if (!drain.inputEnded) return;
-  const { outstanding, commands, tail, hostWaits } = quitDrainState(drain);
-  const quitWaits = drain.active && !drain.reported && outstanding;
-  // pig additive (D232): a group still serving keeps the provider sockets referenced.
-  setProviderSocketsRef(!(quitWaits || commands) || hostWaits || otherGroupServing(drain));
+  // A request arrived or settled, or a host call started or ended: the runtimes ran, so the loop's next drain is reported again.
+  drain.loopReported = false;
+  const { outstanding, commands, tail, hostWaits, held, forwarding } = quitDrainState(drain);
+  const quitWaits = !drain.reported && ((drain.active && outstanding) || held);
+  // The transports stop keeping the loop alive, so beforeExit tells when nothing else does. A host call the host is serving is work Pi's loop waits for, and a request that waits on this runtime's own transport (forwarding) needs it referenced unless a pending quit handler or a command has a drain to report. pig additive (D232): a group still serving keeps the provider sockets referenced.
+  setProviderSocketsRef(hostWaits || (forwarding && !quitWaits && !commands) || otherGroupServing(drain));
   // Pi flushRawStdout lets immediately fulfilled Promise continuations run, but does not await a post-disposal handler's future timer or I/O. IPC must not turn that suspension into a Session join.
   if (drain.active && !drain.reported && tail && !outstanding && !hostWaits && !drain.tailCheck) {
     drain.tailCheck = true;
@@ -1209,20 +1292,23 @@ function resumeRequestWindows(drain) {
 
 function drainQuitRequests(drain) {
   if (!drain.inputEnded) return;
-  const { outstanding, commands, hostWaits } = quitDrainState(drain);
+  const { outstanding, commands, hostWaits, held, forwarding } = quitDrainState(drain);
   if (hostWaits) return;
-  if (outstanding && drain.active && !drain.reported) reportQuitExit("runtime_drained", drain);
-  else if (commands) reportQuitExit("runtime_commands_drained", drain);
+  if (!drain.reported && ((outstanding && drain.active) || held)) reportQuitExit("runtime_drained", drain, held);
+  // A group other than this one that still serves keeps the transports referenced (refreshQuitDrain), so a drained loop is not observable while it does: the idle report waits for it as the sockets do. pig additive (D232).
+  else if (commands || (!drain.loopReported && !forwarding && !otherGroupServing(drain))) reportQuitExit("runtime_commands_drained", drain);
 }
 
-function reportQuitExit(method, drain) {
+// held reports the drain of a loop that an aborted author-held request left empty (quitDrainState), which needs no pending quit handler.
+function reportQuitExit(method, drain, held = false) {
   if (!drain.inputEnded) return;
   if (method !== "runtime_commands_drained") {
-    if (!drain.active || drain.reported) return;
+    if ((!drain.active && !held) || drain.reported) return;
     drain.reported = true;
   }
   // The report covers the commands the process started before it: the host marks those whose started state precedes the report on their connection. A drained loop with a pending quit handler cannot answer its commands either.
   if (method !== "runtime_quit_yield") {
+    drain.loopReported = true;
     for (const runtime of drain.runtimes) {
       for (const request of runtime.requestRecords.values()) {
         if (request.command && !request.responded) request.drainReported = true;
@@ -1482,6 +1568,7 @@ export class Connection {
         if (controller) controller.signalOnly = false;
         this.cancelParent(requestId, true);
       }
+      refreshQuitDrain(drainFor(this.owner?.group));
     }
     if (env.type === "notify" && env.notify?.method === "model_stream_event" && env.notify.args?.started) {
       this.streamStarts.get(env.notify.args.streamId)?.();
@@ -2829,7 +2916,7 @@ export class Runtime {
     }
     if (this.highlightAfter.size > 0) return;
     this.highlightAfter = undefined;
-    void loadAllHighlightLanguages();
+    void loadAllHighlightLanguages(() => highlightLoadGate.wait());
   }
 
   registerTool(definition) {
@@ -3390,7 +3477,7 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = drainFor(this.group).active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
+    const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", authorHeld: AUTHOR_HELD_REQUESTS.has(env.request?.method), event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain(drainFor(this.group));
@@ -3408,6 +3495,7 @@ export class Runtime {
         this.requestRecords.delete(env.id);
         request.connection?.callEpochs?.delete(env.id);
         refreshQuitDrain(drainFor(this.group));
+        highlightLoadGate.requestAnswered();
       }
       if (request.responded && endsPrompt(env.request, this.ready?.mode, this.runSignal !== undefined)) awaitHostStep(request.connection);
     }));
@@ -3479,6 +3567,7 @@ export class Runtime {
             controller?.abort(env.cancel?.reason || "cancelled");
             this.conn.cancelParent(requestId);
           }
+          refreshQuitDrain(drainFor(this.group));
           continue;
         }
         if (env.type === "request") this.startRequest(env);
@@ -5289,15 +5378,28 @@ export class Runtime {
           const {model, context, options} = request.args;
           // Pi's composer calls extension.streamSimple with the effective registered root as its receiver (provider-composer.ts:500-501).
           const stream = await callback.call(this.registeredProviderConfig(request.tool), model, context, {...options, signal:ctx[requestSignal]});
+          // Pi's consumer has no check of the signal (agent-loop.ts:424-478): what the author's stream gives after the abort of its signal, a signal-only cancel, is forwarded, and its result is the answer. An ordinary cancel ends the request.
+          const controller = this.activeRequests.get(id);
           for await (const event of stream) {
-            if (ctx[requestSignal].aborted) throw new Error("provider stream aborted");
+            if (cancelsHostCalls(controller)) throw new Error("provider stream aborted");
             const accepted = this.conn.send({type:"notify", notify:{method:"provider_stream_event",args:{request_id:id,result:event}}});
-            if (!accepted) await new Promise((resolve,reject)=>{
-              const finish=(error)=>{this.conn.socket.off("drain",drain);this.conn.socket.off("close",closed);ctx[requestSignal].removeEventListener("abort",aborted);error?reject(error):resolve();};
-              const drain=()=>finish();const closed=()=>finish(new Error("extension connection closed"));const aborted=()=>finish(new Error("provider stream aborted"));
-              this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx[requestSignal].addEventListener("abort",aborted,{once:true});if(ctx[requestSignal].aborted)aborted();
-            });
+            if (!accepted) {
+              // The request waits for this runtime's transport here, not for its author: meanwhile it is not held by its author (quitDrainState), the transport keeps the process alive, and a loop that is empty but for this wait is not reported as drained.
+              const record = this.requestRecords.get(id);
+              if (record) { record.forwarding = true; refreshQuitDrain(drainFor(this.group)); }
+              try {
+                await new Promise((resolve,reject)=>{
+                  const finish=(error)=>{this.conn.socket.off("drain",drain);this.conn.socket.off("close",closed);ctx[requestSignal].removeEventListener("abort",aborted);error?reject(error):resolve();};
+                  const drain=()=>finish();const closed=()=>finish(new Error("extension connection closed"));const aborted=()=>{if(cancelsHostCalls(controller))finish(new Error("provider stream aborted"));};
+                  this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx[requestSignal].addEventListener("abort",aborted,{once:true});if(ctx[requestSignal].aborted)aborted();
+                });
+              } finally {
+                if (record) { record.forwarding = false; refreshQuitDrain(drainFor(this.group)); }
+              }
+            }
           }
+          // The stream ended. An ordinary cancel that arrived first has ended the request, and the answer is the abort, as in the Go, Python, Rust and Lisp SDKs, which read the cancel once more after their forwarding loop; one that arrives later finds the stream ended and forwarded, and the request keeps its result.
+          if (cancelsHostCalls(controller)) throw new Error("provider stream aborted");
           await this.respond(id, await stream.result());
           return;
         }

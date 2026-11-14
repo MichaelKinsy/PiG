@@ -1,12 +1,8 @@
 package subprocess
 
 import (
-	"bytes"
 	"encoding/base64"
 	"image"
-	imagegif "image/gif"
-	imagejpeg "image/jpeg"
-	imagepng "image/png"
 	"slices"
 	"strconv"
 	"strings"
@@ -55,6 +51,11 @@ type MountImages struct {
 	// ToPNG converts the bytes of an image to PNG and returns nil when it cannot. It is called off the loop. Nil: an
 	// image that is not PNG is not drawn through the Kitty protocol.
 	ToPNG func(data []byte) []byte
+	// Decode reads the bytes of an image into pixels for the half-block drawing, which a terminal without an image
+	// protocol shows. The terminal view client sets photonimage.Decode, the port of Pi's Photon decode: this package
+	// imports no decoder, because a program links all of image/jpeg and image/gif as soon as a package it imports imports
+	// them. It is called off the loop. Nil: an image is one line of text that names the missing decoder, not an empty row.
+	Decode func(data []byte) (image.Image, error)
 	// Go runs fn off the loop, never inside the call. Nil: a goroutine of the MountImages, which Wait waits for.
 	Go func(fn func())
 	// Post runs fn on the loop; it is called off the loop, when an image is prepared. Nil: fn runs where the work ran,
@@ -84,10 +85,12 @@ type mountImageData struct {
 	waiters                      []func()
 
 	// half is the image as half-block rows for the box halfFor, nil when it could not be decoded; halfDone reports that
-	// it was drawn for halfFor.
-	half     []string
-	halfFor  mountHalf
-	halfDone bool
+	// it was drawn for halfFor. halfMissing is the type of an image that was not decoded because the program set no
+	// Decode (MountImages.Decode), "" otherwise.
+	half        []string
+	halfMissing string
+	halfFor     mountHalf
+	halfDone    bool
 }
 
 // mountHalf is what half-block rows are drawn for: the box of cells the image fits in and the colour form.
@@ -131,7 +134,7 @@ func (m *MountImages) id(ref string) int {
 // that is not zero, its half-block rows were drawn for that box: it returns them, nil when the image cannot be decoded.
 // Otherwise it starts the work off the loop, unless it is running, and calls what waiter returns (when neither is nil)
 // after it ended.
-func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter func() func()) (*mountImageData, []string, bool) {
+func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter func() func()) (*mountImageData, []string, string, bool) {
 	m.mu.Lock()
 	d := m.prepared[img.ref]
 	if d == nil {
@@ -153,11 +156,12 @@ func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter f
 	halved := half == (mountHalf{}) || (d.halfDone && d.halfFor == half)
 	if d.measured && (!png || d.converted) && halved {
 		var rows []string
+		var missing string
 		if half != (mountHalf{}) {
-			rows = d.half
+			rows, missing = d.half, d.halfMissing
 		}
 		m.mu.Unlock()
-		return d, rows, true
+		return d, rows, missing, true
 	}
 	if waiter != nil {
 		if ready := waiter(); ready != nil {
@@ -169,11 +173,11 @@ func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter f
 	d.running = true
 	m.mu.Unlock()
 	if !start {
-		return d, nil, false
+		return d, nil, "", false
 	}
 	work := func() {
 		var pngDims *tui.ImageDimensions
-		var encoded string
+		var encoded, missing string
 		var rows []string
 		if measure {
 			dims = tui.GetImageDimensions(img.b64, img.mimeType)
@@ -190,14 +194,14 @@ func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter f
 			}
 		}
 		if draw {
-			rows = m.halfBlock(img, dims, half)
+			rows, missing = m.halfBlock(img, dims, half)
 		}
 		m.mu.Lock()
 		if measure {
 			d.dims, d.measured = dims, true
 		}
 		if draw {
-			d.half, d.halfFor, d.halfDone = rows, half, true
+			d.half, d.halfMissing, d.halfFor, d.halfDone = rows, missing, half, true
 		}
 		if convert {
 			d.png, d.pngDims, d.converted = encoded, pngDims, true
@@ -219,44 +223,37 @@ func (m *MountImages) prepare(img *viewImage, png bool, half mountHalf, waiter f
 	} else {
 		m.workers.Go(work)
 	}
-	return d, nil, false
+	return d, nil, "", false
 }
 
 // Wait returns when the work started without Go has ended. It is called on the loop, which starts that work, once Post
 // no longer waits for the loop.
 func (m *MountImages) Wait() { m.workers.Wait() }
 
-// halfBlock draws img, whose size is dims, as half-block rows inside the box of half. It returns nil for bytes without
-// a size, with more pixels than mountHalfMaxPixels, or that cannot be decoded. An image that is not PNG is converted
-// first where the client converts: the conversion applies the rotation the image asks for and reads WebP.
-func (m *MountImages) halfBlock(img *viewImage, dims *tui.ImageDimensions, half mountHalf) []string {
+// halfBlock draws img, whose size is dims, as half-block rows inside the box of half. It returns no rows for bytes
+// without a size, with more pixels than mountHalfMaxPixels, or that Decode cannot read. An image that is not PNG is
+// converted first where the client converts: the conversion applies the rotation the image asks for and reads WebP.
+// Decode finds the format by the bytes. Where the program set no Decode there are no rows and missing is the image's type.
+func (m *MountImages) halfBlock(img *viewImage, dims *tui.ImageDimensions, half mountHalf) (rows []string, missing string) {
 	if dims == nil || int64(dims.WidthPx)*int64(dims.HeightPx) > mountHalfMaxPixels {
-		return nil
+		return nil, ""
 	}
-	data, mime := img.data, img.mimeType
-	if mime != "image/png" && m.ToPNG != nil {
+	if m.Decode == nil {
+		return nil, img.mimeType
+	}
+	data := img.data
+	if img.mimeType != "image/png" && m.ToPNG != nil {
 		if out := m.ToPNG(data); len(out) > 0 {
-			data, mime = out, "image/png"
+			data = out
 		}
 	}
-	var decoded image.Image
-	var err error
-	switch mime {
-	case "image/png":
-		decoded, err = imagepng.Decode(bytes.NewReader(data))
-	case "image/jpeg":
-		decoded, err = imagejpeg.Decode(bytes.NewReader(data))
-	case "image/gif":
-		decoded, err = imagegif.Decode(bytes.NewReader(data))
-	default:
-		return nil
-	}
+	decoded, err := m.Decode(data)
 	if err != nil {
-		return nil
+		return nil, ""
 	}
 	bounds := decoded.Bounds()
-	cols, rows := halfBlockSize(bounds.Dx(), bounds.Dy(), half.cols, half.rows)
-	return halfBlockRows(decoded, cols, rows, half.depth, nil)
+	cols, count := halfBlockSize(bounds.Dx(), bounds.Dy(), half.cols, half.rows)
+	return halfBlockRows(decoded, cols, count, half.depth, nil), ""
 }
 
 // place makes next the placement a component holds in the place of prev (nil: it held none) and returns the id of its
@@ -474,7 +471,7 @@ func (c *mountImage) Render(width int) []string {
 	if c.lines != nil && c.key == key {
 		return c.lines
 	}
-	data, halfRows, ok := images.prepare(c.img, kitty, half, c.wake)
+	data, halfRows, missing, ok := images.prepare(c.img, kitty, half, c.wake)
 	if !ok {
 		return mountImagePending
 	}
@@ -488,6 +485,10 @@ func (c *mountImage) Render(width int) []string {
 		}
 	}
 	switch {
+	case missing != "":
+		// pig additive (D614): a program that draws a mount without the decoders says so in the image's place.
+		c.unplace()
+		c.lines = []string{widthx.TruncateToWidth(c.fallback("no "+missing+" decoder is set on the MountImages of this program: set MountImages.Decode ("+tui.ImageFallback(c.img.mimeType, data.dims, c.filename)+")"), width, "...", false)}
 	case dims == nil || (kitty && data.png == "") || (caps.Images == "" && halfRows == nil):
 		c.unplace()
 		c.lines = []string{widthx.TruncateToWidth(c.fallback(tui.ImageFallback(c.img.mimeType, data.dims, c.filename)), width, "...", false)}

@@ -136,7 +136,11 @@ func TestRestoreOfAStoreOnlyModelAndAPoisonedLevel(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer session.Close()
+			t.Cleanup(func() {
+				if err := session.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			got := session.Model()
 			if got == nil || listed == nil || got.ID != sh.storeOnlyID || got.ProviderMeta.API != listed.ProviderMeta.API || got.Capabilities.ContextWindow != listed.Capabilities.ContextWindow || got.ProviderMeta.API == "" {
 				t.Fatalf("restored model = %v, want the listed %s/%s (api %q)", got, sh.provider, sh.storeOnlyID, listed.ProviderMeta.API)
@@ -156,7 +160,11 @@ func TestRestoreOfAStoreOnlyModelAndAPoisonedLevel(t *testing.T) {
 				t.Logf("NewSession: %v (Pi has no model here either)", err)
 				return
 			}
-			defer session.Close()
+			t.Cleanup(func() {
+				if err := session.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			if got := session.Model(); got != nil && (got.ProviderMeta.API == "" || got.ID == sh.storeOnlyID) {
 				t.Fatalf("restored model = %+v with the record absent; Pi has no object for %s/%s", got, sh.provider, sh.storeOnlyID)
 			}

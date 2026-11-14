@@ -1,0 +1,40 @@
+# Behavior family: tools
+# Surface: the bytes written from JSON that came from outside with a lone UTF-16 surrogate.
+#
+# JSON.parse reads the escape of a lone surrogate (`\ud83d`) as that unit, and
+# JSON.stringify writes it again as the escape. Pi reads a provider's stream
+# (the SDK's JSON.parse of each event), a session line (session-manager.ts
+# :362, :620), models.json (model-registry.ts), settings.json
+# (settings-manager.ts:380) and an RPC line (rpc-mode.ts:771) that way, so the
+# unit is in the session line, the RPC line and the request Pi writes next. A
+# server that escapes everything outside ASCII splits a character over two
+# deltas: `+=` joins the halves and the character is whole again. A provider
+# converter removes a unit that stays alone from a message's text
+# (sanitizeSurrogates) and keeps it in a tool call's arguments. Both CLIs run in
+# RPC mode against a local endpoint; the harness prints the marked strings of
+# each place with every byte outside ASCII as hex. A session Pi wrote with the
+# unit in a user message, an assistant text, a tool-call argument, a tool
+# result, a custom entry and a custom message is opened for the next request of
+# four API kinds and of a provider an extension registers.
+
+name = "35-lone-surrogate-read"
+description = "A lone UTF-16 surrogate read from a provider's stream, a session Pi wrote, models.json and settings.json reaches the next request, the RPC lines, the session file and the settings file as Pi writes it."
+covers = ["packages/ai/src/api/anthropic-messages.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses-shared.ts", "packages/ai/src/api/google-shared.ts", "packages/coding-agent/src/core/session-manager.ts", "packages/coding-agent/src/core/model-registry.ts", "packages/coding-agent/src/core/settings-manager.ts"]
+tags = ["hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/lone-surrogate-read.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/lone-surrogate-read.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["message/assistant: AT[<f0><9f><98><80>] AL[\\ud83d] AR[<f0><9f><98><80>] AQ[\\ud83d]", "models.json: request 1: MX[\\ud83d] RS[\\ud83d]", "session Pi wrote, extension provider: lines Pi wrote, kept byte for byte: 10 of 10"]

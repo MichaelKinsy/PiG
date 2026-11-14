@@ -83,6 +83,18 @@ func GetSupportedThinkingLevels(m *Model) []ModelThinkingLevel {
 	})
 }
 
+// NextThinkingLevel is the level the thinking shortcut moves to from current, and false when the model does not reason (agent-session.ts
+// cycleThinkingLevel: supportsThinking is model.reasoning, the next level is levels[(indexOf(current)+1) % levels.length]). A current level the model
+// does not list (off on a model whose thinkingLevelMap has off: null) has index -1, so the next level is the model's lowest. The Session's cycle and the
+// interactive shortcut both call it.
+func NextThinkingLevel(m *Model, current ModelThinkingLevel) (ModelThinkingLevel, bool) {
+	if m == nil || !m.ProviderMeta.Reasoning && m.Capabilities.MaxThinking == "" {
+		return "", false
+	}
+	levels := GetSupportedThinkingLevels(m)
+	return levels[(slices.Index(levels, current)+1)%len(levels)], true
+}
+
 // thinkingLevelUnsupported reports whether levelMap removes level from a reasoning model's supported levels.
 func thinkingLevelUnsupported(levelMap ThinkingLevelMap, level ModelThinkingLevel) bool {
 	mapped, ok := levelMap[level]

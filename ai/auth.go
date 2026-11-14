@@ -469,6 +469,7 @@ func (a *AuthStorage) writeLocked(creds *authStorageData, lock *pilock.Lock) err
 		return err
 	}
 	// Pi applies the mode only at creation and rewrites in place: the replacement keeps the mode, a symlink and, on Windows, the DACL, and never leaves a truncated file behind.
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	if err := writeAuthFile(a.path, data, 0o600); err != nil {
 		return nodeerrno.FromPathError(err)
 	}
@@ -517,7 +518,8 @@ func pathExists(path string) bool {
 var (
 	acquireAuthFileLock = pilock.Acquire
 	releaseAuthFileLock = (*pilock.Lock).Release
-	writeAuthFile       = atomicfile.WriteFile
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
+	writeAuthFile = atomicfile.WriteFile
 )
 
 // withFileLock serializes reads and writes with Pi's synchronous or cancellable auth lock contract. A failure to release the lock is ignored on the cancellable path, as withLockAsync ignores unlock errors (auth-storage.ts:191-198); on the synchronous path it replaces the result, as withLock's finally block rethrows it (auth-storage.ts:109-113).

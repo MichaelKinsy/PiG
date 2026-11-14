@@ -160511,7 +160511,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "118 normalized-name Pig candidates are ambiguous."
+        "119 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160556,6 +160556,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nativeRealmSeq.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reloadPasses.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderKeySeq.Add",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#requestCallCount.add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable.add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderCardSeq.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.Add",
@@ -320449,7 +320450,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "11 normalized-name Pig candidates are ambiguous."
+        "12 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -320460,6 +320461,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#StreamingJSONParser.report",
+        "go:github.com/MichaelKinsy/PiG/coding#inputEndedDispose.report",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewEditorState.report",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewInput.report",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewInputState.report",

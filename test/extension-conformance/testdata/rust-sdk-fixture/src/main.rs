@@ -2551,7 +2551,10 @@ fn main() {
         |ctx, _| {
             let mut reads = Vec::new();
             for name in ["conformance-run-a", "conformance-run-b"] {
-                if let Err(err) = ctx.register_mcp_server(name, json!({"url": format!("https://{name}.invalid/mcp")})) {
+                if let Err(err) = ctx.register_mcp_server(
+                    name,
+                    json!({"url": format!("https://{name}.invalid/mcp")}),
+                ) {
                     return CommandResult::Error(err.to_string());
                 }
                 match ctx.get_active_tools() {
@@ -5530,6 +5533,98 @@ fn main() {
                 subscription.unsubscribe();
             }
             CommandResult::Ok
+        },
+    );
+    // lone_passthrough subscribes to the event named by the argument with a handler that returns the value it received, and lone_send sends the
+    // argument's text back through sendUserMessage, sendMessage or registerProvider (TestConformance_LoneSurrogatePassThroughAcrossSDKs).
+    fn lone_units(text: Option<&str>) -> String {
+        match text {
+            Some(text) => text
+                .chars()
+                .map(|unit| format!("{:x}", unit as u32))
+                .collect::<Vec<_>>()
+                .join("."),
+            None => "none".to_string(),
+        }
+    }
+    let lone_subscriber = ext.event_subscriber();
+    let lone_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "lone_passthrough",
+        "Subscribe to the event named by the argument with a handler that returns the value it received",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let reported = name.clone();
+            let event = if name == "context_edit" {
+                "context"
+            } else {
+                name.as_str()
+            };
+            let subscription = subscribe(&lone_subscriber, event, move |ctx, data| {
+                let (seen, result) = match reported.as_str() {
+                    "input" => (
+                        data["text"].as_str().map(str::to_string),
+                        json!({"action": "transform", "text": data["text"]}),
+                    ),
+                    "before_agent_start" => (
+                        data["systemPrompt"].as_str().map(str::to_string),
+                        json!({"systemPrompt": data["systemPrompt"]}),
+                    ),
+                    "tool_result" => (
+                        data["content"][0]["text"].as_str().map(str::to_string),
+                        json!({"content": data["content"]}),
+                    ),
+                    _ => (
+                        data["messages"][0]["content"]
+                            .as_str()
+                            .or_else(|| data["messages"][0]["content"][0]["text"].as_str())
+                            .map(str::to_string),
+                        if reported == "context_edit" {
+                            json!({"messages": [data["messages"][0], {"role": "user", "content": "edited", "timestamp": 2}]})
+                        } else {
+                            json!({"messages": data["messages"]})
+                        },
+                    ),
+                };
+                ctx.notify(
+                    &format!("lone_seen:{}:{}", reported, lone_units(seen.as_deref())),
+                    "info",
+                );
+                Ok(Some(result))
+            });
+            lone_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "lone_send",
+        "Send the argument's text back through sendUserMessage, sendMessage or registerProvider",
+        |ctx, args| {
+            let (kind, value) = args.trim().split_once(' ').unwrap_or((args.trim(), ""));
+            ctx.notify(
+                &format!("lone_seen:{}:{}", kind, lone_units(Some(value))),
+                "info",
+            );
+            let sent = match kind {
+                "user" => ctx
+                    .send_user_message(serde_json::Value::String(value.to_string()), "followUp")
+                    .map(|_| ())
+                    .map_err(|err| err.to_string()),
+                "custom" => ctx
+                    .send_message("lone", value, true, None, None)
+                    .map(|_| ())
+                    .map_err(|err| err.to_string()),
+                _ => ctx
+                    .model_registry()
+                    .register_provider("lone-compat", json!({"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"m","name":value,"reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100,"compat":{"openRouterRouting":{"sort":value}}}]}))
+                    .map(|_| ())
+                    .map_err(|err| err.to_string()),
+            };
+            match sent {
+                Ok(()) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err),
+            }
         },
     );
     let event_probe_result_subscriber = ext.event_subscriber();

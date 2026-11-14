@@ -110,6 +110,16 @@ allocs = 14
 
 [[benchmark]]
 package = "./agent"
+benchmark = "BenchmarkToolResultMessageStringify/nestedCalls"
+allocs = 31
+
+[[benchmark]]
+package = "./agent"
+benchmark = "BenchmarkToolResultMessageStringify/plain"
+allocs = 6
+
+[[benchmark]]
+package = "./agent"
 benchmark = "BenchmarkUserContentUnion/0"
 allocs = 34
 
@@ -122,6 +132,26 @@ allocs = 25
 package = "./agent"
 benchmark = "BenchmarkUserContentUnion/65536"
 allocs = 30
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/escape"
+allocs = 4
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/escaped_pair"
+allocs = 4
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/first_half"
+allocs = 26
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkAnthropicDeltaRead/plain"
+allocs = 3
 
 [[benchmark]]
 package = "./ai"
@@ -866,7 +896,7 @@ allocs = 3364
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkProviderRequestLongHistory/google-text"
-allocs = 10684
+allocs = 8862
 
 [[benchmark]]
 package = "./ai"
@@ -1170,6 +1200,111 @@ allocs = 3499
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/lone-surrogate/anthropic-messages"
+allocs = 196
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/lone-surrogate/decode"
+allocs = 604
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/lone-surrogate/google-generative-ai"
+allocs = 244
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/lone-surrogate/mistral-conversations"
+allocs = 183
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/lone-surrogate/openai-completions"
+allocs = 181
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/lone-surrogate/openai-responses"
+allocs = 193
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/lone-surrogate/session-line"
+allocs = 190
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/plain/anthropic-messages"
+allocs = 161
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/plain/decode"
+allocs = 649
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/plain/google-generative-ai"
+allocs = 244
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/plain/mistral-conversations"
+allocs = 161
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/plain/openai-completions"
+allocs = 158
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/plain/openai-responses"
+allocs = 146
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/plain/session-line"
+allocs = 188
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/replacement-character/anthropic-messages"
+allocs = 317
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/replacement-character/decode"
+allocs = 673
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/replacement-character/google-generative-ai"
+allocs = 744
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/replacement-character/mistral-conversations"
+allocs = 320
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/replacement-character/openai-completions"
+allocs = 311
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/replacement-character/openai-responses"
+allocs = 310
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkToolDeclarationWire/replacement-character/session-line"
+allocs = 363
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkToolResultMessageDecode"
 allocs = 64
 
@@ -1237,6 +1372,21 @@ allocs = 18
 package = "./ai/providers/bedrock"
 benchmark = "BenchmarkBedrockToolChoice/none"
 allocs = 0
+
+[[benchmark]]
+package = "./ai/providers/bedrock"
+benchmark = "BenchmarkBedrockToolDeclarationWire/lone-surrogate"
+allocs = 11
+
+[[benchmark]]
+package = "./ai/providers/bedrock"
+benchmark = "BenchmarkBedrockToolDeclarationWire/plain"
+allocs = 10
+
+[[benchmark]]
+package = "./ai/providers/bedrock"
+benchmark = "BenchmarkBedrockToolDeclarationWire/replacement-character"
+allocs = 10
 
 [[benchmark]]
 package = "./ai/providers/bedrock"
@@ -1940,6 +2090,11 @@ allocs = 31
 
 [[benchmark]]
 package = "./coding/extension/host/inproc"
+benchmark = "BenchmarkCoerceBeforeAgentStartResult"
+allocs = 17
+
+[[benchmark]]
+package = "./coding/extension/host/inproc"
 benchmark = "BenchmarkEmitContextPerRequest/exchanges=50"
 allocs = 2163
 
@@ -2120,6 +2275,46 @@ allocs = 12
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/AgentBeforeSettleEvent"
+allocs = 218
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/BeforeAgentStartEvent"
+allocs = 31
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/McpServersChangeEvent"
+allocs = 9
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ModelSelectEvent"
+allocs = 198
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionEndEvent"
+allocs = 6
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionStartEvent"
+allocs = 8
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/ToolExecutionUpdateEvent"
+allocs = 9
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkEventFrameEncode/TurnEndEvent"
+allocs = 254
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/cross-cwd"
 allocs = 717
 
@@ -2146,37 +2341,57 @@ allocs = 845
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/16_extensions,_one_at_a_time"
-allocs = 72190
+allocs = 63412
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/16_extensions,_together"
-allocs = 72229
+allocs = 63449
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/1_extensions,_one_at_a_time"
-allocs = 4513
+allocs = 3964
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/1_extensions,_together"
-allocs = 4517
+allocs = 3964
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/4_extensions,_one_at_a_time"
-allocs = 18048
+allocs = 15853
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFillContentHashesGoExtensions/4_extensions,_together"
-allocs = 18060
+allocs = 15865
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFusedDispatch"
 allocs = 8334
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkHalfBlockRows/256/cells60x30"
+allocs = 5
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkHalfBlockRows/256/fit60x30"
+allocs = 5
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkHalfBlockRows/truecolor/cells60x30"
+allocs = 5
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkHalfBlockRows/truecolor/fit60x30"
+allocs = 5
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2247,6 +2462,26 @@ allocs = 15818
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkModelCatalogFrame"
 allocs = 20052
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkMountImage/mount"
+allocs = 687
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkMountImage/update/bytes"
+allocs = 128
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkMountImage/update/ref"
+allocs = 121
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkMountImage/update/text"
+allocs = 65
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2394,7 +2629,6 @@ benchmark = "BenchmarkRenderProxyCached"
 allocs = 1
 
 [[benchmark]]
-[[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkRenderProxyMouseUnhandled/click_outside_the_regions"
 allocs = 0
@@ -2404,6 +2638,7 @@ package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkRenderProxyMouseUnhandled/press"
 allocs = 0
 
+[[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkStagedSDKKeyMemoized"
 allocs = 2134
@@ -2411,7 +2646,7 @@ allocs = 2134
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkStagedSDKWalkHash"
-allocs = 3475
+allocs = 3135
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2890,6 +3125,11 @@ allocs = 1901
 
 [[benchmark]]
 package = "./internal/codingagent"
+benchmark = "BenchmarkModelsJSONLoad"
+allocs = 4956
+
+[[benchmark]]
+package = "./internal/codingagent"
 benchmark = "BenchmarkNativeCredentialCycle"
 allocs = 97
 
@@ -3335,6 +3575,11 @@ allocs = 203121
 
 [[benchmark]]
 package = "./internal/sessionentry"
+benchmark = "BenchmarkDecodeOptionalMemberEntries"
+allocs = 71862
+
+[[benchmark]]
+package = "./internal/sessionentry"
 benchmark = "BenchmarkDecodeSessionEntryHarnessShape/compact"
 allocs = 197867
 
@@ -3342,11 +3587,6 @@ allocs = 197867
 package = "./internal/sessionentry"
 benchmark = "BenchmarkDecodeSessionEntryHarnessShape/spaced"
 allocs = 224014
-
-[[benchmark]]
-package = "./internal/sessionentry"
-benchmark = "BenchmarkDecodeOptionalMemberEntries"
-allocs = 71862
 
 [[benchmark]]
 package = "./internal/sessionentry"
@@ -3657,6 +3897,16 @@ allocs = 6
 package = "./tui"
 benchmark = "BenchmarkLanguageFromPath"
 allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLoginDialogIsDirty"
+allocs = 21
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLoginDialogSettledFrame"
+allocs = 65
 
 [[benchmark]]
 package = "./tui"

@@ -1,0 +1,58 @@
+from = "1.5.2+86918f9e"
+to = "1.5.2+827383a1"
+
+[[files]]
+path = "apps/p3/docs/apps/book.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3533c4e25, d4d5157ee, 87ae831f8 (the apps note, second and third edition, then three lines). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/apps/index.html"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3533c4e25, d4d5157ee (the apps note, second and third edition). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3533c4e25, 87ae831f8 (decisions added). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/org-managed/book.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "87ae831f8 (three lines). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/people/book.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "97d539ce4, 87ae831f8, 44aaba1f6 (the people note, added, then a second edition, then what to read first). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/people/index.html"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "97d539ce4, 87ae831f8, 44aaba1f6 (the people note, added, then a second edition, then what to read first). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "827383a15: design.md and decisions.md brought current with what Pi built (the connection loop, sign-in lifetimes, themes, store notifications, group commit, sync, the root exports of invalid and forbidden, links.opened, assets, the offline client). Each is followed by a Go place: chord/next/surfaces (surfaces_connection.go, surfaces_client.go, surfaces_themes.go), chord/nextnode/app/sign_ins.go (400-day idle life, 1000 ephemeral sign-ins, links opened), chord/next/store (onCommitted, apply_batch.go), chord/next/data/errors.go. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "827383a15: four decisions gain a note that they are folded into design.md sections (S18 group commit, looks and themes, sync applies batches with the host stopped, tutorial gaps (4)); the decisions are unchanged. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them."

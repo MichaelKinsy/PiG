@@ -3,6 +3,7 @@
 package integration
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -170,8 +171,7 @@ func startLiveRenderHarnessAt(t *testing.T, mode, settings, cwd string, extraArg
 
 func captureLiveToolSamples(capture func() string, window time.Duration) []string {
 	// 500ms pane snapshots can repeatedly land on two phases of a ten-frame spinner. Use a denser cadence coprime to Loader's 800ms cycle and a delayed 1000ms cycle, within the same observation window.
-	const interval = 137 * time.Millisecond
-	return captureLiveSamples(capture, 1+int(window/interval), interval)
+	return captureLiveSamples(capture, 1+int(window/liveToolSampleInterval), liveToolSampleInterval)
 }
 
 func TestLiveToolSamplingDoesNotAliasAnimatingSpinner(t *testing.T) {
@@ -220,29 +220,52 @@ func assertSpinnerChanges(t *testing.T, samples []string, minDistinct int) {
 	}
 }
 
+// liveToolSampleInterval is the pane snapshot cadence of captureLiveToolSamples.
+const liveToolSampleInterval = 137 * time.Millisecond
+
+// elapsedRepaintWindow is the longest stretch the "Elapsed X.Xs" row of a running tool may show one value. Pi redraws that row
+// from a one-second timer (render-utils.ts toolTimerText: setInterval(invalidate, 1000)), and PiG draws built-in tool calls with
+// the same definitions since 0c7d23f05, so the value changes once a second (measured on Pi 1.5.2 and on PiG: changes 0.65 s,
+// 1.67 s, 2.64 s and 3.67 s after the first sample, on both). Twice that interval leaves room for a late timer or a slow capture
+// and still fails a footer that stopped.
+const elapsedRepaintWindow = 2 * time.Second
+
 func assertElapsedAdvances(t *testing.T, samples []string, minimum time.Duration) {
 	t.Helper()
+	if err := elapsedAdvanceError(samples, minimum, elapsedRepaintWindow, liveToolSampleInterval); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// elapsedAdvanceError reports why the elapsed values of samples taken every interval do not advance: the last value must exceed
+// the first by minimum, and no value may equal the one taken within (rounded up to whole samples) before it.
+func elapsedAdvanceError(samples []string, minimum, within, interval time.Duration) error {
 	elapsed := regexp.MustCompile(`Elapsed ([0-9]+\.[0-9]+)s`)
 	values := make([]float64, 0, len(samples))
 	for _, sample := range samples {
 		match := elapsed.FindStringSubmatch(sample)
 		if len(match) != 2 {
-			t.Fatalf("running tool sample has no elapsed footer:\n%s", sample)
+			return fmt.Errorf("running tool sample has no elapsed footer:\n%s", sample)
 		}
 		value, err := strconv.ParseFloat(match[1], 64)
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
 		values = append(values, value)
 	}
-	if delta := values[len(values)-1] - values[0]; delta < minimum.Seconds() {
-		t.Fatalf("elapsed footer advanced %.1fs, want at least %.1fs: %v", delta, minimum.Seconds(), values)
+	if len(values) == 0 {
+		return errors.New("no samples")
 	}
-	for i := 2; i < len(values); i += 2 {
-		if values[i] <= values[i-2] {
-			t.Fatalf("elapsed footer did not advance within one second: %v", values)
+	if delta := values[len(values)-1] - values[0]; delta < minimum.Seconds() {
+		return fmt.Errorf("elapsed footer advanced %.1fs, want at least %.1fs: %v", delta, minimum.Seconds(), values)
+	}
+	lag := int((within + interval - 1) / interval)
+	for i := lag; i < len(values); i++ {
+		if values[i] <= values[i-lag] {
+			return fmt.Errorf("elapsed footer did not advance within %s: %v", within, values)
 		}
 	}
+	return nil
 }
 
 func assertStringsAppearInOrder(t *testing.T, output string, values []string) {

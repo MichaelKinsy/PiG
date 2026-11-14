@@ -2,6 +2,8 @@
 
 package main
 
+import "time"
+
 // Source classes. Every entry has exactly one.
 const (
 	// ClassOwn is a defect PiG introduced: it differed from Pi, or failed where Pi does not.
@@ -18,6 +20,8 @@ type Commit struct {
 	Date string `json:"date"`
 	// PR is the pull request number named in the subject, when there is one.
 	PR string `json:"pr,omitempty"`
+	// at is the instant of the commit's author date. It is not part of the document: the committed ledger records only Date, which is the author's own calendar date, and fillInstants reads the instant from the history.
+	at time.Time
 }
 
 // Entry is one fixed bug.
