@@ -365,6 +365,9 @@ type Host struct {
 	// this to suppress "connection closed" noise during normal exit.
 	shuttingDown atomic.Bool
 
+	// waitDelay is how long a stopped extension process's output pipes get to drain, and how long TerminateProcesses waits for the processes it killed; zero is processWaitDelay. Tests shorten it.
+	waitDelay time.Duration
+
 	// builder handles auto-compilation of source-based extensions.
 	builder *Builder
 
@@ -2591,18 +2594,22 @@ func (h *Host) EndInput() {
 	}
 }
 
-// TerminateProcesses kills hosted processes without running extension callbacks or waiting for their handlers. It is only for a host process that is about to exit; ordinary owners use Shutdown to release all resources.
+// TerminateProcesses kills hosted processes without running extension callbacks or waiting for their handlers, then waits for each process to be reaped, which includes the copy of what it wrote to its output pipes. It is only for a host process that is about to exit; ordinary owners use Shutdown to release all resources.
+// pig additive (D19): the process exits right after this returns, and an extension's console output the host has not yet copied to the terminal and the extension's log would be lost with it; Pi writes it inside its own process, so a write made before its exit is never lost. The wait is bounded by processWaitDelay for all processes together: a process that does not end, or a descendant that keeps an output pipe open, loses the rest of its output after one line on stderr says so.
 func (h *Host) TerminateProcesses() {
-	// pig additive (D19): subprocess runtimes must not outlive a forced host exit.
 	h.shuttingDown.Store(true)
 	h.mu.Lock()
 	processes := make(map[*os.Process]struct{})
 	trees := make(map[*processTree]struct{})
+	var reaped []<-chan struct{}
 	for _, me := range h.exts {
 		if proc, tree := me.processHandle(); tree != nil {
 			trees[tree] = struct{}{}
 		} else if proc != nil {
 			processes[proc] = struct{}{}
+		}
+		if exited := me.exited(); exited != nil {
+			reaped = append(reaped, exited)
 		}
 	}
 	for process := range h.watchedPacked {
@@ -2610,6 +2617,9 @@ func (h *Host) TerminateProcesses() {
 			trees[process.processTree] = struct{}{}
 		} else if process.cmd != nil && process.cmd.Process != nil {
 			processes[process.cmd.Process] = struct{}{}
+		}
+		if process.cmd != nil && process.cmd.Process != nil {
+			reaped = append(reaped, process.startWait())
 		}
 	}
 	h.mu.Unlock()
@@ -2619,6 +2629,42 @@ func (h *Host) TerminateProcesses() {
 	for process := range processes {
 		_ = process.Kill()
 	}
+	h.awaitReaped(reaped)
+}
+
+// awaitReaped waits until every channel in reaped closed, at most processWaitDelay in all, and says on stderr when the bound ended the wait.
+func (h *Host) awaitReaped(reaped []<-chan struct{}) {
+	if len(reaped) == 0 {
+		return
+	}
+	timer := time.NewTimer(h.processWaitDelay())
+	defer timer.Stop()
+	for _, done := range reaped {
+		select {
+		case <-done:
+		case <-timer.C:
+			pending := 0
+			for _, rest := range reaped {
+				select {
+				case <-rest:
+				default:
+					pending++
+				}
+			}
+			fmt.Fprintf(os.Stderr, "pig: %d extension process(es) did not finish ending within %s; the output they have not yet delivered is dropped\n", pending, h.processWaitDelay())
+			return
+		}
+	}
+}
+
+// processWaitDelay is how long the output pipes of a stopped extension process get to drain before they are closed (cmd.WaitDelay), and how long TerminateProcesses waits for the processes it killed.
+const processWaitDelay = 5 * time.Second
+
+func (h *Host) processWaitDelay() time.Duration {
+	if h.waitDelay > 0 {
+		return h.waitDelay
+	}
+	return processWaitDelay
 }
 
 // Shutdown detaches all extension consumers before removing providers, then stops and reaps every managed process. When it returns, each extension it stopped has withdrawn its ownership of thinking runs and told the observers (D214). Session owners emit and await session_shutdown before calling it.
@@ -3392,7 +3438,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	// pig divergence (D56): after the host stops an extension, its output
 	// pipes get this long to drain before they are closed; it never bounds
 	// extension work.
-	cmd.WaitDelay = 5 * time.Second
+	cmd.WaitDelay = h.processWaitDelay()
 	// A factory launcher takes further generations of its factory on stdin.
 	var admissionWriter io.WriteCloser
 	entry, factoryLauncher := nodeLauncherEntry(binPath)

@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
@@ -777,7 +776,7 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 		}
 	}
 	// pig divergence (D56): after the host stops the process, its output pipe gets this long to drain before it is closed; it never bounds extension work.
-	cmd.WaitDelay = 5 * time.Second
+	cmd.WaitDelay = h.processWaitDelay()
 	for _, pending := range pendingExts {
 		h.markExtension(pending.me.config.Name, "spawn-start")
 	}
