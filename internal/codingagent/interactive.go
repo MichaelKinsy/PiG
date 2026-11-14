@@ -532,6 +532,8 @@ type InteractiveMode struct {
 	remoteEditorEvents remoteEventQueue
 	// tuiStopped is set once the TUI stopped, for writers off the owner loop.
 	tuiStopped atomic.Bool
+	// interruptExiting is set once a SIGINT's exit has begun to end the extension processes (handleInterruptSignal): a quit that the owner loop still serves prints no resume hint beside that exit.
+	interruptExiting atomic.Bool
 	// extensionKeybindings is the keybinding table extension state
 	// snapshots carry, republished when the keybindings reload.
 	extensionKeybindings atomic.Pointer[map[string]any]
@@ -1468,6 +1470,9 @@ var stdoutIsTTY = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
 
 // printResumeHint writes the resume command after the terminal is restored on an interactive quit, only for a persisted session with an existing file and TTY stdout.
 func (m *InteractiveMode) printResumeHint() {
+	if m.interruptExiting.Load() {
+		return
+	}
 	cmd := m.resumeHintCommand()
 	if cmd == "" {
 		return

@@ -490,7 +490,11 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	tui.RestoreTerminalOnExit()
 	tui.RestoreTerminalFromSignal()
 	BeforeExit()
-	// pig additive (D19): Pi's extensions end with its process. Here they are processes of their own, and this exit runs no dispose that would end them: a quit by keys that waits for an author (finishInteractiveShutdown) holds its dispose when the ctrl+c arrives, so the runtime of that author would stay behind.
+	// pig additive (D19): Pi's extensions end with its process. Here they are processes of their own, and this exit runs no dispose that would end them: a quit by keys that waits for an author (finishInteractiveShutdown) holds its dispose when the ctrl+c arrives, so the runtime of that author would stay behind. Ending the processes fails that author's pending request with an error of the host's own, which Pi's process, dead at the signal, never produces, and the owner loop still serves the waiting quit: so the Session stops persisting and the quit's resume hint is withheld first, or that error would be written into the session file as the turn's message and the quit would go on to its hint beside this exit.
+	m.interruptExiting.Store(true)
+	if session, ok := m.opts.SessionHandle.(interface{ Dispose() }); ok {
+		session.Dispose()
+	}
 	if m.opts.TerminateExtensionProcesses != nil {
 		m.opts.TerminateExtensionProcesses()
 	}
