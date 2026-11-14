@@ -13,8 +13,6 @@ var (
 	replaceTemp = replace
 	// copyAttributes carries the extended attributes of the file being replaced onto its replacement; tests inject the failures of a file system.
 	copyAttributes = carryAttributes
-	// syncFile flushes an open file or directory to its device; tests inject the failures of a file system.
-	syncFile = func(file *os.File) error { return file.Sync() }
 )
 
 // inPlaceReporter is told of every write that went in place; the embedding program points it at its debug log.
@@ -131,18 +129,9 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		return nil, err
 	}
 	replaced = true
-	// The rename is durable once its directory entry is; a platform that cannot open or sync a directory has nothing more to give.
-	syncDirectory(filepath.Dir(path))
-	return nil, nil
-}
-
-// syncDirectory flushes a directory's entries and reports whether it could; the write is complete either way.
-func syncDirectory(path string) bool {
-	dir, err := os.Open(path)
-	if err != nil {
-		return false
+	// The rename is durable once its directory entry is. The file is replaced either way; a flush that fails for a real reason is the caller's to know.
+	if err = syncDirectory(filepath.Dir(path)); err != nil {
+		return nil, err
 	}
-	synced := syncFile(dir) == nil
-	_ = dir.Close()
-	return synced
+	return nil, nil
 }
