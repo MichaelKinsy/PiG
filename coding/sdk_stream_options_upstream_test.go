@@ -17,7 +17,7 @@ func captureSDKStreamOptions(t *testing.T, api ai.API, settings icodingagent.Set
 	t.Helper()
 	services := newTestServicesWithSettings(t, settings)
 	var captured ai.StreamOptions
-	services.Registry().RegisterExtensionProvider("capture-provider", extension.ProviderConfig{API: api, BaseURL: "https://capture.invalid/v1", APIKey: "test-api-key", Headers: map[string]string{"x-provider": "provider"}, StreamSimple: func(model extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
+	services.Registry().RegisterExtensionProvider("capture-provider", extension.ProviderConfig{API: api, BaseURL: "https://capture.invalid/v1", APIKey: "test-api-key", Models: []extension.ProviderModelConfig{{ID: "capture-model", Name: "Capture Model", Input: []string{"text"}}}, Headers: map[string]string{"x-provider": "provider"}, StreamSimple: func(model extension.Model, _ extension.AIContext, raw extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
 		captured = raw
 		stream := ai.NewAssistantMessageEventStream()
 		if len(providerEvent) != 0 {

@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -464,7 +465,7 @@ func writeStoredModels(path string, entries []storedModels, root modelsRoot) err
 	if err := json.Indent(&indented, canonical, "", "  "); err != nil {
 		return fmt.Errorf("models store: encode: %w", err)
 	}
-	if err := os.WriteFile(path, indented.Bytes(), 0o600); err != nil {
+	if err := atomicfile.WriteFile(path, indented.Bytes(), 0o600); err != nil {
 		return nodeerrno.FromPathError(err)
 	}
 	return nil

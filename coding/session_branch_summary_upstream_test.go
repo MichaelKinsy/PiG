@@ -203,7 +203,7 @@ func TestSummarizationUsesAgentStreamOverride(t *testing.T) {
 	for _, operation := range []string{"branch", "compaction"} {
 		t.Run(operation, func(t *testing.T) {
 			h := newRecoveryHarness(t, harnessOptions{})
-			model, err := BuildModel("faux/faux-1", h.session.services)
+			model, err := fauxFallbackModel(h.session.services)
 			if err != nil {
 				t.Fatal(err)
 			}

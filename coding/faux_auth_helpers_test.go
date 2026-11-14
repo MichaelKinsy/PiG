@@ -21,3 +21,9 @@ func configureFauxAuth(t testing.TB, services *AgentSessionServices) {
 		t.Fatal(err)
 	}
 }
+
+// fauxFallbackModel is the Pi-shaped model of the id the harness scripts under the faux provider: the copy `--model` makes of a provider's model under an id no catalog lists
+// (BuildFallbackModel). The faux provider lists no faux-1 (the scripted model's own Provider serves requests), so BuildModel has nothing to build it from.
+func fauxFallbackModel(services *AgentSessionServices) (*ai.Model, error) {
+	return BuildFallbackModel(&ai.Model{ID: "faux-1", DisplayName: "faux-1", ProviderMeta: ai.ProviderMetadata{ProviderID: "faux", API: ai.APIOpenAICompletions, BaseURL: "https://faux.invalid"}, Capabilities: ai.ModelCapabilities{ContextWindow: 128_000, MaxOutputTokens: 4096}}, services)
+}

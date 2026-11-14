@@ -15,34 +15,22 @@ import (
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// BuildModel constructs an *ai.Model from a "provider/model" spec
-// string, using the given Services for auth and registry lookup. The test-faux backend reuses one provider per Services container so tool-call counters survive request preparation.
+// BuildModel constructs an *ai.Model from a "provider/model" spec string, using the given Services for auth and registry lookup. The test-faux backend reuses
+// one provider per Services container so tool-call counters survive request preparation.
 //
-// Recognised provider prefixes:
+// The model is one the Services' registry lists: a model of the bundled catalog or of the remote catalog the Services hold, a model that models.json defines
+// or an extension registers. A spec whose id nothing lists (a typo, a model a catalog update removed) names no model, as in Pi, where modelRuntime.getModel
+// finds nothing for it: BuildModel returns the error "Model not found: <provider>/<model>" and no model, never a model with no API, endpoint or limits that a
+// request would send to a host the caller did not configure. A caller that wants a custom id on a provider uses [BuildFallbackModel], the copy of the
+// provider's default model that `--model` makes (model-resolver.ts buildFallbackModel).
 //
-//   - "github-copilot/<model>"  : uses the OAuth token in auth.json
-//   - "openai/<model>"          : OPENAI_API_KEY (or registry override)
-//   - "openrouter/<model>"      : OPENROUTER_API_KEY
-//   - "groq/<model>"            : GROQ_API_KEY
-//   - any other "<id>/<model>"  : treated as OpenAI-compatible;
-//     API key from <ID_UPPER>_API_KEY env var
+// A bare "<model>" with no slash is interpreted as "openai/<model>" for backward compatibility with environments that hardcode OpenAI.
 //
-// A bare "<model>" with no slash is interpreted as "openai/<model>"
-// for backward compatibility with environments that hardcode OpenAI.
+// No provider id has a base URL of its own, as in Pi: a model is sent to the base URL its models.json or catalog entry states, and an OpenAI-compatible
+// model whose entry states none goes to the OpenAI default, https://api.openai.com/v1. A local server such as Ollama is a models.json provider with its
+// "baseUrl" and an "apiKey".
 //
-// No provider id has a base URL of its own, as in Pi: a model is sent to
-// the base URL its models.json or catalog entry states, and an
-// OpenAI-compatible model whose entry states none goes to the OpenAI
-// default, https://api.openai.com/v1. A local server such as Ollama is a
-// models.json provider with its "baseUrl" and an "apiKey".
-//
-// The catalog (context window, cost, capabilities) is resolved via
-// ai.LookupModel; if the spec isn't in the codegen registry, the
-// returned Model still works but has empty cost/window data
-// (status-line just shows blank context %).
-//
-// Library consumers can use this to construct models without
-// hand-rolling provider switching:
+// Library consumers can use this to construct models without hand-rolling provider switching:
 //
 //	svcs, _ := coding.CreateAgentSessionServices(...)
 //	defer svcs.Close()
@@ -72,23 +60,41 @@ func buildModel(spec string, svcs *AgentSessionServices, apiKey string) (*ai.Mod
 		if model := svcs.ModelRuntime().GetModel(providerID, modelID); model != nil {
 			return model, nil
 		}
-		// An id the provider does not list is still a model of that provider, as it is for every other provider shape below: the model names the provider and the id, and the provider's own stream function receives it (Pi takes a model object that no registry lists and only requires its provider to exist, model-runtime.ts:667-689 prepareRequest).
-		return svcs.ModelRuntime().bindNativeModel(&ai.Model{ID: modelID, DisplayName: modelID, ProviderMeta: ai.ProviderMetadata{ProviderID: providerID}}), nil
+		return nil, notListedError(providerID, modelID)
 	}
-	return buildModelFromEntry(providerID, modelID, resolveModelEntry(svcs, providerID, modelID), svcs, apiKey)
+	entry, listed := lookupModelEntry(svcs, providerID, modelID)
+	if !listed {
+		return nil, notListedError(providerID, modelID)
+	}
+	return buildModelFromEntry(providerID, modelID, entry, svcs, apiKey)
 }
 
-// resolveModelEntry is the entry buildModel builds providerID/modelID from.
-func resolveModelEntry(svcs *AgentSessionServices, providerID, modelID string) icodingagent.ModelEntry {
+// notListedError is the refusal of a model no catalog, models.json definition or registration lists. Pi has no object for such an id: modelRuntime.getModel and getAvailableSnapshot return nothing for it
+// and every caller refuses with this text or falls back (sdk.ts:224-231 restore, rpc-mode.ts:493-499 set_model, interactive-mode.ts:5409-5440 /model). The one model made from an unlisted id is the CLI's
+// `--model` copy of a provider's default model (BuildFallbackModel, model-resolver.ts:302-317, 527).
+func notListedError(providerID, modelID string) error {
+	return fmt.Errorf("Model not found: %s/%s", providerID, modelID)
+}
+
+// lookupModelEntry is the entry of providerID/modelID in the registry the session lists from, and whether any catalog (remote or bundled), models.json definition or registration lists the model.
+func lookupModelEntry(svcs *AgentSessionServices, providerID, modelID string) (icodingagent.ModelEntry, bool) {
 	registry := svcs.Registry()
 	if remote, found := registry.ResolveRemoteCatalogModel(providerID, modelID); found {
 		// The remote catalog's record is the model's catalog entry, as ModelRuntime.getModel returns it (sdk.ts:224-229): a model only the remote catalog carries has no bundled record.
-		return remote
+		return remote, true
 	}
 	if generated, hasGenerated := lookupGeneratedModel(providerID, modelID); hasGenerated {
-		return registry.ResolveGeneratedModel(providerID, modelID, generated)
+		return registry.ResolveGeneratedModel(providerID, modelID, generated), true
 	}
 	entry, _ := registry.Resolve(providerID, modelID)
+	// Only a model some list names is listed. A provider whose registration or models.json entry states a connection but no model for this id (a base URL or key override, a models list without the id) names no model for it:
+	// Pi's registry has no object there, and a request for the id would go to a host the list never described.
+	return entry, registry.HasModelDefinition(providerID, modelID)
+}
+
+// resolveModelEntry is the entry of providerID/modelID for the connection of a model object that no registry lists (buildRequestModel): the registry's entry, or the provider's settings alone.
+func resolveModelEntry(svcs *AgentSessionServices, providerID, modelID string) icodingagent.ModelEntry {
+	entry, _ := lookupModelEntry(svcs, providerID, modelID)
 	return entry
 }
 

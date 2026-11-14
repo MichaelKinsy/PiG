@@ -28,7 +28,7 @@ func TestCustomModelReasoningSurvivesRuntimeWire(t *testing.T) {
 			}))
 			defer server.Close()
 			services := newTestServices(t)
-			if err := services.Registry().RegisterExtensionProvider("neuralwatt", extension.ProviderConfig{BaseURL: server.URL, API: ai.API(api), APIKey: "test-key"}); err != nil {
+			if err := services.Registry().RegisterExtensionProvider("neuralwatt", extension.ProviderConfig{BaseURL: server.URL, API: ai.API(api), APIKey: "test-key", Models: []extension.ProviderModelConfig{{ID: "custom", Name: "Custom", Input: []string{"text"}}}}); err != nil {
 				t.Error(err)
 			}
 			model, err := BuildModel("neuralwatt/custom", services)
@@ -64,7 +64,7 @@ func TestCustomModelReasoningSurvivesRequestPreparation(t *testing.T) {
 	for _, api := range []string{"openai-completions", "openai-responses"} {
 		t.Run(api, func(t *testing.T) {
 			services := newTestServices(t)
-			if err := services.Registry().RegisterExtensionProvider("neuralwatt", extension.ProviderConfig{BaseURL: "https://fixture.invalid/v1", API: ai.API(api), APIKey: "test-key"}); err != nil {
+			if err := services.Registry().RegisterExtensionProvider("neuralwatt", extension.ProviderConfig{BaseURL: "https://fixture.invalid/v1", API: ai.API(api), APIKey: "test-key", Models: []extension.ProviderModelConfig{{ID: "zai-org/GLM-5.1-FP8", Name: "GLM 5.1 FP8", Input: []string{"text"}}}}); err != nil {
 				t.Error(err)
 			}
 			model, err := BuildModel("neuralwatt/zai-org/GLM-5.1-FP8", services)

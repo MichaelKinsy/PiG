@@ -420,8 +420,8 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 SWITCHED is NIL, and nothing changes, when the model's provider has no configured auth. The Session uses the object as given, with the
 members the caller left on it (its context window, limits, base URL, compat): a model taken from the model registry and edited, or one
 built by hand for a provider the host knows. The model_select handlers have run when it returns.
-A provider/id string stands for the registry's model of that name, or for an id the registry does not list a model the host builds from
-the provider; a name with no slash is an openai model. The string form asks the host for the model object and then sets it, two calls:
+A provider/id string stands for the registry's model of that name. An id no catalog lists names no model: the error is
+\"Model not found: provider/id\", as for Pi's RPC set_model, and nothing is set; a name with no slash is an openai model. The string form asks the host for the model object and then sets it, two calls:
 the object the first call returned is the one set, whatever the registry became in between, and an error of the first call is returned
 without setting."
   (if (stringp model)
