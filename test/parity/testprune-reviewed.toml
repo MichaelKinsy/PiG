@@ -2213,3 +2213,24 @@ commit = "58d20ba89f44ab61fa8b38683a6d7a8b4261e966"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "No expected value changed for an input the test had: Pi has no frame pacing, and D625 (docs/additive-features.md `## D625`) is PiG's own opt-in policy. What the lint sees is a reshape of two tables: TestInstallFramePacingFollowsTheSelection gains the terminal.framePacing setting column and keeps its four environment-only rows with their old verdicts (pi false, 0 false, adaptive true, empty true), and every row of TestFramePacingGateIsClosedWhileAnExtensionDrawsOnScreen keeps its mount and its `gate closed one frame after the mount` assertion and gains an unmount function that the new `gate open one frame after the unmount` assertion uses. The new rows (setting values, tool cards, custom messages and entries) are additions that cover the behavior of the same commit."
+
+[[entry]]
+path = "extensions/sdk/json/type_fields_sort_test.go"
+commit = "6d6fefa33b50b10d31ae98a70cb369589bbe4de4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No expected value changed: the SDK's json package is PiG's own Go reflection encoder (no Pi counterpart; PORT_MAP names nothing under extensions/sdk/json), and the commit replaces its sort.Slice calls by a heap sort, sortFields, to take the three allocations of each sort.Slice out of a type's first use. What the lint reads are the two t.Errorf format strings of the old test (sort.Slice %v against slices.SortFunc %v, by name and by index), which became one for sortFields; the oracle the test compares against is unchanged, slices.SortFunc on the same fields in both orders. The only expected output strings the commit adds are new rows, pure additions (TestStructMemberOrderWithTiedKeys: {\"Z\":3} and {\"N\":5,\"Z\":3}, the resolution of tied names that encoding/json gives), and no existing row's expected value moved; Marshal output is pinned unchanged by type_fields_order_test.go."
+
+[[entry]]
+path = "coding/extension/host/subprocess/view_mount_image_test.go"
+commit = "094e29fe8a59efc4bc438b7ccc7249cda0ada2ed"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi has no mount surface or image mount: the half-block drawing of a mount's image is the PiG-additive D614 (docs/additive-features.md, D614 terminal client), so no Pi line governs the test. The commit drops EnableMountImageDecoders (Go's JPEG and GIF decoders injected by the pig command) for MountImages.Decode, which the terminal view client sets to photonimage.Decode, the port of Pi's Photon decode; the two changed expected values are the one-line diagnostic a mount shows when no decoder is set (it named the dropped EnableMountImageDecoders call, it now names the MountImages.Decode field) and the failure messages around it. The pixels the test expects still come from halfBlockRows of the decoded image, and for the PNG and the GIF the new test decodes the same bytes with Go's decoder and asserts the rows equal those of photonimage (the old path), so the drawn rows have an independent denominator; the JPEG is the one format whose pixels differ (Go keeps the low byte of a 16-bit PNG, Photon drops it) and the test feeds an 8-bit PNG for that reason."
+
+[[entry]]
+path = "coding/model_runtime_native_deferred_test.go"
+commit = "519554ac1db60b02dbb5ac65e2c696e9871a7dc4"
+class = "CITE"
+cite = "packages/coding-agent/src/core/model-runtime.ts:685"
+reason = "Pi's ModelRuntime.prepareRequest throws ModelsError(\"auth\", `Provider is not configured: ${model.provider}`) when the provider has no auth (model-runtime.ts:685; Models.prepareRequest says the same at ai/src/models.ts:901). fetchDeferred (through streamDeferred, model-runtime.ts:794) and cancelDeferred (model-runtime.ts:823) both go through prepareRequest, so the error text of an unconfigured provider's deferred operations is exactly that sentence with a capital P. PiG wrote it in Go error style (lowercase) in coding/native_provider.go and coding/services.go and the two tests pinned the lowercase copy; the commit and its two expected strings (provider is not configured: ext-deferred became Provider is not configured: ext-deferred) copy Pi's text. The commit message's own lines (models.ts:859, model-runtime.ts:668) are those of an older pin; at the pin v1.5.2 (b4afdddf44e0) they are 901 and 685."
