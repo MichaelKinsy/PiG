@@ -122,13 +122,9 @@ func TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad(t *testing.T) {
 	compareToolCards(t, probes, names)
 }
 
-// compareToolCards renders each probe with Pi and with Pig and reports the first rows that differ.
-func compareToolCards(t *testing.T, probes []toolCardProbe, names []string) {
+// piToolCardRows renders each probe with pinned Pi (testdata/builtin_tool_cards.mjs) and returns its rows.
+func piToolCardRows(t *testing.T, probes []toolCardProbe) [][]string {
 	t.Helper()
-	// Both sides draw with every highlight.js language registered, as a session does once its startup load is done. The load is a one-way latch,
-	// so a test that ran earlier in the process (a mode's init, TestLoadRemainingHighlightLanguages...) may already have tripped it, and a load
-	// still running on a stopped mode's task finishes under this test. Waiting for it here makes the state the same on every run; the oracle loads Pi's.
-	tui.LoadAllHighlightLanguages()
 	input, err := json.Marshal(probes)
 	if err != nil {
 		t.Fatal(err)
@@ -145,6 +141,17 @@ func compareToolCards(t *testing.T, probes []toolCardProbe, names []string) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
+	return expected
+}
+
+// compareToolCards renders each probe with Pi and with Pig and reports the first rows that differ.
+func compareToolCards(t *testing.T, probes []toolCardProbe, names []string) {
+	t.Helper()
+	// Both sides draw with every highlight.js language registered, as a session does once its startup load is done. The load is a one-way latch,
+	// so a test that ran earlier in the process (a mode's init, TestLoadRemainingHighlightLanguages...) may already have tripped it, and a load
+	// still running on a stopped mode's task finishes under this test. Waiting for it here makes the state the same on every run; the oracle loads Pi's.
+	tui.LoadAllHighlightLanguages()
+	expected := piToolCardRows(t, probes)
 	failures := 0
 	for i, got := range renderBuiltinToolCards(t, probes) {
 		if strings.Join(got, "\n") != strings.Join(expected[i], "\n") {

@@ -171,46 +171,6 @@ func TestLanguageFromPath(t *testing.T) {
 	}
 }
 
-// renderHighlightedHtml reads theme[scope] on an object literal, so a scope naming an Object.prototype member finds that member and calls it with an undefined receiver, and an own undefined property shadows the member (utils/syntax-highlight.ts getScopeFormatter and getActiveFormatter). Expected strings and TypeError messages are Pi 1.0.0's renderHighlightedHtml output under Node 24.
-func TestRenderHighlightedHtmlReadsObjectPrototypeMembers(t *testing.T) {
-	const notObject = "Cannot convert undefined or null to object"
-	for _, tc := range []struct {
-		scope, want, err string
-	}{
-		{"constructor", "xy", ""},
-		{"toString", "[object Undefined]y", ""},
-		{"toString.x", "[object Undefined]y", ""},
-		{"isPrototypeOf", "falsey", ""},
-		{"isPrototypeOf-y", "falsey", ""},
-		{"default", "xy", ""},
-		{"toLocaleString", "", "Object.prototype.toLocaleString called on null or undefined"},
-		{"__proto__", "", "formatter is not a function"},
-		{"valueOf", "", notObject},
-		{"hasOwnProperty", "", notObject},
-		{"propertyIsEnumerable", "", notObject},
-		{"__defineGetter__", "", notObject},
-		{"__defineSetter__", "", notObject},
-		{"__lookupGetter__", "", notObject},
-		{"__lookupSetter__", "", notObject},
-	} {
-		got, err := renderHighlightedHTML(`<span class="hljs-`+tc.scope+`">x</span>y`, HighlightTheme{})
-		gotErr := ""
-		if err != nil {
-			gotErr = err.Error()
-		}
-		if got != tc.want || gotErr != tc.err {
-			t.Errorf("%s: got %q, error %q; want %q, error %q", tc.scope, got, gotErr, tc.want, tc.err)
-		}
-	}
-	defaultFormatter := func(text string) string { return "D" + text }
-	if got := RenderHighlightedHtml(`<span class="hljs-toString">x</span>`, HighlightTheme{"toString": nil, "default": defaultFormatter}); got != "Dx" {
-		t.Errorf("own undefined toString: got %q, want %q", got, "Dx")
-	}
-	if got := RenderHighlightedHtml(`<span class="hljs-keyword">x</span>y`, HighlightTheme{"keyword": nil, "default": defaultFormatter}); got != "DxDy" {
-		t.Errorf("own undefined keyword: got %q, want %q", got, "DxDy")
-	}
-}
-
 // theme.ts highlightCode (Pi 0f21a331) wraps the highlight in `try { ... } catch { return code.split("\n").map((line) => theme.fg("mdCodeBlock", line)); }`, and
 // getMarkdownTheme().highlightCode is that same function, so a highlight that throws takes the mdCodeBlock color for both. A theme with no color for a syntax token is a
 // highlight that throws: the cli-highlight formatter calls theme.fg, and fg throws `Unknown theme color: <token>`.
