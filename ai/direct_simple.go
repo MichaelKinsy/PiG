@@ -28,6 +28,10 @@ func StreamSimple(ctx context.Context, model *Model, transcript TranscriptContex
 func streamSimpleAs(ctx context.Context, api API, model *Model, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
 	meta := model.ProviderMeta
 	meta.API = api
+	// upstream: compat.ts:290-293 (streamSimple resolves the api before the provider asserts any key)
+	if !directAPIKnown(api) {
+		return nil, NoAPIProviderError(api)
+	}
 	if err := strippedDirectAPIError(api, model, options.Env); err != nil {
 		return nil, err
 	}
@@ -131,9 +135,17 @@ func directAPIProviderFor(api API, model *Model, key string, env ProviderEnv) (P
 	case APIMistralConversations:
 		return NewMistralAPIProvider(MistralConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Reasoning: meta.Reasoning})
 	default:
-		// upstream: compat.ts:244-247 (resolveApiProvider)
-		return nil, fmt.Errorf("No API provider registered for api: %s", api)
+		return nil, NoAPIProviderError(api)
 	}
+}
+
+// directAPIKnown reports whether directAPIProviderFor builds a provider for api: the cases of its switch.
+func directAPIKnown(api API) bool {
+	switch api {
+	case APIAnthropicMessages, APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses, APIBedrockConverseStream, APIGoogleGenerativeAI, APIGoogleVertex, APIMistralConversations:
+		return true
+	}
+	return false
 }
 
 // ApplyOmittedReasoning sets the native thinking options a simple stream sends when `reasoning` is omitted: Anthropic disables thinking and Google and Vertex send `thinking: { enabled: false }` unless the caller supplied native thinking.
