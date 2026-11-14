@@ -101,6 +101,10 @@ func getXattr(path, name string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		// An empty buffer is a size query again: an attribute that grew from nothing since the first call answers its new size, not ERANGE.
+		if n > len(buf) {
+			continue
+		}
 		return buf[:n], nil
 	}
 	return nil, unix.ERANGE
