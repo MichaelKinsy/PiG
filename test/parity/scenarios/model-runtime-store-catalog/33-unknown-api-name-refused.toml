@@ -1,0 +1,35 @@
+# Behavior family: model-runtime-store-catalog
+# Scenario: a models.json provider whose `api` names no registered API implementation is refused at its first request, and nothing is sent.
+#
+# Upstream: models.json takes any non-empty string as
+# `api` (model-config.ts:101-107), the model is listed and selectable, and composeModelProvider's stream looks the api up in the API
+# registry when the request starts and throws "No API provider registered for api: <api>" (provider-composer.ts:603-604): print mode
+# writes that line to stderr and exits 1, with no request at the provider's base URL. PiG 0.3.0 through 0.7.0 built an OpenAI
+# chat-completions provider for any unknown name and sent the conversation to the base URL.
+#
+# The base URL is the discard port on the loopback interface, where nothing listens: a binary that sends the request reports a
+# connection error instead of the refusal, so the equal output is the "no request" assertion this driver can make.
+
+name = "33-unknown-api-name-refused"
+description = "Print mode refuses a models.json provider with an unknown api with Pi's text and sends nothing"
+covers = [
+  "packages/coding-agent/src/core/provider-composer.ts",
+]
+tags = ["hermetic", "fast", "cli"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-extensions", "--no-context-files", "--no-skills", "--no-session", "--model", "odd/m", "-p", "hello"]
+timeout_seconds = 20
+
+[env]
+pig = ["PIG_HOME=testdata/unknown-api/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/unknown-api/pi-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+
+[assert]
+exit_code = 1
+both_contain = ["No API provider registered for api: nosuchapi"]
+both_not_contain = ["Connection error", "connection refused", "ECONNREFUSED"]
+output_equal = true
+stderr_equal = true
+runs = 3
