@@ -3,7 +3,6 @@ package ai
 import (
 	"context"
 	"errors"
-	"net/http"
 	"slices"
 	"strings"
 	"sync/atomic"
