@@ -690,6 +690,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-59e2efb](#bf-59e2efb) | A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59fb623](#bf-59fb623) | fix(requestvalidity): one Responses assistant turn holds all its items, in any order | PiG's own defect | All platforms | Unreleased |
 | [BF-5a093cd](#bf-5a093cd) | In print and JSON mode, Node extensions that share one process now keep Pi's order at disposal | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5a0c595](#bf-5a0c595) | A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16… | PiG's own defect | All platforms | Unreleased |
+| [BF-5a0c595-2](#bf-5a0c595-2) | A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be… | PiG's own defect | All platforms | Unreleased |
 | [BF-5aab94c](#bf-5aab94c) | The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5ab2304](#bf-5ab2304) | Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts… | PiG's own defect | Linux | 0.7.0 |
 | [BF-5af3a18](#bf-5af3a18) | On Windows, a session replacement whose working directory differs from the previous one only in letter case… | PiG's own defect | Windows | 0.7.0 |
@@ -11474,6 +11476,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `49798a80d2` (2026-10-07), `1f7fa2fe22` (2026-10-09), `5a093cd8f6` (2026-10-09)
 - **Tests:** `coding/extension/host/subprocess/loop_turned_forward_test.go::TestLoopTurnedReachesOnlyOtherNodeProcesses`, `coding/extension/host/subprocess/runtime_node_loop_turn_test.go::TestNodeLoopTurnRunsQueuedImmediatesBeforeLaterFrames`, `coding/extension/host/subprocess/runtime_node_loop_turn_test.go::TestNodePromptEndWaitIgnoresAFinishedRunsSignal`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePackedPromptEndWaitHoldsTimersUntilEveryMemberIsInvalidated`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`, `extensions/sdk/surface_parity_test.go::TestLoopTurnedNotifyChangesNothing`, `test/parity/scenarios/extensions-runtime/75-print-shutdown-loop-turn-isolated.toml`, `test/parity/scenarios/extensions-runtime/75-print-shutdown-loop-turn.toml`
 - **Release note:** In print and JSON mode, Node extensions that share one process now keep Pi's order at disposal. Before, an earlier extension's queued callback could run before a later extension's `session_shutdown` handler started, or a timer could run with a live ctx after the runner was invalidated, depending on the order in which the process read its sockets.
+
+### BF-5a0c595
+
+**A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16 halves (`"\ud83d"` ends one delta, `"\ude00"` starts the next), is one character again in the reply, in the session file, in RPC output and in the next request for Anthropic and Google models, in text, thinking and tool arguments, as it already was for OpenAI-compatible models.
+- **Root cause:** PiG decoded the stream events of these providers, and joined the text of two deltas, with encoding/json and Go strings, which have no form for a lone UTF-16 surrogate and replace it with U+FFFD, where Pi reads each event with JSON.parse and joins JavaScript strings.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5a0c595ce2` (2026-11-13)
+- **Tests:** `ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi`, `ai/tool_surrogate_wire_test.go::TestCompatObjectLoneSurrogatesReachTheWireAsPi`, `ai/unmarshaler_census_test.go::TestEveryUnmarshalerIsClassedAndReadsALoneSurrogate`, `internal/codingagent/model_registry_surrogate_test.go::TestModelsJSONKeepsALoneSurrogate`, `test/parity/scenarios/tools/35-lone-surrogate-read.toml`
+- **Release note:** A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16 halves (`"\ud83d"` ends one delta, `"\ude00"` starts the next), is one character again in the reply, in the session file, in RPC output and in the next request for Anthropic and Google models, in text, thinking and tool arguments, as it already was for OpenAI-compatible models. PiG read each half as U+FFFD, so the character was lost for good. A half that stays alone is kept in the session file and in RPC output and removed from the text of the next request, as Pi does. A Mistral reply loses such halves from its text, as it does in Pi, instead of showing U+FFFD, and keeps one in a tool call's arguments.
+
+### BF-5a0c595-2
+
+**A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be selected by the id the file gives, and the request, the session file and RPC output name it as Pi does.
+- **Root cause:** PiG read models.json and wrote the compat object with encoding/json, which replaces a lone UTF-16 surrogate with U+FFFD, where Pi uses JSON.parse and JSON.stringify.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f55df43e29` (2026-11-11), `5a0c595ce2` (2026-11-13)
+- **Tests:** `ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi`, `ai/tool_surrogate_wire_test.go::TestCompatObjectLoneSurrogatesReachTheWireAsPi`, `ai/unmarshaler_census_test.go::TestEveryUnmarshalerIsClassedAndReadsALoneSurrogate`, `internal/codingagent/llama/vendored_default_test.go::TestVendoredPiDistDefaultServerURLMatchesGo`, `internal/codingagent/model_registry_surrogate_test.go::TestModelsJSONKeepsALoneSurrogate`, `test/parity/scenarios/tools/35-lone-surrogate-read.toml`
+- **Release note:** A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be selected by the id the file gives, and the request, the session file and RPC output name it as Pi does. PiG read the unit as U+FFFD, so `set_model` with that id found no model, and a `compat.openRouterRouting` value reached the request as U+FFFD. The `compat` of a provider that an extension registers keeps the unit too.
 
 ### BF-5aab94c
 

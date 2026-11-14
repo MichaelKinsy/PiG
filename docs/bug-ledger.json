@@ -18962,6 +18962,63 @@
       ]
     },
     {
+      "id": "BF-5a0c595",
+      "title": "A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16…",
+      "symptom": "A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16 halves (`\"\\ud83d\"` ends one delta, `\"\\ude00\"` starts the next), is one character again in the reply, in the session file, in RPC output and in the next request for Anthropic and Google models, in text, thinking and tool arguments, as it already was for OpenAI-compatible models.",
+      "rootCause": "PiG decoded the stream events of these providers, and joined the text of two deltas, with encoding/json and Go strings, which have no form for a lone UTF-16 surrogate and replace it with U+FFFD, where Pi reads each event with JSON.parse and joins JavaScript strings.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16 halves (`\"\\ud83d\"` ends one delta, `\"\\ude00\"` starts the next), is one character again in the reply, in the session file, in RPC output and in the next request for Anthropic and Google models, in text, thinking and tool arguments, as it already was for OpenAI-compatible models. PiG read each half as U+FFFD, so the character was lost for good. A half that stays alone is kept in the session file and in RPC output and removed from the text of the next request, as Pi does. A Mistral reply loses such halves from its text, as it does in Pi, instead of showing U+FFFD, and keeps one in a tool call's arguments.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5a0c595ce2",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi",
+        "ai/tool_surrogate_wire_test.go::TestCompatObjectLoneSurrogatesReachTheWireAsPi",
+        "ai/unmarshaler_census_test.go::TestEveryUnmarshalerIsClassedAndReadsALoneSurrogate",
+        "internal/codingagent/model_registry_surrogate_test.go::TestModelsJSONKeepsALoneSurrogate",
+        "test/parity/scenarios/tools/35-lone-surrogate-read.toml"
+      ]
+    },
+    {
+      "id": "BF-5a0c595-2",
+      "title": "A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be…",
+      "symptom": "A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be selected by the id the file gives, and the request, the session file and RPC output name it as Pi does.",
+      "rootCause": "PiG read models.json and wrote the compat object with encoding/json, which replaces a lone UTF-16 surrogate with U+FFFD, where Pi uses JSON.parse and JSON.stringify.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be selected by the id the file gives, and the request, the session file and RPC output name it as Pi does. PiG read the unit as U+FFFD, so `set_model` with that id found no model, and a `compat.openRouterRouting` value reached the request as U+FFFD. The `compat` of a provider that an extension registers keeps the unit too.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f55df43e29",
+          "date": "2026-11-11"
+        },
+        {
+          "hash": "5a0c595ce2",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi",
+        "ai/tool_surrogate_wire_test.go::TestCompatObjectLoneSurrogatesReachTheWireAsPi",
+        "ai/unmarshaler_census_test.go::TestEveryUnmarshalerIsClassedAndReadsALoneSurrogate",
+        "internal/codingagent/llama/vendored_default_test.go::TestVendoredPiDistDefaultServerURLMatchesGo",
+        "internal/codingagent/model_registry_surrogate_test.go::TestModelsJSONKeepsALoneSurrogate",
+        "test/parity/scenarios/tools/35-lone-surrogate-read.toml"
+      ]
+    },
+    {
       "id": "BF-5aab94c",
       "title": "The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name…",
       "symptom": "The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name such as `ſcreen` (long s) no longer counts as `screen`.",

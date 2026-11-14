@@ -956,7 +956,7 @@ func (consumer *mistralChunkConsumer) content(raw json.RawMessage) error {
 	}
 	for _, rawItem := range items {
 		var text string
-		if json.Unmarshal(rawItem, &text) == nil && bytes.HasPrefix(bytes.TrimSpace(rawItem), []byte(`"`)) {
+		if jsstring.UnmarshalKeepingSurrogates(rawItem, &text) == nil && bytes.HasPrefix(bytes.TrimSpace(rawItem), []byte(`"`)) {
 			// GLM models on Mistral send empty content deltas around thinking and tool calls; opening a block for them splits thinking (mistral-conversations.ts:633-635).
 			if delta := sanitizeSurrogates(text); delta != "" {
 				builder.textDelta(delta)
@@ -967,7 +967,7 @@ func (consumer *mistralChunkConsumer) content(raw json.RawMessage) error {
 			return errors.New("Cannot read properties of null (reading 'type')")
 		}
 		var item mistralContentItem
-		if err := json.Unmarshal(rawItem, &item); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(rawItem, &item); err != nil {
 			if _, ok := errors.AsType[*json.UnmarshalTypeError](err); !ok {
 				return err
 			}
@@ -1062,7 +1062,7 @@ func mistralArgumentsDelta(raw json.RawMessage) string {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) > 0 && trimmed[0] == '"' {
 		var text string
-		if json.Unmarshal(trimmed, &text) == nil {
+		if jsstring.UnmarshalKeepingSurrogates(trimmed, &text) == nil {
 			return text
 		}
 	}

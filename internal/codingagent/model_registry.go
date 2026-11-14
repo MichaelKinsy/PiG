@@ -237,7 +237,7 @@ func (definition *modelDefinition) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := json.Unmarshal(normalized, &decoded); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(normalized, &decoded); err != nil {
 		return err
 	}
 	*definition = modelDefinition(decoded)
@@ -531,8 +531,10 @@ func (r *ModelRegistry) readConfig() (*modelsConfig, string) {
 		return nil, "Invalid models.json schema:\n" + strings.Join(errs, "\n") + "\n\nFile: " + path
 	}
 	var cfg modelsConfig
-	// JSON.parse reads 128000.0 or 1.28e5 as the number 128000, which ModelDefinitionSchema's Type.Number() accepts.
-	if err := json.Unmarshal(jsjson.NormalizeIntegers(content), &cfg); err != nil {
+	// JSON.parse reads 128000.0 or 1.28e5 as the number 128000, which ModelDefinitionSchema's Type.Number() accepts, and keeps a lone UTF-16
+	// surrogate of a string or a member name (a provider's name, a model's id and name, a compat value): the decode of a model
+	// definition keeps it too.
+	if err := jsstring.UnmarshalKeepingSurrogates(jsjson.NormalizeIntegers(content), &cfg); err != nil {
 		return nil, "Failed to parse models.json: " + err.Error() + "\n\nFile: " + path
 	}
 	// ModelDefinitionSchema has no `type`, and modelFromJson (provider-composer.ts:210-249) builds every models.json model as a chat
