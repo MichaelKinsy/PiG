@@ -75,7 +75,8 @@ func newAbortReplyRig(t *testing.T, form abortReplyForm) *abortReplyRig {
 	})
 	m.setAgent(next)
 	if form == abortThroughSession {
-		rig.handle = &abortingHandle{recordingCompactHandle: recordingCompactHandle{agent: next}}
+		rig.handle = &abortingHandle{}
+		rig.handle.agent = next
 		m.opts.SessionHandle = rig.handle
 	}
 	loopDone := make(chan struct{})
@@ -111,12 +112,10 @@ func (r *abortReplyRig) startRun(t *testing.T) (context.Context, <-chan struct{}
 	t.Helper()
 	ended := make(chan struct{})
 	runCtx := r.m.abortCtx
-	r.runs.Add(1)
-	go func() {
-		defer r.runs.Done()
+	r.runs.Go(func() {
 		defer close(ended)
 		_, _ = r.m.agent.Send(runCtx, "work")
-	}()
+	})
 	select {
 	case <-r.started:
 	case <-testbudget.Context(t).Done():
