@@ -1642,6 +1642,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fe625bb-2](#bf-fe625bb-2) | When an extension's `before_provider_request` handler returns a replacement body for OpenAI Completions… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ff225d2](#bf-ff225d2) | The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ffcd800](#bf-ffcd800) | Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ffe1cf3](#bf-ffe1cf3) | `pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its… | PiG's own defect | All platforms | Unreleased |
 | [BF-ffeb469](#bf-ffeb469) | A long session keeps less memory for each turn it has compacted away | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fffc16a](#bf-fffc16a) | fix: follow minimatch 11.0.3 (Pi) | PiG's own defect | All platforms | Unreleased |
 
@@ -24135,6 +24136,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2a919a4c3c` (2026-10-10), `4e5b684ecd` (2026-10-10), `ac0dc3bee4` (2026-10-10), `cdf0be76e4` (2026-10-10), `ffcd800f73` (2026-10-10)
 - **Tests:** `tui/markdown_render_oracle_test.go::TestMarkdownRenderMatchesPi`
 - **Release note:** Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces after a final empty heading add the empty row Pi shows.
+
+### BF-ffe1cf3
+
+**`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its SBCL image: it warned `[not-embedded]`, a Piglet with no other member to fuse failed with "nothing to embed or fuse", and a Piglet with a fused member built a Binary that exited at startup with `baked Piglet Binary binary-packed extensions do not match its plan: missing [<extension>]`.
+- **Root cause:** The component plan records a Lisp extension as binary-packed, but buildNativeArtifact had no packed-lisp case: the cell fell to the default branch, which warned [not-embedded] and embedded nothing. The Binary then refused to start because its plan named an extension its cells lacked, and a Piglet with no other member to fuse failed with "nothing to embed or fuse". Build the SBCL image through runtimecell.BuildLispPackedCell, as the Go and Rust cells are built, and embed it; the startup path already starts an embedded packed-lisp cell.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ffe1cf3473` (2026-11-05)
+- **Tests:** `coding/pigletbuild/lisp_binary_test.go::TestPigletBinaryRunsItsLispExtension`
+- **Release note:** `pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its SBCL image: it warned `[not-embedded]`, a Piglet with no other member to fuse failed with "nothing to embed or fuse", and a Piglet with a fused member built a Binary that exited at startup with `baked Piglet Binary binary-packed extensions do not match its plan: missing [<extension>]`. The build now builds the Lisp image and embeds it, the Binary starts it without SBCL, and a Piglet whose only extensions are Lisp extensions builds.
 
 ### BF-ffeb469
 
