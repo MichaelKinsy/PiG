@@ -339,11 +339,13 @@ func (c *Plugins) Discovery() model.Discovery {
 
 // WatchTree has the watcher watch the tree at dir as it watches a root's: dir and every directory under it but the ignored
 // ones (`node_modules`, `.git`). It returns the directories watched then, and false when the watcher watches nothing (it could
-// not watch, or the component is closed). The watch changes no mark: a change under a tree that holds no plugin, no root and
-// no base code marks nothing, and the next discovery drops a tree that is no root's, base's or linked plugin's. Only Go code
-// that holds the component reaches it: no contract, wire message, plugin or configuration names a tree to watch. Its callers
-// are the tests' barrier (pluginstest.Settle, which watches a directory of its own to learn that the events before a point
-// were handled); Pi's watcher has no such member (its tests share the watcher's thread).
+// not watch, or the component is closed). A tree asked for stays watched across discoveries until the component closes, which
+// releases its watches: a discovery drops the other trees that are no root's, base's or linked plugin's and keeps this one, so
+// a build that discovers beside the caller takes no watch from it. The watch changes no mark: a change under a tree that holds
+// no plugin, no root and no base code marks nothing. Only Go code that holds the component may call it: no contract, wire
+// message, plugin or configuration names a tree to watch. Its one caller is the tests' barrier (pluginstest.Settle, which
+// watches a directory of its own to learn that the events before a point were handled); no product path calls it, and Pi's
+// watcher has no such member (its tests share the watcher's thread).
 func (c *Plugins) WatchTree(dir string) ([]string, bool) {
 	var watched []string
 	var watching bool

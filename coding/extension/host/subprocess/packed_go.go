@@ -46,6 +46,14 @@ type packedProcessState struct {
 	generation int
 	stopping   atomic.Bool
 	stopOnce   sync.Once
+	// released closes once stop has run. The watcher of a state whose process another state, or a reference parked for the next Host, still
+	// holds ends then: a reload keeps the process of an unchanged cell and admits a new state to it, and the process's end concerns that state.
+	released chan struct{}
+	// exitMu guards exitHooks and exitRan of the state that spawned the process. exitHooks is what the states released before the process
+	// ended left for its end; the goroutine that reaps the process runs them, once, and exitRan is set from then on.
+	exitMu    sync.Mutex
+	exitHooks []func()
+	exitRan   bool
 	// origin is the state that spawned the OS process this state re-invokes factories in. It is nil for the spawner itself; wait state and the usage lease belong to it.
 	origin          *packedProcessState
 	share           *processShare
@@ -196,6 +204,10 @@ func (p *packedProcessState) spawner() *packedProcessState {
 func (p *packedProcessState) stop() {
 	p.stopOnce.Do(func() {
 		p.stopping.Store(true)
+		// After the reference is released, so that the watcher reads whether the process survives this stop.
+		if p.released != nil {
+			defer close(p.released)
+		}
 		if p.share != nil {
 			p.share.release()
 			return
@@ -238,7 +250,16 @@ func (p *packedProcessState) startWait() <-chan struct{} {
 			_ = p.processTree.Close()
 			// The lease protects the artifact the process runs from, so it ends with the process, however the process ended and whichever states still reference it.
 			p.releaseLease.Do(func() { _ = p.lease.Release() })
+			// The log of a process that outlived a state goes here, once: no released state waits for the process (letGo).
+			p.stderrLog.processExited()
 			close(p.waitDone)
+			p.exitMu.Lock()
+			hooks := p.exitHooks
+			p.exitHooks, p.exitRan = nil, true
+			p.exitMu.Unlock()
+			for _, hook := range hooks {
+				hook()
+			}
 		}()
 	})
 	return p.waitDone
@@ -255,6 +276,27 @@ func (p *packedProcessState) releaseUsageLease() {
 		if p.recoveryLifetime != nil {
 			p.recoveryLifetime.release()
 		}
+	})
+}
+
+// releaseRecoveryAtExit leaves the state's hold on its recovery lifetime to the end of the process. The process was started under that
+// lifetime's context, which the last release cancels, so a state released while the process runs on must not release it yet. The hook holds
+// the lifetime only, not the state.
+func (p *packedProcessState) releaseRecoveryAtExit() {
+	p.releaseRecovery.Do(func() {
+		lifetime := p.recoveryLifetime
+		if lifetime == nil {
+			return
+		}
+		origin := p.spawner()
+		origin.exitMu.Lock()
+		if !origin.exitRan {
+			origin.exitHooks = append(origin.exitHooks, lifetime.release)
+			origin.exitMu.Unlock()
+			return
+		}
+		origin.exitMu.Unlock()
+		lifetime.release()
 	})
 }
 
@@ -502,7 +544,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 			installchange.TrackFile(cell.BinaryPath)
 		}
 	}
-	processState := &packedProcessState{key: cell.Key, parent: h.processParent(ctx), cancel: cancel, lease: lease, generation: cell.Generation, node: nodeRuntime, originalOwner: runtimeParent(ctx), configs: recoveryConfigs}
+	processState := &packedProcessState{key: cell.Key, parent: h.processParent(ctx), cancel: cancel, lease: lease, generation: cell.Generation, node: nodeRuntime, originalOwner: runtimeParent(ctx), configs: recoveryConfigs, released: make(chan struct{})}
 	if retained != nil {
 		// pig additive (D20): the process that already holds this cell's modules re-invokes the factories, as Pi's loader does inside one runtime.
 		processState.adopt(retained)
@@ -686,7 +728,8 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	processState.watcherDone = make(chan struct{})
 	h.watchedPacked[processState] = struct{}{}
 	h.mu.Unlock()
-	//portlint:allow golifetime the watcher closes processState.watcherDone when the process ends, and Host.Shutdown waits on it for every process in h.watchedPacked
+	processState.stderrLog.hold()
+	//portlint:allow golifetime the watcher closes processState.watcherDone when the process ends or, for a state released while its process runs on, when the state is released; Host.Shutdown waits on it for every process in h.watchedPacked whose process it ended
 	go h.watchPackedProcess(processState)
 	if acceptErr != nil {
 		return staged, registered, acceptErr
@@ -879,9 +922,16 @@ func (h *Host) rollbackPartialPackedCell(staged []stagedManagedExt) {
 }
 
 func (h *Host) watchPackedProcess(process *packedProcessState) {
+	// survives is set when the state was released while its process runs on for another state or a parked reference.
+	survives := false
 	defer func() {
-		process.stderrLog.remove()
-		process.releaseUsageLease()
+		// The log goes when the process has ended and no state is left that may name it in a diagnostic.
+		process.stderrLog.letGo()
+		if survives {
+			process.releaseRecoveryAtExit()
+		} else {
+			process.releaseUsageLease()
+		}
 		h.mu.Lock()
 		delete(h.watchedPacked, process)
 		h.mu.Unlock()
@@ -889,7 +939,23 @@ func (h *Host) watchPackedProcess(process *packedProcessState) {
 			close(process.watcherDone)
 		}
 	}()
-	err := process.wait()
+	exited := process.startWait()
+	select {
+	case <-exited:
+	case <-process.released:
+		if !process.processReleased() {
+			// The process runs on. Its end concerns the states that still run factories in it, each with its own watcher; this state
+			// has nothing left to report, so its watcher ends here instead of waiting, with the state, for a process that may live as
+			// long as the session.
+			survives = true
+			return
+		}
+		<-exited
+	}
+	if h.deathGate != nil {
+		defer h.deathGate(deathSeenByWatcher, process.key)()
+	}
+	err := process.exitErr()
 	if process.stopping.Load() || h.shuttingDown.Load() || (process.parent != nil && process.parent.Err() != nil) {
 		return
 	}

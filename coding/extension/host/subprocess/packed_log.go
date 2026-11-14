@@ -15,6 +15,11 @@ type processStderrLog struct {
 	writer   *os.File
 	retained bool
 	removed  bool
+	// holders counts the connection loops and process watchers that may still name the file in a diagnostic. exited is set by the goroutine
+	// that reaps the process, once. wanted is set by a holder that let go: the file is to go once the process has ended and no holder is left.
+	holders int
+	exited  bool
+	wanted  bool
 	// head counts the bytes Write put in the file. After the file reached stderrHeadMax, overflow counts the bytes Write received and tail holds the newest of them.
 	head     int
 	overflow int
@@ -131,11 +136,55 @@ func (l *processStderrLog) remove() {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.removeLocked()
+}
+
+func (l *processStderrLog) removeLocked() {
 	if l.retained || l.removed {
 		return
 	}
 	if err := os.Remove(l.path); err == nil || errors.Is(err, fs.ErrNotExist) {
 		l.removed = true
+	}
+}
+
+// hold keeps the file for a connection loop or a process watcher that may name it in a diagnostic when the process ends.
+func (l *processStderrLog) hold() {
+	if l == nil {
+		return
+	}
+	l.mu.Lock()
+	l.holders++
+	l.mu.Unlock()
+}
+
+// letGo ends a hold and leaves the file's removal to the end of the process: a process outlives the connections and states of the
+// generations a reload replaced in it, and none of them waits for it. The file goes at once when the process has ended and this was the
+// last hold, and otherwise with the later of the two.
+func (l *processStderrLog) letGo() {
+	if l == nil {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.holders--
+	l.wanted = true
+	if l.exited && l.holders == 0 {
+		l.removeLocked()
+	}
+}
+
+// processExited records that the process has ended, after its tree and the parent's write handle closed. The goroutine that reaps the
+// process calls it, once. It removes the file when a holder that let go left that to it and no holder is left.
+func (l *processStderrLog) processExited() {
+	if l == nil {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.exited = true
+	if l.wanted && l.holders == 0 {
+		l.removeLocked()
 	}
 }
 

@@ -113,7 +113,7 @@ func Validate(index Index) error {
 		return fmt.Errorf("Piglet release index has invalid version %q", index.Version)
 	}
 	if index.PigVersion == "" || index.PigVersion != strings.TrimSpace(index.PigVersion) {
-		return fmt.Errorf("Piglet release index has invalid Pig version %q", index.PigVersion)
+		return fmt.Errorf("Piglet release index has invalid PiG version %q", index.PigVersion)
 	}
 	if index.SourceRef == "" || index.SourceRef != strings.TrimSpace(index.SourceRef) {
 		return fmt.Errorf("Piglet release index has invalid sourceRef %q", index.SourceRef)

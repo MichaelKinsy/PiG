@@ -61,7 +61,7 @@ Read the one row that matches the task, then follow only its direct links.
 | embed PiG in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
 | add a provider or model endpoint | [Custom providers](custom-provider.md) | [Models](models.md) |
 | look up a PiG-only feature for authors by its D number | [Additive features](additive-features.md) | [Divergences](divergences.md) |
-| understand Stock Pig and explicit compositions | [Stock Pig and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
+| understand Stock PiG and explicit compositions | [Stock PiG and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
 | map entities, paths, and the command that inspects each | [Knowledge graph](knowledge-graph.md) | [Concepts](concepts.md) |
 | run PiG from a script or another program | [CLI integration](cli-integration.md) | [JSON mode](json.md) or [RPC](rpc.md) |
 | use JSON mode or RPC | [JSON mode](json.md), [RPC](rpc.md) | [RPC commands](rpc-commands.md), [RPC extension UI](rpc-extension-ui.md) |

@@ -157,6 +157,31 @@ func TestReloadDiagnosticsListUnresolvedExtensions(t *testing.T) {
 	}
 }
 
+// An extension whose runtime did not acknowledge the reload was ended and loaded again (subprocess.ReloadReport.Unacknowledged): Pi cannot be in this state. /reload says so in one line under Extension issues.
+func TestReloadSaysWhichExtensionDidNotAcknowledgeIt(t *testing.T) {
+	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
+	line := `extension "held" did not acknowledge the reload within 5s and was restarted`
+	host := &reportingHost{report: &subprocess.ReloadReport{Unacknowledged: []string{line}}}
+	m := reloadTestMode(InteractiveModeOptions{SubprocessHost: host})
+	slash := m.buildSlashContext(context.Background())
+	if err := slash.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if got := slash.ReloadDiagnostics().Diagnostics; len(got) != 1 || got[0] != "[extension] "+line {
+		t.Fatalf("the reload's diagnostics = %q, want the one line %q", got, "[extension] "+line)
+	}
+	sc, out, _, _ := newTestSlashContext()
+	sc.Reload = func() error { return nil }
+	sc.ReloadDiagnostics = slash.ReloadDiagnostics
+	if err := reloadHandler(sc); err != nil {
+		t.Fatal(err)
+	}
+	want := "Reloaded keybindings, extensions, skills, prompts, themes, and context files\nExtension issues:\n  • [extension] " + line + "\n"
+	if got := out.String(); got != want {
+		t.Fatalf("/reload showed %q, want %q", got, want)
+	}
+}
+
 // Upstream's /reload status is exactly "Reloaded keybindings, extensions,
 // skills, prompts, themes, and context files": it prints no resource counts,
 // so it never shows an unpluralized "(1 extensions)".

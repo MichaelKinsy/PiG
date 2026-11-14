@@ -255,16 +255,12 @@ func TestHandleEventProbe(t *testing.T) {
 						return &toggleEntryComponent{content: entry.Data.(string), expanded: options.Expanded}
 					},
 				}}}, t.TempDir())
-				var titles []string
-				previousTitle := setTerminalTitle
-				setTerminalTitle = func(title string) { titles = append(titles, title) }
-				t.Cleanup(func() { setTerminalTitle = previousTitle })
 
 				trace := handleEventTrace{Name: sequence.Name, ShowProgress: showProgress, Steps: []handleEventRecord{}}
 				previousChat := ""
 				for _, step := range sequence.Steps {
 					*p.progress = (*p.progress)[:0]
-					titles = titles[:0]
+					p.terminal.takeTitles()
 					p.requestExit.Store(false)
 					record := handleEventRecord{Step: step.Name}
 					switch {
@@ -309,7 +305,7 @@ func TestHandleEventProbe(t *testing.T) {
 					record.Pending = handleEventText(p.pendingMessagesContainer)
 					record.Border = p.editor.ApplyBorderColor("x")
 					record.Titles = []string{}
-					for _, title := range titles {
+					for _, title := range p.terminal.takeTitles() {
 						record.Titles = append(record.Titles, handleEventTitleApp.ReplaceAllString(title, ""))
 					}
 					record.Shutdown = p.requestExit.Load()

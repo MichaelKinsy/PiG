@@ -189,7 +189,7 @@ width limits are 24 columns for `name`, 48 for `description`, and 76 for
 `tagline`. Name plus description and spacing are limited to 80 columns.
 
 `setLogin` and `setHeader` share one slot. The last successful call wins. Clear
-the header to restore Stock Pig's text header. A rejected definition returns a host
+the header to restore Stock PiG's text header. A rejected definition returns a host
 error and keeps the current header. Quiet startup keeps the header hidden.
 Terminals below 66 columns show compact text without art. PiG caches validated
 render data, so rendering performs no extension IPC.
@@ -218,7 +218,7 @@ missing login, or an invalid definition. Use `/reload` after an edit. A login
 remains an extension Resource. Activate it through a Piglet `extensions` entry,
 user extension policy, or `pig -e <path>`. Verify activation by starting or
 reloading through that path and checking the identity name. Keep product
-identities outside Stock Pig and select them through an ordinary Piglet
+identities outside Stock PiG and select them through an ordinary Piglet
 extension entry.
 
 ### Themes

@@ -245,6 +245,13 @@ func (s *FooterComponent) SetExtensionStatus(key, text string) {
 	s.Invalidate()
 }
 
+// ClearExtensionStatuses removes every keyed status entry and draws the footer again, as Pi's resetExtensionUI does
+// (footerDataProvider.clearExtensionStatuses, footer.invalidate).
+func (s *FooterComponent) ClearExtensionStatuses() {
+	s.FooterDataProvider.ClearExtensionStatuses()
+	s.Invalidate()
+}
+
 // SetTurnContextUsage records the latest usage for the context-window column.
 // Token and cost totals come from the usage totals source instead.
 func (s *FooterComponent) SetTurnContextUsage(u *ai.Usage) {

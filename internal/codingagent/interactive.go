@@ -60,6 +60,9 @@ type SubprocessUIBridge interface {
 	SetWidgetClearFunc(fn func(key string))
 	// RemoveWidget drops the extension processes' widget under key, which a host-process extension replaced.
 	RemoveWidget(key string)
+	// ResetExtensionUI drops what the extension processes put on screen that Pi's resetExtensionUI resets, when a /reload begins and
+	// before a Session replacement.
+	ResetExtensionUI()
 	// SetFrontend tells extensions whether a frontend session draws
 	// (StatePayload.frontend, D107).
 	SetFrontend(on bool)
@@ -1944,8 +1947,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// Set terminal title. Mirrors upstream
 	// interactive-mode.ts:634-642 (updateTerminalTitle). Deferred clear
 	// restores the shell's own title on exit.
-	m.onStop(func() error { tui.SetTerminalTitle(""); return nil })
-	m.onStop(func() error { tui.SetTerminalProgress(false); return nil })
+	m.onStop(func() error { m.setTerminalTitle(""); return nil })
+	m.onStop(func() error { m.setTerminalProgress(false); return nil })
 	// Pre-populate status-line name from session on resume.
 	if n := m.currentSession().GetSessionName(); n != "" {
 		m.statusLine.SetName(n)

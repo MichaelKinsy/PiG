@@ -19,7 +19,8 @@ func TestHelpMatchesPi(t *testing.T) {
 		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
 	}
 	word := regexp.MustCompile(`\bpi\b`)
-	rename := strings.NewReplacer("PI_CODING_AGENT", "PIG_CODING_AGENT", "PI_PACKAGE_DIR", "PIG_PACKAGE_DIR", "~/.pi/", "~/.pig/", "https://pi.dev/", "https://pig.dev/")
+	// D2 ("Product name in messages"): the help lists PiG's names of PI_OFFLINE, PI_SELF_UPDATE_COMMAND and PI_TELEMETRY; Pi's names are still read.
+	rename := strings.NewReplacer("PI_CODING_AGENT", "PIG_CODING_AGENT", "PI_PACKAGE_DIR", "PIG_PACKAGE_DIR", "PI_OFFLINE", "PIG_OFFLINE", "PI_SELF_UPDATE_COMMAND", "PIG_SELF_UPDATE_COMMAND", "PI_TELEMETRY", "PIG_TELEMETRY", "~/.pi/", "~/.pig/", "https://pi.dev/", "https://pig.dev/")
 	spaces := regexp.MustCompile(` {2,}`)
 	// Renaming an environment variable shifts its description column; Pig re-pads the line, so those lines compare by their words.
 	squash := func(line string) string {

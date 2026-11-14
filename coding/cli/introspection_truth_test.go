@@ -370,7 +370,7 @@ func TestDefaultModelResolutionDoesNotSplitAProviderPrefix(t *testing.T) {
 func TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi(t *testing.T) {
 	newBenchFixture(t, `{"defaultModel":"bench-2"}`, `{}`)
 	section := defaultModelSection(t, diagnoseOutput(t))
-	for _, want := range []string{"defaultModel \"bench-2\" from", "which startup ignores", "effective:      bench/bench-1 (startup falls back to it)"} {
+	for _, want := range []string{"defaultModel \"bench-2\" from", "which startup ignores: PiG reads it only together with defaultProvider", "effective:      bench/bench-1 (startup falls back to it)"} {
 		if !strings.Contains(section, want) {
 			t.Errorf("missing %q in:\n%s", want, section)
 		}

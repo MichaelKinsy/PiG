@@ -319,7 +319,7 @@ func selectRuntimeEngine(ctx context.Context, commands runtimeCommands, requeste
 		}
 		return engine, image, nil
 	}
-	return "", inspectedRuntimeImage{}, fmt.Errorf("agent environment is unavailable (%s); load image %q explicitly with Docker or Podman; Pig never pulls or logs in automatically", strings.Join(unavailable, "; "), imageReference)
+	return "", inspectedRuntimeImage{}, fmt.Errorf("agent environment is unavailable (%s); load image %q explicitly with Docker or Podman; PiG never pulls or logs in automatically", strings.Join(unavailable, "; "), imageReference)
 }
 
 func inspectRuntimeImage(ctx context.Context, commands runtimeCommands, engine, imageReference string) (inspectedRuntimeImage, error) {
@@ -452,7 +452,7 @@ func copyRuntimePiglet(source, destination string) error {
 func verifyImagePig(ctx context.Context, commands runtimeCommands, engine, imageReference, platform, expectedVersion string) (string, error) {
 	output, err := commands.Output(ctx, engine, []string{"run", "--rm", "--pull=never", "--platform", platform, "--entrypoint", "pig", imageReference, "version"})
 	if err != nil {
-		return "", fmt.Errorf("image Pig compatibility check: %w", err)
+		return "", fmt.Errorf("image PiG compatibility check: %w", err)
 	}
 	version := ""
 	for line := range strings.SplitSeq(string(output), "\n") {
@@ -462,10 +462,10 @@ func verifyImagePig(ctx context.Context, commands runtimeCommands, engine, image
 		}
 	}
 	if version == "" {
-		return "", fmt.Errorf("image Pig compatibility check returned malformed version output %q", strings.TrimSpace(string(output)))
+		return "", fmt.Errorf("image PiG compatibility check returned malformed version output %q", strings.TrimSpace(string(output)))
 	}
 	if expectedVersion != "" && expectedVersion != "latest" && version != expectedVersion {
-		return "", fmt.Errorf("image Pig version mismatch: expected %s, got %s", expectedVersion, version)
+		return "", fmt.Errorf("image PiG version mismatch: expected %s, got %s", expectedVersion, version)
 	}
 	return version, nil
 }

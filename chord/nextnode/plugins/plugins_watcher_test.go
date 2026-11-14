@@ -569,3 +569,95 @@ func TestTheWatcherClosesTheSystemWatcherOutsideTheHostsLockAndJoinWaitsForIt(t 
 	}
 	<-closed
 }
+
+// discoveryAfterWatchTree is a fixture's watcher as the barrier asks it, with a discovery of the root landing right after each
+// WatchTree: the order of a build that discovers again beside a test's barrier.
+type discoveryAfterWatchTree struct{ *watcherFixture }
+
+func (w discoveryAfterWatchTree) WatchTree(dir string) ([]string, bool) {
+	watched, watching := w.watcherFixture.WatchTree(dir)
+	w.know(w.discoverySnapshot())
+	return watched, watching
+}
+
+// No Pi counterpart: Pi's watcher watches no tree on request (watcher.ts:177-181 drops every tree that is no root's, base's or
+// linked plugin's, and nothing asks it for another). A tree the watcher was asked to watch (alsoWatch: the tests' barrier's) stays
+// watched across discoveries, in both orders of the request and a discovery, with the directories under it; a directory made in
+// it afterwards gets its watch when its event is handled.
+func TestATreeTheWatcherWasAskedToWatchStaysWatchedAcrossDiscoveries(t *testing.T) {
+	orders := []struct {
+		name  string
+		steps func(f *watcherFixture, tree string) bool
+	}{
+		{"asked, then a discovery", func(f *watcherFixture, tree string) bool {
+			_, watching := f.WatchTree(tree)
+			f.know(f.discoverySnapshot())
+			return watching
+		}},
+		{"a discovery, then asked", func(f *watcherFixture, tree string) bool {
+			f.know(f.discoverySnapshot())
+			_, watching := f.WatchTree(tree)
+			return watching
+		}},
+	}
+	for _, order := range orders {
+		t.Run(order.name, func(t *testing.T) {
+			f := watched(t)
+			tree := realOf(t, t.TempDir())
+			inside := filepath.Join(tree, "inside")
+			if err := os.Mkdir(inside, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if !order.steps(f, tree) {
+				t.Fatal("the watcher watches nothing")
+			}
+			for _, dir := range []string{tree, inside} {
+				if !f.Watches(dir) {
+					t.Fatalf("%s is not watched", dir)
+				}
+			}
+			made := filepath.Join(tree, "made")
+			if err := os.Mkdir(made, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			eventually(t, 5*time.Second, "a watch on the directory made in the tree", func() bool { return f.Watches(made) })
+		})
+	}
+}
+
+// watcher.ts:177-181: a discovery drops the tree of a plugin directory linked from outside the roots once its link is gone
+// from the root. A tree the watcher was asked to watch changes nothing of that, and stays.
+func TestADiscoveryDropsTheTreeOfAPluginWhoseLinkIsGoneAndKeepsATreeTheWatcherWasAskedToWatch(t *testing.T) {
+	elsewhere := realOf(t, tempRoot(t))
+	dir := realOf(t, writePlugin(t, elsewhere, "linked", "@test/linked", map[string]string{"worker.ts": ""}, nil))
+	root := realOf(t, tempRoot(t))
+	link := filepath.Join(root, "link")
+	testenv.RequireDirectoryLink(t, dir, link)
+	f := watcherOn(t, root, realOf(t, tempRoot(t)))
+	asked := realOf(t, t.TempDir())
+	if _, watching := f.WatchTree(asked); !watching {
+		t.Fatal("the watcher watches nothing")
+	}
+	f.know(f.discoverySnapshot())
+	if !f.Watches(dir) {
+		t.Fatal("the linked plugin's directory is not watched")
+	}
+	if err := os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+	f.know(f.discoverySnapshot())
+	if f.Watches(dir) {
+		t.Fatal("the discovery kept the tree of a plugin whose link is gone")
+	}
+	if !f.Watches(asked) {
+		t.Fatal("the discovery dropped the tree the watcher was asked to watch")
+	}
+}
+
+// The barrier (pluginstest.Settle) returns when a discovery lands between its WatchTree and the directory it makes. The build of
+// an apply that runs beside a test's edit discovers at any moment (reload_rollout_test.go, two rollouts back to back): such a
+// discovery dropped the barrier's tree, the directory made next got no watch, and Settle timed out.
+func TestTheBarrierReturnsWhenADiscoveryLandsBetweenItsWatchTreeAndItsDirectory(t *testing.T) {
+	f := watched(t)
+	pluginstest.Settle(t, discoveryAfterWatchTree{f})
+}
