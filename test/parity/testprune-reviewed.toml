@@ -2199,3 +2199,10 @@ commit = "eabcdf054aeb22e81ef20953fb40439c7a190ff5"
 class = "DIVERGENCE"
 cite = "D645"
 reason = "No Pi behavior changed: Pi still draws its generic fallback for the write card and the expanded read card of a path whose extension is `constructor` or `__proto__` (theme.ts:1062 `extToLang[ext]` returns a member inherited from Object.prototype and highlightCode throws). The four expected values were PiG's copy of that fallback; eabcdf054ae makes PiG draw the cards themselves on purpose (D645 row 16), and TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi in the same file asserts both sides against pinned Pi."
+
+[[entry]]
+path = "ai/auth_pi_lock_test.go"
+commit = "de06601f21cc584acb111488445e19c3de3923ae"
+class = "CITE"
+cite = "packages/coding-agent/src/core/auth-storage.ts:188"
+reason = "Pi flags a lock as compromised only from proper-lockfile onCompromised, i.e. its heartbeat (auth-storage.ts:176-179 sets lockCompromised in that callback); throwIfCompromised (181, 185, 190) throws only after the flag is set. withLockAsync reads the file (183), awaits fn (184) and, when the flag is not raised, writes `next` with writeFileSync (188) and returns success. A lock removed inside the modifier before the heartbeat reports it therefore ends in a write and no error in Pi. The commit renames TestAuthStorageCompromisedModifierDoesNotWrite (which expected an error and the old value `stored`) to TestAuthStorageModifierPersistsItsCredentialAfterTheLockWasTaken, which expects Modify to succeed with the modifier credential `refreshed` persisted and the other provider kept; the case with the heartbeat's report stays an error and is covered by TestAuthStorageLockCompromisedDuringModifyUpstream. PiG writes the one provider entry as it is in the file where Pi writes its whole stale read back (a PiG-only narrowing: it cannot clobber other providers)."
