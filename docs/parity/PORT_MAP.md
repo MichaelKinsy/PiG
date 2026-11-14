@@ -1121,6 +1121,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/ids.ts` | `durable/ids.go` | ✅ |
 | `packages/durable/src/images/cloudflare.ts` | `durable/images/cloudflare/cloudflare.go` | ✅ |
 | `packages/durable/src/images/exif.ts` | `durable/images/exif.go` | ✅ |
+| `packages/durable/src/images/fit.ts` | `durable/images/fit/fit.go` (fit.FitImage, fit.FitImages, fit.CreateFitImagesExtension; tests in durable/images/fit/fit_test.go and the example durable/examples/fit_images_example_test.go; Go takes a context first; Pi 76c79d8bbe) | ✅ |
 | `packages/durable/src/images/index.ts` | `durable/images/images.go` | ✅ |
 | `packages/durable/src/images/node.ts` | `durable/images/node/node.go` | ✅ |
 | `packages/durable/src/images/photon-wasm.d.ts` | `(TypeScript declaration of the WebAssembly import; Go has no compiled module to import)` | n/a |
@@ -1169,11 +1170,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/tools/edit.ts` | `durable/tools/edit.go` | ✅ |
 | `packages/durable/src/tools/env.ts` | `durable/tools/env.go` | ✅ |
 | `packages/durable/src/tools/file-mutation-queue.ts` | `durable/tools/file_mutation_queue.go` | ✅ |
-| `packages/durable/src/tools/image-processor.ts` | `durable/tools/image_processor.go` | ✅ |
+| `packages/durable/src/tools/image-processor.ts` | `durable/tools/image_processor.go` (ImageLimitsOf is Pi's `imageLimits(model)`: the name is forced, ImageLimits is the type here; PreparedNotes, FromBase64; Pi 76c79d8bbe) | ✅ |
 | `packages/durable/src/tools/image.ts` | `durable/tools/image.go` | ✅ |
 | `packages/durable/src/tools/index.ts` | `durable/tools/index.go` | ✅ |
 | `packages/durable/src/tools/path-utils.ts` | `durable/tools/path_utils.go` | ✅ |
-| `packages/durable/src/tools/read.ts` | `durable/tools/read.go + durable/tools/read_image.go (readImage, imageModelOf; ReadToolDetails.ImageUnsupportedByModel instead of the non-vision diagnostic, Pi 4be4cb4f5e9c)` | ✅ |
+| `packages/durable/src/tools/read.ts` | `durable/tools/read.go + durable/tools/read_image.go (readImage, imageModelOf; ReadToolDetails.ImageUnsupportedByModel instead of the non-vision diagnostic, Pi 4be4cb4f5e9c; the limits and the notes come from ImageLimitsOf and PreparedNotes, Pi 76c79d8bbe)` | ✅ |
 | `packages/durable/src/tools/write.ts` | `durable/tools/write.go` | ✅ |
 | `packages/durable/src/truncate.ts` | `durable/truncate.go` | ✅ |
 | `packages/durable/src/types.ts` | `durable/types.go`, `durable/documents.go`, `durable/entries.go`, `durable/tasks.go` | ✅ |
@@ -1181,7 +1182,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/codemode/describe.ts` | `durable/codemode/describe.go; Pi 5e24c6b1: NamespacesOf and declaredNamespaces replace Namespace and namespaceOf (prefix namespaces removed); Section takes the selected extensions and lists each declared namespace as `## <name>` and its description` | ✅ |
 | `packages/durable/src/codemode/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/codemode/models.ts` | `durable/codemode/models.go` | ✅ |
-| `packages/durable/src/codemode/output.ts` | `durable/codemode/output.go` | ✅ |
+| `packages/durable/src/codemode/output.ts` | `durable/codemode/output.go (saveImages decodes with tools.FromBase64, Pi 76c79d8bbe)` | ✅ |
 | `packages/durable/src/images/node-worker.ts` | `durable/images/node/node.go` (the worker goroutine; tests in durable/images/node/worker_test.go) | ✅ |
 | `packages/durable/src/search.ts` | `durable/internal/search/search.go` (tests in durable/internal/search/search_test.go) | ✅ |
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
