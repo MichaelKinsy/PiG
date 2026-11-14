@@ -233,14 +233,14 @@ func (s *Session) preparePromptInvocation(ctx context.Context, text string, opti
 	return s.prepareContentRun(ctx, BuildUserContent(text, images), func() { notify(DispositionStarted) })
 }
 
-// ValidatePromptModelAuth rejects a new prompt before compaction and before_agent_start when no model is selected or its provider has no usable auth, as agent-session.ts:1673-1691 does: the published availability snapshot first, then a live auth check. Interactive mode runs the same check before it starts a turn.
+// ValidatePromptModelAuth rejects a new prompt before compaction and before_agent_start when no model is selected or its provider has no usable auth, as agent-session.ts:2242-2259 does: the published availability snapshot first, then a live auth check. The rule names no provider: one without configured auth is refused whatever it is called (`No API key found for <provider>.`, auth-guidance.ts:22-25). Print, RPC and interactive mode all run this check before they start a turn.
 func (s *Session) ValidatePromptModelAuth(ctx context.Context) error {
 	model := s.Model()
 	if model == nil {
 		return errors.New(icodingagent.FormatNoModelSelectedMessage())
 	}
 	provider := providerID(model)
-	if (s.services.Registry().GetProvider(provider) != nil || modelRuntimeRequiresAuth(provider)) && !s.modelRuntime.HasConfiguredAuth(provider) {
+	if !s.modelRuntime.HasConfiguredAuth(provider) {
 		check, err := s.modelRuntime.CheckAuth(ctx, provider)
 		if err != nil {
 			return err

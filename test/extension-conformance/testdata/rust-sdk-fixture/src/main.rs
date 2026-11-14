@@ -2544,6 +2544,25 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    // mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+    ext.command(
+        "mcp_register_run",
+        "Register two MCP servers and report the active tools after each",
+        |ctx, _| {
+            let mut reads = Vec::new();
+            for name in ["conformance-run-a", "conformance-run-b"] {
+                if let Err(err) = ctx.register_mcp_server(name, json!({"url": format!("https://{name}.invalid/mcp")})) {
+                    return CommandResult::Error(err.to_string());
+                }
+                match ctx.get_active_tools() {
+                    Ok(names) => reads.push(names.join(",")),
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                }
+            }
+            ctx.notify(&format!("mcp_register_run:{}", reads.join("|")), "info");
+            CommandResult::Ok
+        },
+    );
     // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
     ext.command(
         "registry-model-probe",

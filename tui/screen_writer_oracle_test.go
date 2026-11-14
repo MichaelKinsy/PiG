@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -25,6 +26,9 @@ type screenWriterReplay struct {
 	writer      *screenwriter.Writer
 	pair        *gridterm.Pair
 	differences []string
+	// frame, when set, is told of every write that is a synchronized update by its own bytes: the bytes, the screen's columns, and
+	// whether the writer counted it as a frame it has no rule for.
+	frame func(update string, cols int, unread bool)
 }
 
 func newScreenWriterReplay(name string, cols, rows int) *screenWriterReplay {
@@ -41,7 +45,11 @@ func (r *screenWriterReplay) translate(index int, resize []int, out string) stri
 	}
 	var translated strings.Builder
 	for _, write := range gridterm.SplitWrites(out) {
+		before := r.writer.Stats().Unread
 		translated.WriteString(r.writer.Translate(write))
+		if r.frame != nil && strings.HasPrefix(write, "\x1b[?2026h") && strings.HasSuffix(write, "\x1b[?2026l") {
+			r.frame(write, r.size[0], r.writer.Stats().Unread != before)
+		}
 	}
 	if index%7 == 6 {
 		translated.WriteString(r.writer.Settled())
@@ -86,12 +94,17 @@ func screenWriterStreams(t *testing.T) map[string][]string {
 // Whatever the alternate screen writes for the frames of the terminal-engine corpus and of the pinned Pi's fixture (Pi's bytes, and
 // PiG's with the rows that moved scrolled), the screen writer's bytes leave the same cells, pen, cursor and scroll region on a terminal
 // after every frame and after the settle write, on four terminals that count cluster widths differently. And the frame grammar the
-// writer reads is the one Pi's doRender writes: of the frames of Pi's own 500 scenarios, the ones it has no rule for are the ones
-// that hold an image, a line feed inside a line or a screen narrower than two columns, and their number is pinned, so a frame Pi
-// starts to write another way shows here.
+// writer reads is the one Pi's doRender writes: of the frames of Pi's own 500 scenarios, the ones it has no rule for are exactly
+// the ones screenWriterNoRule names from their bytes, frame by frame: an image, a line feed inside a line, a control sequence cut
+// short (a line Pi sliced inside an SGR or a hyperlink, so the next escape comes before the sequence's end) and a screen narrower
+// than two columns. So a frame Pi starts to write another way shows here, and so does a frame of those kinds the writer starts to
+// read. The fixture decides how many there are of each: a re-recorded fixture changes no number here, and a failure prints them.
 func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 	var streams, steps, differences int
 	var total, pis screenwriter.Stats
+	noRule := map[string]int{}
+	var misread []string
+	updates := 0
 	add := func(r *screenWriterReplay, into *screenwriter.Stats) {
 		streams++
 		steps += r.pair.Steps
@@ -146,6 +159,18 @@ func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 					add(replay, into)
 				}
 				replay, index = newScreenWriterReplay(fmt.Sprint("oracle-", scenario, " ", variant), cols, rows), 0
+				if name := replay.name; variant == "B" {
+					replay.frame = func(update string, cols int, unread bool) {
+						updates++
+						why := screenWriterNoRule(update, cols)
+						if why != "" {
+							noRule[why]++
+						}
+						if unread != (why != "") {
+							misread = append(misread, fmt.Sprintf("%s, %d columns: the writer had no rule: %v; the frame holds %q: %q", name, cols, unread, why, update))
+						}
+					}
+				}
 				replay.step(index, nil, out)
 			},
 			step: func(_ int, resize []int, _ bool, out string) {
@@ -177,18 +202,48 @@ func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 	if total.Translated+pis.Translated < 5000 || total.Unchanged+pis.Unchanged < 1000 || total.Settles+pis.Settles < 500 {
 		t.Errorf("the streams do not exercise the writer: %d frames translated, %d not written, %d settle writes", total.Translated+pis.Translated, total.Unchanged+pis.Unchanged, total.Settles+pis.Settles)
 	}
-	if pis.Frames != screenWriterPisFrames || pis.Unread != screenWriterPisUnread {
-		t.Errorf("of %d frames of Pi's fixture the writer has no rule for %d; it was %d of %d when the frame grammar was last reviewed against doRender (internal/screenwriter, D624): review it, then pin the new numbers",
-			pis.Frames, pis.Unread, screenWriterPisUnread, screenWriterPisFrames)
+	for i, frame := range misread {
+		if i == 5 {
+			t.Errorf("and %d more frames of Pi's fixture", len(misread)-i)
+			break
+		}
+		t.Error(frame)
+	}
+	held := 0
+	for _, why := range screenWriterNoRules {
+		if noRule[why] == 0 {
+			t.Errorf("no frame of Pi's fixture holds %s: nothing shows that the writer leaves such a frame as it came", why)
+		}
+		held += noRule[why]
+	}
+	if updates == 0 || pis.Frames != updates || pis.Unread != held || t.Failed() {
+		t.Errorf("Pi's fixture has %d synchronized updates, and %d hold what the frame grammar (internal/screenwriter, D624) has no rule for: %v; the writer read %d frames and had no rule for %d",
+			updates, held, noRule, pis.Frames, pis.Unread)
 	}
 }
 
-// The frames of the pinned Pi's fixture (Pi 1.5.2, 500 scenarios) as the writer reads them: how many there are, and for how many it
-// has no rule.
-const (
-	screenWriterPisFrames = 6338
-	screenWriterPisUnread = 2831
-)
+// screenWriterNoRules are what a synchronized update of Pi's doRender can hold that the writer's frame grammar has no rule for.
+var screenWriterNoRules = []string{"a screen narrower than two columns", "an image", "a line feed inside a line", "a control sequence cut short"}
+
+// A CSI or an OSC that the next escape ends before its final byte or its terminator: a line cut inside a sequence.
+var screenWriterCutSequence = regexp.MustCompile("\x1b\\[[0-?]*[ -/]*\x1b|\x1b\\][^\x07\x1b]*\x1b[^\\\\]")
+
+// screenWriterNoRule names what a synchronized update holds that the frame grammar has no rule for, "" for nothing. It reads the
+// update's bytes and the screen's width, not the writer: a Kitty or iTerm2 image sequence, a line feed (Pi's doRender writes none
+// between rows, so one is inside a line), a sequence cut short, or a screen of fewer than two columns.
+func screenWriterNoRule(update string, cols int) string {
+	switch {
+	case cols < 2:
+		return screenWriterNoRules[0]
+	case strings.Contains(update, "\x1b_G") || strings.Contains(update, "\x1b]1337;File="):
+		return screenWriterNoRules[1]
+	case strings.Contains(update, "\n"):
+		return screenWriterNoRules[2]
+	case screenWriterCutSequence.MatchString(update):
+		return screenWriterNoRules[3]
+	}
+	return ""
+}
 
 // An image's rows under an overlay, in the frames the alternate screen itself writes for them: a transcript with an image three
 // rows high, an overlay shown over the image's rows, changed while it is shown and closed again, and text below the image that

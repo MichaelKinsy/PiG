@@ -91,3 +91,6 @@ func (m *InteractiveMode) runOnOwner(ctx context.Context, fn func()) {
 	}
 	m.runOnMain(ctx, fn)
 }
+
+// OnOwnerLoop reports whether the caller is the goroutine running the owner loop. The extension Runner asks before it waits, on the caller's goroutine, for a handler that runs on another goroutine and may need the loop (inproc Runner.onMcpServersChange).
+func (c *ExtUIContext) OnOwnerLoop() bool { return c.m.onOwnerLoop() }

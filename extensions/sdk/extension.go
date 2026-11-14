@@ -359,7 +359,7 @@ type Extension struct {
 	// The host's replicated state of the upstream 0.99.1 API, as raw JSON so each read decodes a copy the caller owns. It is guarded by mu.
 	settingsRaw   json.RawMessage
 	mcpServersRaw json.RawMessage
-	// mcpServersAt is the position of mcpServersRaw in the host's frame order: 2k for the state of the k-th notify frame, 2n+1 for the reply of a registration call routed after n notify frames. A list from an earlier position never replaces it.
+	// mcpServersAt is the position of mcpServersRaw in the host's frame order: 2k for the state of the k-th notify frame, 2n+1 for the ready snapshot or the reply of a registration call read after n notify frames. A list from an earlier position never replaces it.
 	mcpServersAt uint64
 
 	// executeUpdates holds the OnUpdate callbacks of the executeTool calls in flight, by execute id.
@@ -1298,10 +1298,9 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 			})
 			continue
 		}
-		// A listener that a load-time dispatch unsubscribed is released as soon as its dispatch ends, which can precede ready.
-		if env.Type == msgNotify && env.Notify != nil && env.Notify.Method == notifyEventsRelease {
-			e.releaseEventListener(env.Notify.Args)
-			e.markNotifyHandled()
+		// A notify the Host sent before ready is applied and counted as one the loop reads is: the release of a listener a load-time dispatch unsubscribed, which follows its dispatch, or a state pushed to a connection that had not registered.
+		if env.Type == msgNotify {
+			e.applyQueuedNotify(env)
 			continue
 		}
 		break
@@ -1332,12 +1331,16 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 		wrapped := []byte(`{"state":`)
 		wrapped = append(wrapped, env.Ready.State...)
 		wrapped = append(wrapped, '}')
-		e.handleNotify(envelope{
+		// The snapshot is newer than every frame read before it, so it takes the position after the last of them.
+		e.notifyMu.Lock()
+		at := 2*e.notifyHandled + 1
+		e.notifyMu.Unlock()
+		e.handleNotifyAt(envelope{
 			Notify: &notifyMsg{
 				Method: "state_update",
 				Args:   wrapped,
 			},
-		})
+		}, at)
 	}
 
 	e.toolConn = conn
@@ -1381,11 +1384,7 @@ func (e *Extension) loop() error {
 		case msgCancel:
 			e.cancelRequest(env)
 		case msgNotify:
-			e.notifyMu.Lock()
-			seq := e.notifyHandled + 1
-			e.notifyMu.Unlock()
-			e.handleNotifyAt(env, seq)
-			e.markNotifyHandled()
+			e.applyQueuedNotify(env)
 		case msgShutdown:
 			return e.stopRequests()
 		}
@@ -1924,13 +1923,22 @@ func (e *Extension) waitNotifications(target uint64, stop <-chan struct{}) {
 	}
 }
 
+// applyQueuedNotify applies one notify frame the read loop queued and counts it as handled. Every reader of the queue calls it for each notify it takes: the main loop, the wait for ready and the factory's pump. A host call's wait counts on both halves (waitNotifications): a frame that is taken and not counted is waited for for ever, and one that is counted and not applied lets the call return on a replica older than its result.
+func (e *Extension) applyQueuedNotify(env envelope) {
+	e.notifyMu.Lock()
+	seq := e.notifyHandled + 1
+	e.notifyMu.Unlock()
+	e.handleNotifyAt(env, 2*seq)
+	e.markNotifyHandled()
+}
+
 // handleNotify processes broadcast notifications from the host.
 // Currently handles "state_update" to keep cached fields (model, thinking,
 // etc.) in sync with the host.
 func (e *Extension) handleNotify(env envelope) { e.handleNotifyAt(env, 0) }
 
-// handleNotifyAt is handleNotify for the seq-th notify frame the read loop queued; 0 is a state that precedes every frame, such as the ready snapshot.
-func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
+// handleNotifyAt is handleNotify for a frame at position at of the host's frame order (mcpServersAt); 0 precedes every frame.
+func (e *Extension) handleNotifyAt(env envelope, at uint64) {
 	if env.Notify == nil {
 		return
 	}
@@ -2063,7 +2071,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.setToolsExpanded(*payload.State.ToolsExpanded)
 		}
 		applyHostTuiState(payload.State.Keybindings, payload.State.TerminalCapabilities)
-		e.applyReplicatedState(payload.State.Settings, payload.State.McpServers, 2*seq)
+		e.applyReplicatedState(payload.State.Settings, payload.State.McpServers, at)
 		footerChanged, branchChanged := e.applyFooterData(payload.State.FooterData)
 		defer func() {
 			e.mu.Unlock()

@@ -16,10 +16,14 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/perfgate"
 	"github.com/MichaelKinsy/PiG/internal/profiling"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/test/longsession"
 )
 
@@ -37,8 +41,8 @@ var readToolFiles = []struct {
 // readToolsWords is the prose Pi-Bolt's fake model streams a word at a time before each tool call and the answer.
 var readToolsWords = strings.Fields("Looking at the code structure the module wires the session state into the renderer and then streams tool results back through the agent loop before compaction runs ")
 
-// readToolsServer answers like Pi-Bolt's bench/fake_model.py: every turn streams 120 words, the first four turns after the prompt then call read on the next fixture with arguments streamed 8 bytes per record, and the fifth answers "Done: read all four files".
-func readToolsServer(t *testing.T) *httptest.Server {
+// readToolsServer answers like Pi-Bolt's bench/fake_model.py: every turn streams 120 words, the first four turns after the prompt then call read on the next fixture with arguments streamed 8 bytes per record, and the fifth answers "Done: read all four files". onPrompt, when set, runs when a run's first request arrives, before its answer: pig is then past its startup, where cli.Main chooses the GC policy, and waits for the model.
+func readToolsServer(t *testing.T, onPrompt func()) *httptest.Server {
 	t.Helper()
 	chunk := func(delta map[string]any, finish any, usage map[string]any) string {
 		body := map[string]any{"id": "chatcmpl-bench", "object": "chat.completion.chunk", "created": 0, "model": "fake-model",
@@ -72,6 +76,9 @@ func readToolsServer(t *testing.T) *httptest.Server {
 				turn++
 			}
 		}
+		if turn == 0 && onPrompt != nil {
+			onPrompt()
+		}
 		var out strings.Builder
 		out.WriteString(chunk(map[string]any{"role": "assistant", "content": ""}, nil, nil))
 		for i := range 120 {
@@ -97,13 +104,13 @@ func readToolsServer(t *testing.T) *httptest.Server {
 	return server
 }
 
-// printReadTools sets up Pi-Bolt's headless scenario in a new home with env added, and returns the function that runs it once and returns its exit record. The first start in a new home materializes caches, so it runs once before returning.
-func printReadTools(t *testing.T, env ...string) func() profiling.ProcessMetrics {
+// printReadToolsHome sets up Pi-Bolt's headless scenario in a new home with env added, and returns the home and the arguments of a run. onPrompt is readToolsServer's.
+func printReadToolsHome(t *testing.T, onPrompt func(), env ...string) (*pigHome, []string) {
 	t.Helper()
 	home := newPigHome(t)
 	home.env = append(home.env, "PI_OFFLINE=1", "PIG_OFFLINE=1") // As Pi-Bolt's harness runs it.
 	home.env = append(home.env, env...)
-	server := readToolsServer(t)
+	server := readToolsServer(t, onPrompt)
 	agent := strings.TrimPrefix(envValue(home.env, "PIG_CODING_AGENT_DIR"), "PIG_CODING_AGENT_DIR=")
 	models := `{"providers":{"fake":{"baseUrl":"` + server.URL + `/v1","api":"openai-completions","apiKey":"fake","models":[{"id":"fake-model","contextWindow":200000,"maxTokens":8192}]}}}`
 	files := map[string]string{
@@ -122,19 +129,38 @@ func printReadTools(t *testing.T, env ...string) func() profiling.ProcessMetrics
 			t.Fatal(err)
 		}
 	}
-	args := []string{"-p", "--no-session", "--model", "fake/fake-model", "Read the four fixture files"}
+	return home, []string{"-p", "--no-session", "--model", "fake/fake-model", "Read the four fixture files"}
+}
+
+// printReadToolsOnce runs the scenario of home once in binary with env added and returns its exit record. started, when set, receives the process id once the process runs.
+func printReadToolsOnce(t *testing.T, home *pigHome, binary string, env, args []string, started func(pid int)) profiling.ProcessMetrics {
+	t.Helper()
+	var stdout string
+	record := home.runBinary(binary, env, args, func(pid int, stdin io.Writer, out *bufio.Reader) {
+		if started != nil {
+			started(pid)
+		}
+		_ = stdin.(io.Closer).Close() // Pi-Bolt runs it with no input; print mode reads piped stdin to its end.
+		data, _ := io.ReadAll(out)
+		stdout = string(data)
+	})
+	if !strings.Contains(stdout, "Done: read all four files") {
+		t.Fatalf("pig -p did not answer after the four reads:\n%s", stdout)
+	}
+	return record
+}
+
+// printReadTools sets up Pi-Bolt's headless scenario in a new home with env added, and returns the function that runs it once and returns its exit record. The first start in a new home materializes caches, so it runs once before returning.
+func printReadTools(t *testing.T, env ...string) func() profiling.ProcessMetrics {
+	t.Helper()
+	home, args := printReadToolsHome(t, nil, env...)
+	binary, err := pigBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
 	run := func() profiling.ProcessMetrics {
 		t.Helper()
-		var stdout string
-		record := home.run(args, func(_ int, stdin io.Writer, out *bufio.Reader) {
-			_ = stdin.(io.Closer).Close() // Pi-Bolt runs it with no input; print mode reads piped stdin to its end.
-			data, _ := io.ReadAll(out)
-			stdout = string(data)
-		})
-		if !strings.Contains(stdout, "Done: read all four files") {
-			t.Fatalf("pig -p did not answer after the four reads:\n%s", stdout)
-		}
-		return record
+		return printReadToolsOnce(t, home, binary, nil, args, nil)
 	}
 	run()
 	return run
@@ -158,10 +184,122 @@ func TestPrintModeRaisesGCTarget(t *testing.T) {
 	}
 }
 
-// D175: a user's GOGC wins over the print-mode target: at GOGC=100 the headless scenario runs the 2-3 GC cycles it ran before the policy.
+// gcChurnBytes is the garbage the GC probe allocates in a print run: several times the heap growth one collection allows at the print-mode target (16 MiB less what is marked) and tens of times the growth at GOGC=50, so the collections the probe counts follow from the GC percent and not from what the run itself allocates.
+const gcChurnBytes = 64 << 20
+
+// gcProbeSource is added to cmd/pig's package main (go build -overlay) for TestPrintModeKeepsUsersGOGC: with PIG_PERFGATE_CHURN_REPORT set, the first SIGUSR1 allocates PIG_PERFGATE_CHURN_BYTES of garbage in 64 KiB pieces and writes to that path the GC percent (/gc/gogc:percent) before and after the garbage and the collections that finished between the two reads. Without it the binary is cmd/pig.
+const gcProbeSource = `// SPDX-License-Identifier: MIT
+
+package main
+
+import (
+	"encoding/json"
+	"os"
+	"os/signal"
+	"runtime/metrics"
+	"strconv"
+	"syscall"
+)
+
+// perfgateGarbage holds the piece allocated last, so every piece is a heap allocation and the one before it garbage.
+var perfgateGarbage []byte
+
+func init() {
+	report := os.Getenv("PIG_PERFGATE_CHURN_REPORT")
+	if report == "" {
+		return
+	}
+	total, _ := strconv.ParseUint(os.Getenv("PIG_PERFGATE_CHURN_BYTES"), 10, 64)
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGUSR1)
+	go func() {
+		<-signals
+		samples := []metrics.Sample{{Name: "/gc/gogc:percent"}, {Name: "/gc/cycles/total:gc-cycles"}}
+		metrics.Read(samples)
+		percent, cycles := samples[0].Value.Uint64(), samples[1].Value.Uint64()
+		const piece = 64 << 10
+		for done := uint64(0); done < total; done += piece {
+			perfgateGarbage = make([]byte, piece)
+		}
+		perfgateGarbage = nil
+		metrics.Read(samples)
+		data, _ := json.Marshal(map[string]uint64{"percent_before": percent, "percent_after": samples[0].Value.Uint64(), "cycles": samples[1].Value.Uint64() - cycles})
+		_ = os.WriteFile(report+".tmp", data, 0o600)
+		_ = os.Rename(report+".tmp", report)
+	}()
+}
+`
+
+// gcProbeBinary is cmd/pig with gcProbeSource.
+var gcProbeBinary = sync.OnceValues(func() (string, error) { return probeBinary("gcprobe", gcProbeSource) })
+
+// gcChurn is the GC probe's report: the GC percent before and after its garbage, and the collections that finished between the two reads.
+type gcChurn struct {
+	PercentBefore uint64 `json:"percent_before"`
+	PercentAfter  uint64 `json:"percent_after"`
+	Cycles        uint64 `json:"cycles"`
+}
+
+// printChurn runs the headless scenario once in a new home with env added, in cmd/pig with the GC probe, and returns the probe's report and the run's exit record. The probe allocates its garbage when the run's first model request arrives, and the model answers once the probe has reported, so the garbage falls after cli.Main chose the GC policy and before the run's own tool turns.
+func printChurn(t *testing.T, env ...string) (gcChurn, profiling.ProcessMetrics) {
+	t.Helper()
+	probe, err := gcProbeBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := filepath.Join(t.TempDir(), "churn.json")
+	pids := make(chan int, 1)
+	var prompt sync.Once
+	home, args := printReadToolsHome(t, func() {
+		prompt.Do(func() {
+			if err := syscall.Kill(<-pids, syscall.SIGUSR1); err != nil {
+				t.Error(err)
+				return
+			}
+			deadline := time.Now().Add(testbudget.Wait(t))
+			for time.Now().Before(deadline) {
+				if _, err := os.Stat(report); err == nil {
+					return
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			t.Errorf("the probe wrote no %s", report)
+		})
+	}, env...)
+	probeEnv := []string{"PIG_PERFGATE_CHURN_REPORT=" + report, fmt.Sprintf("PIG_PERFGATE_CHURN_BYTES=%d", gcChurnBytes)}
+	record := printReadToolsOnce(t, home, probe, probeEnv, args, func(pid int) { pids <- pid })
+	data, err := os.ReadFile(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var churn gcChurn
+	if err := json.Unmarshal(data, &churn); err != nil {
+		t.Fatalf("%s: %v", report, err)
+	}
+	return churn, record
+}
+
+// D175: a user's GOGC wins over the print-mode target. The run sets GOGC=50, which is neither the target's 400 nor the 100 that the runtime starts at and the policy falls back to, so no percent the product could set reads as the user's.
+//
+// The GC percent is 50 when the run's first model request arrives, after the probe's garbage, and in the exit record.
+//
+// The collector runs at that percent while the garbage is allocated: the garbage runs at least 4 times the collections it runs with GOGC unset. After a collection that marked M bytes, with S bytes of stacks and globals to scan, the heap may grow by max(4 MiB x P/100 - M, (M + S) x P/100) before its goal at percent P (the rule internal/gcpolicy's goal floor works with), so G bytes of garbage run about G divided by that growth collections. For one M both terms are at least 8 times larger at 400 than at 50, so the expected ratio is 8. The two runs do not share M or the points where the count starts and stops: a collection starts 45/64 to 61/64 of the way to its goal (runtime/mgcpacer.go), and the garbage allocated while it marks counts as marked, which raises the growth at 50 by at most 128/109. That leaves 8 x 45/64 x 109/128 = 4.8, and the bound is 4, half the ratio of the two percents.
+//
+// The check was the collections of the scenario alone, at least 2 at GOGC=100, as it ran before the policy. The scenario's allocations have since fallen from 9.5 MB to 5.3 MB: its second collection starts 6 to 37 ms before the exit record, which counts finished collections, and 13 of 50 runs at 62b1a69c3f counted 1.
 func TestPrintModeKeepsUsersGOGC(t *testing.T) {
-	if record := printReadTools(t, "GOGC=100")(); record.GCCycles < 2 || record.GCPercent != 100 {
-		t.Errorf("print run with GOGC=100: %d GC cycles at GC percent %d, want at least 2 at 100 (%+v)", record.GCCycles, record.GCPercent, record)
+	const percent, target = 50, 400
+	user, userRecord := printChurn(t, fmt.Sprintf("GOGC=%d", percent))
+	policy, policyRecord := printChurn(t)
+	t.Logf("GOGC=%d: GC percent %d at the first model request, %d after %d B of garbage and %d collections, %d at exit; GOGC unset: %d, %d after %d collections, %d at exit; exit records %+v and %+v",
+		percent, user.PercentBefore, user.PercentAfter, gcChurnBytes, user.Cycles, userRecord.GCPercent, policy.PercentBefore, policy.PercentAfter, policy.Cycles, policyRecord.GCPercent, userRecord, policyRecord)
+	if user.PercentBefore != percent || user.PercentAfter != percent || userRecord.GCPercent != percent {
+		t.Errorf("print run with GOGC=%d: GC percent %d at the first model request, %d after %d B of garbage and %d at exit, want %d at all three", percent, user.PercentBefore, user.PercentAfter, gcChurnBytes, userRecord.GCPercent, percent)
+	}
+	if policy.PercentBefore != target || policy.PercentAfter != target || policy.Cycles == 0 {
+		t.Fatalf("print run with GOGC unset: GC percent %d at the first model request and %d after %d B of garbage in %d collections, want %d at both and a collection: the run does not measure the print-mode target", policy.PercentBefore, policy.PercentAfter, gcChurnBytes, policy.Cycles, target)
+	}
+	if least := policy.Cycles * (target / percent) / 2; user.Cycles < least {
+		t.Errorf("print run with GOGC=%d: %d collections of %d B of garbage, want at least %d: %d times the %d of GOGC unset, half the ratio of the two percents", percent, user.Cycles, gcChurnBytes, least, target/percent/2, policy.Cycles)
 	}
 }
 

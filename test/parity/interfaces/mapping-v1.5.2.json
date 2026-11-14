@@ -27515,9 +27515,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -27648,8 +27648,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -27670,8 +27670,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -28532,9 +28532,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -34617,7 +34617,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/mistral_messages_payload_oracle_test.go#TestMistralMessagesPayloadMatchesPi"
+        "test:ai/github_copilot_reasoning_oracle_test.go#TestGitHubCopilotCompletionsReasoningEffortMatchesPi"
       ]
     },
     {
@@ -73267,9 +73267,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -73400,8 +73400,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -73422,8 +73422,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -74328,9 +74328,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -81533,7 +81533,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/mistral_messages_payload_oracle_test.go#TestMistralMessagesPayloadMatchesPi"
+        "test:ai/github_copilot_reasoning_oracle_test.go#TestGitHubCopilotCompletionsReasoningEffortMatchesPi"
       ]
     },
     {
@@ -90731,9 +90731,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -90864,8 +90864,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -90886,8 +90886,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -91193,9 +91193,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
         "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream",
-        "test:ai/openai_tool_choice_payload_upstream_test.go#TestOpenAICompletionsToolChoiceCatalogUpstream"
+        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
       ]
     },
     {
@@ -95154,7 +95154,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/mistral_messages_payload_oracle_test.go#TestMistralMessagesPayloadMatchesPi"
+        "test:ai/github_copilot_reasoning_oracle_test.go#TestGitHubCopilotCompletionsReasoningEffortMatchesPi"
       ]
     },
     {
@@ -106066,8 +106066,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -106786,9 +106786,9 @@
         "call:chord/next/surfaces/surfaces_client.go#StartClient"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestReconnectsAfterAGrowingPauseAndReportsItsStates",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestStartsThePausesAgainAfterAConnectionThatStayedOpen10s"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
       ]
     },
     {
@@ -109478,14 +109478,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/next/host/host_host.go#Host.Incarnation"
+        "call:chord/next/surfaces/surfaces_client.go#StartClient"
       ],
       "evidence": [
-        "test:chord/next/host/host_member_cites_test.go#TestHostIncarnationIsOneValuePerRunOfAHost"
+        "test:chord/next/host/host_member_cites_test.go#TestHostIncarnationIsOneValuePerRunOfAHost",
+        "test:chord/nextnode/app/app_page_principal_test.go#TestTheAppsIngestFacetStampsAPagesSpansWithTheAppsPrincipalAttributesNotThePagesClaim",
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten"
       ]
     },
     {
@@ -111338,9 +111340,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped"
       ]
     },
     {
@@ -111360,9 +111362,9 @@
         "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped"
       ]
     },
     {
@@ -112696,8 +112698,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112718,8 +112720,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112740,8 +112742,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112762,8 +112764,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112784,8 +112786,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112806,8 +112808,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112828,8 +112830,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112846,12 +112848,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
+        "call:chord/next/surfaces/surfaces_connection.go#Connection.start"
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112868,12 +112870,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/surfaces/surfaces_connection.go#KeepConnected"
+        "call:chord/next/surfaces/surfaces_connection.go#Connection.start"
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -112893,9 +112895,9 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped"
       ]
     },
     {
@@ -112995,9 +112997,9 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped"
       ]
     },
     {
@@ -116858,8 +116860,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ]
     },
     {
@@ -116880,8 +116882,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppShowsALinkTheEmptySetWhileTheBasesAreBuildingThenTheBuiltOne",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAnAppServingTheSurfaceItselfRoutesFalseContributesNoRoutesAndGivesTheFilesThePagesAssetsAndTheBaseHash"
       ]
     },
     {
@@ -117761,9 +117763,9 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing",
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestClosesTheLinkAtStopAndOpensNoOther"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
       ]
     },
     {
@@ -117783,7 +117785,7 @@
         "public-api:chord/next/surfaces/surfaces_connection.go#SocketEvents.Opened"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger"
       ]
     },
     {
@@ -117803,7 +117805,7 @@
         "public-api:chord/next/surfaces/surfaces_connection.go#SocketEvents.Opened"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger"
       ]
     },
     {
@@ -117823,7 +117825,7 @@
         "public-api:chord/next/surfaces/surfaces_connection.go#SocketEvents.Received"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger"
       ]
     },
     {
@@ -117843,7 +117845,7 @@
         "public-api:chord/next/surfaces/surfaces_connection.go#SocketEvents.Received"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays"
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger"
       ]
     },
     {
@@ -117930,8 +117932,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117953,8 +117955,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne",
-        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientReconnectsWithoutAskingTheServersBase"
+        "test:chord/next/surfaces/surfaces_client_test.go#TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123576,7 +123578,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
-        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading"
       ]
     },
     {
@@ -123705,9 +123707,9 @@
         "call:chord/nextnode/app/app.go#App.ApplyChanges"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen",
-        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen"
       ]
     },
     {
@@ -124413,9 +124415,9 @@
         "call:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone",
-        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
+        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124436,9 +124438,9 @@
         "call:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone",
-        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
+        "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128093,9 +128095,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Listening"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
         "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
-        "test:chord/nextnode/http/review_test.go#TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser"
+        "test:chord/nextnode/http/review_test.go#TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses"
       ]
     },
     {
@@ -183912,7 +183914,7 @@
       "evidence": [
         "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads",
         "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost",
-        "test:test/extension-conformance/mcp_servers_change_test.go#TestConformance_McpServersChangeDelivery"
+        "test:test/extension-conformance/mcp_change_proxy_ack_test.go#TestConformance_McpServersChangeFirstHandlerInAnotherProcessIsSentAndItsFailureReported"
       ]
     },
     {
@@ -183934,7 +183936,7 @@
       "evidence": [
         "test:test/extension-conformance/event_reference_test.go#TestConformance_ObservedEventPayloads",
         "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost",
-        "test:test/extension-conformance/mcp_servers_change_test.go#TestConformance_McpServersChangeDelivery"
+        "test:test/extension-conformance/mcp_change_proxy_ack_test.go#TestConformance_McpServersChangeFirstHandlerInAnotherProcessIsSentAndItsFailureReported"
       ]
     },
     {
@@ -190888,8 +190890,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/crash_log_test.go#TestRunRecordsACrashAndReportsErrInteractiveCrashed",
-        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild",
-        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithASlashCommandChild"
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -190911,8 +190913,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/crash_log_test.go#TestRunRecordsACrashAndReportsErrInteractiveCrashed",
-        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild",
-        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithASlashCommandChild"
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -191341,9 +191343,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.drawsOnProcessTerminal"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild",
         "test:internal/codingagent/interactive_terminal_option_test.go#TestInteractiveModeBuildsItsRendererOnTheTerminalOption",
-        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame",
-        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterSettingChangeWaitsForTheNextStart"
+        "test:internal/codingagent/interactive_screen_writer_test.go#TestScreenWriterChoiceIsMadeBeforeTheFirstFrame"
       ]
     },
     {
@@ -203897,9 +203899,9 @@
         "call:internal/codingagent/model_registry.go#providerConfigFromRegistration"
       ],
       "evidence": [
+        "test:coding/cli/custom_model_fallback_test.go#TestStartupCustomModelIDIsACopyOfTheProvidersModel",
         "test:coding/model_refresh_metadata_test.go#TestRegisteredModelSessionHeadersAssembleBeforeHook",
-        "test:coding/model_registry_namespace_test.go#TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks",
-        "test:coding/model_registry_namespace_test.go#TestRegistryLegacyMetadataUpdateRetainsRuntimeCallbacks"
+        "test:coding/model_registry_namespace_test.go#TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks"
       ]
     },
     {

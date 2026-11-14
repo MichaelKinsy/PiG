@@ -1939,11 +1939,6 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// summary does.
 	m.statusLine.timings = m.agent.Timings()
 
-	// Set terminal title. Mirrors upstream
-	// interactive-mode.ts:634-642 (updateTerminalTitle). Deferred clear
-	// restores the shell's own title on exit.
-	m.onStop(func() error { m.setTerminalTitle(""); return nil })
-	m.onStop(func() error { m.setTerminalProgress(false); return nil })
 	// Pre-populate status-line name from session on resume.
 	if n := m.currentSession().GetSessionName(); n != "" {
 		m.statusLine.SetName(n)

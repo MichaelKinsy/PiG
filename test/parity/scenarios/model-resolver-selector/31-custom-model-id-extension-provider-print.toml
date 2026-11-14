@@ -1,0 +1,47 @@
+# Behavior family: model-resolver-selector
+# Surface: `--model <provider>/<id>` with an id the catalog does not know, under a provider an
+# extension registered with its own model list.
+#
+# Upstream rule: resolveCliModel copies one of the provider's models under the id
+# (model-resolver.ts:302-313 buildFallbackModel, `{ ...baseModel, id: modelId, name: modelId }`)
+# and main.ts:536-537 gives the session that object, so the session's model has the copied
+# model's context window and output limit.
+#
+# The fixture provider answers every request with a length stop after five output tokens;
+# its only model has maxTokens 2048. A length stop below the model's output limit is
+# recoverable (overflow.ts:186-188 isRecoverableLength needs `desiredMaxOutput > 0`), so
+# print mode ends with status 0 and prints nothing. A session model without limits takes the
+# other branch (print-mode.ts:161-163): the partial answer on stdout, "Response was
+# truncated" on stderr and status 1. The exit status and both streams therefore show
+# whether the custom id kept the provider's limits.
+#
+# Upstream evidence: Pi 1.5.2 (2026-11-13), `pi --no-extensions -e <fixture> --approve
+# --offline --model length-stop/nosuch -p hello`: status 0, stdout empty, stderr only
+# `Warning: Model "nosuch" not found for provider "length-stop". Using custom model id.`
+
+name = "31-custom-model-id-extension-provider-print"
+description = "A custom model id under an extension-registered provider keeps the provider's limits: print mode recovers from a length stop as with the provider's own model."
+covers = [
+  "packages/coding-agent/src/core/model-resolver.ts",
+  "packages/coding-agent/src/main.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "length-stop/nosuch"
+
+[print]
+prompt = "hello"
+timeout_seconds = 30
+
+[env]
+pig_args = ["--offline", "--no-extensions", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--no-context-files", "--no-skills", "--no-session"]
+pig_extensions = ["../testdata/extension-length-stop-provider.mjs"]
+pi_extensions = ["../testdata/extension-length-stop-provider.mjs"]
+
+[assert]
+exit_code = 0
+output_equal = true
+stderr_equal = true
+both_not_contain = ["partial answer", "Response was truncated"]
+runs = 3

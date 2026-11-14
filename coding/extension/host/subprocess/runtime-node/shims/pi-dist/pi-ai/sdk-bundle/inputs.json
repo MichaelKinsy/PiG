@@ -307,7 +307,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
-      "sha256": "075f19a4019990cd22b3439730638b7944db696d528f59e3dbee280a0de50401"
+      "sha256": "16d0f6c940a6795e87f09e6e817d082abcc1624225196ce33f842876ce505a88"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google-vertex.json",

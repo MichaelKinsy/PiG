@@ -212,5 +212,29 @@ out.nestedQueued = await nestedWithRequest("queued");
   await stop();
 }
 
+// A state the host sends before the ready is applied in frame order, not dropped, and the load goes on: the serve loop reads every frame the same way before
+// and after the ready. The ready here carries no state, so the name the handler reads is the early state's. The host writes no state before a connection's
+// ready; the Go, Python, Rust and Lisp SDKs apply one that arrives all the same (extensions/sdk/state_before_ready_test.go).
+{
+  const result = {};
+  const host = new FakeHost();
+  const runtime = new Runtime("/ext/state-before-ready.mjs");
+  runtime.api.registerCommand("a", { handler: async (_args, ctx) => { result.name = ctx.sessionManager.getSessionName(); } });
+  const conn = runtime.attachConnection(host.socket);
+  conn.send = (...envs) => { for (const env of envs) host.handle(env); return true; };
+  runtime.conn = conn;
+  const serving = runtime.serve();
+  const named = host.append("session_info", { name: "named before ready" });
+  await host.deliver(
+    { type: "notify", notify: { method: "state_update", args: { state: { session: { sessionId: "s", sessionName: "named before ready", sessionFile: "", leafId: named.id, entriesAppended: [named], entryCount: 1 } } } } },
+    { type: "ready", ready: { cwd: "/" } },
+    command("ra", "a"),
+  );
+  await timer(20);
+  host.socket.emit("close");
+  await serving;
+  out.beforeReady = result.name;
+}
+
 console.log(JSON.stringify(out));
 process.exit(0);

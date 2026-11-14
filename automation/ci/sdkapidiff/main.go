@@ -37,7 +37,7 @@ func main() {
 	for _, problem := range problems {
 		fmt.Fprintln(os.Stderr, "  - "+problem)
 	}
-	fmt.Fprintln(os.Stderr, "Add a rule to extensions/sdk/upgrade/rules.go and name the symbol in backquotes in a changelog.d fragment.")
+	fmt.Fprintln(os.Stderr, "Add a rule to extensions/sdk/upgrade/internal/upgrade/rules.go and name the symbol in backquotes in a changelog.d fragment.")
 	os.Exit(1)
 }
 

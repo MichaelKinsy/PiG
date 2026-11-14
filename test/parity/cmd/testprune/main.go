@@ -93,8 +93,8 @@ func loadUnitEvidence(root string) (map[string]bool, error) {
 			Package string   `json:"package"`
 			Tests   []string `json:"tests"`
 		}
-		if json.Unmarshal(data, &entries) != nil {
-			continue
+		if err := json.Unmarshal(data, &entries); err != nil {
+			return nil, fmt.Errorf("%s: %w", p, err)
 		}
 		for _, e := range entries {
 			for _, t := range e.Tests {
@@ -103,6 +103,23 @@ func loadUnitEvidence(root string) (map[string]bool, error) {
 		}
 	}
 	return keys, nil
+}
+
+// loadPiGoldenBases returns the base names of the golden files the provenance manifest declares as produced by Pi. A manifest that is missing or does not parse is an error: read as empty, the inventory would class every Pi golden as PiG's own.
+func loadPiGoldenBases(root string) ([]string, error) {
+	var prov provenance
+	if _, err := toml.DecodeFile(filepath.Join(root, provenanceFile), &prov); err != nil {
+		return nil, fmt.Errorf("read %s: %w", provenanceFile, err)
+	}
+	var bases []string
+	for _, g := range prov.Golden {
+		for _, p := range g.Paths {
+			if g.Owner == "pi" {
+				bases = append(bases, filepath.Base(p))
+			}
+		}
+	}
+	return bases, nil
 }
 
 func runInventory(root string, args []string) error {
@@ -119,16 +136,11 @@ func runInventory(root string, args []string) error {
 	if err != nil {
 		return err
 	}
-	var prov provenance
-	if _, err := toml.DecodeFile(filepath.Join(root, provenanceFile), &prov); err == nil {
-		for _, g := range prov.Golden {
-			for _, p := range g.Paths {
-				if g.Owner == "pi" {
-					piGoldenBases = append(piGoldenBases, filepath.Base(p))
-				}
-			}
-		}
+	bases, err := loadPiGoldenBases(root)
+	if err != nil {
+		return err
 	}
+	piGoldenBases = append(piGoldenBases, bases...)
 	funcs, err := inventoryFiles(root, files, evidence)
 	if err != nil {
 		return err

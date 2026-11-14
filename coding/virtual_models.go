@@ -350,7 +350,7 @@ func (runtime *ModelRuntime) ResolveModel(ctx context.Context, model *ai.Model, 
 	if target == nil {
 		return ModelRoute{}, fmt.Errorf("%s, which is not a physical model.", routed)
 	}
-	if !runtime.hasConfiguredAuth(target.ProviderMeta.ProviderID) {
+	if !runtime.HasConfiguredAuth(target.ProviderMeta.ProviderID) {
 		return ModelRoute{}, fmt.Errorf("%s, which has no credentials.", routed)
 	}
 	return ModelRoute{Model: target, ThinkingLevel: ai.ClampThinkingLevel(target, route.ThinkingLevel), State: route.State}, nil
@@ -569,13 +569,6 @@ func (p unroutedProvider) ID() string { return p.id }
 func (unroutedProvider) Close() error { return nil }
 func (p unroutedProvider) Stream(context.Context, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 	return nil, fmt.Errorf("Virtual model %s/%s must be routed before streaming", p.model.ProviderMeta.ProviderID, p.model.ID)
-}
-
-// hasConfiguredAuth is [ModelRuntime.HasConfiguredAuth] for the routing and extension setModel gates; a provider that needs no auth passes.
-//
-// upstream: model-runtime.ts:543-545 (hasConfiguredAuth)
-func (runtime *ModelRuntime) hasConfiguredAuth(providerID string) bool {
-	return runtime.HasConfiguredAuth(providerID) || !modelRuntimeRequiresAuth(providerID)
 }
 
 // syncVirtualCatalog republishes the availability snapshot after a virtual-model change and refreshes it in the background, as upstream's register and unregister do (`updateModelSnapshot(); void refresh({allowNetwork:false})`).

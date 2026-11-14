@@ -7,6 +7,8 @@ import (
 	"go/token"
 	"go/types"
 	"strings"
+
+	impl "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade"
 )
 
 // planOptionalBools wraps a bool the compiler rejects for an optional *bool
@@ -36,7 +38,7 @@ func (p *filePlanner) planOptionalBools() {
 			return true
 		}
 		symbol := p.structName(pair, key.Name)
-		if _, known := changeFor(symbol); !known {
+		if _, known := impl.ChangeFor(symbol); !known {
 			return true
 		}
 		open, closing := p.sdk+".Bool(", ")"
@@ -95,7 +97,7 @@ func (p *filePlanner) structName(pair *ast.KeyValueExpr, field string) string {
 func (p *filePlanner) planContextUsage(legacy bool) {
 	if !legacy {
 		for _, typeErr := range p.errors {
-			if usagePointerTypes().MatchString(typeErr.Msg) {
+			if impl.UsagePointerTypes().MatchString(typeErr.Msg) {
 				legacy = true
 			}
 		}

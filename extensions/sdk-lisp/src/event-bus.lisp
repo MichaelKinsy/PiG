@@ -120,6 +120,8 @@ that no listener handles, as EventEmitter throws."
                 ((equal type "refused") (note-dropped-frame))
                 ((and (equal type "request") (equal (jget (or (jget env "request") (obj)) "method") "events.dispatch"))
                  (push env (extension-early-dispatches ext)))
+                ;; a notify ahead of the result is applied as the main loop applies it (a state the host pushed to a connection that had not registered)
+                ((equal type "notify") (handle-notify ext env))
                 (t (error "expected a ~A result, got ~A" method type))))))))
 
 (def-register-contributor "event-bus" (ext payload)
