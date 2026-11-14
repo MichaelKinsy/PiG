@@ -16,8 +16,9 @@ import (
 // success left three listeners on the signal. PiG's backoff waits on the request context and a timer that it stops when the wait ends, and
 // registers nothing on the caller's context, so there is no listener count to read. The same inputs (three 429 responses with retry-after 0, then a
 // completed stream, maxRetries 3, the caller's own cancelable context) check the equivalent: the retries leave no goroutine behind.
-// The count is of this test's synctest bubble (testenv.LiveGoroutines), which holds every goroutine the request starts; the process-wide
-// runtime.NumGoroutine also moves with what earlier tests of the package left running.
+// The count is of this test's synctest bubble, read from a stack dump (testenv.LiveGoroutines); the bubble holds every goroutine the request
+// starts. runtime.NumGoroutine is not that count: it is the whole process, and it still counts, for a moment, a goroutine that has returned and
+// that synctest.Wait already reported gone.
 func TestCodexSSERetryBackoffReleasesTheCallerContext(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		calls := 0

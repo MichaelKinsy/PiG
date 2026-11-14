@@ -96,8 +96,9 @@ func TestCodexSSERetriesUpstream(t *testing.T) {
 	// leaves nothing registered on the caller's signal. The Go carrier of an abort listener is a goroutine (or AfterFunc) parked
 	// on the request context, so the assertion is that the goroutine count seen by the fourth request equals the first
 	// request's (no backoff left a waiter) and that nothing remains once the result is read. The counts are of this test's
-	// synctest bubble (testenv.LiveGoroutines), which holds every goroutine the request starts: the process-wide
-	// runtime.NumGoroutine also moves with what earlier tests of the package left running.
+	// synctest bubble, read from a stack dump (testenv.LiveGoroutines); the bubble holds every goroutine the request starts.
+	// runtime.NumGoroutine is not that count: it is the whole process, and it still counts, for a moment, a goroutine that has
+	// returned and that synctest.Wait already reported gone.
 	t.Run("removes SSE retry backoff abort waiters after the retry succeeds", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			calls := 0
