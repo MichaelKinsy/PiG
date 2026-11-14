@@ -81,10 +81,7 @@ loop:
 		case "classdef":
 			if names, props, ok := parseClassDef(st[len(firstWord(st)):]); ok {
 				for _, name := range names {
-					// `__proto__` is a prototype assignment in the JS record this mirrors, not a class.
-					if name != "__proto__" {
-						g.classDefs[name] = props
-					}
+					g.classDefs[name] = props
 				}
 			}
 			continue
