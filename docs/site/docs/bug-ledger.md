@@ -703,6 +703,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6d0ec02](#bf-6d0ec02) | Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6dddc19](#bf-6dddc19) | An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-6dfa6bf](#bf-6dfa6bf) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6e6a0dd](#bf-6e6a0dd) | A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it | PiG's own defect | All platforms | 0.5.0 |
@@ -1055,7 +1056,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a110f68](#bf-a110f68) | fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12) | PiG's own defect | All platforms | Unreleased |
 | [BF-a11fc08](#bf-a11fc08) | fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product… | PiG's own defect | All platforms | Unreleased |
 | [BF-a13bae4](#bf-a13bae4) | A `read` result shown in the transcript no longer keeps the file text a second time as its structured content | PiG's own defect | All platforms | 0.5.0 |
-| [BF-a14dd43](#bf-a14dd43) | An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-a156ef3](#bf-a156ef3) | On Linux, clipboard reads accept every `DISPLAY` spelling Pi's `xcb_connect` accepts: white space or a sign… | PiG's own defect | Linux | 0.5.0 |
 | [BF-a178939](#bf-a178939) | The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a18da32](#bf-a18da32) | fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does | PiG's own defect | All platforms | Unreleased |
@@ -11092,6 +11092,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/config_selector_test.go::TestBuildResourceGroupsTiesKeepFirstSeenOrder`
 - **Release note:** The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto resources from different base directories); it followed Go map order (`tui/config_selector.go` BuildResourceGroups, config-selector.ts buildGroups; regression `TestBuildResourceGroupsTiesKeepFirstSeenOrder`).
 
+### BF-6dddc19
+
+**An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering.
+- **Root cause:** interactive mode answered an extension's ctx.abort() from the owner loop's side. First it waited for the run to settle, which the run could not do while it waited for the handler that made the call, so the call never returned and no later prompt was answered. Then it queued the cancellation on the loop and replied once the loop accepted the task, so a loop busy with earlier work left the run signal live when the handler resumed. Pi aborts the run signal before abort() returns and awaits nothing, and a handler the run awaits has no way to wait for that run's end.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a14dd43d7b` (2026-11-13), `6dddc19157` (2026-11-14), `a289ab6116` (2026-11-14)
+- **Tests:** `internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortAbortsTheRunSignalBeforeItReturnsWhileTheOwnerLoopIsBusy`, `internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortTwiceInOneTurnIsIdempotent`
+- **Release note:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering. The abort action waited for the turn to end, and the turn waited for the handler that made the call, so the call never returned: the turn stayed open and no later prompt was answered. The call now starts the abort and returns, as in Pi, for extensions of the Node, Go, Python, Rust and Lisp SDKs, and the run's `ctx.signal` is already aborted when it returns, even while the interactive loop is busy with earlier work. An extension that needs the turn to have ended cannot wait for it inside the handler the turn awaits, because the turn is waiting for that handler: it waits outside it, with `ctx.waitForIdle()` in a command handler (Pi offers that call on the command context only) or by acting from an `agent_settled` handler. Present in 0.2.0 through 0.7.0.
+
 ### BF-6debb12
 
 **fix(train): gate repairs after merging train 3 and the ordering stack**
@@ -15987,20 +16001,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `06c408c21d` (2026-10-11), `8ab5a89874` (2026-10-11), `a13bae4664` (2026-10-11), `eab3caf769` (2026-10-11)
 - **Tests:** `internal/codingagent/session_store_test.go::TestAppendedMessageIsHeldOnceWhenItsRecordDecodesToIt`, `internal/codingagent/session_store_test.go::TestAppendedToolResultWithTypedDetailsIsHeldOnce`, `internal/codingagent/tool_card_structured_test.go::TestReadCardKeepsTheTextOnceAndRenderersGetStructuredContent`, `internal/codingagent/tool_card_structured_test.go::TestToolCardKeepsStructuredContentItCannotDerive`, `internal/codingagent/tools/truncation_share_test.go::TestTruncatedResultDetailsShareTheReturnedText`
 - **Release note:** A `read` result shown in the transcript no longer keeps the file text a second time as its structured content. Renderers, including extension renderers, still receive the structured content the tool returned. In a 75-prompt session of file reads (about 4.2M tokens of context), memory at the end drops by another 20 MB or so.
-
-### BF-a14dd43
-
-**An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session…**
-
-- **Source:** PiG's own defect
-- **Symptom:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering.
-- **Root cause:** In interactive mode the abort host action waited for the run to settle. A handler the run awaits (message_update, tool_call, ...) that called ctx.abort() therefore never got its call back: the run could not end and no later prompt was answered. Pi starts the abort and returns (interactive-mode.ts:2399-2401, :4935-4937 void this.session.abort()); the action now posts the abort to the owner loop and returns. An extension that wants the run to have ended awaits ctx.waitForIdle(), as before.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `a14dd43d7b` (2026-11-13)
-- **Tests:** None recorded.
-- **Release note:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering. The abort action waited for the turn to end, and the turn waited for the handler that made the call, so the call never returned: the turn stayed open and no later prompt was answered. The call now starts the abort and returns, as in Pi, for extensions of the Node, Go, Python, Rust and Lisp SDKs; an extension that needs the turn to have ended awaits `ctx.waitForIdle()`. Present in 0.2.0 through 0.7.0.
 
 ### BF-a156ef3
 
