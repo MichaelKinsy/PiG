@@ -27,7 +27,7 @@ func ciJobs(t *testing.T) map[string][]string {
 	jobs := map[string][]string{}
 	cur := ""
 	inJobs := false
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		if line == "jobs:" {
 			inJobs = true
 			continue
