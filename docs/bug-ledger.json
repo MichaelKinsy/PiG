@@ -47839,6 +47839,26 @@
       ]
     },
     {
+      "id": "BF-cdd5b98",
+      "title": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer…",
+      "symptom": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer leaves the file truncated and loses every provider's cached model catalog.",
+      "rootCause": "the store was written in place with os.WriteFile, which truncates the file before it writes, so any failure after that left a partial file",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer leaves the file truncated and loses every provider's cached model catalog. The file is replaced through a temporary file in the same directory, and a failed write leaves the old content.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cdd5b98d39",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-cdf0be7",
       "title": "Markdown rendering matches Pi on blank lines at the start and end of the text, empty headings and closing `#`…",
       "symptom": "Markdown rendering matches Pi on blank lines at the start and end of the text, empty headings and closing `#` runs, and unterminated code fences: a text that starts with a blank line begins with one empty row, a trailing line of spaces after a list, table or quote adds one, a closing run of `#` is dropped from a heading, an empty heading keeps its row, and an unterminated fence does not show the empty line its final newline splits off.",

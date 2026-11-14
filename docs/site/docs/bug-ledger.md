@@ -1733,6 +1733,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cd7fa1c](#bf-cd7fa1c) | A read-only config root no longer prints warnings at every start | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cd9a34f](#bf-cd9a34f) | integration: fix the staticcheck De Morgan finding in the autocomplete trigger test | PiG's own defect | All platforms | Unreleased |
 | [BF-cda6e3a](#bf-cda6e3a) | PiG opens a session file that holds a valid JSON line that is not an entry (an array, `true`, a string) or an… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-cdd5b98](#bf-cdd5b98) | A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer… | PiG's own defect | All platforms | Unreleased |
 | [BF-cdf0be7](#bf-cdf0be7) | Markdown rendering matches Pi on blank lines at the start and end of the text, empty headings and closing `#`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cdf2887](#bf-cdf2887) | fix(ai): keep a reused-id tool result in its own turn during the D48 repair | PiG's own defect | All platforms | Unreleased |
 | [BF-ce0f352](#bf-ce0f352) | `createPowerShellTool` now uses the `operations` option | A fix Pi shipped that PiG ported | Windows | 0.5.0 |
@@ -25983,6 +25984,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10), `cda6e3a715` (2026-10-11)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries`, `internal/codingagent/session_file_entry_union_test.go::TestSessionKeepsRecordsThatAreNotEntriesAsPiDoes`, `internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain`, `internal/sessionentry/lazy_test.go::TestLazyEntryKeepsTheKeysOfObjectValuedIDs` and 3 more in docs/bug-ledger.json
 - **Release note:** PiG opens a session file that holds a valid JSON line that is not an entry (an array, `true`, a string) or an entry whose `id` or `parentId` is not a string, as Pi does, instead of failing with `json: cannot unmarshal … SessionEntryBase`. The leaf, the branch, the context and the `parentId` of the next entry follow Pi: after a line with no `id` the next entry has no `parentId` member, after an entry whose `id` is `5` it has `"parentId":5`, and a falsy `parentId` ends a branch.
+
+### BF-cdd5b98
+
+**A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer leaves the file truncated and loses every provider's cached model catalog.
+- **Root cause:** the store was written in place with os.WriteFile, which truncates the file before it writes, so any failure after that left a partial file
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cdd5b98d39` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer leaves the file truncated and loses every provider's cached model catalog. The file is replaced through a temporary file in the same directory, and a failed write leaves the old content.
 
 ### BF-cdf0be7
 
