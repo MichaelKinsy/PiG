@@ -348,6 +348,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-308d280](#bf-308d280) | `chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-308d280-2](#bf-308d280-2) | `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed… | PiG's own defect | All platforms | Unreleased |
 | [BF-30a10ed](#bf-30a10ed) | chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended | PiG's own defect | All platforms | Unreleased |
+| [BF-30bc09c](#bf-30bc09c) | A model with no api (an empty api name) and a GitHub Copilot model whose api is none of `anthropic-messages`… | PiG's own defect | All platforms | Unreleased |
 | [BF-30cdab4](#bf-30cdab4) | Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path… | PiG's own defect | Windows | Unreleased |
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
@@ -6727,6 +6728,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `30a10edfb2` (2026-11-13)
 - **Tests:** `chord/nextnode/workers/workers_channel_write_unix_test.go::TestAChannelTellsWhatTheOtherEndWroteBeforeItClosedWhenASendFailedMeanwhile`
 - **Release note:** chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended. The failed write closed the connection under its reader, so messages not yet told (a `fatal` report with the worker's reason) were dropped. As Node's `send`, a failed write now only tells its sender; the reader ends the channel after it told what the worker wrote.
+
+### BF-30bc09c
+
+**A model with no api (an empty api name) and a GitHub Copilot model whose api is none of `anthropic-messages`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.
+- **Root cause:** the Copilot branch of buildLeafProviderForEntry defaulted to chat completions for every api name, and the refusal of an unknown name printed a missing api as nothing where Pi reads it as undefined
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `30bc09cbdb` (2026-11-14)
+- **Tests:** `ai/empty_api_refused_test.go::TestEmptyAPINameIsRefusedAtEveryStreamEntry`, `coding/unknown_api_refused_test.go::TestBareModelIsRefusedAtItsRequest`, `coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused`
+- **Release note:** A model with no api (an empty api name) and a GitHub Copilot model whose api is none of `anthropic-messages`, `openai-responses` and `openai-completions` are refused when the request starts, with `No API provider registered for api: undefined` for the empty name and the same text with the name otherwise, and nothing is sent. Before, a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.
 
 ### BF-30cdab4
 

@@ -9252,6 +9252,30 @@
       ]
     },
     {
+      "id": "BF-30bc09c",
+      "title": "A model with no api (an empty api name) and a GitHub Copilot model whose api is none of `anthropic-messages`…",
+      "symptom": "A Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.",
+      "rootCause": "the Copilot branch of buildLeafProviderForEntry defaulted to chat completions for every api name, and the refusal of an unknown name printed a missing api as nothing where Pi reads it as undefined",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model with no api (an empty api name) and a GitHub Copilot model whose api is none of `anthropic-messages`, `openai-responses` and `openai-completions` are refused when the request starts, with `No API provider registered for api: undefined` for the empty name and the same text with the name otherwise, and nothing is sent. Before, a Copilot model with such an api went out as chat completions to the Copilot endpoint with the Copilot token.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "30bc09cbdb",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "ai/empty_api_refused_test.go::TestEmptyAPINameIsRefusedAtEveryStreamEntry",
+        "coding/unknown_api_refused_test.go::TestBareModelIsRefusedAtItsRequest",
+        "coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused"
+      ]
+    },
+    {
       "id": "BF-30cdab4",
       "title": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path…",
       "symptom": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.",

@@ -19688,6 +19688,17 @@
       "shapeHash": "sha256:1c21a2158b5874158f5675d0c6fbd1786e5703b477a3e8f3d91e28296d1f2bf0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#NoAPIProviderError",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "NoAPIProviderError",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(api API) error"
+      },
+      "shapeHash": "sha256:a6f45501f2b01dc4c591a93f4046c5810183231b6919d2054460960cbebae7fc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#NodeFetch",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "NodeFetch",
@@ -65217,17 +65228,6 @@
       "shapeHash": "sha256:a7a26be3996e5476dc1a1fb3b2e34e4cd8a77fc150fa4dbc9f0abfe20a604abb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#unknownDirectAPIError",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "unknownDirectAPIError",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(api API) error"
-      },
-      "shapeHash": "sha256:a6f45501f2b01dc4c591a93f4046c5810183231b6919d2054460960cbebae7fc"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#unmarshalClassifierAnswer",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "unmarshalClassifierAnswer",
@@ -85048,6 +85048,17 @@
         "type": "func(err error) bool"
       },
       "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#isCopilotAPI",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "isCopilotAPI",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(apiKind github.com/MichaelKinsy/PiG/ai.API) bool"
+      },
+      "shapeHash": "sha256:82e8393fafd8ec95b2aa341304125cb97b2373e84de428b88fe5a7ddac90fbde"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#isDirectory",
