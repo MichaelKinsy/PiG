@@ -1,0 +1,49 @@
+# Behavior family: slash-commands
+# Surface: an unknown slash command ("/neww") typed with a model selected.
+#
+# Pi sends the text to the model as an ordinary user message (interactive-mode.ts onSubmit has no unknown-command branch). The faux
+# provider has no script for it and answers with its own error, which both binaries show under the user message.
+#
+# Upstream evidence (Pi 1.5.2 pin, PiG 5283d279a, tmux 100x35, 2026-11-14): both binaries show the user message "/neww" and then
+#   Error: test-faux: unhandled request "/neww"
+# with no "Unknown command" notice and no login text. RPC (prompt "/neww": success:true, a user message_start with text "/neww")
+# and print mode agree.
+
+name = "30-unknown-slash-faux-model"
+description = "Both binaries send an unknown slash command to the selected model as a user message."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+# The line after the error names /bug with pi or pig, so the crop ends at the provider message.
+capture_start = "/neww"
+capture_end = "unhandled request"
+
+[[tmux.steps]]
+keys = ["/neww", "Enter"]
+wait_contains = ["unhandled request"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["/neww", "test-faux: unhandled request"]
+both_not_contain = ["Unknown command", "unknown command", "No API key", "Use /login", "panic:", "goroutine "]
+output_equal = true
+runs = 3
