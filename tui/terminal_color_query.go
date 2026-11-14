@@ -122,7 +122,9 @@ func (t *tuiBase) queryTerminalColors(out io.Writer, options TerminalColorQueryO
 	// Node timers cannot run while terminal.write is on the caller's stack. Start the Go callback after writing, but retain the deadline measured before the write; a synchronous reply may already have completed the query.
 	//portlint:allow clock the wall-clock form of Pi's setTimeout(..., timeoutMs) (tui.ts:1509-1512); the TUI.now seam times renders, not terminal queries
 	deadline := time.Now().Add(nodeTimerDelay(options.TimeoutMs))
+	t.outMu.Lock()
 	_, err := io.WriteString(out, terminalColorQuery)
+	t.outMu.Unlock()
 	queries.mu.Lock()
 	defer queries.mu.Unlock()
 	// Resolve with the replies so far, and keep collecting late replies for OnLateReply.

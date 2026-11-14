@@ -443,6 +443,16 @@ func (t *TuiAltScreen) enterAltScreen() {
 	if t.mouseEnabled {
 		mouse = altMouseEnableSequence()
 	}
+	// The enter sequence is written under mu, so a frame (which needs mu) comes after it, as in Pi, where start() writes it before the first frame.
+	// The colour-scheme reports follow it, then the cell-size query.
+	enter := altEnterAltScreen + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
+	if keyboardProtocolPushed.Load() {
+		enter = keyboardProtocolPop + altEnterAltScreen + kittyKeyboardProtocolPush + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
+	}
+	t.writeOwned(t.out, enter)
+	if t.colorSchemeNotificationsEnabled() {
+		t.writeColorSchemeNotificationsOwned(true)
+	}
 	t.unlockAndApplyHover()
 	t.clearComponentMouseGesture()
 	t.lastComponentClick = nil
@@ -461,15 +471,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 	// no query because the driver's negotiation already ran and its replies are
 	// screen independent. Without this, fullscreen terminals report legacy keys
 	// (ctrl+digit and shift+enter lose their modifiers).
-	enter := altEnterAltScreen + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
-	if keyboardProtocolPushed.Load() {
-		enter = keyboardProtocolPop + altEnterAltScreen + kittyKeyboardProtocolPush + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
-	}
-	WriteToTerminal(t.out, enter)
 	registerExitRestoreAltScreen(t)
-	if t.colorSchemeNotificationsEnabled() {
-		writeColorSchemeNotifications(t.out, true)
-	}
 	t.QueryCellSize()
 }
 
@@ -511,7 +513,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		t.renderTimer = nil
 	}
 	if t.colorSchemeNotificationsEnabled() {
-		writeColorSchemeNotifications(t.out, false)
+		t.writeColorSchemeNotificationsOwned(false)
 	}
 	t.stopSelectionAutoScrollLocked()
 	// Mirror upstream beforeTerminalStop: clear active press, hover, and drag so
@@ -529,7 +531,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	if t.mouseEnabled {
 		mouse = altDisableMouse
 	}
-	WriteToTerminal(t.out, altBeginSynchronizedOutput+t.deleteKittyImages()+mouse+altEnableAutowrap+altEndSynchronizedOutput)
+	t.writeOwned(t.out, altBeginSynchronizedOutput+t.deleteKittyImages()+mouse+altEnableAutowrap+altEndSynchronizedOutput)
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.altScreenActive = false
@@ -550,7 +552,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		exit = keyboardProtocolPop + altExitAltScreen + kittyKeyboardProtocolPush
 	}
 	if options.PreserveScreen {
-		WriteToTerminal(t.out, altBeginSynchronizedOutput+exit+"\x1b[?25h"+altEndSynchronizedOutput)
+		t.writeOwned(t.out, altBeginSynchronizedOutput+exit+"\x1b[?25h"+altEndSynchronizedOutput)
 		t.unlockAndApplyHover()
 		if restore != nil {
 			SetCapabilities(*restore)
@@ -573,7 +575,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	buf.WriteString("\x1b[0m" + altEnableAutowrap + "\r\n\x1b[?25h" + altEndSynchronizedOutput)
 	t.lastDocument = document
 	t.unlockAndApplyHover()
-	WriteToTerminal(t.out, buf.String())
+	t.writeOwned(t.out, buf.String())
 	// Restore suppressed iTerm2 capabilities after the exit document is written
 	// (the dump renders with images suppressed, matching upstream afterTerminalStop).
 	if restore != nil {
