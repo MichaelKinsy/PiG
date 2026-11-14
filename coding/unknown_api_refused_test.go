@@ -43,7 +43,12 @@ func unknownAPIStream(t *testing.T, provider ai.Provider) error {
 // (compat.ts:102, getApiProvider at :142-143), so a member name of Object.prototype is an unknown name like any other. The
 // provider is built without an error (the model stays selectable and listed); no request is built for the endpoint.
 func TestUnknownAPINameIsRefusedBeforeAnyRequest(t *testing.T) {
-	for _, name := range []string{"nosuchapi", "constructor", "__proto__", "toString"} {
+	for _, name := range []string{"nosuchapi", "constructor", "__proto__", "toString", ""} {
+		shown := name
+		if name == "" {
+			// A model object with no api: Pi reads api as undefined (compat.ts:244-247).
+			shown = "undefined"
+		}
 		for _, shape := range []struct {
 			label                 string
 			resolvedAuth, apiLeaf bool
@@ -63,7 +68,7 @@ func TestUnknownAPINameIsRefusedBeforeAnyRequest(t *testing.T) {
 				}
 				t.Cleanup(func() { _ = provider.Close() })
 				err = unknownAPIStream(t, provider)
-				if want := "No API provider registered for api: " + name; err.Error() != want {
+				if want := "No API provider registered for api: " + shown; err.Error() != want {
 					t.Errorf("error = %q, want %q", err, want)
 				}
 				if got := requests.Load(); got != 0 {
@@ -101,5 +106,48 @@ func TestRegisteredAPINameRunsItsImplementationUntilUnregistered(t *testing.T) {
 	}
 	if got := requests.Load(); got != 0 {
 		t.Errorf("requests at the endpoint = %d, want 0", got)
+	}
+}
+
+// A model that no catalog, models.json or extension lists is built bare, with no api and no endpoint (the fallback of buildModel). Pi takes such an object to the stream and
+// refuses it there with the api undefined; the request goes nowhere.
+func TestBareModelIsRefusedAtItsRequest(t *testing.T) {
+	services := newRuntimeTestServices(t)
+	model, err := buildModel("bare-provider-nobody-lists/x", services, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = model.Provider.Close() })
+	err = unknownAPIStream(t, model.Provider)
+	if want := "No API provider registered for api: undefined"; err.Error() != want {
+		t.Errorf("error = %q, want %q", err, want)
+	}
+}
+
+// The Copilot provider serves anthropic-messages, openai-responses and openai-completions; a Copilot model whose api is none of them, or has none, is refused like any other
+// model with no registered implementation, and nothing reaches the endpoint.
+func TestCopilotModelWithNoCopilotAPIIsRefused(t *testing.T) {
+	for _, name := range []string{"nosuchapi", ""} {
+		t.Run("api="+name, func(t *testing.T) {
+			baseURL, requests := unknownAPIListener(t)
+			shown := name
+			if name == "" {
+				shown = "undefined"
+			}
+			provider, err := buildProviderForEntry("github-copilot", "m", ai.API(name), icodingagent.ModelEntry{
+				ProviderID: "github-copilot", ModelID: "m", BaseURL: baseURL, APIKey: "k", API: name, Input: []string{"text"},
+			}, newRuntimeTestServices(t), "", false, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = provider.Close() })
+			err = unknownAPIStream(t, provider)
+			if want := "No API provider registered for api: " + shown; err.Error() != want {
+				t.Errorf("error = %q, want %q", err, want)
+			}
+			if got := requests.Load(); got != 0 {
+				t.Errorf("requests at the endpoint = %d, want 0", got)
+			}
+		})
 	}
 }
