@@ -179,9 +179,10 @@ func TestOpenAICodexLoginReceivesSettingsDeviceID(t *testing.T) {
 	if got, want := callbacks.GetDeviceID(), sm.GetOrCreateDeviceID(); want == "" || got != want {
 		t.Fatalf("device ID = %q, settings = %q", got, want)
 	}
-	waitForRender(t, m.editorContainer, "Login failed")
-	deliverModalInput(t, m, []byte("\x1b"))
-	<-done
+	// The stub's error rejects the login, which closes the dialog (interactive-mode.ts:6564) and is reported by the caller.
+	if err := <-done; err == nil || err.Error() != "Failed to login to "+buildAuthProviderName("openai-codex")+": stop after callback capture" {
+		t.Fatalf("rejected login err = %v", err)
+	}
 }
 
 // Pi checks for Anthropic subscription auth after Ctrl+P cycles to a model (interactive-mode.ts:4510).

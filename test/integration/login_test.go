@@ -39,5 +39,6 @@ func TestAnthropicLoginAcceptsPastedRedirectURL(t *testing.T) {
 	h.paste("http://localhost:53692/callback?code=pasted-code&state=not-this-login")
 	h.expectContains(3*time.Second, "> http://localhost:53692/callback?code=pasted-code")
 	h.send("\r")
-	h.expectContains(5*time.Second, "Login failed: OAuth state mismatch")
+	// Pi closes the dialog and reports the rejected login in the transcript (interactive-mode.ts:6564-6573).
+	h.expectContains(5*time.Second, "Error: Failed to login to Anthropic: OAuth state mismatch")
 }
