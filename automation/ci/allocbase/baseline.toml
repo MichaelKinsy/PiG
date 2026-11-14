@@ -2191,7 +2191,7 @@ allocs = 16
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkHostShutdownProviderCatalog/20"
-allocs = 288
+allocs = 268
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"

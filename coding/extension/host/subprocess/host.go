@@ -1569,8 +1569,23 @@ func (h *Host) fillContentHashes(cellConfigs []ExtConfig, fill func(*ExtConfig))
 
 // fillTogether runs fill on every config that include accepts (every config when include is nil), a bounded number at a time, and returns when all
 // are done. The extensions are hashed together, as the cells are prepared together (stageCellsInOrder): a Go extension reads the SDK it replaces as
-// well, once per extension. The configs keep their order, and so do the plan and every registration after it.
+// well, once per extension. The configs keep their order, and so do the plan and every registration after it. A lone accepted config has nothing to
+// be filled together with: it is filled on the caller's goroutine, and none is started. include is asked twice about each config.
 func fillTogether(configs []ExtConfig, include func(*ExtConfig) bool, fill func(*ExtConfig)) {
+	lone, included := -1, 0
+	for i := range configs {
+		if include == nil || include(&configs[i]) {
+			lone = i
+			included++
+		}
+	}
+	switch included {
+	case 0:
+		return
+	case 1:
+		fill(&configs[lone])
+		return
+	}
 	var running sync.WaitGroup
 	slots := make(chan struct{}, maxConcurrentCellPreparations())
 	for i := range configs {
