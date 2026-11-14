@@ -36,4 +36,6 @@ export default function(pi){
    yield {type:'done',reason:'stop',message};
   },result:async()=>message};
  }});
+ // A provider whose model names an api that no extension registers and that has no streamSimple.
+ pi.registerProvider('unknown-api-provider',{api:'unknown-api-no-extension-registered',baseUrl:'https://extension.invalid',apiKey:'extension-key',models:[{id:'faux',name:'Faux',reasoning:false,input:['text'],cost:{input:0,output:0,cacheRead:0,cacheWrite:0},contextWindow:128000,maxTokens:4096}]});
 }

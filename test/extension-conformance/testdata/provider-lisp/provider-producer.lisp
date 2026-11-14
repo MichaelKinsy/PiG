@@ -112,4 +112,10 @@
                                                               "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
                                                               "contextWindow" 128000 "maxTokens" 4096))
                                     "streamSimple" #'cancel-end-stream))
+    ;; A provider whose model names an api that no extension registers and that has no streamSimple.
+    (pig:register-provider ext "unknown-api-provider"
+                           (pig:obj "api" "unknown-api-no-extension-registered" "baseUrl" "https://extension.invalid" "apiKey" "extension-key"
+                                    "models" (vector (pig:obj "id" "faux" "name" "Faux" "reasoning" :false "input" (vector "text")
+                                                              "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                              "contextWindow" 128000 "maxTokens" 4096))))
     ext))

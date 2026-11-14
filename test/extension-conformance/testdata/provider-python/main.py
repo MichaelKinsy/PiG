@@ -87,4 +87,6 @@ def new_extension() -> pig_sdk.Extension:
         return stream
     extension.register_provider("cancel-burst-provider",{"api":"cancel-burst-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_burst(False)})
     extension.register_provider("cancel-burst-held-provider",{"api":"cancel-burst-extension-api","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}],"streamSimple":cancel_burst(True)})
+    # A provider whose model names an api that no extension registers and that has no streamSimple.
+    extension.register_provider("unknown-api-provider",{"api":"unknown-api-no-extension-registered","baseUrl":"https://extension.invalid","apiKey":"extension-key","models":[{"id":"faux","name":"Faux","reasoning":False,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":4096}]})
     return extension
