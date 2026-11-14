@@ -59,6 +59,8 @@
     "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
     "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
     "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/driver",
+    "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+    "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
     "github.com/MichaelKinsy/PiG/internal/codingagent",
     "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
     "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
@@ -92481,9 +92483,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(runErr error, output []byte, dir string, rewritten map[string][]byte, result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result) rewriteCheck"
+        "type": "func(runErr error, output []byte, dir string, rewritten map[string][]byte, result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.Result) rewriteCheck"
       },
-      "shapeHash": "sha256:2ae2780076b41c7212f2383d456ec28f641834a7ff6ec1521340a5013bb86875"
+      "shapeHash": "sha256:c40e9c26d931d76f38e88dfc7881d5ead88fae0671903014ed72f7f3fec08707"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliBuild",
@@ -95297,9 +95299,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, config github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig) (*github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result, error)"
+        "type": "func(ctx context.Context, config github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig) (*github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.Result, error)"
       },
-      "shapeHash": "sha256:268c696139802c2d1a533b15801eb151051688827f645781d32931fba548de66"
+      "shapeHash": "sha256:f01e991482dac89e5f014e901f5a8c806e1dd3f1129d74e5696cae2254815b62"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#extensionUpgrader.backup",
@@ -95308,9 +95310,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(config github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result) (string, error)"
+        "type": "func(config github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.Result) (string, error)"
       },
-      "shapeHash": "sha256:beec514e65fdd982238f189d3e5f209f7222602730a7cd72273474d5b624b306"
+      "shapeHash": "sha256:71dece7680de2fe2d6c4308ea990677ef28aaa5fb02d5f54eda9190175cd7b63"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#extensionUpgrader.cacheRoot",
@@ -95330,9 +95332,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, config github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result) (rewriteCheck, error)"
+        "type": "func(ctx context.Context, config github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.Result) (rewriteCheck, error)"
       },
-      "shapeHash": "sha256:f3239cedd181e4fc01bf3e68bf80d5411d5a49923c05f826d2f35f9af5f65b15"
+      "shapeHash": "sha256:65926e7328700eaf78db82799db6f5cd7a62e674b490e003decf5fa7ae707724"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#extensionUpgrader.rebuildExtension",
@@ -97464,9 +97466,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result) int"
+        "type": "func(result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.Result) int"
       },
-      "shapeHash": "sha256:5c07e2464e47d242107e1c37fc0a7652d16b98005a2d2d476453ea2567d7ef58"
+      "shapeHash": "sha256:3097842ea0b33e8a5929f75b79a34b16abc1f3d0ef35218f88a8f061b481a272"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#mapKeys",
@@ -99004,9 +99006,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(w io.Writer, result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result)"
+        "type": "func(w io.Writer, result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.Result)"
       },
-      "shapeHash": "sha256:690fbe9a78550559d1bf44a4cf2a4ec79efdb1d874108d3ecc16ae8edf57be7e"
+      "shapeHash": "sha256:dba3ecc0d28ee9e043e51d21a60fb7fc4f00b4ffbbf9aebca470a8f1c5734ce6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#printModeOptions",
@@ -100610,9 +100612,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(report *extensionUpgradeReport, changed []github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.FileChange) string"
+        "type": "func(report *extensionUpgradeReport, changed []github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.FileChange) string"
       },
-      "shapeHash": "sha256:3ae224e2040e60777758cdc4c0e805a35bc812ffc7999d4fc7f69d992c6a6998"
+      "shapeHash": "sha256:fd930445d30acf0e911c3a3b56f198f9fcdbc1122285b0c3be070502fa15710e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#retryableAcceptError",
@@ -100643,9 +100645,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result) int"
+        "type": "func(result *github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.Result) int"
       },
-      "shapeHash": "sha256:5c07e2464e47d242107e1c37fc0a7652d16b98005a2d2d476453ea2567d7ef58"
+      "shapeHash": "sha256:3097842ea0b33e8a5929f75b79a34b16abc1f3d0ef35218f88a8f061b481a272"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcAdmission",
@@ -103679,9 +103681,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, configRoot string, sdkRoot string, command string, env []string, options github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.LoadOptions) (*github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result, error)"
+        "type": "func(ctx context.Context, configRoot string, sdkRoot string, command string, env []string, options github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.LoadOptions) (*github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan.Result, error)"
       },
-      "shapeHash": "sha256:629b661e4ac3f42914decb8bf7e34baeece492288933921b8c9fc617ebdb7517"
+      "shapeHash": "sha256:8c52c1fd078c0687debefde4120523b257622bc520599d9ac19784a7b0a4a545"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runAuthCheck",
@@ -191288,6 +191290,17 @@
       "shapeHash": "sha256:f101d896ce5f7d3a4b0d1ff7160d31b2a64ea9e03c727331355f6062cadf7336"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#sortedTargets",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "sortedTargets",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(seq iter.Seq[Target]) []Target"
+      },
+      "shapeHash": "sha256:3416ef08bc514ce1816aca05d4c2fdcaac6800010842290254a7f78a7659de15"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#sourceBuildEnv",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "sourceBuildEnv",
@@ -237180,6 +237193,17 @@
       "shapeHash": "sha256:bd41faed9088cb863f4be986de2ec32274aa3ee715a0e1d6330ccc5dd31b61e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#compareFieldsByName",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "compareFieldsByName",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a *field, b *field) int"
+      },
+      "shapeHash": "sha256:6eff577ea014194ac5bffcc0459fd30eb8be3b06b5782b91cfdf8dce9b3a1f0a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#compareJSKeys",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
       "name": "compareJSKeys",
@@ -249962,17 +249986,6 @@
       "shapeHash": "sha256:140e470965410b5190a6fc8c535a57252cc96d421200db79b063af6471d3af06"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Drift.String",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "Drift.String",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() string"
-      },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#File",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "File",
@@ -250092,28 +250105,6 @@
         "type": "Result"
       },
       "shapeHash": "sha256:18238b779f9c34b850dfb19262b5033c826397cdedca114adec53dcf89ff386d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Result.Changed",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "Result.Changed",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() bool"
-      },
-      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Result.Drift",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "Result.Drift",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() []Drift"
-      },
-      "shapeHash": "sha256:c9beda895788ba058855122ebc76681b14277f766dee3c662928b582c3a46ff8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Rewrite",
@@ -250391,50 +250382,6 @@
       "shapeHash": "sha256:64acbd3f11acd6774b095ad1cf6c25d5bd2dcadeef0e4efc42044cb61d58a80d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#backtrack",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "backtrack",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(a []string, b []string, trace [][]int, last int, offset int) []diffOp"
-      },
-      "shapeHash": "sha256:0d675a130b964a67f8f765c208731f2c837d444c39fd6b78bd8a9c8e8f45330e"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#boolPointerArgument",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "boolPointerArgument",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func() *regexp.Regexp"
-      },
-      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#builtinArityPrefix",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "builtinArityPrefix",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#calleeName",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "calleeName",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(expression string) (string, bool)"
-      },
-      "shapeHash": "sha256:a4237757780e5a54beed3eddb34f5907faf0584ee350c9b4f0385e940b9db7d5"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#canonicalDir",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "canonicalDir",
@@ -250446,17 +250393,6 @@
       "shapeHash": "sha256:7dec8db0ac0cf691c1e0d5b9aa813102a848cd55b19ad90e0b05922ff22488d6"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#changeFor",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "changeFor",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(symbol string) (Change, bool)"
-      },
-      "shapeHash": "sha256:afba3d21cb84d7639992bd96d5444330026fdfcb61cdf0a07e5efd296edab5f7"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#checkPackage",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "checkPackage",
@@ -250466,17 +250402,6 @@
         "type": "func(fset *go/token.FileSet, importPath string, paths []string, imp go/types.Importer, goVersion string, overlay map[string][]byte) (*Package, error)"
       },
       "shapeHash": "sha256:91fe02a67402d6fae8998f2013cc849fb4ea26cb838d415b93dcb24803dd6495"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#classifyDiagnostic",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "classifyDiagnostic",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (rule string, symbol string, ok bool)"
-      },
-      "shapeHash": "sha256:f700e35f39761ab5f8d1705618ee01a68de6c2131bff3a6ff644c54393b759b0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#conditional",
@@ -250499,138 +250424,6 @@
         "type": "func(outer *getterSite, all []*getterSite) bool"
       },
       "shapeHash": "sha256:4eb0610a2ca5a29a91649f35361b1c08b8b934d41630dbd28d49f3d18f8a6a88"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#credentialChange",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "credentialChange",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (rule string, symbol string, ok bool)"
-      },
-      "shapeHash": "sha256:f700e35f39761ab5f8d1705618ee01a68de6c2131bff3a6ff644c54393b759b0"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#credentialChanges",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "credentialChanges",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() []Change"
-      },
-      "shapeHash": "sha256:8839cf0eed1b7375bc0c7c168baaf5316f495e5d7fe2aabb9bb554580bba9a42"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#credentialType",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "credentialType",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func() *regexp.Regexp"
-      },
-      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#cutNumber",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "cutNumber",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(text string) (number int, rest string, ok bool)"
-      },
-      "shapeHash": "sha256:6fc1f5b9f92ab33806f0623004b0f58db5c603d7fa91f88e9bae354e6db5d0fe"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#dialogMethods",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "dialogMethods",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "map[string]bool"
-      },
-      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#dialogResultChanges",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "dialogResultChanges",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() []Change"
-      },
-      "shapeHash": "sha256:8839cf0eed1b7375bc0c7c168baaf5316f495e5d7fe2aabb9bb554580bba9a42"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#dialogResultMethod",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "dialogResultMethod",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (string, bool)"
-      },
-      "shapeHash": "sha256:3066bbd13eb5bf565c47177425a4b88727d48d0e5860e8ea645b5d31451caf69"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#dialogResultVariable",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "dialogResultVariable",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() *regexp.Regexp"
-      },
-      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#dialogResultsSince",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "dialogResultsSince",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#diffContext",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "diffContext",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#diffLines",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "diffLines",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(a []string, b []string) []diffOp"
-      },
-      "shapeHash": "sha256:05d3796aac99e512364b54dc078bc2db00789606c53589c78805c8b646d44b88"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#diffOp",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "diffOp",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "diffOp"
-      },
-      "shapeHash": "sha256:62afd9fe8d1283dc2b22765a332e7cb6d4bb1f1fbea28db6be909f904c60e55e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#edit",
@@ -250705,9 +250498,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(call *go/ast.CallExpr, parent go/ast.Node) (getter, bool)"
+        "type": "func(call *go/ast.CallExpr, parent go/ast.Node) (github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade.Getter, bool)"
       },
-      "shapeHash": "sha256:e2ee4bd5dbd9bf7ef5dde166a065bd2238d8b5e578c3cafe06060bd56fa1863b"
+      "shapeHash": "sha256:866b32b797242bf94c6e5d5019e1d42b84f81d7926caa26a76248e4c8d8c94eb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.driftedMethodValue",
@@ -250716,9 +250509,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(selector *go/ast.SelectorExpr) (getter, bool)"
+        "type": "func(selector *go/ast.SelectorExpr) (github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade.Getter, bool)"
       },
-      "shapeHash": "sha256:1872b23dc149eed9ff6df99bc4ec7023f0bc9dc574d8d371bf02603294498fa3"
+      "shapeHash": "sha256:98176c7a871757a3d31e744280054b74ffa2d2b9245d6c592a993653ced9f360"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.enclosingResults",
@@ -251057,9 +250850,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(call *go/ast.CallExpr, parent go/ast.Node) (getter, bool)"
+        "type": "func(call *go/ast.CallExpr, parent go/ast.Node) (github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade.Getter, bool)"
       },
-      "shapeHash": "sha256:e2ee4bd5dbd9bf7ef5dde166a065bd2238d8b5e578c3cafe06060bd56fa1863b"
+      "shapeHash": "sha256:866b32b797242bf94c6e5d5019e1d42b84f81d7926caa26a76248e4c8d8c94eb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.stringSystemPrompt",
@@ -251139,83 +250932,6 @@
       "shapeHash": "sha256:b3f995f0764d1cdefdbec39c37ee5ca252e43e7592729f1827152d1bb832d631"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getter",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "getter",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "getter"
-      },
-      "shapeHash": "sha256:5aa3fd29dc29ae4df7ac2ee3c9ca90c9c99d99ae3fd116baf18341b2551d654b"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getter.shape",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "getter.shape",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(results string) string"
-      },
-      "shapeHash": "sha256:24ef26d6ca5c07fc6fa8c22790ced7b718ad209f20a8e40da2a503b63338f37e"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getterByName",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "getterByName",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(name string) (getter, bool)"
-      },
-      "shapeHash": "sha256:ccc966009acfa1fb8029051a29a17bfe83d5e53c2c51d0f48419b0676a4ea40e"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getterCalledAt",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "getterCalledAt",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (string, bool)"
-      },
-      "shapeHash": "sha256:3066bbd13eb5bf565c47177425a4b88727d48d0e5860e8ea645b5d31451caf69"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getterChanges",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "getterChanges",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() []Change"
-      },
-      "shapeHash": "sha256:8839cf0eed1b7375bc0c7c168baaf5316f495e5d7fe2aabb9bb554580bba9a42"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getterInDiagnostic",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "getterInDiagnostic",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(message string) (string, bool)"
-      },
-      "shapeHash": "sha256:07bbf97fc05ff8ec6f40afe822bbaa699f4ef35dcc338c32e7c3eb70d58c8e65"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getterMethodValue",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "getterMethodValue",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(message string) (string, bool)"
-      },
-      "shapeHash": "sha256:07bbf97fc05ff8ec6f40afe822bbaa699f4ef35dcc338c32e7c3eb70d58c8e65"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getterSite",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "getterSite",
@@ -251236,17 +250952,6 @@
         "type": "func() go/ast.Stmt"
       },
       "shapeHash": "sha256:5cb9533b9ed000001f10f6e82f50bea30fa5559def839e3fd5b3d90e3b389641"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#getters",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "getters",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "[]getter"
-      },
-      "shapeHash": "sha256:df826803bd88f0d7f995c596159f58cf058279594eb8e134d11acf70d42110e4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#helperDef",
@@ -251299,9 +251004,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(p *filePlanner, g getter, fn *go/types.Func) *helperDef"
+        "type": "func(p *filePlanner, g github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade.Getter, fn *go/types.Func) *helperDef"
       },
-      "shapeHash": "sha256:d83dda6f2d2a76e97f4ad0d3854ee75ba21c8e6c09276089cb19f19154b4bc0a"
+      "shapeHash": "sha256:43ceba2397c43056e25e460a79204229efadd44e14a416d7ab52f8eea9f91618"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#helperRegistry.qualify",
@@ -251326,50 +251031,6 @@
       "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#highlightCodeTarget",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "highlightCodeTarget",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func() *regexp.Regexp"
-      },
-      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#hunk",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "hunk",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "hunk"
-      },
-      "shapeHash": "sha256:657805ebd60dfa4076c635822468a58654903bcfb022a83b0bf4306b0765c409"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#hunks",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "hunks",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ops []diffOp) []hunk"
-      },
-      "shapeHash": "sha256:35f4993e556d1f455d19fe561ebffbdfb3fb01497934722702ab287990030830"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#importsSDK",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "importsSDK",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) bool"
-      },
-      "shapeHash": "sha256:9f6c461881c780788fb44c8bc38640beef392d50f10c121debc87252327ed3b6"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#insertion",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "insertion",
@@ -251379,17 +251040,6 @@
         "type": "func(lines []string, indent string) string"
       },
       "shapeHash": "sha256:f13ecfab829ddbe21bfc5ebf58931f1591b9095d8a53bda6d6a2ca7b6d358f89"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#isArityDiagnostic",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "isArityDiagnostic",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(message string) bool"
-      },
-      "shapeHash": "sha256:4f8770cafea661837791f40409f09d518676a6b6b6eeb7093acbc7d19a9cad3c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#isPlainPath",
@@ -251425,17 +251075,6 @@
       "shapeHash": "sha256:bc54a3756d5c6dc3e69a23d605a067b03b2745f4ddd278b8c343e02b72a23317"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#lazyPattern",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "lazyPattern",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(expr string) func() *regexp.Regexp"
-      },
-      "shapeHash": "sha256:1f53792217e761a36dedfcd75305cb775cf86597ba9fca74df549d51d66bf11c"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#listPackages",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "listPackages",
@@ -251469,17 +251108,6 @@
       "shapeHash": "sha256:dacb4bc24e50d41a205b3c1b201a65f42f02a4731cabaf836c0e02fb8ec4237c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#loadFile",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "loadFile",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) *parsedFile"
-      },
-      "shapeHash": "sha256:13c8fc83c4014c8894cb506246ad215d161a81adfb4fc0414addea742d54855f"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#localAccessors",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "localAccessors",
@@ -251489,17 +251117,6 @@
         "type": "map[string]bool"
       },
       "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#markdownTransformerSymbol",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "markdownTransformerSymbol",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#maxPasses",
@@ -251546,28 +251163,6 @@
       "shapeHash": "sha256:c4ec6012ebaa9225b07eca4213649bee2983c067febcc9f74334eb18ebc7e760"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#originalLines",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "originalLines",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(before []byte, after []byte) []int"
-      },
-      "shapeHash": "sha256:9167ddda6ae69570b7ecf1a2396135a568b8a30764a629060a34b4cc587f1510"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#parsedFile",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "parsedFile",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "parsedFile"
-      },
-      "shapeHash": "sha256:79281e702cb88359273bb21fd0f05a5d75a3ce94e8e5ba30e9e328bc3472171c"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#releaseBefore",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "releaseBefore",
@@ -251599,61 +251194,6 @@
         "type": "func(results *go/types.Tuple) bool"
       },
       "shapeHash": "sha256:54679770497bd99c1b8e391b2a2d87259e137ed7cd2bfeee26f0b229e23fd78a"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#sdkBoolField",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "sdkBoolField",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*parsedFile) (string, bool)"
-      },
-      "shapeHash": "sha256:3066bbd13eb5bf565c47177425a4b88727d48d0e5860e8ea645b5d31451caf69"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#sdkImportNames",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "sdkImportNames",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(file *go/ast.File) map[string]bool"
-      },
-      "shapeHash": "sha256:9af233c553cbe1df2693453d986c936ec0cff43487176b446cb9de98629e3e08"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#setModelNameArgument",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "setModelNameArgument",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func() *regexp.Regexp"
-      },
-      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#setModelSince",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "setModelSince",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#setModelSymbol",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "setModelSymbol",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#site",
@@ -251711,17 +251251,6 @@
       "shapeHash": "sha256:a58e1a4ff0845a4004fc571cf0b8162a56af12ef42be56a4a5cae20cb7e4378e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#splitLines",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "splitLines",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(text string) []string"
-      },
-      "shapeHash": "sha256:2849e1ad1fbe672a475bfdcf17ef8f2d9a87e5b611f41a7bc30936a69bfd144a"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#stringConstant",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "stringConstant",
@@ -251733,28 +251262,6 @@
       "shapeHash": "sha256:27299955f0dca01232fbadebd1c9969e24f61ceb7c32500b0c03c763bffd88f8"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#systemPromptSince",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "systemPromptSince",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#systemPromptSymbol",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "systemPromptSymbol",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#underRoots",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "underRoots",
@@ -251764,28 +251271,6 @@
         "type": "func(dir string, roots []string) bool"
       },
       "shapeHash": "sha256:c9ed729b167827c836ced3afa403ddd6638ac7765c5f2d494dcde0d94ef1fca5"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#usageDiagnostic",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "usageDiagnostic",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func() *regexp.Regexp"
-      },
-      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#usagePointerTypes",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "usagePointerTypes",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func() *regexp.Regexp"
-      },
-      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#valueName",
@@ -251830,6 +251315,1106 @@
         "type": "func(in io.Reader, out io.Writer) error"
       },
       "shapeHash": "sha256:5f5fec5eaa195052f15042d2fb968b8a812895922fe9d90ee849e902ce1e085e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#BuiltinArityPrefix",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "BuiltinArityPrefix",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Change",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Change",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Change"
+      },
+      "shapeHash": "sha256:e2f0de6cb43c639231e8c223825571474bc44d36835f4e9cbd9baea0b387dc41"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#ChangeFor",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "ChangeFor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(symbol string) (Change, bool)"
+      },
+      "shapeHash": "sha256:afba3d21cb84d7639992bd96d5444330026fdfcb61cdf0a07e5efd296edab5f7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Classify",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Classify",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(diagnostics []Diagnostic, source FileSource) []Drift"
+      },
+      "shapeHash": "sha256:6f6aa990fd79b232c7aa844f7b36184311bd7218f3fe612757df868c3cd360df"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#ClassifyDiagnostic",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "ClassifyDiagnostic",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (rule string, symbol string, ok bool)"
+      },
+      "shapeHash": "sha256:1a654bd7d0429d2e1bf869e4abecb21541a2c7f4d45bf3e1077385117f8d8f56"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Covers",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Covers",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(symbol string) bool"
+      },
+      "shapeHash": "sha256:98d0afb320170ffa6b8cda1c419a5289b2a14f82fa2e7d690800ddfa0d02c6d0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Diagnostic",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Diagnostic",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Diagnostic"
+      },
+      "shapeHash": "sha256:fdeb94e3707db789b7efcbcf3cac0dc1b4b17b8cbab6945a5bd39442e22fcc52"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Diff",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Diff",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(name string, before []byte, after []byte) string"
+      },
+      "shapeHash": "sha256:debb76ad1be74e1fefed5946be2edc8474c33b5fab0d089eb589ad97a0cdec05"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Drift",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Drift",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Drift"
+      },
+      "shapeHash": "sha256:140e470965410b5190a6fc8c535a57252cc96d421200db79b063af6471d3af06"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Drift.String",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Drift.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#FileChange",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "FileChange",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FileChange"
+      },
+      "shapeHash": "sha256:039c19f22ca8ec1b214a0c4f56601f9b7a461faca352e8d4c542714eee959010"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#FileSource",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "FileSource",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FileSource"
+      },
+      "shapeHash": "sha256:6118135de7068c8ea9a562ca776d6ae506cc79fee926a2caf2316468adb5e895"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Getter",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Getter",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Getter"
+      },
+      "shapeHash": "sha256:2a83a7dda9808eb33f450fff0280ecbbe00d17ba60f8e1b7167d938cb62c4679"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Getter.Shape",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Getter.Shape",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(results string) string"
+      },
+      "shapeHash": "sha256:24ef26d6ca5c07fc6fa8c22790ced7b718ad209f20a8e40da2a503b63338f37e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#GetterByName",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "GetterByName",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(name string) (Getter, bool)"
+      },
+      "shapeHash": "sha256:1d24e966760e2d152be91dfc90010f8a7358996a0c65dda123d2fee10dbf65b6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#IsArityDiagnostic",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "IsArityDiagnostic",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(message string) bool"
+      },
+      "shapeHash": "sha256:4f8770cafea661837791f40409f09d518676a6b6b6eeb7093acbc7d19a9cad3c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#IsSDKPath",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "IsSDKPath",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(path string) bool"
+      },
+      "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#LegacySDKModulePath",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "LegacySDKModulePath",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#LoadOptions",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "LoadOptions",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "LoadOptions"
+      },
+      "shapeHash": "sha256:bf9e9bf0ae0986ef19fa8bda62baf6c1f662d96e3fc4bc41d39c877951878569"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#OriginalLines",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "OriginalLines",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(before []byte, after []byte) []int"
+      },
+      "shapeHash": "sha256:9167ddda6ae69570b7ecf1a2396135a568b8a30764a629060a34b4cc587f1510"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#ParseDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "ParseDiagnostics",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(output []byte) []Diagnostic"
+      },
+      "shapeHash": "sha256:196210f290abe027accae5d464c5c41de703ffdbf010f2b3ba113921df361945"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#ParsedFile",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "ParsedFile",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ParsedFile"
+      },
+      "shapeHash": "sha256:a03f579c5dba260af1e5ff0b5cb035fe8b95969c9a7e5ae020836ebb5c79f3ce"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Reply",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Reply",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Reply"
+      },
+      "shapeHash": "sha256:d33b967e8d65b7b7ae3e460d122305977f97831483b5020a5129ff754ec2b5da"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Result",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Result",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Result"
+      },
+      "shapeHash": "sha256:18238b779f9c34b850dfb19262b5033c826397cdedca114adec53dcf89ff386d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Result.Changed",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Result.Changed",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Result.Drift",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Result.Drift",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []Drift"
+      },
+      "shapeHash": "sha256:c9beda895788ba058855122ebc76681b14277f766dee3c662928b582c3a46ff8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Rewrite",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Rewrite",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Rewrite"
+      },
+      "shapeHash": "sha256:08c4f5c85386b8094a5e40cb885691c64f9a162a235a6f093084b930b7a2dd22"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Rule",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Rule",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Rule"
+      },
+      "shapeHash": "sha256:65de10b7e2ddb11ea49f53cdd440359bfd2b47c8932c1d23fac115627bf2a98a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleAutocompleteFactory",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleAutocompleteFactory",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleByID",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleByID",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(id string) (Rule, bool)"
+      },
+      "shapeHash": "sha256:56992846527609910514c2e9ba840af6d2cfa1d6636bece91cbf1cb911182258"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleConstrainedSampling",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleConstrainedSampling",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleContextGetters",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleContextGetters",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleContextUsage",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleContextUsage",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleDialogResults",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleDialogResults",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleEditorComponent",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleEditorComponent",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleHostHighlightCode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleHostHighlightCode",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleMarkdownTransformer",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleMarkdownTransformer",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleModelRegistryFind",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleModelRegistryFind",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleNotComparable",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleNotComparable",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleOptionalBool",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleOptionalBool",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleProviderCredential",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleProviderCredential",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleReadonlySession",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleReadonlySession",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleSetModelObject",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleSetModelObject",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleSystemPromptGetter",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleSystemPromptGetter",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#RuleTransformHeaders",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "RuleTransformHeaders",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Rules",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Rules",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []Rule"
+      },
+      "shapeHash": "sha256:722145536229c2dc733b1fc79efeb77c6e63d329a3e473e3448fa967325aec1a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#SDKImportNames",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "SDKImportNames",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(file *go/ast.File) map[string]bool"
+      },
+      "shapeHash": "sha256:9af233c553cbe1df2693453d986c936ec0cff43487176b446cb9de98629e3e08"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#SDKModulePath",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "SDKModulePath",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#SetModelSymbol",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "SetModelSymbol",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Skipped",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "Skipped",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Skipped"
+      },
+      "shapeHash": "sha256:64acbd3f11acd6774b095ad1cf6c25d5bd2dcadeef0e4efc42044cb61d58a80d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#SystemPromptSince",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "SystemPromptSince",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#SystemPromptSymbol",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "SystemPromptSymbol",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#UsagePointerTypes",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "UsagePointerTypes",
+      "kind": "variable",
+      "exported": true,
+      "shape": {
+        "type": "func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#backtrack",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "backtrack",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a []string, b []string, trace [][]int, last int, offset int) []diffOp"
+      },
+      "shapeHash": "sha256:0d675a130b964a67f8f765c208731f2c837d444c39fd6b78bd8a9c8e8f45330e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#boolPointerArgument",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "boolPointerArgument",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#calleeName",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "calleeName",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(expression string) (string, bool)"
+      },
+      "shapeHash": "sha256:a4237757780e5a54beed3eddb34f5907faf0584ee350c9b4f0385e940b9db7d5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#credentialChange",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "credentialChange",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (rule string, symbol string, ok bool)"
+      },
+      "shapeHash": "sha256:1a654bd7d0429d2e1bf869e4abecb21541a2c7f4d45bf3e1077385117f8d8f56"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#credentialChanges",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "credentialChanges",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []Change"
+      },
+      "shapeHash": "sha256:8839cf0eed1b7375bc0c7c168baaf5316f495e5d7fe2aabb9bb554580bba9a42"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#credentialType",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "credentialType",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#cutNumber",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "cutNumber",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) (number int, rest string, ok bool)"
+      },
+      "shapeHash": "sha256:6fc1f5b9f92ab33806f0623004b0f58db5c603d7fa91f88e9bae354e6db5d0fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#dialogMethods",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "dialogMethods",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]bool"
+      },
+      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#dialogResultChanges",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "dialogResultChanges",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []Change"
+      },
+      "shapeHash": "sha256:8839cf0eed1b7375bc0c7c168baaf5316f495e5d7fe2aabb9bb554580bba9a42"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#dialogResultMethod",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "dialogResultMethod",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (string, bool)"
+      },
+      "shapeHash": "sha256:d7e89ac34ddb437c28ce2ea023910235bae0472db39bd418e76dd7939fbd128c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#dialogResultVariable",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "dialogResultVariable",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#dialogResultsSince",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "dialogResultsSince",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#diffContext",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "diffContext",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#diffLines",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "diffLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a []string, b []string) []diffOp"
+      },
+      "shapeHash": "sha256:05d3796aac99e512364b54dc078bc2db00789606c53589c78805c8b646d44b88"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#diffOp",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "diffOp",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "diffOp"
+      },
+      "shapeHash": "sha256:62afd9fe8d1283dc2b22765a332e7cb6d4bb1f1fbea28db6be909f904c60e55e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#getterCalledAt",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "getterCalledAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (string, bool)"
+      },
+      "shapeHash": "sha256:d7e89ac34ddb437c28ce2ea023910235bae0472db39bd418e76dd7939fbd128c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#getterChanges",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "getterChanges",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []Change"
+      },
+      "shapeHash": "sha256:8839cf0eed1b7375bc0c7c168baaf5316f495e5d7fe2aabb9bb554580bba9a42"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#getterInDiagnostic",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "getterInDiagnostic",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(message string) (string, bool)"
+      },
+      "shapeHash": "sha256:07bbf97fc05ff8ec6f40afe822bbaa699f4ef35dcc338c32e7c3eb70d58c8e65"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#getterMethodValue",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "getterMethodValue",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(message string) (string, bool)"
+      },
+      "shapeHash": "sha256:07bbf97fc05ff8ec6f40afe822bbaa699f4ef35dcc338c32e7c3eb70d58c8e65"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#getters",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "getters",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]Getter"
+      },
+      "shapeHash": "sha256:703e0360b18c1d121be8c82b9fc3ad2c59ab53b1e20cc9ad17ae610394964e74"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#highlightCodeTarget",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "highlightCodeTarget",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#hunk",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "hunk",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "hunk"
+      },
+      "shapeHash": "sha256:657805ebd60dfa4076c635822468a58654903bcfb022a83b0bf4306b0765c409"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#hunks",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "hunks",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ops []diffOp) []hunk"
+      },
+      "shapeHash": "sha256:35f4993e556d1f455d19fe561ebffbdfb3fb01497934722702ab287990030830"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#importsSDK",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "importsSDK",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) bool"
+      },
+      "shapeHash": "sha256:35cb6a81e7d17f83e15c4cbbaf7c2a94851d98a4c0f602160308bed3b54c03c6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#lazyPattern",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "lazyPattern",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(expr string) func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:1f53792217e761a36dedfcd75305cb775cf86597ba9fca74df549d51d66bf11c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#loadFile",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "loadFile",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) *ParsedFile"
+      },
+      "shapeHash": "sha256:c2cc2aab51ec90d14b6c8b83f7c04f6ce0228b54c032466d920f8a448f35dcc0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#markdownTransformerSymbol",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "markdownTransformerSymbol",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#sdkBoolField",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "sdkBoolField",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(diagnostic Diagnostic, source FileSource, files map[string]*ParsedFile) (string, bool)"
+      },
+      "shapeHash": "sha256:d7e89ac34ddb437c28ce2ea023910235bae0472db39bd418e76dd7939fbd128c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#setModelNameArgument",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "setModelNameArgument",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#setModelSince",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "setModelSince",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#splitLines",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "splitLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) []string"
+      },
+      "shapeHash": "sha256:2849e1ad1fbe672a475bfdcf17ef8f2d9a87e5b611f41a7bc30936a69bfd144a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#usageDiagnostic",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade",
+      "name": "usageDiagnostic",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Change",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Change",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Change"
+      },
+      "shapeHash": "sha256:e2f0de6cb43c639231e8c223825571474bc44d36835f4e9cbd9baea0b387dc41"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Classify",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Classify",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(diagnostics []Diagnostic, source FileSource) []Drift"
+      },
+      "shapeHash": "sha256:6f6aa990fd79b232c7aa844f7b36184311bd7218f3fe612757df868c3cd360df"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Diagnostic",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Diagnostic",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Diagnostic"
+      },
+      "shapeHash": "sha256:fdeb94e3707db789b7efcbcf3cac0dc1b4b17b8cbab6945a5bd39442e22fcc52"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Diff",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Diff",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(name string, before []byte, after []byte) string"
+      },
+      "shapeHash": "sha256:debb76ad1be74e1fefed5946be2edc8474c33b5fab0d089eb589ad97a0cdec05"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Drift",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Drift",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Drift"
+      },
+      "shapeHash": "sha256:140e470965410b5190a6fc8c535a57252cc96d421200db79b063af6471d3af06"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#FileChange",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "FileChange",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FileChange"
+      },
+      "shapeHash": "sha256:039c19f22ca8ec1b214a0c4f56601f9b7a461faca352e8d4c542714eee959010"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#FileSource",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "FileSource",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FileSource"
+      },
+      "shapeHash": "sha256:6118135de7068c8ea9a562ca776d6ae506cc79fee926a2caf2316468adb5e895"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#LoadOptions",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "LoadOptions",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "LoadOptions"
+      },
+      "shapeHash": "sha256:bf9e9bf0ae0986ef19fa8bda62baf6c1f662d96e3fc4bc41d39c877951878569"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#ParseDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "ParseDiagnostics",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(output []byte) []Diagnostic"
+      },
+      "shapeHash": "sha256:196210f290abe027accae5d464c5c41de703ffdbf010f2b3ba113921df361945"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Reply",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Reply",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Reply"
+      },
+      "shapeHash": "sha256:d33b967e8d65b7b7ae3e460d122305977f97831483b5020a5129ff754ec2b5da"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Result",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Result",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Result"
+      },
+      "shapeHash": "sha256:18238b779f9c34b850dfb19262b5033c826397cdedca114adec53dcf89ff386d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Rewrite",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Rewrite",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Rewrite"
+      },
+      "shapeHash": "sha256:08c4f5c85386b8094a5e40cb885691c64f9a162a235a6f093084b930b7a2dd22"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Rule",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Rule",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Rule"
+      },
+      "shapeHash": "sha256:65de10b7e2ddb11ea49f53cdd440359bfd2b47c8932c1d23fac115627bf2a98a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#RuleByID",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "RuleByID",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(id string) (Rule, bool)"
+      },
+      "shapeHash": "sha256:56992846527609910514c2e9ba840af6d2cfa1d6636bece91cbf1cb911182258"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Skipped",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan",
+      "name": "Skipped",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Skipped"
+      },
+      "shapeHash": "sha256:64acbd3f11acd6774b095ad1cf6c25d5bd2dcadeef0e4efc42044cb61d58a80d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#APP_TITLE",

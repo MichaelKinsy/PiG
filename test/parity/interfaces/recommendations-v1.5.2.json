@@ -54262,7 +54262,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "16 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -54285,6 +54285,8 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRegistry.Classify",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRuntime.Classify",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Classify",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Classify",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Classify",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#classify"
       ],
       "missingClosure": [
@@ -58665,7 +58667,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "16 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -58688,6 +58690,8 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRegistry.Classify",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRuntime.Classify",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Classify",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Classify",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Classify",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#classify"
       ],
       "missingClosure": [
@@ -62597,7 +62601,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "16 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -62620,6 +62624,8 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRegistry.Classify",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRuntime.Classify",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Classify",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Classify",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Classify",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#classify"
       ],
       "missingClosure": [
@@ -67313,7 +67319,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "16 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -67336,6 +67342,8 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRegistry.Classify",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRuntime.Classify",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Classify",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Classify",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Classify",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#classify"
       ],
       "missingClosure": [
@@ -169829,22 +169837,25 @@
     {
       "id": "pkg:chord/delta#Change",
       "upstreamShapeHash": "sha256:8b026533750c6023f84bbdb6714bde8851a508b6020ee7f7901d7f96d5dd272e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Change"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Change",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Change",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Change"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -333426,22 +333437,25 @@
     {
       "id": "pkg:durable/env#FileChange",
       "upstreamShapeHash": "sha256:0515ac47d2f5d8666052867b865175d85d3817f597d62e8f275376803bd123c2",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#FileChange"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#FileChange",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#FileChange",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#FileChange"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -336163,7 +336177,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "13 normalized-name Pig candidates are ambiguous."
+        "15 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -336180,6 +336194,8 @@
         "go:github.com/MichaelKinsy/PiG/coding/uiview#Result",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelEventStream.Result",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Result",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Result",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Result",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#customOverlay.Result",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/sessiongen#Result",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#headJoin.Result",
@@ -357618,22 +357634,25 @@
     {
       "id": "pkg:env/.#Reply",
       "upstreamShapeHash": "sha256:05c954053a8411f87133cf2e275a1e1c657e56e975853cb156413969cabf3ef6",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Reply"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Reply",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Reply",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Reply"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
