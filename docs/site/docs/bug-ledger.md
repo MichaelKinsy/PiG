@@ -331,6 +331,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2c5db8b](#bf-2c5db8b) | A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2c7db1a](#bf-2c7db1a) | Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned… | PiG's own defect | Windows | Unreleased |
 | [BF-2c88c5f](#bf-2c88c5f) | Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2ca1d45](#bf-2ca1d45) | A Chord rollout lists every failed worker it retried | PiG's own defect | All platforms | Unreleased |
 | [BF-2cef1bf](#bf-2cef1bf) | A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a… | PiG's own defect | All platforms | Unreleased |
 | [BF-2cef1bf-2](#bf-2cef1bf-2) | When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one… | PiG's own defect | All platforms | Unreleased |
 | [BF-2cef1bf-3](#bf-2cef1bf-3) | A panic in a Go editor component call is reported as `editor <call> failed: <message>`, as the other SDKs… | PiG's own defect | All platforms | Unreleased |
@@ -6550,6 +6551,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2c88c5fd2e` (2026-10-10), `80c797da93` (2026-10-10), `afa1dd5185` (2026-10-10), `f02269c6e1` (2026-10-10), `fe625bb5dd` (2026-10-10)
 - **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralTypedWirePayloadMatchesTheGeneralLowering`, `ai/openai_codex_websocket_frame_oracle_test.go::TestCodexWebSocketFramesMatchPi`, `ai/provider_ecmascript_whitespace_test.go::TestMistralAssistantBlankUsesECMAScriptTrim`, `ai/provider_wire_defaults_test.go::TestMistralAssistantReplayPrefixAndToolIndex`, `ai/raw_payload_replacement_oracle_test.go::TestRawPayloadReplacementsAreSentAsPiSendsThem` and 15 more in docs/bug-ledger.json
 - **Release note:** Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode keys, Bedrock and Google request members) is written as `JSON.stringify` writes the decoded text: one literal U+FFFD for each ill-formed sequence, instead of one `\ufffd` escape per byte.
+
+### BF-2ca1d45
+
+**A Chord rollout lists every failed worker it retried**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord rollout lists every failed worker it retried.
+- **Root cause:** the rollout kept a retried worker's entry only when its own Retry answered that it had started the resolve, assuming a start on a failed address was always its own; Pi lists whatever start the address has after the retry (workers.ts:598-601)
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2ca1d45bb4` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A Chord rollout lists every failed worker it retried. A worker whose address already had a start running when the rollout retried it (the route starts one itself when the worker's link closes) was left out of the rollout's list although its start went on, so the app saw one worker fewer than the rollout had brought up; the list now carries the start the address has after the retry, whoever began it, as Pi's does.
 
 ### BF-2cef1bf
 

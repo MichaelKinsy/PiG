@@ -96,6 +96,47 @@ func TestTheRolloutStepShipsTheCurrentSetToRunningWorkersRetriesHeldFailedOnesLi
 	}
 }
 
+// A failed worker is listed when its address already has a start running as the rollout retries it, as Pi lists whatever
+// `routed.starting` the retry left (workers.ts:598-601): the route starts a resolve itself when a worker's link closes, and a
+// resolve ends only when its start settles, so a rollout that clears the failure meanwhile finds `Retry` starting none (it
+// answers false) and the address with a start of its own running. The entry waits for that start, as for one the retry made.
+func TestTheRolloutStepListsAFailedWorkerWhoseStartWasAlreadyRunningWhenItRetriedIt(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	one := f.get(fixtureNotes, "S1")
+	control := f.get(fixtureControl, "S3")
+	failed := f.get(fixtureNotes, "S3")
+	if _, err := control.Call("crash", float64(1), background); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return f.stateOf("S3") != nil && f.stateOf("S3").Status == WorkerFailed })
+	f.label("v2")
+	f.untilDirty()
+	built := f.build(f.dirty())
+	retry := f.workers.route.Retry
+	f.workers.route.Retry = func(address contracts.Address) bool {
+		if address.Key != session("S3").Key {
+			return retry(address)
+		}
+		// The resolve the route would be running: the first Retry starts it, so the rollout's own finds it running.
+		if !retry(address) {
+			t.Error("Retry of the failed address started no resolve")
+		}
+		refused := retry(address)
+		if refused {
+			t.Error("a second Retry of the address started another resolve while the first runs")
+		}
+		return refused
+	}
+	hosts := f.rollout(f.workers.Step("workers"), built)
+	requireListed(t, listed(hosts),
+		"session|S1 "+changedNotes,
+		"session|S3 added=[@test/notes] changed=[] removed=[]")
+	until(t, func() bool { return labelOf(t, one) == "S1 v2" && labelOf(t, failed) == "S3 v2" })
+	for _, reference := range []interface{ Release() }{one, failed, control} {
+		reference.Release()
+	}
+}
+
 func TestTheRolloutStepAWorkerStartingDuringItGetsTheNewSetAStartAfterTheRolloutLoadsIt(t *testing.T) {
 	f := newFleet(t, fleetOptions{})
 	f.label("v2")

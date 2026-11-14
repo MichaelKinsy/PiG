@@ -8693,6 +8693,26 @@
       ]
     },
     {
+      "id": "BF-2ca1d45",
+      "title": "A Chord rollout lists every failed worker it retried",
+      "symptom": "A Chord rollout lists every failed worker it retried.",
+      "rootCause": "the rollout kept a retried worker's entry only when its own Retry answered that it had started the resolve, assuming a start on a failed address was always its own; Pi lists whatever start the address has after the retry (workers.ts:598-601)",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord rollout lists every failed worker it retried. A worker whose address already had a start running when the rollout retried it (the route starts one itself when the worker's link closes) was left out of the rollout's list although its start went on, so the app saw one worker fewer than the rollout had brought up; the list now carries the start the address has after the retry, whoever began it, as Pi's does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2ca1d45bb4",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-2cef1bf",
       "title": "A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a…",
       "symptom": "A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a `pi.events` call) and then panics, raises or returns no extension no longer hangs its load until the caller cancels it: the runner closes the connection the helper opened, and the extension is reported as the load error it is while its siblings load.",
