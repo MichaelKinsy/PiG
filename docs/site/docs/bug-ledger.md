@@ -941,6 +941,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6a6fffa-7](#bf-6a6fffa-7) | The settings documentation now says that `images.blockImages` replaces each image sent to the model with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a6fffa-8](#bf-6a6fffa-8) | In `--mode json`, SIGTERM or SIGHUP during a tool call now stops the output and the session file where Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a6fffa-9](#bf-6a6fffa-9) | `TestSettingsSelectorMatchesPi` opens each row under the Kitty keyboard protocol with CSI-u keys; no… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6aa9446](#bf-6aa9446) | An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-6ac4c8c](#bf-6ac4c8c) | Ctrl+V pastes clipboard text in Termux | A fix Pi shipped that PiG ported | Linux, Android and Termux | 0.5.0 |
 | [BF-6acf6a0](#bf-6acf6a0) | fix(durable/core): keep telemetry out of the hot publish body; report type; trace test | PiG's own defect | All platforms | Unreleased |
 | [BF-6b584ff](#bf-6b584ff) | The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -1913,6 +1914,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-df43f7b](#bf-df43f7b) | RPC: a `prompt` that starts a run, and a `prompt` that fails in preparation, answer one microtask later than… | PiG's own defect | All platforms | Unreleased |
 | [BF-df5964b](#bf-df5964b) | A context-overflow error from a LiteLLM proxy's pre-call check (`litellm.ContextWindowExceededError ...… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-df5964b-2](#bf-df5964b-2) | A Zhipu/Z.ai usage-limit error (error code 1308, sent as HTTP 429) is no longer retried: the plan's limit… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-df5e3e8](#bf-df5e3e8) | An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-df96b6a](#bf-df96b6a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-dfa57b3](#bf-dfa57b3) | An OpenAI Responses request for a conversation with no messages sends `"input": []` instead of `"input": null` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e045fa5](#bf-e045fa5) | fix(durable/codemode): count image blocks in a generateImages result as Pi does, and compare the code mode… | PiG's own defect | All platforms | Unreleased |
@@ -14952,6 +14954,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries`, `internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain`, `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi` and 4 more in docs/bug-ledger.json
 - **Release note:** `TestSettingsSelectorMatchesPi` opens each row under the Kitty keyboard protocol with CSI-u keys; no difference.
+
+### BF-6aa9446
+
+**An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: "Operation aborted", or "Aborted after N retry attempt(s)" when an automatic retry was running.
+- **Root cause:** Pi's interactive mode rewrites the errorMessage of an aborted assistant message in its message_end listener (interactive-mode.ts:3686-3697), on the object the Session persists afterwards (agent-session.ts:1208-1230). PiG rewrote a copy on the UI loop after persistence, so the session file, turn_end / agent_end handlers and the next request kept the provider's text. The mode now subscribes a synchronous Session listener at Pi's place in the order, with the retry text and Pi's plural rule, and unsubscribes where Pi's stop() does (:7293). print, json and rpc are unchanged.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6aa94467d3` (2026-11-13)
+- **Tests:** `internal/codingagent/interactive_test.go::TestInteractiveMode_AbortedMessageNamesRetryAttempts`
+- **Release note:** An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: "Operation aborted", or "Aborted after N retry attempt(s)" when an automatic retry was running. The session file, an extension's `turn_end` and `agent_end` handlers and the next request carried the provider's text before; print, JSON and RPC modes keep the provider's text, as in Pi.
 
 ### BF-6ac4c8c
 
@@ -28462,6 +28478,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `df5964b4e7` (2026-10-29)
 - **Tests:** None recorded.
 - **Release note:** A Zhipu/Z.ai usage-limit error (error code 1308, sent as HTTP 429) is no longer retried: the plan's limit resets after hours, not seconds (Pi #11537).
+
+### BF-df5e3e8
+
+**An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected.
+- **Root cause:** In interactive mode the abort host action waited for the run to settle. A handler the run awaits (message_update, tool_call, ...) that called ctx.abort() therefore hung the run, the next prompt and the quit. Pi starts the abort and returns (interactive-mode.ts:2399-2401, :4935-4937 void this.session.abort()); the action now posts the abort to the owner loop and returns.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a079f7223f` (2026-11-13), `df5e3e87ff` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session: the call returns at once, the turn ends aborted and the next prompt runs, in the Node, Go, Python and Rust SDKs. Before, the turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected. Messages queued while the turn ran go back to the editor instead of running after the abort, as in Pi. Affects 0.2.0 through 0.7.0.
 
 ### BF-df96b6a
 

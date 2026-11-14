@@ -436,13 +436,8 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 			m.tuiInst.RequestRender()
 			break
 		}
+		// An aborted message already carries the text the mode's Session listener gave it before the Session persisted and published it (handleSessionEvent).
 		finished := e.Message.Assistant
-		if finished.StopReason == ai.StopReasonAborted {
-			// upstream: interactive-mode.ts:3544 replaces an aborted message's errorMessage before rendering it.
-			aborted := *finished
-			aborted.ErrorMessage = m.abortedMessageText()
-			finished = &aborted
-		}
 		updateAssistantMessageBlock(m.evCurrentBlock, finished)
 		// Mirrors upstream message_end (interactive-mode.ts:2774-2793):
 		// On abort/error → push the error into every pending tool component
@@ -715,8 +710,8 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 // coalesced/dropped post is re-applied by the next render. Mirrors upstream's
 // single-event-loop resize.
 
-// abortedMessageText is the text an aborted turn shows, naming the automatic retries it was aborted after.
-// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:3544 (message_end) and :4010 (renderSessionContext).
+// abortedMessageText is the text the tool cards of an aborted message show when a session is rendered from its entries, naming the automatic retries running now.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:4212-4218 (renderSessionContext).
 func (m *InteractiveMode) abortedMessageText() string {
 	attempt := 0
 	if m.opts.SessionHandle != nil {
@@ -725,6 +720,8 @@ func (m *InteractiveMode) abortedMessageText() string {
 	return abortedMessageForRetries(attempt)
 }
 
+// abortedMessageForRetries is the errorMessage Pi's interactive mode gives an aborted message.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:3690-3695 and :4213-4218.
 func abortedMessageForRetries(attempt int) string {
 	if attempt <= 0 {
 		return "Operation aborted"

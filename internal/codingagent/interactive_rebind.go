@@ -67,6 +67,7 @@ func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBefore
 		// The events the old Session delivered are applied before its channel is dropped, as they were when they arrived.
 		m.setEventRegion(false)
 		m.eventCh = nil
+		m.unsubscribeSessionListener()
 		m.programStatusReporter().Reset()
 		m.applyRuntimeSettings()
 		// interactive-mode.ts applyRuntimeSettings: this.footer.setSession(this.session)
@@ -139,6 +140,7 @@ func (m *InteractiveMode) setAgent(next *agent.Agent) {
 func (m *InteractiveMode) subscribeToAgent() {
 	m.setEventRegion(false)
 	m.eventCh = m.opts.SessionHandle.Events()
+	m.subscribeSessionListener()
 }
 
 func (m *InteractiveMode) applyRuntimeSettings() {
