@@ -50,7 +50,11 @@ func TestInteractiveReplacementBuildsFromItsOwnServices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer session.Close()
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	replacement := (&cliRuntimeBuilder{}).interactiveReplacement(&cliBuild{Services: replacementServices, CWD: t.TempDir(), SkillLoad: &skillLoadResult{}, SourceResolver: newStartupExtensionSourceResolver(nil)}, session, nil)
 	if replacement.ModelBuilder == nil {
 		t.Fatal("the replacement carries no model builder: the mode would keep building from the start-up services")
