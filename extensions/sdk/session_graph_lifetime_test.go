@@ -157,6 +157,21 @@ func TestSessionGraphObjectsStayReachableWhileTheirHandleIsNamed(t *testing.T) {
 			},
 		},
 		{
+			name: "an async method call names its receiver",
+			target: func(call *callMsg) bool {
+				_, _, method, _ := graphLifetimeCall(call)
+				return call.Method == graphAsync && method == "reload"
+			},
+			run: func(c Context, p *graphLifetimeProbe) error {
+				settings, err := SettingsManagerInMemory(c, nil, nil)
+				if err != nil {
+					return err
+				}
+				p.track("settings manager", settings.object)
+				return settings.Reload()
+			},
+		},
+		{
 			name:   "a resource loader's construction names its settings manager and runtime",
 			target: isNew("DefaultResourceLoader"),
 			run: func(c Context, p *graphLifetimeProbe) error {
