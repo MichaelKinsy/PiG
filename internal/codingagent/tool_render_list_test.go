@@ -47,6 +47,9 @@ func TestListLimitNumberRendering(t *testing.T) {
 // a "more lines" hint, every line when expanded, then the warning row built
 // from matchLimitReached, the byte truncation, and linesTruncated.
 func TestGrepBodyRenderer(t *testing.T) {
+	// The rows below are those of the dark theme. Under a theme whose muted token carries an attribute (the system theme's is the default foreground, dim) the wrap continues the row of the hint with the attribute alone (ESC[2m), not with the token.
+	restoreStartupTheme(t)
+	tui.SetTheme("dark")
 	th := tui.ActiveTheme()
 	out := func(s string) string { return themeFg(th.ToolOutput, s) }
 	muted := func(s string) string { return themeFg(th.Muted, s) }
@@ -74,6 +77,9 @@ func TestGrepBodyRenderer(t *testing.T) {
 // find and ls show 20 lines while collapsed; their warnings name the result
 // and entry limits. Persisted results carry the upstream JSON shape.
 func TestFindAndLsBodyRenderers(t *testing.T) {
+	// The rows below are those of the dark theme. Under a theme whose muted token carries an attribute (the system theme's is the default foreground, dim) the wrap continues the row of the hint with the attribute alone (ESC[2m), not with the token.
+	restoreStartupTheme(t)
+	tui.SetTheme("dark")
 	th := tui.ActiveTheme()
 	out := func(s string) string { return themeFg(th.ToolOutput, s) }
 	muted := func(s string) string { return themeFg(th.Muted, s) }
