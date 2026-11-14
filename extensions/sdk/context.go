@@ -819,8 +819,8 @@ func (c Context) SetModel(model map[string]any) (bool, error) {
 	return c.setModel(model)
 }
 
-// SetModelNamed is SetModel for the model a `provider/id` name stands for: the registry's model of that name, or for an id the registry does not list a
-// model the host builds from the provider. A name with no slash is an openai model. It asks the host for the model object and then sets it, two calls: the
+// SetModelNamed is SetModel for the model a `provider/id` name stands for: the registry's model of that name. An id no catalog lists names no model: the
+// error is "Model not found: provider/id", as for Pi's RPC set_model, and nothing is set. A name with no slash is an openai model. It asks the host for the model object and then sets it, two calls: the
 // object the first call returned is the one set, whatever the registry became in between, and an error of the first call is returned without setting.
 func (c Context) SetModelNamed(spec string) (bool, error) {
 	result, err := c.callHost("resolveModel", map[string]string{"spec": spec})

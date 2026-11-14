@@ -85492,6 +85492,17 @@
       "shapeHash": "sha256:404fa8bc64cc15d3e8b666d5daa1b4b020fa439cdfdf1c27e42a15b5da3f7680"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#lookupModelEntry",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "lookupModelEntry",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(svcs *AgentSessionServices, providerID string, modelID string) (github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry, bool)"
+      },
+      "shapeHash": "sha256:24dc580499e1d1262334d6ca10911fde82e79bfcbd54ae15e495c58648296cef"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#mapSkillPath",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "mapSkillPath",
@@ -85974,6 +85985,17 @@
         "type": "func(message github.com/MichaelKinsy/PiG/agent.AgentMessage) github.com/MichaelKinsy/PiG/agent.AgentMessage"
       },
       "shapeHash": "sha256:d9c8dd54c8abad10cad414c3a241f193389d56a4241fca4c87000788e7a2e25e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#notListedError",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "notListedError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, modelID string) error"
+      },
+      "shapeHash": "sha256:7e285ec73e971e5bf06550bef8dd7031ddd97d6161ead222343cd63d4418405b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#operationHeldKey",

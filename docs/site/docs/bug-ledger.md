@@ -1444,6 +1444,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a178939](#bf-a178939) | The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a17e2a1](#bf-a17e2a1) | A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does… | PiG's own defect | All platforms | Unreleased |
 | [BF-a18da32](#bf-a18da32) | fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does | PiG's own defect | All platforms | Unreleased |
+| [BF-a1af4d7](#bf-a1af4d7) | Fix BuildModel returning a model object for an id no registry lists | PiG's own defect | All platforms | Unreleased |
 | [BF-a1be545](#bf-a1be545) | The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-a1ec891](#bf-a1ec891) | fix(schema): no panic leaves the API, strings keep lone surrogates, references resolve as new URL does | PiG's own defect | All platforms | Unreleased |
@@ -1556,6 +1557,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b182cbc](#bf-b182cbc) | fix(chord/nextnode): the Windows pipe listeners close through internal/chord/winpipe, whose Close always… | PiG's own defect | Windows | Unreleased |
 | [BF-b18a7ff](#bf-b18a7ff) | `ctx.compact` answers `onComplete` with the compaction result's members in Pi's order (`summary`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b1ff77a](#bf-b1ff77a) | The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-b214a4c](#bf-b214a4c) | After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose… | PiG's own defect | All platforms | Unreleased |
 | [BF-b22120f](#bf-b22120f) | A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b2b0c63](#bf-b2b0c63) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
@@ -1616,6 +1618,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bb9e9d8](#bf-bb9e9d8) | fix(extensions): parallel Node runtime linking reports the walk-order first failure under every schedule | PiG's own defect | All platforms | Unreleased |
 | [BF-bba3679](#bf-bba3679) | Images in the formats Photon decodes beyond PNG, JPEG, GIF, WebP, BMP and TIFF are now decoded the way Pi… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bbccefd](#bf-bbccefd) | A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it | PiG's own defect | All platforms | Unreleased |
+| [BF-bc05945](#bf-bc05945) | A resumed session takes the model its registry lists for the saved provider and id, with that listing's API… | PiG's own defect | All platforms | Unreleased |
 | [BF-bc24321](#bf-bc24321) | fix(mem M3): arm the idle collection at run end and run it after 500 ms | PiG's own defect | All platforms | Unreleased |
 | [BF-bc4cd62](#bf-bc4cd62) | `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bc5d1ad](#bf-bc5d1ad) | durable harness: closing a Harness on one goroutine while a commit was being published on another could start… | PiG's own defect | All platforms | Unreleased |
@@ -21980,6 +21983,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a18da32c47` (2026-10-31)
 - **Tests:** `schema/errors_golden_test.go::TestHandWrittenCaseErrorsMatchPi`
 
+### BF-a1af4d7
+
+**Fix BuildModel returning a model object for an id no registry lists**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix BuildModel returning a model object for an id no registry lists
+- **Root cause:** buildModel treated "the provider exists" as "the model exists" and filled the gaps with an empty object, so a model id the registry did not list reached the provider's stream function with the provider's credential.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a1af4d7dd9` (2026-11-14)
+- **Tests:** `coding/model_unlisted_noconnection_test.go::TestUnlistedModelMakesNoConnection`, `coding/model_unlisted_noconnection_test.go::TestUnlistedModelOfAProviderObjectMakesNoConnection`
+
 ### BF-a1be545
 
 **The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig…**
@@ -23526,6 +23542,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/env/node/exec_session_leader_test.go::TestShellCommandRunsAsTheLeaderOfANewSession`, `durable/env/node/rename_directory_pi_test.go::TestRenameFileReportsTheErrorOfRename2ForADirectoryDestination`, `env/daemon_wire_exec_oracle_test.go::TestDaemonCancelRightBehindItsRequestMatchesPisDaemon`, `env/daemon_wire_exec_oracle_test.go::TestDaemonExecCancelMatchesPisDaemon`, `env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon`, `env/daemon_wire_exec_oracle_test.go::TestDaemonHelloMatchesPisDaemon`, `env/daemon_wire_exec_oracle_test.go::TestDaemonRepliesBeforeBulkOutputLikePisDaemon`, `env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon` and 9 more in docs/bug-ledger.json
 - **Release note:** The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an empty path carries `path`, `realpath` of a symbolic link loop is `ELOOP`, a directory renamed over a non-empty directory is `ENOTEMPTY` and a file over a directory `EISDIR` (also in the Durable Node environment's `renameFile`), `opendir` of a file is `ENOTDIR` before any permission check, errors the daemon's table does not name are `UNKNOWN` with the system's text, an empty write to a full device succeeds, an exec timeout is `timeout` and `timeoutMs: 0` times out at once, spawn and spill failures read as Rust's `io::Error`, and a command is the leader of a new session as Node's detached spawn makes it.
 
+### BF-b214a4c
+
+**After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.
+- **Root cause:** the per-session bindings of a replacement were swapped one by one and the model builder was left out of the list
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b214a4c12d` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.
+
 ### BF-b22120f
 
 **A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into**
@@ -24355,6 +24385,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7c3789482b` (2026-11-09), `a639c9afb2` (2026-11-09), `adad5282ac` (2026-11-09), `bbccefdf7f` (2026-11-09), `d7367de408` (2026-11-09), `e37b86562b` (2026-11-09)
 - **Tests:** `durable/harness/surrogate_observable_test.go::TestANestedKeyErrorQuotesTheKeyAsPiDoes`, `durable/harness/surrogate_observable_test.go::TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns`, `durable/harness/tool_checkpoint_order_test.go::TestAToolCheckpointKeepsALoneSurrogateInItsArguments`, `durable/harness/tool_checkpoint_order_test.go::TestHarnessJSONKeepsALoneSurrogateInSelectionsAndViewDocs`, `durable/storage/sqlite/rows_pi_oracle_test.go::TestRowsMatchPi`, `durable/storage/sqlite/rows_test.go::TestParseJSONReadsALoneSurrogateEscapeAsTheUnit`, `durable/surrogate_pi_oracle_test.go::TestAddressIdKeepsDifferentLoneSurrogatesApart`, `durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesDecodeAsJSONParseDoes` and 1 more in docs/bug-ledger.json
 - **Release note:** A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it. Task states and outcomes (checkpoint, result, error message, reason), entry drafts, context edits, document contents, tool controls, compaction `modelOverrides` keys, a tool call's checkpoint arguments, extension and tool selections and view documents went through Go's `encoding/json`, which writes the unit as U+FFFD where `JSON.stringify` writes `\ud800`, and read the escape back as U+FFFD. Two document kinds that differ only in such a unit also got one `AddressId`. SqliteStorage read a stored record's escape as U+FFFD as well. `ownedTasks` returned a task's kind, input and checkpoint with U+FFFD for such a unit, and a nested call key's error quoted the key with Go's escaping (`\u003c` for `<`, U+FFFD for the unit) where Pi's `JSON.stringify` does not. Pi's own `JSON.stringify`, `documents.ts` `addressId` and `tool.ts` `checkKey` answer for the encoders in the new tests.
+
+### BF-bc05945
+
+**A resumed session takes the model its registry lists for the saved provider and id, with that listing's API…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A resumed session takes the model its registry lists for the saved provider and id, with that listing's API, window and limits, instead of building it a second time from its name.
+- **Root cause:** restore followed the old BuildModel contract, which made a model from any provider and id, so it re-resolved what it had already resolved
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bc0594500f` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A resumed session takes the model its registry lists for the saved provider and id, with that listing's API, window and limits, instead of building it a second time from its name.
 
 ### BF-bc24321
 
@@ -26817,7 +26861,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `d5e4cbc53f` (2026-11-12)
-- **Tests:** `coding/build_model_native_unlisted_test.go::TestBuildModelOnNativeProviderBuildsUnlistedModel`, `test/extension-conformance/set_model_object_test.go::TestSetModelObjectAcrossSDKs`
+- **Tests:** `test/extension-conformance/set_model_object_test.go::TestSetModelObjectAcrossSDKs`
 - **Release note:** An extension's `setModel` of a model id that a registered provider object does not list answered `model not found` in every SDK. It now switches to the model, as it does for every other kind of provider and as Pi does.
 
 ### BF-d60d422

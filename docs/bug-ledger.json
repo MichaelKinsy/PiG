@@ -39479,6 +39479,28 @@
       ]
     },
     {
+      "id": "BF-a1af4d7",
+      "title": "Fix BuildModel returning a model object for an id no registry lists",
+      "symptom": "Fix BuildModel returning a model object for an id no registry lists",
+      "rootCause": "buildModel treated \"the provider exists\" as \"the model exists\" and filled the gaps with an empty object, so a model id the registry did not list reached the provider's stream function with the provider's credential.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a1af4d7dd9",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/model_unlisted_noconnection_test.go::TestUnlistedModelMakesNoConnection",
+        "coding/model_unlisted_noconnection_test.go::TestUnlistedModelOfAProviderObjectMakesNoConnection"
+      ]
+    },
+    {
       "id": "BF-a1be545",
       "title": "The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig…",
       "symptom": "The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig surface is one) takes the text current when its debounce ends when the editor has an owner loop, as Pi does, so a space, `é` or `/` typed right after `@al` no longer loses the search; with no loop the search leaves its answer for the caller's goroutine to publish instead of writing the editor from its own.",
@@ -42755,6 +42777,26 @@
       ]
     },
     {
+      "id": "BF-b214a4c",
+      "title": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose…",
+      "symptom": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.",
+      "rootCause": "the per-session bindings of a replacement were swapped one by one and the model builder was left out of the list",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b214a4c12d",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b22120f",
       "title": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into",
       "symptom": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into.",
@@ -44479,6 +44521,26 @@
         "durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesDecodeAsJSONParseDoes",
         "durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesEncodeAsPiDoes"
       ]
+    },
+    {
+      "id": "BF-bc05945",
+      "title": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API…",
+      "symptom": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API, window and limits, instead of building it a second time from its name.",
+      "rootCause": "restore followed the old BuildModel contract, which made a model from any provider and id, so it re-resolved what it had already resolved",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API, window and limits, instead of building it a second time from its name.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bc0594500f",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-bc24321",
@@ -49673,7 +49735,6 @@
         }
       ],
       "tests": [
-        "coding/build_model_native_unlisted_test.go::TestBuildModelOnNativeProviderBuildsUnlistedModel",
         "test/extension-conformance/set_model_object_test.go::TestSetModelObjectAcrossSDKs"
       ]
     },
