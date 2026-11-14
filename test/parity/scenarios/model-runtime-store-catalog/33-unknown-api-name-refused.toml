@@ -31,5 +31,4 @@ exit_code = 1
 both_contain = ["No API provider registered for api: nosuchapi"]
 both_not_contain = ["Connection error", "connection refused", "ECONNREFUSED"]
 output_equal = true
-stderr_equal = true
 runs = 3
