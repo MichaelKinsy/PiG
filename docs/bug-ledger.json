@@ -39658,6 +39658,73 @@
       ]
     },
     {
+      "id": "BF-D649",
+      "title": "A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's…",
+      "symptom": "none.",
+      "rootCause": "a native SDK cannot tell a settle-tail handler that waits on a timer from one that waits for the shutdown itself to cancel it, and the second kind must not hold the exit: `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` pins a Go handler that waits until the shutdown cancels it, which Pi has no counterpart of (a Node handler that waits for a shutdown signal holds no handle, so Pi's process ends under it). Holding for every native settle-tail handler would make that process wait for ever.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D649",
+      "removeWhen": "the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), so that the host can hold the exit for exactly the handlers Pi holds it for.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "50c06c75eb",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "9794ea1555",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "e5d8c37f40",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_shutdown_drain_go_test.go::TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown",
+        "coding/extension/host/subprocess/quit_every_runtime_test.go::TestQuitDrainDoesNotWaitForANativeSettleTailHandler"
+      ]
+    },
+    {
+      "id": "BF-D650",
+      "title": "A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process…",
+      "symptom": "none.",
+      "rootCause": "a native SDK cannot tell a handler that waits on a timer, a socket or a child process from one that waits on nothing, and ending the quit while a handler holds a handle would cut off work that Pi finishes: a command on a TCP read ended 53 ms after its peer answered in Pi, a 3 s timer held Pi for 3.09 s. Holding while the handler is in flight keeps Pi's results for the cases that hold, and costs the quit that Pi's gets from a handler that waits on nothing. The user is never without an exit: the keys and signals above end the process at once, with the terminal restored and Pi's status.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D650",
+      "removeWhen": "the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), or the host can read it.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "50c06c75eb",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "9794ea1555",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "e5d8c37f40",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds",
+        "coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveQuitWaitsForACommandInFlight",
+        "coding/cli/rpc_held_quit_native_command_signal_test.go::TestRPCHeldQuitOfANativeCommandEndsOnTheSignalsPiEnds",
+        "coding/extension/host/subprocess/quit_every_runtime_test.go::TestQuitDrainWaitsForANativeCommandInFlight",
+        "test/extension-conformance/quit_every_runtime_conformance_test.go::TestConformance_QuitWaitsForACommandInFlight"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -63655,6 +63722,16 @@
       "id": "D648",
       "title": "A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…",
       "entry": "BF-D648"
+    },
+    {
+      "id": "D649",
+      "title": "A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's…",
+      "entry": "BF-D649"
+    },
+    {
+      "id": "D650",
+      "title": "A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process…",
+      "entry": "BF-D650"
     }
   ],
   "exemptCommits": {
