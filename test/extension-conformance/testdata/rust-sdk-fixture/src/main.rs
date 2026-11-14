@@ -2551,7 +2551,10 @@ fn main() {
         |ctx, _| {
             let mut reads = Vec::new();
             for name in ["conformance-run-a", "conformance-run-b"] {
-                if let Err(err) = ctx.register_mcp_server(name, json!({"url": format!("https://{name}.invalid/mcp")})) {
+                if let Err(err) = ctx.register_mcp_server(
+                    name,
+                    json!({"url": format!("https://{name}.invalid/mcp")}),
+                ) {
                     return CommandResult::Error(err.to_string());
                 }
                 match ctx.get_active_tools() {
