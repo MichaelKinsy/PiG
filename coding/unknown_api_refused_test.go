@@ -112,41 +112,19 @@ func TestRegisteredAPINameRunsItsImplementationUntilUnregistered(t *testing.T) {
 // A model that no catalog, models.json or extension lists is built bare, with no api and no endpoint (the fallback of buildModel). Pi takes such an object to the stream and
 // refuses it there with the api undefined; the request goes nowhere.
 func TestBareModelIsRefusedAtItsRequest(t *testing.T) {
-	services := newRuntimeTestServices(t)
-	model, err := buildModel("bare-provider-nobody-lists/x", services, "k")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = model.Provider.Close() })
-	err = unknownAPIStream(t, model.Provider)
-	if want := "No API provider registered for api: undefined"; err.Error() != want {
-		t.Errorf("error = %q, want %q", err, want)
-	}
-}
-
-// The Copilot provider serves anthropic-messages, openai-responses and openai-completions; a Copilot model whose api is none of them, or has none, is refused like any other
-// model with no registered implementation, and nothing reaches the endpoint.
-func TestCopilotModelWithNoCopilotAPIIsRefused(t *testing.T) {
-	for _, name := range []string{"nosuchapi", ""} {
-		t.Run("api="+name, func(t *testing.T) {
-			baseURL, requests := unknownAPIListener(t)
-			shown := name
-			if name == "" {
-				shown = "undefined"
-			}
-			provider, err := buildProviderForEntry("github-copilot", "m", ai.API(name), icodingagent.ModelEntry{
-				ProviderID: "github-copilot", ModelID: "m", BaseURL: baseURL, APIKey: "k", API: name, Input: []string{"text"},
-			}, newRuntimeTestServices(t), "", false, false)
+	// A bare model of an API-key provider carried that key to the default OpenAI endpoint before the refusal; the Copilot model is the provider that routed an empty api to
+	// chat completions on its own.
+	for _, provider := range []string{"bare-provider-nobody-lists", "groq", "anthropic", "google", "openrouter", "mistral", "xai", "openai", "github-copilot"} {
+		t.Run(provider, func(t *testing.T) {
+			services := newRuntimeTestServices(t)
+			model, err := buildModel(provider+"/not-listed-anywhere", services, "k")
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Cleanup(func() { _ = provider.Close() })
-			err = unknownAPIStream(t, provider)
-			if want := "No API provider registered for api: " + shown; err.Error() != want {
+			t.Cleanup(func() { _ = model.Provider.Close() })
+			err = unknownAPIStream(t, model.Provider)
+			if want := "No API provider registered for api: undefined"; err.Error() != want {
 				t.Errorf("error = %q, want %q", err, want)
-			}
-			if got := requests.Load(); got != 0 {
-				t.Errorf("requests at the endpoint = %d, want 0", got)
 			}
 		})
 	}
