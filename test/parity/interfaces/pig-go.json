@@ -42532,6 +42532,17 @@
       "shapeHash": "sha256:6b25c6d3fef8ce1be2de7f5596863d59e149c12bb745f004a64753adc2b9e137"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#heartbeatCompromise",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "heartbeatCompromise",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#heldFile",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "heldFile",
@@ -46600,6 +46611,17 @@
         "type": "func(t float64, loc *time.Location) float64"
       },
       "shapeHash": "sha256:5fb5abc3d49cc4fe917dcd87f71e94bd911029a4c41769a8d5eef16625a02d7d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#lockCompromised",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "lockCompromised",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(lock *github.com/MichaelKinsy/PiG/internal/pilock.Lock) bool"
+      },
+      "shapeHash": "sha256:202efc6b3d86619be15b0540a733e9fc3148c0bec89508d3abe8ec83643b2aa9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#logoSVG",
@@ -64131,9 +64153,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "func(name string, data []byte, perm os.FileMode) error"
+        "type": "func(path string, data []byte, perm os.FileMode) (err error)"
       },
-      "shapeHash": "sha256:13ca68c8f5eca3b14824cbf89eb6856775c8fe89ac7a9f63638a64f65ed8bd06"
+      "shapeHash": "sha256:c8d18c0fa5685cca09e935ae9377be53b94452be2febc73c185465e43610ea83"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#writeFauxMessageText",

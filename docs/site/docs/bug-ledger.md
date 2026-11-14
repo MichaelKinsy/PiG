@@ -398,6 +398,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4e47260](#bf-4e47260) | A lazy line joins a list item as written (indentation kept), four spaces after the marker make the first line… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e5b684](#bf-4e5b684) | A list item whose first line is another list item is rendered as a nested list with no bullet of its own, and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e8c517](#bf-4e8c517) | fix(runtimecell): keep the Python runner's _run callable without the built event | PiG's own defect | All platforms | Unreleased |
+| [BF-4ec88b4](#bf-4ec88b4) | A full disk or a killed process during a credential write could sign you out of every provider | PiG's own defect | Windows | Unreleased |
 | [BF-4f079a7](#bf-4f079a7) | An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-4f6992d](#bf-4f6992d) | Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f6992d-2](#bf-4f6992d-2) | Durable: a `PrepareArguments` result that is not an object fails validation as an `invalid_arguments` tool… | PiG's own defect | All platforms | 0.5.0 |
@@ -977,6 +978,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-930c88e](#bf-930c88e) | Claude models with per-message effort no longer fail with `Invalid effort level` on accounts whose… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9327bc7](#bf-9327bc7) | A closed Harness or Session no longer stays reachable from Go's timer heap | PiG's own defect | All platforms | 0.7.0 |
 | [BF-93319f4](#bf-93319f4) | The terminal UI worked example now describes the typed `/model` prefix in words | PiG's own defect | All platforms | 0.5.0 |
+| [BF-93b5de0](#bf-93b5de0) | A login refresh that took between ten and fifteen seconds while another pig process opened the credential… | PiG's own defect | All platforms | Unreleased |
 | [BF-93c09d6](#bf-93c09d6) | A local package source that is a file Node cannot import, such as a packed `.tgz`, fails to load as in Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c09d6-2](#bf-93c09d6-2) | `pig install --validate-only` on a Package root validates every extension the Package names in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c5def](#bf-93c5def) | A built-in extension named with `-e builtin:<name>` loads before the extensions from settings and the… | PiG's own defect | All platforms | 0.5.0 |
@@ -6857,6 +6859,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `4e8c517e40` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-4ec88b4
+
+**A full disk or a killed process during a credential write could sign you out of every provider**
+
+- **Source:** PiG's own defect
+- **Symptom:** A full disk or a killed process during a credential write could sign you out of every provider.
+- **Root cause:** auth.json is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed) instead of being truncated and rewritten in place: a full disk, a size limit or a killed process during the write leaves the old file whole. The mode, and the owner where the process may set it, are kept; a symlinked auth.json is followed; on Windows ReplaceFileW keeps the replaced file's DACL. A read-only auth.json is refused as before. Not carried over: a hard link to the old file, and extended attributes on Unix.
+- **User impact:** Credential or permission exposure
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `4ec88b40bc` (2026-11-14)
+- **Tests:** `internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode`, `internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink`, `internal/atomicfile/atomicfile_test.go::TestWriteFileInReadOnlyDirectoryKeepsFile`, `internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile`
+- **Release note:** A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, a symlinked `auth.json` and, on Windows, its access rights are kept; a hard link to the old file and extended attributes on Unix are not carried over. <!-- cause: the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials. -->
 
 ### BF-4f079a7
 
@@ -14893,6 +14909,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `93319f4284` (2026-10-11)
 - **Tests:** `test/docs-drift/docs_drift_test.go::TestDocumentedSlashCommandsExist`
 - **Release note:** The terminal UI worked example now describes the typed `/model` prefix in words. A docs check no longer reports a nonexistent command from that page.
+
+### BF-93b5de0
+
+**A login refresh that took between ten and fifteen seconds while another pig process opened the credential…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.
+- **Root cause:** When another process took auth.json's lock while a refresh was in flight (the sync lock goes stale after 10 s, a slow refresh outlasts it), Modify returned the compromise error and dropped the credential the refresh had obtained, which may have spent a single-use refresh token. It now writes that provider's entry alone, under a lock of its own, into the file as it is then; what the other process wrote stays. Pi persists the credential in the same case. An fn that fails still writes nothing.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `93b5de031b` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it. <!-- cause: Modify treated a lock taken over while the refresh ran as a failure of the whole write, though the refreshed credential, possibly the only copy of a single-use refresh token, was already in hand. -->
 
 ### BF-93c09d6
 

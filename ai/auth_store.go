@@ -337,8 +337,7 @@ func heartbeatCompromise(ctx context.Context) error {
 		return nil
 	}
 	cause := context.Cause(ctx)
-	var compromised *pilock.CompromisedError
-	if errors.As(cause, &compromised) {
+	if _, ok := errors.AsType[*pilock.CompromisedError](cause); ok {
 		return cause
 	}
 	return nil

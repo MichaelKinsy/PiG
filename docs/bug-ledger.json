@@ -11056,6 +11056,31 @@
       "tests": []
     },
     {
+      "id": "BF-4ec88b4",
+      "title": "A full disk or a killed process during a credential write could sign you out of every provider",
+      "symptom": "A full disk or a killed process during a credential write could sign you out of every provider.",
+      "rootCause": "auth.json is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed) instead of being truncated and rewritten in place: a full disk, a size limit or a killed process during the write leaves the old file whole. The mode, and the owner where the process may set it, are kept; a symlinked auth.json is followed; on Windows ReplaceFileW keeps the replaced file's DACL. A read-only auth.json is refused as before. Not carried over: a hard link to the old file, and extended attributes on Unix.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, a symlinked `auth.json` and, on Windows, its access rights are kept; a hard link to the old file and extended attributes on Unix are not carried over. \u003c!-- cause: the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4ec88b40bc",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileInReadOnlyDirectoryKeepsFile",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile"
+      ]
+    },
+    {
       "id": "BF-4f079a7",
       "title": "An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being…",
       "symptom": "An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being refreshed is no longer sent again after the refresh; other requests waiting on the same refresh still complete.",
@@ -26852,6 +26877,26 @@
       "tests": [
         "test/docs-drift/docs_drift_test.go::TestDocumentedSlashCommandsExist"
       ]
+    },
+    {
+      "id": "BF-93b5de0",
+      "title": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential…",
+      "symptom": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "rootCause": "When another process took auth.json's lock while a refresh was in flight (the sync lock goes stale after 10 s, a slow refresh outlasts it), Modify returned the compromise error and dropped the credential the refresh had obtained, which may have spent a single-use refresh token. It now writes that provider's entry alone, under a lock of its own, into the file as it is then; what the other process wrote stays. Pi persists the credential in the same case. An fn that fails still writes nothing.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it. \u003c!-- cause: Modify treated a lock taken over while the refresh ran as a failure of the whole write, though the refreshed credential, possibly the only copy of a single-use refresh token, was already in hand. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "93b5de031b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-93c09d6",
