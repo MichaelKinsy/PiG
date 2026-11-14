@@ -18,17 +18,18 @@ CLI_PKG=./coding/cli
 SUBPROCESS_PKG=./coding/extension/host/subprocess
 CONFORMANCE_PKG=./test/extension-conformance
 # Heavy packages that run as several go test processes, each under its own package timeout and each warm from the shared Go and Cargo caches, like cmd/pig: <package>:<shards>. test-shard-pattern.sh partitions each package's tests by name hash, with the slowest pinned to shards by automation/ci/test-shard-weights.txt for the shard count declared here, and run_sharded_pkg refuses to run a package unless its shard patterns select every listed test exactly once. changed mode runs these packages whole.
+# A count bounds two things: a shard's time, and the length of its -run pattern, which lists every test of the shard by name and which test-shard-pattern.sh refuses past 24000 characters (the Windows command line). A package whose tests fit its time can still outgrow its pattern: at the head of the 0.8.0 line the third extension host shard needed 24209 characters and make test-subprocess ran no test, with ./internal/codingagent at 23863, ./coding at 22892, ./tui at 21158 and ./ai at 21008. So each count here keeps the longest pattern within two thirds of the limit (16000 characters) as measured then; raise a count when a pattern of its package passes 80% (19200), before test-shard-pattern.sh stops the run. The extension host count is also the Windows extension-host jobs' (.github/workflows/ci.yml, automation/ci/ci-tiers.txt), the macOS units' (automation/ci/macos-units.sh) and its pins' (automation/ci/test-shard-weights.txt); test/ci-images checks that they agree.
 SHARDED_SPEC=(
-  ./ai:7
-  ./coding:4
-  ./internal/codingagent:8
+  ./ai:10
+  ./coding:6
+  ./internal/codingagent:13
   ./test/parity/interface-closure/autobind:4
   ./codemode:2
   ./durable/codemode:2
-  ./coding/extension/host/subprocess:3
+  ./coding/extension/host/subprocess:5
   ./test/extension-conformance:20
   ./tui/internal/hljs:2
-  ./tui:6
+  ./tui:8
 )
 # Under -race a package runs several times slower, so make test-changed multiplies the shard count of an edited sharded package by this factor (the shard patterns partition the package for any count; the weights apply only to the count CI uses).
 RACE_SHARD_FACTOR=${TEST_CHANGED_RACE_SHARDS:-3}
