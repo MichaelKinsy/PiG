@@ -553,7 +553,8 @@ func (km *KeybindingsManager) Save(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, buf.Bytes(), 0o644)
+	// PiG-only write (Pi never saves the file but for its migration): the mode of that write, coding-agent/src/migrations.ts:168 writeFileSync(configPath, ..., "utf-8"), no mode, 0666 with the umask taken out.
+	return os.WriteFile(path, buf.Bytes(), 0o666)
 }
 
 // keysOf is the resolved keys of an action the merged table defines, tui.* and app.* alike as upstream's KeybindingsManager extends the tui
