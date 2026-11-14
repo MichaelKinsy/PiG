@@ -206,9 +206,9 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 		return svcs.testFauxProvider()
 	}
 
-	// The Copilot provider routes the three APIs Copilot serves and sends any other name as chat completions, so a model whose api is no Copilot API (no api at all included)
-	// takes the registry path below, which refuses it as Pi does (compat.ts:244-247).
-	if providerID == "github-copilot" && !resolvedAuth && isCopilotAPI(apiKind) {
+	// Pi uses a built-in provider own stream only for an api that provider catalog lists (compat.ts:236-239 getBuiltinProviderForModel); any other api, no api at all included, goes to the
+	// API registry, which refuses a name nothing is registered for (compat.ts:244-247). The Copilot provider sends every api name it is given as chat completions, so it is built only for such an api.
+	if providerID == "github-copilot" && !resolvedAuth && ai.ProviderCatalogServesAPI(providerID, apiKind) {
 		// Re-open auth from disk so this provider has its own handle
 		// (the Services-owned handle is shared and may be in-use).
 		auth, err := ai.NewAuthStorage(filepath.Join(svcs.AgentDir(), "auth.json"))
@@ -391,15 +391,6 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 		provider.model = modelFromEntry(entry, provider)
 		return provider, nil
 	}
-}
-
-// isCopilotAPI reports whether apiKind is one of the APIs of the models GitHub Copilot serves.
-func isCopilotAPI(apiKind ai.API) bool {
-	switch apiKind {
-	case ai.APIAnthropicMessages, ai.APIOpenAIResponses, ai.APIOpenAICompletions:
-		return true
-	}
-	return false
 }
 
 // acceptsRequestAPIKey reports whether BuildModel's provider for apiKind

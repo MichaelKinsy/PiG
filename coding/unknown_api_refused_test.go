@@ -18,8 +18,10 @@ import (
 func unknownAPIListener(t *testing.T) (string, *atomic.Int32) {
 	t.Helper()
 	requests := &atomic.Int32{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
+		scheme, key, _ := strings.Cut(r.Header.Get("Authorization"), " ")
+		t.Errorf("a request reached the listener: %s %s Authorization scheme %q, key starts %q (a fake key)", r.Method, r.URL.Path, scheme, key[:min(len(key), 6)])
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":{"message":"listener says no"}}`))
@@ -125,6 +127,34 @@ func TestBareModelIsRefusedAtItsRequest(t *testing.T) {
 			err = unknownAPIStream(t, model.Provider)
 			if want := "No API provider registered for api: undefined"; err.Error() != want {
 				t.Errorf("error = %q, want %q", err, want)
+			}
+		})
+	}
+}
+
+// Pi routes a model to its provider own stream only for an api that provider lists (compat.ts:236-239); a Copilot model whose api is none of the apis the Copilot catalog lists, or has none, is refused
+// at its request and no connection is made to the endpoint. The Copilot provider sent every such name as chat completions with the Copilot token before.
+func TestCopilotModelWithNoCopilotAPIIsRefused(t *testing.T) {
+	for _, api := range []string{"", "nosuchapi", "constructor"} {
+		shown := api
+		if api == "" {
+			shown = "undefined"
+		}
+		t.Run("api="+api, func(t *testing.T) {
+			baseURL, requests := unknownAPIListener(t)
+			provider, err := buildProviderForEntry("github-copilot", "m", ai.API(api), icodingagent.ModelEntry{
+				ProviderID: "github-copilot", ModelID: "m", BaseURL: baseURL, APIKey: "copilot-fake-token", API: api, Input: []string{"text"},
+			}, newRuntimeTestServices(t), "", false, false)
+			if err != nil {
+				t.Fatalf("building the provider failed (Pi refuses at the request): %v", err)
+			}
+			t.Cleanup(func() { _ = provider.Close() })
+			err = unknownAPIStream(t, provider)
+			if want := "No API provider registered for api: " + shown; err.Error() != want {
+				t.Errorf("error = %q, want %q", err, want)
+			}
+			if got := requests.Load(); got != 0 {
+				t.Errorf("requests at the endpoint = %d, want 0", got)
 			}
 		})
 	}
