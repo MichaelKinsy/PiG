@@ -136,9 +136,10 @@ func TestIsRetryableError(t *testing.T) {
 		{"connection refused", &agent.AssistantMessage{
 			StopReason: "error", ErrorMessage: "connection refused",
 		}, 128000, true},
-		{"connection reset by peer is not in pi-ai's retry patterns", &agent.AssistantMessage{
+		// packages/ai/src/utils/retry.ts:87 (Pi 4699b5b26, #12128): "connection reset by peer" is in RETRYABLE_PROVIDER_ERROR_PATTERN, which agent-session.ts:3888 classifies with.
+		{"connection reset by peer is in pi-ai's retry patterns", &agent.AssistantMessage{
 			StopReason: "error", ErrorMessage: "github-copilot: request: read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer",
-		}, 128000, false},
+		}, 128000, true}, // retry.ts:87
 		{"websocket closed", &agent.AssistantMessage{
 			StopReason: "error", ErrorMessage: "websocket closed unexpectedly",
 		}, 128000, true},
