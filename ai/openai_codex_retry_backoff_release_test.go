@@ -3,9 +3,10 @@ package ai
 import (
 	"context"
 	"net/http"
-	"runtime"
 	"testing"
 	"testing/synctest"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Ports the "removes SSE retry backoff abort listeners after the retry succeeds" case of packages/ai/test/openai-codex-stream.test.ts (Pi #11725, a
@@ -15,6 +16,8 @@ import (
 // success left three listeners on the signal. PiG's backoff waits on the request context and a timer that it stops when the wait ends, and
 // registers nothing on the caller's context, so there is no listener count to read. The same inputs (three 429 responses with retry-after 0, then a
 // completed stream, maxRetries 3, the caller's own cancelable context) check the equivalent: the retries leave no goroutine behind.
+// The count is of this test's synctest bubble (testenv.LiveGoroutines), which holds every goroutine the request starts; the process-wide
+// runtime.NumGoroutine also moves with what earlier tests of the package left running.
 func TestCodexSSERetryBackoffReleasesTheCallerContext(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		calls := 0
@@ -30,7 +33,7 @@ func TestCodexSSERetryBackoffReleasesTheCallerContext(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		synctest.Wait()
-		before := runtime.NumGoroutine()
+		before := testenv.LiveGoroutines()
 
 		stream, err := provider.Stream(WithProviderMaxRetries(ctx, 3), codexUpstreamContext(), StreamOptions{Transport: TransportSSE})
 		if err != nil {
@@ -45,8 +48,8 @@ func TestCodexSSERetryBackoffReleasesTheCallerContext(t *testing.T) {
 		if calls != 4 {
 			t.Fatalf("calls = %d, want 4", calls)
 		}
-		if after := runtime.NumGoroutine(); after > before {
-			t.Fatalf("goroutines after the retries = %d, before = %d", after, before)
+		if after := testenv.LiveGoroutines(); after != before {
+			t.Fatalf("goroutines of the test's bubble after the retries = %d, before = %d", after, before)
 		}
 	})
 }
