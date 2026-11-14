@@ -2972,6 +2972,37 @@
       ]
     },
     {
+      "id": "BF-0f48556",
+      "title": "A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a…",
+      "symptom": "A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a prompt shown without its input row or its hint, a masked key preview built from the previous prompt's input, or the device-code hint row in its old state after the clipboard write had finished, until the next frame repainted it.",
+      "rootCause": "the dialog's lock was assumed to cover every way a frame reads it because Render takes it, but the settle scan added with the per-child render cache asks the embedded container's IsDirty, which renders the dialog's children without the lock",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A login dialog could draw one frame half-updated while an OAuth or device-code sign-in was changing it: a prompt shown without its input row or its hint, a masked key preview built from the previous prompt's input, or the device-code hint row in its old state after the clipboard write had finished, until the next frame repainted it. The frame's change check read the dialog's prompt input and redaction state without the dialog's lock, while the sign-in's own goroutines (the provider's prompt and progress callbacks, and the clipboard writer of a confirmed device code) wrote them. The change check now holds the same lock as the dialog's render, and a source guard fails any component that embeds a container, has its own lock and skips it in `Render` or `IsDirty`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0f48556b87",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
+        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
+        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
+        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt",
+        "tui/locked_container_guard_test.go::TestEveryLockedContainerComponentTakesItsLockInRenderAndIsDirty",
+        "tui/locked_container_guard_test.go::TestTheLockedContainerGuardFailsOnAMissingOrUnlockedOverride",
+        "tui/login_dialog_lock_test.go::TestAuthURLCopyOutcomeRendersRaceFreeThroughAParent",
+        "tui/login_dialog_lock_test.go::TestLoginDialogChildrenRenderUnderTheDialogLockWhenAParentScansForChanges",
+        "tui/login_dialog_lock_test.go::TestLoginDialogDeviceCodeCopyOutcomeRendersRaceFreeThroughAParent",
+        "tui/login_dialog_lock_test.go::TestLoginDialogMutatedByALoginGoroutineRendersRaceFreeThroughAParent"
+      ]
+    },
+    {
       "id": "BF-0f8866c",
       "title": "fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+",
       "symptom": "fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+",
@@ -3715,6 +3746,29 @@
       ]
     },
     {
+      "id": "BF-1407bdf",
+      "title": "A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or…",
+      "symptom": "A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or `A:::__proto__`, in flowcharts, class diagrams and state diagrams) styles its nodes, as it does in Pi.",
+      "rootCause": "The table now holds the class like any other. A style property named __proto__ is still dropped, as in the library, where a string assigned to that name creates no property. The class table as JSON, which the model and art comparisons with the library read, leaves the class out, because the library's JSON cannot show a prototype.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or `A:::__proto__`, in flowcharts, class diagrams and state diagrams) styles its nodes, as it does in Pi. PiG left the class out and drew the nodes without the style.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1407bdfc73",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes"
+      ]
+    },
+    {
       "id": "BF-142baa3",
       "title": "Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown…",
       "symptom": "Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown, exec-abort and other rows) failed to build with `go: updates to go.mod needed` since the root module moved to an SDK pseudo-version: 23 in-tree fixture, example and bench modules still required the PiG and SDK modules at v0.7.0.",
@@ -4356,6 +4410,56 @@
         "test/extension-conformance/tool_call_input_mutation_test.go::TestToolCallInputMutationAcrossSDKs",
         "test/parity/scenarios/extensions-runtime/72-tool-call-input-key-order.toml",
         "test/parity/scenarios/extensions-runtime/72-tool-call-input-reorder.toml"
+      ]
+    },
+    {
+      "id": "BF-1662063",
+      "title": "When a provider's server resets or closes the connection before it answers, the retry notice and the turn's…",
+      "symptom": "When a provider's server resets or closes the connection before it answers, the retry notice and the turn's error now name what happened the same way every time, as Pi does: `Connection error.: read ECONNRESET` for a reset and `Connection error.: other side closed (UND_ERR_SOCKET)` for a close.",
+      "rootCause": "net/http returns the request body write's error and drops the read side's, and the error mapping named only the \"write\" and \"read\" operations, not the vectored \"writev\" of a request body",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When a provider's server resets or closes the connection before it answers, the retry notice and the turn's error now name what happened the same way every time, as Pi does: `Connection error.: read ECONNRESET` for a reset and `Connection error.: other side closed (UND_ERR_SOCKET)` for a close. A reset that arrived while the request was still being sent was shown, depending on timing, as a bare `Connection error.`, as `other side closed (UND_ERR_SOCKET)`, as `write ECONNRESET` or as `write EPIPE`; with a large request that was nearly every time. The turn was retried in each case and still is.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1662063665",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/socket_failure_test.go::TestSocketFailureReportsTheConnectionsEndInNodesOrder",
+        "ai/socket_failure_test.go::TestSocketFailureWaitEndsWhenTheConnectionIsClosed",
+        "ai/socket_failure_test.go::TestSocketFailureWriteWaitsForAReadThatHasNotBegun",
+        "ai/socket_failure_test.go::TestSocketFailureWriteWaitsForTheReadInFlight"
+      ]
+    },
+    {
+      "id": "BF-1662063-2",
+      "title": "Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause…",
+      "symptom": "Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause, as Pi 1.5.2 does: `fetch failed: read ECONNRESET` for a connection the server reset, `fetch failed: other side closed (UND_ERR_SOCKET)` for one it closed, `fetch failed: bad port` for a base URL on a port that fetch refuses.",
+      "rootCause": "the cause detail was switched on only for the stream builder made after the response headers, so a failure before them was formatted without it",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause, as Pi 1.5.2 does: `fetch failed: read ECONNRESET` for a connection the server reset, `fetch failed: other side closed (UND_ERR_SOCKET)` for one it closed, `fetch failed: bad port` for a base URL on a port that fetch refuses. It was a bare `fetch failed` in each case.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1662063665",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/socket_failure_test.go::TestSocketFailureReportsTheConnectionsEndInNodesOrder",
+        "ai/socket_failure_test.go::TestSocketFailureWaitEndsWhenTheConnectionIsClosed",
+        "ai/socket_failure_test.go::TestSocketFailureWriteWaitsForAReadThatHasNotBegun",
+        "ai/socket_failure_test.go::TestSocketFailureWriteWaitsForTheReadInFlight"
       ]
     },
     {
@@ -6274,6 +6378,29 @@
       "tests": [
         "test/extension-conformance/replicated_accessors_test.go::TestNodeReplicatedWritesReadBackAfterAwait",
         "test/extension-conformance/replicated_accessors_test.go::TestReplicatedAccessorsReadYourWritesAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-218bd82",
+      "title": "fix(interactive): the quit by keys ends as Pi's process ends when the extension runtimes report a drained loop",
+      "symptom": "fix(interactive): the quit by keys ends as Pi's process ends when the extension runtimes report a drained loop",
+      "rootCause": "Pi's quit stops the TUI, which takes stdin out of its event loop, and then awaits runtimeHost.dispose(). A dispose that waits for an aborted run whose author never reacts, or for a session_shutdown handler that never settles, ends with the process (exit 0, no resume hint) once nothing keeps the loop alive. pig waited without end and its Node runtime stayed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "218bd820a7",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/runtime_quit_input_end_test.go::TestInputEndedDisposeArmsTheDrainBeforeItTellsTheHostThatInputEnded",
+        "coding/runtime_quit_input_end_test.go::TestInputEndedDisposeEndsWithADrainReportWhileItIsPending",
+        "coding/runtime_quit_input_end_test.go::TestInputEndedDisposeWithoutAnExtensionHostIsThePlainDispose"
       ]
     },
     {
@@ -9964,6 +10091,25 @@
       ]
     },
     {
+      "id": "BF-3300e6d",
+      "title": "fix: refuse a model whose api has no registered implementation, as Pi does",
+      "symptom": "fix: refuse a model whose api has no registered implementation, as Pi does",
+      "rootCause": "the default branch of the api switch in buildLeafProviderForEntry built an OpenAI chat-completions provider for any name outside the API constants, where Pi looks the name up in its API registry and refuses.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3300e6d394",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-331ab59",
       "title": "`pig status` reports the agent and project directories by the same resolved path before and after a run…",
       "symptom": "`pig status` reports the agent and project directories by the same resolved path before and after a run creates them.",
@@ -12935,6 +13081,27 @@
       ]
     },
     {
+      "id": "BF-40cd4f1",
+      "title": "fix(view): the mount is told on the loop that its image is ready; the three reds of the gates",
+      "symptom": "fix(view): the mount is told on the loop that its image is ready; the three reds of the gates",
+      "rootCause": "The image worker called the mount's repaint from its own goroutine; under -race the view client test showed a data race on the loop's state. MountImages gains Post, which the terminal client sets to its loop's postWait, so the wake runs on the loop. Lint: the longest-text condition without the negated conjunction, and the client's images field in a block of its own. Divergence guard: the default width 60 names Pi's image.ts render.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "40cd4f158e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/view_client_image_test.go::TestViewClientDrawsAPhotographInAPanel"
+      ]
+    },
+    {
       "id": "BF-4106324",
       "title": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the…",
       "symptom": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the context of the tree navigation ended while it ran.",
@@ -15320,6 +15487,39 @@
       ]
     },
     {
+      "id": "BF-4a0c240",
+      "title": "A Go extension that makes a host call in its factory (for example `ext.Events().On`) hung at its first host…",
+      "symptom": "A Go extension that makes a host call in its factory (for example `ext.Events().On`) hung at its first host call after `/reload`, and pig stayed at `Reloading ...`.",
+      "rootCause": "It hung because the host answered the factory's call with a push of its state ahead of the result, on a connection that had not registered, and the Go SDK's factory pump dropped that frame without counting it, while a host call returns only after every notify read before its result is applied.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension that makes a host call in its factory (for example `ext.Events().On`) hung at its first host call after `/reload`, and pig stayed at `Reloading ...`. It hung because the host answered the factory's call with a push of its state ahead of the result, on a connection that had not registered, and the Go SDK's factory pump dropped that frame without counting it, while a host call returns only after every notify read before its result is applied. The host's push was never released (it is not in 0.7.0), so no release hangs; the Go SDK defect under it is in every release since 0.5.2. The same hang followed a first load that came after a host state change, such as a model switch. A fused Go extension did not hang: it failed to load with `expected ready message, got notify`. The host now writes no state to a connection before its ready. The ready payload is the first state, and the host pushes a change that lands while it prepares the ready right after it. Every SDK applies a state notify that reaches it before the ready and goes on loading: the Go SDK also counts it; the Python, Rust and Lisp SDKs dropped it when a factory-time call read it and failed the load (`expected ready, got notify`) when the wait for ready or the registration of a listener read it; the Node runtime already applied it. One conformance row runs a factory host call, a load and a reload after a host state change in every SDK, isolated and packed, and in fused Go.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4a0c240b01",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "9eec774b3e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/state_before_ready_test.go::TestAFactoryCallAfterAHostStateChangeIsAnsweredWithoutAStatePush",
+        "coding/extension/host/subprocess/state_before_ready_test.go::TestAHostStateChangeAfterAFactoryCallIsInTheReadyPayload",
+        "coding/extension/host/subprocess/state_before_ready_test.go::TestAHostStateChangeTheReadySnapshotMissedIsPushedAfterTheReady",
+        "extensions/sdk-py/tests/test_state_before_ready.py",
+        "extensions/sdk/state_before_ready_test.go::TestStateBeforeRegisterIsAppliedAndCountedByTheFactoryPump",
+        "extensions/sdk/state_before_ready_test.go::TestStateBetweenRegisterAndReadyIsAppliedAndTheLoadGoesOn",
+        "extensions/sdk/state_before_ready_test.go::TestTheReadySnapshotReplacesTheStateOfAnEarlierFrame",
+        "test/extension-conformance/reload_after_factory_call_test.go::TestConformance_AFactoryHostCallThenAReload"
+      ]
+    },
+    {
       "id": "BF-4a0d619",
       "title": "fix(durable/core): drop the reportWrap the RPT and TKS merges both declared",
       "symptom": "fix(durable/core): drop the reportWrap the RPT and TKS merges both declared",
@@ -16173,6 +16373,30 @@
         {
           "hash": "4ed1d7213d",
           "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-4ef5612",
+      "title": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn…",
+      "symptom": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end`, `agent_end` and `agent_settled` before `session_shutdown`.",
+      "rootCause": "Since the quit's dispose awaits session.abort() (Pi). In interactive mode it runs on the owner loop, and the aborted run needs that loop to end: Session.RunAgentPrompt waits until the loop acknowledged its event flush, and the turn's cleanup is posted to the loop. Each waited for the other, so a quit while a turn streamed never exited, for every provider kind.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end`, `agent_end` and `agent_settled` before `session_shutdown`. PiG exited at once: the interrupted turn was missing from the session file, and extensions saw `session_shutdown` in the middle of the turn. A `!` command that is still running is not waited for, and nothing of the interrupted turn is drawn after the screen was restored. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4ef5612c00",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e477852b5b",
+          "date": "2026-11-13"
         }
       ],
       "tests": []
@@ -18857,8 +19081,8 @@
       "id": "BF-5a0c595",
       "title": "A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16…",
       "symptom": "A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16 halves (`\"\\ud83d\"` ends one delta, `\"\\ude00\"` starts the next), is one character again in the reply, in the session file, in RPC output and in the next request for Anthropic and Google models, in text, thinking and tool arguments, as it already was for OpenAI-compatible models.",
-      "rootCause": "encoding/json reads the escape of a lone surrogate as U+FFFD; JSON.parse reads the unit. The decodes of the Anthropic, Google and Mistral stream events and of models.json (the document, a provider, a model definition, ai.OpenAICompat) now go through jsstring.UnmarshalKeepingSurrogates, the tree's keeping decoder. A character a server splits over two deltas is joined where the deltas are joined (accumulatedString.append, jsstring.Concat), so the message holds it in its four bytes. ai.OpenAICompat's marshaler and orderedjson.AppendMembers write the unit as its escape, because a compat is copied through its JSON form.",
-      "rootCauseSource": "commit",
+      "rootCause": "PiG decoded the stream events of these providers, and joined the text of two deltas, with encoding/json and Go strings, which have no form for a lone UTF-16 surrogate and replace it with U+FFFD, where Pi reads each event with JSON.parse and joins JavaScript strings.",
+      "rootCauseSource": "release note",
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
@@ -18883,8 +19107,8 @@
       "id": "BF-5a0c595-2",
       "title": "A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be…",
       "symptom": "A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be selected by the id the file gives, and the request, the session file and RPC output name it as Pi does.",
-      "rootCause": "encoding/json reads the escape of a lone surrogate as U+FFFD; JSON.parse reads the unit. The decodes of the Anthropic, Google and Mistral stream events and of models.json (the document, a provider, a model definition, ai.OpenAICompat) now go through jsstring.UnmarshalKeepingSurrogates, the tree's keeping decoder. A character a server splits over two deltas is joined where the deltas are joined (accumulatedString.append, jsstring.Concat), so the message holds it in its four bytes. ai.OpenAICompat's marshaler and orderedjson.AppendMembers write the unit as its escape, because a compat is copied through its JSON form.",
-      "rootCauseSource": "commit",
+      "rootCause": "PiG read models.json and wrote the compat object with encoding/json, which replaces a lone UTF-16 surrogate with U+FFFD, where Pi uses JSON.parse and JSON.stringify.",
+      "rootCauseSource": "release note",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
@@ -20361,6 +20585,28 @@
         "mcp/oauth/behavior_test.go::TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds",
         "mcp/oauth/error_constructors_upstream_test.go::TestOAuthErrorConstructorsMatchErrorsTs",
         "mcp/oauth/errors_class_test.go::TestOAuthErrorClassesCarryTheirNameAndMessage"
+      ]
+    },
+    {
+      "id": "BF-6138d19",
+      "title": "chord: a client's active theme or active language could end on an older value than the newest: when the…",
+      "symptom": "chord: a client's active theme or active language could end on an older value than the newest: when the user's pick changed at the moment the client's mode or device languages changed, the two changes could be delivered in the opposite order to the one they were decided in, and the older theme (or language) stayed until the next change.",
+      "rootCause": "the follower read its state under a lock and queued the change after releasing it, assuming the two steps were one, so two goroutines could queue in the opposite order to their reads",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a client's active theme or active language could end on an older value than the newest: when the user's pick changed at the moment the client's mode or device languages changed, the two changes could be delivered in the opposite order to the one they were decided in, and the older theme (or language) stayed until the next change. The followers now deliver in the order they read their state, so the last delivery is the current one, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6138d199ae",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsTheRegistryThePrincipalsPickAndTheMode"
       ]
     },
     {
@@ -25631,6 +25877,28 @@
       ]
     },
     {
+      "id": "BF-6aa9446",
+      "title": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi…",
+      "symptom": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: \"Operation aborted\", or \"Aborted after N retry attempt(s)\" when an automatic retry was running.",
+      "rootCause": "Pi's interactive mode rewrites the errorMessage of an aborted assistant message in its message_end listener (interactive-mode.ts:3686-3697), on the object the Session persists afterwards (agent-session.ts:1208-1230). PiG rewrote a copy on the UI loop after persistence, so the session file, turn_end / agent_end handlers and the next request kept the provider's text. The mode now subscribes a synchronous Session listener at Pi's place in the order, with the retry text and Pi's plural rule, and unsubscribes where Pi's stop() does (:7293). print, json and rpc are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: \"Operation aborted\", or \"Aborted after N retry attempt(s)\" when an automatic retry was running. The session file, an extension's `turn_end` and `agent_end` handlers and the next request carried the provider's text before; print, JSON and RPC modes keep the provider's text, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6aa94467d3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_test.go::TestInteractiveMode_AbortedMessageNamesRetryAttempts"
+      ]
+    },
+    {
       "id": "BF-6ac4c8c",
       "title": "Ctrl+V pastes clipboard text in Termux",
       "symptom": "Ctrl+V pastes clipboard text in Termux.",
@@ -26962,6 +27230,30 @@
       "tests": []
     },
     {
+      "id": "BF-72bf4f2",
+      "title": "extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms)…",
+      "symptom": "extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms) reached the built-in MCP extension only after the call had returned, and a second server registered while an earlier one was still connecting waited until that connection attempt had ended or timed out.",
+      "rootCause": "The listener of Pi calls `void this.emit(...)` and then reports unhandled servers (runner.ts:465-468); emit runs the first handler to its first await on the stack of registerMcpServer (runner.ts:1103-1110), and every registration is a chain of its own. PiG queued the events and delivered them on one goroutine, one at a time: the registration returned before its handler started, and the event of a second server waited until the first handler had ended, that is until the first server had connected or its connection attempt had failed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms) reached the built-in MCP extension only after the call had returned, and a second server registered while an earlier one was still connecting waited until that connection attempt had ended or timed out. Pi runs the first `mcp_servers_change` handler up to its first await inside the registering call, and every registration starts its own delivery: when `registerMcpServer` returns, the built-in MCP extension has listed the server, hidden the tools of a server it replaced and activated the discovery tool, and a server registered while another still connects starts connecting at once. PiG now does the same when the first handler runs in the PiG process (the built-in MCP extension, or a compiled-in Go extension). Still different from Pi: the handlers after the first run beside the registering code instead of after its synchronous run; and the call does not wait for a first handler that lives in a subprocess extension (possible only when the built-in MCP extension is replaced or disabled), nor when the registration is made on the interactive input loop. Affected release: v0.7.0, the only release with this code (it came with 3dd4d752e8; no earlier tag has `mcp_servers_change`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "72bf4f2ebd",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/inproc/mcp_change_order_async_exta_test.go::TestRunnerMcpServersChangeDrainWaitsForTheRunningEmissions",
+        "coding/mcpext/runtime_registration_async_test.go::TestAnInvalidatedRunnerEndsTheMcpServersChangeHandlersWaitForItsConnections",
+        "test/extension-conformance/mcp_register_run_test.go::TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall"
+      ]
+    },
+    {
       "id": "BF-72db80f",
       "title": "fix(durable): a streamed partial commits the text of its own events",
       "symptom": "fix(durable): a streamed partial commits the text of its own events",
@@ -28174,6 +28466,28 @@
       ]
     },
     {
+      "id": "BF-770a98a",
+      "title": "interactive mode: when it ended, PiG wrote an empty terminal title (`ESC ] 0 ; BEL`) and a clear of the…",
+      "symptom": "interactive mode: when it ended, PiG wrote an empty terminal title (`ESC ] 0 ; BEL`) and a clear of the terminal progress indicator (`ESC ] 9 ; 4 ; 0 BEL`) whatever `terminal.showTerminalProgress` said, and on a quit it wrote both after the renderer had stopped.",
+      "rootCause": "When interactive mode ended, PiG wrote an empty terminal title (ESC ] 0 ; BEL) and a progress clear (ESC ] 9 ; 4 ; 0 BEL) whatever the settings said, both from teardowns Init registered, so after the renderer had stopped on a quit. Pi writes no empty title anywhere, and its stop() clears the progress indicator only when terminal.showTerminalProgress is on, as its first write, before the renderer stops (interactive-mode.ts:7283-7287).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "interactive mode: when it ended, PiG wrote an empty terminal title (`ESC ] 0 ; BEL`) and a clear of the terminal progress indicator (`ESC ] 9 ; 4 ; 0 BEL`) whatever `terminal.showTerminalProgress` said, and on a quit it wrote both after the renderer had stopped. Pi writes no empty title, and clears the progress indicator only when the setting is on, before the renderer stops. PiG now writes the same: on ctrl+d, ctrl+c twice, `/quit`, SIGTERM and SIGHUP the terminal receives the session title once, and the progress clear only with the setting on. Present in releases 0.2.0 to 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "770a98ad1e",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_init_full_test.go::TestInitBuildsTheInteractiveModeFromTheSettingsAndTheSession"
+      ]
+    },
+    {
       "id": "BF-773a868",
       "title": "RPC mode no longer hangs when a Node extension command calls `pi.sendMessage(..., { triggerTurn: true })`…",
       "symptom": "RPC mode no longer hangs when a Node extension command calls `pi.sendMessage(..., { triggerTurn: true })` while a `before_agent_start` handler is subscribed: the handler runs inside the call, as in Pi, and the run starts after the command's response.",
@@ -28396,6 +28710,26 @@
         "ai/openai_reasoning_pending_test.go::TestParseSSE_ThinkingBeforeTextWhenOneDeltaCarriesBoth",
         "ai/openai_tool_choice_stream_upstream_test.go::TestOpenAICompletionsToolChoiceStreamUpstream"
       ]
+    },
+    {
+      "id": "BF-77e64cd",
+      "title": "GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)…",
+      "symptom": "GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3) now receive the selected thinking level: the request carries `reasoning_effort`, where before the level was never sent and the model always ran at its default; these models now offer their own levels (low, medium and high for the Gemini models; low, high and max for Kimi K3).",
+      "rootCause": "the GitHub Copilot catalog definition set supportsReasoningEffort to false for every chat-completions model, so the selected thinking level was never sent; and Copilot reports reasoning tokens at the top level of usage (usage.reasoning_tokens), which parseChunkUsage did not read, so usage.reasoning was always 0 there.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3) now receive the selected thinking level: the request carries `reasoning_effort`, where before the level was never sent and the model always ran at its default; these models now offer their own levels (low, medium and high for the Gemini models; low, high and max for Kimi K3). Reasoning tokens that a chat-completions provider reports at the top level of `usage` (`usage.reasoning_tokens`, as GitHub Copilot does) are now counted in the usage's reasoning figure instead of showing as 0; output tokens, total tokens and cost are unchanged. Follows Pi #12110.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "77e64cd2af",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-7809364",
@@ -31458,6 +31792,76 @@
       ]
     },
     {
+      "id": "BF-88bbdd2",
+      "title": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`…",
+      "symptom": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`, `__proto__` and the like) is treated as any other name in more places (D645).",
+      "rootCause": "`pig mcp add constructor -- \u003ccommand\u003e` reports the server as added (it said `Replaced` the first time), `pig mcp add __proto__ -- \u003ccommand\u003e` writes the server to `mcp.json` (it was not written at all), and `pig mcp remove` of such a name that the file does not hold says there is no such server (it said `Removed`).",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D645",
+      "removeWhen": "Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`, `__proto__` and the like) is treated as any other name in more places (D645). `pig mcp add constructor -- \u003ccommand\u003e` reports the server as added (it said `Replaced` the first time), `pig mcp add __proto__ -- \u003ccommand\u003e` writes the server to `mcp.json` (it was not written at all), and `pig mcp remove` of such a name that the file does not hold says there is no such server (it said `Removed`). A `keybindings.json` key so named is left as written: it was renamed to text such as `function Object() { [native code] }` and the file was rewritten. Pi 1.5.2 does the old things. In Node extensions, `ctx.ui.theme.fg`, `bg`, `getFgAnsi` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` for a token so named, as Pi does and as the other SDKs did: `fg` threw `open.endsWith is not a function`, `bg` drew the text of a native function before the text, and the two getters returned a function. `ctx.ui.setStatus(\"__proto__\", text)` is a status the extension's own footer reads back in the same turn, a provider registered under the name `__proto__` is read like any other provider, and `pi.getSettings()` hands the settings without any `__proto__` member.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3fb47cfd56",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "43e001e9e3",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "88bbdd2eaa",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e4d55f361f",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "eabcdf054a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/env_keys_prototype_names_oracle_test.go::TestAProviderNamedLikeAnObjectPrototypeMemberHasNoEnvironmentKey",
+        "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
+        "coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi",
+        "coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure",
+        "coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi",
+        "coding/mcpext/server_name_prototype_names_oracle_test.go::TestAnMcpServerOrOptionNamedLikeAnObjectPrototypeMemberIsTreatedAsAnyOtherName",
+        "coding/mcpext/server_name_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberIsListedWithoutAnExposure",
+        "coding/stored_credential_prototype_names_oracle_test.go::TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
+        "internal/codingagent/keybindings_file_oracle_test.go::TestKeybindingsFileLoadingMatchesPi",
+        "internal/codingagent/keybindings_prototype_names_oracle_test.go::TestAKeybindingNamedLikeAnObjectPrototypeMemberIsNoLegacyName",
+        "internal/codingagent/migrations_prototype_names_oracle_test.go::TestALegacyApiKeyOfAProviderNamedLikeAnObjectPrototypeMemberIsMigrated",
+        "internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi",
+        "internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline",
+        "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
+        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
+        "internal/codingagent/settings_project_proto_key_oracle_test.go::TestAProjectSettingsKeyNamedProtoSetsNoSetting",
+        "internal/configvalue/prototype_names_oracle_test.go::TestAConfigValueNamingAnObjectPrototypeMemberIsAnUnsetVariable",
+        "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
+        "internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
+        "internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent",
+        "internal/typebox/value_check_prototype_names_oracle_test.go::TestUniqueItemsCountsAMemberNamedConstructor",
+        "test/extension-conformance/prototype_names_guard_test.go::TestNoLookupAnswersForObjectPrototypeMemberNames",
+        "test/extension-conformance/prototype_names_test.go::TestNodeGetSettingsHandsNoProtoMember",
+        "tui/highlight_oracle_test.go::TestHighlightMatchesPiOracle",
+        "tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey",
+        "tui/language_from_path_prototype_names_oracle_test.go::TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage",
+        "tui/theme_and_keybinding_names_prototype_oracle_test.go::TestAThemeNamedLikeAnObjectPrototypeMemberIsNotFound",
+        "tui/theme_and_keybinding_names_prototype_oracle_test.go::TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi",
+        "tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable"
+      ]
+    },
+    {
       "id": "BF-892827f",
       "title": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted…",
       "symptom": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted, the Host read the client's `getSignal` function again and again without end, one call to the client each, and sent every runtime a new `run_signal` frame each time.",
@@ -31804,6 +32208,29 @@
       ],
       "tests": [
         "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
+      ]
+    },
+    {
+      "id": "BF-8b15be3",
+      "title": "Tests: the read barrier, which lets a fixture server write its next record only when the client is reading…",
+      "symptom": "Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address.",
+      "rootCause": "So the red needs several live connections at once and grows with the square of their number: two subtests alone never show it, the whole test shows it about once in a hundred runs, a loaded machine more often because its connections live longer. The 5.00 s of the failure is the test's own guard (rpc33_azure_ticks_test.go, context.WithTimeout) ending a wait that could never end: the server waited for a count that cannot be reached. A longer guard, a retry or a pause cures nothing here.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address. Linux gives one local port to live connections to different servers, so two parallel fixture servers could see the same client address; one of them then waited until its test's deadline, or wrote two records into one read. `TestRPC33AzureTickOrder` failed that way in about one run in a hundred, more often on a loaded machine. The barrier now counts per connection (client and server address).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b15be354a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/abort_text_pi_test.go::TestProviderAbortTextsMatchPi",
+        "coding/rpc33_azure_ticks_test.go::TestRPC33AzureTickOrder"
       ]
     },
     {
@@ -38977,40 +39404,6 @@
       ]
     },
     {
-      "id": "BF-D645",
-      "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
-      "symptom": "For a name that is a member of `Object.prototype`, Pi draws the source text of a native function inside a formula, returns a function where a key id is promised, reports `TypeError: value.startsWith is not a function` for a theme color, does not offer an MCP tool of a `direct` server, and ends print mode with `function is not iterable` before any turn when an extension tool has such a name. Pi has no test for such a name at any of the five sites.",
-      "rootCause": "these are defects of Pi, and PiG does not port a defect. None of Pi's five answers is something a user or a caller can use: the text of a native function drawn inside a formula, a function returned as a key id, a `TypeError` in place of the loader's own message, a function returned as an exposure, and a system prompt that cannot be built because a tool has a certain name. Reproducing them would mean adding the members of `Object.prototype` to five Go tables by hand.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D645",
-      "removeWhen": "Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "3fb47cfd56",
-          "date": "2026-11-13"
-        },
-        {
-          "hash": "43e001e9e3",
-          "date": "2026-11-13"
-        }
-      ],
-      "tests": [
-        "coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi",
-        "coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure",
-        "internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi",
-        "internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline",
-        "internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
-        "tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey",
-        "tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi",
-        "tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable"
-      ]
-    },
-    {
       "id": "BF-D648",
       "title": "A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…",
       "symptom": "none. (The host-side loss the same rows found, eight event types that wrote U+FFFD on the way out to every SDK, is cured in 0.8.0 and carries no divergence.)",
@@ -39023,7 +39416,12 @@
       "removeWhen": "the Rust SDK has a lossless value type for JavaScript strings (UTF-16 units) in its public event, command and snapshot types, so a Rust handler holds the unit and writes it back.",
       "fixedIn": "Unreleased",
       "origin": "divergence",
-      "commits": [],
+      "commits": [
+        {
+          "hash": "c9ef4062bc",
+          "date": "2026-11-14"
+        }
+      ],
       "tests": [
         "test/extension-conformance/lone_surrogate_passthrough_test.go::TestConformance_LoneSurrogatePassThroughAcrossSDKs",
         "test/extension-conformance/tool_argument_strings_test.go::TestConformance_ToolArgumentStringsAgreeAcrossSDKs"
@@ -40949,6 +41347,41 @@
       ]
     },
     {
+      "id": "BF-aa954ac",
+      "title": "`--model \u003cprovider\u003e/\u003cid\u003e` with an id the catalog does not know, under a provider an extension registers with…",
+      "symptom": "`--model \u003cprovider\u003e/\u003cid\u003e` with an id the catalog does not know, under a provider an extension registers with its own models or a provider `models.json` defines, started with none of the provider's model data.",
+      "rootCause": "Start-up discarded the model its selection returned for the id, a copy of one of the provider's models, and resolved the provider and id a second time: they name the provider's connection and no model. The request path did the same where no credentials were resolved for the provider.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`--model \u003cprovider\u003e/\u003cid\u003e` with an id the catalog does not know, under a provider an extension registers with its own models or a provider `models.json` defines, started with none of the provider's model data. The footer showed a context window of 0 (`0.0%/0`), the turn cost nothing, images were not accepted and the provider's compat flags were ignored; the request the provider received asked for almost no output (`max_completion_tokens: 1` on openai-completions, `max_output_tokens: 16` on openai-responses, where Pi sends the model's limit) and addressed a reasoning model with a developer message even where the provider declares `supportsDeveloperRole: false`. In print mode a reply cut short for length then ended with exit status 1 and the partial answer on stdout, where Pi recovers and ends with status 0. Under a built-in provider whose default model `models.json` overrides, the id took the catalog's values instead of the overridden ones. As in Pi, such an id now starts as a copy of the provider's default model, or its first model, under that id: its window, output limit, prices, input kinds and compat flags, with the provider's own request headers. Present since 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "84e1fdeeea",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "aa954ac08f",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e261af0cdc",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/custom_model_fallback_footer_test.go::TestInteractiveFooterOfACustomModelIDShowsTheProvidersWindow",
+        "coding/cli/custom_model_fallback_rpc_test.go::TestRPCCustomModelIDKeepsTheProvidersLimitsCostAndCompat",
+        "coding/cli/custom_model_fallback_test.go::TestStartupCustomModelIDIsACopyOfTheProvidersModel",
+        "coding/startup_copy_request_model_test.go::TestUnauthenticatedRequestModelOfAStartupCopyIsTheCopy",
+        "internal/codingagent/model_registry_fallback_test.go::TestResolveFallbackModelKeepsTheModelAndResolvesTheProvidersConnection",
+        "test/parity/scenarios/model-resolver-selector/31-custom-model-id-extension-provider-print.toml"
+      ]
+    },
+    {
       "id": "BF-aabd300",
       "title": "An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or…",
       "symptom": "An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or array is skipped as Pi skips it, instead of ending the reply with a decode error; a null Responses event fails with Pi's TypeError message.",
@@ -41172,6 +41605,30 @@
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWrapsOnlyChangedLines",
         "tui/windowed_render_test.go::TestWindowedFramesEqualWholeFrames"
       ]
+    },
+    {
+      "id": "BF-ab68fb7",
+      "title": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits",
+      "symptom": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits.",
+      "rootCause": "A quit by keys that waits for an author keeps its dispose pending. The ctrl+c that then ends pig (exit 130) ran no dispose, so the runtime of a Node author that holds a timer stayed behind. handleInterruptSignal terminates the extension processes before it exits, as the emergency exit does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits. The runtime process of a Node extension whose event loop was still alive, for example one that holds a timer, stayed behind. Nothing more is written to the session file at that exit. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "851af29834",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "ab68fb7b65",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ab8e9e4",
@@ -41406,6 +41863,42 @@
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-command.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-input.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-settled.toml"
+      ]
+    },
+    {
+      "id": "BF-acc1492",
+      "title": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects…",
+      "symptom": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects at once instead of first waiting for its `CanRetry` check: with a check that takes 3 s, the next attempt went 3 250 ms after the wake and now goes at 0 ms.",
+      "rootCause": "The wait happened because the connection loop scheduled its next attempt only once `CanRetry` had answered.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects at once instead of first waiting for its `CanRetry` check: with a check that takes 3 s, the next attempt went 3 250 ms after the wake and now goes at 0 ms. The wait happened because the connection loop scheduled its next attempt only once `CanRetry` had answered. `KeepConnected` now asks `CanRetry` beside the next attempt, one question at a time (a link that drops while a question is open asks nothing more); a late `false` still stops the loop and ends the attempt made meanwhile, which is reported `waiting`; a drop within 26 s of a wake is retried at once, once per wake, and the replacement of a silent socket no longer waits a pause. `StartClient` stops the loop before it calls `Outdated`, so the app starts over with the link already ended. The vendored page and plugin runtimes carry the same change (Pi 21e4cb80d: `surfaces/connection.ts`, `surfaces/client.ts`, `web/page.ts`). The old loop is in v0.2.0, v0.3.0 and v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6e061374e2",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "acc14924df",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_client_test.go::TestASlowBaseAnswerAfterTheNextLinkOpenedThatLinkEndsBeforeOutdatedIsCalled",
+        "chord/next/surfaces/surfaces_client_test.go::TestAsksTheServersBaseAtAReconnectAnotherOneStopsTheLoopThenCallsOutdated",
+        "chord/next/surfaces/surfaces_connection_test.go::TestADropCountsAsSoonAfterAWakeForTheStaleChecksReachAndNoLonger",
+        "chord/next/surfaces/surfaces_connection_test.go::TestALateErrorFromCanRetryKeepsTheOpenLinkAndTheNextCloseAsksAgain",
+        "chord/next/surfaces/surfaces_connection_test.go::TestALateNoWhileTheNextAttemptIsConnectingClosesItThenReportsWaitingAndTheLoopStaysStopped",
+        "chord/next/surfaces/surfaces_connection_test.go::TestAsksCanRetryOneQuestionAtATimeClosesWhileItIsOpenAskNothingMoreTheNextCloseAsksAgain",
+        "chord/next/surfaces/surfaces_connection_test.go::TestDoesNotWaitForCanRetryTheNextAttemptGoesAheadALateNoAfterItOpenedClosesItReportedWaiting",
+        "chord/next/surfaces/surfaces_connection_test.go::TestOneWakeWithASlowCheckTheNextAttemptGoesAtOnceBesideTheOneCheck",
+        "chord/next/surfaces/surfaces_connection_test.go::TestReconnectsAfterAGrowingPauseAndReportsItsStates",
+        "chord/next/surfaces/surfaces_connection_test.go::TestRetriesAtOnceADropSoonAfterAWakeTheSocketThatWasAwayOncePerWake",
+        "chord/next/surfaces/surfaces_connection_test.go::TestStopReportsTheAttemptItEndedAsWaitingOnceAndNothingBetweenAttempts"
       ]
     },
     {
@@ -44697,6 +45190,28 @@
       ]
     },
     {
+      "id": "BF-bedd7ec",
+      "title": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead…",
+      "symptom": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead of answering them.",
+      "rootCause": "the Go server host loads its own facets first and its plugins after, in the Node plugin host, and its HTTP component resolved its registries once the first of the two were loaded. Pi's one host loads both in one load, and until then its HTTP component refuses every request and upgrade with 503.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a server that is still loading its plugins refuses requests and links with 503, as Pi's does, instead of answering them. A page that reconnected to a restarted server in that time (about 220 ms in the run that found it; the page's first retry comes after 250 ms) was connected, shown the scripts object's empty set, took its base for another one and reloaded: what the page held was lost (the server's state was kept). This happened because the Go server host loads its own facets first and its plugins after, in the Node plugin host, and its HTTP component answered once the first of the two were loaded, where Pi's one host loads both in one `load` and its HTTP component refuses until that ended (`not_ready`). The HTTP component now sees the server host's registries only once the plugins are loaded. The fix is commit aa77aa9c2f1d3eccb4597259bdf1440915b97215; its message names the divergence of the server's two hosts (number 605 in docs/parity/DIVERGENCES.md) because the defect exists only where those two hosts exist, and the fix does not close or change that divergence. In no release: the app kit (`chord/nextnode/app`) is in none of v0.2.0, v0.3.0 and v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bedd7ec384",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_bases_linux_test.go::TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading"
+      ]
+    },
+    {
       "id": "BF-beeb36a",
       "title": "Running with no home directory now fails the way Pi's package manager does, instead of reading the project's…",
       "symptom": "With no `HOME` and no entry for your user in the system's user database (a container run as a user its passwd file does not list), `pig` used to take the home directory to be empty, so the `.agents/skills` directory of the current project was listed as the user's `~/.agents/skills`, with user scope and without the project-trust prompt.",
@@ -44977,6 +45492,26 @@
         "test/extension-conformance/boundary_draft_members_test.go::TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
         "test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch"
       ]
+    },
+    {
+      "id": "BF-c0d8731",
+      "title": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an…",
+      "symptom": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement.",
+      "rootCause": "A frame holds the render lock for all of its writes, so two frames never ran together. HideCursor, ShowCursor, WriteRaw and QueryCellSize held nothing, and through them ShowOverlay, the hide of the last overlay, SetShowHardwareCursor and Start: on a renderer that keeps its own frame timer the caller wrote while a frame of the timer goroutine was in the writer. Pi writes from one event loop (tui.ts showOverlay: terminal.hideCursor(), then requestRender()): a cursor write is before a frame or after it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement. Every write of a renderer now holds its writer lock and a frame keeps it from its first write to its last, so such a write is before the frame or after it, as on the one event loop of Pi; a write a component makes from its `Render` still goes before the bytes of its frame. The interactive mode of pig draws and calls from one loop and showed no fault.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c0d873133b",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-c1055c4",
@@ -46422,6 +46957,26 @@
       ]
     },
     {
+      "id": "BF-c7c99c6",
+      "title": "In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives…",
+      "symptom": "In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives before the extension has drawn the card.",
+      "rootCause": "A render proxy paints its placeholder from its first request until the frame that follows the extension's first applied answer, and knows no mouse region of the component in that time. HandleMouse answered a click there as a click outside every region, and the click was lost: with a slow extension answer (a loaded host, a slow start) a click on the card did nothing, where Pi's card, built inside the render, takes it from its first frame.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives before the extension has drawn the card. Until the extension answers its first render request the card is shown as the placeholder `[\u003ctype\u003e]`, and a click on that row did nothing: on a slow start or a loaded machine the card stayed closed. The click now waits for the card, and the frame that draws the card gives it the click; several clicks reach the card in the order they were made. A click on a placeholder whose extension never answers still does nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c7c99c68c4",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c7ebb23",
       "title": "A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was…",
       "symptom": "A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was `oauth prompt cancelled`, and Node's `onSelect` resolved `undefined`), so `/login` returns to the menu instead of reporting a failed login.",
@@ -47199,6 +47754,34 @@
         "extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire",
         "test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs"
       ]
+    },
+    {
+      "id": "BF-cc05ab3",
+      "title": "Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now…",
+      "symptom": "Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now keeps what the provider's stream does after the abort, as Pi does: the text already shown, the provider's own stop reason and error message, or its complete answer when it ignores the abort.",
+      "rootCause": "An aborted turn whose model is served by an extension's streamSimple lost the text the user had seen: the host ended the stream at the cancel with a message of its own (empty content, aborted, \"context canceled\") and discarded whatever the author's stream did next. Pi's consumer has no check of the abort signal (packages/agent/src/agent-loop.ts:424-478): the author's later events, its terminal event, its result or its error decide the turn's final message.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now keeps what the provider's stream does after the abort, as Pi does: the text already shown, the provider's own stop reason and error message, or its complete answer when it ignores the abort. PiG's extension host ended such a stream at the abort with a message of its own (empty content, `aborted`, `context canceled`), so the text the user had seen was gone from the turn, from the session file and from the next request's context. The abort now only aborts the signal the provider holds, in the Go, Node, Python, Rust and Lisp SDKs, and the provider's stream decides how the turn ends; a provider that never reacts holds the turn, as in Pi, and no time limit is added. In RPC mode, when stdin closes while a Node provider's aborted stream never reacts, the process exits 0 once the runtime's event loop is empty, as Pi's process does, and leaves no runtime process. PiG 0.3.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "452127f75d",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "cc05ab3196",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "f362f57ac0",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-cc38705",
@@ -48765,8 +49348,8 @@
       "id": "BF-d2a1d95",
       "title": "A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is…",
       "symptom": "A character that a server splits over two stream deltas, written as the escapes of its two UTF-16 halves, is one character again in the reply, in the session file, in RPC output and in the next request for OpenAI Responses, Azure OpenAI Responses, OpenAI Codex, Amazon Bedrock and pi-messages models too, and the `text_delta`, `thinking_delta` and `toolcall_delta` events of RPC mode carry each half as Pi writes it.",
-      "rootCause": "Pi reads a stream event with JSON.parse, which reads the escape of a surrogate as that unit, and copies a value as the object it is. PiG read these events with encoding/json, which reads the escape as U+FFFD, and copied four values through an encoding/json round trip, which writes the three bytes of the unit as three U+FFFD.",
-      "rootCauseSource": "commit",
+      "rootCause": "PiG read these stream events and copied these values with encoding/json, which has no form for a lone UTF-16 surrogate and replaces it with U+FFFD, where Pi uses JSON.parse and the object itself",
+      "rootCauseSource": "release note",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
@@ -48793,8 +49376,8 @@
       "id": "BF-d2a1d95-2",
       "title": "A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an…",
       "symptom": "A lone UTF-16 surrogate is kept, as Pi keeps it, in the content blocks that a `tool_result` handler of an extension returns, in the text and images that an `input` handler returns, in the content array of a custom message, and in the schema of a tool that asks for strict sampling.",
-      "rootCause": "Pi reads a stream event with JSON.parse, which reads the escape of a surrogate as that unit, and copies a value as the object it is. PiG read these events with encoding/json, which reads the escape as U+FFFD, and copied four values through an encoding/json round trip, which writes the three bytes of the unit as three U+FFFD.",
-      "rootCauseSource": "commit",
+      "rootCause": "PiG read these stream events and copied these values with encoding/json, which has no form for a lone UTF-16 surrogate and replaces it with U+FFFD, where Pi uses JSON.parse and the object itself",
+      "rootCauseSource": "release note",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
@@ -49529,6 +50112,26 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
       ]
+    },
+    {
+      "id": "BF-d636592",
+      "title": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed`…",
+      "symptom": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed` handler runs.",
+      "rootCause": "Session.dispatchUnawaitedEvent is the tree's form of Pi's `void this._extensionRunner.emit(...)` (agent-session.ts setSessionName, setThinkingLevel): the caller waits for the first handler's acknowledgment, so that the handler's synchronous part runs before the caller's next step.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode: the terminal stays live after `/name \u003cname\u003e` while an extension's `session_info_changed` handler runs. The input loop waited for the first handler to reach its first wait or to end, and a Go, Rust, Python or Lisp subprocess handler reports neither before its first host call, so no key echoed and nothing was drawn for as long as such a handler ran: 10 s for a handler that slept 10 s, where Pi 1.5.2 echoes at once while a handler awaits. The loop now starts the handler and goes on. Every release from v0.3.0 to v0.7.0 has the wait.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d63659241b",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-d6464d3",
@@ -52987,16 +53590,15 @@
     },
     {
       "id": "BF-dd2727b",
-      "title": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…",
-      "symptom": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result.",
+      "title": "fix(tui): the read and write cards draw Pi's fallback for a path whose extension is constructor or __proto__",
+      "symptom": "fix(tui): the read and write cards draw Pi's fallback for a path whose extension is constructor or __proto__",
       "rootCause": "Pi's getLanguageFromPath (theme.ts:993-1062) looks the lowercased extension up in a plain object, so `constructor` and `__proto__` find a member the object inherits from Object.prototype. The value is truthy: read.ts formatReadResult (:124-125) and write.ts renderCall (:55-64, :123-127) pass it to highlightCode, whose supportsLanguage check (theme.ts:937) throws a TypeError before the try, and tool-execution.ts updateDisplay (:303-341) catches the throw and draws the call or result fallback. PiG looked the extension up in a Go map, found no language and drew the write card with its content rows and the expanded read card with its blank row, which Pi does not draw for such a path.",
       "rootCauseSource": "commit",
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws, and Pi falls back to its generic card; PiG looked the extension up in a Go map, found no language and drew the ordinary cards.",
-      "origin": "release note",
+      "origin": "commit",
       "commits": [
         {
           "hash": "dd2727b68a",
@@ -53004,12 +53606,9 @@
         }
       ],
       "tests": [
-        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsDrawTheFallbackForAPathNamedLikeAnObjectPrototypeMember",
         "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
         "test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml",
-        "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml",
-        "tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsForAnInheritedMember",
-        "tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsLikePi"
+        "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml"
       ]
     },
     {
@@ -53855,6 +54454,30 @@
         {
           "hash": "df5964b4e7",
           "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-df5e3e8",
+      "title": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session…",
+      "symptom": "The turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected.",
+      "rootCause": "In interactive mode the abort host action waited for the run to settle. A handler the run awaits (message_update, tool_call, ...) that called ctx.abort() therefore hung the run, the next prompt and the quit. Pi starts the abort and returns (interactive-mode.ts:2399-2401, :4935-4937 void this.session.abort()); the action now posts the abort to the owner loop and returns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session: the call returns at once, the turn ends aborted and the next prompt runs, in the Node, Go, Python and Rust SDKs. Before, the turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected. Messages queued while the turn ran go back to the editor instead of running after the abort, as in Pi. Affects 0.2.0 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a079f7223f",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "df5e3e87ff",
+          "date": "2026-11-13"
         }
       ],
       "tests": []
@@ -55848,6 +56471,111 @@
       ]
     },
     {
+      "id": "BF-eabcdf0",
+      "title": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…",
+      "symptom": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) are the ordinary cards with the file's text, as for any extension without a known language.",
+      "rootCause": "Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) are the ordinary cards with the file's text, as for any extension without a known language. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws and Pi falls back to its generic card; PiG does not copy that defect (D645). This replaces the change of dd2727b68af, which had made PiG draw Pi's fallback for these cards and is in no release.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eabcdf054a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
+        "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
+        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
+        "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
+        "internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent",
+        "internal/typebox/value_check_prototype_names_oracle_test.go::TestUniqueItemsCountsAMemberNamedConstructor",
+        "test/parity/scenarios/interactive-rendering/74-unknown-extension-path-cards.toml",
+        "test/parity/scenarios/interactive-rendering/75-resume-unknown-extension-path-cards.toml",
+        "tui/highlight_scope_prototype_names_test.go::TestAScopeNamedLikeAnObjectPrototypeMemberHasNoFormatter",
+        "tui/highlight_scope_prototype_names_test.go::TestReasonmlEmitsTheScopeConstructor",
+        "tui/language_from_path_prototype_names_oracle_test.go::TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage"
+      ]
+    },
+    {
+      "id": "BF-eabcdf0-2",
+      "title": "For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with…",
+      "symptom": "For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with `uniqueItems` no longer take two objects that differ only in a member named `constructor` for the same item.",
+      "rootCause": "Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with `uniqueItems` no longer take two objects that differ only in a member named `constructor` for the same item. TypeBox leaves that member out of its hash; PiG hashes it like any other (D645).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eabcdf054a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
+        "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
+        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
+        "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
+        "internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent",
+        "internal/typebox/value_check_prototype_names_oracle_test.go::TestUniqueItemsCountsAMemberNamedConstructor",
+        "test/parity/scenarios/interactive-rendering/74-unknown-extension-path-cards.toml",
+        "test/parity/scenarios/interactive-rendering/75-resume-unknown-extension-path-cards.toml",
+        "tui/highlight_scope_prototype_names_test.go::TestAScopeNamedLikeAnObjectPrototypeMemberHasNoFormatter",
+        "tui/highlight_scope_prototype_names_test.go::TestReasonmlEmitsTheScopeConstructor",
+        "tui/language_from_path_prototype_names_oracle_test.go::TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage"
+      ]
+    },
+    {
+      "id": "BF-eabcdf0-3",
+      "title": "`pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is…",
+      "symptom": "`pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is set, as for any other `TERM` it does not know (D645).",
+      "rootCause": "Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is set, as for any other `TERM` it does not know (D645).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eabcdf054a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
+        "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
+        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
+        "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
+        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
+        "internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent",
+        "internal/typebox/value_check_prototype_names_oracle_test.go::TestUniqueItemsCountsAMemberNamedConstructor",
+        "test/parity/scenarios/interactive-rendering/74-unknown-extension-path-cards.toml",
+        "test/parity/scenarios/interactive-rendering/75-resume-unknown-extension-path-cards.toml",
+        "tui/highlight_scope_prototype_names_test.go::TestAScopeNamedLikeAnObjectPrototypeMemberHasNoFormatter",
+        "tui/highlight_scope_prototype_names_test.go::TestReasonmlEmitsTheScopeConstructor",
+        "tui/language_from_path_prototype_names_oracle_test.go::TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage"
+      ]
+    },
+    {
       "id": "BF-ead285d",
       "title": "Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147)",
       "symptom": "Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147).",
@@ -57496,6 +58224,26 @@
       "tests": []
     },
     {
+      "id": "BF-f1fc6ab",
+      "title": "A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode…",
+      "symptom": "A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode (`pig -p`) and interactive mode, where Pi answers `No API key found for ollama.` and PiG's own RPC mode did too: PiG exempted that one provider name from the check for configured credentials (releases 0.2.0 to 0.7.0).",
+      "rootCause": "Pi refuses a prompt for a provider without configured auth in every mode: hasConfiguredAuth(provider) || checkAuth(provider) !== undefined, else No API key found for \u003cprovider\u003e. (agent-session.ts:2247-2259, auth-guidance.ts:22-25). A models.json provider without an apiKey is such a provider whatever its name (provider-composer.ts:422-457), and Pi has no provider that needs no auth method (provider-composer.ts:585).",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode (`pig -p`) and interactive mode, where Pi answers `No API key found for ollama.` and PiG's own RPC mode did too: PiG exempted that one provider name from the check for configured credentials (releases 0.2.0 to 0.7.0). PiG now applies Pi's one rule to every provider in every mode: a provider without configured credentials is refused before any request is sent, whatever it is called and whether or not `OLLAMA_HOST` is set. **If your local Ollama provider has no key, add one line to it in `~/.pig/agent/models.json`: `\"apiKey\": \"ollama\"`** (any text works; Ollama ignores it). That is the form the models and custom provider pages of PiG's docs and Pi's `docs/models.md` show, and a setup that already has it is unchanged, as is a keyless provider under any other name (it was always refused). The same name no longer passes the other credential gates either: selecting the model reports `No API key for ollama/\u003cmodel\u003e`, an extension's `setModel` answers `false`, a virtual model route to it fails with `which has no credentials.`, and a model object an extension builds for the provider gets no request.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f1fc6abc88",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f20cc08",
       "title": "A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of…",
       "symptom": "A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of the session: each append now costs the same, as in Pi.",
@@ -58673,6 +59421,26 @@
         "ai/anthropic_test.go::TestAnthropicConvertToolsStrict",
         "ai/tool_schema_wire_order_test.go::TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
+    },
+    {
+      "id": "BF-f56733c",
+      "title": "The provider id `ollama` no longer has a base URL of its own",
+      "symptom": "The provider id `ollama` no longer has a base URL of its own.",
+      "rootCause": "BuildModel's request building gave an OpenAI-completions model of the provider id ollama without a base URL the value of OLLAMA_HOST, or http://localhost:11434/v1. Pi has no such default: a model carries the base URL its definition, provider or catalog entry states (provider-composer.ts:224-225) and the request hands it to the OpenAI client unchanged (packages/ai/src/api/openai-completions.ts:778-780); OLLAMA_HOST is read nowhere in Pi. The default is removed (owner's decision of 2026-11-13T21:34Z, option A), with firstNonEmpty, which had no other caller; the BuildModel doc comment and the SDK example no longer name it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The provider id `ollama` no longer has a base URL of its own. `coding.BuildModel` and the request path gave an OpenAI-compatible model of that provider without a base URL the value of `OLLAMA_HOST`, or `http://localhost:11434/v1`; Pi has no such default and never reads `OLLAMA_HOST`, so that model is now addressed like a model of any other provider without a base URL (the OpenAI client's default, `https://api.openai.com/v1`). **If you relied on the default, state `\"baseUrl\": \"http://localhost:11434/v1\"` (or the value of your `OLLAMA_HOST`) in the provider's entry in `~/.pig/agent/models.json`**, as the models and custom provider pages show. A `models.json` provider that defines models already had to state its `baseUrl`, in PiG as in Pi; the Go SDK's `BuildModelFromEntry` and a model object an extension builds for the provider without a `baseUrl` are the callers that change.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f56733c5a4",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-f589900",
@@ -62531,8 +63299,8 @@
     },
     {
       "id": "D645",
-      "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
-      "entry": "BF-D645"
+      "title": "A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects…",
+      "entry": "BF-88bbdd2"
     },
     {
       "id": "D648",
