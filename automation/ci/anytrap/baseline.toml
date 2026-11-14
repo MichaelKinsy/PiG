@@ -26,13 +26,6 @@ dest = "*map[string]any"
 count = 1
 
 [[hit]]
-file = "ai/constrained_sampling.go"
-func = "makeStrictJSONSchemaWithOrder"
-call = "json.Unmarshal"
-dest = "*map[string]any"
-count = 1
-
-[[hit]]
 file = "ai/credential_json.go"
 func = "unmarshalCredentialFields"
 call = "sdkjson.Unmarshal"
@@ -184,7 +177,7 @@ file = "coding/extension/host/inproc/runner.go"
 func = "coerceResult"
 call = "json.Unmarshal"
 dest = "*T"
-count = 2
+count = 1
 
 [[hit]]
 file = "coding/extension/host/inproc/runner.go"
@@ -635,13 +628,6 @@ dest = "*map[string]any"
 count = 1
 
 [[hit]]
-file = "internal/codingagent/tool_result_content.go"
-func = "toolResultBlockFields"
-call = "json.Unmarshal"
-dest = "*map[string]any"
-count = 1
-
-[[hit]]
 file = "internal/evals/acme_server.go"
 func = "AcmeServer.handle"
 call = "json.Unmarshal"
@@ -774,13 +760,6 @@ file = "mcp/client.go"
 func = "decodeItem"
 call = "json.Unmarshal"
 dest = "*T"
-count = 1
-
-[[hit]]
-file = "mcp/content.go"
-func = "jsString"
-call = "json.Unmarshal"
-dest = "*any"
 count = 1
 
 [[hit]]
