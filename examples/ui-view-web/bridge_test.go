@@ -24,6 +24,15 @@ var pigBinary struct {
 	err  error
 }
 
+// TestMain removes the directory of the pig the tests built. Every bridge has ended by then: its cleanup waits for the pigs it started.
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if pigBinary.path != "" {
+		_ = os.RemoveAll(filepath.Dir(pigBinary.path))
+	}
+	os.Exit(code)
+}
+
 // buildPig builds the stock pig the bridge starts.
 func buildPig(t *testing.T) string {
 	t.Helper()
