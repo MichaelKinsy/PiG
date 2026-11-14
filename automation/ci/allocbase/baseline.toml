@@ -2554,7 +2554,6 @@ benchmark = "BenchmarkRenderProxyCached"
 allocs = 1
 
 [[benchmark]]
-[[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkRenderProxyMouseUnhandled/click_outside_the_regions"
 allocs = 0
@@ -2564,6 +2563,7 @@ package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkRenderProxyMouseUnhandled/press"
 allocs = 0
 
+[[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkStagedSDKKeyMemoized"
 allocs = 2134
