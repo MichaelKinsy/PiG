@@ -3,6 +3,7 @@
 package atomicfile
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"os"
@@ -87,7 +88,7 @@ func TestWriteFileKeepsAPosixACL(t *testing.T) {
 	if err := WriteFile(path, []byte("new"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if got := attribute(t, path, "system.posix_acl_access"); string(got) != string(acl) {
+	if got := attribute(t, path, "system.posix_acl_access"); !bytes.Equal(got, acl) {
 		t.Fatalf("the ACL after the write is % x, want % x", got, acl)
 	}
 	if infoAfter, _ := os.Stat(path); infoAfter.Mode() != infoBefore.Mode() {
