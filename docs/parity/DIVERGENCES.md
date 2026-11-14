@@ -3030,13 +3030,13 @@ Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi m
 
 ## D247 Quit settles the interrupted run before session_shutdown and disposal
 
-What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown` and `Runtime.EmitQuitShutdownContext`, the first step of a quit (`Runtime.Close`, print mode's signal hook, RPC shutdown, the interactive quit), now abort the current Session and wait until it is idle before they emit `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.
+What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown`, the first step of `Runtime.Close` and of the interactive quit, now aborts the current Session and waits until it is idle before it emits `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.
 
 Why: the quit disposes the runtime during a run without waiting for it: persistence is disconnected before the turn settles, leaving a stored assistant tool call without its result and losing the turn's last messages.
 
 Pi bug: the quit disposes the runtime while a turn is still running and does not wait for it to settle, so the turn's last messages are not saved and a stored assistant tool call can be left without its result ([#9124](https://github.com/earendil-works/pi/issues/9124)); a later Pi change awaits the abort first.
 
-Scope: the quit and dispose path only; session replacement already awaited the abort.
+Scope: `Runtime.Close` and the interactive quit only; session replacement already awaited the abort. NOT ported: print mode's signal hook and RPC shutdown (`EmitQuitShutdownContext`). Their pinned-Pi oracle tests (`TestPrintModeSignalDisposalRunsLikePisEventLoop`, `TestPrintModeJSONSignalStopsOutputAndPersistence`, `TestRPCInputEnd*`) assert Pi 1.5.0's order, in which the aborted run is not persisted, and print mode's signal hook holds the Agent while its disposal runs (`HoldAgentEvents`), so an abort that waited there would never settle.
 
 Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S5).
 
@@ -3044,9 +3044,9 @@ SCRUTINIZED:approved
 
 Remove when: the pin reaches a Pi release containing 7a53c310a.
 
-Call-site markers: `coding/runtime_replacement.go` (`EmitQuitShutdown`, `EmitQuitShutdownContext`).
+Call-site markers: `coding/runtime_replacement.go` (`EmitQuitShutdown`).
 
-Evidence: `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` (Pi's regression test, plus the order an extension's `session_shutdown` handler observes).
+Evidence: `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` (Pi's regression test, plus the order an extension's `session_shutdown` handler observes); `TestEmitQuitShutdownContextDoesNotAbortTheRunASignalHolds` and `TestPrintModeSignalExitCodes` (a termination signal's disposal does not wait for the run).
 
 Parity allowance: none needed; the pinned-Pi runtime oracle does not quit during a run.
 
