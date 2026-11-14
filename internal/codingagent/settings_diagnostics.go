@@ -98,10 +98,11 @@ func (m *InteractiveMode) showModelsJSONError() {
 	}
 }
 
-// showInitNotices shows the startup notices in upstream init order: diagnostics, migrated credentials, the models.json error, then the model fallback message, even under quiet startup.
+// showInitNotices shows the startup notices in upstream init order: diagnostics, migrated credentials, the models.json error, then the model fallback message, even under quiet startup. PiG's frame pacing notice follows the diagnostics (showFramePacingNotice, D625).
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) showInitNotices() {
 	m.showStartupDiagnostics()
+	m.showFramePacingNotice()
 	if len(m.opts.MigratedProviders) > 0 {
 		m.showWarning("Migrated credentials to auth.json: " + strings.Join(m.opts.MigratedProviders, ", "))
 	}

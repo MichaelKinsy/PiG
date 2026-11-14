@@ -37,13 +37,13 @@ func TestUnmarshalObjectRecordsTheMemberOrder(t *testing.T) {
 		long = append(long, key)
 	}
 	// 40 keys in reverse byte order, then a repeat of the first and of the last.
-	for i := len(long) - 1; i >= 0; i-- {
-		wide.WriteString(`"` + long[i] + `":1,`)
+	for _, l := range slices.Backward(long) {
+		wide.WriteString(`"` + l + `":1,`)
 	}
 	wide.WriteString(`"` + long[39] + `":2,"` + long[0] + `":3}`)
 	wantWide := make([]string, 0, 40)
-	for i := len(long) - 1; i >= 0; i-- {
-		wantWide = append(wantWide, long[i])
+	for _, l := range slices.Backward(long) {
+		wantWide = append(wantWide, l)
 	}
 
 	for _, test := range []struct {

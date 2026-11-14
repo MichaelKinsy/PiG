@@ -72,6 +72,8 @@ func NewTestHarnessWithOutput(t testing.TB, opts InteractiveModeOptions, onEvent
 	m.agent = opts.SessionHandle.Agent()
 	m.installRunPromptTurnRefresh()
 	m.eventCh = opts.SessionHandle.Events()
+	m.subscribeSessionListener()
+	t.Cleanup(m.unsubscribeSessionListener)
 	ctx, cancel := context.WithCancel(context.Background())
 	m.runCtx = ctx
 	m.abortCtx, m.abortFn = context.WithCancel(ctx)
@@ -348,6 +350,12 @@ func HostFollowUpInput() string { return hostFollowUpInput() }
 
 // harnessUserBindings are the user bindings the next TestHarness starts with.
 var harnessUserBindings map[string][]KeyID
+
+// RestoreStartupTheme is restoreStartupTheme for the tests of package codingagent_test.
+func RestoreStartupTheme(t testing.TB) {
+	t.Helper()
+	restoreStartupTheme(t)
+}
 
 // BindDequeueToAltUp makes the harnesses of the test bind app.message.dequeue to Alt+Up, its default except with Windows keybindings. The Terminal.app
 // divergence D228 acts only while the action is bound to the key Option+Up stands for.

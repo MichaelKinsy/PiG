@@ -212,14 +212,8 @@ func TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported(t *testing.T)
 // without OSC 8 support and returns every row with its escape sequences.
 func renderNoticeBytes(t *testing.T, show func(*InteractiveMode), width int) []string {
 	t.Helper()
-	previous := tui.GetCapabilities()
-	t.Cleanup(func() {
-		tui.SetCapabilities(previous)
-		tui.RefreshActiveThemeColorMode()
-	})
-	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
-	tui.RefreshActiveThemeColorMode()
 	restoreStartupTheme(t)
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetThemeByName("dark")
 	m := &InteractiveMode{chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, width, 24)}
 	show(m)

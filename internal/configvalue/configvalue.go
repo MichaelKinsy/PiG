@@ -144,6 +144,7 @@ func resolveEnvConfigValue(name string, env map[string]string) (string, bool) {
 			return v, true
 		}
 	}
+	// pig divergence (D645): the environment is asked for the variable, so `$constructor`, `$toString` or `$__proto__` is unset unless a variable of that name is set; Pi's `process.env[name]` finds the member process.env inherits and resolves the value to its text.
 	v := os.Getenv(name)
 	if v == "" {
 		return "", false

@@ -139,6 +139,9 @@ func TestEveryCommittedFrameIsListed(t *testing.T) {
 			switch entry.Name() {
 			case ".git", "node_modules", ".upstream", ".cache", "target":
 				return filepath.SkipDir
+			case "tmp":
+				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's code.
+				return filepath.SkipDir
 			}
 			return nil
 		}

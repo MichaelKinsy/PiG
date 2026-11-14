@@ -40,9 +40,9 @@ func assertRows(t *testing.T, got, want []string) {
 // finished run ends with a "Took" footer formatted by formatDuration.
 func TestShellBodyRendererCollapsedPreview(t *testing.T) {
 	th := tui.ActiveTheme()
-	out := func(s string) string { return th.ToolOutput + s + tui.SGRFgReset }
-	muted := func(s string) string { return th.Muted + s + tui.SGRFgReset }
-	hint := muted("... (2 earlier lines,") + " " + th.Dim + "ctrl+o" + tui.SGRFgReset + muted(" to expand") + muted(")")
+	out := func(s string) string { return themeFg(th.ToolOutput, s) }
+	muted := func(s string) string { return themeFg(th.Muted, s) }
+	hint := muted("... (2 earlier lines,") + " " + themeFg(th.Dim, "ctrl+o") + muted(" to expand") + muted(")")
 
 	r := toolBodyRenderer("bash", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "  l1\nl2\nl3\nl4\nl5\nl6\nl7\n"}}}, new(61500*time.Millisecond))
 	want := append([]string{hint}, shellRows(60, out("l3"), out("l4"), out("l5"), out("l6"), out("l7"), "", muted("Took 1m 1s"))...)
@@ -58,8 +58,8 @@ func TestShellBodyRendererCollapsedPreview(t *testing.T) {
 // the shown/total line counts; byte truncation names the byte limit.
 func TestShellBodyRendererTruncationWarnings(t *testing.T) {
 	th := tui.ActiveTheme()
-	out := func(s string) string { return th.ToolOutput + s + tui.SGRFgReset }
-	warn := func(s string) string { return th.Warning + s + tui.SGRFgReset }
+	out := func(s string) string { return themeFg(th.ToolOutput, s) }
+	warn := func(s string) string { return themeFg(th.Warning, s) }
 	content := "a\nb\n\n[Showing lines 4-5 of 5. Full output: /tmp/pig-bash-1.log]"
 
 	byLines := &tools.BashDetails{

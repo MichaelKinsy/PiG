@@ -37,6 +37,9 @@ func windowsTestFiles(t *testing.T) (root string, files []string) {
 			switch entry.Name() {
 			case ".git", ".upstream", "node_modules", "testdata", "target":
 				return filepath.SkipDir
+			case "tmp":
+				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's code.
+				return filepath.SkipDir
 			}
 			// A nested module cannot import this package.
 			if _, err := os.Stat(filepath.Join(path, "go.mod")); err == nil {

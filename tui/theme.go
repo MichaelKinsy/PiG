@@ -487,6 +487,7 @@ func SetThemeByNameChecked(name string, enableWatcher ...bool) error {
 	defer themeMutationMu.Unlock()
 	watch := len(enableWatcher) > 0 && enableWatcher[0]
 	if r := globalRegistry.Load(); r != nil {
+		// pig divergence (D645): the registry holds own entries, so a theme named like an Object.prototype member (constructor, toString, __proto__) is a theme that does not exist; Pi's `name in builtinThemes` on a plain object takes it for a built-in theme and setTheme fails with "Cannot convert undefined or null to object".
 		if t := r.Get(name); t != nil {
 			storeActiveTheme(t)
 			noteSelectedTheme(name, watch && name != SystemThemeName)

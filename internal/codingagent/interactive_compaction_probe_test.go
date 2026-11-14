@@ -11,9 +11,8 @@ import (
 )
 
 func TestCompactionBillingRenderProbe(t *testing.T) {
-	old := tui.ActiveTheme().Name
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
-	defer tui.SetTheme(old)
 	dir := t.TempDir()
 	settings := NewSettingsManager(dir, dir)
 	if err := settings.SetShowCacheMissNotices(true); err != nil {

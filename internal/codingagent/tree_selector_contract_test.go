@@ -228,10 +228,9 @@ func runTreeContracts(t *testing.T, cases []treeContractCase) []treeContractTrac
 	if len(expected) != len(cases) {
 		t.Fatalf("Pi answered %d of %d cases", len(expected), len(cases))
 	}
-	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
+	restoreStartupTheme(t)
+	previousKeys := tui.GetTUIKeybindings()
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetTUIKeybindings(previousKeys)
 	})
 	traces := make([]treeContractTrace, len(cases))
@@ -330,12 +329,9 @@ func replayTreeContract(t *testing.T, probe treeOracleProbe) treeContractTrace {
 // is between building the selector and its first key, as a slow -race run does; the timer's cancel must stay out of the trace, and recording it from the
 // timer's goroutine is what raced the replay's reads of the trace (TestTreeListHandleInputContractsMatchPi/down/moves-one-row on macOS).
 func TestTreeContractReplayLeavesTheEmptyTreeSelfCancelOutOfTheTrace(t *testing.T) {
-	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
-	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
-		tui.SetTUIKeybindings(previousKeys)
-	})
+	restoreStartupTheme(t)
+	previousKeys := tui.GetTUIKeybindings()
+	t.Cleanup(func() { tui.SetTUIKeybindings(previousKeys) })
 	synctest.Test(t, func(t *testing.T) {
 		got := replayTreeContract(t, treeOracleProbe{Theme: "dark", Width: 100, Height: 40, Keys: []string{tkDown}, afterBuild: func() {
 			time.Sleep(150 * time.Millisecond)
