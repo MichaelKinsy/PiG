@@ -11,14 +11,15 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
-// prototypeNamedPaths are paths around the member names of Object.prototype, with what pinned Pi answers for each: the language theme.ts getLanguageFromPath
-// returns, and whether highlightCode throws for the value it returns. getLanguageFromPath reads a plain object, so the lowercased extensions constructor and
-// __proto__ find an inherited member (the Object function, Object.prototype) and highlightCode throws a TypeError for it; every other member name holds an
-// upper-case letter, which the lowercased extension never equals. TestLanguageFromPathThrowsLikePi runs these rows against Pi.
+// D645, the file extension row. Pi's getLanguageFromPath looks the lowercased extension up in the plain object extToLang
+// (packages/coding-agent/src/modes/interactive/theme/theme.ts:1062), so for the extensions constructor and __proto__ it returns a member inherited from
+// Object.prototype (the Object function, Object.prototype itself), and highlightCode throws a TypeError for that value. PiG's table is a Go map: such a path has no
+// language, like any other unknown extension. Every other member name of Object.prototype holds an upper-case letter, which the lowercased extension never
+// equals. Each row holds PiG's language and whether Pi finds an inherited member, which the pinned Pi must do in this run.
 var prototypeNamedPaths = []struct {
-	path   string
-	lang   string
-	throws bool
+	path       string
+	lang       string
+	piInherits bool
 }{
 	{"notes.constructor", "", true},
 	{"x.__proto__", "", true},
@@ -53,23 +54,17 @@ var prototypeNamedPaths = []struct {
 	{"", "", false},
 }
 
-func TestLanguageFromPathThrowsForAnInheritedMember(t *testing.T) {
-	for _, tc := range prototypeNamedPaths {
-		if got := LanguageFromPath(tc.path); got != tc.lang {
-			t.Errorf("LanguageFromPath(%q) = %q, want %q", tc.path, got, tc.lang)
-		}
-		if got := LanguageFromPathThrows(tc.path); got != tc.throws {
-			t.Errorf("LanguageFromPathThrows(%q) = %v, want %v", tc.path, got, tc.throws)
-		}
-	}
-}
-
-// LanguageFromPath and LanguageFromPathThrows against pinned Pi: getLanguageFromPath's value and whether highlightCode throws for it, over the rows above and over
-// every member name of Object.prototype as written, lowercased, uppercased and capitalized, in each place of a path.
-func TestLanguageFromPathThrowsLikePi(t *testing.T) {
+// LanguageFromPath against pinned Pi over the rows above and over every member name of Object.prototype as written, lowercased, uppercased and capitalized, in each
+// place of a path: where Pi returns a language, PiG returns the same one; where Pi finds an inherited member and its highlighter throws, PiG has no language.
+func TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage(t *testing.T) {
+	recorded := map[string]bool{}
 	var paths []string
 	for _, tc := range prototypeNamedPaths {
 		paths = append(paths, tc.path)
+		recorded[tc.path] = tc.piInherits
+		if got := LanguageFromPath(tc.path); got != tc.lang {
+			t.Errorf("LanguageFromPath(%q) = %q, want %q", tc.path, got, tc.lang)
+		}
 	}
 	for _, member := range []string{"constructor", "__proto__", "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "toString", "valueOf"} {
 		for _, name := range []string{member, strings.ToLower(member), strings.ToUpper(member), strings.ToUpper(member[:1]) + member[1:]} {
@@ -103,24 +98,33 @@ func TestLanguageFromPathThrowsLikePi(t *testing.T) {
 	}
 	thrown := 0
 	for i, path := range paths {
-		want := expected[i]
-		if want.Inherited != (want.Throws != "") {
-			t.Errorf("Pi: getLanguageFromPath(%q) inherited = %v, but highlightCode throws %q", path, want.Inherited, want.Throws)
+		pi := expected[i]
+		if pi.Inherited != (pi.Throws != "") {
+			t.Errorf("Pi: getLanguageFromPath(%q) inherited = %v, but highlightCode throws %q", path, pi.Inherited, pi.Throws)
 		}
-		if got := LanguageFromPath(path); got != want.Language {
-			t.Errorf("LanguageFromPath(%q) = %q, Pi %q", path, got, want.Language)
+		if want, ok := recorded[path]; ok && want != pi.Inherited {
+			t.Errorf("Pi: getLanguageFromPath(%q) finds an inherited member = %v, the record says %v", path, pi.Inherited, want)
 		}
-		if got := LanguageFromPathThrows(path); got != (want.Throws != "") {
-			t.Errorf("LanguageFromPathThrows(%q) = %v, Pi throws %q", path, got, want.Throws)
+		if got := LanguageFromPath(path); got != pi.Language {
+			t.Errorf("LanguageFromPath(%q) = %q, Pi %q", path, got, pi.Language)
 		}
-		if want.Throws != "" {
+		if pi.Throws != "" {
 			thrown++
-			if !strings.Contains(want.Throws, "TypeError") {
-				t.Errorf("Pi: highlightCode for %q throws %q, not a TypeError", path, want.Throws)
+			if !strings.Contains(pi.Throws, "TypeError") {
+				t.Errorf("Pi: highlightCode for %q throws %q, not a TypeError", path, pi.Throws)
 			}
 		}
 	}
 	if thrown == 0 {
 		t.Fatalf("Pi threw for none of %d paths", len(paths))
+	}
+}
+
+func BenchmarkLanguageFromPath(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		for _, path := range [...]string{"a.ts", "notes.constructor", "x.__proto__", "a.unknownext"} {
+			LanguageFromPath(path)
+		}
 	}
 }

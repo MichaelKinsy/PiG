@@ -313,13 +313,13 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `compaction` | 16 | 16 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 165 | 164 | 0 | 1 | 0 | 70 | not run |
+| `extensions-runtime` | 166 | 165 | 0 | 1 | 0 | 70 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 19 | 19 | 0 | 0 | 0 | 13 | not run |
-| `interactive-rendering` | 87 | 86 | 1 | 0 | 0 | 40 | not run |
+| `interactive-rendering` | 89 | 88 | 1 | 0 | 0 | 40 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 30 | 30 | 0 | 0 | 0 | 16 | not run |
-| `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
+| `model-runtime-store-catalog` | 26 | 26 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 33 | 33 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |
 | `project-trust` | 27 | 27 | 0 | 0 | 0 | 19 | not run |

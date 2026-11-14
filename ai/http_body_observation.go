@@ -72,21 +72,29 @@ func (owner *bodyReadOwner) pending() {
 	}
 }
 
-func httpBodyReadOwner(conn net.Conn) *bodyReadOwner {
-	var owner *bodyReadOwner
+// dialedConn is the provider connection under conn's TLS and proxy layers, or nil when conn has none.
+func dialedConn(conn net.Conn) *idleTimeoutConn {
+	var dialed *idleTimeoutConn
 	for {
 		switch current := conn.(type) {
 		case *idleTimeoutConn:
-			owner = &current.bodyRead
+			dialed = current
 			conn = current.Conn
 		case *tls.Conn:
 			conn = current.NetConn()
 		case *proxyBufferedConn:
 			conn = current.Conn
 		default:
-			return owner
+			return dialed
 		}
 	}
+}
+
+func httpBodyReadOwner(conn net.Conn) *bodyReadOwner {
+	if dialed := dialedConn(conn); dialed != nil {
+		return &dialed.bodyRead
+	}
+	return nil
 }
 
 type observedResponseBody struct {

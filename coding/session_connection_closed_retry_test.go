@@ -135,8 +135,15 @@ func closedConnectionServer(t *testing.T, api closedConnectionAPI, failures int)
 
 func closedConnectionHarness(t *testing.T, api closedConnectionAPI, server *httptest.Server, settings string) *recoveryHarness {
 	t.Helper()
+	return closedConnectionHarnessWith(t, api, server, harnessOptions{settings: settings})
+}
+
+// closedConnectionHarnessWith is closedConnectionHarness with the caller's harness options; the provider is the API's.
+func closedConnectionHarnessWith(t *testing.T, api closedConnectionAPI, server *httptest.Server, opts harnessOptions) *recoveryHarness {
+	t.Helper()
 	provider := api.provider(server.URL)
-	h := newBoundaryHarness(t, harnessOptions{settings: settings, provider: provider})
+	opts.provider = provider
+	h := newBoundaryHarness(t, opts)
 	// The session resolves the request key by the provider's id, as it does for any provider; the provider itself sends its own configured key.
 	if err := h.session.services.Auth().Set(provider.ID(), ai.Credential{Type: ai.CredentialAPIKey, Key: "test-key"}); err != nil {
 		t.Fatal(err)

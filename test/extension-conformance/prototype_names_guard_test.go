@@ -22,7 +22,6 @@ var objectPrototypeTableNames = []string{"constructor", "toString", "__proto__",
 var objectPrototypeTableFiles = map[string]string{
 	"internal/typebox/engine/value.go":           "TypeBox's own `key in value` rules for unsafe and inherited keys, ported with the library",
 	"durable/durabletest/storage_conformance.go": "a storage conformance suite that stores documents under these names to prove they are plain keys",
-	"tui/highlight.go":                           "the highlight theme's scope lookup and the path extension lookup, which answer as Pi does until their own cure lands",
 }
 
 // curedJavaScriptLookups are the plain-object lookups by a supplied name that PiG's own JavaScript had, per file: none may come back.

@@ -1,4 +1,4 @@
-// Azure OpenAI Responses matrix probe. Pi 1.1.0 / OpenAI 7.19.0.
+// Azure OpenAI Responses matrix probe. Pi 1.5.2 / OpenAI 7.19.0.
 // Structurally identical to ../../probe.mjs (the retained RPC33 probe) with the API axis reduced to
 // azure-openai-responses, which drives packages/ai/src/api/azure-openai-responses.ts (AzureOpenAI client,
 // same processResponsesStream). Usage: node probe.mjs <pi.json> <inputs.json>
