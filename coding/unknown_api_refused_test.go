@@ -126,34 +126,6 @@ func TestBareModelIsRefusedAtItsRequest(t *testing.T) {
 	}
 }
 
-// The Copilot provider serves anthropic-messages, openai-responses and openai-completions; a Copilot model whose api is none of them, or has none, is refused like any other
-// model with no registered implementation, and nothing reaches the endpoint.
-func TestCopilotModelWithNoCopilotAPIIsRefused(t *testing.T) {
-	for _, name := range []string{"nosuchapi", ""} {
-		t.Run("api="+name, func(t *testing.T) {
-			baseURL, requests := unknownAPIListener(t)
-			shown := name
-			if name == "" {
-				shown = "undefined"
-			}
-			provider, err := buildProviderForEntry("github-copilot", "m", ai.API(name), icodingagent.ModelEntry{
-				ProviderID: "github-copilot", ModelID: "m", BaseURL: baseURL, APIKey: "k", API: name, Input: []string{"text"},
-			}, newRuntimeTestServices(t), "", false, false)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = provider.Close() })
-			err = unknownAPIStream(t, provider)
-			if want := "No API provider registered for api: " + shown; err.Error() != want {
-				t.Errorf("error = %q, want %q", err, want)
-			}
-			if got := requests.Load(); got != 0 {
-				t.Errorf("requests at the endpoint = %d, want 0", got)
-			}
-		})
-	}
-}
-
 // Pi routes a model to its provider own stream only for an api that provider lists (compat.ts:236-239); a Copilot model whose api is none of the apis the Copilot catalog lists, or has none, is refused
 // at its request and no connection is made to the endpoint. The Copilot provider sent every such name as chat completions with the Copilot token before.
 func TestCopilotModelWithNoCopilotAPIIsRefused(t *testing.T) {
