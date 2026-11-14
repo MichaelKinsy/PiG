@@ -500,6 +500,32 @@ func (m *InteractiveMode) sessionToolActions() (extension.ToolActions, bool) {
 	return session.ToolActions(), true
 }
 
+// extensionAbort is the extension host's abort action: ctx.abort() of a subprocess extension in interactive mode. Pi's abort handler is `void this.session.abort()` (interactive-mode.ts:2077-2078, :4840-4857), and everything before abort()'s first await has run when the call returns: the flag for agent_settled is set, the retry, compaction and branch summary are cancelled and agent.abort() has aborted the run's AbortController (agent-session.ts:2519-2530, agent.ts:350-352). So a handler that holds ctx.signal sees it aborted once its call returns, and nothing waits for the end of the run: the run waits for the handler that made the call.
+//
+// The call arrives on a goroutine of the extension host. The owner loop may be busy with an earlier task, or waiting for the handler that made this call, so the cancellation is made here and not queued behind the loop: the host replies to the extension with the state of the run's signal, which must already be aborted. A Session cancels from any goroutine (RequestAbort). A mode that owns its agent aborts the run's signal here and leaves the loop only what it owns: renewing the abort context the next run starts with, which applies to the run this call aborted and not to one that began since.
+func (m *InteractiveMode) extensionAbort() {
+	if session, ok := m.opts.SessionHandle.(interface{ RequestAbort() }); ok {
+		session.RequestAbort()
+		return
+	}
+	if session := m.opts.SessionHandle; session != nil {
+		session.AbortRetry()
+		session.AbortCompaction()
+		session.AbortBranchSummary()
+	}
+	current := m.extensionAgent.Load()
+	var run context.Context
+	if current != nil {
+		run = current.Signal()
+		current.Abort()
+	}
+	_ = m.postToMain(m.runCtx, func() {
+		if current == nil || current.Signal() == run {
+			m.abortRun(m.runCtx)
+		}
+	})
+}
+
 func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	b := m.opts.SubprocessUIBridge
 	detachModelRegistry := WireModelOperations(b, ModelOperationBindings{
@@ -574,17 +600,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		b.SetHostAction("getExtensionStatuses", func() map[string]string { return m.statusLine.GetExtensionStatuses() })
 		b.SetHostAction("getAvailableProviderCount", func() int { return m.statusLine.ProviderCount() })
 	}
-	// upstream: interactive-mode.ts:2399-2401 and :4935-4937: ctx.abort() is `void this.session.abort()`. The abort cancels the retry delay, compaction, branch summary and run; nothing awaits the end of the run, so a handler the run awaits can call it. The owner loop runs the abort as one of its tasks.
-	b.SetHostAction("abort", func() {
-		_ = m.postToMain(m.runCtx, func() {
-			if m.opts.SessionHandle != nil {
-				m.opts.SessionHandle.AbortRetry()
-				m.opts.SessionHandle.AbortCompaction()
-				m.opts.SessionHandle.AbortBranchSummary()
-			}
-			m.abortRun(m.runCtx)
-		})
-	})
+	b.SetHostAction("abort", m.extensionAbort)
 	b.SetHostAction("getScopedModels", m.extensionScopedModels)
 	b.SetHostAction("hasPendingMessages", m.extensionHasPendingMessages)
 	b.SetHostAction("shutdown", m.requestExtensionShutdown)

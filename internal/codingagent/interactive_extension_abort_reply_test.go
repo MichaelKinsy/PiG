@@ -43,12 +43,14 @@ func (h *abortingHandle) RequestAbort() {
 }
 
 // abortReplyRig is an interactive mode with the extension host's abort and getSignal actions wired, an owner loop that drains posted tasks, and an agent whose runs block in the provider until their signal is cancelled.
+// A run the rig holds (holdRuns) also stays active after its signal is cancelled, as a run does while a handler it awaits is still executing.
 type abortReplyRig struct {
 	m       *InteractiveMode
 	handle  *abortingHandle
 	abort   func()
 	signal  func() context.Context
 	started chan struct{}
+	hold    atomic.Pointer[chan struct{}]
 	runs    sync.WaitGroup
 }
 
@@ -64,6 +66,9 @@ func newAbortReplyRig(t *testing.T, form abortReplyForm) *abortReplyRig {
 		StreamFn: func(ctx context.Context, _ *ai.Model, _ ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 			rig.started <- struct{}{}
 			<-ctx.Done()
+			if hold := rig.hold.Load(); hold != nil {
+				<-*hold
+			}
 			return nil, ctx.Err()
 		},
 	})
@@ -86,6 +91,17 @@ func newAbortReplyRig(t *testing.T, form abortReplyForm) *abortReplyRig {
 	rig.abort = bridge.actions["abort"].(func())
 	rig.signal = bridge.actions["getSignal"].(func() context.Context)
 	return rig
+}
+
+// holdRuns keeps a run active after its signal is cancelled, until the returned release is called: the run waits for the handler that made the abort call, which reads ctx.signal again once the call has returned.
+func (r *abortReplyRig) holdRuns(t *testing.T) (release func()) {
+	t.Helper()
+	hold := make(chan struct{})
+	r.hold.Store(&hold)
+	var once sync.Once
+	release = func() { once.Do(func() { close(hold) }) }
+	t.Cleanup(release)
+	return release
 }
 
 // startRun starts a run that blocks in its provider call until the run's signal is cancelled. It returns the run's signal as the extension host reads it, and a channel that closes when the run has ended.
@@ -140,12 +156,13 @@ func runEnds(t *testing.T, ended <-chan struct{}, what string) {
 }
 
 // The reply to ctx.abort() reflects the cancellation: while the owner loop is busy with an earlier task, the run's signal is aborted when the call returns, for
-// the signal the handler held and for a fresh read, and the run ends without the loop.
+// the signal the handler held and for a fresh read, and the run ends without the loop. The run is held after its signal is cancelled, as it is while the handler that made the call is still running.
 func TestExtensionAbortAbortsTheRunSignalBeforeItReturnsWhileTheOwnerLoopIsBusy(t *testing.T) {
 	for _, form := range abortReplyForms {
 		t.Run(string(form), func(t *testing.T) {
 			rig := newAbortReplyRig(t, form)
 			held, ended := rig.startRun(t)
+			releaseRun := rig.holdRuns(t)
 			release := rig.parkOwnerLoop(t)
 
 			rig.abort()
@@ -156,6 +173,7 @@ func TestExtensionAbortAbortsTheRunSignalBeforeItReturnsWhileTheOwnerLoopIsBusy(
 			if now := rig.signal(); now != held || now.Err() == nil {
 				t.Fatalf("ctx.signal read after the call = %v (aborted %t), want the held signal, aborted", now, now != nil && now.Err() != nil)
 			}
+			releaseRun()
 			runEnds(t, ended, "the aborted run did not end while the owner loop was busy: the abort waits for the loop")
 			release()
 		})
@@ -168,6 +186,7 @@ func TestExtensionAbortTwiceInOneTurnIsIdempotent(t *testing.T) {
 		t.Run(string(form), func(t *testing.T) {
 			rig := newAbortReplyRig(t, form)
 			held, ended := rig.startRun(t)
+			releaseRun := rig.holdRuns(t)
 			release := rig.parkOwnerLoop(t)
 
 			rig.abort()
@@ -180,6 +199,7 @@ func TestExtensionAbortTwiceInOneTurnIsIdempotent(t *testing.T) {
 			if now := rig.signal(); now != held || now.Err() == nil {
 				t.Fatalf("ctx.signal after the second abort = %v, want the held signal, still aborted", now)
 			}
+			releaseRun()
 			runEnds(t, ended, "the run did not end after two aborts")
 			release()
 			onLoop(rig.m, rig.m.runCtx, func() {})
