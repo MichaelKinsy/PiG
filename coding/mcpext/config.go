@@ -429,6 +429,7 @@ func editMcpServers(path string, edit func(servers, parsed *orderedjson.Object) 
 	if err := os.MkdirAll(filepath.Dir(path), 0o777); err != nil {
 		return err
 	}
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	if err := atomicfile.WriteFile(path, out.Bytes(), 0o666); err != nil {
 		return errors.New(tools.NodeFSError(err, "open", path))
 	}

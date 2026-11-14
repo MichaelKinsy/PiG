@@ -466,6 +466,7 @@ func writeStoredModels(path string, entries []storedModels, root modelsRoot) err
 	if err := json.Indent(&indented, canonical, "", "  "); err != nil {
 		return fmt.Errorf("models store: encode: %w", err)
 	}
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	if err := atomicfile.WriteFile(path, indented.Bytes(), 0o600); err != nil {
 		return nodeerrno.FromPathError(err)
 	}

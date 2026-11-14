@@ -3740,6 +3740,7 @@ func saveSettingsPatchReplacing(path string, before, after Settings, order, repl
 	if err != nil {
 		return err
 	}
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	if err := atomicfile.WriteFile(path, encoded, 0o644); err != nil {
 		return nodeerrno.FromPathError(err)
 	}
