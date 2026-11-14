@@ -224,6 +224,8 @@ type InteractiveMode struct {
 	// turnSettled is closed when the active run settles; waitForIdle waits
 	// on it. Guarded by queueMu; nil while no run is active.
 	turnSettled chan struct{}
+	// turnEnded is closed when the goroutine of the run that turnSettled belongs to has returned, which is after the run's agent_settled handlers. The quit by keys waits for it (settleRunAtQuit). Guarded by queueMu.
+	turnEnded chan struct{}
 
 	// agent_settled handlers finish as one awaited dispatch before an action
 	// they start may begin another run. The mutex covers subprocess host-call

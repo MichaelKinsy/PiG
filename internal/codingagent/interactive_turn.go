@@ -292,6 +292,8 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 	m.queueMu.Lock()
 	m.turnActive.Store(true)
 	m.turnSettled = make(chan struct{})
+	ended := make(chan struct{})
+	m.turnEnded = ended
 	m.queueMu.Unlock()
 	m.workStart = time.Now()
 	m.statusLine.SetWorking(m.workingVisible)
@@ -302,6 +304,8 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 	session, runner := m.opts.SessionHandle, m.newRunner
 
 	go func() {
+		// Deferred first, so it closes last: after the settlement below, agent_settled included.
+		defer close(ended)
 		rejected := false
 		defer func() {
 			// Turn-end state (isIdle, workStart, statusLine, loaders) and the
