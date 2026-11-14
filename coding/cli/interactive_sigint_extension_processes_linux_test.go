@@ -28,7 +28,7 @@ func TestInteractiveSigintExitEndsTheExtensionProcesses(t *testing.T) {
 	}
 	binary := buildPigBinaryForSignalTest(t)
 	baseURL := "http://127.0.0.1:1/v1"
-	root, _, project, sessions, env := qsScratch(t, baseURL)
+	root, _, project, sessions, env := qsScratch(t, baseURL, "openai-completions")
 	extension := filepath.Join(root, "shutdown-holds.mjs")
 	started := filepath.Join(root, "shutdown-started")
 	if err := os.WriteFile(extension, []byte(strings.ReplaceAll(qsShutdownHolds, "@STARTED@", started)), 0o600); err != nil {
