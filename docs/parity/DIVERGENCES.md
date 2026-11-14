@@ -4074,3 +4074,65 @@ Call-site markers: `internal/latex/latex.go` (the `latexNegatedSymbols()[value]`
 Evidence: the five tests of the table. Each runs Pi's function from the vendored build of the pin on a table of the row's names plus ordinary names, and fails when Pi's answer is not the one written in the row or when PiG's is not: `go test ./internal/latex ./tui ./coding/extension ./internal/codingagent/prompts -run 'NamedLikeAnObjectPrototypeMember' -v` prints both answers per name. The ordinary names are equal on both sides: `\alpha`, `\not{=}`, `\nosuchsymbol`; the chunks `a`, the up arrow sequence, `nosuchkey`; the references `nosuchvar` and `#123456`; the tool `read`; the tool `plain`, with and without a guideline. Seven mutations, one per marker, each making PiG answer as Pi does for `constructor`, were run on 2026-11-13 and each turned its row's test red: the symbol lookup and the `\not` lookup, the key table, the theme variable, the MCP override, the guideline loop (made to panic as Pi throws) and the snippet lookup. Scenarios 100 and 102 state each side's output and exit code (three runs each) and have no equality comparator; 101 and 103 run the ordinary tool beside them and require equal output. 100 fails when the guideline loop is made to panic for `constructor` and 102 when the override lookup is made to answer as Pi's; 101 and 103 fail when the same two lookups are broken for the ordinary names. Not run: Pi 275dde410065 at the command line; where Pi puts the MCP tool named `constructor` instead of offering it; interactive mode with an extension tool so named.
 
 Parity allowance: only the names that are members of `Object.prototype`, at these five lookups. Per row: (1) is covered by its oracle test only: a scenario would need the model to answer with the command, and the test providers of both sides answer fixed directives only; every other source is compared by the oracle tests of `renderLatex`. (2) is covered by its oracle test only: a scenario cannot make the terminal deliver the word as one chunk; every other chunk is compared by the oracle tests of `parseKey`. (3) is reachable with a theme file and was run; it is covered by its oracle test and has no scenario now, because the same start screen also differs in its `Error: Failed to load theme` line for a separate cause, which is being fixed and is not recorded here; a per-side scenario becomes possible once that fix is merged; every other theme document is Pi's (`TestThemeJSONValidationMatchesPi` and the theme load oracles). (4) is reachable with a fixture MCP server and (5) with an extension tool; each is covered by its oracle test and has a scenario without an equality comparator (per-side asserts under D645: 102 and 100), with the ordinary tool asserted equal in a scenario beside it (103 and 101), because print mode answers one prompt per process and Pi runs no turn while a tool named `constructor` is registered; every other tool name and override pattern is Pi's (`TestValidateMcpServerConfigMatchesPi`), and every other tool selection is Pi's (`TestSystemPromptSectionsMatchPi`).
+
+## D649 A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's process stays while the handler holds a handle
+
+What: In RPC mode Pi starts its shutdown when stdin closes. With a second extension's `session_shutdown` handler that never settles, so that the dispose cannot return, Pi's process stays alive as long as its event loop holds a handle: an `agent_settled` handler of a Node extension that waits on a 3 s timer holds the exit for 3010-3020 ms (Pi 1.5.2 under a pipe, Node 24.22.2, 2026-11-14; without the second extension Pi exits at once, 5-15 ms). pig counts a settle-tail handler (`agent_before_settle`, `agent_settled`, a reload's handlers) of a runtime that has no microtask continuation as waiting once input ended (`Host.tailWaitsLocked`), so it does not hold the exit: a Go SDK `agent_settled` handler that waits on a 3 s timer, with and without watching its context, lets pig exit 0 after 15-40 ms where Pi holds 3.0 s. The cells are equal for a handler that waits on nothing (Pi: exit at once; pig: exit at once).
+
+Why: a native SDK cannot tell a settle-tail handler that waits on a timer from one that waits for the shutdown itself to cancel it, and the second kind must not hold the exit: `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` pins a Go handler that waits until the shutdown cancels it, which Pi has no counterpart of (a Node handler that waits for a shutdown signal holds no handle, so Pi's process ends under it). Holding for every native settle-tail handler would make that process wait for ever.
+
+Pi bug: none.
+
+Scope: an `agent_settled`, `agent_before_settle` or reload handler of an extension in a Go, Rust, Python or Lisp runtime that waits on a timer or another handle when RPC stdin closes. `coding/extension/host/subprocess` (`Host.tailWaitsLocked`). The interactive quit is not in scope: its dispose awaits the settle tail (an interactive `agent_settled` handler on a 3 s timer holds the quit in Pi and in pig with the second extension beside it: 2390-2399 ms and 2390-2406 ms).
+
+Owner decision: proposed, not yet approved by the owner (drafted by the QuitEveryRuntime2 lane on 2026-11-14 on Main's ruling of the same day that the record is a draft).
+
+SCRUTINIZED:pending-owner
+
+Remove when: the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), so that the host can hold the exit for exactly the handlers Pi holds it for.
+
+Call-site markers: `coding/extension/host/subprocess/host.go` (`Host.tailWaitsLocked`).
+
+Evidence: `coding/cli/rpc_shutdown_drain_go_test.go` (`TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown`: the handler that waits for the shutdown's cancel does not hold the exit) and `coding/extension/host/subprocess/quit_every_runtime_test.go` (`TestQuitDrainDoesNotWaitForANativeSettleTailHandler`).
+
+Parity allowance: observable only to an extension in a Go, Rust, Python or Lisp runtime whose `agent_settled`, `agent_before_settle` or reload handler waits on a handle when RPC stdin closes during a quit whose dispose cannot return: pig exits where Pi holds until the handle is gone.
+
+## D650 A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process exits at once
+
+What: Pi runs every extension in one Node process. At a quit (interactive: ctrl+d after the TUI stopped; RPC: stdin closed) whose dispose cannot return, because a `session_shutdown` handler or an awaited run handler never settles, the process still exits 0 as soon as its one event loop is empty: a handler that awaits a promise that never settles holds no handle. A handler that waits on a 3 s timer holds the exit for as long as the timer (and an interval or a listening socket for ever). pig runs a Go, Rust, Python or Lisp extension in a process of its own that reports no event loop, so the host cannot tell a handler that waits on a timer from one that waits on nothing: it sees only that the handler is in flight. The host holds the quit for a handler that is in flight where Pi holds it for a handle, so a handler that waits on nothing holds the quit for ever. The extension command is the kind this record decides on purpose (`Conn.holdsLoop`: an unanswered command of a native runtime holds the quit, unless the host serves only dialogs for it, which nothing can answer after input ended and which hold no handle in Pi either); the other kinds are held by the dispose itself, which awaits the run (turn_end, agent_end, interactive agent_settled) or the handler (session_shutdown).
+
+Each cell was run on 2026-11-14 with Pi 1.5.2 and pig of this record's place, Node 24.22.2, under tmux (interactive) or over a pipe (RPC), a second extension with a `session_shutdown` handler that never settles beside the handler of the row; "never" is a handler that awaits a promise that never settles (Node) or a goroutine that blocks for ever (Go SDK, with and without watching its context), "timer" a handler that waits 3 s on a timer. Milliseconds from the key or from the close to the exit; "no exit in 8 s" is the watch's end:
+
+| Kind (RPC close / interactive ctrl+d) | Pi, never | pig native, never | Pi, 3 s timer | pig native, 3 s timer |
+|---|---|---|---|---|
+| command, RPC | exit 0 after 10-20 ms | no exit in 8 s | 3012-3020 ms | 3011-3015 ms |
+| command, interactive | 96 ms | no exit in 7.7 s (before this place: 92-96 ms) | 2690-2698 ms | 2696-2700 ms |
+| turn_end, RPC | 15 ms | no exit in 8 s | 3012-3020 ms | 3024-3031 ms |
+| turn_end, interactive | 95-129 ms | no exit in 7.7 s | 2391-2404 ms | 2394-2402 ms |
+| agent_end, RPC | 15 ms | no exit in 8 s | 3014 ms | 3025-3033 ms |
+| agent_end, interactive | 93 ms | no exit in 7.7 s | 2413 ms | 2394-2402 ms |
+| agent_settled, interactive | 95-96 ms | no exit in 7.7 s | 2390-2399 ms | 2390-2406 ms |
+| session_shutdown, RPC | 20-45 ms | no exit in 8 s | 3021-3024 ms | 3025-3041 ms |
+| session_shutdown, interactive | 97 ms | no exit in 7.7 s | 3092-3100 ms | 3089-3095 ms |
+
+The Node runtime of pig holds the cells of turn_end, agent_end and the interactive agent_settled for ever too (the same run); that is a defect of the Node runtime, not of this record, and a later place cures it. The timer columns are equal. Only the Go SDK was measured for the cells with a native handler; the host's rule (`Conn.holdsLoop`) does not depend on the SDK, and the rows of the command kind run over the Go, Rust, Python and Lisp SDKs.
+
+What a user sees and what ends a quit that is held for ever (the same run, interactive, a Node interval in Pi against a native command that never returns in pig): the screen keeps the last frame, and the final frame and the restore sequence written after the key are the same in Pi and pig (2.70 KB in Pi, 2.64 KB in pig). ctrl+c ends it after 28 ms in Pi, 27-29 ms in pig (exit 130); SIGINT 24 ms and 24-25 ms (130); SIGTERM 26 ms in Pi (143); pig did not end at SIGTERM or SIGHUP at such a quit before this place's cure (no exit in 5.5 s) and now ends at once (143), as Pi does; SIGHUP 26 ms in Pi (129). A second ctrl+d does nothing in Pi and in pig. In RPC mode, where a second stdin close cannot happen, a single SIGTERM or SIGHUP during the shutdown does not interrupt it in Pi (no exit in 5 s) and in pig; a second SIGTERM exits 143 after 415 ms in both, SIGINT ends the process by the signal after 10 ms in Pi and 15 ms in pig.
+
+Why: a native SDK cannot tell a handler that waits on a timer, a socket or a child process from one that waits on nothing, and ending the quit while a handler holds a handle would cut off work that Pi finishes: a command on a TCP read ended 53 ms after its peer answered in Pi, a 3 s timer held Pi for 3.09 s. Holding while the handler is in flight keeps Pi's results for the cases that hold, and costs the quit that Pi's gets from a handler that waits on nothing. The user is never without an exit: the keys and signals above end the process at once, with the terminal restored and Pi's status.
+
+Pi bug: none.
+
+Scope: a handler of an extension in a Go, Rust, Python or Lisp runtime (the host cannot read its wait) of the kinds above, in a quit whose dispose cannot return. `coding/extension/host/subprocess` (`Conn.holdsLoop`, `Host.evaluateLoopDrain`). A dispose that returns ends the process at once as in Pi; a Node extension reports its own idle loop and is not in scope.
+
+Owner decision: proposed, not yet approved by the owner (drafted by the QuitEveryRuntime2 lane on 2026-11-14 on Main's ruling of the same day that the narrow rule is committed and the record is a draft).
+
+SCRUTINIZED:pending-owner
+
+Remove when: the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), or the host can read it.
+
+Call-site markers: `coding/extension/host/subprocess/conn.go` (`Conn.holdsLoop`).
+
+Evidence: `coding/cli/interactive_quit_every_runtime_linux_test.go` (`TestInteractiveQuitWaitsForACommandInFlight`: a command in flight holds the interactive quit in the Go, Rust, Python and Lisp SDKs and in a packed Node cell; `TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds`: ctrl+c, SIGINT, SIGTERM and SIGHUP end the held quit within 0.5 s with Pi's status, a second ctrl+d does not), `coding/cli/rpc_held_quit_native_command_signal_test.go` (`TestRPCHeldQuitOfANativeCommandEndsOnTheSignalsPiEnds`), `test/extension-conformance/quit_every_runtime_conformance_test.go` (`TestConformance_QuitWaitsForACommandInFlight` over every SDK, isolated, packed and fused) and `coding/extension/host/subprocess/quit_every_runtime_test.go` (`TestQuitDrainWaitsForANativeCommandInFlight`).
+
+Parity allowance: observable only to an extension in a Go, Rust, Python or Lisp runtime whose handler of the kinds above never returns and holds no handle, at a quit whose dispose cannot return: pig holds the quit where Pi exits, and the keys and signals end it.
