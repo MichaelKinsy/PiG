@@ -234,6 +234,7 @@ func (c *mcpCLI) parseOptions(args []string, known map[string]optionKind, maxPos
 			continue
 		}
 		name := arg[2:]
+		// pig divergence (D645): the known options are own entries, so `--constructor`, `--toString` or `--__proto__` is an unknown option; Pi's `known[name]` on a plain object finds the inherited member and takes the option, with the argument after it, as known.
 		kind, ok := known[name]
 		if !ok {
 			c.error(fmt.Sprintf("Unknown option %s.\n%s", typed, c.helpHint()))

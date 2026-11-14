@@ -259,10 +259,13 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	// Send any post-ready keys. Legacy scenarios use the top-level
 	// keys+settle fields; canonical staged scenarios use [[tmux.steps]].
 	if operationErr == nil && len(cfg.Steps) > 0 {
-		for _, step := range cfg.Steps {
+		for index, step := range cfg.Steps {
 			watched, err := runTmuxStep(ctx, session, transcriptPath, bin.Label, step)
 			frames = frames.merge(watched)
 			if err != nil {
+				if errors.Is(err, errVisibleStateHeld) {
+					err = fmt.Errorf("[[tmux.steps]] step %d: %w", index+1, err)
+				}
 				operationErr = err
 				break
 			}
@@ -374,8 +377,17 @@ func attachTranscript(ctx context.Context, session, path string) error {
 
 // runTmuxStep sends one step's keys and waits for the state it names. When the step carries a frame_watch, the pane is sampled from before the
 // keys until the step ends, and what the watch saw is returned whether or not the step succeeded.
+// errVisibleStateHeld is runTmuxStep's refusal of a step that sends keys and whose only evidence of them is a visible state the pane already showed.
+var errVisibleStateHeld = errors.New("the visible step state already held before the step's keys were sent")
+
 func runTmuxStep(ctx context.Context, session, transcriptPath, label string, step TmuxStep) (watched FrameWatchResult, err error) {
 	timeout := stepWaitTimeout(step)
+	visible := step.visibleContains(label)
+	// A state the pane showed before the keys is no evidence that they took effect (wait_contains has the same rule: paneSatisfiesWait counts
+	// only what is new since the baseline). A step whose keys must change nothing says so with a stable window, a settle or a frame watch.
+	if step.visibleWaitIsOnlyEvidence(visible) && paneHoldsState(capturePaneVisible(ctx, session), visible, step.WaitNotContains) {
+		return watched, fmt.Errorf("%w: includes=%q excludes=%q keys=%q: the wait says nothing about these keys; wait for a state they produce, or add wait_stable_milliseconds when they must change nothing", errVisibleStateHeld, visible, step.WaitNotContains, step.Keys)
+	}
 	if step.FrameWatch != nil {
 		watch := startFrameWatch(ctx, session, *step.FrameWatch)
 		defer func() { watched = watch.finish() }()
@@ -389,7 +401,6 @@ func runTmuxStep(ctx context.Context, session, transcriptPath, label string, ste
 			return watched, fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)
 		}
 	}
-	visible := step.visibleContains(label)
 	if len(visible) > 0 || len(step.WaitNotContains) > 0 {
 		if !waitForPaneState(ctx, session, visible, step.WaitNotContains, timeout) {
 			return watched, fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)
@@ -701,6 +712,19 @@ func paneContainsAll(pane string, patterns []string) bool {
 	return true
 }
 
+// paneHoldsState reports whether the pane shows every include and no exclude.
+func paneHoldsState(pane string, includes, excludes []string) bool {
+	if !paneContainsAll(pane, includes) {
+		return false
+	}
+	for _, pattern := range excludes {
+		if strings.Contains(pane, pattern) {
+			return false
+		}
+	}
+	return true
+}
+
 func waitForPaneState(ctx context.Context, session string, includes, excludes []string, timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -709,15 +733,7 @@ func waitForPaneState(ctx context.Context, session string, includes, excludes []
 		}
 		//nolint:gosec // G204 (class a): program is literal tmux; args are fixed capture-pane with a harness-generated session.
 		out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output()
-		pane := string(out)
-		matches := paneContainsAll(pane, includes)
-		for _, pattern := range excludes {
-			if strings.Contains(pane, pattern) {
-				matches = false
-				break
-			}
-		}
-		if matches {
+		if paneHoldsState(string(out), includes, excludes) {
 			return true
 		}
 		time.Sleep(50 * time.Millisecond)

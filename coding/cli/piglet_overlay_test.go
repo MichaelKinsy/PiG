@@ -180,7 +180,7 @@ func TestOverlayDropsRemovedCompiledInMembers(t *testing.T) {
 	t.Cleanup(func() { droppedBinaryMembers = nil })
 	droppedBinaryMembers = map[string]bool{"core": true}
 	merged := withFusedExtensionConfigs(
-		[]subprocess.ExtConfig{{Name: "core", Enabled: true}, {Name: "other", Enabled: true}}, nil)
+		[]subprocess.ExtConfig{{Name: "core", Enabled: true}, {Name: "other", Enabled: true}}, nil, nil)
 	if len(merged) != 1 || merged[0].Name != "other" {
 		t.Fatalf("fused configs = %#v", merged)
 	}

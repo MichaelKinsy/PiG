@@ -67,6 +67,7 @@ func TestExtensionThemeAPIsAreWired(t *testing.T) {
 // settings for persistence, and no TUI instance so rendering is skipped.
 func newThemeTestMode(t *testing.T) *InteractiveMode {
 	t.Helper()
+	restoreStartupTheme(t)
 	return &InteractiveMode{opts: InteractiveModeOptions{Settings: Settings{Theme: "dark"}}}
 }
 

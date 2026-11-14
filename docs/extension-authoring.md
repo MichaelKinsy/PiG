@@ -144,6 +144,8 @@ Detached Go work must have an owner that:
 
 A naked `go func()` with ignored error is not a valid translation of a Promise.
 
+Stop every goroutine, timer and ticker the extension started itself in its `session_shutdown` handler. `/reload` sends `session_shutdown` with reason `reload` to the running instance and then starts a new one. A subprocess extension's leftovers end with its process, which hides the leak. A member fused into a Piglet Binary has no process of its own: its code stays linked, so work it did not stop keeps running old code beside the new instance, also after a Binary built with `build.fusedReload: source` has switched the member to a subprocess built from its edited source (D31, [Piglet Binaries](site/docs/piglet-binaries.md#editing-a-fused-members-source)). Pi has the same rule: it cannot unload a module, so an old instance's timers run on until the extension clears them.
+
 ### `session_shutdown` when the terminal goes away
 
 A closed terminal window, `tmux kill-session` or a dropped connection ends an interactive session with exit status 129. The extension still gets `session_shutdown` with the reason `quit` first, as on SIGTERM, SIGHUP and a normal quit, in every SDK and every realization. Write the last record there: the host waits for the handler before it stops the extension's process.

@@ -25,6 +25,7 @@ The Main Screen preserves scrollback. The Editor changes only the required visib
 | Resize corrupts layout | Change width and height with ANSI, wide text, and images | Match Pi's final screen |
 | A hidden-row change cannot be repaired locally | Change content above the viewport | Use Pi's recovery render |
 | A parent container serves a cached child that Pi would have redrawn | Mutate each exported component type beneath a parent after a first render, and compare the parent's frame with the component invalidated down its tree and rendered with no cache (`child_cache_contract_test.go`, which also fails on a mutant it is meant to catch) | The parent shows what Pi would draw; a component that embeds a `Container` answers through `Container.IsDirty`, and one without children invalidates itself in every mutator; a new exported component type, including one that gets `Render` by embedding or on a value receiver, has a fixture or a reason |
+| A cursor or raw write lands among the bytes of a frame, or two goroutines are in the terminal writer | Park a frame in the writer and call `ShowOverlay`, `HideCursor`, `ShowCursor` or `WriteRaw` from another goroutine (`terminal_writer_ownership_test.go`) | Every write to the terminal holds the writer lock of the renderer; a frame keeps it from its first write to its last; a write from a `Render` goes before the bytes of its frame |
 
 ## Evidence
 

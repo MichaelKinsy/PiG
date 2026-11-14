@@ -58,6 +58,7 @@ func submenuOracleItems(n int, tag string) []tui.SelectItem {
 // and rebuild the list; selection-change, select and cancel callbacks) and SteppedSubmenu (Esc goes back a step, the last step
 // completes then cancels or loops, startAtStep/initialContext, context-dependent options and preselect). Every frame is compared byte for byte, colours included.
 func TestSettingsSubmenusMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	selectScripts := [][]string{
 		{},
 		{"\x1b[B", "\r"},
@@ -149,11 +150,10 @@ func TestSettingsSubmenusMatchPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousTheme, previousCaps, previousKitty := tui.ActiveTheme(), tui.GetCapabilities(), tui.IsKittyProtocolActive()
+	restoreStartupTheme(t)
+	previousKitty := tui.IsKittyProtocolActive()
 	tui.SetKittyProtocolActive(false)
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetKittyProtocolActive(previousKitty)
 	})
 	failures := 0

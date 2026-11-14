@@ -8,8 +8,7 @@ import (
 
 // Pi theme.ts:570-575 returns a loaded Theme without selecting it and returns undefined for missing names.
 func TestExtensionThemeLookupUsesPortablePaletteAndAbsence(t *testing.T) {
-	registry, active := tui.ActiveThemeRegistry(), tui.ActiveTheme().Name
-	t.Cleanup(func() { tui.SetThemeRegistry(registry); tui.SetThemeByName(active) })
+	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	tui.SetThemeByName("dark")
 	ui := &ExtUIContext{m: newThemeTestMode(t)}

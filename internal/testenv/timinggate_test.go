@@ -170,6 +170,9 @@ func TestTimingGatesAreListed(t *testing.T) {
 			switch d.Name() {
 			case ".git", "node_modules", "third_party", ".upstream", "testdata":
 				return filepath.SkipDir
+			case "tmp":
+				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's code.
+				return filepath.SkipDir
 			}
 			return nil
 		}

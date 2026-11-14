@@ -819,8 +819,17 @@ type tuiBase struct {
 	frameRenderRequest atomic.Uint32
 	renderGeneration   uint64
 	lastRenderAt       time.Time
-	now                func() time.Time
-	afterFunc          func(time.Duration, func()) stoppableTimer
+	// pacing answers scheduleRenderLocked's interval from lastFrameCost, what the last throttled frame took from its start to the return of its write; nil is Pi's constant (frame_pacing.go).
+	pacing        *FramePacing
+	lastFrameCost time.Duration
+	now           func() time.Time
+	afterFunc     func(time.Duration, func()) stoppableTimer
+
+	// quietAt is lastRenderAt of a frame that sent the terminal nothing, quietRun how many such frames ended there in a row, and shownAt and shownCost are lastRenderAt and lastFrameCost of the last frame before them; frameIntervalLocked reads them under the adaptive policy only (frame_pacing.go).
+	quietAt   time.Time
+	quietRun  int
+	shownAt   time.Time
+	shownCost time.Duration
 
 	// renderOnMain, when set, marshals a scheduled render onto the owner's
 	// main loop instead of running doRender on the throttle-timer
@@ -877,6 +886,11 @@ type tuiBase struct {
 	notifyingGeometry bool
 
 	mu sync.Mutex // protects render state
+	// outMu is held for every write to out and direct, so one goroutine at a time is in the terminal writer. A main-screen frame takes it when its components
+	// have rendered and keeps it to its last write, an alternate-screen frame takes it for its one write, and HideCursor, ShowCursor, WriteRaw and
+	// QueryCellSize take it for theirs: such a write from another goroutine is before the bytes of a frame or after them, as on the one event loop of Pi
+	// (tui.ts showOverlay: terminal.hideCursor(), then requestRender()), and one from a Render of the frame is before them. Taken after mu, never before it.
+	outMu sync.Mutex
 
 	stopped atomic.Bool // set by Stop(); prevents further Render() calls (RequestRender reads it from component goroutines)
 }
@@ -2131,6 +2145,7 @@ func (t *tuiBase) runDeferredRender(generation uint64) {
 
 // frameBeganLocked is what a frame does first: it draws the changes RequestRenderWithin was set for, so their timer is not needed. mu must be held.
 func (t *tuiBase) frameBeganLocked() {
+	t.frameBeforeLocked()
 	t.lastRenderAt = t.now()
 	if t.deferredRenderTimer != nil {
 		t.deferredRenderTimer.Stop()
@@ -2146,8 +2161,8 @@ func (t *tuiBase) scheduleRenderLocked() {
 	delay := time.Duration(0)
 	if !t.lastRenderAt.IsZero() {
 		elapsed := t.now().Sub(t.lastRenderAt)
-		if elapsed < minRenderInterval {
-			delay = minRenderInterval - elapsed
+		if interval := t.frameIntervalLocked(); elapsed < interval {
+			delay = interval - elapsed
 		}
 	}
 	generation := t.renderGeneration
@@ -2194,9 +2209,17 @@ func (t *tuiBase) renderScheduled(generation uint64) {
 // frame if more render requests arrived. It must run on whichever goroutine
 // owns component-tree mutation (the main loop when renderOnMain is set).
 func (t *tuiBase) renderAndReschedule() {
+	began := t.now()
+	terminal, counted := t.Terminal().(screenWriterTerminal)
+	var sent uint64
+	if counted {
+		sent = terminal.writesSent()
+	}
 	t.render()
 
 	t.mu.Lock()
+	t.lastFrameCost = t.now().Sub(began)
+	t.frameSentLocked(!counted || !terminal.ScreenWriterActive() || terminal.writesSent() != sent)
 	t.scheduleRenderLocked()
 	t.mu.Unlock()
 }
@@ -2381,6 +2404,10 @@ func (t *TuiMainScreen) doRender() {
 	// Resolve fake cursors before compositing so overlays and line slicing see plain SGR codes (tui-main-screen.ts doRender).
 	rootLines, rootVersion, kept := t.renderBorrowedSince(width, t.windowVersion)
 	newLines, unresolved := t.composeFrameLines(rootLines, width, height)
+	// The components have rendered, and what one of them wrote from its Render is out (the hidden cursor of a ShowOverlay, a WriteRaw). From here the frame
+	// only writes, and it keeps the terminal writer until its last write: a cursor or raw write from another goroutine waits for the whole frame.
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
 	hasOverlay := t.HasOverlay()
 	// The reset cache may compare with the last frame's input when that array
 	// is unchanged: a composed array is the renderer's own, and the root
@@ -2877,11 +2904,11 @@ func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, 
 		WriteToTerminal(t.out, buf.String())
 	}
 	t.hardwareCursorRow = targetRow
-	// Upstream shows or hides the cursor through terminal.showCursor/hideCursor, which bypass PI_TUI_WRITE_LOG.
+	// Upstream shows or hides the cursor through terminal.showCursor/hideCursor, which bypass PI_TUI_WRITE_LOG. The frame holds outMu.
 	if t.showHardwareCursor {
-		t.ShowCursor()
+		WriteToTerminal(t.cursorOut(), "\x1b[?25h")
 	} else {
-		t.HideCursor()
+		WriteToTerminal(t.cursorOut(), "\x1b[?25l")
 	}
 }
 
@@ -2897,18 +2924,26 @@ func (t *TuiMainScreen) RepaintAll() {
 
 // HideCursor hides the terminal cursor.
 func (t *tuiBase) HideCursor() {
-	WriteToTerminal(t.cursorOut(), "\033[?25l")
+	t.writeOwned(t.cursorOut(), "\033[?25l")
 }
 
 // WriteRaw writes data to the terminal as is, as upstream's
 // terminal.write does for a component that drives the terminal itself.
 func (t *tuiBase) WriteRaw(data string) {
-	WriteToTerminal(t.out, data)
+	t.writeOwned(t.out, data)
 }
 
 // ShowCursor shows the terminal cursor.
 func (t *tuiBase) ShowCursor() {
-	WriteToTerminal(t.cursorOut(), "\033[?25h")
+	t.writeOwned(t.cursorOut(), "\033[?25h")
+}
+
+// writeOwned is a write made outside the writes of a frame: it takes outMu, so it waits for the goroutine that is in the terminal writer, a frame until its
+// last write. A caller that holds outMu (a frame in its writes, a stop) writes with WriteToTerminal.
+func (t *tuiBase) writeOwned(out io.Writer, data string) {
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
+	WriteToTerminal(out, data)
 }
 
 // cursorOut is where cursor visibility goes: upstream's terminal.hideCursor and showCursor write to stdout directly, not through
@@ -2991,7 +3026,9 @@ func (t *TuiMainScreen) Start() {
 	t.mu.Unlock()
 	t.HideCursor()
 	if t.colorSchemeNotificationsEnabled() {
+		t.outMu.Lock()
 		writeColorSchemeNotifications(t.out, true)
+		t.outMu.Unlock()
 	}
 	t.RequestRender()
 }
@@ -3001,10 +3038,12 @@ func (t *TuiMainScreen) Stop() { t.StopWithOptions(StopOptions{}) }
 func (t *TuiMainScreen) StopWithOptions(options StopOptions) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
 	t.stopWithOptionsLocked(options)
 }
 
-// stopWithOptionsLocked also serves the overflow path, which already holds the render lock.
+// stopWithOptionsLocked also serves the overflow path, a frame in its writes: mu and outMu are held.
 func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 	t.stopped.Store(true)
 	t.pendingWidth = 0
@@ -3028,7 +3067,7 @@ func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 		}
 		WriteToTerminal(t.out, "\r\n")
 	}
-	t.ShowCursor()
+	WriteToTerminal(t.cursorOut(), "\x1b[?25h")
 }
 
 // drawBox draws a box with title and content lines. Content clipping and padding use terminal-cell width and preserve ANSI styling without splitting graphemes.

@@ -941,6 +941,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6a6fffa-7](#bf-6a6fffa-7) | The settings documentation now says that `images.blockImages` replaces each image sent to the model with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a6fffa-8](#bf-6a6fffa-8) | In `--mode json`, SIGTERM or SIGHUP during a tool call now stops the output and the session file where Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a6fffa-9](#bf-6a6fffa-9) | `TestSettingsSelectorMatchesPi` opens each row under the Kitty keyboard protocol with CSI-u keys; no… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6aa9446](#bf-6aa9446) | An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-6ac4c8c](#bf-6ac4c8c) | Ctrl+V pastes clipboard text in Termux | A fix Pi shipped that PiG ported | Linux, Android and Termux | 0.5.0 |
 | [BF-6acf6a0](#bf-6acf6a0) | fix(durable/core): keep telemetry out of the hot publish body; report type; trace test | PiG's own defect | All platforms | Unreleased |
 | [BF-6b584ff](#bf-6b584ff) | The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -1157,6 +1158,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8897a1b](#bf-8897a1b) | Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-88bbdd2](#bf-88bbdd2) | A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-892827f](#bf-892827f) | `coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8934633](#bf-8934633) | `pig config` loads the remaps in `keybindings.json`, as `/settings` and the `--resume` picker already did | PiG's own defect | All platforms | Unreleased |
 | [BF-893ff97](#bf-893ff97) | A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not… | PiG's own defect | All platforms | 0.5.0 |
@@ -1425,7 +1427,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D633](#bf-d633) | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D636](#bf-d636) | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D645](#bf-d645) | A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -1636,6 +1637,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bfae6a0](#bf-bfae6a0) | Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\`, `+` and `_`: the word… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c019ea9](#bf-c019ea9) | A panic in a background goroutine of an interactive session no longer ends PiG with only a stderr dump | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c05aa12](#bf-c05aa12) | A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement`… | PiG's own defect | All platforms | Unreleased |
+| [BF-c0d8731](#bf-c0d8731) | tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
 | [BF-c10ae73](#bf-c10ae73) | In RPC mode, runs that an extension command's handler sends with `sendMessage` or `sendUserMessage` start in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c1162b4](#bf-c1162b4) | `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +… | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
@@ -1913,6 +1915,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-df43f7b](#bf-df43f7b) | RPC: a `prompt` that starts a run, and a `prompt` that fails in preparation, answer one microtask later than… | PiG's own defect | All platforms | Unreleased |
 | [BF-df5964b](#bf-df5964b) | A context-overflow error from a LiteLLM proxy's pre-call check (`litellm.ContextWindowExceededError ...… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-df5964b-2](#bf-df5964b-2) | A Zhipu/Z.ai usage-limit error (error code 1308, sent as HTTP 429) is no longer retried: the plan's limit… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-df5e3e8](#bf-df5e3e8) | An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-df96b6a](#bf-df96b6a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-dfa57b3](#bf-dfa57b3) | An OpenAI Responses request for a conversation with no messages sends `"input": []` instead of `"input": null` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e045fa5](#bf-e045fa5) | fix(durable/codemode): count image blocks in a generateImages result as Pi does, and compare the code mode… | PiG's own defect | All platforms | Unreleased |
@@ -14953,6 +14956,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries`, `internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain`, `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi` and 4 more in docs/bug-ledger.json
 - **Release note:** `TestSettingsSelectorMatchesPi` opens each row under the Kitty keyboard protocol with CSI-u keys; no difference.
 
+### BF-6aa9446
+
+**An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: "Operation aborted", or "Aborted after N retry attempt(s)" when an automatic retry was running.
+- **Root cause:** Pi's interactive mode rewrites the errorMessage of an aborted assistant message in its message_end listener (interactive-mode.ts:3686-3697), on the object the Session persists afterwards (agent-session.ts:1208-1230). PiG rewrote a copy on the UI loop after persistence, so the session file, turn_end / agent_end handlers and the next request kept the provider's text. The mode now subscribes a synchronous Session listener at Pi's place in the order, with the retry text and Pi's plural rule, and unsubscribes where Pi's stop() does (:7293). print, json and rpc are unchanged.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6aa94467d3` (2026-11-13)
+- **Tests:** `internal/codingagent/interactive_test.go::TestInteractiveMode_AbortedMessageNamesRetryAttempts`
+- **Release note:** An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: "Operation aborted", or "Aborted after N retry attempt(s)" when an automatic retry was running. The session file, an extension's `turn_end` and `agent_end` handlers and the next request carried the provider's text before; print, JSON and RPC modes keep the provider's text, as in Pi.
+
 ### BF-6ac4c8c
 
 **Ctrl+V pastes clipboard text in Termux**
@@ -17936,6 +17953,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8897a1b41f` (2026-10-30, #11566)
 - **Tests:** `internal/codingagent/interactive_resource_test.go::TestResourceCollisionDiagnostics_SkillIncludesSourceInfo`, `internal/codingagent/loaded_resources_diagnostics_test.go::TestShowLoadedResourcesListingThenDiagnostics`, `internal/codingagent/loaded_resources_quiet_upstream_test.go::TestLoadedResourcesQuietReloadUpstream`, `internal/codingagent/skill_collision_test.go::TestShowLoadedResourcesSkillConflicts`, `internal/codingagent/skill_file_metadata_test.go::TestSkillFileMetadataRetainsCollisionDiagnostics`
 - **Release note:** Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of them are validation warnings for skills that still load, not name collisions. Carried forward from Pi f14813e9 (earendil-works/pi#11521), past the 1.4.0+b3a29f11 pin.
+
+### BF-88bbdd2
+
+**A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D645)
+- **Symptom:** A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`, `__proto__` and the like) is treated as any other name in more places (D645).
+- **Root cause:** `pig mcp add constructor -- <command>` reports the server as added (it said `Replaced` the first time), `pig mcp add __proto__ -- <command>` writes the server to `mcp.json` (it was not written at all), and `pig mcp remove` of such a name that the file does not hold says there is no such server (it said `Removed`).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.
+- **Fix commits:** `3fb47cfd56` (2026-11-13), `43e001e9e3` (2026-11-13), `88bbdd2eaa` (2026-11-13)
+- **Tests:** `ai/env_keys_prototype_names_oracle_test.go::TestAProviderNamedLikeAnObjectPrototypeMemberHasNoEnvironmentKey`, `coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi`, `coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure`, `coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi`, `coding/mcpext/server_name_prototype_names_oracle_test.go::TestAnMcpServerOrOptionNamedLikeAnObjectPrototypeMemberIsTreatedAsAnyOtherName`, `coding/mcpext/server_name_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberIsListedWithoutAnExposure`, `coding/stored_credential_prototype_names_oracle_test.go::TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential`, `internal/codingagent/keybindings_file_oracle_test.go::TestKeybindingsFileLoadingMatchesPi` and 14 more in docs/bug-ledger.json
+- **Release note:** A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`, `__proto__` and the like) is treated as any other name in more places (D645). `pig mcp add constructor -- <command>` reports the server as added (it said `Replaced` the first time), `pig mcp add __proto__ -- <command>` writes the server to `mcp.json` (it was not written at all), and `pig mcp remove` of such a name that the file does not hold says there is no such server (it said `Removed`). A `keybindings.json` key so named is left as written: it was renamed to text such as `function Object() { [native code] }` and the file was rewritten. Pi 1.5.2 does the old things. In Node extensions, `ctx.ui.theme.fg`, `bg`, `getFgAnsi` and `getBgAnsi` throw `Unknown theme color: <token>` for a token so named, as Pi does and as the other SDKs did: `fg` threw `open.endsWith is not a function`, `bg` drew the text of a native function before the text, and the two getters returned a function. `ctx.ui.setStatus("__proto__", text)` is a status the extension's own footer reads back in the same turn, a provider registered under the name `__proto__` is read like any other provider, and `pi.getSettings()` hands the settings without any `__proto__` member.
 
 ### BF-892827f
 
@@ -21705,21 +21738,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `29b020152d` (2026-11-13), `b7eb5ae11d` (2026-11-13)
 - **Tests:** `chord/next/surfaces/surfaces_active_language_test.go::TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted`, `chord/next/surfaces/surfaces_active_theme_test.go::TestFollowsAThemePickThePrincipalStoredBeforeTheFollowerStarted`, `chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick`, `chord/nextnode/app/app_web_stored_pick_test.go::TestAPageAppliesAThemeStoredBeforeItOpens`, `chord/nextnode/app/app_web_stored_pick_test.go::TestThePagesLanguageFollowsAPickStoredBeforeThePageOpens`
 
-### BF-D645
-
-**A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D645)
-- **Symptom:** For a name that is a member of `Object.prototype`, Pi draws the source text of a native function inside a formula, returns a function where a key id is promised, reports `TypeError: value.startsWith is not a function` for a theme color, does not offer an MCP tool of a `direct` server, and ends print mode with `function is not iterable` before any turn when an extension tool has such a name. Pi has no test for such a name at any of the five sites.
-- **Root cause:** these are defects of Pi, and PiG does not port a defect. None of Pi's five answers is something a user or a caller can use: the text of a native function drawn inside a formula, a function returned as a key id, a `TypeError` in place of the loader's own message, a function returned as an exposure, and a system prompt that cannot be built because a tool has a certain name. Reproducing them would mean adding the members of `Object.prototype` to five Go tables by hand.
-- **User impact:** Wrong display
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.
-- **Fix commits:** `3fb47cfd56` (2026-11-13), `43e001e9e3` (2026-11-13)
-- **Tests:** `coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi`, `coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure`, `internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi`, `internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline`, `internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol`, `tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey`, `tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi`, `tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable`
-
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -24619,6 +24637,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `65a97c7f91` (2026-11-13), `c05aa12b6c` (2026-11-13)
 - **Tests:** `coding/session_overflow_owner_test.go::TestExtensionOwnedCompactionContinuesAfterOverflow`, `test/extension-conformance/boundary_draft_members_test.go::TestBoundaryDraftNullAndAbsentMembersAcrossSDKs`, `test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch`
 - **Release note:** A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement` member now stops the run as it does in Pi, with Pi's message that the replacement "must be null or contain string/array content": nothing is appended and the run does not continue. Before this fix, PiG took the absent member for null, left the target out of model context and continued. The cause: the host decoded an absent member and a null one into the same value.
+
+### BF-c0d8731
+
+**tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement.
+- **Root cause:** A frame holds the render lock for all of its writes, so two frames never ran together. HideCursor, ShowCursor, WriteRaw and QueryCellSize held nothing, and through them ShowOverlay, the hide of the last overlay, SetShowHardwareCursor and Start: on a renderer that keeps its own frame timer the caller wrote while a frame of the timer goroutine was in the writer. Pi writes from one event loop (tui.ts showOverlay: terminal.hideCursor(), then requestRender()): a cursor write is before a frame or after it.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c0d873133b` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement. Every write of a renderer now holds its writer lock and a frame keeps it from its first write to its last, so such a write is before the frame or after it, as on the one event loop of Pi; a write a component makes from its `Render` still goes before the bytes of its frame. The interactive mode of pig draws and calls from one loop and showed no fault.
 
 ### BF-c1055c4
 
@@ -28462,6 +28494,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `df5964b4e7` (2026-10-29)
 - **Tests:** None recorded.
 - **Release note:** A Zhipu/Z.ai usage-limit error (error code 1308, sent as HTTP 429) is no longer retried: the plan's limit resets after hours, not seconds (Pi #11537).
+
+### BF-df5e3e8
+
+**An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected.
+- **Root cause:** In interactive mode the abort host action waited for the run to settle. A handler the run awaits (message_update, tool_call, ...) that called ctx.abort() therefore hung the run, the next prompt and the quit. Pi starts the abort and returns (interactive-mode.ts:2399-2401, :4935-4937 void this.session.abort()); the action now posts the abort to the owner loop and returns.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a079f7223f` (2026-11-13), `df5e3e87ff` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session: the call returns at once, the turn ends aborted and the next prompt runs, in the Node, Go, Python and Rust SDKs. Before, the turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected. Messages queued while the turn ran go back to the editor instead of running after the abort, as in Pi. Affects 0.2.0 through 0.7.0.
 
 ### BF-df96b6a
 
@@ -32464,7 +32510,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D632 | Resource loader operations that overlap wait for each other, where Pi's reloads interleave and can mix their… | [BF-68dfec5](#bf-68dfec5) |
 | D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
 | D636 | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | [BF-D636](#bf-d636) |
-| D645 | A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects… | [BF-D645](#bf-d645) |
+| D645 | A name that is an `Object.prototype` member is no entry of fifteen Stock lookups, where Pi's plain objects… | [BF-88bbdd2](#bf-88bbdd2) |
 
 ## Fix-titled commits that are not bugs in a release
 

@@ -28,6 +28,7 @@ func (m *InteractiveMode) rebuildChat(populateHistory bool) {
 func (m *InteractiveMode) rebuildChatFrom(entries []SessionEntry, populateHistory bool) {
 	m.disposeArminComponents()
 	m.chatContainer.Clear()
+	m.transcriptEmptied()
 	m.tuiInst.ForceFullRender()
 	m.renderSessionEntriesFrom(entries, populateHistory)
 }
@@ -568,6 +569,7 @@ func (m *InteractiveMode) addCustomEntryToChat(entry CustomEntry) {
 	if renderer == nil {
 		return
 	}
+	m.extensionRenderersMounted()
 	// Pi renders the same session-manager entry object on every rebuild, so the renderer's per-entry state survives compaction, /tree and the
 	// resume paint; the session's identity for the entry id is that object.
 	var identity *extension.RenderIdentity
@@ -594,6 +596,7 @@ func (m *InteractiveMode) appendCustomMessage(message CustomMessageEntry, meta m
 	var renderer tui.MessageRenderer
 	if m.newRunner != nil {
 		if registered := m.newRunner.MessageRenderer(message.CustomType); registered != nil {
+			m.extensionRenderersMounted()
 			customMessage := extension.CustomMessage{
 				CustomType: message.CustomType,
 				Content:    message.Content,

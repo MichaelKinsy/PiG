@@ -12,6 +12,7 @@ import (
 
 // The paired probe compares raw managed-tool rows, including ANSI resets and wrapping.
 func TestManagedToolRenderProbe(t *testing.T) {
+	restoreStartupTheme(t)
 	original := tui.ActiveTheme().Name
 	t.Cleanup(func() { tui.SetTheme(original) })
 	type trace struct {
