@@ -859,13 +859,13 @@ func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 	builder := consumer.builder
 	var chunk mistralSSEChunk
 	data := jsjson.NormalizeIntegers(raw)
-	if err := json.Unmarshal(data, &chunk); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &chunk); err != nil {
 		normalized, ok := []byte(nil), false
 		if _, mismatch := errors.AsType[*json.UnmarshalTypeError](err); mismatch {
 			normalized, ok = normalizeMistralChunkJS(data)
 		}
 		chunk = mistralSSEChunk{}
-		if !ok || json.Unmarshal(normalized, &chunk) != nil {
+		if !ok || jsstring.UnmarshalKeepingSurrogates(normalized, &chunk) != nil {
 			return err
 		}
 	}
@@ -895,7 +895,7 @@ func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 		return nil
 	}
 	var choice mistralSSEChoice
-	if err := json.Unmarshal(chunk.Choices[0], &choice); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(chunk.Choices[0], &choice); err != nil {
 		return err
 	}
 
@@ -918,7 +918,7 @@ func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 	case string(trimmed) == "null":
 		return errors.New("Cannot read properties of null (reading 'content')")
 	default:
-		if err := json.Unmarshal(trimmed, &delta); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(trimmed, &delta); err != nil {
 			return err
 		}
 	}
@@ -934,7 +934,7 @@ func (consumer *mistralChunkConsumer) consume(raw json.RawMessage) error {
 	case trimmed[0] != '[':
 		return errors.New("toolCalls is not iterable")
 	default:
-		if err := json.Unmarshal(trimmed, &calls); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(trimmed, &calls); err != nil {
 			return err
 		}
 	}
@@ -951,12 +951,12 @@ func (consumer *mistralChunkConsumer) content(raw json.RawMessage) error {
 	var items []json.RawMessage
 	if trimmed[0] == '"' {
 		items = []json.RawMessage{trimmed}
-	} else if err := json.Unmarshal(trimmed, &items); err != nil {
+	} else if err := jsstring.UnmarshalKeepingSurrogates(trimmed, &items); err != nil {
 		return errors.New("contentItems is not iterable")
 	}
 	for _, rawItem := range items {
 		var text string
-		if json.Unmarshal(rawItem, &text) == nil && bytes.HasPrefix(bytes.TrimSpace(rawItem), []byte(`"`)) {
+		if jsstring.UnmarshalKeepingSurrogates(rawItem, &text) == nil && bytes.HasPrefix(bytes.TrimSpace(rawItem), []byte(`"`)) {
 			// GLM models on Mistral send empty content deltas around thinking and tool calls; opening a block for them splits thinking (mistral-conversations.ts:633-635).
 			if delta := sanitizeSurrogates(text); delta != "" {
 				builder.textDelta(delta)
@@ -967,7 +967,7 @@ func (consumer *mistralChunkConsumer) content(raw json.RawMessage) error {
 			return errors.New("Cannot read properties of null (reading 'type')")
 		}
 		var item mistralContentItem
-		if err := json.Unmarshal(rawItem, &item); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(rawItem, &item); err != nil {
 			if _, ok := errors.AsType[*json.UnmarshalTypeError](err); !ok {
 				return err
 			}
@@ -1062,7 +1062,7 @@ func mistralArgumentsDelta(raw json.RawMessage) string {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) > 0 && trimmed[0] == '"' {
 		var text string
-		if json.Unmarshal(trimmed, &text) == nil {
+		if jsstring.UnmarshalKeepingSurrogates(trimmed, &text) == nil {
 			return text
 		}
 	}

@@ -1918,9 +1918,10 @@ func (names anthropicStreamNames) toolName(name string) string {
 	return name
 }
 
-// anthropicEvent decodes the JSON of one SSE record after the generator chain has accepted it.
+// anthropicEvent decodes the JSON of one SSE record after the generator chain has accepted it. JSON.parse keeps a lone UTF-16 surrogate of a string
+// (the half of a character a server split over two deltas), so the decode does.
 func decodeAnthropicEvent(sse anthropicStreamEvent, target any) error {
-	if err := json.Unmarshal(jsjson.NormalizeIntegers([]byte(sse.JSON)), target); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(jsjson.NormalizeIntegers([]byte(sse.JSON)), &target); err != nil {
 		return &anthropicSSEParseError{sse: sse.serverSentEvent, cause: err}
 	}
 	return nil
@@ -1941,7 +1942,7 @@ func decodeAnthropicDeltaEvent(sse anthropicStreamEvent, ev *anthEventContentBlo
 // decodeAnthropicDeltaEventReflect is the decode with json.Unmarshal and the second look, for every record the fast decode leaves.
 func decodeAnthropicDeltaEventReflect(sse anthropicStreamEvent, ev *anthEventContentBlockDelta) error {
 	text := sse.JSON
-	err := json.Unmarshal(jsonwire.Bytes(text), ev)
+	err := jsstring.UnmarshalKeepingSurrogates(jsonwire.Bytes(text), ev)
 	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		if coerced, ok := coerceAnthropicDelta([]byte(text)); ok {
 			*ev, err = coerced, nil

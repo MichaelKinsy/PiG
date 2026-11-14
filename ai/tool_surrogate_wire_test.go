@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"maps"
 	"net/http"
 	"regexp"
-	"slices"
 	"strings"
 	"testing"
 
@@ -109,7 +107,6 @@ func toolSurrogateResult(t *testing.T, row toolSurrogateRow, transport http.Roun
 		if err := json.Unmarshal(row.Compat, model.ProviderMeta.Compat); err != nil {
 			t.Fatal(err)
 		}
-		withHighUnits(model.ProviderMeta.Compat.OpenRouterRouting)
 	}
 	options := ai.StreamOptions{APIKey: row.APIKey, MaxRetries: new(int), Fetch: &http.Client{Transport: transport}}
 	if row.Hook {
@@ -145,31 +142,10 @@ func TestToolLoneSurrogatesReachTheWireAsPi(t *testing.T) {
 	}
 }
 
-// withHighUnits writes the three bytes of U+D83D in the place of each U+FFFD of value's strings and member names. Current behavior: the decode
-// of ai.OpenAICompat is encoding/json's, which reads a lone unit as U+FFFD where JSON.parse keeps it, so the test puts the unit back after the
-// decode; a caller that builds the compat's maps in Go can hold the unit.
-func withHighUnits(value any) any {
-	const unit = "\xed\xa0\xbd"
-	switch value := value.(type) {
-	case string:
-		return strings.ReplaceAll(value, "\uFFFD", unit)
-	case []any:
-		for i, item := range value {
-			value[i] = withHighUnits(item)
-		}
-	case map[string]any:
-		for _, name := range slices.Collect(maps.Keys(value)) {
-			member := withHighUnits(value[name])
-			delete(value, name)
-			value[strings.ReplaceAll(name, "\uFFFD", unit)] = member
-		}
-	}
-	return value
-}
-
 // pi: packages/ai/src/api/openai-completions.ts:979-980 hands model.compat.openRouterRouting on as the request's provider member, as it is.
 // PiG writes that member through a marshaler of its own when the compat lists the object's members in an order (ai.compatObject), so a lone
-// UTF-16 surrogate in a value, in an array, in a nested object and in a member name reaches the wire as the bytes Pi posts.
+// UTF-16 surrogate in a value, in an array, in a nested object and in a member name reaches the wire as the bytes Pi posts. The compat is
+// decoded from JSON, as models.json and an extension's registration give it: the decode keeps the unit, as JSON.parse does.
 func TestCompatObjectLoneSurrogatesReachTheWireAsPi(t *testing.T) {
 	row := toolSurrogateRow{Name: "openRouterRouting", API: "openai-completions", ID: "m", Provider: "custom", BaseURL: "http://127.0.0.1:9/v1", APIKey: "k", ContextWindow: 128000,
 		Context: json.RawMessage(`{"systemPrompt":"s","tools":[],"messages":[{"role":"user","content":"go","timestamp":1}]}`),
