@@ -11,7 +11,23 @@ import (
 	"golang.org/x/sys/windows"
 
 	"github.com/MichaelKinsy/PiG/internal/fsretry"
+	"github.com/MichaelKinsy/PiG/internal/ownerfile"
 )
+
+// createTemp creates the temporary file beside the target, with the owner-only DACL of ownerfile.CreateTemp, and for a file that does not exist yet
+// gives it the mode asked for, as the replacement did before (Windows keeps only the read-only attribute of a mode; ReplaceFileW and MoveFileEx keep the DACL).
+func createTemp(dir, pattern string, perm os.FileMode, existed bool) (*os.File, error) {
+	file, err := ownerfile.CreateTemp(dir, pattern)
+	if err != nil || existed {
+		return file, err
+	}
+	if err := file.Chmod(perm); err != nil {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+		return nil, err
+	}
+	return file, nil
+}
 
 // carryIdentity does nothing on Windows: ReplaceFileW merges the replaced file's security descriptor into the replacement.
 func carryIdentity(*os.File, os.FileInfo) error { return nil }

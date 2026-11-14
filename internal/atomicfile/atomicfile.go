@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
-
-	"github.com/MichaelKinsy/PiG/internal/ownerfile"
 )
 
 var (
@@ -29,9 +27,10 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 	inPlaceReporter.Store(&report)
 }
 
-// WriteFile replaces the file at path with data through a temporary file in the same directory: created private (never readable by anyone else, even
-// for a moment), written, fsynced and renamed over the file, whose directory entry is then flushed. A failure at any step removes the temporary file
-// and leaves the old file as it was. perm is the mode of a file that does not exist yet; an existing file keeps its mode.
+// WriteFile replaces the file at path with data through a temporary file in the same directory: written, fsynced and renamed over the file, whose
+// directory entry is then flushed. A failure at any step removes the temporary file and leaves the old file as it was. perm is the mode of a file that
+// does not exist yet, which it gets as open(2) gives it (the process umask taken out, as in Pi's writeFileSync); an existing file keeps its mode.
+// The temporary file of an existing file is created private (never readable by anyone else, even for a moment) and given the file's mode at the end.
 //
 // The rule: the file is replaced when that changes nothing but the inode; otherwise it is written in place, with the same bytes, exactly as Pi writes
 // it (writeFileSync), once, and the in-place write is reported to [SetInPlaceReporter]. A symbolic link is followed to its target, as writeFileSync does,
@@ -84,10 +83,11 @@ func writeInPlace(path string, data []byte, perm os.FileMode, cause error) error
 	return os.WriteFile(path, data, perm)
 }
 
-// replaceThroughTemp writes data to a temporary file beside path and puts it in place of path. refusal is non-nil, with the file untouched and the
-// temporary file removed, where the platform refuses the replacement and the caller must write in place; err is a failure.
+// replaceThroughTemp writes data to a temporary file beside path and puts it in place of path. mode is the mode of the file being replaced, or the mode
+// asked for a file that does not exist yet. refusal is non-nil, with the file untouched and the temporary file removed, where the platform refuses the
+// replacement and the caller must write in place; err is a failure.
 func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.FileInfo) (refusal, err error) {
-	temp, err := ownerfile.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
+	temp, err := createTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*", mode, existing != nil)
 	if err != nil {
 		if refusesNewFile(err) {
 			return err, nil
@@ -108,10 +108,10 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		if err = copyAttributes(temp, path); err != nil {
 			return fmt.Errorf("an extended attribute cannot be carried over: %w", err), nil
 		}
-	}
-	// The mode comes last: an ACL set before it fixes the group bits, and chown can clear set-id bits.
-	if err = temp.Chmod(mode); err != nil {
-		return nil, err
+		// The mode comes last: an ACL set before it fixes the group bits, and chown can clear set-id bits. A new file already has the mode open gave it.
+		if err = temp.Chmod(mode); err != nil {
+			return nil, err
+		}
 	}
 	if _, err = temp.Write(data); err != nil {
 		return nil, err
