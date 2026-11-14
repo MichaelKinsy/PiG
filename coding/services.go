@@ -725,7 +725,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 type modelRuntimeAuthMissingError struct{ provider string }
 
 func (e *modelRuntimeAuthMissingError) Error() string {
-	return "provider is not configured: " + e.provider
+	return "Provider is not configured: " + e.provider
 }
 
 func mergeRuntimeHeaders(base map[string]string, override ai.ProviderHeaders) ai.ProviderHeaders {

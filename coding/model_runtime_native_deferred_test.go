@@ -124,7 +124,7 @@ func TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider(t *testin
 				}
 			})
 			reply := within(t, func() *ai.AssistantMessage { return runtime.FetchDeferred(t.Context(), model, handle) })
-			if called || reply.StopReason != ai.StopReasonError || !strings.Contains(reply.ErrorMessage, "provider is not configured: ext-deferred") {
+			if called || reply.StopReason != ai.StopReasonError || !strings.Contains(reply.ErrorMessage, "Provider is not configured: ext-deferred") {
 				t.Errorf("called=%v reply=%+v", called, reply)
 			}
 		})
@@ -166,7 +166,7 @@ func TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider(t *testin
 				return nil
 			}
 		})
-		if err := runtime.CancelDeferred(t.Context(), model, handle); err == nil || !strings.Contains(err.Error(), "provider is not configured: ext-deferred") || called {
+		if err := runtime.CancelDeferred(t.Context(), model, handle); err == nil || !strings.Contains(err.Error(), "Provider is not configured: ext-deferred") || called {
 			t.Errorf("unconfigured provider: err=%v called=%v", err, called)
 		}
 	})
