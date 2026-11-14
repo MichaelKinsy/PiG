@@ -6,7 +6,7 @@ PiG keeps its state under `~/.pig` by default. It does not read or write Pi's `~
 
 Use `/settings` in an interactive session to change common preferences. When you edit a configuration file by hand, run `/reload` so the running session picks up the change. `/reload` rereads settings, keybindings, extensions, skills, prompt templates, themes and context files.
 
-`/reload` keeps the editor blocked until extension reload handlers finish. It rebuilds the transcript with the refreshed display settings before `session_start` notifications appear.
+`/reload` keeps the editor blocked until extension reload handlers finish. It rebuilds the transcript with the refreshed display settings before `session_start` notifications appear. Keys you type while a reload runs are discarded, as in Pi; a key that arrives after the reload has completed goes to the editor.
 
 ## Configuration root
 
