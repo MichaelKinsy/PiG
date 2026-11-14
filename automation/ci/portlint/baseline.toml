@@ -1930,12 +1930,6 @@ snippet = "go q.drain()"
 
 [[hit]]
 check = "golifetime"
-file = "coding/extension/host/inproc/mcp_servers.go"
-func = "Runner.onMcpServersChange"
-snippet = "go r.drainMcpServersChanges()"
-
-[[hit]]
-check = "golifetime"
 file = "coding/extension/host/inproc/ui_prompt.go"
 func = "Runner.enqueueUIPromptLocked"
 snippet = "go r.drainUIPromptEvents()"

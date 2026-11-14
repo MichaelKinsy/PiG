@@ -1605,6 +1605,8 @@ func (s *Session) Close() error {
 	// upstream: packages/coding-agent/src/core/agent-session.ts:dispose invalidates the runner the session built; a borrowed Runtime or Clone-source runner stays live for its owner.
 	if runner := s.currentRunner(); runner != nil && runner != s.sharedRunner {
 		runner.Invalidate("")
+		// The mcp_servers_change emissions the runner started end with its background context; Close joins them.
+		defer runner.DrainMcpServersChanges()
 	}
 	s.shutdownRuns()
 	if s.detachAgentEvents != nil {

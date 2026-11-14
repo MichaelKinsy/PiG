@@ -576,6 +576,22 @@ func Extension() *sdk.Extension {
 		ctx.Notify("active_tools:"+strings.Join(names, ","), "info")
 		return nil
 	})
+	// mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+	ext.Command("mcp_register_run", "Register two MCP servers and report the active tools after each", func(ctx sdk.Context, _ string) error {
+		var reads []string
+		for _, name := range []string{"conformance-run-a", "conformance-run-b"} {
+			if err := ctx.RegisterMcpServer(name, sdk.McpServerConfig{URL: "https://" + name + ".invalid/mcp"}); err != nil {
+				return err
+			}
+			names, err := ctx.GetActiveTools()
+			if err != nil {
+				return err
+			}
+			reads = append(reads, strings.Join(names, ","))
+		}
+		ctx.Notify("mcp_register_run:"+strings.Join(reads, "|"), "info")
+		return nil
+	})
 	// provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
 	ext.Command("provider_probe_register", "Register a provider with one model", func(ctx sdk.Context, _ string) error {
 		var config sdk.ProviderConfig
@@ -2141,6 +2157,25 @@ func Extension() *sdk.Extension {
 			return queued[0], nil
 		})
 		eventProbeOn[name] = append(eventProbeOn[name], off)
+		return nil
+	})
+	// event_probe_fail subscribes to the event named by the argument with a handler that reads the active tools from the host, reports the servers of the event and then fails (TestConformance_McpServersChangeFirstHandlerInAnotherProcessIsSentAndItsFailureReported).
+	ext.Command("event_probe_fail", "Subscribe to the event named by the argument with a handler that fails", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			servers, _ := data["servers"].([]any)
+			names := make([]string, 0, len(servers))
+			for _, server := range servers {
+				entry, _ := server.(map[string]any)
+				names = append(names, fmt.Sprint(entry["name"]))
+			}
+			// The read is the handler's first host call: nothing of the handler reaches the host before it.
+			if _, err := hctx.GetActiveTools(); err != nil {
+				return nil, err
+			}
+			hctx.Notify("event_probe_fail:"+name+":"+strings.Join(names, ","), "info")
+			return nil, fmt.Errorf("event_probe_fail: %s handler failed", name)
+		})
 		return nil
 	})
 	ext.Command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", func(ctx sdk.Context, args string) error {

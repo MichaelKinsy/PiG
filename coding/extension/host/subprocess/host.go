@@ -4581,6 +4581,10 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				parent = dispatchContext
 			}
 		}
+		if event == "mcp_servers_change" {
+			// The registration that fired the event waits for its first handler's acknowledgment (inproc Runner.onMcpServersChange). A handler in another process acknowledges here, before a frame is written, so a registration never waits on extension IPC; the request is still sent and its failure reported. Upstream runs that handler's synchronous part inside the registration (runner.ts:465-468).
+			invocation.Acknowledge(parent)
+		}
 		boundaryWire := boundarywire.FromContext(parent)
 		if boundaryWire != nil {
 			boundaryWire.HandlerStarted()

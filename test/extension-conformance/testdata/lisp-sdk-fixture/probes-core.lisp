@@ -275,6 +275,14 @@
                                                                   (nreverse names)))))
   (pig:command ext "active_tools_get" "Report the active tools"
                (lambda (ctx args) (declare (ignore args)) (core-info ctx (concatenate 'string "active_tools:" (core-join (coerce (pig:ctx-get-active-tools ctx) 'list))))))
+  ;; mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+  (pig:command ext "mcp_register_run" "Register two MCP servers and report the active tools after each"
+               (lambda (ctx args) (declare (ignore args))
+                 (let ((reads '()))
+                   (dolist (name '("conformance-run-a" "conformance-run-b"))
+                     (pig:ctx-register-mcp-server ctx name (pig:obj "url" (concatenate 'string "https://" name ".invalid/mcp")))
+                     (push (core-join (coerce (pig:ctx-get-active-tools ctx) 'list)) reads))
+                   (core-info ctx (concatenate 'string "mcp_register_run:" (core-join (nreverse reads) "|"))))))
   (pig:command ext "commands-probe" "Read the host's slash commands"
                (lambda (ctx args) (declare (ignore args))
                  (core-info ctx (pig:to-json (coerce (loop for c across (pig:ctx-get-commands ctx)
