@@ -158101,6 +158101,17 @@
       "shapeHash": "sha256:e904a113f67f19d56da5a6f7cdeca4d35c337d18fb6b4821398dfff4a13f7978"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderProxyComponent.holdEarlyClick",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "renderProxyComponent.holdEarlyClick",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event github.com/MichaelKinsy/PiG/tui.TuiMouseEvent) bool"
+      },
+      "shapeHash": "sha256:8d3db4b0c62167a1fe79530cc43e9b6566478cf0b21ec22395987aa7ecc5d616"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderProxyComponent.request",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "renderProxyComponent.request",

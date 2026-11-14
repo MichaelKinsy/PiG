@@ -1205,6 +1205,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/106-click-pair-in-one-write-hits-drawn-layout.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[compaction]",
+            "capture_end": "details of second card"
+          },
+          "reason": "Owned visible surface: Two clicks written together are both resolved on the frame that was on screen: the second opens the card drawn on its row, not the card the first click moves there",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
