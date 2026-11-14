@@ -842,8 +842,11 @@ func TestInteractiveMode_AbortPushesErrorIntoPendingTools(t *testing.T) {
 	ch <- agent.MessageEndEvent{Message: msg}
 	close(ch)
 
+	// Each event passes the mode's Session listener before the owner loop applies it, as in production (subscribeSessionListener): the listener gives the aborted message its text.
+	session := &recordingCompactHandle{}
 	var comp *tui.ToolExecutionComponent
 	for ev := range ch {
+		m.handleSessionEvent(session, ev)
 		m.handleAgentEvent(ev)
 		if pending := m.toolByID["tc_1"]; pending != nil {
 			comp = pending
