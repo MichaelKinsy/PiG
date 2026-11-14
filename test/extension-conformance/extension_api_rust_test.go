@@ -358,7 +358,7 @@ func TestRustSDKProviderModelTypes(t *testing.T) {
 			t.Fatalf("registered provider = %+v (found %v)", config, ok)
 		}
 		chat, image, classifier := config.Models[0], config.Models[1], config.Models[2]
-		if chat.ID != "chat-1" || (chat.Type != "" && chat.Type != ai.ModelTypeChat) || chat.ContextWindow != 128000 || !chat.Reasoning {
+		if chat.ID != "chat-1" || (chat.Type != "" && chat.Type != ai.ModelTypeChat) || chat.ContextWindow != 54321 || chat.MaxTokens != 4321 || !chat.Reasoning {
 			t.Fatalf("chat entry = %+v", chat)
 		}
 		if image.ID != "image-1" || image.Type != ai.ModelTypeImage || image.API != "openrouter-images" || !reflect.DeepEqual(image.Output, []string{"image", "text"}) {

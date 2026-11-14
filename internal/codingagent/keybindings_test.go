@@ -251,6 +251,7 @@ func TestKeybindingsManagerLegacyShortNamesMigrateTui(t *testing.T) {
 }
 
 func TestResolvedBindingsReturnsDetachedSnapshot(t *testing.T) {
+	restoreTUIKeybindings(t)
 	manager := NewKeybindingsManager(t.TempDir())
 	resolved := manager.GetResolvedBindings()
 	if len(resolved["app.clear"]) == 0 {

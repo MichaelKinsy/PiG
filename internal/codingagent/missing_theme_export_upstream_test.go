@@ -18,7 +18,7 @@ import (
 // Ports packages/coding-agent/test/suite/regressions/5596-missing-theme-export.test.ts:25-95. ExportSessionToHTML is the Session export path called by /export and RPC export_html; it uses the active theme without rewriting the configured preference.
 func TestMissingConfiguredThemeExportsWithActiveFallback(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
-	t.Cleanup(func() { tui.SetTheme("dark") })
+	icodingagent.RestoreStartupTheme(t)
 	cwd := t.TempDir()
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: t.TempDir()})
 	if err != nil {

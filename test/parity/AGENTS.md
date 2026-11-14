@@ -20,6 +20,7 @@ Pinned Pi is the behavior oracle. A scenario proves only its asserted path. Gene
 | Normalization hides a defect | Inspect raw and normalized output | Fix PiG or cite an approved divergence |
 | A crop excludes the difference | Compare the complete owning surface | Keep the difference visible |
 | Timing changes queue order | Use barriers and acknowledgements | Assert exact order without retries |
+| A step's visible wait names a state the pane showed before its keys | The runner fails the step before it sends them | Wait for a state the keys produce, or declare no change with `wait_stable_milliseconds` |
 | A generated count is treated as proof | Trace it to reviewed mappings and execution | Keep denominator and evidence separate |
 | Oracle version drifts | Check binary version, tag, commit, and package lock | Fail before comparison |
 | Evidence cannot be repeated | Replay its command in an isolated environment | Reproduce the same contract |

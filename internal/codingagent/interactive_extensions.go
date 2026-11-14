@@ -82,6 +82,25 @@ func (m *InteractiveMode) deliverUserMessage(content any, deliverAs extension.De
 	})
 }
 
+// extensionAbort is an extension's ctx.abort() in interactive mode, for subprocess and in-process extensions alike. It is Pi's restoreQueuedMessagesToEditor({ abort: true }): the queued steering and follow-up messages go back to the editor, then `void this.session.abort()` cancels the retry delay, compaction, branch summary and run. Both happened when it returns, as in Pi, where they run before abort()'s first await: ctx.hasPendingMessages() is false and the run's signal is aborted. Nothing waits for the end of the run, so a handler the run awaits can call it. The owner loop runs it as one of its tasks (inline for a caller on the loop), and a mode that stops first drops it.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:2399-2401, :4925-4941
+func (m *InteractiveMode) extensionAbort() {
+	ctx := m.runCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	_ = m.runOnMainAndWait(ctx, func() error {
+		m.restoreQueuedMessagesToEditor(false)
+		if m.opts.SessionHandle != nil {
+			m.opts.SessionHandle.AbortRetry()
+			m.opts.SessionHandle.AbortCompaction()
+			m.opts.SessionHandle.AbortBranchSummary()
+		}
+		m.abortRun(m.runCtx)
+		return nil
+	})
+}
+
 // activeBuiltinToolNames returns the names of built-in tools that are
 // currently active (i.e., that refreshAgentTools will actually create and
 // add to the agent). If ActiveBuiltinTools is nil, all built-in tools are
@@ -228,13 +247,9 @@ func (m *InteractiveMode) wireInprocContextActions() {
 		GetSignal:          m.extensionSignal,
 		IsProjectTrusted:   func() bool { return m.projectTrusted() },
 		HasPendingMessages: m.extensionHasPendingMessages,
-		Abort: func() {
-			if m.agent != nil {
-				m.abortFn()
-			}
-		},
-		Shutdown:        m.requestExtensionShutdown,
-		GetContextUsage: m.extensionContextUsage,
+		Abort:              m.extensionAbort,
+		Shutdown:           m.requestExtensionShutdown,
+		GetContextUsage:    m.extensionContextUsage,
 		GetSystemPrompt: func() string {
 			return m.currentSystemPrompt()
 		},
@@ -595,21 +610,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		b.SetHostAction("getExtensionStatuses", func() map[string]string { return m.statusLine.GetExtensionStatuses() })
 		b.SetHostAction("getAvailableProviderCount", func() int { return m.statusLine.ProviderCount() })
 	}
-	// Upstream abort() cancels the retry delay, compaction, branch summary
-	// and run, then awaits waitForIdle.
-	b.SetHostAction("abort", func() {
-		if err := m.postToMain(m.runCtx, func() {
-			if m.opts.SessionHandle != nil {
-				m.opts.SessionHandle.AbortRetry()
-				m.opts.SessionHandle.AbortCompaction()
-				m.opts.SessionHandle.AbortBranchSummary()
-			}
-			m.abortRun(m.runCtx)
-		}); err != nil {
-			return
-		}
-		_ = m.waitForIdle(m.runCtx)
-	})
+	b.SetHostAction("abort", m.extensionAbort)
 	b.SetHostAction("getScopedModels", m.extensionScopedModels)
 	b.SetHostAction("hasPendingMessages", m.extensionHasPendingMessages)
 	b.SetHostAction("shutdown", m.requestExtensionShutdown)

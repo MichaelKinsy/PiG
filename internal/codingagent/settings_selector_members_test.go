@@ -17,9 +17,7 @@ func TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback(t *testing.T) 
 	initSettingsSelectorTheme(t)
 	// The image rows exist only on a terminal with image support (settings-selector.ts supportsImages), so the test fixes the capabilities
 	// instead of reading the ones of the terminal it runs in.
-	previousCapabilities := tui.GetCapabilities()
 	tui.SetCapabilities(tui.TerminalCapabilities{Images: tui.ImageProtocolKitty, TrueColor: true, Hyperlinks: true})
-	t.Cleanup(func() { tui.SetCapabilities(previousCapabilities) })
 	fired := map[string]string{}
 	record := func(name string) func(value any) {
 		return func(value any) { fired[name] = fmt.Sprint(value) }

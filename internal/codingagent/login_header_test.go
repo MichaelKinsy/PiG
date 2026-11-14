@@ -338,8 +338,8 @@ func TestLoginHeaderRendererCachesDefensivelyAndTracksTheme(t *testing.T) {
 	options := LoginHeaderOptions{TrueColor: true, OperationalLines: []string{"Pig v1"}}
 	renderer := newLoginHeaderRenderer(definition, options)
 	options.OperationalLines[0] = "changed outside renderer"
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
-	defer tui.SetTheme("dark")
 
 	first := renderer.Render(66)
 	first[0] = "changed returned line"

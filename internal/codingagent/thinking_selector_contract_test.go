@@ -16,6 +16,7 @@ import (
 // confirm and cancel have no highlighted row to act on, and up/down do nothing), the highlight surviving a filter rebuild and a cleared query, the save
 // key typed into the search when no save callback exists, and page, home and end keys reaching the search Input instead of the list.
 func TestThinkingSelectorBoundariesMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	all := []string{"off", "minimal", "low", "medium", "high", "xhigh"}
 	up, down, enter, esc, save, backspace := "\x1b[A", "\x1b[B", "\r", "\x1b", "\x13", "\x7f"
 	cases := []thinkingProbe{
@@ -66,11 +67,7 @@ func TestThinkingSelectorBoundariesMatchPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousTheme, previousCaps := tui.ActiveTheme(), tui.GetCapabilities()
-	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
-	})
+	restoreStartupTheme(t)
 	for i, probe := range probes {
 		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 		tui.SetTheme(probe.Theme)

@@ -210,8 +210,7 @@ func checkFrameError(t *testing.T, frame []byte) {
 	var env struct{ Type string }
 	got := UnmarshalFrame(frame, &env)
 	if want == nil {
-		var syntax *SyntaxError
-		if errors.As(got, &syntax) {
+		if _, ok := errors.AsType[*SyntaxError](got); ok {
 			t.Fatalf("%q: UnmarshalFrame refused a document the scanner accepts: %v", frame, got)
 		}
 		return
@@ -310,11 +309,9 @@ func TestInterfaceStringsAreTheirOwnText(t *testing.T) {
 	}
 	var wg sync.WaitGroup
 	for range 8 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			decode()
-		}()
+		})
 	}
 	wg.Wait()
 }

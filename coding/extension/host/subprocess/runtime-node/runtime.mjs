@@ -768,7 +768,7 @@ class RuntimeModelRegistry {
     return this.modelRuntime;
   }
 
-  _providerState(provider) { return this.host.registryState.providers?.[provider]; }
+  _providerState(provider) { return ownEntry(this.host.registryState.providers, provider); }
 
   async refresh(options = {}) {
     const result = await this.host.call("refreshModelRegistry", {
@@ -1045,7 +1045,7 @@ export class ThemeShim {
       const color = parseColor(value);
       colors[token] = color;
       if (VIEW_THEME_TOKENS[token] === "bg") backgrounds[token] = backgroundAnsi(color, mode);
-      else foregrounds[token] = foregroundAnsi(color, mode) + (this.foregrounds[token]?.endsWith?.("\x1b[2m") ? "\x1b[2m" : "");
+      else foregrounds[token] = foregroundAnsi(color, mode) + (ownEntry(this.foregrounds, token)?.endsWith?.("\x1b[2m") ? "\x1b[2m" : "");
     }
     derived = { foregrounds, backgrounds, colors: Object.freeze(colors) };
     // A surface whose override changes every frame (a track color) must not grow this without bound.
@@ -1076,13 +1076,13 @@ export class ThemeShim {
   // The host sends each foreground as Pi's getFgAnsi opening, which ends in SGR 2 for a faint token (theme.ts:399-402). Pi's fg closes a faint token with SGR 22;39 (theme.ts:363), so the faint attribute does not leak past the text.
   fg(token, text) {
     const value = String(text ?? "");
-    const open = this.foregrounds[token] || "";
+    const open = ownEntry(this.foregrounds, token) || "";
     if (!open) return this.unknownOrUnstyled(token, value);
     return `${open}${value}${open.endsWith("\x1b[2m") ? "\x1b[22;39m" : "\x1b[39m"}`;
   }
   bg(token, text) {
     const value = String(text ?? "");
-    const open = this.backgrounds[token] || "";
+    const open = ownEntry(this.backgrounds, token) || "";
     return open ? `${open}${value}\x1b[49m` : this.unknownOrUnstyled(token, value);
   }
   // A token the palette lacks is Pi's `Unknown theme color` throw (theme.ts:374); a theme the host has not sent a palette to has no tokens to lack.
@@ -1099,12 +1099,12 @@ export class ThemeShim {
   // Upstream Theme.getFgAnsi, getBgAnsi, getColorMode, getThinkingBorderColor
   // and getBashModeBorderColor over the host's palette.
   getFgAnsi(color) {
-    const ansi = this.foregrounds[color];
+    const ansi = ownEntry(this.foregrounds, color);
     if (!ansi) throw new Error(`Unknown theme color: ${color}`);
     return ansi;
   }
   getBgAnsi(color) {
-    const ansi = this.backgrounds[color];
+    const ansi = ownEntry(this.backgrounds, color);
     if (!ansi) throw new Error(`Unknown theme color: ${color}`);
     return ansi;
   }
@@ -2010,6 +2010,27 @@ function createNoOpUI(ui) {
   };
 }
 
+// ownEntry and setOwnEntry read and write a table that is a plain object by its own entries. A name an extension, a file or the host supplies may be a
+// member of Object.prototype (constructor, toString, __proto__): `table[name]` answers for it with the inherited member, and `table.__proto__ = value`
+// sets the table's prototype and makes no entry. Pi keeps these tables in Maps (the theme's colors, the footer's statuses, the model runtime's providers).
+function ownEntry(table, name) {
+  return table !== null && table !== undefined && Object.hasOwn(table, name) ? table[name] : undefined;
+}
+function setOwnEntry(table, name, value) {
+  Object.defineProperty(table, name, { value, writable: true, enumerable: true, configurable: true });
+}
+
+// withoutProtoMembers copies a JSON value the host sent, leaving out every member named `__proto__`.
+function withoutProtoMembers(value) {
+  if (Array.isArray(value)) return value.map(withoutProtoMembers);
+  if (value === null || typeof value !== "object") return value;
+  const copy = {};
+  for (const [name, member] of Object.entries(value)) {
+    if (name !== "__proto__") copy[name] = withoutProtoMembers(member);
+  }
+  return copy;
+}
+
 // viewArgs builds the argument of a ui.view.mount or ui.view.update call, leaving out the members the caller did not give.
 function viewArgs(head, content) {
   const args = {};
@@ -2090,7 +2111,7 @@ class RuntimeUI {
     };
     const statuses = footerData.extensionStatuses ??= {};
     if (text === undefined || text === "") delete statuses[key];
-    else statuses[key] = String(text);
+    else setOwnEntry(statuses, key, String(text));
     this.runtime.fireAndForget("ui.setStatus", { key, text });
     if (this.runtime.footerFactory) this.runtime.renderSpecialSurface("footer");
   }
@@ -3861,7 +3882,8 @@ export class Runtime {
     }
     if (Object.hasOwn(snapshot, "flags")) this.state.flags = { ...snapshot.flags };
     // Settings are absent until the Host has some (StatePayload).
-    if (Object.hasOwn(snapshot, "settings")) this.state.settings = snapshot.settings;
+    // pig divergence (D645): the settings an extension reads with pi.getSettings() hold no `__proto__` member at any depth. PiG keeps such a key of a settings file as one more unknown key, and after JSON.parse it would be an own key here; Pi's merge of the project settings sets a prototype with it instead.
+    if (Object.hasOwn(snapshot, "settings")) this.state.settings = withoutProtoMembers(snapshot.settings);
     // Pi's TUI and its extensions share one capability cache; here the host
     // owns the terminal, so its resolved capabilities seed the cache pi-tui's
     // Markdown reads.
@@ -4658,13 +4680,13 @@ export class Runtime {
 
   // keylessVirtualProvider is whether name is a provider of only virtual models that the Host's state does not report configured. withVirtualModels lists such a provider keyless (virtual-models.ts:187-199), so Pi has it configured and available as soon as a virtual model is registered (model-runtime.ts:974-982), and keeps it so. The Host's provider state lists only the providers a registration, a models.json entry or a credential defines, so it has none for this one.
   keylessVirtualProvider(name) {
-    const state = this.hostRegistry.providers?.[name];
+    const state = ownEntry(this.hostRegistry.providers, name);
     return state?.configured !== true && state?.modelsConfig === undefined && piBuiltinProvider(name) === undefined && !(this.hostRegistry.registered ?? []).some((entry) => entry.name === name) && this.nativeProviderObjects.get(name) === undefined && this.nativeProviders.get(name) === undefined;
   }
 
   // overlayProvider rewrites one provider of the view from this process's own registration of it, as Pi's recompose and snapshot update do (model-runtime.ts:298-340, 910-957): its models, whether it is configured and what its auth status reports, and for a provider with no registration left, the registration layer the snapshot still lists.
   overlayProvider(name) {
-    const hostState = this.hostRegistry.providers?.[name];
+    const hostState = ownEntry(this.hostRegistry.providers, name);
     const native = this.nativeProviderObjects.get(name)?.provider ?? this.nativeProviders.get(name);
     const extension = native === undefined ? this.registeredProviderConfig(name) : undefined;
     const registered = native !== undefined || extension !== undefined;
@@ -4705,7 +4727,7 @@ export class Runtime {
       if (hostState?.authStatus?.source !== "runtime" && !stored) {
         authStatus = status ?? (checked ? hostState.authStatus : marked ? { configured: true, source: "environment", label: "configured provider" } : { configured: false });
       }
-      providers[name] = { ...hostState, configured: checked || marked, usingOAuth: hostState?.usingOAuth === true || (marked && oauthOnly), authStatus };
+      setOwnEntry(providers, name, { ...hostState, configured: checked || marked, usingOAuth: hostState?.usingOAuth === true || (marked && oauthOnly), authStatus });
     } else {
       // unregisterProvider (model-runtime.ts:951-957) recomposes without the registration layer and rewrites the models; its configured mark and check result stay until the next availability pass.
       listedRegistration = listedRegistration.filter((entry) => entry.name !== name);
@@ -4716,24 +4738,24 @@ export class Runtime {
         if (hostState.authStatus?.source !== "runtime" && hostState.authStatus?.source !== "stored") {
           authStatus = status ?? (hostState.configured === true ? (hostState.authStatus?.source === "environment" ? hostState.authStatus : { configured: true, source: "environment", label: "configured provider" }) : { configured: false });
         }
-        providers[name] = { ...rest, composed: rest.modelsConfig !== undefined, authStatus };
+        setOwnEntry(providers, name, { ...rest, composed: rest.modelsConfig !== undefined, authStatus });
       }
     }
     // A provider of only virtual models needs no credentials: withVirtualModels lists it keyless (virtual-models.ts:187-199), and registerVirtualModel marks it configured at once, before its refresh lands (model-runtime.ts:974-982).
     if (provider === undefined && virtual.length > 0) {
-      const state = providers[name];
-      providers[name] = { ...state, configured: true, usingOAuth: state?.usingOAuth === true, authStatus: state?.authStatus?.configured === true ? state.authStatus : { configured: true, source: "environment", label: "virtual" } };
+      const state = ownEntry(providers, name);
+      setOwnEntry(providers, name, { ...state, configured: true, usingOAuth: state?.usingOAuth === true, authStatus: state?.authStatus?.configured === true ? state.authStatus : { configured: true, source: "environment", label: "virtual" } });
     }
     // Availability follows the provider's auth (virtual-models.ts withVirtualModels): a virtual model this process registered is available when its provider is configured, and one it removed is not.
-    const available = providers[name]?.availableModelIds;
+    const available = ownEntry(providers, name)?.availableModelIds;
     if (Array.isArray(available)) {
       const ids = new Set(available);
       for (const write of this.virtualWrites.values()) {
         if (write.provider !== name) continue;
         if (write.model === undefined) ids.delete(write.id);
-        else if (providers[name].configured === true) ids.add(write.id);
+        else if (ownEntry(providers, name).configured === true) ids.add(write.id);
       }
-      providers[name] = { ...providers[name], availableModelIds: [...ids] };
+      setOwnEntry(providers, name, { ...ownEntry(providers, name), availableModelIds: [...ids] });
     }
     this.registryProviders.delete(name);
     this.registryState = {
@@ -4765,7 +4787,7 @@ export class Runtime {
   getRegistryProvider(id) {
     const native = this.contextValues.modelRegistry.getRegisteredNativeProvider(id);
     if (native) return native;
-    const state = this.registryState.providers?.[id];
+    const state = ownEntry(this.registryState.providers, id);
     const hasModels = this.hasModelsOf(id);
     const config = this.registeredProviderConfig(id) ?? this.registryState.registered?.find(entry => entry.name === id)?.config ?? state?.extensionConfig;
     // A registration held here is a provider even when the snapshot and the model list have none yet.
@@ -5117,7 +5139,7 @@ export class Runtime {
     }
     if (!config) throw new Error("Provider config is required when registering by name");
     // A registration made while the extension loads is queued, as Pi's loader queues it (loader.ts:217-218); the model runtime that applies the queue validates it and reports the rejection as a diagnostic, and the extension stays loaded. After the load Pi's registerProvider validates the incoming registration on its own, before it touches the stored configuration, then merges its defined values over the previous effective root (model-runtime.ts:753-766).
-    if (this.loadState === "active") piProviderComposer().validateExtensionProvider(name, piBuiltinProvider(name), this.registryState.providers?.[name]?.modelsConfig, config);
+    if (this.loadState === "active") piProviderComposer().validateExtensionProvider(name, piBuiltinProvider(name), ownEntry(this.registryState.providers, name)?.modelsConfig, config);
     // A loading member merges over its own queued root, else over the cell's active root, as Pi's flush merges over the effective registration.
     const merged = { ...(this.loadState === "active" ? this.registeredProviderConfig(name) ?? this.foreignProviderConfigForMerge(name) : this.registeredProviderConfigs.get(name) ?? this.providerConfigObjects.get(name)?.config) };
     for (const [key, value] of Object.entries(config)) {

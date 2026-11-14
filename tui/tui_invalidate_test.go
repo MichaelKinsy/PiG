@@ -46,6 +46,9 @@ func invalidateScreens(t *testing.T) map[string]func() invalidateScreen {
 	return map[string]func() invalidateScreen{
 		"main screen": func() invalidateScreen {
 			ui := NewWithOutput(&bytes.Buffer{}, 60, 14)
+			// The test is the loop that owns the components and the frames, as the interactive mode is (SetRenderDeadline): a frame is drawn when the test
+			// renders, not on a timer goroutine beside the lines that read and invalidate the components.
+			ui.SetRenderDeadline(func(time.Time) {})
 			return invalidateScreen{ui.Add, ui.ShowOverlay, ui.Render, ui.Invalidate}
 		},
 		"alternate screen": func() invalidateScreen {

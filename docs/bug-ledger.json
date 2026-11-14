@@ -25570,6 +25570,28 @@
       ]
     },
     {
+      "id": "BF-6aa9446",
+      "title": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi…",
+      "symptom": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: \"Operation aborted\", or \"Aborted after N retry attempt(s)\" when an automatic retry was running.",
+      "rootCause": "Pi's interactive mode rewrites the errorMessage of an aborted assistant message in its message_end listener (interactive-mode.ts:3686-3697), on the object the Session persists afterwards (agent-session.ts:1208-1230). PiG rewrote a copy on the UI loop after persistence, so the session file, turn_end / agent_end handlers and the next request kept the provider's text. The mode now subscribes a synchronous Session listener at Pi's place in the order, with the retry text and Pi's plural rule, and unsubscribes where Pi's stop() does (:7293). print, json and rpc are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi saves: \"Operation aborted\", or \"Aborted after N retry attempt(s)\" when an automatic retry was running. The session file, an extension's `turn_end` and `agent_end` handlers and the next request carried the provider's text before; print, JSON and RPC modes keep the provider's text, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6aa94467d3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_test.go::TestInteractiveMode_AbortedMessageNamesRetryAttempts"
+      ]
+    },
+    {
       "id": "BF-6ac4c8c",
       "title": "Ctrl+V pastes clipboard text in Termux",
       "symptom": "Ctrl+V pastes clipboard text in Termux.",
@@ -31454,6 +31476,59 @@
         "internal/codingagent/loaded_resources_quiet_upstream_test.go::TestLoadedResourcesQuietReloadUpstream",
         "internal/codingagent/skill_collision_test.go::TestShowLoadedResourcesSkillConflicts",
         "internal/codingagent/skill_file_metadata_test.go::TestSkillFileMetadataRetainsCollisionDiagnostics"
+      ]
+    },
+    {
+      "id": "BF-88bbdd2",
+      "title": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`…",
+      "symptom": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`, `__proto__` and the like) is treated as any other name in more places (D645).",
+      "rootCause": "`pig mcp add constructor -- \u003ccommand\u003e` reports the server as added (it said `Replaced` the first time), `pig mcp add __proto__ -- \u003ccommand\u003e` writes the server to `mcp.json` (it was not written at all), and `pig mcp remove` of such a name that the file does not hold says there is no such server (it said `Removed`).",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D645",
+      "removeWhen": "Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`, `__proto__` and the like) is treated as any other name in more places (D645). `pig mcp add constructor -- \u003ccommand\u003e` reports the server as added (it said `Replaced` the first time), `pig mcp add __proto__ -- \u003ccommand\u003e` writes the server to `mcp.json` (it was not written at all), and `pig mcp remove` of such a name that the file does not hold says there is no such server (it said `Removed`). A `keybindings.json` key so named is left as written: it was renamed to text such as `function Object() { [native code] }` and the file was rewritten. Pi 1.5.2 does the old things. In Node extensions, `ctx.ui.theme.fg`, `bg`, `getFgAnsi` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` for a token so named, as Pi does and as the other SDKs did: `fg` threw `open.endsWith is not a function`, `bg` drew the text of a native function before the text, and the two getters returned a function. `ctx.ui.setStatus(\"__proto__\", text)` is a status the extension's own footer reads back in the same turn, a provider registered under the name `__proto__` is read like any other provider, and `pi.getSettings()` hands the settings without any `__proto__` member.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3fb47cfd56",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "43e001e9e3",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "88bbdd2eaa",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/env_keys_prototype_names_oracle_test.go::TestAProviderNamedLikeAnObjectPrototypeMemberHasNoEnvironmentKey",
+        "coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi",
+        "coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure",
+        "coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi",
+        "coding/mcpext/server_name_prototype_names_oracle_test.go::TestAnMcpServerOrOptionNamedLikeAnObjectPrototypeMemberIsTreatedAsAnyOtherName",
+        "coding/mcpext/server_name_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberIsListedWithoutAnExposure",
+        "coding/stored_credential_prototype_names_oracle_test.go::TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
+        "internal/codingagent/keybindings_file_oracle_test.go::TestKeybindingsFileLoadingMatchesPi",
+        "internal/codingagent/keybindings_prototype_names_oracle_test.go::TestAKeybindingNamedLikeAnObjectPrototypeMemberIsNoLegacyName",
+        "internal/codingagent/migrations_prototype_names_oracle_test.go::TestALegacyApiKeyOfAProviderNamedLikeAnObjectPrototypeMemberIsMigrated",
+        "internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi",
+        "internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline",
+        "internal/codingagent/settings_project_proto_key_oracle_test.go::TestAProjectSettingsKeyNamedProtoSetsNoSetting",
+        "internal/configvalue/prototype_names_oracle_test.go::TestAConfigValueNamingAnObjectPrototypeMemberIsAnUnsetVariable",
+        "internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "test/extension-conformance/prototype_names_guard_test.go::TestNoLookupAnswersForObjectPrototypeMemberNames",
+        "test/extension-conformance/prototype_names_test.go::TestNodeGetSettingsHandsNoProtoMember",
+        "tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey",
+        "tui/theme_and_keybinding_names_prototype_oracle_test.go::TestAThemeNamedLikeAnObjectPrototypeMemberIsNotFound",
+        "tui/theme_and_keybinding_names_prototype_oracle_test.go::TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi",
+        "tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable"
       ]
     },
     {
@@ -39003,40 +39078,6 @@
       ]
     },
     {
-      "id": "BF-D645",
-      "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
-      "symptom": "For a name that is a member of `Object.prototype`, Pi draws the source text of a native function inside a formula, returns a function where a key id is promised, reports `TypeError: value.startsWith is not a function` for a theme color, does not offer an MCP tool of a `direct` server, and ends print mode with `function is not iterable` before any turn when an extension tool has such a name. Pi has no test for such a name at any of the five sites.",
-      "rootCause": "these are defects of Pi, and PiG does not port a defect. None of Pi's five answers is something a user or a caller can use: the text of a native function drawn inside a formula, a function returned as a key id, a `TypeError` in place of the loader's own message, a function returned as an exposure, and a system prompt that cannot be built because a tool has a certain name. Reproducing them would mean adding the members of `Object.prototype` to five Go tables by hand.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D645",
-      "removeWhen": "Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "3fb47cfd56",
-          "date": "2026-11-13"
-        },
-        {
-          "hash": "43e001e9e3",
-          "date": "2026-11-13"
-        }
-      ],
-      "tests": [
-        "coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi",
-        "coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure",
-        "internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi",
-        "internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline",
-        "internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
-        "tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey",
-        "tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi",
-        "tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable"
-      ]
-    },
-    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -45072,6 +45113,26 @@
         "test/extension-conformance/boundary_draft_members_test.go::TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
         "test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch"
       ]
+    },
+    {
+      "id": "BF-c0d8731",
+      "title": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an…",
+      "symptom": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement.",
+      "rootCause": "A frame holds the render lock for all of its writes, so two frames never ran together. HideCursor, ShowCursor, WriteRaw and QueryCellSize held nothing, and through them ShowOverlay, the hide of the last overlay, SetShowHardwareCursor and Start: on a renderer that keeps its own frame timer the caller wrote while a frame of the timer goroutine was in the writer. Pi writes from one event loop (tui.ts showOverlay: terminal.hideCursor(), then requestRender()): a cursor write is before a frame or after it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement. Every write of a renderer now holds its writer lock and a frame keeps it from its first write to its last, so such a write is before the frame or after it, as on the one event loop of Pi; a write a component makes from its `Render` still goes before the bytes of its frame. The interactive mode of pig draws and calls from one loop and showed no fault.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c0d873133b",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-c1055c4",
@@ -53919,6 +53980,30 @@
       "tests": []
     },
     {
+      "id": "BF-df5e3e8",
+      "title": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session…",
+      "symptom": "The turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected.",
+      "rootCause": "In interactive mode the abort host action waited for the run to settle. A handler the run awaits (message_update, tool_call, ...) that called ctx.abort() therefore hung the run, the next prompt and the quit. Pi starts the abort and returns (interactive-mode.ts:2399-2401, :4935-4937 void this.session.abort()); the action now posts the abort to the owner loop and returns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer hangs the session: the call returns at once, the turn ends aborted and the next prompt runs, in the Node, Go, Python and Rust SDKs. Before, the turn never ended and no later prompt was answered; Escape and print, JSON and RPC modes were not affected. Messages queued while the turn ran go back to the editor instead of running after the abort, as in Pi. Affects 0.2.0 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a079f7223f",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "df5e3e87ff",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-df96b6a",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -62630,8 +62715,8 @@
     },
     {
       "id": "D645",
-      "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
-      "entry": "BF-D645"
+      "title": "A name that is an `Object.prototype` member is no entry of fifteen Stock lookups, where Pi's plain objects…",
+      "entry": "BF-88bbdd2"
     }
   ],
   "exemptCommits": {

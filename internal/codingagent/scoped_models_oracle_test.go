@@ -48,6 +48,7 @@ type scopedOracleResult struct {
 // is active), provider toggle, bounded reorder, unavailable IDs, save, and Ctrl+C/Escape; the enabled list after each key (Pi's
 // onChange payload), the save payload, cancellation and every frame's text must agree.
 func TestScopedModelsSelectorMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	restoreTUIKeybindings(t)
 	models := []scopedOracleModel{
 		{"claude-sonnet", "Claude Sonnet", "anthropic"}, {"claude-haiku", "Claude Haiku", "anthropic"},
@@ -121,11 +122,10 @@ func TestScopedModelsSelectorMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousTheme, previousCaps, previousKitty := tui.ActiveTheme(), tui.GetCapabilities(), tui.IsKittyProtocolActive()
+	restoreStartupTheme(t)
+	previousKitty := tui.IsKittyProtocolActive()
 	tui.SetKittyProtocolActive(false)
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetKittyProtocolActive(previousKitty)
 	})
 	reachedSave, reachedCancel, reachedChange, crashes := 0, 0, 0, 0

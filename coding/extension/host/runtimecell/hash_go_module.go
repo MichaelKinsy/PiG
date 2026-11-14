@@ -55,6 +55,23 @@ func GoModuleSourceDigest(root string) (string, error) {
 	return digest, nil
 }
 
+// GoModuleContentDigest is the digest of hashGoModule's source set alone, without the module's location: two copies of one module at
+// different paths have the same digest, and a file whose time changed keeps it.
+func GoModuleContentDigest(root string) (string, error) {
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	if abs, err = filepath.EvalSymlinks(abs); err != nil {
+		return "", err
+	}
+	digest := hashGoModuleFS(newSharedDirFS(abs), "")
+	if after, ok := strings.CutPrefix(digest, "error:"); ok {
+		return "", errors.New(after)
+	}
+	return digest, nil
+}
+
 // hashGoModuleFS hashes the module rooted at fsys; label identifies where it lives.
 func hashGoModuleFS(fsys fs.FS, label string) string {
 	return hashGoModuleFSTracked(fsys, label, NewVanishTracker())

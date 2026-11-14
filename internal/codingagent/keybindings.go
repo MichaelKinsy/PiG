@@ -395,27 +395,12 @@ func appActionStripped(action string) bool {
 	return ok && pigstrip.Has(owner.list, owner.id)
 }
 
-// legacyKeybindingName is upstream isLegacyKeybindingName and its KEYBINDING_NAME_MIGRATIONS[key] lookup (keybindings.ts:302,328). `key in` also finds
-// the names Object.prototype inherits, and the lookup then yields the inherited value, so such a key migrates to that value's string (a function's
-// source text, or "[object Object]" for __proto__) as node prints it.
+// legacyKeybindingName is upstream isLegacyKeybindingName and its KEYBINDING_NAME_MIGRATIONS[key] lookup (keybindings.ts:264,286).
 func legacyKeybindingName(key string) (string, bool) {
-	if next, ok := legacyKeybindingNameMigrations()[key]; ok {
-		return next, true
-	}
-	if key == "__proto__" {
-		return "[object Object]", true
-	}
-	if key == "constructor" {
-		return "function Object() { [native code] }", true
-	}
-	if slices.Contains(objectPrototypeFunctionNames, key) {
-		return "function " + key + "() { [native code] }", true
-	}
-	return "", false
+	// pig divergence (D645): the migrations are own entries, so a key named like an Object.prototype member (constructor, toString, __proto__) is no legacy name and stays as written; Pi's `key in KEYBINDING_NAME_MIGRATIONS` on a plain object finds the inherited member and renames the key to that member's text.
+	next, ok := legacyKeybindingNameMigrations()[key]
+	return next, ok
 }
-
-var objectPrototypeFunctionNames = []string{"hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "toString", "valueOf",
-	"__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__"}
 
 func migrateKeybindingsConfig(raw map[string]any) (map[string]any, bool) {
 	out := map[string]any{}

@@ -80,7 +80,7 @@ func Extension() *sdk.Extension {
 	e.RegisterProvider("multi", sdk.ProviderConfig{
 		"baseUrl": "http://multi.invalid", "apiKey": "key", "api": "openai-completions",
 		"models": []any{
-			map[string]any{"id": "chat-1", "name": "Chat", "reasoning": true, "input": []string{"text"}, "cost": map[string]any{"input": 1, "output": 2, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 128000, "maxTokens": 4096},
+			map[string]any{"id": "chat-1", "name": "Chat", "reasoning": true, "input": []string{"text"}, "cost": map[string]any{"input": 1, "output": 2, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 54321, "maxTokens": 4321},
 			map[string]any{"id": "img-1", "name": "Image", "type": "image", "api": "openrouter-images", "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "output": []string{"image", "text"}},
 			map[string]any{"id": "cls-1", "name": "Classifier", "type": "classifier", "api": "llama-cpp-classify", "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 8192},
 		},
