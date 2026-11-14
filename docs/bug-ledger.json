@@ -4307,15 +4307,15 @@
     },
     {
       "id": "BF-1662063-2",
-      "title": "Google (`google-generative-ai`): a connection that fails before the response starts is reported with its…",
-      "symptom": "Google (`google-generative-ai`): a connection that fails before the response starts is reported with its cause, as Pi does, for example `fetch failed: read ECONNRESET` or `fetch failed: other side closed (UND_ERR_SOCKET)`.",
+      "title": "Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause…",
+      "symptom": "Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause, as Pi 1.5.2 does: `fetch failed: read ECONNRESET` for a connection the server reset, `fetch failed: other side closed (UND_ERR_SOCKET)` for one it closed, `fetch failed: bad port` for a base URL on a port that fetch refuses.",
       "rootCause": "the cause detail was switched on only for the stream builder made after the response headers, so a failure before them was formatted without it",
       "rootCauseSource": "release note",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Google (`google-generative-ai`): a connection that fails before the response starts is reported with its cause, as Pi does, for example `fetch failed: read ECONNRESET` or `fetch failed: other side closed (UND_ERR_SOCKET)`. It was a bare `fetch failed`.",
+      "releaseNote": "Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause, as Pi 1.5.2 does: `fetch failed: read ECONNRESET` for a connection the server reset, `fetch failed: other side closed (UND_ERR_SOCKET)` for one it closed, `fetch failed: bad port` for a base URL on a port that fetch refuses. It was a bare `fetch failed` in each case.",
       "origin": "release note",
       "commits": [
         {

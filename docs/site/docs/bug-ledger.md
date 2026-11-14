@@ -170,7 +170,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-165cf58](#bf-165cf58) | `pig package publish --to npm` and `pig piglet publish --to npm` no longer run an `npm` that the published… | PiG's own defect | Windows | 0.5.0 |
 | [BF-165cf58-2](#bf-165cf58-2) | On Windows, publishing to npm now works when npm is an `npm.cmd` at a path with spaces, such as `C:\Program… | PiG's own defect | Windows | 0.5.0 |
 | [BF-1662063](#bf-1662063) | When a provider's server resets or closes the connection before it answers, the retry notice and the turn's… | PiG's own defect | All platforms | Unreleased |
-| [BF-1662063-2](#bf-1662063-2) | Google (`google-generative-ai`): a connection that fails before the response starts is reported with its… | PiG's own defect | All platforms | Unreleased |
+| [BF-1662063-2](#bf-1662063-2) | Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause… | PiG's own defect | All platforms | Unreleased |
 | [BF-167dae3](#bf-167dae3) | fix(codingagent): the idle collection runs two GC cycles again so pool victims are freed (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-168d095](#bf-168d095) | fix(photonimage): decode farbfeld as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-16d0758](#bf-16d0758) | A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -4272,17 +4272,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-1662063-2
 
-**Google (`google-generative-ai`): a connection that fails before the response starts is reported with its…**
+**Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Google (`google-generative-ai`): a connection that fails before the response starts is reported with its cause, as Pi does, for example `fetch failed: read ECONNRESET` or `fetch failed: other side closed (UND_ERR_SOCKET)`.
+- **Symptom:** Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause, as Pi 1.5.2 does: `fetch failed: read ECONNRESET` for a connection the server reset, `fetch failed: other side closed (UND_ERR_SOCKET)` for one it closed, `fetch failed: bad port` for a base URL on a port that fetch refuses.
 - **Root cause:** the cause detail was switched on only for the stream builder made after the response headers, so a failure before them was formatted without it
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `1662063665` (2026-11-13)
 - **Tests:** `ai/socket_failure_test.go::TestSocketFailureReportsTheConnectionsEndInNodesOrder`, `ai/socket_failure_test.go::TestSocketFailureWaitEndsWhenTheConnectionIsClosed`, `ai/socket_failure_test.go::TestSocketFailureWriteWaitsForAReadThatHasNotBegun`, `ai/socket_failure_test.go::TestSocketFailureWriteWaitsForTheReadInFlight`
-- **Release note:** Google (`google-generative-ai`): a connection that fails before the response starts is reported with its cause, as Pi does, for example `fetch failed: read ECONNRESET` or `fetch failed: other side closed (UND_ERR_SOCKET)`. It was a bare `fetch failed`.
+- **Release note:** Google (`google-generative-ai`): a request that fails before the response starts is reported with its cause, as Pi 1.5.2 does: `fetch failed: read ECONNRESET` for a connection the server reset, `fetch failed: other side closed (UND_ERR_SOCKET)` for one it closed, `fetch failed: bad port` for a base URL on a port that fetch refuses. It was a bare `fetch failed` in each case.
 
 ### BF-167dae3
 
