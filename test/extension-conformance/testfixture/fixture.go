@@ -2156,6 +2156,80 @@ func Extension() *sdk.Extension {
 		delete(eventProbeOn, name)
 		return nil
 	})
+	// lone_passthrough subscribes to the event named by the argument with a handler that returns the value it received, and lone_send sends the
+	// argument's text back through sendUserMessage, sendMessage or registerProvider (TestConformance_LoneSurrogatePassThroughAcrossSDKs).
+	loneUnits := func(value any) string {
+		text, ok := value.(string)
+		if !ok {
+			return "none"
+		}
+		units := make([]string, len(text))
+		for i := range len(text) {
+			units[i] = fmt.Sprintf("%x", text[i])
+		}
+		return strings.Join(units, ".")
+	}
+	loneFirst := func(list any) map[string]any {
+		items, _ := list.([]any)
+		if len(items) == 0 {
+			return nil
+		}
+		first, _ := items[0].(map[string]any)
+		return first
+	}
+	ext.Command("lone_passthrough", "Subscribe to the event named by the argument with a handler that returns the value it received", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		event := name
+		if name == "context_edit" {
+			event = "context"
+		}
+		ext.OnEvent(event, func(hctx sdk.Context, data map[string]any) (any, error) {
+			var seen any
+			var result map[string]any
+			switch name {
+			case "input":
+				seen, result = data["text"], map[string]any{"action": "transform", "text": data["text"]}
+			case "before_agent_start":
+				// The Go SDK reads the event's systemPrompt through the context (Context.GetSystemPrompt) when the event map has no string for it.
+				prompt, held := data["systemPrompt"].(string)
+				if !held {
+					var err error
+					if prompt, err = hctx.GetSystemPrompt(); err != nil {
+						return nil, err
+					}
+				}
+				seen, result = prompt, map[string]any{"systemPrompt": prompt}
+			case "tool_result":
+				seen, result = loneFirst(data["content"])["text"], map[string]any{"content": data["content"]}
+			default:
+				seen = loneFirst(data["messages"])["content"]
+				if _, text := seen.(string); !text {
+					seen = loneFirst(seen)["text"]
+				}
+				result = map[string]any{"messages": data["messages"]}
+				if name == "context_edit" {
+					result = map[string]any{"messages": []any{loneFirst(data["messages"]), map[string]any{"role": "user", "content": "edited", "timestamp": 2}}}
+				}
+			}
+			hctx.Notify("lone_seen:"+name+":"+loneUnits(seen), "info")
+			return result, nil
+		})
+		return nil
+	})
+	ext.Command("lone_send", "Send the argument's text back through sendUserMessage, sendMessage or registerProvider", func(ctx sdk.Context, args string) error {
+		kind, value, _ := strings.Cut(args, " ")
+		ctx.Notify("lone_seen:"+kind+":"+loneUnits(value), "info")
+		switch kind {
+		case "user":
+			return ctx.SendUserMessage(value, "followUp")
+		case "custom":
+			return ctx.SendMessage("lone", value, true, sdk.SendMessageOptions{})
+		}
+		ext.RegisterProvider("lone-compat", sdk.ProviderConfig{"baseUrl": "https://probe.invalid/v1", "api": "openai-completions", "apiKey": "probe-key", "models": []any{map[string]any{
+			"id": "m", "name": value, "reasoning": false, "input": []any{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+			"contextWindow": 1000, "maxTokens": 100, "compat": map[string]any{"openRouterRouting": map[string]any{"sort": value}}}}})
+		return nil
+	})
 	// event_result_probe subscribes to the event named first with a handler that returns the JSON that follows: the result an SDK extension gives the host.
 	ext.Command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", func(ctx sdk.Context, args string) error {
 		name, raw, _ := strings.Cut(strings.TrimSpace(args), " ")

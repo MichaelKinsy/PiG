@@ -3103,6 +3103,51 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("event_probe_result", "Queue the JSON result the next event_probe_on handler call of an event returns", event_probe_result)
     ext.command("event_probe_on", "Subscribe to the event named by the argument", event_probe_on)
 
+    # lone_passthrough subscribes to the event named by the argument with a handler that returns the value it received, and lone_send sends the
+    # argument's text back through sendUserMessage, sendMessage or registerProvider (TestConformance_LoneSurrogatePassThroughAcrossSDKs).
+    def lone_units(text):
+        return ".".join("%x" % ord(ch) for ch in text) if isinstance(text, str) else "none"
+
+    def lone_member(data, key):
+        try:
+            return data[key]
+        except (KeyError, TypeError, IndexError):
+            return None
+
+    def lone_passthrough(ctx, args):
+        name = args.strip()
+
+        def handler(hctx, data):
+            if name == "input":
+                seen, result = lone_member(data, "text"), {"action": "transform", "text": lone_member(data, "text")}
+            elif name == "before_agent_start":
+                seen, result = lone_member(data, "systemPrompt"), {"systemPrompt": lone_member(data, "systemPrompt")}
+            elif name == "tool_result":
+                seen, result = lone_member(lone_member(lone_member(data, "content"), 0), "text"), {"content": lone_member(data, "content")}
+            else:
+                content = lone_member(lone_member(lone_member(data, "messages"), 0), "content")
+                seen = content if isinstance(content, str) else lone_member(lone_member(content, 0), "text")
+                result = {"messages": lone_member(data, "messages")}
+                if name == "context_edit":
+                    result = {"messages": [lone_member(lone_member(data, "messages"), 0), {"role": "user", "content": "edited", "timestamp": 2}]}
+            hctx.notify("lone_seen:%s:%s" % (name, lone_units(seen)), "info")
+            return result
+
+        ext.on_event("context" if name == "context_edit" else name, handler)
+
+    def lone_send(ctx, args):
+        kind, _, value = args.partition(" ")
+        ctx.notify("lone_seen:%s:%s" % (kind, lone_units(value)), "info")
+        if kind == "user":
+            ctx.send_user_message(value, "followUp")
+        elif kind == "custom":
+            ctx.send_message("lone", value, True)
+        else:
+            ext.register_provider("lone-compat", {"baseUrl": "https://probe.invalid/v1", "api": "openai-completions", "apiKey": "probe-key", "models": [{"id": "m", "name": value, "reasoning": False, "input": ["text"], "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 1000, "maxTokens": 100, "compat": {"openRouterRouting": {"sort": value}}}]})
+
+    ext.command("lone_passthrough", "Subscribe to the event named by the argument with a handler that returns the value it received", lone_passthrough)
+    ext.command("lone_send", "Send the argument's text back through sendUserMessage, sendMessage or registerProvider", lone_send)
+
     def event_result_probe(ctx, args):
         # Subscribe to the event named first with a handler that returns the JSON that follows: the result an SDK extension gives the host.
         name, _, raw = args.strip().partition(" ")
