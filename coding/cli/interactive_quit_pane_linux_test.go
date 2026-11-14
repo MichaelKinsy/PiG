@@ -178,8 +178,8 @@ func qsAwaitGone(t *testing.T, pids []int, what string) {
 	}
 }
 
-// qsScratch writes the agent directory of a pig that serves the model localhold/hold-model from baseURL, and returns the directories and the environment of the run.
-func qsScratch(t *testing.T, baseURL string) (root, agent, project, sessions string, env []string) {
+// qsScratch writes the agent directory of a pig that serves the model localhold/hold-model of the provider API api from baseURL, and returns the directories and the environment of the run.
+func qsScratch(t *testing.T, baseURL, api string) (root, agent, project, sessions string, env []string) {
 	t.Helper()
 	root = t.TempDir()
 	agent, project, sessions = filepath.Join(root, "agent"), filepath.Join(root, "project"), filepath.Join(root, "sessions")
@@ -189,7 +189,7 @@ func qsScratch(t *testing.T, baseURL string) (root, agent, project, sessions str
 		}
 	}
 	seedFirstRunDone(t, agent)
-	models := fmt.Sprintf(`{"providers":{"localhold":{"baseUrl":%q,"api":"openai-completions","apiKey":"dummy","models":[{"id":"hold-model"}]}}}`, baseURL)
+	models := fmt.Sprintf(`{"providers":{"localhold":{"baseUrl":%q,"api":%q,"apiKey":"dummy","models":[{"id":"hold-model"}]}}}`, baseURL, api)
 	if err := os.WriteFile(filepath.Join(agent, "models.json"), []byte(models), 0o600); err != nil {
 		t.Fatal(err)
 	}
