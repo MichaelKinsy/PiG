@@ -224,7 +224,7 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 		h.detachModelRegistry = detach
 		h.mu.Unlock()
 		// Pi's reload makes the rebuilt runner the Session's before it emits session_start (agent-session.ts:3844-3857), so a command read while a session_start handler waits runs on the reloaded extensions.
-		h.admission.Store(h.newAdmission(session, runner, commandCatalog, services, h.commandJoin.Load()))
+		h.admission.Store(h.newAdmission(session, runner, commandCatalog, h.commandJoin.Load()))
 		return h.announce(ctx, session, st, event)
 	}
 
