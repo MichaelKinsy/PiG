@@ -1,0 +1,28 @@
+from = "1.5.2+4438c58b"
+to = "1.5.2+86918f9e"
+# Pi 86918f9eebf6 (2026-11-13): fix(ai): send reasoning_effort and read reasoning tokens for GitHub Copilot (#12110, closes #12019).
+# For the lane that moves the pin past this commit: the generated catalog then replaces the provider-data block of
+# automation/gen/pi-post-release-backports.mjs: compare gemini-3.8-flash under github-copilot (its effort list in the block is an
+# inference, see the block's comment), and gemini-4-carbon arrives with the pin's data.
+
+[[files]]
+path = "packages/ai/catalog/providers/github-copilot.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi", "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream", "test:ai/catalog_model_json_oracle_test.go#TestCatalogModelJSONMatchesPiForEveryBuiltinModel"]
+rationale = "86918f9eeb (#12110): the models.dev map callback takes the source model, and a Copilot chat-completions model's compat.supportsReasoningEffort is `source.reasoningOptions?.some((option) => option.type === \"effort\") ?? false` in place of false, so catalog/build.ts (unchanged) also gives such a model the thinkingLevelMap of its effort list. internal/modelgen/providers/github_copilot.go sets the flag from source.HasEffortOption(); the golden hashes of the Copilot files and the two lists of every model are what Pi's generator writes with the commit's file over the pinned mirror (PI_CATALOG_OVERLAY of equivalence.sh). The built-in catalog takes the three records of the release's data (gemini-3.8-flash, gemini-4-argon, kimi-k3) from the provider-data block of automation/gen/pi-post-release-backports.mjs."
+oracle = "carried: 86918f9eeb as the provider data pi-ai/providers/data/github-copilot.json (the generator source is not part of the installed package)"
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream", "test:ai/openai_copilot_reasoning_upstream_test.go#TestParseChunkUsageTopLevelReasoningTokens", "test:ai/openai_completions_member_type_oracle_test.go#TestOpenAICompletionsMistypedMembersMatchPi", "test:ai/github_copilot_reasoning_oracle_test.go#TestGitHubCopilotCompletionsReasoningEffortMatchesPi"]
+rationale = "86918f9eeb (#12110): parseChunkUsage reads `rawUsage.completion_tokens_details?.reasoning_tokens || rawUsage.reasoning_tokens || 0`: the top-level count, where GitHub Copilot reports it, when the nested one is missing or falsy; output, totalTokens and cost are unchanged (completion_tokens already includes reasoning). The fallback is the adapter's, so it holds for every openai-completions provider. ai/openai.go parseChunkUsage reads oaiUsage.ReasoningTokens when the nested count is 0, and ai/openai_chunk_jsread.go normalizeOpenAIUsageMember reads the top-level member only when the nested one is falsy (a nested truthy count leaves a mistyped top-level member unread, as `||` does). The request code is unchanged: the OpenAI-style branch sends reasoning_effort for the Copilot records that now say supportsReasoningEffort."
+
+[[files]]
+path = "packages/ai/test/openai-completions-tool-choice.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream", "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream", "test:coding/model_runtime_copilot_reasoning_test.go#TestModelRuntimeCopilotCompletionsReasoning"]
+rationale = "86918f9eeb (#12110): two cases added. `reads top-level reasoning_tokens when completion_tokens_details has none` (github-copilot/gemini-4-argon, usage prompt 10, completion 40, cached 0, reasoning_tokens 30: usage.reasoning 30, output 40) is the first row of TestOpenAICompletionsTopLevelReasoningTokensUpstream, with rows for a nested 0, both counts, mistyped members, the choice-usage form and three other models. `sends reasoning_effort for GitHub Copilot completions models with effort levels` (gemini-4-argon at low and high) is the first two rows of TestGitHubCopilotCompletionsReasoningEffortUpstream, with the other Copilot records and levels and rows other providers keep. The mock's usage type change (completion_tokens_details optional, reasoning_tokens added) has no Go counterpart: the Go cases serve the chunk text."

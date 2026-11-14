@@ -94,6 +94,16 @@ func TestOpenAICompletionsMistypedMembersMatchPi(t *testing.T) {
 		{"usage cached chain unread", []string{head, `{"usage":{"prompt_tokens":4,"completion_tokens":2,"prompt_tokens_details":{"cached_tokens":1},"prompt_cache_hit_tokens":"x","cached_tokens":{}},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
 		{"usage completion details string", []string{head, `{"usage":{"prompt_tokens":4,"completion_tokens":2,"completion_tokens_details":"x"},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
 		{"usage reasoning zero string", []string{head, `{"usage":{"prompt_tokens":4,"completion_tokens":2,"completion_tokens_details":{"reasoning_tokens":""}},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		// Pi 86918f9eeb (#12110): the top-level reasoning_tokens is read when the nested count is missing or falsy, whatever provider answers.
+		{"usage top-level reasoning", []string{head, `{"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"reasoning_tokens":30},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		{"usage nested reasoning zero then top-level", []string{head, `{"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"completion_tokens_details":{"reasoning_tokens":0},"reasoning_tokens":30},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		{"usage nested reasoning wins over top-level", []string{head, `{"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"completion_tokens_details":{"reasoning_tokens":21},"reasoning_tokens":30},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		{"usage nested reasoning wins, top-level mistyped", []string{head, `{"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"completion_tokens_details":{"reasoning_tokens":21},"reasoning_tokens":"x"},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		{"usage details string then top-level reasoning", []string{head, `{"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"completion_tokens_details":"x","reasoning_tokens":30},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		{"usage nested reasoning empty string then top-level", []string{head, `{"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"completion_tokens_details":{"reasoning_tokens":""},"reasoning_tokens":7},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		{"usage top-level reasoning false", []string{head, `{"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"reasoning_tokens":false},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		{"usage top-level reasoning zero", []string{head, `{"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"reasoning_tokens":0},"choices":[{"delta":{},"finish_reason":"stop"}]}`}},
+		{"choice usage top-level reasoning", []string{head, `{"choices":[{"delta":{},"usage":{"prompt_tokens":10,"completion_tokens":40,"prompt_tokens_details":{"cached_tokens":0},"reasoning_tokens":30},"finish_reason":"stop"}]}`}},
 		// Pi 63035734 moved reasoning_details before the tool calls, so the pinned oracle (1.2.0) no longer describes a chunk whose tool_calls throws: see TestParseSSE_ReasoningDetailsApplyBeforeNonIterableToolCalls.
 	}
 	type result struct {
@@ -187,6 +197,7 @@ func TestOpenAICompletionsUnmodeledMistypedMembersStillEndTheTurn(t *testing.T) 
 		"prompt count not a number": `{"usage":{"prompt_tokens":"x","completion_tokens":1},"choices":[{"delta":{},"finish_reason":"stop"}]}`,
 		"prompt count fraction":     `{"usage":{"prompt_tokens":"2.5","completion_tokens":1},"choices":[{"delta":{},"finish_reason":"stop"}]}`,
 		"cached count false":        `{"usage":{"prompt_tokens":3,"completion_tokens":1,"prompt_tokens_details":{"cached_tokens":false}},"choices":[{"delta":{},"finish_reason":"stop"}]}`,
+		"reasoning count string":    `{"usage":{"prompt_tokens":3,"completion_tokens":1,"reasoning_tokens":"7"},"choices":[{"delta":{},"finish_reason":"stop"}]}`,
 		"id number":                 `{"id":5,"choices":[{"delta":{},"finish_reason":"stop"}]}`,
 		"tool call name number":     `{"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":5}}]},"finish_reason":"stop"}]}`,
 		"tool call id number":       `{"choices":[{"delta":{"tool_calls":[{"index":0,"id":7}]},"finish_reason":"stop"}]}`,

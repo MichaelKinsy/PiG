@@ -1041,6 +1041,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-77e64cd](#bf-77e64cd) | GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)… | PiG's own defect | All platforms | Unreleased |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7838047](#bf-7838047) | `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or… | PiG's own defect | All platforms | Unreleased |
 | [BF-787c354](#bf-787c354) | Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on… | PiG's own defect | All platforms | Unreleased |
@@ -16323,6 +16324,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `779318a6ea` (2026-10-14, #10926)
 - **Tests:** `ai/openai_completions_member_type_oracle_test.go::TestOpenAICompletionsMistypedMembersMatchPi`, `ai/openai_reasoning_pending_test.go::TestParseSSE_ReasoningDetailsApplyBeforeNonIterableToolCalls`, `ai/openai_reasoning_pending_test.go::TestParseSSE_ThinkingBeforeTextWhenOneDeltaCarriesBoth`, `ai/openai_tool_choice_stream_upstream_test.go::TestOpenAICompletionsToolChoiceStreamUpstream`
 - **Release note:** OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text. Carried forward from Pi 63035734 (earendil-works/pi#10926), past the 1.2.0+3daa2028 pin.
+
+### BF-77e64cd
+
+**GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3) now receive the selected thinking level: the request carries `reasoning_effort`, where before the level was never sent and the model always ran at its default; these models now offer their own levels (low, medium and high for the Gemini models; low, high and max for Kimi K3).
+- **Root cause:** the GitHub Copilot catalog definition set supportsReasoningEffort to false for every chat-completions model, so the selected thinking level was never sent; and Copilot reports reasoning tokens at the top level of usage (usage.reasoning_tokens), which parseChunkUsage did not read, so usage.reasoning was always 0 there.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `77e64cd2af` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3) now receive the selected thinking level: the request carries `reasoning_effort`, where before the level was never sent and the model always ran at its default; these models now offer their own levels (low, medium and high for the Gemini models; low, high and max for Kimi K3). Reasoning tokens that a chat-completions provider reports at the top level of `usage` (`usage.reasoning_tokens`, as GitHub Copilot does) are now counted in the usage's reasoning figure instead of showing as 0; output tokens, total tokens and cost are unchanged. Follows Pi #12110.
 
 ### BF-7809364
 
