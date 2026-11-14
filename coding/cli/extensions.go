@@ -100,16 +100,34 @@ func (m appMode) extensionMode() extension.ExtensionMode {
 }
 
 func normalizeRuntimeExtensionConfigs(configs []subprocess.ExtConfig) []subprocess.ExtConfig {
-	return withFusedExtensionConfigs(fusepack.FusedConfigs(), configs)
+	return withFusedExtensionConfigs(fusepack.FusedConfigs(), configs, fusepack.BakedSource)
 }
 
 // withFusedExtensionConfigs puts the Binary's fused extensions ahead of configs, less the ones an overlay removed (D202).
-func withFusedExtensionConfigs(fused, configs []subprocess.ExtConfig) []subprocess.ExtConfig {
+//
+// pig additive (D31): for a member the Binary baked a source digest for (bakedSource; `build.fusedReload: source`), the first
+// configuration of the member's name that carries a source takes the member's place, so the host has one configuration of that name
+// and can compare the source with the digest. Without a baked digest such a configuration loads beside the fused member, as before.
+func withFusedExtensionConfigs(fused, configs []subprocess.ExtConfig, bakedSource func(name string) bool) []subprocess.ExtConfig {
 	all := make([]subprocess.ExtConfig, 0, len(configs)+len(fused))
 	for _, cfg := range fused {
-		if !droppedBinaryMembers[cfg.Name] {
-			all = append(all, cfg)
+		if droppedBinaryMembers[cfg.Name] {
+			continue
 		}
+		if bakedSource != nil && bakedSource(cfg.Name) {
+			if i := slices.IndexFunc(configs, func(candidate subprocess.ExtConfig) bool {
+				return candidate.Name == cfg.Name && candidate.Source != ""
+			}); i >= 0 {
+				all = append(all, configs[i])
+				// The source configuration and the member's own name-only entries (the active Piglet lists its fused members too) are one extension.
+				source := configs[i].Source
+				configs = slices.DeleteFunc(slices.Clone(configs), func(candidate subprocess.ExtConfig) bool {
+					return candidate.Name == cfg.Name && (candidate.Source == source || candidate.Source == "" && candidate.Path == "")
+				})
+				continue
+			}
+		}
+		all = append(all, cfg)
 	}
 	all = append(all, configs...)
 	return mergeExtConfigs(all)

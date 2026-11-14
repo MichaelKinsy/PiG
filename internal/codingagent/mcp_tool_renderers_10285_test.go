@@ -34,6 +34,7 @@ func mcpRendererRunner(t *testing.T, extra ...extension.Extension) *inproc.Runne
 }
 
 func TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
 	ownCall := func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
 		return tui.NewPaddedText("own", 0, 0, nil)
@@ -82,6 +83,7 @@ func TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered(t *testing.T)
 // D89: a subprocess extension answers a tool renderer resolution after the card was drawn with next()'s renderers;
 // the host's notification draws the card again with the answer.
 func TestReapplyToolPresentationDrawsCardsWithALaterResolution(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
 	var answered atomic.Bool
 	resolver := func(toolName string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
@@ -109,6 +111,7 @@ func TestReapplyToolPresentationDrawsCardsWithALaterResolution(t *testing.T) {
 // then draws as a tool without renderers does (upstream hasRendererDefinition false), not with the renderers next()
 // returned.
 func TestReapplyToolPresentationReturnsACardWithoutRenderersToThePlainCard(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
 	var answered atomic.Bool
 	resolver := func(_ string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
@@ -165,6 +168,7 @@ func TestToolCardRecordsAreSweptWhenTheirCardsAreCollected(t *testing.T) {
 // tool-execution.ts:65-73: the card receives the tool's definition in its constructor and draws it from the first render, without a later
 // binding step; the definition's renderers read the card they belong to, and a tool with no renderers gets the plain card.
 func TestNewToolCardIsBuiltWithTheRegisteredDefinition(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
 	resolver := func(toolName string, next func() *extension.ToolRenderers) *extension.ToolRenderers {
 		if toolName != "drawn_tool" {

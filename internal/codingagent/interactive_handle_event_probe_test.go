@@ -265,7 +265,10 @@ func TestHandleEventProbe(t *testing.T) {
 					record := handleEventRecord{Step: step.Name}
 					switch {
 					case step.Event != nil:
-						p.handleAgentEvent(step.Event.agentEvent(t))
+						// The Session calls the mode's listener with an event before it publishes the event to the owner loop (subscribeSessionListener); Pi's handleEvent is that listener and applies the event in the same call.
+						event := step.Event.agentEvent(t)
+						p.handleSessionEvent(handle, event)
+						p.handleAgentEvent(event)
 					case step.Op == "esc":
 						retries, compactions, aborted := handle.abortRetryCount, handle.abortCompactionCount, p.abortCtx
 						if err := p.dispatchKey(ctx, "\x1b"); err != nil {

@@ -32,6 +32,9 @@ func TestStripBuildTagsHaveRegistrationShims(t *testing.T) {
 			switch d.Name() {
 			case ".git", ".upstream", "node_modules", "testdata", "vendor":
 				return filepath.SkipDir
+			case "tmp":
+				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's code.
+				return filepath.SkipDir
 			}
 			return nil
 		}

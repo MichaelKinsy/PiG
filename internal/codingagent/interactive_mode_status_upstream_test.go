@@ -11,9 +11,8 @@ import (
 
 func upstreamStatusMode(t *testing.T) *InteractiveMode {
 	t.Helper()
-	old := tui.ActiveTheme().Name
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
-	t.Cleanup(func() { tui.SetTheme(old) })
 	return &InteractiveMode{chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 120, 24)}
 }
 

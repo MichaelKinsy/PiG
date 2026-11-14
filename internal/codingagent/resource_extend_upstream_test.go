@@ -131,6 +131,7 @@ func TestUpstreamExtendResourcesLoadsFileURLs(t *testing.T) {
 // resources already recorded keep npm source, user scope and package origin.
 // The package half runs in cmd/pig (TestUpstreamResourceLoaderPackageMetadata).
 func TestUpstreamExtendResourcesKeepPackageMetadata(t *testing.T) {
+	restoreStartupTheme(t)
 	root := t.TempDir()
 	packageRoot := filepath.Join(root, "npm", "node_modules", "metadata-pkg")
 	packageSkill := filepath.Join(packageRoot, "skills", "package-skill", "SKILL.md")

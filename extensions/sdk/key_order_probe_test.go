@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"fmt"
+	"maps"
 	"runtime"
 	"slices"
 	"strings"
@@ -89,9 +90,7 @@ func TestObjectsKeepTheirOrderWhateverTheHandlerDoesToTheirPlace(t *testing.T) {
 			func(p map[string]any) {
 				items := member(p, "items")
 				copied := map[string]any{}
-				for key, value := range items[0].(map[string]any) {
-					copied[key] = value
-				}
+				maps.Copy(copied, items[0].(map[string]any))
 				p["copy"] = copied
 			},
 			`{"items":[{"b":1,"a":2}],"copy":{"a":2,"b":1}}`,

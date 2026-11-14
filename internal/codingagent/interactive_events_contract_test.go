@@ -192,11 +192,17 @@ func TestEventMessageEndFinishesTheMessage(t *testing.T) {
 	text := func(p eventProbe) string { return p.chat() }
 	t.Run("aborted", func(t *testing.T) {
 		p := newEventProbe(t, false)
+		// The Session calls the mode's listener with an event before it publishes the event to the owner loop (subscribeSessionListener), and the listener gives the aborted message its text; Pi's handleEvent is that listener and does both in one call (interactive-mode.ts:3690-3710).
+		session := &recordingCompactHandle{}
 		msg := assistantMsg("", ai.ToolCall{ID: "call-1", Name: "read"})
-		p.handleAgentEvent(agent.MessageStartEvent{Message: msg})
+		start := agent.MessageStartEvent{Message: msg}
+		p.handleSessionEvent(session, start)
+		p.handleAgentEvent(start)
 		p.handleAgentEvent(agent.MessageUpdateEvent{Message: msg, AssistantMessageEvent: ai.ToolCallStartEvent{ContentIndex: 0, Partial: toolCallPartial("call-1", "read")}})
 		msg.Assistant.StopReason = ai.StopReasonAborted
-		p.handleAgentEvent(agent.MessageEndEvent{Message: msg})
+		end := agent.MessageEndEvent{Message: msg}
+		p.handleSessionEvent(session, end)
+		p.handleAgentEvent(end)
 		if got := text(p); !strings.Contains(got, "Operation aborted") {
 			t.Fatalf("aborted tool card lacks the abort text: %q", got)
 		}

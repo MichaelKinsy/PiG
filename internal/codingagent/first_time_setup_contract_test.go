@@ -58,11 +58,10 @@ func TestFirstTimeSetupBindingOverlapsMatchPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousTheme, previousCaps, previousKitty, previousBindings := tui.ActiveTheme(), tui.GetCapabilities(), tui.IsKittyProtocolActive(), tui.GetKeybindings()
+	restoreStartupTheme(t)
+	previousKitty, previousBindings := tui.IsKittyProtocolActive(), tui.GetKeybindings()
 	tui.SetKittyProtocolActive(false)
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetKittyProtocolActive(previousKitty)
 		tui.SetKeybindings(previousBindings)
 	})

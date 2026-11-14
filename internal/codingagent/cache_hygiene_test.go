@@ -47,7 +47,7 @@ func TestNoTestConstructsSubprocessHostWithoutPinningPIGHome(t *testing.T) {
 
 	skipDirs := map[string]bool{
 		".git": true, ".upstream": true, "node_modules": true,
-		".devcache": true, "bin": true, "dist": true, "vendor": true,
+		".devcache": true, "bin": true, "dist": true, "vendor": true, "tmp": true,
 	}
 
 	fset := token.NewFileSet()

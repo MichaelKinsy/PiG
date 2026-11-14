@@ -67,3 +67,20 @@ func TestRegisterFactoryRejectsNilExtension(t *testing.T) {
 		t.Fatalf("serve error = %v", err)
 	}
 }
+
+// A registry generated for a Piglet built with `build.fusedReload: source` records each fused member's source digest; the resolver
+// answers with it, and has none for a member the build baked none for.
+func TestRegisterSourceRecordsTheBakedDigest(t *testing.T) {
+	t.Cleanup(func() { delete(fusedSources, "demo") })
+	if _, ok := (resolver{}).BakedSourceDigest("demo"); ok || BakedSource("demo") {
+		t.Fatal("a member has a baked digest before any was registered")
+	}
+	registerSource("demo", "0123abcd")
+	if digest, ok := (resolver{}).BakedSourceDigest("demo"); !ok || digest != "0123abcd" || !BakedSource("demo") {
+		t.Fatalf("baked digest = %q, %t", digest, ok)
+	}
+	if _, ok := (resolver{}).BakedSourceDigest("other"); ok || BakedSource("other") {
+		t.Fatal("a member the build baked nothing for has a digest")
+	}
+	var _ subprocess.FusedSourceResolver = resolver{}
+}

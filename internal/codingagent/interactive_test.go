@@ -842,8 +842,11 @@ func TestInteractiveMode_AbortPushesErrorIntoPendingTools(t *testing.T) {
 	ch <- agent.MessageEndEvent{Message: msg}
 	close(ch)
 
+	// Each event passes the mode's Session listener before the owner loop applies it, as in production (subscribeSessionListener): the listener gives the aborted message its text.
+	session := &recordingCompactHandle{}
 	var comp *tui.ToolExecutionComponent
 	for ev := range ch {
+		m.handleSessionEvent(session, ev)
 		m.handleAgentEvent(ev)
 		if pending := m.toolByID["tc_1"]; pending != nil {
 			comp = pending
@@ -866,9 +869,10 @@ func TestInteractiveMode_AbortPushesErrorIntoPendingTools(t *testing.T) {
 	}
 }
 
-// upstream: interactive-mode.ts:3544 (message_end) replaces an aborted message's errorMessage with "Operation aborted",
+// upstream: interactive-mode.ts:3686-3697 (message_end) replaces an aborted message's errorMessage with "Operation aborted",
 // or "Aborted after N retry attempt(s)" while automatic retries ran, before the assistant block and every pending tool
-// component show it. A provider's own errorMessage ("Request was aborted") never reaches either.
+// component show it. A provider's own errorMessage ("Request was aborted") never reaches either. The replacement is made on
+// the message itself by the mode's Session listener, which the Session calls before it persists and publishes the event.
 func TestInteractiveMode_AbortedMessageNamesRetryAttempts(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -890,7 +894,8 @@ func TestInteractiveMode_AbortedMessageNamesRetryAttempts(t *testing.T) {
 				toolStarts:    make(map[string]time.Time),
 				pendingArgs:   make(map[int]*pendingToolArg),
 			}
-			m.opts.SessionHandle = &recordingCompactHandle{retryAttempt: tc.attempts}
+			session := &recordingCompactHandle{retryAttempt: tc.attempts}
+			m.opts.SessionHandle = session
 			msg := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, StopReason: ai.StopReasonAborted, ErrorMessage: tc.provider}}
 			toolPartial := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{
 				ai.ToolCall{ID: "tc_1", Name: "read", Arguments: ai.JsonObject{"path": "foo.go"}},
@@ -901,6 +906,7 @@ func TestInteractiveMode_AbortedMessageNamesRetryAttempts(t *testing.T) {
 				agent.MessageUpdateEvent{Message: msg, AssistantMessageEvent: ai.ToolCallDeltaEvent{ContentIndex: 0, Delta: `{"path":"foo.go"}`, Partial: toolPartial}},
 				agent.MessageEndEvent{Message: msg},
 			} {
+				m.handleSessionEvent(session, ev)
 				m.handleAgentEvent(ev)
 				if pending := m.toolByID["tc_1"]; pending != nil {
 					comp = pending
@@ -908,6 +914,9 @@ func TestInteractiveMode_AbortedMessageNamesRetryAttempts(t *testing.T) {
 			}
 			if comp == nil {
 				t.Fatal("expected tool component tc_1 to be created during streaming")
+			}
+			if got := msg.Assistant.ErrorMessage; got != tc.want {
+				t.Errorf("the message's errorMessage = %q, want %q", got, tc.want)
 			}
 			if got := stripANSITest(strings.Join(comp.Render(80), "\n")); !strings.Contains(got, tc.want) {
 				t.Errorf("tool component = %q, want %q", got, tc.want)
@@ -1669,6 +1678,9 @@ func (h *recordingCompactHandle) FlushDeferredCustomMessages() error {
 func (h *recordingCompactHandle) Agent() *agent.Agent             { return h.agent }
 func (h *recordingCompactHandle) Inner() *Session                 { return h.inner }
 func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent { return nil }
+func (h *recordingCompactHandle) SubscribeFunc(func(agent.AgentEvent)) func() {
+	return func() {}
+}
 func (h *recordingCompactHandle) SetModel(model *ai.Model, options ...ModelMutationOptions) error {
 	h.switched = append(h.switched, model)
 	h.appendPersistedDefaultToScope(model, options)
@@ -1819,6 +1831,7 @@ func TestDynamicProviderInModelSurfaces(t *testing.T) {
 // buildChatViewport must install the live-themed scrollbar track and thumb (not
 // the ScrollView defaults), and a live theme change must repaint them.
 func TestBuildChatViewportWiresLiveThemedScrollbar(t *testing.T) {
+	restoreStartupTheme(t)
 	prev := tui.ActiveTheme().Name
 	t.Cleanup(func() { tui.SetTheme(prev) })
 
@@ -1911,6 +1924,9 @@ func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveModeOptions) *In
 // mounting it, so a caller can order raw mode before the first mount as Run does.
 func newUnmountedSwitchTuiProbe(t *testing.T, opts InteractiveModeOptions, out io.Writer) *InteractiveMode {
 	t.Helper()
+	// A probe's test may select a theme, and /reload applies the theme of the settings, the system theme when none is set
+	// (interactive-mode.ts:6680): the test ends with the theme it began with.
+	restoreStartupTheme(t)
 	m := NewInteractiveMode(nil, opts)
 	m.runCtx = context.Background()
 	m.rendererOut = out
