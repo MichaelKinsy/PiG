@@ -1689,6 +1689,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c723782](#bf-c723782) | In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c72462b](#bf-c72462b) | Chord: a registry value an app keeps past `host.close` (`host.registry`) no longer keeps the closed host… | PiG's own defect | All platforms | Unreleased |
 | [BF-c7b91e7](#bf-c7b91e7) | Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding("utf8")` reads them: a… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-c7c99c6](#bf-c7c99c6) | In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives… | PiG's own defect | All platforms | Unreleased |
 | [BF-c7ebb23](#bf-c7ebb23) | A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c7ebb23-2](#bf-c7ebb23-2) | A `config.oauth` login's `onManualCodeInput` asks "Paste the authorization code", as Pi does, and a provider… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c807fb7](#bf-c807fb7) | `pig mcp list` sends the token of the provider named by a server's `auth.provider` (Radius, for example)… | PiG's own defect | All platforms | Unreleased |
@@ -25361,6 +25362,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c7b91e7cb9` (2026-11-02)
 - **Tests:** `tui/utf8_decoder_oracle_test.go::TestUTF8DecoderMatchesNodeStringDecoder`
 - **Release note:** Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding("utf8")` reads them: a trailing C0, C1, F5-F7, or an E0, ED, F0 or F4 lead followed by an out-of-range byte is held until the next read instead of becoming U+FFFD at once, so a mouse report ending in such a byte is no longer taken as a wheel scroll.
+
+### BF-c7c99c6
+
+**In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives before the extension has drawn the card.
+- **Root cause:** A render proxy paints its placeholder from its first request until the frame that follows the extension's first applied answer, and knows no mouse region of the component in that time. HandleMouse answered a click there as a click outside every region, and the click was lost: with a slow extension answer (a loaded host, a slow start) a click on the card did nothing, where Pi's card, built inside the render, takes it from its first frame.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c7c99c68c4` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives before the extension has drawn the card. Until the extension answers its first render request the card is shown as the placeholder `[<type>]`, and a click on that row did nothing: on a slow start or a loaded machine the card stayed closed. The click now waits for the card, and the frame that draws the card gives it the click; several clicks reach the card in the order they were made. A click on a placeholder whose extension never answers still does nothing.
 
 ### BF-c7ebb23
 

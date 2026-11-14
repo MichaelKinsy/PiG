@@ -46574,6 +46574,26 @@
       ]
     },
     {
+      "id": "BF-c7c99c6",
+      "title": "In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives…",
+      "symptom": "In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives before the extension has drawn the card.",
+      "rootCause": "A render proxy paints its placeholder from its first request until the frame that follows the extension's first applied answer, and knows no mouse region of the component in that time. HandleMouse answered a click there as a click outside every region, and the click was lost: with a slow extension answer (a loaded host, a slow start) a click on the card did nothing, where Pi's card, built inside the render, takes it from its first frame.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In fullscreen mode, a click on a message or entry that an extension renders is no longer lost when it arrives before the extension has drawn the card. Until the extension answers its first render request the card is shown as the placeholder `[\u003ctype\u003e]`, and a click on that row did nothing: on a slow start or a loaded machine the card stayed closed. The click now waits for the card, and the frame that draws the card gives it the click; several clicks reach the card in the order they were made. A click on a placeholder whose extension never answers still does nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c7c99c68c4",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c7ebb23",
       "title": "A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was…",
       "symptom": "A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was `oauth prompt cancelled`, and Node's `onSelect` resolved `undefined`), so `/login` returns to the menu instead of reporting a failed login.",
