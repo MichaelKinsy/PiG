@@ -32,8 +32,14 @@ func MarshalKeepingSurrogates(value any) ([]byte, error) {
 }
 
 // UnmarshalKeepingSurrogates is encoding/json's Unmarshal, except that the escape of a lone surrogate (`\ud83d`) is read as
-// that unit, as JSON.parse does, instead of as U+FFFD. Its errors are encoding/json's.
+// that unit, as JSON.parse does, instead of as U+FFFD. Its errors are encoding/json's. The body is not generic: the compiler
+// makes one copy of a generic function for each shape of T, and every struct type is a shape of its own, so a body written
+// over T was linked once per decoded struct (about 300 bytes each, 3,744 bytes in the stock binary).
 func UnmarshalKeepingSurrogates[T any](data []byte, value *T) error {
+	return unmarshalKeepingSurrogates(data, value)
+}
+
+func unmarshalKeepingSurrogates(data []byte, value any) error {
 	if HasSurrogateEscape(data) && sdkjson.Unmarshal(data, value) == nil {
 		return nil
 	}
