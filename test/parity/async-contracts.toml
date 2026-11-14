@@ -2626,13 +2626,6 @@ evidence = ["test:durable/harness/harness_view_test.go#TestConversationView", "t
 rationale = "observe (:175-198) and watch (:200-220) await attach(), which builds or reuses the conversation's mount in one readOnLine job (storage.conversation, the conversation document, then loadWindow's entry scan awaited in order), checks closed and context.abortSignal?.throwIfAborted() before the observer is registered, and returns a handle whose observation ends when the context aborts; an already-aborted context aborts the observer and rejects with the signal's reason (:191-195, :211-215). View frames are delivered to observers from the publication that changed the conversation, not from the caller's stack; a watch exposes them through its own channel. Go durable/harness/view.go (ObserveConversation, Watch) takes ctx, builds the mount on the Session line, checks ctx and closed before registering, and ends the watch when ctx ends. The tests compare views with Pi on seeded programs, show a run as the view does, pin the window bounds, observation delivery, and that the views are identical when documents are evicted right after use."
 
 [[files]]
-path = "packages/durable/src/images/fit.ts"
-disposition = "translated"
-contracts = ["awaited"]
-evidence = ["test:durable/images/fit/fit_test.go#TestFitImage", "test:durable/images/fit/fit_test.go#TestFitImages", "test:durable/images/fit/fit_test.go#TestFitImagesExtension"]
-rationale = "Added at Pi 76c79d8bbe. fitImage awaits one processor.prepare and turns a rejection into an omitted image whose note carries the error's message; fitImages awaits fitImage for each image in content order, one after another (no Promise.all), so the processor sees the images in order; the afterTool hook awaits api.snapshot(AgentDoc) once and then fitImages, and skips nested calls and results without images before awaiting anything. Nothing is detached and no signal is passed on: the processor's own Promise is the only async work. Go durable/images/fit/fit.go: FitImage, FitImages and the hook are blocking calls over tools.ImageProcessor.Prepare(ctx, ...), which return the same values in the same order; an error of Prepare, whatever its kind, is the omitted image's note as in Pi. The tests check the order of the processor's calls, the failure note and the hook through a Harness."
-
-[[files]]
 path = "packages/durable/src/images/index.ts"
 disposition = "translated"
 contracts = ["awaited"]

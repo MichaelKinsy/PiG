@@ -1121,7 +1121,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/ids.ts` | `durable/ids.go` | ✅ |
 | `packages/durable/src/images/cloudflare.ts` | `durable/images/cloudflare/cloudflare.go` | ✅ |
 | `packages/durable/src/images/exif.ts` | `durable/images/exif.go` | ✅ |
-| `packages/durable/src/images/fit.ts` | `durable/images/fit/fit.go` (fit.FitImage, fit.FitImages, fit.CreateFitImagesExtension; tests in durable/images/fit/fit_test.go and the example durable/examples/fit_images_example_test.go; Go takes a context first; Pi 76c79d8bbe) | ✅ |
 | `packages/durable/src/images/index.ts` | `durable/images/images.go` | ✅ |
 | `packages/durable/src/images/node.ts` | `durable/images/node/node.go` | ✅ |
 | `packages/durable/src/images/photon-wasm.d.ts` | `(TypeScript declaration of the WebAssembly import; Go has no compiled module to import)` | n/a |
