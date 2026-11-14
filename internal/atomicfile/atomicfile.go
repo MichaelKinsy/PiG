@@ -42,6 +42,7 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 //   - an extended attribute cannot be copied for a reason other than a file system that keeps none (never dropped silently);
 //   - the temporary file cannot be created in the directory because it refuses the process (EACCES, EROFS, EPERM: a directory the process cannot
 //     write, holding a file it can); or the rename is refused (EBUSY, EXDEV, ETXTBSY: a file mounted into a container on its own is a mount point).
+//   - the file is not a regular file (a device such as /dev/null, a named pipe): a rename would replace the node itself with an ordinary file that has its mode.
 //
 // A file the caller may not write (a read-only file) is refused as an in-place write would refuse it, and a write that fails for a real reason (a
 // full disk, an I/O error) is an error, in place or not. On Windows a rename another process's open handle refuses is retried for
@@ -54,6 +55,10 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	var existing os.FileInfo
 	//perf:ok one stat and one open per credential write, which already syncs a file
 	if info, statErr := os.Stat(path); statErr == nil {
+		// A device or a named pipe is written, not replaced: a rename would put an ordinary file where the node was, with the node's mode, and the bytes would never reach it.
+		if !info.Mode().IsRegular() {
+			return writeInPlace(path, data, perm, fmt.Errorf("the file is a %s, which a replacement would remove", info.Mode().Type()))
+		}
 		existing = info
 		mode = info.Mode().Perm()
 		// Replacing a read-only file by rename would succeed where writing it fails.
