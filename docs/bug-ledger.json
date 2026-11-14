@@ -38880,6 +38880,57 @@
       ]
     },
     {
+      "id": "BF-D649",
+      "title": "A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's…",
+      "symptom": "none.",
+      "rootCause": "a native SDK cannot tell a settle-tail handler that waits on a timer from one that waits for the shutdown itself to cancel it, and the second kind must not hold the exit: `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` pins a Go handler that waits until the shutdown cancels it, which Pi has no counterpart of (a Node handler that waits for a shutdown signal holds no handle, so Pi's process ends under it). Holding for every native settle-tail handler would make that process wait for ever.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D649",
+      "removeWhen": "the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), so that the host can hold the exit for exactly the handlers Pi holds it for.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "50c06c75eb",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_shutdown_drain_go_test.go::TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown",
+        "coding/extension/host/subprocess/quit_every_runtime_test.go::TestQuitDrainDoesNotWaitForANativeSettleTailHandler"
+      ]
+    },
+    {
+      "id": "BF-D650",
+      "title": "A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process…",
+      "symptom": "none.",
+      "rootCause": "a native SDK cannot tell a handler that waits on a timer, a socket or a child process from one that waits on nothing, and ending the quit while a handler holds a handle would cut off work that Pi finishes: a command on a TCP read ended 53 ms after its peer answered in Pi, a 3 s timer held Pi for 3.09 s. Holding while the handler is in flight keeps Pi's results for the cases that hold, and costs the quit that Pi's gets from a handler that waits on nothing. The user is never without an exit: the keys and signals above end the process at once, with the terminal restored and Pi's status.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D650",
+      "removeWhen": "the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), or the host can read it.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "50c06c75eb",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds",
+        "coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveQuitWaitsForACommandInFlight",
+        "coding/cli/rpc_held_quit_native_command_signal_test.go::TestRPCHeldQuitOfANativeCommandEndsOnTheSignalsPiEnds",
+        "coding/extension/host/subprocess/quit_every_runtime_test.go::TestQuitDrainWaitsForANativeCommandInFlight",
+        "test/extension-conformance/quit_every_runtime_conformance_test.go::TestConformance_QuitWaitsForACommandInFlight"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -44488,6 +44539,25 @@
       ]
     },
     {
+      "id": "BF-be0c55b",
+      "title": "fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does",
+      "symptom": "fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does",
+      "rootCause": "the drain handler took the drained-loop report of the one process with a pending handler as the verdict for Pi's whole loop. Pi has one loop for every extension and pig has several processes, so the report said nothing about the others; an idle Node process could not be counted at all (it kept its transports referenced after input ended, so it never reached beforeExit and reported nothing), and a native runtime has no loop to report.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "be0c55bcc6",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-be2920a",
       "title": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request…",
       "symptom": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request with `Tool \"\u003cname\u003e\" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi.",
@@ -49594,6 +49664,25 @@
       ]
     },
     {
+      "id": "BF-d777d4b",
+      "title": "fix(interactive): SIGTERM and SIGHUP at the stopped TUI of a pending quit end pig at once",
+      "symptom": "fix(interactive): SIGTERM and SIGHUP at the stopped TUI of a pending quit end pig at once",
+      "rootCause": "the signal shutdown assumed that it could always take shutdownMu and run the extension cleanup, but a pending quit holds that lock for as long as a runtime holds the dispose.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d777d4ba14",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-d7855fd",
       "title": "A subprocess extension's message, entry or tool renderer, or tool renderer resolver, that was busy past the…",
       "symptom": "A subprocess extension's message, entry or tool renderer, or tool renderer resolver, that was busy past the five-second renderer inactivity boundary no longer leaves its card on the fallback until the next resize: the host asks again once the extension answers the abandoned request, and an extension that keeps missing the boundary is asked again after a backoff that starts at five seconds and doubles to one minute.",
@@ -53887,6 +53976,25 @@
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
       ]
+    },
+    {
+      "id": "BF-e12859e",
+      "title": "fix(interactive): a ctrl+c at the stopped TUI of a pending quit ends pig at once",
+      "symptom": "fix(interactive): a ctrl+c at the stopped TUI of a pending quit ends pig at once",
+      "rootCause": "interruptShutdown gave the extensions a second to shut down (shutdownExtensionsBriefly), but the pending quit's dispose already emitted session_shutdown and holds shutdownMu while it waits for its author, so the second was spent on a lock that nothing releases. The interrupt now skips that wait when the quit by keys is disposing (quitDisposing), and goes on to the terminal restore and exit 130.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e12859ea5e",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-e1634c0",
@@ -62379,6 +62487,16 @@
       "id": "D645",
       "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
       "entry": "BF-D645"
+    },
+    {
+      "id": "D649",
+      "title": "A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's…",
+      "entry": "BF-D649"
+    },
+    {
+      "id": "D650",
+      "title": "A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process…",
+      "entry": "BF-D650"
     }
   ],
   "exemptCommits": {
