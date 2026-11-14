@@ -281,9 +281,14 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 		if err != nil {
 			return err
 		}
+		// A compromise the heartbeat already reported is thrown as withLockAsync's throwIfCompromised throws it (auth-storage.ts:180-184): nothing is written.
+		if err := heartbeatCompromise(ctx); err != nil {
+			return err
+		}
 		if next != nil && lockCompromised(lock) {
-			// The lock was taken over while fn ran (a refresh outlasting the sync lock's staleness window): fn's credential may be the only copy of a
-			// single-use refresh token, so it is not dropped. It is written below under a lock of its own, without the stale read it was computed from.
+			// The lock was taken over while fn ran and the heartbeat has not reported it yet (a refresh outlasting the sync lock's 10 s staleness window, which Pi
+			// writes through): fn's credential may be the only copy of a single-use refresh token, so it is not dropped. It is written below under a lock of its
+			// own, without the stale read it was computed from.
 			held = new(cloneCredential(*next))
 			return nil
 		}
@@ -324,6 +329,19 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 		return nil, err
 	}
 	return held, nil
+}
+
+// heartbeatCompromise is the compromise the lock's heartbeat reported through ctx, the context of the lock, or nil when it has reported none.
+func heartbeatCompromise(ctx context.Context) error {
+	if ctx.Err() == nil {
+		return nil
+	}
+	cause := context.Cause(ctx)
+	var compromised *pilock.CompromisedError
+	if errors.As(cause, &compromised) {
+		return cause
+	}
+	return nil
 }
 
 // lockCompromised reports whether lock was removed or replaced by another process, as opposed to ended by its caller's cancellation.

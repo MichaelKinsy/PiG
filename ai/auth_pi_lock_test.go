@@ -105,7 +105,8 @@ func TestAuthStorageCancelledModifierRetainsLockUntilReturn(t *testing.T) {
 	}
 }
 
-func TestAuthStorageCompromisedModifierDoesNotWrite(t *testing.T) {
+// The lock is taken over while the modifier runs and the heartbeat has not reported it yet (Pi's sync readers take a lock 10 s old, its heartbeat runs every 15 s): Pi writes its whole stale read back and reports success. Modify keeps the credential the modifier returned, which may be the only copy of a rotated refresh token, by writing that provider's entry into the file as it is then. TestAuthStorageLockCompromisedDuringModifyUpstream covers the compromise the heartbeat has reported, which Pi throws.
+func TestAuthStorageModifierPersistsItsCredentialAfterTheLockWasTaken(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
 	store, err := NewAuthStorage(path)
 	if err != nil {
@@ -114,18 +115,23 @@ func TestAuthStorageCompromisedModifierDoesNotWrite(t *testing.T) {
 	if err := store.Set("probe", Credential{Type: CredentialAPIKey, Key: "stored"}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = store.Modify(t.Context(), "probe", func(*Credential) (*Credential, error) {
+	if err := store.Set("other", Credential{Type: CredentialAPIKey, Key: "kept"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Modify(t.Context(), "probe", func(*Credential) (*Credential, error) {
 		if err := os.Remove(path + ".lock"); err != nil {
 			return nil, err
 		}
-		return &Credential{Type: CredentialAPIKey, Key: "must-not-write"}, nil
+		return &Credential{Type: CredentialAPIKey, Key: "refreshed"}, nil
 	})
-	if err == nil {
-		t.Fatal("compromised modifier succeeded")
+	if err != nil || got == nil || got.Key != "refreshed" {
+		t.Fatalf("Modify after the lock was taken = %+v, %v, want the modifier's credential", got, err)
 	}
-	cred, ok, err := store.GetRaw("probe")
-	if err != nil || !ok || cred.Key != "stored" {
-		t.Fatalf("compromised modifier committed: %+v %v", cred, err)
+	for provider, want := range map[string]string{"probe": "refreshed", "other": "kept"} {
+		cred, ok, err := store.GetRaw(provider)
+		if err != nil || !ok || cred.Key != want {
+			t.Fatalf("%s after the lock was taken = %+v %v, want key %q", provider, cred, err, want)
+		}
 	}
 }
 
