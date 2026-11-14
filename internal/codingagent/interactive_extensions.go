@@ -1749,9 +1749,15 @@ func WireModelOperations(bridge ModelOperationBridge, bindings ModelOperationBin
 		return func() {}
 	}
 	// The typed models are recomposed on the same committed registry changes that republish the catalog. The subscription is an observer: the registry's single listener slot belongs to ModelRuntime.SetChangeListener callers.
+	// The registry notifies after every commit, whether or not it changed anything (a refresh commits twice: models.json reloaded, the catalogs
+	// refreshed): a bridge that can tell sends a replica nothing it already holds.
+	publishChange := bridge.PublishModelCatalog
+	if changes, ok := bridge.(interface{ PublishModelCatalogChange() }); ok {
+		publishChange = changes.PublishModelCatalogChange
+	}
 	detach := bindings.Registry.ObserveChanges(func() {
 		catalogEncoding.invalidateTyped()
-		bridge.PublishModelCatalog()
+		publishChange()
 	})
 	bridge.PublishModelCatalog()
 	return detach

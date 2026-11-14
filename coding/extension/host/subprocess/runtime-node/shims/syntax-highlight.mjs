@@ -212,7 +212,8 @@ const languageModules = [
 ];
 
 let allLanguages;
-export function loadAllHighlightLanguages() {
+// beforeRegistration, when given, is awaited between the last grammar and the registration pass, which holds the thread: the caller says when that may be (runtime.mjs HighlightLoadGate). The first call decides; a later one shares its load.
+export function loadAllHighlightLanguages(beforeRegistration) {
   allLanguages ??= (async () => {
     try {
       for (const load of languageModules) {
@@ -222,6 +223,7 @@ export function loadAllHighlightLanguages() {
     } catch {
       // Pi's function below meets the same failure and settles as it does: the eager languages and the plaintext fallback stay available.
     }
+    if (beforeRegistration) await beforeRegistration();
     return syntaxHighlight().loadAllHighlightLanguages();
   })();
   return allLanguages;

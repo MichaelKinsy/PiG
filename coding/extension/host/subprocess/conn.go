@@ -182,6 +182,13 @@ type Conn struct {
 	closed       atomic.Bool
 	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
 	modelRegistry bool
+	// modelCatalogMu orders the catalog frames queued for this connection and guards the record of the last one: modelCatalogSent is the digest
+	// of the last frame a publication queued, when modelCatalogSentSet. modelCatalogAlways is set once the replica applied a registry state
+	// that was not a catalog frame (the result of its own refresh call): it is then sent every publication.
+	modelCatalogMu      sync.Mutex
+	modelCatalogSent    modelCatalogDigest
+	modelCatalogSentSet bool
+	modelCatalogAlways  bool
 
 	// Outgoing message queue. Writer goroutine drains this. A frame that is
 	// queued or being written is outstanding work, so the heartbeat runs while
