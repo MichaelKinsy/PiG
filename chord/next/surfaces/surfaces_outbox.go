@@ -11,6 +11,13 @@ type outbox struct {
 	running bool
 }
 
+// update reads the follower's state with read, which returns the change to deliver for it (nil: none), and delivers it.
+func (o *outbox) update(read func() func()) {
+	if deliver := read(); deliver != nil {
+		o.run(deliver)
+	}
+}
+
 // run queues deliver and, when no other caller is delivering, delivers every queued change.
 func (o *outbox) run(deliver func()) {
 	o.mu.Lock()
