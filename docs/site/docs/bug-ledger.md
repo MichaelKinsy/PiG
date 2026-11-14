@@ -757,6 +757,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-60cc9c5](#bf-60cc9c5) | chord: a worker that fails right after it started now reports its reason | PiG's own defect | Windows | Unreleased |
+| [BF-60e15bd](#bf-60e15bd) | A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded… | PiG's own defect | All platforms | Unreleased |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb](#bf-61300bb) | MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb-2](#bf-61300bb-2) | Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists… | PiG's own defect | All platforms | 0.5.0 |
@@ -12439,6 +12440,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `60cc9c5bd3` (2026-11-13)
 - **Tests:** `chord/nextnode/workers/workers_fixture_test.go::TestMain`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterItOpenedItsChannel`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessLinkClosedByThisSideWhileItsChannelsReaderIsHeldDoesNotWaitForIt`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsChannelsReaderTookWhatItsChildWrote`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsOutputWhenItsChannelsReaderEndedFirst`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterWhatItsChannelsReaderTookIsTold`
 - **Release note:** chord: a worker that fails right after it started now reports its reason. The server could handle a worker's exit before it had read, or before it had handed over, the last messages the worker wrote (its answer to a waiting holder and its `fatal` report); it then closed the connection and recorded the fixed `worker failed to start` (in p2, under load: a session whose worker dies at its start showed that text where Pi shows why, for example `Unknown model`). As in Node, which emits a child's messages before its `exit` event, the exit is now told after the channel's reader took and told everything the worker wrote. Limits: not run on Windows, where a worker that ends before the server accepted its pipe connection can still lose its last messages.
+
+### BF-60e15bd
+
+**A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get "Unknown or released session graph object" from the host, at random and more often under memory pressure.
+- **Root cause:** A Go extension that built session graph objects failed at random under allocation pressure with Unknown or released session graph object: the SDK released an object when its Go value was collected, but a call that put the handle on the wire, a model stream, and a LoadedExtension (which named its loader by string) did not keep the value. Every call that names an object now keeps it until the host has answered (graphMethodCall, the constructors that take objects, the runtime of a loader, createAgentSession, the model stream goroutine), and a LoadedExtension holds its loader object.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `60e15bd01e` (2026-11-14), `7cc188258c` (2026-11-14), `81cc293a90` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get "Unknown or released session graph object" from the host, at random and more often under memory pressure. The SDK released the host's object when its wrapper was collected or dropped, but the later call named the object by a handle string that nothing kept the wrapper alive for: `ExtensionRunner` built from the extensions a loader returned, a method call on the object's last use, and a model stream on a `ModelRuntime` the program had already let go of. An object now stays valid while anything that names its handle is still in use or in flight. Affects 0.5.2 through 0.7.0.
 
 ### BF-612955a
 
