@@ -136,7 +136,7 @@ func TestNoProductionCodeImportsTheTestHelper(t *testing.T) {
 			return err
 		}
 		if entry.IsDir() {
-			if name := entry.Name(); name == "node_modules" || (strings.HasPrefix(name, ".") && path != root) {
+			if name := entry.Name(); name == "node_modules" || name == "tmp" || (strings.HasPrefix(name, ".") && path != root) {
 				return filepath.SkipDir
 			}
 			return nil

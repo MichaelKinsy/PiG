@@ -53,6 +53,9 @@ func auditEINTRTree(root string, excluded map[string]string) (findings []string,
 			switch entry.Name() {
 			case ".git", "node_modules", ".upstream", "vendor", "testdata":
 				return filepath.SkipDir
+			case "tmp":
+				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's code.
+				return filepath.SkipDir
 			}
 			return nil
 		}
