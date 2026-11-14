@@ -1,3 +1,4 @@
+import { connect as ioWaitConnect } from "node:net";
 import fs from "node:fs";
 import zlib from "node:zlib";
 import { Readable } from "node:stream";
@@ -967,6 +968,18 @@ export default function (pi) {
   pi.registerCommand("liveness_host_call", { description: "Exercise an awaited host call", handler: async (_args, ctx) => ctx.waitForIdle() });
   pi.registerCommand("liveness_user_call", { description: "Exercise an interactive host call", handler: async (_args, ctx) => ctx.ui.input("Question", "Answer") });
   pi.registerCommand("liveness_fire_call", { description: "Exercise a no-result UI host call", handler: async (_args, ctx) => ctx.ui.setTitle("Conformance title") });
+  // io_wait waits on a plain TCP read: it dials the address it gets, announces itself with a "waiting" line and returns when the peer writes a line.
+  pi.registerCommand("io_wait", {
+    description: "Wait on a socket read",
+    handler: (args) => new Promise((resolve, reject) => {
+      const [host, port] = String(args).split(":");
+      const socket = ioWaitConnect({ host, port: Number(port) });
+      socket.setEncoding("utf8");
+      socket.on("connect", () => socket.write("waiting\n"));
+      socket.on("data", () => { socket.destroy(); resolve(); });
+      socket.on("error", reject);
+    }),
+  });
   pi.registerCommand("command_error", { description: "Return a command error", handler: async () => { throw new Error("command exploded"); } });
   pi.registerCommand("command_awaited_error", {
     description: "Return an error after awaited work",
