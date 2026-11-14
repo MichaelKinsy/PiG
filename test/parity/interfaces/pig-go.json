@@ -21613,6 +21613,17 @@
       "shapeHash": "sha256:6ea887270ea826e3cc47c2484eb6ed6fcbc31478607fab5c49a0f4df812cf442"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderCatalogServesAPI",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ProviderCatalogServesAPI",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, api API) bool"
+      },
+      "shapeHash": "sha256:f4a135d3b4775ac2e7642b9a339feccafc73df4dc3389ea35066f3c7ecf596df"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderClassifier",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ProviderClassifier",
@@ -85048,17 +85059,6 @@
         "type": "func(err error) bool"
       },
       "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#isCopilotAPI",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "isCopilotAPI",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(apiKind github.com/MichaelKinsy/PiG/ai.API) bool"
-      },
-      "shapeHash": "sha256:82e8393fafd8ec95b2aa341304125cb97b2373e84de428b88fe5a7ddac90fbde"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#isDirectory",
