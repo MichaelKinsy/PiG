@@ -254671,9 +254671,9 @@
         "call:durable/images/node/node.go#CreateNodePhotonImages"
       ],
       "evidence": [
+        "test:durable/examples/fit_images_example_test.go#TestExample47FitImages",
         "test:durable/images/node/node_test.go#TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF",
-        "test:durable/images/node/node_test.go#TestTheNodeProcessorKeepsTheCallersBytes",
-        "test:durable/images/node/node_test.go#TestTheNodeProcessorPreparesConcurrentImagesEachOnItsOwn"
+        "test:durable/images/node/node_test.go#TestTheNodeProcessorKeepsTheCallersBytes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -254694,9 +254694,9 @@
         "call:durable/images/node/node.go#CreateNodePhotonImages"
       ],
       "evidence": [
+        "test:durable/examples/fit_images_example_test.go#TestExample47FitImages",
         "test:durable/images/node/node_test.go#TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF",
-        "test:durable/images/node/node_test.go#TestTheNodeProcessorKeepsTheCallersBytes",
-        "test:durable/images/node/node_test.go#TestTheNodeProcessorPreparesConcurrentImagesEachOnItsOwn"
+        "test:durable/images/node/node_test.go#TestTheNodeProcessorKeepsTheCallersBytes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -263419,12 +263419,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/tools/read_image.go#imageModelOf"
+        "call:durable/tools/image_processor.go#ImageLimitsOf"
       ],
       "evidence": [
         "test:durable/tools/image_processor_pi_oracle_test.go#TestImageProcessorHelpersMatchPi",
-        "test:durable/images/images_test.go#TestAFormatProvidersDoNotTakeInlineBecomesPNG",
-        "test:durable/images/images_test.go#TestAJPEGThatMustBeReEncodedStaysAJPEG"
+        "test:durable/images/fit/fit_test.go#TestFitImage",
+        "test:durable/images/fit/fit_test.go#TestFitImages"
       ]
     },
     {
@@ -263485,12 +263485,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/tools/read_image.go#imageModelOf"
+        "call:durable/tools/image_processor.go#ImageLimitsOf"
       ],
       "evidence": [
         "test:durable/tools/coding_tools_pi_oracle_test.go#TestReadOfImagesMatchesPi",
         "test:durable/tools/image_processor_pi_oracle_test.go#TestImageProcessorHelpersMatchPi",
-        "test:durable/images/images_test.go#TestAPNGTooLargeForTheByteLimitBecomesAJPEGAtItsSizeThenShrinks"
+        "test:durable/images/fit/fit_test.go#TestFitImages"
       ]
     },
     {
@@ -263634,7 +263634,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/tools/read_image.go#readImage"
+        "call:durable/tools/image_processor.go#PreparedNotes"
       ],
       "evidence": [
         "test:durable/tools/coding_tools_pi_oracle_test.go#TestReadOfImagesMatchesPi",

@@ -58,7 +58,7 @@ func TestDetectSupportedImageMimeTypeMatchesPi(t *testing.T) {
 		{"empty", nil, ""},
 	}
 	for _, c := range cases {
-		if got := detectSupportedImageMimeType(c.data); got != c.want {
+		if got := DetectSupportedImageMimeType(c.data); got != c.want {
 			t.Errorf("%s: detectSupportedImageMimeType = %q, want %q", c.name, got, c.want)
 		}
 		got, err := detectSupportedImageMimeTypeOf(memorySource(c.data))
