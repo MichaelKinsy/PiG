@@ -78,6 +78,13 @@ func (m *InteractiveMode) finalizeRunningTools() {
 var setTerminalProgress = tui.SetTerminalProgress
 
 func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
+	if m.tuiTornDown {
+		// Pi's stop() unsubscribes the mode from its Session before it stops the TUI (interactive-mode.ts stop: this.unsubscribe()), so the events of a run that ends under the quit's dispose reach the extensions and the session file but not the mode, and nothing of the run is drawn after the stop. The Session's flush still waits for its acknowledgement.
+		if barrier, ok := ev.(eventBarrier); ok {
+			barrier.AcknowledgeEvent()
+		}
+		return
+	}
 	// Each assistant message owns one block updated from authoritative event snapshots.
 	if barrier, ok := ev.(eventBarrier); ok {
 		// Every earlier event has now been handled on this loop.

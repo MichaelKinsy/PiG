@@ -10883,6 +10883,28 @@
       ]
     },
     {
+      "id": "BF-4d65734",
+      "title": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn…",
+      "symptom": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end` and `agent_end` before `session_shutdown`.",
+      "rootCause": "Pi's quit awaits session.abort() before it emits session_shutdown (Pi main, #9126, the divergence D247 that the line carries): the interrupted turn's final assistant message is saved and the extensions see message_end, turn_end and agent_end. pig ended the process at the quit while the turn still streamed and lost the turn.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end` and `agent_end` before `session_shutdown`. PiG exited at once: the interrupted turn was missing from the session file, and extensions saw `session_shutdown` in the middle of the turn. A `!` command that is still running is not waited for, and nothing of the interrupted turn is drawn after the screen was restored. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4d65734a52",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
+      ]
+    },
+    {
       "id": "BF-4d7e227",
       "title": "fix(chord/workers): a worker waits for its parent to accept on the IPC pipe instead of giving up after 2 s",
       "symptom": "fix(chord/workers): a worker waits for its parent to accept on the IPC pipe instead of giving up after 2 s",
@@ -29069,6 +29091,33 @@
       ],
       "tests": [
         "test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined"
+      ]
+    },
+    {
+      "id": "BF-D247",
+      "title": "Quit settles the interrupted run before session_shutdown and disposal",
+      "symptom": "the quit disposes the runtime while a turn is still running and does not wait for it to settle, so the turn's last messages are not saved and a stored assistant tool call can be left without its result ([#9124](https://github.com/earendil-works/pi/issues/9124)); a later Pi change awaits the abort first.",
+      "rootCause": "the quit disposes the runtime during a run without waiting for it: persistence is disconnected before the turn settles, leaving a stored assistant tool call without its result and losing the turn's last messages.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D247",
+      "removeWhen": "the pin reaches a Pi release containing 7a53c310a.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "4d65734a52",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "8e8168061b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
       ]
     },
     {
@@ -47823,6 +47872,11 @@
       "id": "D233",
       "title": "A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first…",
       "entry": "BF-d4e641b"
+    },
+    {
+      "id": "D247",
+      "title": "Quit settles the interrupted run before session_shutdown and disposal",
+      "entry": "BF-D247"
     },
     {
       "id": "D615",

@@ -6369,12 +6369,6 @@ snippet = "baseCtx = context.Background()"
 
 [[hit]]
 check = "ctxbackground"
-file = "internal/codingagent/interactive_input.go"
-func = "InteractiveMode.settleActiveRun"
-snippet = "owner = context.Background()"
-
-[[hit]]
-check = "ctxbackground"
 file = "internal/codingagent/interactive_input_preflight.go"
 func = "InteractiveMode.runHeldPrompts"
 snippet = "ctx = context.Background()"

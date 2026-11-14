@@ -250388,6 +250388,17 @@
       "shapeHash": "sha256:c65b314cf309cd9768f5b36c871267e7bc65f120cdcb6a1fba5a4b4c47f3dc57"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.serveOwnerLoopUntil",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.serveOwnerLoopUntil",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(wait func(context.Context) error) error"
+      },
+      "shapeHash": "sha256:a9ea95ea504438d51d35dd3ca819bbfb603c25b1ce9658d5cb9751c72709e73b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.sessionModel",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.sessionModel",
@@ -250694,6 +250705,17 @@
         "type": "func() error"
       },
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.settleRunAtQuit",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.settleRunAtQuit",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.settleTurn",
