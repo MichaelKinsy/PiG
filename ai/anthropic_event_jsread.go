@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -32,7 +33,8 @@ type anthropicEventJS struct {
 func decodeAnthropicEventJS(sse anthropicStreamEvent, target any) (anthropicEventJS, error) {
 	var js anthropicEventJS
 	text := jsjson.NormalizeIntegers([]byte(sse.JSON))
-	err := json.Unmarshal(text, target)
+	// JSON.parse keeps a lone UTF-16 surrogate, which the name of a called tool can hold (the agent loop finds the tool by that name).
+	err := jsstring.UnmarshalKeepingSurrogates(text, &target)
 	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		if normalized, read, ok := normalizeAnthropicEventJS(sse.Type, text); ok && json.Unmarshal(normalized, target) == nil {
 			js, err = read, nil

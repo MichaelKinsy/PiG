@@ -24,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonwire"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -370,7 +371,7 @@ func (oaiMessage) carriesRequestStrings() {}
 func (oaiRequest) encodesRequestStrings() {}
 
 func (message oaiMessage) MarshalJSON() ([]byte, error) {
-	return marshalStringify(message.wire())
+	return jsstring.MarshalKeepingSurrogates(message.wire())
 }
 
 func (message oaiMessage) wire() any {
@@ -476,7 +477,8 @@ func (f oaiToolFunction) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(wire)
+	// The name and the description are written as JSON.stringify writes them: a lone UTF-16 surrogate as its escape (openai-completions.ts convertTools).
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // oaiToolFunctionWire is the value oaiToolFunction's MarshalJSON writes.
@@ -2057,7 +2059,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		if !decodedFast {
 			chunk = oaiChunk{}
 			text := jsjson.NormalizeIntegers([]byte(data))
-			if err := json.Unmarshal(text, &chunk); err != nil {
+			if err := jsstring.UnmarshalKeepingSurrogates(text, &chunk); err != nil {
 				normalized, read, normalizable := []byte(nil), openAIChunkRead{}, false
 				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 					normalized, read, normalizable = normalizeOpenAIChunkJS(text)

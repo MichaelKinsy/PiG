@@ -82,6 +82,17 @@ func encodeRequestBody(body any, options jsonv2.Options) ([]byte, error) {
 	return bytes.Clone(jsstring.UnescapeForStringifyInPlace(encoded)), nil
 }
 
+// encodeMarshaled writes value.MarshalJSON() into the request encoder: the form of a value whose own text holds a lone UTF-16 surrogate, which the
+// encoder writes as U+FFFD for each byte. The value's MarshalJSON takes its bytes from jsstring.MarshalKeepingSurrogates, so both methods of the
+// value write the same bytes for such a text under any encoder.
+func encodeMarshaled(encoder *jsontext.Encoder, value json.Marshaler) error {
+	encoded, err := value.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	return encoder.WriteValue(encoded)
+}
+
 // encode is marshalRequestBody of payload with each large string the cache holds written as its token, for a marshal that is marshalRequestBody; it reports false, having done nothing, for any other. The encoder hands each string of the payload to a function that writes the token, so the payload is not copied with the tokens in it as stringSplice.tokens copies it. A string the function leaves, because it is small or is not UTF-8, is encoded as it would be.
 func (s *stringSplice) encode(payload any, marshal func(any) ([]byte, error)) ([]byte, bool, error) {
 	if s.cache == nil || reflect.ValueOf(marshal).Pointer() != reflect.ValueOf(marshalRequestBody).Pointer() {

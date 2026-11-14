@@ -12,7 +12,7 @@ func marshalRequestBody(body any) ([]byte, error) {
 	if canonical, raw, err := rawRequestBody(body); raw {
 		return canonical, err
 	}
-	encoded, err := marshalStringify(body)
+	encoded, err := jsstring.MarshalKeepingSurrogates(body)
 	if err != nil {
 		return nil, err
 	}
