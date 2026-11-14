@@ -8,12 +8,17 @@ import (
 	"sync/atomic"
 )
 
-// Hooks observe socket reads on the owned provider transport, keyed by the client connection's local address.
+// Connection identifies one client connection by both of its addresses. The client's address alone does not: the kernel gives one local port to live connections to different servers.
+type Connection struct {
+	Client, Server string
+}
+
+// Hooks observe socket reads on the owned provider transport, keyed by the client connection.
 type Hooks struct {
 	// BeforeRead runs before the transport reads the socket.
-	BeforeRead func(local string)
+	BeforeRead func(connection Connection)
 	// AfterRead runs after the socket read returns n bytes.
-	AfterRead func(local string, n int)
+	AfterRead func(connection Connection, n int)
 }
 
 var (
@@ -42,26 +47,26 @@ func current() []*Hooks {
 	return nil
 }
 
-// BeforeRead notifies installed hooks. It reports whether any hook is installed, so the caller can skip AfterRead's address lookup otherwise.
-func BeforeRead(conn net.Conn) (observed bool) {
+// BeforeRead notifies installed hooks. It returns the connection for AfterRead and reports whether any hook is installed, so the caller can skip AfterRead and the address lookups otherwise.
+func BeforeRead(conn net.Conn) (connection Connection, observed bool) {
 	list := current()
 	if len(list) == 0 {
-		return false
+		return Connection{}, false
 	}
-	address := conn.LocalAddr().String()
+	connection = Connection{Client: conn.LocalAddr().String(), Server: conn.RemoteAddr().String()}
 	for _, hooks := range list {
 		if hooks.BeforeRead != nil {
-			hooks.BeforeRead(address)
+			hooks.BeforeRead(connection)
 		}
 	}
-	return true
+	return connection, true
 }
 
 // AfterRead notifies installed hooks of a completed read.
-func AfterRead(local string, n int) {
+func AfterRead(connection Connection, n int) {
 	for _, hooks := range current() {
 		if hooks.AfterRead != nil {
-			hooks.AfterRead(local, n)
+			hooks.AfterRead(connection, n)
 		}
 	}
 }

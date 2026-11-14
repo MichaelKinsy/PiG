@@ -15,7 +15,8 @@ import (
 // macOS runs the packages whose tests reached macOS-only failures (104-byte
 // socket paths, /var -> /private/var temporary directories, small PTY buffers,
 // fsnotify gaps) next to the native smoke run: every cmd/pig shard that make
-// test-cli runs on Linux, the extension host in three parts, and the other
+// test-cli runs on Linux, every extension host shard that make test-subprocess
+// runs on Linux, and the other
 // packages. GitHub runs at most five macOS jobs at a time, so the units share
 // at most five jobs; each unit still runs in its own go test process.
 func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
@@ -28,7 +29,8 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	for shard := 1; shard <= shards; shard++ {
 		wantUnits = append(wantUnits, "cli-"+strconv.Itoa(shard))
 	}
-	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "packages")
+	wantUnits = append(wantUnits, hostUnits(t)...)
+	wantUnits = append(wantUnits, "packages")
 	var gotUnits []string
 	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
 		units := strings.Fields(entry)
@@ -85,8 +87,12 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	} else if match[1] != strconv.Itoa(shards) {
 		t.Errorf("macos-units.sh splits cmd/pig into %s shards, want %d as make test-cli runs", match[1], shards)
 	}
-	if !regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit##\*-\}" 3 \./coding/extension/host/subprocess\); then\n\s*go test -timeout 30m -run "\$run" \./coding/extension/host/subprocess \|\| failed=1\n`).MatchString(script) {
-		t.Error("macos-units.sh does not run an extension host unit as its own go test of one third")
+	hostCount, hostPkg := hostShards(t)
+	hostRun := regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit##\*-\}" ([0-9]+) ` + regexp.QuoteMeta(hostPkg) + `\); then\n\s*go test -timeout 30m -run "\$run" ` + regexp.QuoteMeta(hostPkg) + ` \|\| failed=1\n`)
+	if match := hostRun.FindStringSubmatch(script); match == nil {
+		t.Error("macos-units.sh does not run an extension host unit as its own go test of one test-shard-pattern.sh shard")
+	} else if match[1] != strconv.Itoa(hostCount) {
+		t.Errorf("macos-units.sh splits %s into %s shards, want %d as make test-subprocess runs", hostPkg, match[1], hostCount)
 	}
 	if !strings.Contains(script, "go test -timeout 30m ./env ./coding/piglet || failed=1\n") {
 		t.Error("macos-units.sh does not run the packages unit")

@@ -40,8 +40,8 @@ type azureTickOracle struct {
 
 // TestRPC33AzureTickOrder replays ticks.json: the microtask generations between successive Azure OpenAI Responses deliveries,
 // counted by a FIFO chain that restarts at every delivery (see providers/azure-openai-responses/ticks.mjs).
-// upstream: packages/ai/src/api/azure-openai-responses.ts:127-131 (await onResponse, then push start);
-// upstream: packages/ai/src/api/openai-responses-shared.ts:432 (processResponsesStream); openai 6.40.0 core/streaming.mjs:28-48,191-245.
+// upstream: packages/ai/src/api/azure-openai-responses.ts:99-100 (await onResponse, then push start);
+// upstream: packages/ai/src/api/openai-responses-shared.ts:503 (processResponsesStream); openai 7.19.0 core/streaming.mjs:76-207,475-594.
 func TestRPC33AzureTickOrder(t *testing.T) {
 	for _, key := range []string{"HOME", "PIG_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"} {
 		t.Setenv(key, t.TempDir())
@@ -111,7 +111,7 @@ func runAzureTickCase(t *testing.T, barrier *readbarrier.Barrier, c azureTickCas
 		}
 		// ticks.mjs waits on a timer between records; the client has drained and is reading the socket again before each write.
 		for _, record := range records {
-			if !barrier.WaitReading(r.Context(), r.RemoteAddr) {
+			if !barrier.WaitReading(r) {
 				return
 			}
 			_, _ = io.WriteString(w, record)

@@ -17,13 +17,20 @@ def test_provider_dispatch_uses_armed_context_cancellation(phase):
     signal = ctx._cancelled
     result = {"sentinel": "provider-result"}
 
+    def cancel():
+        # What the read loop does with an ordinary cancel frame, which ends the request: it marks the request's parent cancelled under the state lock and sets the request's
+        # signal. (A signal-only cancel sets the signal alone and leaves the stream to its author: tests/test_provider_stream_signal_only.py.)
+        with ext._state_lock:
+            ctx._parent.state = "cancelled"
+        signal.set()
+
     class Stream(pig_sdk.ModelEventStream):
         def events(self):
             if phase == "during":
-                signal.set()
+                cancel()
                 yield {"type": "text_delta", "delta": "must not publish"}
             if phase == "after":
-                signal.set()
+                cancel()
 
         def end(self, value):
             ended.append(value)
@@ -45,7 +52,7 @@ def test_provider_dispatch_uses_armed_context_cancellation(phase):
     ext._respond = lambda request_id, value, error: responses.append((request_id, value, error))
     ext._notify = lambda method, payload: notifications.append((method, payload))
     if phase == "before":
-        signal.set()
+        cancel()
     ext._handle_request(request, ctx)
     assert seen == [signal]
     assert notifications == []

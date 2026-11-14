@@ -389,6 +389,7 @@ func (w errorWalker) checkObject(context *checkContext, n node, object map[strin
 			}
 		}
 	}
+	// pig divergence (D645): TypeBox tests `key in value` here (Guard.HasPropertyKey), so for an object that omits a property named like a member of Object.prototype (`toString`, `hasOwnProperty`, `valueOf`) it checks the inherited function against the property's schema and the object fails. Here only an own member is checked.
 	if properties, ok := n.child("properties"); ok {
 		for _, key := range properties.keys() {
 			item, exists := object[key]

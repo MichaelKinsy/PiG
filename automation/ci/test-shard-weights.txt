@@ -63,37 +63,49 @@ shards 8
 8 TestResourceLoaderUpstreamRPCFileURLs
 8 TestSharedSubprocessExecAcrossModes
 
-# The extension host package runs in three shards on Linux (SHARDED_SPEC) and on Windows (ci.yml, extension-host-1 to
-# -3). Its pins had been packed for two, a count nothing runs, so they never applied and the shards were placed by name
-# hash (196, 132 and 157 s at 4 CPUs on a loaded host). The 24 tests of 5 s or more are packed to an equal load, the
-# hash-placed rest included, by their median duration over two measured runs (a serial test counts its elapsed time, a
-# t.Parallel test about half of it).
+# The extension host package runs in five shards on Linux (SHARDED_SPEC), on Windows (ci.yml, extension-host-1 to -5) and on macOS (macos-units.sh);
+# test/ci-images checks that the three and this section name one count. Three shards bounded its time (178, 166 and 187 s at 4 CPUs) but not its -run
+# pattern: with 1546 tests the third needed 24209 characters, over the 24000 test-shard-pattern.sh allows, and make test-subprocess ran no test. Five keep
+# the longest pattern at 15132 characters, 63% of the limit. The pins are generated: automation/ci/test-shard-timings/extension-host.json holds the
+# go test -json timings of the five hash-placed shards (one container of 8 CPUs, warm caches: 207, 135, 147, 70 and 96 s), automation/ci/shard-pack.py fits
+# wall = 1.7 + 1.018*serial + 0.323*parallel test time to them (error 1%) and pins the 32 tests of 5 s or more by longest-first packing on top of the
+# hash-placed rest, to a modelled 130 to 132 s a shard. Regenerate when the suite changes: run every shard with go test -json into a directory, then
+#   automation/ci/shard-pack.py --package ./coding/extension/host/subprocess --emit-timings automation/ci/test-shard-timings/extension-host.json <dir>
+#   automation/ci/shard-pack.py --package ./coding/extension/host/subprocess --shards 5 --replace-shards 5 --write <this file> automation/ci/test-shard-timings/extension-host.json
 package ./coding/extension/host/subprocess
-shards 3
-1 TestContextResultShapesCrossSDKTransports
-1 TestHostClosedConnectionKeepsItsProcessRetained
-1 TestPackedMemberStoppingDoesNotReleaseAnotherMembersFileMutationTurn
-1 TestPackedPromptHandlerBodyFIFO
+shards 5
+1 TestHost_ReloadPlansPackedRustAndFissionsQuarantinedCell
+1 TestOAuthSubscriptionSDKPlacements
 1 TestPackedProviderResponseAndToolPrompts
-1 TestPackedSDKFocusedComponentAndSessionActionsMatch
-1 TestTurnBoundaryPackedFactoriesMatchIsolated
-1 TestUpstreamExtensionFactoryCache
-2 TestHost_ReloadPlansPackedRustAndFissionsQuarantinedCell
+1 TestPackedStderrLogLifecycle
+1 TestProcessDeathIsReportedOnceInEitherOrder
+1 TestUpstreamExtensionsDiscovery
 2 TestNodeRepeatedUnknownCrashBisectsAndRejoinsHealthyMembers
-2 TestPackedMessageOutputPadAcrossSDKs
-2 TestPackedUserMessageContentAcrossSDKs
-2 TestRecoveredExtensionTakesItsNewToolRegistration
-2 TestRustFactoryReloadReinvokesFactoryInTheRetainedProcess
-2 TestRustFactoryReloadWithControlCharactersInNameAndSocketDirectory
-2 TestToolRenderersAcrossSDKs
+2 TestNodeVendoredTuiUpstreamTests
+2 TestPackedMemberFactoryFailureEndsTheLoad
+2 TestPackedMemberStoppingDoesNotReleaseAnotherMembersFileMutationTurn
+2 TestUnknownEventHandlerIsAnErrorInEverySDK
+2 TestVendorPiDistIsIdempotentOnTheCommittedTree
 3 TestAC59PackedSDKFocusedComponentsOwnInput
-3 TestAbortedToolCallSettlesCooperativelyOrFailsAfterTheGrace
-3 TestEmbeddedPackedOwnerActivationByLanguage
-3 TestOAuthSubscriptionSDKPlacements
-3 TestPackedMemberFactoryFailureEndsTheLoad
-3 TestPackedStderrLogLifecycle
-3 TestSlowNodeFactoryLoads
+3 TestPackedMessageOutputPadAcrossSDKs
+3 TestPackedPromptHandlerBodyFIFO
+3 TestPackedUserMessageContentAcrossSDKs
+3 TestProcessExitAfterUnchangedReloadsIsReportedOnce
+3 TestSubagentExampleChildLifecycle
 3 TestXrefEventBusInspectMatchesPi
+4 TestHostClosedConnectionKeepsItsProcessRetained
+4 TestRustFactoryReloadReinvokesFactoryInTheRetainedProcess
+4 TestRustFactoryReloadWithControlCharactersInNameAndSocketDirectory
+4 TestSlowNodeFactoryLoads
+4 TestToolRenderCardsOrderTheCallBeforeTheResultAcrossSDKs
+4 TestToolRenderersAcrossSDKs
+4 TestTurnBoundaryPackedFactoriesMatchIsolated
+5 TestAbortedToolCallSettlesCooperativelyOrFailsAfterTheGrace
+5 TestContextResultShapesCrossSDKTransports
+5 TestEmbeddedPackedOwnerActivationByLanguage
+5 TestPackedSDKFocusedComponentAndSessionActionsMatch
+5 TestRecoveredExtensionTakesItsNewToolRegistration
+5 TestSubagentExampleModelFacingOutputAndRendering
 
 # The Windows extension-conformance jobs run these six shards, each its own go test process under a 30-minute package timeout.
 # Run 42725996591 ran four shards: 1535, 1277 and 1623 s, and shard 4 reached the 1800 s limit with 59 tests, every one t.Parallel,
@@ -377,30 +389,36 @@ shards 20
 20 TestSessionGraphExtensionFactoriesAcrossSDKs
 20 TestSettingsListThemeAcrossSDKs
 
-# The tui package runs in six shards (SHARDED_SPEC). Its 2515 tests list 108,000 characters of names, so a -run pattern per shard stays under the 24000-character limit of
-# test-shard-pattern.sh only from five shards up. The 21 tests of 5 s or more are packed to an equal load, the hash-placed rest included, by the duration of each in one
-# go test -json run of the whole package on a 192-core host (70 s a shard; the whole package took 427 s). The package was one process, 633 s before the Pi-oracle sweeps ran
-# their node processes in parallel, which is over the 10 minutes go test allows.
+# The tui package runs in eight shards (SHARDED_SPEC). Its 2701 tests list 118,000 characters of names: six shards bounded its time but left the longest -run
+# pattern at 21158 characters, 88% of the 24000 test-shard-pattern.sh allows, and eight keep it at 16081 (67%). The pins are generated:
+# automation/ci/test-shard-timings/tui.json holds the go test -json timings of the eight hash-placed shards (one container of 8 CPUs, warm caches: 37 to 98 s),
+# automation/ci/shard-pack.py fits wall = 0.1 + 1.000*serial + 1.008*parallel test time to them (three seconds of the package's tests are t.Parallel) and
+# pins the 24 tests of 5 s or more by longest-first packing on top of the hash-placed rest, to a modelled 56 to 61 s a shard (--shards 8 --replace-shards 8,
+# as for the extension host package above). The package was one process, 633 s before the Pi-oracle sweeps ran their node processes in parallel, which is
+# over the 10 minutes go test allows.
 package ./tui
-shards 6
-1 TestEditorTypedCharactersOpenAClosedPopupLikePi
+shards 8
+1 TestAParentContainerShowsWhatAnyExportedMutatorChanged
+1 TestEditorAutocompleteKeysResolveInPiOrder
 1 TestMarkdownTableColumnWidthsMatchPiManyColumns
-1 TestMarkdownTableWidthSweepMatchesPi
-1 TestModelSelectorInputMatchesPi
-2 TestMarkdownRandomDocsMatchPi
-2 TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora
-2 TestParseAndMatchKeyMatchPiOnSeededInput
-2 TestStreamedHighlightEqualsAWholeRun
-3 TestExtensionDialogsOwnTheirCountdown
-3 TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments
-3 TestMarkedBlockLexerEqualsMarkedOnTokenizerSources
-3 TestWholeMessageRetention
+2 TestConfigSelectorContractMatchesPi
+2 TestExtensionDialogsOwnTheirCountdown
+2 TestHighlightMemoRetainsWhatItAccountsFor
+2 TestMarkdownTableWidthSweepMatchesPi
+3 TestColorDetectionMatchesPi
+3 TestEditorWordWrapLineMatchesPi
+3 TestMarkdownRandomTablesMatchPi
 4 TestMarkdownBlockSweepMatchesPi
-4 TestModelSelectorRefreshModelsMatchesPi
-4 TestStreamedMarkdownEqualsAFreshRender
-5 TestConfigSelectorContractMatchesPi
-5 TestMarkdownRandomTablesMatchPi
-5 TestMarkedBlockTokenizersEqualTheirPatterns
-6 TestColorDetectionMatchesPi
-6 TestEditorWordWrapLineMatchesPi
-6 TestMarkedBlockRulesEqualTheirPatterns
+4 TestMarkedBlockRulesEqualTheirPatterns
+4 TestStreamedHighlightIsAWholeRunAcrossBlocksAndEdits
+5 TestEditorTypedCharactersOpenAClosedPopupLikePi
+5 TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments
+5 TestWholeMessageRetention
+6 TestMarkdownRandomDocsMatchPi
+6 TestScreenWriterShowsTheRenderersScreens
+6 TestScreenWriterTerminalShowsTheSameScreens
+6 TestStreamedHighlightEqualsAWholeRun
+7 TestModelSelectorRefreshModelsMatchesPi
+7 TestStreamedMarkdownEqualsAFreshRender
+8 TestMarkedBlockLexerEqualsMarkedOnTokenizerSources
+8 TestModelSelectorInputMatchesPi

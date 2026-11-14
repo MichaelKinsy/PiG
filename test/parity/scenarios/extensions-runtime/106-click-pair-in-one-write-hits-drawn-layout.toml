@@ -1,0 +1,59 @@
+# Behavior family: extensions-runtime
+# Upstream evidence: real Pi 1.5.2 (the pinned build) run side by side with PiG in tmux at 100x60 over the session fixture of scenario 96, forty pairs alone and forty under two competing Go build loops, byte-equal captures (2026-11-14); PiG with a frame drawn inside the click dispatch (`handleSelectionPointer` drawing where it requests a frame) opens the first card instead and fails the wait step.
+# Surface: a mouse report is resolved on the layout of the last frame drawn, not on the state an earlier report has changed (Pi:
+# `dispatchMouseToLayout` reads `currentLayout`, which `doRender` assigns after it writes the frame, and a click's change is drawn no earlier than
+# the event loop's next turn). Two clicks that reach the host in one read both land on what the screen showed when they were sent.
+#
+# The step sends both clicks in one tmux send-keys call, so in one write to the pane: the first on the collapsed compaction summary (row 5), the
+# second on row 26. On the frame drawn at that moment row 26 is the second click-card; once the compaction summary has grown by its two rows,
+# row 26 is the first card. Pi opens the second card and leaves the first closed. A host that lays the transcript out again before it resolves
+# the second click opens the first card instead, so both outcomes show on screen and neither is a click that did nothing.
+#
+# Under load the write can reach PiG while its two cards are still the placeholders `[click-card]`: the Node host has not answered their first render, and the ready gate passes on capture_start. The second click then waits for the card, and the frame that paints the card gives it the click (`render_proxy.go` `holdEarlyClick`), so the screen ends as Pi's does. Before that fix 5 of 80 loaded runs ended with the second card closed.
+#
+# Scenario 96 clicks the same cards one click per step, each step waiting for the frame its click produces.
+
+name = "106-click-pair-in-one-write-hits-drawn-layout"
+description = "Two clicks written together are both resolved on the frame that was on screen: the second opens the card drawn on its row, not the card the first click moves there"
+covers = [
+  "packages/tui/src/tui-alt-screen.ts",
+  "packages/tui/src/components/mouse-region.ts",
+  "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts",
+]
+tags = ["hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/quiet-pig-home", "COLORTERM="]
+pi = ["PI_CODING_AGENT_DIR=testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1", "COLORTERM="]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+pig_extensions = ["testdata/ext/renderer-click.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/renderer-click.mjs",
+]
+
+[tmux]
+width = 100
+height = 60
+cwd = "testdata/click-cwd"
+ready_pattern_pig = "card:second card:closed"
+ready_pattern_pi = "card:second card:closed"
+ready_timeout_seconds = 30
+capture_start = "[compaction]"
+capture_end = "details of second card"
+
+# Column 5, row 5 (the compaction summary), then column 5, row 26: press and release of each, forty bytes in one write.
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 35 3b 35 4d 1b 5b 3c 30 3b 35 3b 35 6d 1b 5b 3c 30 3b 35 3b 32 36 4d 1b 5b 3c 30 3b 35 3b 32 36 6d"]
+wait_visible_contains = ["The user greeted the assistant and received a friendly response.", "details of second card"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["The user greeted the assistant and received a friendly response.", "card:first card:closed", "details of second card"]
+both_not_contain = ["panic:", "goroutine ", "details of first card", "card:second card:closed"]
+output_equal = true
+runs = 3

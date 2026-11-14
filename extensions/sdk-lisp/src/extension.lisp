@@ -69,7 +69,9 @@
   (reason nil)
   (ticket nil)
   ;; T for the request of a command handler or a withSession callback, whose context is Pi's command context. The context keeps the kind after the request ended; the host refuses the command-only session actions from any other.
-  (command nil))
+  (command nil)
+  ;; A function of no arguments that an ordinary cancel, and the end of the runtime, call once: it ends what the request's handler waits on (the stream of a provider_stream_simple request). A signal-only cancel does not call it.
+  (on-end nil))
 
 (defstruct (footer-data)
   (branch nil)

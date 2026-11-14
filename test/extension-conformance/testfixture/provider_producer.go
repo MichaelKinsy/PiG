@@ -50,5 +50,8 @@ func ProviderProducer() *sdk.Extension {
 	registerProviderSnapshot(ext)
 	registerProviderCancelBurst(ext)
 	registerProviderCancelEnd(ext)
+	registerProviderCancelError(ext)
+	registerProviderCancelThrow(ext)
+	registerProviderCancelNever(ext)
 	return ext
 }

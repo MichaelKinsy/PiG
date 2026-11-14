@@ -1,10 +1,13 @@
 # Behavior family: interactive-rendering
-# Surface: tool-execution.ts updateDisplay's fallbacks for the built-in write and read cards, reached through a thrown renderer.
+# Surface: the built-in write and read cards of a path whose extension is a member name of Object.prototype.
 #
 # theme.ts getLanguageFromPath (:993-1062) looks the lowercased extension up in a plain object, so `constructor` (and `__proto__`) finds a member inherited
 # from Object.prototype. The value is truthy: write.ts renderCall (:123-127) and read.ts formatReadResult (:124-125) pass it to highlightCode, whose
 # supportsLanguage check (:937) throws a TypeError before the try at :949. updateDisplay (tool-execution.ts:303-312, :324-341) catches it and draws the call
 # fallback (formatToolCallWithArgs) for write and the result fallback for read.
+#
+# pig divergence (D645): PiG's extension table is a Go map with no inherited members, so such a path is a file with no known language, and PiG draws the
+# write card and the read card themselves, with plain text.
 #
 # Upstream evidence (pi 1.5.2 at b4afdddf, the bundle, Node 24.22.2, 100x50 tmux, three runs, 2026-11-13):
 #   cwd holds notes.constructor = "alpha line\n\tbeta tabbed\ngamma line\n\n"
@@ -23,17 +26,21 @@
 #        beta tabbed
 #     gamma line
 #
-# The write card proper would draw `write out.constructor`, a blank row and the two content rows; the read card proper a blank row between its header and
-# the output. Before this scenario PiG drew those. Both turns end, the result reaches the model (the faux provider echoes it as `ext-tool-done: ...`) and
-# the interface stays usable.
+# PiG draws `write out.constructor`, a blank row and the two content rows, and a blank row between the read header and the output. That is what both sides
+# draw for `out.unknownext` and `notes.unknownext`, which scenario 74-unknown-extension-path-cards requires to be equal byte for byte. Both turns end, the
+# result reaches the model (the faux provider echoes it as `ext-tool-done: ...`) and the interface stays usable on both sides.
+#
+# The tools are expanded (ctrl+o) before the turns, so each card is drawn expanded when its turn ends and every wait is on text that both sides print.
 #
 # Crop: the capture runs from the first prompt (`Run: ext tool write`) to the faux provider's echo of the read result (`ext-tool-done: alpha line`). It holds
 # both prompts, both expanded cards and both echoes. The startup header above it and the editor and footer below it belong to other scenarios and are not
-# claimed here. Inside the crop the escaped bytes are compared. The runner's cwd_snapshot_digits step (D2) replaces the digits of the per-run cwd copy by the
-# same number of placeholders; the prompts and the cards name relative paths, so no row of the crop holds the cwd and the step changes nothing here.
+# claimed here.
+#
+# lint-known-gap: no equality comparator, because the two captures differ by design under divergence D645 (Pi draws its fallbacks, PiG draws the cards);
+# the assertions state each side's rows. The Go oracle test TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi compares every row of both sides.
 
 name = "70-prototype-named-path-cards"
-description = "A write and a read of a path whose extension is `constructor` draw Pi's call and result fallbacks, expanded, byte for byte."
+description = "A write and a read of a path whose extension is `constructor`: PiG draws the write and read cards, Pi draws its call and result fallbacks."
 covers = [
   "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
 ]
@@ -60,6 +67,10 @@ capture_start = "Run: ext tool write"
 capture_end = "ext-tool-done: alpha line"
 
 [[tmux.steps]]
+keys = ["C-o"]
+settle_seconds = 1
+
+[[tmux.steps]]
 keys = ['Run: ext tool write {"path":"out.constructor","content":"const x = 1;\n\tlet y = 2;\n"}', "Enter"]
 settle_seconds = 1
 wait_contains = ["ext-tool-done: Successfully wrote to out.constructor"]
@@ -71,16 +82,17 @@ settle_seconds = 1
 wait_contains = ["ext-tool-done: alpha line"]
 wait_timeout_seconds = 20
 
-[[tmux.steps]]
-keys = ["C-o"]
-settle_seconds = 1
-wait_contains = ["path: out.constructor", "content: const x = 1;"]
-wait_timeout_seconds = 15
-
 [assert]
 both_reach_ready = true
-# The crop runs from the first prompt to the answer after the read: both expanded cards with their colours and backgrounds.
-escaped_output_equal = true
-both_contain = ["path: out.constructor", "content: const x = 1;", "read notes.constructor", "beta tabbed", "ext-tool-done: Successfully wrote to out.constructor"]
-both_not_contain = ["panic:", "goroutine ", "TypeError", "write out.constructor"]
+both_contain = ["read notes.constructor", "beta tabbed", "ext-tool-done: Successfully wrote to out.constructor"]
+both_not_contain = ["panic:", "goroutine ", "TypeError"]
+pig_contains = ["write out.constructor"]
+pig_not_contain = ["path: out.constructor", "content: const x = 1;"]
+pi_contains = ["path: out.constructor", "content: const x = 1;"]
+pi_not_contain = ["write out.constructor"]
 runs = 3
+
+[diverge]
+pig_contains = ["write out.constructor"]
+pi_contains = ["path: out.constructor"]
+reason = "D645 SCRUTINIZED:approved. Pi looks the file extension up in a plain object, finds a member inherited from Object.prototype for `constructor` and `__proto__`, its highlighter throws and the card falls back to the generic call and result rows; PiG's Go map has no such entry, so the path is a file with no known language and PiG draws the write and read cards themselves."

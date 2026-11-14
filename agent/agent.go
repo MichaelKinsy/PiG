@@ -2135,7 +2135,11 @@ func (h *loopHost) consumeStream(ctx context.Context, stream *ai.AssistantMessag
 	}
 
 	final, resultErr := stream.ResultContext(ctx)
-	if ctx.Err() != nil || resultErr != nil {
+	// upstream: packages/agent/src/agent-loop.ts:470-478 takes the result of a stream that ended without a terminal event (`await result()` after the loop), whatever its signal says: an author that ended its stream with a result when it saw the abort gave the turn's message. A stream that has no result ends as aborted below.
+	if settled, ok := stream.SettledResult(); ok {
+		final, resultErr = settled, nil
+	}
+	if resultErr != nil {
 		if pending {
 			message = shallowAssistantMessageFrom(&unobserved)
 		}

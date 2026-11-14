@@ -2192,3 +2192,24 @@ commit = "e95b1a4f1165a0867517cca6b34fcb6fda7f07b4"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "No expected value changed: the called tool's name was and is `N[\\ude00]`, the unit the stream gave. The assertion that held the literal (strings.Contains on PiG's message, two API kinds) was replaced by one that reads the name out of the message Pi's pinned build ends with for the same stream (testdata/tool_surrogate_stream.mjs), requires that to be `N[\\ude00]`, and compares PiG's with it, for eight API kinds. Pi takes the name as the stream gives it (openai-completions.ts:489, anthropic-messages.ts:1012) and sanitizes no tool name; JSON.stringify writes the lone unit as its escape. Stricter, not weaker."
+
+[[entry]]
+path = "internal/codingagent/prototype_named_path_cards_test.go"
+commit = "eabcdf054aeb22e81ef20953fb40439c7a190ff5"
+class = "DIVERGENCE"
+cite = "D645"
+reason = "No Pi behavior changed: Pi still draws its generic fallback for the write card and the expanded read card of a path whose extension is `constructor` or `__proto__` (theme.ts:1062 `extToLang[ext]` returns a member inherited from Object.prototype and highlightCode throws). The four expected values were PiG's copy of that fallback; eabcdf054ae makes PiG draw the cards themselves on purpose (D645 row 16), and TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi in the same file asserts both sides against pinned Pi."
+
+[[entry]]
+path = "tui/render_within_test.go"
+commit = "72aef79a8b19bd314f83c0a588080cd2f7d1c9c7"
+class = "DIVERGENCE"
+cite = "D619"
+reason = "D619 is PiG's own rule that a spinner step may wait min(40 ms, interval/2) for a frame something else is about to ask for; Pi has no such wait, so no Pi line governs the test. The commit narrows the rule: RequestRenderWithin asks for the frame at once when no frame was drawn within the last delay. A step taken while nothing else draws is no longer folded into a later frame, so the two expectations of that case change from 1 frame drawn to 2; the commit adds the cases of a frame never drawn and of the time since the last frame. This commit is the same change as 440cb8b15 under the sha it has on the line (the line took it from the screen-writer merge 88a1f2eb0 / 13ebc69db), so the review of 440cb8b15 holds for it."
+
+[[entry]]
+path = "internal/codingagent/frame_pacing_test.go"
+commit = "58d20ba89f44ab61fa8b38683a6d7a8b4261e966"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No expected value changed for an input the test had: Pi has no frame pacing, and D625 (docs/additive-features.md `## D625`) is PiG's own opt-in policy. What the lint sees is a reshape of two tables: TestInstallFramePacingFollowsTheSelection gains the terminal.framePacing setting column and keeps its four environment-only rows with their old verdicts (pi false, 0 false, adaptive true, empty true), and every row of TestFramePacingGateIsClosedWhileAnExtensionDrawsOnScreen keeps its mount and its `gate closed one frame after the mount` assertion and gains an unmount function that the new `gate open one frame after the unmount` assertion uses. The new rows (setting values, tool cards, custom messages and entries) are additions that cover the behavior of the same commit."

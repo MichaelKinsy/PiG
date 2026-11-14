@@ -408,6 +408,64 @@ func cliShards(t *testing.T) (int, string) {
 	return shards, string(pkg[1])
 }
 
+// hostShards reads the shard count SHARDED_SPEC of test-grouped.sh declares for the extension host package, the one count that make test-subprocess, the Windows extension-host jobs, the macOS extension-host units and the package's pins in test-shard-weights.txt share, and the package.
+func hostShards(t *testing.T) (int, string) {
+	t.Helper()
+	const pkg = "./coding/extension/host/subprocess"
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "test-grouped.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec := regexp.MustCompile(`(?m)^SHARDED_SPEC=\(\n((?:  \S+\n)+)\)$`).FindSubmatch(data)
+	if spec == nil {
+		t.Fatal("test-grouped.sh does not declare SHARDED_SPEC")
+	}
+	count := regexp.MustCompile(`(?m)^  ` + regexp.QuoteMeta(pkg) + `:([0-9]+)$`).FindSubmatch(spec[1])
+	if count == nil {
+		t.Fatalf("SHARDED_SPEC of test-grouped.sh does not shard %s", pkg)
+	}
+	shards, err := strconv.Atoi(string(count[1]))
+	if err != nil || shards < 2 {
+		t.Fatalf("SHARDED_SPEC runs %s in %s shards: want two or more", pkg, count[1])
+	}
+	return shards, pkg
+}
+
+// hostUnits names the extension-host units of a Windows or macOS matrix, one for each shard of the extension host package.
+func hostUnits(t *testing.T) []string {
+	t.Helper()
+	shards, _ := hostShards(t)
+	units := make([]string, 0, shards)
+	for shard := 1; shard <= shards; shard++ {
+		units = append(units, "extension-host-"+strconv.Itoa(shard))
+	}
+	return units
+}
+
+// The pins of the extension host package in test-shard-weights.txt apply only to the shard count their section declares, so the section must declare the count the package runs under: pins packed for another count place nothing, and every test falls back to its name hash.
+func TestExtensionHostPinsAreForTheShardCountItRuns(t *testing.T) {
+	shards, pkg := hostShards(t)
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "test-shard-weights.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sections := regexp.MustCompile(`(?m)^package `+regexp.QuoteMeta(pkg)+`\nshards ([0-9]+)\n((?:[0-9]+ \S+\n)*)`).FindAllSubmatch(data, -1)
+	if len(sections) != 1 {
+		t.Fatalf("test-shard-weights.txt has %d sections for %s, want one", len(sections), pkg)
+	}
+	if got := string(sections[0][1]); got != strconv.Itoa(shards) {
+		t.Fatalf("test-shard-weights.txt packs %s for %s shards, SHARDED_SPEC runs it in %d", pkg, got, shards)
+	}
+	pinned := map[string]bool{}
+	for line := range strings.Lines(string(sections[0][2])) {
+		shard, _, _ := strings.Cut(line, " ")
+		pinned[shard] = true
+	}
+	if len(pinned) != shards {
+		t.Errorf("test-shard-weights.txt pins tests of %s to %d of its %d shards", pkg, len(pinned), shards)
+	}
+}
+
 // requireShardPartition fails unless the -run patterns select every runnable fake test exactly once.
 func requireShardPartition(t *testing.T, patterns []string) {
 	t.Helper()
