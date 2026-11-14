@@ -2,6 +2,7 @@
 package atomicfile
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -97,9 +98,9 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		}
 		return nil, err
 	}
-	replaced := false
+	keepTemp := false
 	defer func() {
-		if !replaced {
+		if !keepTemp {
 			_ = temp.Close()
 			_ = os.Remove(temp.Name())
 		}
@@ -126,12 +127,17 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		return nil, err
 	}
 	if err = replaceTemp(temp.Name(), path, existing != nil); err != nil {
+		var kept *keptFilesError
+		if errors.As(err, &kept) {
+			keepTemp = true // the temporary file holds data that exists nowhere else
+			return nil, err
+		}
 		if refusesReplace(err) {
 			return err, nil
 		}
 		return nil, err
 	}
-	replaced = true
+	keepTemp = true // the temporary file is the target now
 	// The rename is durable once its directory entry is. The file is replaced either way; a flush that fails for a real reason is the caller's to know.
 	if err = syncDirectory(filepath.Dir(path)); err != nil {
 		return nil, err
