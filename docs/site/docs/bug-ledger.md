@@ -1048,6 +1048,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-74e801f](#bf-74e801f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-74f806c](#bf-74f806c) | fix(agent): end the tool flow at custom user messages after /tree navigation (#203) | PiG's own defect | All platforms | Unreleased |
 | [BF-74fb98c](#bf-74fb98c) | Markdown list items lex their text line by line like Pi: an HTML block starts at any item line, and an item… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-752aef5](#bf-752aef5) | A throttled frame whose timer callback had already passed its generation check could still draw once more… | PiG's own defect | All platforms | Unreleased |
 | [BF-75426aa](#bf-75426aa) | The `/login` and `/logout` provider picker and the `/tree` selector show the terminal cursor in their search… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-75426aa-2](#bf-75426aa-2) | A Node extension's `tool_call` handler can edit `event.input` in place and the tool runs with the edit, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-756cac8](#bf-756cac8) | A streaming run no longer hangs, rarely and mostly under load, when a response turn resumes just as the drain… | PiG's own defect | All platforms | 0.5.0 |
@@ -16487,6 +16488,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `74fb98c362` (2026-10-11)
 - **Tests:** `tui/markdown_list_item_lines_oracle_test.go::TestMarkdownListItemContinuationLinesMatchPi`
 - **Release note:** Markdown list items lex their text line by line like Pi: an HTML block starts at any item line, and an item line indented four or more spaces past the content joins the text before it (so a heading, quote, rule, fence, table or bullet there stays text) and leaves an empty row before the text that follows.
+
+### BF-752aef5
+
+**A throttled frame whose timer callback had already passed its generation check could still draw once more…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A throttled frame whose timer callback had already passed its generation check could still draw once more after a direct `Render()`, a forced render request or a `Stop()` had cancelled it: the check is made under the render lock and released before the frame takes it again.
+- **Root cause:** The extra frame was forced in a test with the frame parked at its first clock read; it was not observed in a real terminal.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `752aef5e27` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A throttled frame whose timer callback had already passed its generation check could still draw once more after a direct `Render()`, a forced render request or a `Stop()` had cancelled it: the check is made under the render lock and released before the frame takes it again. The frame now checks its generation again when it takes the frame lock and draws nothing when it lost it, as in Pi, where `renderNow` cancels the timer and nothing renders until the next request (`tui.ts` `renderNow`, `scheduleRender`). The extra frame was forced in a test with the frame parked at its first clock read; it was not observed in a real terminal.
 
 ### BF-75426aa
 

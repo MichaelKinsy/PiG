@@ -28404,6 +28404,26 @@
       ]
     },
     {
+      "id": "BF-752aef5",
+      "title": "A throttled frame whose timer callback had already passed its generation check could still draw once more…",
+      "symptom": "A throttled frame whose timer callback had already passed its generation check could still draw once more after a direct `Render()`, a forced render request or a `Stop()` had cancelled it: the check is made under the render lock and released before the frame takes it again.",
+      "rootCause": "The extra frame was forced in a test with the frame parked at its first clock read; it was not observed in a real terminal.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A throttled frame whose timer callback had already passed its generation check could still draw once more after a direct `Render()`, a forced render request or a `Stop()` had cancelled it: the check is made under the render lock and released before the frame takes it again. The frame now checks its generation again when it takes the frame lock and draws nothing when it lost it, as in Pi, where `renderNow` cancels the timer and nothing renders until the next request (`tui.ts` `renderNow`, `scheduleRender`). The extra frame was forced in a test with the frame parked at its first clock read; it was not observed in a real terminal.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "752aef5e27",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-75426aa",
       "title": "The `/login` and `/logout` provider picker and the `/tree` selector show the terminal cursor in their search…",
       "symptom": "The `/login` and `/logout` provider picker and the `/tree` selector show the terminal cursor in their search and label inputs only while they hold focus, as Pi does.",

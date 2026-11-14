@@ -377960,6 +377960,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.drawFrame",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.drawFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(gate frameGate) (began bool)"
+      },
+      "shapeHash": "sha256:e3c4f55468e284ea3bbc8e7d00cbde01c81de29e8c1ed428144379ed1ec5bb43"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.dropWindowLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.dropWindowLocked",
@@ -378057,6 +378068,17 @@
         "type": "func(sent bool)"
       },
       "shapeHash": "sha256:e04fbfed16fe3b5ca8228a937c2d91faa9632c8d91103ae6e55d57e3378bc5b3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.frameSupersededLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.frameSupersededLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(gate frameGate) bool"
+      },
+      "shapeHash": "sha256:325318ad5979bcfe41f55bb42582632c22b845e78bf33d474702b6625eebd66f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.getClickCount",
@@ -378758,9 +378780,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func()"
+        "type": "func(generation uint64)"
       },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+      "shapeHash": "sha256:988ce4f83c67fa137e148f701e3e60e2569221af251fbe0875528d807cc2c35a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.renderBase",
@@ -380589,6 +380611,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.drawFrame",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.drawFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(gate frameGate) (began bool)"
+      },
+      "shapeHash": "sha256:e3c4f55468e284ea3bbc8e7d00cbde01c81de29e8c1ed428144379ed1ec5bb43"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.dropWindowLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.dropWindowLocked",
@@ -380686,6 +380719,17 @@
         "type": "func(sent bool)"
       },
       "shapeHash": "sha256:e04fbfed16fe3b5ca8228a937c2d91faa9632c8d91103ae6e55d57e3378bc5b3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.frameSupersededLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.frameSupersededLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(gate frameGate) bool"
+      },
+      "shapeHash": "sha256:325318ad5979bcfe41f55bb42582632c22b845e78bf33d474702b6625eebd66f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.fullRender",
@@ -381068,9 +381112,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func()"
+        "type": "func(generation uint64)"
       },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+      "shapeHash": "sha256:988ce4f83c67fa137e148f701e3e60e2569221af251fbe0875528d807cc2c35a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.renderBase",
@@ -382855,17 +382899,6 @@
       "shapeHash": "sha256:b133faad2ffd9a4d75bc2a0d1b3363163f9574beb72d135def74f69e97ccedb7"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.doRender",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiSurface.doRender",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.dockBlobView",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.dockBlobView",
@@ -382897,6 +382930,17 @@
         "type": "func(id string, parts []dockPart, width int) *github.com/MichaelKinsy/PiG/extensions/sdk/frontend.View"
       },
       "shapeHash": "sha256:e12ff6509053b15c75ee5ea0444c43e68e2a836b7d8f161dab3997d9600acd69"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.drawFrame",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.drawFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(gate frameGate) bool"
+      },
+      "shapeHash": "sha256:325318ad5979bcfe41f55bb42582632c22b845e78bf33d474702b6625eebd66f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.dropWindowLocked",
@@ -383051,6 +383095,17 @@
         "type": "func(sent bool)"
       },
       "shapeHash": "sha256:e04fbfed16fe3b5ca8228a937c2d91faa9632c8d91103ae6e55d57e3378bc5b3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.frameSupersededLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.frameSupersededLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(gate frameGate) bool"
+      },
+      "shapeHash": "sha256:325318ad5979bcfe41f55bb42582632c22b845e78bf33d474702b6625eebd66f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.getMountedRoots",
@@ -383532,9 +383587,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func()"
+        "type": "func(generation uint64)"
       },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+      "shapeHash": "sha256:988ce4f83c67fa137e148f701e3e60e2569221af251fbe0875528d807cc2c35a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.renderBase",
@@ -391191,6 +391246,17 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#frameGate",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "frameGate",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "frameGate"
+      },
+      "shapeHash": "sha256:2a76dd2b1c6a00fa8399989159f692a74ceed3686f7997ccb0b4fdd8ef8e2ab8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#frameIntervalFloor",
@@ -408353,6 +408419,17 @@
       "shapeHash": "sha256:e04fbfed16fe3b5ca8228a937c2d91faa9632c8d91103ae6e55d57e3378bc5b3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.frameSupersededLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.frameSupersededLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(gate frameGate) bool"
+      },
+      "shapeHash": "sha256:325318ad5979bcfe41f55bb42582632c22b845e78bf33d474702b6625eebd66f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.handleMouse",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.handleMouse",
@@ -408689,9 +408766,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func()"
+        "type": "func(generation uint64)"
       },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+      "shapeHash": "sha256:988ce4f83c67fa137e148f701e3e60e2569221af251fbe0875528d807cc2c35a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.renderBase",

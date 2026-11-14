@@ -85,3 +85,18 @@ func TestTUIFrameInFlightAtStopWritesNothingAfterStop(t *testing.T) {
 		t.Fatalf("a frame in flight rendered the components after Stop: count %d -> %d", drawn, got)
 	}
 }
+
+// A direct Render cancels the frame the timer armed (CancelPendingRender); a frame already in flight must not draw once more after it.
+func TestTUIFrameInFlightAtRenderDrawsNothingMore(t *testing.T) {
+	f := startFrameInFlight(t)
+	f.ui.Render()
+	afterRender := f.out.String()
+	drawn := f.comp.Count()
+	f.finish(t)
+	if late := f.out.String()[len(afterRender):]; late != "" {
+		t.Fatalf("a frame in flight wrote %q after the direct Render returned", late)
+	}
+	if got := f.comp.Count(); got != drawn {
+		t.Fatalf("a frame in flight rendered the components after the direct Render: count %d -> %d", drawn, got)
+	}
+}

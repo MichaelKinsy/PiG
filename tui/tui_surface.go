@@ -200,7 +200,7 @@ func newTuiSurface(out io.Writer, session frontend.Session, onApplyError func(er
 		onApplyError:   onApplyError,
 		surfaceMain:    newSurfaceMain(),
 	}
-	t.render = t.doRender
+	t.render = t.drawFrame
 	t.mountedRoots = t.getMountedRoots
 	return t
 }
@@ -434,13 +434,15 @@ func regionWidth(cols, width int) int {
 	return cols
 }
 
+// drawFrame is the surface's frame: gate says which frame started it (frameGate). It reports whether the frame began.
+//
 //perf:hot
-func (t *TuiSurface) doRender() {
+func (t *TuiSurface) drawFrame(gate frameGate) bool {
 	mainCols, dockCols := t.session.Columns()
 	t.lockFrame()
-	if t.stopped.Load() || !t.started {
+	if t.stopped.Load() || !t.started || t.frameSupersededLocked(gate) {
 		t.unlockFrame()
-		return
+		return false
 	}
 	t.frameBeganLocked()
 	t.updateSize()
@@ -496,6 +498,7 @@ func (t *TuiSurface) doRender() {
 			onApplyError(err)
 		}
 	}
+	return true
 }
 
 // pig additive (D91): a frame carries the palette of the theme PiG draws
