@@ -1,0 +1,45 @@
+# Build-tag sets of the tree and the gate that compiles each. vet-tags.sh reads this file.
+#   vet <tag>                  compiled by `make vet`: one go vet run of every package with all `vet` tags set together, so a file or test that builds only under the tag cannot break unseen.
+#   other <tag> <gate>         not compiled by `make vet`: the named gate owns the compile (a toolchain or a switch go vet on this host does not have).
+#   prefix <prefix> <gate>     every tag that starts with the prefix is compiled by the named gate.
+# `vet-tags.sh check` fails on a tag that a //go:build line of a Go file names and this file does not list (a new tag needs a row here), and on a row whose tag no Go file names.
+# Tags of the Go toolchain (GOOS, GOARCH, cgo, race, ignore, goexperiment.*, go1.N ...) need no row.
+vet integration
+vet live
+vet parity
+vet pigfault
+vet termengines
+vet durablescaling
+vet codemodeworker
+vet requestvalidity
+vet pigjson_verify
+vet codegen
+vet sqlite.dmesg
+prefix pig_strip_ make piglet-strip-build and make piglet-strip-guard (vet of every package with every strip tag)
+other tinygo make durable-contract (the TinyGo build of the Durable core, ci-durable-contract)
+other tinygo.wasm make durable-contract (the TinyGo build of the Durable core, ci-durable-contract)
+other baremetal make durable-contract (the TinyGo build of the Durable core, ci-durable-contract)
+other uefi make durable-contract (the TinyGo build of the Durable core, ci-durable-contract)
+other gc.conservative make durable-contract (TinyGo's garbage collector choice in durable/core/budget/tinygo)
+other gc.precise make durable-contract (TinyGo's garbage collector choice in durable/core/budget/tinygo)
+other appengine no gate: Google App Engine only (third_party/goldmark/util); nothing sets it
+# Platforms, last: `make vet` runs go vet natively (the host, linux), then once for each `platform` row, then once more natively with all `vet` tags together.
+#   native <os>                    the host's own pass.
+#   platform <os> <arch> [VAR=v]   a `make vet` pass with GOOS and GOARCH (and VAR=v).
+#   os-other <os> <gate>           not vetted by `make vet`; the named gate compiles it, or none does.
+# What compiles what (checked 2026-11-14): lane-precheck.sh runs only `sh automation/ci/go-vet.sh` (native, no tags); pre-push-gate.sh the same; security.yml the same; ci.yml's preflight runs `make vet` whole (every row above) and its Android job the Android pass again; the macOS job compiles and runs darwin; golangci-lint compiles integration, live and parity.
+native linux
+platform windows amd64
+platform windows arm64
+platform android arm64 CGO_ENABLED=0
+os-other darwin the macOS jobs of ci.yml (macos-units.sh builds and runs the tests)
+os-other freebsd no gate: no shipped binary; files of vendored packages and fallbacks
+os-other netbsd no gate: no shipped binary; files of vendored packages and fallbacks
+os-other openbsd no gate: no shipped binary; files of vendored packages and fallbacks
+os-other dragonfly no gate: no shipped binary; files of vendored packages and fallbacks
+os-other solaris no gate: no shipped binary; files of vendored packages and fallbacks
+os-other illumos no gate: no shipped binary; files of vendored packages and fallbacks
+os-other aix no gate: no shipped binary; files of vendored packages and fallbacks
+os-other zos no gate: no shipped binary; files of vendored packages and fallbacks
+os-other js no gate: no shipped binary; the durable core's wasm and TinyGo files
+os-other wasip1 no gate: no shipped binary; the durable core's wasm files
