@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/modelgen/modeldata"
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // TestPublishedModelDataValidates runs the validator over the real published data: the mirror's generated aggregator
@@ -18,7 +19,7 @@ func TestPublishedModelDataValidates(t *testing.T) {
 	published := filepath.Join("..", "..", "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", "@earendil-works", "pi-ai", "dist", "providers", "data")
 	for _, path := range []string{filepath.Join(mirror, "models.generated.ts"), filepath.Join(published, modeldata.ModelDataManifestFile)} {
 		if _, err := os.Stat(path); err != nil {
-			t.Skipf("pinned %s sources are not installed: %v", pigversion.UpstreamVersion, err)
+			pioracle.Missing(t, "pinned "+pigversion.UpstreamVersion+" sources ("+path+")", err)
 		}
 	}
 	root := t.TempDir()
