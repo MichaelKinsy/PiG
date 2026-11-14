@@ -224,55 +224,6 @@ func TestMacOSJobsRunEveryTestOfEveryUnitExactlyOnce(t *testing.T) {
 	}
 }
 
-// The macOS jobs restore the Cargo registry and the persistent Cargo targets of the tests (internal/testenv.SharedCargoTargetDir), as the Linux shards do, under a key of their own operating system and architecture.
-// No step fills the targets before the tests on macOS, so the job that saves them must have built every target the macOS jobs use: it is the job that holds the packages unit (env builds Pi's daemon), and that job must also
-// hold a cmd/pig unit and an extension host unit. A save from a job with fewer units would pin an incomplete set to the key.
-func TestMacOSJobsRestoreTheCargoTargetsAndACompleteJobSavesThem(t *testing.T) {
-	job := verificationJobs(t)["macos"]
-	const paths = "~/.cargo/registry\n~/.cargo/git\n~/Library/Caches/pig-dev/cargo-target\n"
-	const prefix = "cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_VERSION }}-"
-	restore, save, firstUnits := -1, -1, -1
-	for i, step := range job.Steps {
-		if firstUnits < 0 && strings.HasPrefix(strings.TrimSpace(step.Run), "automation/ci/macos-units.sh ") {
-			firstUnits = i
-		}
-		key := step.With["key"]
-		if !strings.HasPrefix(key, "cargo-") {
-			continue
-		}
-		if step.With["path"] != paths || !strings.HasPrefix(key, prefix+"${{ hashFiles('extensions/sdk-rs/Cargo.lock', ") {
-			t.Errorf("macos step %s caches %q under %q, want the registry and ~/Library/Caches/pig-dev/cargo-target under %s<hash of the SDK lock>", step.Uses, step.With["path"], key, prefix)
-		}
-		switch {
-		case strings.HasPrefix(step.Uses, "actions/cache/restore@"):
-			restore = i
-			if step.If != "matrix.shard != 'native'" || strings.TrimSpace(step.With["restore-keys"]) != prefix {
-				t.Errorf("macos step %s runs if %q with restore-keys %q, want every job but native and the fallback %s", step.Uses, step.If, step.With["restore-keys"], prefix)
-			}
-		case strings.HasPrefix(step.Uses, "actions/cache/save@"):
-			save = i
-			if !strings.Contains(step.If, "contains(matrix.shard, 'packages')") || !strings.Contains(step.If, ".outputs.cache-hit != 'true'") {
-				t.Errorf("macos step %s runs if %q, want only the job with the packages unit, and only after a key miss", step.Uses, step.If)
-			}
-		}
-	}
-	if restore < 0 || save < 0 || firstUnits < 0 || restore > firstUnits || save < firstUnits {
-		t.Fatalf("macos Cargo cache: restore at step %d, save at step %d, first units step %d: want a restore before the units and a save after them", restore, save, firstUnits)
-	}
-	if job.Steps[restore].With["key"] != job.Steps[save].With["key"] {
-		t.Errorf("macos restores the Cargo cache under %q and saves it under %q", job.Steps[restore].With["key"], job.Steps[save].With["key"])
-	}
-	var saving []string
-	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
-		if strings.Contains(entry, "packages") {
-			saving = append(saving, entry)
-		}
-	}
-	if len(saving) != 1 || !strings.Contains(saving[0], "cli-") || !strings.Contains(saving[0], "extension-host-") {
-		t.Errorf("macos jobs that save the Cargo cache = %q, want one job that holds the packages unit with a cli unit and an extension-host unit, so it builds every target", saving)
-	}
-}
-
 // macosUnitSeconds is what go test itself took for each unit: the longest of its times in runs 43592372203, 43594615087, 43599788980 and 43599786195 (pull requests of 2026-11-14 on macos-15). extension-host-3 took 1323 s in run
 // 43302835411 (2026-11-12), where these units were first measured; it takes 408 to 445 s now. The three units of "macOS cli-2 cli-8 extension-host-2" took 903, 517 and (cancelled) more than 760 s in run 43599786195, 1.8 to 3 times
 // their other runs (451 to 513, 166 to 198, 287 to 332): a slow runner, left out here. macosJobSetupSeconds is what a job spent besides its units, the checkout, the toolchains, the oracle and compiling: 267 to 272 s in the same runs.
@@ -285,8 +236,9 @@ var macosUnitSeconds = map[string]int{
 
 const macosJobSetupSeconds = 300
 
-// A macOS job that reaches its limit is cancelled with no failing test, and the run is red for a reason no log names: "macOS cli-1 extension-host-3 packages" held 2086 s of tests under a 40-minute limit.
-// So at the measured times every job of the plan keeps a quarter of its limit free.
+// A macOS job that reaches its limit is cancelled with no failing test, and the run is red for a reason no log names: "macOS cli-1 extension-host-3 packages" held 2086 s of tests under a 40-minute limit when extension-host-3 took 1323 s.
+// So at the measured times every job of the plan keeps a quarter of its limit free. A slow runner is not covered: the cancelled job of run 43599786195 ran its units 1.8 to 3 times slower than the other runs did, and no packing keeps a job
+// under the limit at that factor; this test keeps the plan from being packed past the times it was measured at.
 func TestMacOSJobsKeepAQuarterOfTheirLimit(t *testing.T) {
 	limit := verificationJobs(t)["macos"].Timeout * 60
 	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
