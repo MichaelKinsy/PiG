@@ -38,14 +38,9 @@ var altTheme = AnsiTheme{
 	RoleBorder: "38;5;240", RoleText: "38;5;255", RoleEdge: "38;5;45", RoleEdgeLabel: "38;5;255", RoleTitle: "1;38;5;45",
 }
 
-// classDefsJSON is the class table as JSON.stringify shows lovely-mermaid's. That table is a plain object: the class named `__proto__` is held as the object's
-// prototype, which JSON does not show, so it is left out here. TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt compares how such a class is drawn.
 func classDefsJSON(defs map[string]map[string]string) map[string]any {
 	out := map[string]any{}
 	for name, props := range defs {
-		if name == "__proto__" {
-			continue
-		}
 		m := map[string]any{}
 		for k, v := range props {
 			m[k] = v

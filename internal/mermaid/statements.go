@@ -300,7 +300,7 @@ func parseClassDef(rest string) (names []string, props map[string]string, ok boo
 			continue
 		}
 		k, v = trimJS(k), trimJS(v)
-		// A property named `__proto__` is dropped: lovely-mermaid assigns each pair to a plain object, where a string value for that name creates no property, and no style reads one.
+		// Assigning to `__proto__` in the JS object this mirrors sets a prototype, not a property.
 		if k != "" && v != "" && k != "__proto__" {
 			props[k] = v
 		}
