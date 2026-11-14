@@ -15912,14 +15912,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **Quit settles the interrupted run before session_shutdown and disposal**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D247)
-- **Symptom:** 
-- **Root cause:** Not recorded.
+- **Symptom:** the quit disposes the runtime while a turn is still running and does not wait for it to settle, so the turn's last messages are not saved and a stored assistant tool call can be left without its result ([#9124](https://github.com/earendil-works/pi/issues/9124)); a later Pi change awaits the abort first.
+- **Root cause:** the quit disposes the runtime during a run without waiting for it: persistence is disconnected before the turn settles, leaving a stored assistant tool call without its result and losing the turn's last messages.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** the pin reaches a Pi release containing 7a53c310a.
-- **Fix commits:** `4d65734a52` (2026-11-14)
+- **Fix commits:** `4d65734a52` (2026-11-14), `8e8168061b` (2026-11-14)
 - **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
 
 ### BF-a076a50
