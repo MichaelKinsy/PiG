@@ -47,6 +47,7 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 // full disk, an I/O error) is an error, in place or not. On Windows a rename another process's open handle refuses is retried for
 // [fsretry.RenameBudget] before its error is returned, and a refusal is never turned into an in-place write there.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	if resolved, resolveErr := filepath.EvalSymlinks(path); resolveErr == nil {
 		path = resolved
 	}
@@ -76,6 +77,7 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 
 // writeInPlace is Pi's writeFileSync: open (created with perm when it does not exist, an existing file keeps its mode), truncate, write.
 func writeInPlace(path string, data []byte, perm os.FileMode, cause error) error {
+	// pig divergence (D651): the in-place write, as Pi writes the file, where a replacement is refused.
 	if report := inPlaceReporter.Load(); report != nil {
 		(*report)(path, cause)
 	}

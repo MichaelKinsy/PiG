@@ -43,6 +43,8 @@ Cycling preserves both `provider` and `id`. The `generatedModelSpec` helper prod
 
 If a custom helper or extension passes only `model.ID` to `BuildModel()`, pig falls back to `openai/<id>` - never do this in cycling code paths.
 
+`BuildModel()` builds only a model that a catalog, a `models.json` definition or an extension registration lists. For an id nothing lists it returns the error `Model not found: <provider>/<id>`, as Pi does, and no model. A program that wants a custom id on a provider uses `BuildFallbackModel()`, the copy of one of the provider's models under that id that `--model` makes.
+
 ## Thinking levels
 
 PiG surfaces reasoning effort through these named levels:

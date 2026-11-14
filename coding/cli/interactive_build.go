@@ -143,6 +143,7 @@ func (b *cliRuntimeBuilder) interactiveReplacement(build *cliBuild, session *cod
 		BuiltinExtensions:       build.BuiltinExtensions,
 		ExplicitBuiltinPaths:    build.ExplicitBuiltinPaths,
 		ReloadBuiltinExtensions: build.ReloadBuiltinExtensions,
+		ModelBuilder:            func(spec string) (*ai.Model, error) { return coding.BuildModel(spec, services) },
 		ModelBinder:             session.ModelRuntime().BindModelObject,
 		ModelLookup:             session.ModelRuntime().GetModel,
 		ModelCatalog:            session.ModelRuntime().GetModels,

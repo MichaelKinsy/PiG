@@ -270,6 +270,7 @@ func (s *ProjectTrustStore) write(data map[string]*bool) error {
 	if err := nodeerrno.MkdirAll(filepath.Dir(s.trustPath), 0o755); err != nil {
 		return err
 	}
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	if err := atomicfile.WriteFile(s.trustPath, append(encoded, '\n'), 0o644); err != nil {
 		return nodeerrno.FromPathError(err)
 	}

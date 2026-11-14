@@ -60,6 +60,7 @@ func (b *FileAuthStorageBackend) WithLock(fn func(current string, exists bool) (
 		return err
 	}
 	if next != nil {
+		// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 		return atomicfile.WriteFile(b.path, []byte(*next), 0o600)
 	}
 	return nil

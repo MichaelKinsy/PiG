@@ -66,6 +66,7 @@ func migrateKeybindingsConfigFile(agentDir string) {
 	if err != nil {
 		return
 	}
+	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	_ = atomicfile.WriteFile(path, out, 0o666) // upstream: packages/coding-agent/src/migrations.ts:migrateKeybindingsConfigFile
 }
 
@@ -183,6 +184,7 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 				}
 				settings.Delete("apiKeys")
 				if updated, err := stringifyIndented(rawObject(settings)); err == nil {
+					// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 					_ = atomicfile.WriteFile(settingsPath, updated, 0o644) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
 				}
 			}
@@ -197,6 +199,7 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("migrate credentials to auth.json: %w", err)
 		}
+		// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 		if err := atomicfile.WriteFile(authPath, out, 0o600); err != nil {
 			return nil, fmt.Errorf("migrate credentials to auth.json: %w", err)
 		}
