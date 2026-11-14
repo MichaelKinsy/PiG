@@ -666,6 +666,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-56731e9-2](#bf-56731e9-2) | An extension's API-key login no longer shows "Waiting for authentication..." after an authorization URL | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5689853](#bf-5689853) | `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-56a0400](#bf-56a0400) | Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-56b463c](#bf-56b463c) | fix(extensions): the exit of several extension hosts waits one bound in all | PiG's own defect | All platforms | Unreleased |
 | [BF-56e30a4](#bf-56e30a4) | The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide… | PiG's own defect | All platforms | Unreleased |
 | [BF-56e30a4-2](#bf-56e30a4-2) | A selected session row with no text no longer draws an empty bold span | PiG's own defect | All platforms | Unreleased |
 | [BF-56f1d3c](#bf-56f1d3c) | A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do | PiG's own defect | All platforms | 0.5.0 |
@@ -3904,7 +3905,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1147e7735a` (2026-11-14)
 - **Tests:** None recorded.
-- **Release note:** A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc` (stdin ended, a signal, `ctx.shutdown()`), with Ctrl+C in the interactive mode, when the terminal went away, and when a replaced session's extension was still running at exit, pig stopped the extension processes and exited without waiting for the copy of their output to reach its own stderr and the extension's log. Seen as a failing listener's `Event handler error (...)` line that was sometimes missing from the output of a docs example. Pig now waits for that copy, for Node, Python, Go and Rust extensions alike, isolated or packed. The wait ends after five seconds for all extension processes together, so an extension whose descendant keeps the output open cannot hold pig back; pig then prints one line saying how many extension processes had not finished and that their undelivered output is dropped. The extension's own log file gets the same lines. The ordinary quit paths (print mode, an interactive quit by keys, `/quit`) already waited for the processes and are unchanged.
+- **Release note:** A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc` (stdin ended, a signal, `ctx.shutdown()`), with Ctrl+C in the interactive mode, when the terminal went away, and when a replaced session's extension was still running at exit, pig stopped the extension processes and exited without waiting for the copy of their output to reach its own stderr and the extension's log. Seen as a failing listener's `Event handler error (...)` line that was sometimes missing from the output of a docs example. Pig now waits for that copy, for Node, Python, Go and Rust extensions alike, isolated or packed. The wait ends after five seconds for all extension processes of all sessions together, so an extension whose descendant keeps the output open cannot hold pig back; pig then prints one line saying how many extension processes had not finished and that their undelivered output is dropped. The extension's own log file gets the same lines. The ordinary quit paths (print mode, an interactive quit by keys, `/quit`) already waited for the processes and are unchanged.
 
 ### BF-114f195
 
@@ -11146,6 +11147,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `56a0400b9c` (2026-10-07), `f2a2b3409b` (2026-10-07)
 - **Tests:** `internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`, `tui/editor_bindings_oracle_test.go::TestEditorRebindingsMatchPi`, `tui/input_oracle_test.go::TestInputHandleInputMatchesPi`, `tui/key_csiu_text_test.go::TestTextInputIgnoresModifyOtherKeysText`, `tui/scoped_models_list_test.go::TestScopedModels_SearchAcceptsKittyAndPasteInput`, `tui/select_list_oracle_test.go::TestSelectListInputMatchesPi`
 - **Release note:** Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input does; the multi-line editor still accepts them.
+
+### BF-56b463c
+
+**fix(extensions): the exit of several extension hosts waits one bound in all**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): the exit of several extension hosts waits one bound in all
+- **Root cause:** the bound of the output join was written per host, and the exit walked the hosts one after another, so N hosts with a stuck pipe held the exit N bounds.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `56b463c20b` (2026-11-14)
+- **Tests:** None recorded.
 
 ### BF-56e30a4
 

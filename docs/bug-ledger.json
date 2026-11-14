@@ -3269,7 +3269,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc` (stdin ended, a signal, `ctx.shutdown()`), with Ctrl+C in the interactive mode, when the terminal went away, and when a replaced session's extension was still running at exit, pig stopped the extension processes and exited without waiting for the copy of their output to reach its own stderr and the extension's log. Seen as a failing listener's `Event handler error (...)` line that was sometimes missing from the output of a docs example. Pig now waits for that copy, for Node, Python, Go and Rust extensions alike, isolated or packed. The wait ends after five seconds for all extension processes together, so an extension whose descendant keeps the output open cannot hold pig back; pig then prints one line saying how many extension processes had not finished and that their undelivered output is dropped. The extension's own log file gets the same lines. The ordinary quit paths (print mode, an interactive quit by keys, `/quit`) already waited for the processes and are unchanged.",
+      "releaseNote": "A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc` (stdin ended, a signal, `ctx.shutdown()`), with Ctrl+C in the interactive mode, when the terminal went away, and when a replaced session's extension was still running at exit, pig stopped the extension processes and exited without waiting for the copy of their output to reach its own stderr and the extension's log. Seen as a failing listener's `Event handler error (...)` line that was sometimes missing from the output of a docs example. Pig now waits for that copy, for Node, Python, Go and Rust extensions alike, isolated or packed. The wait ends after five seconds for all extension processes of all sessions together, so an extension whose descendant keeps the output open cannot hold pig back; pig then prints one line saying how many extension processes had not finished and that their undelivered output is dropped. The extension's own log file gets the same lines. The ordinary quit paths (print mode, an interactive quit by keys, `/quit`) already waited for the processes and are unchanged.",
       "origin": "release note",
       "commits": [
         {
@@ -18228,6 +18228,25 @@
         "tui/scoped_models_list_test.go::TestScopedModels_SearchAcceptsKittyAndPasteInput",
         "tui/select_list_oracle_test.go::TestSelectListInputMatchesPi"
       ]
+    },
+    {
+      "id": "BF-56b463c",
+      "title": "fix(extensions): the exit of several extension hosts waits one bound in all",
+      "symptom": "fix(extensions): the exit of several extension hosts waits one bound in all",
+      "rootCause": "the bound of the output join was written per host, and the exit walked the hosts one after another, so N hosts with a stuck pipe held the exit N bounds.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "56b463c20b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-56e30a4",
