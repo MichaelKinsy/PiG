@@ -67,9 +67,11 @@ settle_seconds = 1
 keys = ["Enter"]
 settle_seconds = 1
 
+# The card stays visible beside the settings dialog, so its details say nothing about this key: the dialog's hint line leaving the screen does.
 [[tmux.steps]]
 keys = ["Escape"]
 wait_visible_contains = ["details of second"]
+wait_not_contains = ["Enter/Space to change"]
 wait_stable_milliseconds = 400
 wait_timeout_seconds = 10
 

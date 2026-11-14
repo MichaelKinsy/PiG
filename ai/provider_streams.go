@@ -192,6 +192,10 @@ func apiModuleFailure(ctx context.Context, api API, model *Model, startedAt int6
 	}
 	builder := newObservedProviderBuilder(ctx, api, modelProviderID(model), model.ID)
 	builder.partial.Timestamp = startedAt
+	// google-generative-ai.ts:290 reports what its stream threw with formatProviderError(normalizeProviderError(error)), which names the
+	// cause of a fetch rejection. The request is made inside that try block, so a failure before the response headers is reported the
+	// same way as one after them (googleProvider.Stream sets the same on its own builder).
+	builder.transportCauseDetail = api == APIGoogleGenerativeAI
 	builder.fail(reason, err)
 	return builder.stream, nil
 }

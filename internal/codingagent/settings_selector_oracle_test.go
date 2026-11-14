@@ -211,6 +211,7 @@ func settingsOracleBase() settingsOracleConfig {
 // cursor row's description names PiG (D2, "Product name in messages"), one cell longer than Pi's: the copy states PiG's sentence, the
 // d2ProductNameTexts pair, so Pi lays out and wraps the sentence PiG ships.
 func TestSettingsSelectorMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	base := settingsOracleBase()
 	variants := []settingsOracleConfig{base}
 	{
@@ -308,11 +309,10 @@ func TestSettingsSelectorMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousTheme, previousCaps, previousKitty := tui.ActiveTheme(), tui.GetCapabilities(), tui.IsKittyProtocolActive()
+	restoreStartupTheme(t)
+	previousKitty := tui.IsKittyProtocolActive()
 	tui.SetKittyProtocolActive(false)
 	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetTheme(previousTheme.Name)
 		tui.SetKittyProtocolActive(previousKitty)
 	})
 	reached := map[string]int{}

@@ -552,6 +552,7 @@ func (w errorWalker) object(context *errorContext, spath *pathSeg, path string, 
 			}
 		}
 	}
+	// pig divergence (D645): only an own member is checked, as in the check walk; TypeBox reports the inherited function of an omitted property named like a member of Object.prototype.
 	if hasProperties {
 		for _, key := range properties.keys() {
 			if item, exists := object[key]; exists {

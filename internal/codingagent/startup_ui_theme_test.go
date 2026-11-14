@@ -5,6 +5,7 @@ package codingagent
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"testing"
@@ -28,6 +29,104 @@ func restoreStartupTheme(t testing.TB) {
 		tui.SetThemeByName(previousTheme.Name)
 		tui.SetCapabilities(previousCaps)
 	})
+}
+
+// processThemeState is the process-wide state the tests of the package draw with: the active theme (its name, its color mode and two of its tokens), the terminal capabilities and the registered themes.
+func processThemeState() string {
+	theme := tui.ActiveTheme()
+	return fmt.Sprintf("theme %s in %s (toolOutput %q, warning %q), capabilities %+v, registered themes %v", theme.Name, theme.GetColorMode(), theme.ToolOutput, theme.Warning, tui.GetCapabilities(), tui.ActiveThemeRegistry().Names())
+}
+
+// requireRestoresTheProcessTheme runs the test run as a subtest and fails unless it ends with the active theme, the terminal capabilities and the registered themes it began with, or a later test that draws with them depends on the order the tests run in (go test -shuffle). The test begins in the state a process on CI begins in: the dark theme built for truecolor, which the lazily created default theme is, under capabilities without truecolor.
+func requireRestoresTheProcessTheme(t *testing.T, name string, run func(*testing.T)) {
+	t.Helper()
+	restoreStartupTheme(t)
+	tui.SetThemeRegistry(tui.NewThemeRegistry())
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
+	tui.SetTheme("dark")
+	tui.SetCapabilities(tui.TerminalCapabilities{})
+	before := processThemeState()
+	t.Run("test", run)
+	if after := processThemeState(); after != before {
+		t.Errorf("%s ended with %s; it began with %s; call restoreStartupTheme(t) first in it, or in the helper that selects its theme", name, after, before)
+	}
+}
+
+// Each of these tests selects a theme, changes the terminal capabilities or registers themes: itself, through a helper it shares with others, or through a /reload, which applies the theme of the settings. Each has to end with what it began with.
+//
+// Not run a second time here, since each takes from one to twenty seconds of Pi's answers: the eighteen comparisons with Pi among the tests that left another state. Seven of them restore through runTreeContracts and runSessionContracts, which TestTreeListHandleInputContractsMatchPi and TestSessionListHandleInputContractsMatchPi hold here; the other eleven call restoreStartupTheme first, as the tests below do: TestExtensionErrorStackMatchesPi, TestFirstTimeSetupBindingOverlapsMatchPi, TestFirstTimeSetupMatchesPi, TestScopedModelsOverlappingBindingsMatchPi, TestScopedModelsSelectorMatchesPi, TestSessionSelectorInputMatchesPi, TestSettingsSelectorMatchesPi, TestSettingsSubmenusMatchPi, TestThinkingSelectorInputMatchesPi, TestTreeSelectorInputMatchesPi and TestTrustSelectorInputMatchesPi.
+// Nor TestReloadEndsTheCountdownsOfTheOpenExtensionDialogs, which counts the countdown goroutines of the whole process: TestReloadDisposesEveryExtensionDialog holds newCustomRig, through which both restore.
+func TestThemeTestsRestoreTheProcessTheme(t *testing.T) {
+	for name, run := range map[string]func(*testing.T){
+		"TestBuildChatViewportWiresLiveThemedScrollbar":                         TestBuildChatViewportWiresLiveThemedScrollbar,
+		"TestBuiltInHeaderKeptLinesMatchAFirstDraw":                             TestBuiltInHeaderKeptLinesMatchAFirstDraw,
+		"TestBuiltInHeaderRedrawsWhenAnInputChanges":                            TestBuiltInHeaderRedrawsWhenAnInputChanges,
+		"TestCompactionBillingRenderProbe":                                      TestCompactionBillingRenderProbe,
+		"TestDefaultResourceLoaderThemeColorModeUpstream":                       TestDefaultResourceLoaderThemeColorModeUpstream,
+		"TestExtensionThemeLookupUsesPortablePaletteAndAbsence":                 TestExtensionThemeLookupUsesPortablePaletteAndAbsence,
+		"TestExtensionUIResetClearsTheStatuses":                                 TestExtensionUIResetClearsTheStatuses,
+		"TestExtensionUIResetForgetsTheEditorComponent":                         TestExtensionUIResetForgetsTheEditorComponent,
+		"TestExtensionUIResetRemovesTheOverlays":                                TestExtensionUIResetRemovesTheOverlays,
+		"TestExtensionUIResetRemovesTheTerminalInputListeners":                  TestExtensionUIResetRemovesTheTerminalInputListeners,
+		"TestExtensionUIResetRestoresTheFooterAndTheHeader":                     TestExtensionUIResetRestoresTheFooterAndTheHeader,
+		"TestExtensionUIResetRestoresTheWorkingStatus":                          TestExtensionUIResetRestoresTheWorkingStatus,
+		"TestExtensionUIResetWritesTheSessionTitle":                             TestExtensionUIResetWritesTheSessionTitle,
+		"TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite":          TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite,
+		"TestFrontendFramesCarryTheThemeAcrossSwitches":                         TestFrontendFramesCarryTheThemeAcrossSwitches,
+		"TestInteractiveManagedToolStatusContiguousGroupUpstream":               TestInteractiveManagedToolStatusContiguousGroupUpstream,
+		"TestInteractiveStatusCoalescingUpstream":                               TestInteractiveStatusCoalescingUpstream,
+		"TestInteractiveThemeWatcherAppliesOnOwnerLoop":                         TestInteractiveThemeWatcherAppliesOnOwnerLoop,
+		"TestInteractiveUserMessageRunsBuiltinMarkdownTransform":                TestInteractiveUserMessageRunsBuiltinMarkdownTransform,
+		"TestLoginHeaderRendererCachesDefensivelyAndTracksTheme":                TestLoginHeaderRendererCachesDefensivelyAndTracksTheme,
+		"TestManagedToolRenderProbe":                                            TestManagedToolRenderProbe,
+		"TestNewInteractiveModeAppliesTerminalCapabilitySettings":               TestNewInteractiveModeAppliesTerminalCapabilitySettings,
+		"TestNewToolCardIsBuiltWithTheRegisteredDefinition":                     TestNewToolCardIsBuiltWithTheRegisteredDefinition,
+		"TestNewVersionNotificationBytesMatchPi":                                TestNewVersionNotificationBytesMatchPi,
+		"TestPackageUpdateNotificationBytesMatchPi":                             TestPackageUpdateNotificationBytesMatchPi,
+		"TestRadiusLoginMenuRendersLikePi":                                      TestRadiusLoginMenuRendersLikePi,
+		"TestReadCardKeepsTheTextOnceAndRenderersGetStructuredContent":          TestReadCardKeepsTheTextOnceAndRenderersGetStructuredContent,
+		"TestReapplyToolPresentationDrawsCardsWithALaterResolution":             TestReapplyToolPresentationDrawsCardsWithALaterResolution,
+		"TestReapplyToolPresentationReturnsACardWithoutRenderersToThePlainCard": TestReapplyToolPresentationReturnsACardWithoutRenderersToThePlainCard,
+		"TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered":         TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered,
+		"TestRegression10285RendersThemInHTMLExportsToo":                        TestRegression10285RendersThemInHTMLExportsToo,
+		"TestRegression10285SlashExportRendersThemInHTMLExports":                TestRegression10285SlashExportRendersThemInHTMLExports,
+		"TestReloadClearsTheExtensionWidgets":                                   TestReloadClearsTheExtensionWidgets,
+		"TestReloadDisposesEveryExtensionDialog":                                TestReloadDisposesEveryExtensionDialog,
+		"TestReloadResourceResolutionPumpsOwner":                                TestReloadResourceResolutionPumpsOwner,
+		"TestSelectStartupSessionCancelsAndJoinsBlockedLoaders":                 TestSelectStartupSessionCancelsAndJoinsBlockedLoaders,
+		"TestSelectStartupSessionResolvesNullOnCancel":                          TestSelectStartupSessionResolvesNullOnCancel,
+		"TestSelectStartupSessionResolvesTheSelectedPath":                       TestSelectStartupSessionResolvesTheSelectedPath,
+		"TestSelectStartupSessionShowsNoRenameHint":                             TestSelectStartupSessionShowsNoRenameHint,
+		"TestSelectStartupSessionUsesTheUsersKeybindings":                       TestSelectStartupSessionUsesTheUsersKeybindings,
+		"TestSessionCommandBlockFollowsThemeChanges":                            TestSessionCommandBlockFollowsThemeChanges,
+		"TestSessionListHandleInputContractsMatchPi":                            TestSessionListHandleInputContractsMatchPi,
+		"TestSessionSelectorComponentHandleInputContractsMatchPi":               TestSessionSelectorComponentHandleInputContractsMatchPi,
+		"TestSessionSelectorDeleteOutcomeReportsInTheHeader":                    TestSessionSelectorDeleteOutcomeReportsInTheHeader,
+		"TestSessionSelectorKeybindingSourcesMatchPi":                           TestSessionSelectorKeybindingSourcesMatchPi,
+		"TestSessionSelectorSharedKeysFollowRebinding":                          TestSessionSelectorSharedKeysFollowRebinding,
+		"TestSessionSelectorStatusExpiryWakesIdleOwners":                        TestSessionSelectorStatusExpiryWakesIdleOwners,
+		"TestSettingsSelectorInAContainerRedrawsAfterInput":                     TestSettingsSelectorInAContainerRedrawsAfterInput,
+		"TestSettingsSelectorNeedsRedrawReportsTheListWithoutClearingIt":        TestSettingsSelectorNeedsRedrawReportsTheListWithoutClearingIt,
+		"TestSettingsSelectorOmitsShareDestination":                             TestSettingsSelectorOmitsShareDestination,
+		"TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback":          TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback,
+		"TestSettingsSelectorUpstream":                                          TestSettingsSelectorUpstream,
+		"TestShowFirstTimeSetupReportsNoSettingsWriteFailure":                   TestShowFirstTimeSetupReportsNoSettingsWriteFailure,
+		"TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI":                      TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI,
+		"TestShowFirstTimeSetupSkipSavesNothing":                                TestShowFirstTimeSetupSkipSavesNothing,
+		"TestStartupPromptAppliesTerminalCapabilitySettings":                    TestStartupPromptAppliesTerminalCapabilitySettings,
+		"TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides":        TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides,
+		"TestThinkingSelectorBoundariesMatchPi":                                 TestThinkingSelectorBoundariesMatchPi,
+		"TestTreeContractReplayLeavesTheEmptyTreeSelfCancelOutOfTheTrace":       TestTreeContractReplayLeavesTheEmptyTreeSelfCancelOutOfTheTrace,
+		"TestTreeLabelInputAndRoutingContractsMatchPi":                          TestTreeLabelInputAndRoutingContractsMatchPi,
+		"TestTreeListHandleInputContractsMatchPi":                               TestTreeListHandleInputContractsMatchPi,
+		"TestTreeListRemappedKeysMatchPi":                                       TestTreeListRemappedKeysMatchPi,
+		"TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt":                TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt,
+		"TestUpstreamExtendResourcesKeepPackageMetadata":                        TestUpstreamExtendResourcesKeepPackageMetadata,
+		"TestWarmedWriteCardDrawsTheLinesOfAWholeRun":                           TestWarmedWriteCardDrawsTheLinesOfAWholeRun,
+		"TestWholeMarkdownBlocksRenderBytes":                                    TestWholeMarkdownBlocksRenderBytes,
+	} {
+		t.Run(name, func(t *testing.T) { requireRestoresTheProcessTheme(t, name, run) })
+	}
 }
 
 // terminalColorQueryPrefix begins the OSC 10 request that starts a terminal color query.
@@ -108,6 +207,7 @@ func whiteTerminalReplies() [][]byte {
 
 // upstream 0.99.1 startup-ui.ts startStartupTui and theme-controller.ts requestTerminalColors: the prompt renders at once, the replies record the terminal's colors, and none reaches the prompt as input.
 func TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	configureStartupTui(StartupUIOptions{})
@@ -133,6 +233,7 @@ func TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput(t *testing.
 
 // upstream 0.99.1 theme-controller.ts requestTerminalColors passes onLateReply: colors that arrive after the timeout still apply.
 func TestStartupPromptAppliesColorsThatArriveAfterTheTimeout(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	configureStartupTui(StartupUIOptions{})
@@ -165,6 +266,7 @@ func TestStartupPromptAppliesColorsThatArriveAfterTheTimeout(t *testing.T) {
 
 // upstream 0.99.1 startup-ui.ts startStartupTui queries the terminal whatever the setting is, and re-resolves the setting with the reported appearance.
 func TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	settings := Settings{Theme: "dark"}

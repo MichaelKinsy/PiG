@@ -80,6 +80,9 @@ func TestGoVersionPolicy(t *testing.T) {
 			switch entry.Name() {
 			case ".git", ".upstream", ".next", "node_modules", "out":
 				return filepath.SkipDir
+			case "tmp":
+				// Scratch that git ignores (`tmp/` in .gitignore), not the repository's code.
+				return filepath.SkipDir
 			}
 		}
 		if entry.IsDir() || entry.Name() != "go.mod" {

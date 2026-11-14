@@ -463,8 +463,7 @@ func TestFrontendSessionClosesOnceAtTeardown(t *testing.T) {
 // session as the next frame, with the new palette: an extension's setTheme
 // and a /settings or /theme preview. A frame without a switch carries none.
 func TestFrontendFramesCarryTheThemeAcrossSwitches(t *testing.T) {
-	previous := tui.ActiveTheme().Name
-	t.Cleanup(func() { tui.SetThemeByName(previous) })
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
 	session := &fakeFrontendSession{}
 	m, _ := newFrontendProbe(t, &fakeFrontend{session: session}, "regular")

@@ -32,6 +32,8 @@ func TestIsRetryableAssistantErrorMatchesPiOracle(t *testing.T) {
 		`400 {"type":"error","error":{"type":"invalid_request_error","message":"Invalid value EXECONNRESET"}}`, `400 {"error":{"message":"the tool reported ECONNRESET while fetching","type":"invalid_request_error"}}`, "400 Invalid value EXECONNRESET",
 		"connect EHOSTUNREACH 140.82.113.3:443", "connect ENETUNREACH 140.82.113.3:443", "UND_ERR_SOCKET", "ECONNRESET_", "_ECONNRESET", "0EPIPE", "EPIPE0", "ETIMEDOUTS", "XECONNREFUSED", "ECONNABORTEDLY", "write: broken pipe", "software caused connection abort",
 		"read econnreset", "(EPIPE)", "code=ETIMEDOUT;", `{"code":"ECONNABORTED"}`, "Error: ECONNREFUSED.", "read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer", "CONNECTION RESET BY PEER", "connection reset\nby peer",
+		// The texts of a connection the server ends before a response, as they were and are reported: `connection.?error`, `fetch failed` and `other side closed` retry each.
+		"Connection error.", "Connection error.: read ECONNRESET", "Connection error.: write ECONNRESET", "Connection error.: write EPIPE", "Connection error.: other side closed (UND_ERR_SOCKET)", "fetch failed", "fetch failed: read ECONNRESET", "fetch failed: write EPIPE", "fetch failed: other side closed (UND_ERR_SOCKET)",
 		"\u212aECONNRESET", "EPIPE\u017f", "ECONNRESET\u212a", "\u017fEPIPE", "EPIPE billing", "ECONNRESET\n", "a\nETIMEDOUT", "éECONNRESET", "EPIPEé", "ECONNRESET ECONNRESETX", "ECONNRESETX ECONNRESET", "EPIPEEPIPE", "E PIPE",
 	)
 	type result struct {

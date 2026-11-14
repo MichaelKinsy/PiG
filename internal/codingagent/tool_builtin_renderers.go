@@ -271,6 +271,44 @@ func readsCallFields(render extension.ToolRenderCallFunc) bool {
 	return render != nil && reflect.ValueOf(render).Pointer() == fieldsRenderCall
 }
 
+// callShowsNoChange is, for a built-in renderCall that can tell without drawing, the question whether a call with these arguments would draw the lines its last call drew; nil for every other renderer, an extension's included.
+func callShowsNoChange(render extension.ToolRenderCallFunc) func(fields map[string]any, context extension.ToolRenderContext) bool {
+	if readsCallFields(render) {
+		return writeCallShowsNoChange
+	}
+	return nil
+}
+
+// writeCallShowsNoChange reports whether writeRenderCall, called now with these arguments, would set the text its last call set: the card is collapsed, the content still streams and extends a line the last call already counted, without a new line, so the line count of the hint is the same, the path is the one the last call drew, so the header is, and the lines drawn are the first ten of a leading block that the last call left highlighted for this epoch and that no longer grows (writePartialFullHighlightLines). It answers from the state the last call left and changes none of it but the highlight warm-up, which it hands the content as a frame would. Any doubt is false.
+// pig additive (D625): Pi asks no card whether an update changed it.
+func writeCallShowsNoChange(fields map[string]any, context extension.ToolRenderContext) bool {
+	if context.Expanded || context.ArgsComplete {
+		return false
+	}
+	states, _ := context.State.(map[string]any)
+	state, _ := states[builtInRenderStateKey].(*builtInRenderState)
+	rawPath, _ := stringField(fields, "file_path", "path")
+	content, ok := stringField(fields, "content")
+	if state == nil || !ok || rawPath == "" {
+		return false
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	cache := state.writeHighlight
+	if cache == nil || state.writeWarmFailure != nil || cache.rawPath != rawPath || cache.lang != tui.LanguageFromPath(rawPath) || !strings.HasPrefix(content, cache.rawContent) {
+		return false
+	}
+	if len(cache.normalizedLines)-1 < writePartialFullHighlightLines || !cache.prefixFresh || cache.prefixEpoch != tui.CurrentHighlightEpoch() {
+		return false
+	}
+	// The hint counts the lines up to the last one that is not empty (lineCount): the count moves when a line begins, with the first character after a new line, and not again until the next new line.
+	if cache.normalizedLines[len(cache.normalizedLines)-1] == "" || strings.Contains(content[len(cache.rawContent):], "\n") {
+		return false
+	}
+	state.warmWholeHighlight(content, cache.lang)
+	return true
+}
+
 // pathRenderArgs is the part of decoded arguments that holds the file path a header names, as JSON for tui.FormatEditHeader, which reads no other argument.
 func pathRenderArgs(fields map[string]any) json.RawMessage {
 	paths := make(map[string]any, 2)
@@ -487,10 +525,6 @@ func readRenderResult(result extension.AgentToolResult, options extension.ToolRe
 	output := toolResultTextOutput(value, context.ShowImages)
 	lang := ""
 	if !context.IsError && rawPath != "" {
-		if tui.LanguageFromPathThrows(rawPath) {
-			// formatReadResult throws out of highlightCode for this path (read.ts:124-125): no component, and the card draws the result fallback.
-			return nil
-		}
 		lang = tui.LanguageFromPath(rawPath)
 	}
 	var rendered []string
@@ -683,11 +717,6 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 	panicOnUnlinkablePath(rawPath, context.Cwd)
 	text := tui.FormatWriteHeaderArgs(writeHeaderFields(fields), context.Cwd)
 	content, ok := stringField(fields, "content")
-	// renderCall throws out of highlightCode for such a path while the content streams in (the highlight cache, write.ts:55-64 and :73-75) and for a
-	// complete call's content unless it is empty (formatWriteCall, write.ts:123-127): no component, and the card draws the call fallback.
-	if ok && (!context.ArgsComplete || content != "") && tui.LanguageFromPathThrows(rawPath) {
-		return nil
-	}
 	lang := ""
 	if rawPath != "" {
 		lang = tui.LanguageFromPath(rawPath)

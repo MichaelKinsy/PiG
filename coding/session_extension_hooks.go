@@ -450,10 +450,10 @@ func (s *Session) ExtensionCommandActions() extension.CommandActions {
 	}
 }
 
-// bindExtensionCommandActions binds the Session's views, message delivery, abort and command actions without replacing mode-owned callbacks. Abort requests cancellation without awaiting the handler's own run.
+// bindExtensionCommandActions binds the Session's views, message delivery, abort and command actions without replacing mode-owned callbacks. Abort is extensionAbort: the mode's abort handler when it stored one, else a cancellation request; neither awaits the handler's own run.
 func (s *Session) bindExtensionCommandActions(runner *inproc.Runner) {
 	if runner != nil {
-		runner.BindAbort(s.RequestAbort)
+		runner.BindAbort(s.extensionAbort)
 		runner.BindScopedModels(s.ScopedModels)
 		runner.BindSystemPromptOptions(s.GetSystemPromptOptions)
 		runner.BindTools(extension.ContextActions{

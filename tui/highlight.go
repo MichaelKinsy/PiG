@@ -148,43 +148,17 @@ func splitJSWhitespace(text string) []string {
 	return append(parts, text[start:])
 }
 
-// formatter is a theme[scope] property read, true when the value is truthy. The theme is an object literal: an own property shadows Object.prototype even when it is undefined (a nil entry), and a scope naming an Object.prototype member finds that member. syntax-highlight.ts calls it as a strict-mode function with an undefined receiver: Object(text) is a String wrapper that concatenation reads back as text, toString returns "[object Undefined]", isPrototypeOf returns false for a string, __proto__ is an object, and the other members throw a TypeError.
+// formatter is the theme's own entry for scope, true when it holds a formatter; a nil entry is an own property set to undefined. A scope that names a member of Object.prototype (highlight.js's reasonml grammar emits `constructor`) has no entry unless the theme sets one, like any other scope.
 func (theme HighlightTheme) formatter(scope string) (HighlightFormatter, bool) {
-	if f, ok := theme[scope]; ok {
-		return f, f != nil
-	}
-	switch scope {
-	case "constructor":
-		return func(text string) string { return text }, true
-	case "toString":
-		return func(string) string { return "[object Undefined]" }, true
-	case "isPrototypeOf":
-		return func(string) string { return "false" }, true
-	case "toLocaleString":
-		return throwHighlightThemeError("Object.prototype.toLocaleString called on null or undefined"), true
-	case "__proto__":
-		return throwHighlightThemeError("formatter is not a function"), true
-	case "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__", "hasOwnProperty", "propertyIsEnumerable", "valueOf":
-		return throwHighlightThemeError("Cannot convert undefined or null to object"), true
-	}
-	return nil, false
+	f := theme[scope]
+	return f, f != nil
 }
 
-func throwHighlightThemeError(message string) HighlightFormatter {
-	return func(string) string { panic(highlightThemeError{message}) }
-}
-
-// isHighlightThemeThrow reports whether err is what a theme formatter throws: the TypeError of a formatter read from Object.prototype, or the Error of theme.fg for a token the theme lacks.
+// isHighlightThemeThrow reports whether err is what a theme formatter throws: the Error of theme.fg for a token the theme lacks.
 func isHighlightThemeThrow(err error) bool {
-	var typeError highlightThemeError
 	var unknownColor unknownThemeColorError
-	return errors.As(err, &typeError) || errors.As(err, &unknownColor)
+	return errors.As(err, &unknownColor)
 }
-
-// highlightThemeError is the TypeError a theme formatter read from Object.prototype throws.
-type highlightThemeError struct{ message string }
-
-func (e highlightThemeError) Error() string { return e.message }
 
 func getScopeFormatter(scope string, theme HighlightTheme) (HighlightFormatter, bool) {
 	if f, ok := theme.formatter(scope); ok {
@@ -671,6 +645,7 @@ func LanguageFromPath(path string) string {
 	if ext == "" {
 		return ""
 	}
+	// pig divergence (D645): Pi's extToLang is a plain object, so for the extensions `constructor` and `__proto__` its lookup returns a member inherited from Object.prototype, highlightCode throws for that value, and the read and write cards fall back to the generic card. Here such a path has no language, like any other unknown extension.
 	return extToLang()[ext]
 }
 
@@ -678,12 +653,6 @@ func LanguageFromPath(path string) string {
 func pathExtension(path string) string {
 	// strings.ToLower maps U+0130 to "i"; toLowerCase maps it to "i\u0307" (SpecialCasing.txt). Every other character lowercases to the same ASCII letters in both.
 	return strings.ToLower(strings.ReplaceAll(path[strings.LastIndexByte(path, '.')+1:], "\u0130", "i\u0307"))
-}
-
-// LanguageFromPathThrows reports whether Pi's highlighter throws for the value theme.ts getLanguageFromPath returns for path. Pi's extToLang is a plain object (theme.ts:997), so its lookup (theme.ts:1062) finds, for the extensions "constructor" and "__proto__", a member the object inherits from Object.prototype (the Object function, Object.prototype itself); every other inherited name holds an upper-case letter and the extension is lowercased. The value is truthy, so read.ts:125 and write.ts:64 and :127 pass it to highlightCode, whose supportsLanguage check (theme.ts:937, before the try at theme.ts:949) throws a TypeError in highlight.js getLanguage. The throw leaves the tool's renderer, and tool-execution.ts updateDisplay draws the call or result fallback instead. LanguageFromPath returns "" for such a path.
-func LanguageFromPathThrows(path string) bool {
-	ext := pathExtension(path)
-	return ext == "constructor" || ext == "__proto__"
 }
 
 // extToLang is getLanguageFromPath's extension table, built on first use, not on every start.

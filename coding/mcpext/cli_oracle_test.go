@@ -31,7 +31,7 @@ type mcpCLIOutcome struct {
 	Project string `json:"project"`
 }
 
-// The empty-list message names the project file ".pi/mcp.json" in Pi and ".pig/mcp.json" in PiG (D2 host identity). Servers named like Object.prototype members ("__proto__", "constructor", "toString" ...) are in the corpus: Pi's plain-object lookups find them inherited and report "Replaced" or "Removed".
+// The empty-list message names the project file ".pi/mcp.json" in Pi and ".pig/mcp.json" in PiG (D2 host identity). Servers named like Object.prototype members are not in the corpus: PiG treats them as any other name (D645, TestAnMcpServerOrOptionNamedLikeAnObjectPrototypeMemberIsTreatedAsAnyOtherName).
 // `pi mcp` (mcp/cli.js) against Pi's runMcpCommand: help, unknown commands and options, add (stdio and HTTP; every option, misplaced options, bad KEY=VALUE pairs, `--` and positional pass-through, invalid exposure and port values, replacing,
 // project scope and the trust note), remove (global, project, defined in the other scope), login/logout error paths, and an empty or invalid listing. Output lines, exit codes and the bytes of both mcp.json files are compared.
 func TestMcpCommandMatchesPi(t *testing.T) {
@@ -47,7 +47,7 @@ func TestMcpCommandMatchesPi(t *testing.T) {
 		`{"mcpServers":[]}`,
 		`[]`,
 	}
-	namePool := []string{"srv", "old", "web", "parked", "a b", "a.b", "日本", "x-y_z", "", "__proto__", "constructor", "toString", "hasOwnProperty", "valueOf", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__"}
+	namePool := []string{"srv", "old", "web", "parked", "a b", "a.b", "日本", "x-y_z", ""}
 	name := func() string { return pick(namePool...) }
 	// farName is a name that no server the probes can configure is a near miss of: every pool name and seed server other than the name itself is farther than edit distance 2, and the name is not empty (an empty name is a usage error). A probe may add any pool name before it logs in.
 	seedServers := []string{"old", "parked", "web", "a", "bad", "fixture", "broken"}

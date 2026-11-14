@@ -51,6 +51,10 @@ func TestLazySetupRejectionListsErrorMessageBeforeTimestamp(t *testing.T) {
 // A request failure that google-generative-ai.ts:288-298 catches inside the module's stream keeps the module's message: the
 // output (timestamp included) exists before the catch sets errorMessage. Probed: Pi 1.1.0 google-vertex with an unreachable
 // proxy persists "stopReason":"error","timestamp":…,"errorMessage":"fetch failed".
+// Pi 1.5.2 writes the message with formatProviderError(normalizeProviderError(error)) (google-generative-ai.ts:290), which appends the
+// rejection's cause. RUN on Pi 1.5.2 (node v24.22.2, @google/genai 2.32.0): stream() of google-generative-ai with this base URL, on
+// port 1, which Node's fetch refuses, reported "fetch failed: bad port" with stopReason error in 20 of 20 runs. The order of the
+// members is what the 1.1.0 probe showed.
 func TestGoogleRequestFailureListsTimestampBeforeErrorMessage(t *testing.T) {
 	model := &Model{ID: "gemini-test", ProviderMeta: ProviderMetadata{ProviderID: "google", API: APIGoogleGenerativeAI, BaseURL: "http://127.0.0.1:1"}}
 	stream, err := GoogleGenerativeAIAPI().Stream(context.Background(), model, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{APIKey: "k"})
@@ -58,8 +62,8 @@ func TestGoogleRequestFailureListsTimestampBeforeErrorMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 	errorFirst, data := errorMessageBeforeTimestamp(t, stream)
-	if errorFirst || !bytes.Contains(data, []byte(`"stopReason":"error"`)) || !bytes.Contains(data, []byte(`"errorMessage":"fetch failed"`)) {
-		t.Fatalf("google request failure = %s, want stopReason error, timestamp before errorMessage \"fetch failed\"", data)
+	if errorFirst || !bytes.Contains(data, []byte(`"stopReason":"error"`)) || !bytes.Contains(data, []byte(`"errorMessage":"fetch failed: bad port"`)) {
+		t.Fatalf("google request failure = %s, want stopReason error, timestamp before errorMessage \"fetch failed: bad port\"", data)
 	}
 }
 
@@ -101,7 +105,7 @@ func TestSimpleStreamKeyAssertionIsSetupAndRequestFailureIsInModule(t *testing.T
 	}{
 		{"google simple request failure", func() (*AssistantMessageEventStream, error) {
 			return GoogleGenerativeAIAPI().StreamSimple(context.Background(), google, transcript, StreamOptions{APIKey: "k"})
-		}, false, `"errorMessage":"fetch failed"`},
+		}, false, `"errorMessage":"fetch failed: bad port"`},
 		{"openai-completions simple without a key", func() (*AssistantMessageEventStream, error) {
 			return apiStreams(APIOpenAICompletions).StreamSimple(context.Background(), completions, transcript, StreamOptions{})
 		}, true, `"errorMessage":"No API key for provider: demo"`},

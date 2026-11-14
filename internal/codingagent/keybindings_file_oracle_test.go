@@ -42,22 +42,19 @@ var keybindingsFileCases = map[string]string{
 	"duplicate-entries":   `{"app.interrupt":["ctrl+x","ctrl+x","alt+x"]}`,
 	"empty-entry":         `{"app.interrupt":["","ctrl+x"]}`,
 	"number-key-object":   `{"0":"ctrl+a"}`,
-	// keybindings.ts:302 isLegacyKeybindingName is `key in KEYBINDING_NAME_MIGRATIONS`, which also finds the names Object.prototype inherits.
-	"inherited-constructor": `{"constructor":"ctrl+x","app.interrupt":"ctrl+z"}`,
-	"inherited-proto":       `{"__proto__":["ctrl+x"],"app.interrupt":"ctrl+z"}`,
-	"inherited-tostring":    `{"toString":"ctrl+x","valueOf":["a"],"hasOwnProperty":""}`,
-	"all-legacy":            `{"cursorUp":"up","cursorDown":"down","selectCancel":"escape","expandTools":"ctrl+o","toggleThinking":"ctrl+t"}`,
-	"schema-url":            `{"$schema":"https://example.test/keybindings.schema.json","app.session.new":"ctrl+n"}`,
-	"schema-non-string":     `{"$schema":42,"app.session.new":"ctrl+n"}`,
-	"unknown-key-name":      `{"app.interrupt":"ctrl+not-a-key","app.clear":"ctrl+l"}`,
-	"duplicate-modifier":    `{"app.interrupt":"ctrl+ctrl+x","app.clear":"alt+ctrl+alt+x"}`,
-	"five-modifiers":        `{"app.interrupt":"ctrl+shift+alt+super+ctrl+x"}`,
-	"four-modifiers":        `{"app.interrupt":"ctrl+shift+alt+super+f12"}`,
-	"control-word":          `{"app.interrupt":"control+x"}`,
-	"plus-and-symbols":      `{"app.interrupt":"+","app.clear":"alt+ctrl+?","tui.select.confirm":["9","pageUp","a"]}`,
-	"array-one-invalid":     `{"app.interrupt":["ctrl+x","Alt+x"]}`,
-	"meta-modifier":         `{"app.interrupt":"meta+x"}`,
-	"multi-char-base":       `{"app.interrupt":"ab","app.clear":"ctrl+ab"}`,
+	// A key named like an Object.prototype member is not in the corpus: PiG leaves it as written (D645, TestAKeybindingNamedLikeAnObjectPrototypeMemberIsNoLegacyName).
+	"all-legacy":         `{"cursorUp":"up","cursorDown":"down","selectCancel":"escape","expandTools":"ctrl+o","toggleThinking":"ctrl+t"}`,
+	"schema-url":         `{"$schema":"https://example.test/keybindings.schema.json","app.session.new":"ctrl+n"}`,
+	"schema-non-string":  `{"$schema":42,"app.session.new":"ctrl+n"}`,
+	"unknown-key-name":   `{"app.interrupt":"ctrl+not-a-key","app.clear":"ctrl+l"}`,
+	"duplicate-modifier": `{"app.interrupt":"ctrl+ctrl+x","app.clear":"alt+ctrl+alt+x"}`,
+	"five-modifiers":     `{"app.interrupt":"ctrl+shift+alt+super+ctrl+x"}`,
+	"four-modifiers":     `{"app.interrupt":"ctrl+shift+alt+super+f12"}`,
+	"control-word":       `{"app.interrupt":"control+x"}`,
+	"plus-and-symbols":   `{"app.interrupt":"+","app.clear":"alt+ctrl+?","tui.select.confirm":["9","pageUp","a"]}`,
+	"array-one-invalid":  `{"app.interrupt":["ctrl+x","Alt+x"]}`,
+	"meta-modifier":      `{"app.interrupt":"meta+x"}`,
+	"multi-char-base":    `{"app.interrupt":"ab","app.clear":"ctrl+ab"}`,
 }
 
 // randomKeybindingsFileCases composes keybindings.json texts: members drawn from legacy names, current ids, unknown and numeric-looking names (JSON.parse
@@ -65,7 +62,7 @@ var keybindingsFileCases = map[string]string{
 func randomKeybindingsFileCases(rng *rand.Rand, n int) map[string]string {
 	pick := func(list []string) string { return list[rng.Intn(len(list))] }
 	names := []string{"interrupt", "selectConfirm", "cursorUp", "expandTools", "toggleThinking", "followUp", "tree", "app.interrupt", "app.clear", "app.exit", "app.tools.expand",
-		"app.thinking.cycle", "tui.select.confirm", "tui.select.cancel", "tui.editor.cursorLeft", "tui.input.submit", "x.unknown", "0", "1", "10", "-1", "__proto__", "constructor", "toString", "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "__defineGetter__", "__lookupSetter__", "", " app.exit", "APP.EXIT"}
+		"app.thinking.cycle", "tui.select.confirm", "tui.select.cancel", "tui.editor.cursorLeft", "tui.input.submit", "x.unknown", "0", "1", "10", "-1", "", " app.exit", "APP.EXIT"}
 	scalars := []string{`"ctrl+x"`, `"CTRL+X"`, `" ctrl+x "`, `""`, `"enter"`, `"escape"`, `"alt+enter"`, `"shift+tab"`, `"ctrl+shift+p"`, `"a"`}
 	value := func() string {
 		switch rng.Intn(9) {

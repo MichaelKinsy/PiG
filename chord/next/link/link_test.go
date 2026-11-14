@@ -53,6 +53,27 @@ func TestMemoryLinks(t *testing.T) {
 		release.Unlock()
 	})
 
+	t.Run("hand over what was queued first, then what arrived meanwhile", func(t *testing.T) {
+		// Pi hands the queue over in one synchronous step (link.ts:47-55) and delivers a microtask after a send (link.ts:92):
+		// 3 cannot arrive before 2 is handed over. The pair's queue is another goroutine here, and 3 arrives while the
+		// listener has 1.
+		a, b := link.MemoryLinkPair()
+		a.Send([]byte{1})
+		a.Send([]byte{2})
+		a.Flushed()
+		var got recorder[byte]
+		b.OnMessage(func(message []byte) {
+			got.add(message[0])
+			if message[0] == 1 {
+				a.Send([]byte{3})
+				a.Flushed()
+			}
+		})
+		if !slices.Equal(got.all(), []byte{1, 2, 3}) {
+			t.Fatalf("got = %v", got.all())
+		}
+	})
+
 	// What a microtask does not do before the code that queued it finishes needs a queue the test runs itself (fifoQueue): on the
 	// pair's own queue the delivery goroutine may run between two statements of the test.
 	t.Run("close this end at once and the peer one task later; send after close is a no-op", func(t *testing.T) {

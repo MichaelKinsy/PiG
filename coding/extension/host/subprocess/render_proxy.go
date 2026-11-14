@@ -56,6 +56,10 @@ type renderProxyComponent struct {
 	rerender bool
 	// events are the mouse events the view took since the last request; the next request carries them, so the extension applies them before it draws.
 	events []ViewEventPayload
+	// answered is whether an answer of the extension has been applied: the lines, the regions and the view are then those of a component it drew.
+	answered bool
+	// early are the clicks made on the placeholder (holdEarlyClick), in the order they came, until the frame that paints the component gives them to it.
+	early []tui.TuiMouseEvent
 	// view is the view of the renderer's results (D107).
 	view rendererView
 }
@@ -144,10 +148,18 @@ func (c *renderProxyComponent) Render(width int) []string {
 		}
 	}
 	out := append([]string(nil), lines...)
+	var early []tui.TuiMouseEvent
+	if c.answered {
+		early, c.early = c.early, nil
+	}
 	c.mu.Unlock()
 
 	if start {
 		go c.requestLoop()
+	}
+	// The frame that paints the component gives it the clicks made on its placeholder, in the order they came (holdEarlyClick).
+	for _, click := range early {
+		c.HandleMouse(click)
 	}
 	return out
 }
@@ -239,9 +251,14 @@ func (c *renderProxyComponent) requestLoop() {
 			c.lines = append([]string(nil), lines...)
 			c.linesWidth = width
 			c.changed.Store(true)
+			c.answered = true
 		}
 		if current {
 			c.requesting = false
+			if !c.answered {
+				// No answer was applied and none is asked for: no component was drawn, so the clicks made on the placeholder have nothing to reach.
+				c.early = nil
+			}
 			var epoch uint64
 			var backoff time.Duration
 			var settled <-chan struct{}
@@ -351,9 +368,13 @@ func (c *renderProxyComponent) enqueueEvent(ev ViewEventPayload) {
 // (a MouseRegion in the posthorse and built-in cards). Nothing runs in the extension while the terminal waits: a kit view's mouse regions answer
 // from their description, and the extension hears of the events they took in the next request, which draws the card again. A component the extension
 // keeps (Node's) takes the click only, answered as handled at once; its press, drag, wheel and move stay with the host's selection and scrolling,
-// which Pi's component would have left unhandled in the same places.
+// which Pi's component would have left unhandled in the same places. A click made on the placeholder waits for the frame that paints the component
+// (holdEarlyClick).
 func (c *renderProxyComponent) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult {
 	if c.key == "" || c.conn == nil {
+		return nil
+	}
+	if event.Type == tui.MouseClick && c.holdEarlyClick(event) {
 		return nil
 	}
 	result := c.view.handleMouse(*remoteMouse(event))
@@ -390,6 +411,23 @@ func (c *renderProxyComponent) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMous
 		dispatched.FocusTarget = c
 	}
 	return dispatched
+}
+
+// holdEarlyClick keeps a click made on the proxy's placeholder and reports whether it kept it. Pi's renderer returns the component inside the render
+// that builds the message, so a card on Pi's screen has its mouse regions from its first frame. A proxy paints a placeholder from its first request
+// until the frame that follows the first applied answer, and knows no region of the component in that time. The click waits, and Render gives it to
+// the component in that frame, on the TUI loop, where HandleMouse runs too: every such click is delivered once, in the order the clicks came, and a
+// click made while others wait is kept behind them. The caller answers a kept click unhandled, as a click outside every region is answered. The
+// clicks die with the proxy: one that is not drawn again gives none to a component. A request that ends with no answer applied (it failed, or the
+// renderer inactivity boundary abandoned it) drops them, so the list lives no longer than that boundary or the next frame.
+func (c *renderProxyComponent) holdEarlyClick(event tui.TuiMouseEvent) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.early) == 0 && (c.answered || !c.requesting) {
+		return false
+	}
+	c.early = append(c.early, event)
+	return true
 }
 
 // FrontendView reports the structure of the renderer's result to a D91

@@ -20,6 +20,7 @@ import (
 // toReadOutput derives from the content; Pi's card holds the text string itself), and a renderer, built in or an extension's, still
 // receives the structured content the tool returned, also one bound after the result arrived.
 func TestReadCardKeepsTheTextOnceAndRenderersGetStructuredContent(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
 	m, _ := newTickRenderProbe(t, "regular")
 	var answered atomic.Bool

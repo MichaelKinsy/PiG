@@ -313,13 +313,13 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `compaction` | 16 | 16 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 165 | 164 | 0 | 1 | 0 | 70 | not run |
+| `extensions-runtime` | 166 | 165 | 0 | 1 | 0 | 70 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 19 | 19 | 0 | 0 | 0 | 13 | not run |
-| `interactive-rendering` | 87 | 86 | 1 | 0 | 0 | 40 | not run |
+| `interactive-rendering` | 89 | 88 | 1 | 0 | 0 | 40 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 30 | 30 | 0 | 0 | 0 | 16 | not run |
-| `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
+| `model-runtime-store-catalog` | 26 | 26 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 33 | 33 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |
 | `project-trust` | 27 | 27 | 0 | 0 | 0 | 19 | not run |
@@ -581,7 +581,7 @@ Go style:
 - The root module declares Go 1.27.0 as its language floor: the JSON code uses `encoding/json/v2` and `encoding/json/jsontext`, which only a 1.27 module may import (the `stdversion` vet check in `go test` rejects them in a 1.26 module). A module that requires the root module (the Porter extension, the extension conformance fixtures) declares 1.27.0 too, because the go command rejects a lower line than a dependency declares. Every other maintained module (`extensions/sdk`, `piglets/standard`, `piglets/aot`, `examples`, other test and fixture modules) declares Go 1.26 or 1.26.0 and must not import them; the SDK keeps its own JSON copy (`extensions/sdk/json`). Do not raise a `go` directive merely to match the build toolchain, and do not raise any module past its floor without a concrete language requirement the owner approved.
 - JSON that follows `JSON.parse` or `JSON.stringify` takes its `encoding/json/v2` options from `internal/jsonopts` (`Parse`, `Stringify`), joined with the site's own options; a site never changes them for everyone.
 - Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`. For a sort with a comparison function, `slices.SortFunc` and `slices.SortStableFunc` compile one more copy of the sort (6 to 27 KB) for each element shape. In code that `cmd/pig` links, call `sortx.Func` and `sortx.Stable` from `internal/sortx` instead: they sort up to 12 (`Func`) or 20 (`Stable`) elements as `slices` does, and a longer slice takes 13 to 68% more CPU. Keep `slices.SortFunc` and `slices.SortStableFunc` where n can be large on a timed path (a keystroke, a frame, a listing, a request body) or the element shape is already linked (strings, pointers, ints), and give the reason in the `sort-instance` entry of `automation/ci/perflint/baseline.toml`: `make perf-lint` fails on a new use without one.
-- `go fix -diff ./...` should be empty.
+- `go fix -diff ./...` should be empty in the root module and in every maintained nested Go module (`make go-fix-clean` runs it in each).
 - When observable behavior changes, update the doc comment in the same commit.
 
 Lint commands when touching lint/config/code:

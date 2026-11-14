@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"runtime"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestCodexSSERetriesUpstream(t *testing.T) {
@@ -94,14 +95,17 @@ func TestCodexSSERetriesUpstream(t *testing.T) {
 	// fourth that succeeds. Pi asserts getEventListeners(signal, "abort") is empty after the result, i.e. a finished backoff
 	// leaves nothing registered on the caller's signal. The Go carrier of an abort listener is a goroutine (or AfterFunc) parked
 	// on the request context, so the assertion is that the goroutine count seen by the fourth request equals the first
-	// request's (no backoff left a waiter) and that nothing remains once the result is read.
+	// request's (no backoff left a waiter) and that nothing remains once the result is read. The counts are of this test's
+	// synctest bubble, read from a stack dump (testenv.LiveGoroutines); the bubble holds every goroutine the request starts.
+	// runtime.NumGoroutine is not that count: it is the whole process, and it still counts, for a moment, a goroutine that has
+	// returned and that synctest.Wait already reported gone.
 	t.Run("removes SSE retry backoff abort waiters after the retry succeeds", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			calls := 0
 			var goroutinesAtCall []int
 			provider := codexUpstreamProvider(t, "gpt-5.1-codex", codexRoundTripper(func(*http.Request) (*http.Response, error) {
 				calls++
-				goroutinesAtCall = append(goroutinesAtCall, runtime.NumGoroutine())
+				goroutinesAtCall = append(goroutinesAtCall, testenv.LiveGoroutines())
 				if calls <= 3 {
 					response := codexJSONResp(429, `{"error":{"message":"rate limited"}}`)
 					response.Header.Set("retry-after", "0")
@@ -112,7 +116,7 @@ func TestCodexSSERetriesUpstream(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 			synctest.Wait()
-			before := runtime.NumGoroutine()
+			before := testenv.LiveGoroutines()
 			stream, err := provider.Stream(WithProviderMaxRetries(ctx, 3), codexUpstreamContext(), StreamOptions{Transport: TransportSSE})
 			if err != nil {
 				t.Fatal(err)
@@ -125,8 +129,8 @@ func TestCodexSSERetriesUpstream(t *testing.T) {
 			if goroutinesAtCall[3] != goroutinesAtCall[0] {
 				t.Fatalf("goroutines at each request = %v; a finished retry backoff still waits on the request context", goroutinesAtCall)
 			}
-			if after := runtime.NumGoroutine(); after > before {
-				t.Fatalf("goroutines %d -> %d after the retried request completed", before, after)
+			if after := testenv.LiveGoroutines(); after != before {
+				t.Fatalf("goroutines of the test's bubble %d -> %d after the retried request completed", before, after)
 			}
 		})
 	})

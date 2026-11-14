@@ -62,8 +62,7 @@ func TestLoadThemePathsKeepsTheFirstThemeOfAName(t *testing.T) {
 		}
 	}
 	// The assertion compares a 24-bit color, so pin the capability instead of inheriting the host's COLORTERM.
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	registry := tui.NewThemeRegistry()
 	loadThemeResources(registry, []string{first, second}, tui.GetTerminalColorMode())
