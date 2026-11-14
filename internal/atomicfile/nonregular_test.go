@@ -22,7 +22,7 @@ func TestWriteFileWritesANonRegularTargetInPlace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	t.Cleanup(func() { _ = reader.Close() })
 	reported := reportedPaths(t)
 
 	const data = `{"provider-a":{"type":"api_key","key":"secret"}}`
