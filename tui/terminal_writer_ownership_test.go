@@ -148,9 +148,25 @@ func startedWhileParked(t *testing.T, started <-chan struct{}, call func()) (boo
 }
 
 const (
-	testFrameBegin = "\x1b[?2026h"
-	testRawWrite   = "<raw>"
+	testFrameBegin     = "\x1b[?2026h"
+	testRawWrite       = "<raw>"
+	testClipboardWrite = "\x1b]52;c;"
+	testSchemeOn       = "\x1b[?2031h"
+	testSchemeOff      = "\x1b[?2031l"
 )
+
+// altScreenWithSelection is a started alternate screen with no CopySelection and a selection over the first row of the last frame.
+func altScreenWithSelection(w *ownedWriter) *TuiAltScreen {
+	ui := NewTuiAltScreenWithOutput(w, 40, 6, TuiAltScreenOptions{})
+	ui.Add(NewText("row"))
+	ui.Start()
+	ui.mu.Lock()
+	ui.previousScreen = []string{"hello world"}
+	ui.selectionAnchor = &selectionPoint{row: 0, col: 0}
+	ui.selectionFocus = &selectionPoint{row: 0, col: 4}
+	ui.mu.Unlock()
+	return ui
+}
 
 // Pi writes to the terminal from one event loop (tui.ts requestRender 1033-1041, scheduleRender 1067-1083, showOverlay
 // 966-971: terminal.hideCursor() and then requestRender()): a cursor or raw write is before a frame or after it, never among
@@ -200,6 +216,43 @@ func TestOneGoroutineAtATimeIsInTheTerminalWriter(t *testing.T) {
 			ui.Add(NewText("more"))
 			w.parkAt(testFrameBegin)
 			return func() { ui.RequestRender() }, func() { ui.ShowOverlay(overlay(), OverlayOptions{}) }, func() { ui.StopWithOptions(StopOptions{}) }
+		}, ""},
+		{"QueryTerminalColors is writing its query and a frame comes", func(w *ownedWriter) (func(), func(), func()) {
+			ui := mainScreen(w)
+			ui.Render()
+			w.parkAt(terminalColorQuery)
+			return func() { ui.QueryTerminalColors(TerminalColorQueryOptions{TimeoutMs: 1}) }, ui.Render, ui.Stop
+		}, ""},
+		// An alternate screen without a CopySelection copies through OSC 52 (tui-alt-screen.ts:1476 terminal.write): the extension host builds
+		// its screens that way unless the extension supplies copySelection, and an input goroutine copies while the frame timer draws.
+		{"an alternate-screen selection copy is writing and a frame comes", func(w *ownedWriter) (func(), func(), func()) {
+			ui := altScreenWithSelection(w)
+			w.parkAt(testClipboardWrite)
+			return func() { ui.CopyActiveSelectionToClipboard() }, ui.Render, func() { ui.StopWithOptions(StopOptions{}) }
+		}, ""},
+		{"Start is entering the alternate screen and a frame comes", func(w *ownedWriter) (func(), func(), func()) {
+			ui := NewTuiAltScreenWithOutput(w, 40, 6, TuiAltScreenOptions{})
+			ui.Add(NewText("row"))
+			w.parkAt(altEnterAltScreen)
+			return ui.Start, ui.Render, func() { ui.StopWithOptions(StopOptions{}) }
+		}, ""},
+		{"Start is turning the colour-scheme reports on and WriteRaw is called", func(w *ownedWriter) (func(), func(), func()) {
+			ui := NewTuiAltScreenWithOutput(w, 40, 6, TuiAltScreenOptions{})
+			ui.Add(NewText("row"))
+			ui.SetTerminalColorSchemeNotifications(true)
+			w.parkAt(testSchemeOn)
+			return ui.Start, func() { ui.WriteRaw(testRawWrite) }, func() { ui.StopWithOptions(StopOptions{}) }
+		}, ""},
+		{"Stop is writing the teardown and WriteRaw is called", func(w *ownedWriter) (func(), func(), func()) {
+			ui := altScreenWithSelection(w)
+			w.parkAt(altEnableAutowrap)
+			return func() { ui.StopWithOptions(StopOptions{PreserveScreen: true}) }, func() { ui.WriteRaw(testRawWrite) }, func() {}
+		}, ""},
+		{"Stop is turning the colour-scheme reports off and HideCursor is called", func(w *ownedWriter) (func(), func(), func()) {
+			ui := altScreenWithSelection(w)
+			ui.SetTerminalColorSchemeNotifications(true)
+			w.parkAt(testSchemeOff)
+			return func() { ui.StopWithOptions(StopOptions{PreserveScreen: true}) }, ui.HideCursor, func() {}
 		}, ""},
 	}
 	for _, row := range rows {
