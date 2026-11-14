@@ -2623,21 +2623,18 @@ func (h *Host) TerminateProcesses() {
 		}
 	}
 	h.mu.Unlock()
+	timer := time.NewTimer(h.processWaitDelay())
 	for tree := range trees {
 		_ = tree.Kill()
 	}
 	for process := range processes {
 		_ = process.Kill()
 	}
-	h.awaitReaped(reaped)
+	h.awaitReaped(reaped, timer)
 }
 
-// awaitReaped waits until every channel in reaped closed, at most processWaitDelay in all, and says on stderr when the bound ended the wait.
-func (h *Host) awaitReaped(reaped []<-chan struct{}) {
-	if len(reaped) == 0 {
-		return
-	}
-	timer := time.NewTimer(h.processWaitDelay())
+// awaitReaped waits until every channel in reaped closed or timer fired, and says on stderr when the bound ended the wait with processes unfinished. The timer starts before the kill, so it fires before the WaitDelay of a process the kill ended can.
+func (h *Host) awaitReaped(reaped []<-chan struct{}, timer *time.Timer) {
 	defer timer.Stop()
 	for _, done := range reaped {
 		select {
@@ -2651,7 +2648,9 @@ func (h *Host) awaitReaped(reaped []<-chan struct{}) {
 					pending++
 				}
 			}
-			fmt.Fprintf(os.Stderr, "pig: %d extension process(es) did not finish ending within %s; the output they have not yet delivered is dropped\n", pending, h.processWaitDelay())
+			if pending > 0 {
+				fmt.Fprintf(os.Stderr, "pig: %d extension process(es) did not finish ending within %s; the output they have not yet delivered is dropped\n", pending, h.processWaitDelay())
+			}
 			return
 		}
 	}

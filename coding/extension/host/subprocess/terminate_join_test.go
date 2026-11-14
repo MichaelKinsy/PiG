@@ -118,3 +118,35 @@ func TestTerminateProcessesDeliversTheOutputWrittenBeforeIt(t *testing.T) {
 		})
 	}
 }
+
+// A descendant outside the process tree that keeps the output pipe open after its extension ended holds the exit only for the bound: TerminateProcesses returns when the bound passed, and one line on stderr says that the undelivered output is dropped.
+func TestTerminateProcessesEndsAtTheBoundForAPipeThatStaysOpen(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("needs sleep")
+	}
+	collect := swapStd(t)
+	h := NewHost(t.TempDir())
+	h.waitDelay = 300 * time.Millisecond
+	t.Cleanup(func() { h.Shutdown("test complete") })
+	source := filepath.Join(t.TempDir(), "holder.mjs")
+	body := `import { spawn } from "node:child_process";
+export default function(pi) {
+  spawn("sleep", ["4"], { detached: true, stdio: ["ignore", "inherit", "inherit"] }).unref();
+  setInterval(() => {}, 60000);
+}`
+	if err := os.WriteFile(source, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Load(testbudget.Context(t), ExtConfig{Name: "holder", Source: source, Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	h.TerminateProcesses()
+	if elapsed := time.Since(start); elapsed > 3*time.Second {
+		t.Errorf("TerminateProcesses waited %v for a pipe that stays open, want about the %v bound", elapsed, h.waitDelay)
+	}
+	_, stderr := collect()
+	if want := "pig: 1 extension process(es) did not finish ending within 300ms; the output they have not yet delivered is dropped\n"; !strings.Contains(stderr, want) {
+		t.Errorf("stderr = %q, want it to contain %q", stderr, want)
+	}
+}
