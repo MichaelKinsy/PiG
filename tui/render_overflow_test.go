@@ -36,6 +36,7 @@ func newOverflowTUI(t *testing.T, out *bytes.Buffer, width, height int, lines *[
 	t.Helper()
 	dir := t.TempDir()
 	ui := NewWithOutput(out, width, height)
+	ownFrames(ui)
 	ui.SetLogDirectory(dir)
 	ui.now = func() time.Time { return time.Date(2026, 9, 25, 14, 30, 0, 123_000_000, time.UTC) }
 	ui.Add(renderFuncComponent(func(int) []string { return *lines }))

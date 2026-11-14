@@ -25,6 +25,7 @@ func TestHandleSubmit_NoModel_ShowsGuidanceNoPanic(t *testing.T) {
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(&out, 100, 30)
+	m.tuiInst.SetRenderDeadline(func(time.Time) {}) // the test owns the frames: a timer frame would write the plain buffer the test reads (tui ownFrames)
 	m.tuiInst.Add(m.chatContainer)
 	m.statusLine = NewFooterComponent(nil, "", nil)
 	m.agent = mustNewAgent(agent.AgentOptions{Model: nil})

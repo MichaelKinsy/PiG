@@ -43,6 +43,7 @@ func resumeThinkingMode(t *testing.T, hide bool, messages ...agent.AgentMessage)
 		hideThinking:  hide,
 		outputPad:     1,
 	}
+	m.tuiInst.SetRenderDeadline(func(time.Time) {}) // the test owns the frames: a timer frame would write the plain buffer the test reads (tui ownFrames)
 	m.tuiInst.Add(m.chatContainer)
 	return m
 }

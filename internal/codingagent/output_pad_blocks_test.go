@@ -45,6 +45,7 @@ func resumedModeWithOutputPad(t *testing.T, pad int, build func(sess *Session)) 
 		toolStarts:    make(map[string]time.Time),
 		outputPad:     pad,
 	}
+	m.tuiInst.SetRenderDeadline(func(time.Time) {}) // the test owns the frames: a timer frame would write the plain buffer the test reads (tui ownFrames)
 	m.tuiInst.Add(m.chatContainer)
 	return m
 }
