@@ -174282,17 +174282,6 @@
       "shapeHash": "sha256:c768369cba12d8485d3afb054038f7bbc625788277266c20cbb5ef024a86da37"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#objectPrototypeNames",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "objectPrototypeNames",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "map[string]bool"
-      },
-      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#openFlight",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "openFlight",
@@ -174643,17 +174632,6 @@
         "type": "pick"
       },
       "shapeHash": "sha256:256a7dd8e1acbdfe21f6deb429e8765f8c396e5ad7b4ac87841198b4afd59d31"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#plainObjectDefines",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "plainObjectDefines",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(servers *github.com/MichaelKinsy/PiG/internal/orderedjson.Object, name string) bool"
-      },
-      "shapeHash": "sha256:28d8d5d1853c53700d2797a1c33394dc4e79b8c60dca6b8df5e8e4e3df380e04"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#plural",
@@ -307369,17 +307347,6 @@
         "type": "func(s string) bool"
       },
       "shapeHash": "sha256:98781e9fdc5eed4cfdee2034a4af86e78b25f68eef417e8307f1ea07a2ec43d1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#objectPrototypeFunctionNames",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "objectPrototypeFunctionNames",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "[]string"
-      },
-      "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#openBrowser",

@@ -86,6 +86,7 @@ func getAPIKeyEnvVars(provider string) []string {
 		// GetEnvAPIKey skips it: requests send it as Authorization: Bearer.
 		return []string{AnthropicAuthTokenEnv, AnthropicOAuthTokenEnv, AnthropicAPIKeyEnv}
 	}
+	// pig divergence (D645): the table holds own entries, so a provider named like an Object.prototype member (constructor, toString, __proto__) has no environment key; Pi's `envMap[provider]` on a plain object finds the inherited member and findEnvKeys throws "TypeError: envVars.filter is not a function".
 	return envAPIKeyVars()[provider]
 }
 

@@ -219,4 +219,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "571caddc18311e8d"
+const stagedHash = "e67a3be28a07682d"

@@ -3553,29 +3553,6 @@
       ]
     },
     {
-      "id": "BF-1407bdf",
-      "title": "A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or…",
-      "symptom": "A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or `A:::__proto__`, in flowcharts, class diagrams and state diagrams) styles its nodes, as it does in Pi.",
-      "rootCause": "The table now holds the class like any other. A style property named __proto__ is still dropped, as in the library, where a string assigned to that name creates no property. The class table as JSON, which the model and art comparisons with the library read, leaves the class out, because the library's JSON cannot show a prototype.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Mermaid class named `__proto__` (`classDef __proto__ fill:#f00` with `class A __proto__` or `A:::__proto__`, in flowcharts, class diagrams and state diagrams) styles its nodes, as it does in Pi. PiG left the class out and drew the nodes without the style.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "1407bdfc73",
-          "date": "2026-11-13"
-        }
-      ],
-      "tests": [
-        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
-        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes"
-      ]
-    },
-    {
       "id": "BF-142baa3",
       "title": "Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown…",
       "symptom": "Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown, exec-abort and other rows) failed to build with `go: updates to go.mod needed` since the root module moved to an SDK pseudo-version: 23 in-tree fixture, example and bench modules still required the PiG and SDK modules at v0.7.0.",
@@ -31227,6 +31204,59 @@
       ]
     },
     {
+      "id": "BF-88bbdd2",
+      "title": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`…",
+      "symptom": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`, `__proto__` and the like) is treated as any other name in more places (D645).",
+      "rootCause": "`pig mcp add constructor -- \u003ccommand\u003e` reports the server as added (it said `Replaced` the first time), `pig mcp add __proto__ -- \u003ccommand\u003e` writes the server to `mcp.json` (it was not written at all), and `pig mcp remove` of such a name that the file does not hold says there is no such server (it said `Removed`).",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D645",
+      "removeWhen": "Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A name that is also a member of JavaScript's `Object.prototype` (`constructor`, `toString`, `hasOwnProperty`, `__proto__` and the like) is treated as any other name in more places (D645). `pig mcp add constructor -- \u003ccommand\u003e` reports the server as added (it said `Replaced` the first time), `pig mcp add __proto__ -- \u003ccommand\u003e` writes the server to `mcp.json` (it was not written at all), and `pig mcp remove` of such a name that the file does not hold says there is no such server (it said `Removed`). A `keybindings.json` key so named is left as written: it was renamed to text such as `function Object() { [native code] }` and the file was rewritten. Pi 1.5.2 does the old things. In Node extensions, `ctx.ui.theme.fg`, `bg`, `getFgAnsi` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` for a token so named, as Pi does and as the other SDKs did: `fg` threw `open.endsWith is not a function`, `bg` drew the text of a native function before the text, and the two getters returned a function. `ctx.ui.setStatus(\"__proto__\", text)` is a status the extension's own footer reads back in the same turn, a provider registered under the name `__proto__` is read like any other provider, and `pi.getSettings()` hands the settings without any `__proto__` member.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3fb47cfd56",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "43e001e9e3",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "88bbdd2eaa",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "ai/env_keys_prototype_names_oracle_test.go::TestAProviderNamedLikeAnObjectPrototypeMemberHasNoEnvironmentKey",
+        "coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi",
+        "coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure",
+        "coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi",
+        "coding/mcpext/server_name_prototype_names_oracle_test.go::TestAnMcpServerOrOptionNamedLikeAnObjectPrototypeMemberIsTreatedAsAnyOtherName",
+        "coding/mcpext/server_name_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberIsListedWithoutAnExposure",
+        "coding/stored_credential_prototype_names_oracle_test.go::TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
+        "internal/codingagent/keybindings_file_oracle_test.go::TestKeybindingsFileLoadingMatchesPi",
+        "internal/codingagent/keybindings_prototype_names_oracle_test.go::TestAKeybindingNamedLikeAnObjectPrototypeMemberIsNoLegacyName",
+        "internal/codingagent/migrations_prototype_names_oracle_test.go::TestALegacyApiKeyOfAProviderNamedLikeAnObjectPrototypeMemberIsMigrated",
+        "internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi",
+        "internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline",
+        "internal/codingagent/settings_project_proto_key_oracle_test.go::TestAProjectSettingsKeyNamedProtoSetsNoSetting",
+        "internal/configvalue/prototype_names_oracle_test.go::TestAConfigValueNamingAnObjectPrototypeMemberIsAnUnsetVariable",
+        "internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
+        "test/extension-conformance/prototype_names_guard_test.go::TestNoLookupAnswersForObjectPrototypeMemberNames",
+        "test/extension-conformance/prototype_names_test.go::TestNodeGetSettingsHandsNoProtoMember",
+        "tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey",
+        "tui/theme_and_keybinding_names_prototype_oracle_test.go::TestAThemeNamedLikeAnObjectPrototypeMemberIsNotFound",
+        "tui/theme_and_keybinding_names_prototype_oracle_test.go::TestAUserKeybindingNamedLikeAnObjectPrototypeMemberClaimsNoKey",
+        "tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi",
+        "tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable"
+      ]
+    },
+    {
       "id": "BF-892827f",
       "title": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted…",
       "symptom": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted, the Host read the client's `getSignal` function again and again without end, one call to the client each, and sent every runtime a new `run_signal` frame each time.",
@@ -52514,15 +52544,16 @@
     },
     {
       "id": "BF-dd2727b",
-      "title": "fix(tui): the read and write cards draw Pi's fallback for a path whose extension is constructor or __proto__",
-      "symptom": "fix(tui): the read and write cards draw Pi's fallback for a path whose extension is constructor or __proto__",
+      "title": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…",
+      "symptom": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result.",
       "rootCause": "Pi's getLanguageFromPath (theme.ts:993-1062) looks the lowercased extension up in a plain object, so `constructor` and `__proto__` find a member the object inherits from Object.prototype. The value is truthy: read.ts formatReadResult (:124-125) and write.ts renderCall (:55-64, :123-127) pass it to highlightCode, whose supportsLanguage check (theme.ts:937) throws a TypeError before the try, and tool-execution.ts updateDisplay (:303-341) catches the throw and draws the call or result fallback. PiG looked the extension up in a Go map, found no language and drew the write card with its content rows and the expanded read card with its blank row, which Pi does not draw for such a path.",
       "rootCauseSource": "commit",
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) now draw what Pi draws: the tool name with its arguments for the write call, and the file's lines directly under the header for the read result. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws, and Pi falls back to its generic card; PiG looked the extension up in a Go map, found no language and drew the ordinary cards.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "dd2727b68a",
@@ -52530,9 +52561,12 @@
         }
       ],
       "tests": [
+        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsDrawTheFallbackForAPathNamedLikeAnObjectPrototypeMember",
         "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
         "test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml",
-        "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml"
+        "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml",
+        "tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsForAnInheritedMember",
+        "tui/language_from_path_throws_test.go::TestLanguageFromPathThrowsLikePi"
       ]
     },
     {
@@ -55346,129 +55380,6 @@
         "tui/keys_function_keys_upstream_test.go::TestDecodeKittyPrintableIgnoresUnmappedKittyFunctionalKeys",
         "tui/keys_function_keys_upstream_test.go::TestMatchesKittyFunctionKeysF1ToF12WithAndWithoutModifiers",
         "tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput"
-      ]
-    },
-    {
-      "id": "BF-eabcdf0",
-      "title": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for…",
-      "symptom": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) are the ordinary cards with the file's text, as for any extension without a known language.",
-      "rootCause": "Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D645",
-      "removeWhen": "Pi looks these names up as own properties (or with a `Map`) at the site; each row can then go alone, with its marker, and the record is retired with the last row.",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The write card and the expanded read card of a file whose extension is `constructor` or `__proto__` (for example `notes.constructor`) are the ordinary cards with the file's text, as for any extension without a known language. Pi looks the extension up in a plain JavaScript object, finds a member inherited from `Object.prototype`, its highlighter throws and Pi falls back to its generic card; PiG does not copy that defect (D645).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3fb47cfd56",
-          "date": "2026-11-13"
-        },
-        {
-          "hash": "43e001e9e3",
-          "date": "2026-11-13"
-        },
-        {
-          "hash": "eabcdf054a",
-          "date": "2026-11-13"
-        }
-      ],
-      "tests": [
-        "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
-        "coding/extension/mcp_servers_oracle_test.go::TestValidateMcpServerConfigMatchesPi",
-        "coding/extension/mcp_tool_exposure_prototype_names_oracle_test.go::TestAnMcpToolNamedLikeAnObjectPrototypeMemberGetsTheServersExposure",
-        "internal/codingagent/prompts/system_prompt_oracle_test.go::TestSystemPromptSectionsMatchPi",
-        "internal/codingagent/prompts/system_prompt_prototype_names_oracle_test.go::TestASelectedToolNamedLikeAnObjectPrototypeMemberHasNoSnippetAndNoGuideline",
-        "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
-        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
-        "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
-        "internal/latex/prototype_names_oracle_test.go::TestACommandNamedLikeAnObjectPrototypeMemberIsNoLatexSymbol",
-        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
-        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
-        "internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent",
-        "internal/typebox/value_check_prototype_names_oracle_test.go::TestUniqueItemsCountsAMemberNamedConstructor",
-        "test/parity/scenarios/interactive-rendering/74-unknown-extension-path-cards.toml",
-        "test/parity/scenarios/interactive-rendering/75-resume-unknown-extension-path-cards.toml",
-        "tui/highlight_scope_prototype_names_test.go::TestAScopeNamedLikeAnObjectPrototypeMemberHasNoFormatter",
-        "tui/highlight_scope_prototype_names_test.go::TestReasonmlEmitsTheScopeConstructor",
-        "tui/key_parse_prototype_names_oracle_test.go::TestAChunkNamedLikeAnObjectPrototypeMemberIsNoKey",
-        "tui/language_from_path_prototype_names_oracle_test.go::TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage",
-        "tui/theme_json_validate_oracle_test.go::TestThemeJSONValidationMatchesPi",
-        "tui/theme_variable_prototype_names_oracle_test.go::TestAThemeColorNamedLikeAnObjectPrototypeMemberIsAMissingVariable"
-      ]
-    },
-    {
-      "id": "BF-eabcdf0-2",
-      "title": "For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with…",
-      "symptom": "For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with `uniqueItems` no longer take two objects that differ only in a member named `constructor` for the same item.",
-      "rootCause": "Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "For an extension written with the Go, Rust, Python or Lisp SDK, `Value.Check` and `Value.Errors` with `uniqueItems` no longer take two objects that differ only in a member named `constructor` for the same item. TypeBox leaves that member out of its hash; PiG hashes it like any other (D645).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "eabcdf054a",
-          "date": "2026-11-13"
-        }
-      ],
-      "tests": [
-        "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
-        "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
-        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
-        "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
-        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
-        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
-        "internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent",
-        "internal/typebox/value_check_prototype_names_oracle_test.go::TestUniqueItemsCountsAMemberNamedConstructor",
-        "test/parity/scenarios/interactive-rendering/74-unknown-extension-path-cards.toml",
-        "test/parity/scenarios/interactive-rendering/75-resume-unknown-extension-path-cards.toml",
-        "tui/highlight_scope_prototype_names_test.go::TestAScopeNamedLikeAnObjectPrototypeMemberHasNoFormatter",
-        "tui/highlight_scope_prototype_names_test.go::TestReasonmlEmitsTheScopeConstructor",
-        "tui/language_from_path_prototype_names_oracle_test.go::TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage"
-      ]
-    },
-    {
-      "id": "BF-eabcdf0-3",
-      "title": "`pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is…",
-      "symptom": "`pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is set, as for any other `TERM` it does not know (D645).",
-      "rootCause": "Pi, and three libraries it uses, look a name that comes from a model, a file or the environment up in a plain JavaScript object, so a name such as constructor, toString or __proto__ finds a member inherited from Object.prototype where no entry exists. PiG reproduced the results at these sites; it no longer does.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig-evals` prints its report title in bold when `TERM` is `constructor` or `__proto__` and `COLORTERM` is set, as for any other `TERM` it does not know (D645).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "eabcdf054a",
-          "date": "2026-11-13"
-        }
-      ],
-      "tests": [
-        "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
-        "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
-        "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
-        "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
-        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
-        "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
-        "internal/typebox/value_check_prototype_names_oracle_test.go::TestAnOmittedPropertyNamedLikeAnObjectPrototypeMemberIsAbsent",
-        "internal/typebox/value_check_prototype_names_oracle_test.go::TestUniqueItemsCountsAMemberNamedConstructor",
-        "test/parity/scenarios/interactive-rendering/74-unknown-extension-path-cards.toml",
-        "test/parity/scenarios/interactive-rendering/75-resume-unknown-extension-path-cards.toml",
-        "tui/highlight_scope_prototype_names_test.go::TestAScopeNamedLikeAnObjectPrototypeMemberHasNoFormatter",
-        "tui/highlight_scope_prototype_names_test.go::TestReasonmlEmitsTheScopeConstructor",
-        "tui/language_from_path_prototype_names_oracle_test.go::TestAPathNamedLikeAnObjectPrototypeMemberHasNoLanguage"
       ]
     },
     {
@@ -62162,8 +62073,8 @@
     },
     {
       "id": "D645",
-      "title": "A name that is an `Object.prototype` member is no entry of five Stock lookup tables, where Pi's plain objects…",
-      "entry": "BF-eabcdf0"
+      "title": "A name that is an `Object.prototype` member is no entry of fifteen Stock lookups, where Pi's plain objects…",
+      "entry": "BF-88bbdd2"
     }
   ],
   "exemptCommits": {
