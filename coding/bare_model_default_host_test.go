@@ -115,22 +115,18 @@ func newDefaultHostProxy(t *testing.T) *defaultHostProxy {
 	t.Setenv("no_proxy", "")
 	var wg sync.WaitGroup
 	t.Cleanup(func() { _ = listener.Close(); wg.Wait() })
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
 				return
 			}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				defer conn.Close()
+			wg.Go(func() {
+				defer func() { _ = conn.Close() }()
 				proxy.serve(conn)
-			}()
+			})
 		}
-	}()
+	})
 	return proxy
 }
 
