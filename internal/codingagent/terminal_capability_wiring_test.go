@@ -16,18 +16,14 @@ import (
 // images, truecolor, and hyperlinks, and restores the capability state.
 func isolateTerminalCapabilities(t *testing.T) {
 	t.Helper()
-	previousCapabilities := tui.GetCapabilities()
+	restoreStartupTheme(t)
 	for _, name := range []string{"TMUX", "TERM", "HERDR_ENV", "PI_HYPERLINKS", "PI_IMAGE_PROTOCOL", "PI_TRUE_COLOR"} {
 		t.Setenv(name, "")
 	}
 	t.Setenv("KITTY_WINDOW_ID", "1")
 	tui.SetCapabilityOverrides(tui.CapabilityOverrides{})
 	tui.ResetCapabilitiesCache()
-	t.Cleanup(func() {
-		tui.SetCapabilityOverrides(tui.CapabilityOverrides{})
-		tui.SetCapabilities(previousCapabilities)
-		tui.RefreshActiveThemeColorMode()
-	})
+	t.Cleanup(func() { tui.SetCapabilityOverrides(tui.CapabilityOverrides{}) })
 }
 
 func settingsFromJSON(t *testing.T, body string) Settings {

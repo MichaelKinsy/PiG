@@ -13,6 +13,7 @@ import (
 
 func resourceLoaderThemeFixture(t *testing.T) (agentDir, cwd, themePath string) {
 	t.Helper()
+	restoreStartupTheme(t)
 	root := t.TempDir()
 	agentDir, cwd = filepath.Join(root, "agent"), filepath.Join(root, "project")
 	for _, dir := range []string{agentDir, cwd} {

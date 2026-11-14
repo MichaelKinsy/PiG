@@ -44,12 +44,13 @@ func TestStartupPromptComponentsAreBuiltUnderThePendingSystemTheme(t *testing.T)
 // COLORTERM advertises truecolor, and keeps them after the terminal reports its colors.
 func TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides(t *testing.T) {
 	restoreTUIKeybindings(t)
+	// Before the environment below, so that it reads, and puts back last, the capabilities of the environment the test began in.
+	restoreStartupTheme(t)
 	t.Setenv("COLORTERM", "truecolor")
 	t.Setenv("TERM", "xterm-256color")
 	for _, env := range []string{"TERM_PROGRAM", "TMUX", "KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "ITERM_SESSION_ID", "WT_SESSION"} {
 		t.Setenv(env, "")
 	}
-	restoreStartupTheme(t)
 	t.Cleanup(func() {
 		tui.SetCapabilityOverrides(tui.CapabilityOverrides{})
 		tui.ResetCapabilitiesCache()

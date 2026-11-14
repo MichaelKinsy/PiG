@@ -15,6 +15,7 @@ import (
 // package-manager.ts:1304,1960-1970,2671-2683 awaits the temporary Git child without blocking the UI event loop.
 // interactive-mode.ts:6195-6206,6223 keeps the reload box focused until that work completes.
 func TestReloadResourceResolutionPumpsOwner(t *testing.T) {
+	restoreStartupTheme(t)
 	for _, snapshotProvider := range []bool{true, false} {
 		name := "snapshot"
 		if !snapshotProvider {
