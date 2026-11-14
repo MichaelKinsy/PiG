@@ -66,13 +66,9 @@ func TestBuildModelGivesTheProviderIDOllamaNoBaseURLOfItsOwn(t *testing.T) {
 			if tc.baseURL != "" {
 				return
 			}
-			// The spec form resolves the entry itself: no models.json names the provider, so the entry states no base URL.
-			fromSpec, err := BuildModel(tc.provider+"/m1", services)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got := firstRequestURL(t, fromSpec); got != tc.want {
-				t.Errorf("BuildModel: the request went to %q, want %q", got, tc.want)
+			// The spec form builds only a model some list names; no models.json names this provider's model, so the spec form has no model (and no host to send a key to).
+			if fromSpec, err := BuildModel(tc.provider+"/m1", services); fromSpec != nil || err == nil || err.Error() != "Model not found: "+tc.provider+"/m1" {
+				t.Errorf("BuildModel = %v, %v; want no model and Pi's 'Model not found'", fromSpec, err)
 			}
 		})
 	}
