@@ -77,6 +77,7 @@ change = "modified"
 disposition = "deferred"
 evidence = []
 rationale = "4cc9fd409 (p3 scaffold: the @p3/app workspace package, the principal, API v1, node:test). The p3 line (follow/p3), not this one: p3 code is ported on its own line; this release line does not carry it (docs/parity/PORT_MAP.md: a path under apps/p3 outside docs/ needs a port line of its own)."
+oracle = "not carried: the lock gains the entries of the @p3/app workspace package (16 lines); no package the oracle installs moves."
 
 [[files]]
 path = "apps/p3/docs/slices/01-base-and-sessions.md"
