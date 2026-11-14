@@ -93,7 +93,6 @@ func (p *qsPane) screen() string { return p.must("capture-pane", "-p", "-t", "pi
 func (p *qsPane) keys(names ...string) {
 	p.must(append([]string{"send-keys", "-t", "pig"}, names...)...)
 }
-func (p *qsPane) text(literal string) { p.must("send-keys", "-t", "pig", "-l", literal) }
 
 // pigPID is the process ID of pig: the child of the pane's shell.
 func (p *qsPane) pigPID() int {
