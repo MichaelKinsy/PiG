@@ -4,6 +4,7 @@ package ai
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -306,10 +307,44 @@ func nodeConnectionFailure(cause error) (message, code string) {
 			return "read ECONNRESET", "ECONNRESET"
 		}
 	}
+	if mismatch, ok := errors.AsType[x509.HostnameError](cause); ok {
+		return nodeAltNameMismatch(mismatch), "ERR_TLS_CERT_ALTNAME_INVALID"
+	}
 	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, net.ErrClosed) || isServerClosedIdle(cause) {
 		return "other side closed", "UND_ERR_SOCKET"
 	}
 	return "", ""
+}
+
+// nodeAltNameMismatch is the message of tls.checkServerIdentity's ERR_TLS_CERT_ALTNAME_INVALID, the cause undici attaches to "fetch failed" for a
+// certificate that does not name the host. Node lists the certificate's subjectaltname as it is encoded (DNS, email, IP Address, URI); an IP host
+// is checked against the IP entries, a host without alternative names against the common name.
+func nodeAltNameMismatch(mismatch x509.HostnameError) string {
+	cert, host := mismatch.Certificate, mismatch.Host
+	var altNames, ips []string
+	for _, name := range cert.DNSNames {
+		altNames = append(altNames, "DNS:"+name)
+	}
+	for _, address := range cert.EmailAddresses {
+		altNames = append(altNames, "email:"+address)
+	}
+	for _, address := range cert.IPAddresses {
+		ips = append(ips, address.String())
+		altNames = append(altNames, "IP Address:"+address.String())
+	}
+	for _, uri := range cert.URIs {
+		altNames = append(altNames, "URI:"+uri.String())
+	}
+	const prefix = "Hostname/IP does not match certificate's altnames: "
+	switch {
+	case net.ParseIP(host) != nil:
+		return prefix + "IP: " + host + " is not in the cert's list: " + strings.Join(ips, ", ")
+	case len(cert.DNSNames) > 0:
+		return prefix + "Host: " + host + ". is not in the cert's altnames: " + strings.Join(altNames, ", ")
+	case cert.Subject.CommonName != "":
+		return prefix + "Host: " + host + ". is not cert's CN: " + cert.Subject.CommonName
+	}
+	return prefix + "Cert does not contain a DNS name"
 }
 
 // isSocketWrite reports whether op is a name package net gives a write to a socket: "write", and for the vectored write of a request
