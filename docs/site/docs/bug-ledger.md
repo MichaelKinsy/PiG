@@ -106,6 +106,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0b13d8b](#bf-0b13d8b) | `pig auth --help` names `pig auth ...` instead of `pi auth ...` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b13d8b-2](#bf-0b13d8b-2) | `pig extension --help` lists `pig extension init --login` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b13d8b-3](#bf-0b13d8b-3) | `pig --help` lists `pig login`, `pig logout`, `pig package`, `pig extension upgrade`, `pig reload`, and `pig… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0b2baca](#bf-0b2baca) | A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped… | PiG's own defect | All platforms | Unreleased |
 | [BF-0b4e1e3](#bf-0b4e1e3) | The OpenAI Codex base URL keeps the whitespace around it, as Pi does (only an all-blank value falls back to… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b674b3](#bf-0b674b3) | Gemini model-id checks follow Pi's lowercasing: an id spelled with a dotted capital İ or a long ſ is no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b85f55](#bf-0b85f55) | The Rust SDK keeps every session entry when one entry of the session file holds an unpaired surrogate (it… | PiG's own defect | All platforms | 0.5.0 |
@@ -3452,6 +3453,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `0b13d8bc58` (2026-10-13)
 - **Tests:** None recorded.
 - **Release note:** `pig --help` lists `pig login`, `pig logout`, `pig package`, `pig extension upgrade`, `pig reload`, and `pig diagnose`.
+
+### BF-0b2baca
+
+**A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped, could draw after the stop.
+- **Root cause:** The start-up pickers (`--resume` and the others in `startup_ui.go`) run on such a renderer; the interleaving is forced in a test with the frame parked at its first clock read, and it was not observed in a real terminal.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0b2baca2ce` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped, could draw after the stop. Its hide of the cursor then undid the cursor show of the stop, and the shell prompt that followed was left without a cursor. The start-up pickers (`--resume` and the others in `startup_ui.go`) run on such a renderer; the interleaving is forced in a test with the frame parked at its first clock read, and it was not observed in a real terminal. As Pi's timer callback runs on its one event loop, where nothing runs between its `stopped` check and its render (`tui.ts` `scheduleRender`), a stopped screen now draws nothing: the frame lock checks the flag, as the alternate screen's already did.
 
 ### BF-0b4e1e3
 
