@@ -19069,6 +19069,17 @@
       "shapeHash": "sha256:1c21a2158b5874158f5675d0c6fbd1786e5703b477a3e8f3d91e28296d1f2bf0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#NoAPIProviderError",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "NoAPIProviderError",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(api API) error"
+      },
+      "shapeHash": "sha256:a6f45501f2b01dc4c591a93f4046c5810183231b6919d2054460960cbebae7fc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#NodeFetch",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "NodeFetch",
@@ -20873,6 +20884,17 @@
       "shapeHash": "sha256:6ea887270ea826e3cc47c2484eb6ed6fcbc31478607fab5c49a0f4df812cf442"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderCatalogServesAPI",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ProviderCatalogServesAPI",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, api API) bool"
+      },
+      "shapeHash": "sha256:f4a135d3b4775ac2e7642b9a339feccafc73df4dc3389ea35066f3c7ecf596df"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderClassifier",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ProviderClassifier",
@@ -20937,6 +20959,17 @@
         "type": "ProviderFactory"
       },
       "shapeHash": "sha256:40a32b97186d9c9429839b3a6c4711e7da1f5120c95ae29c809dc52ad6d32c2c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderHasOwnStreamFor",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ProviderHasOwnStreamFor",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, api API) bool"
+      },
+      "shapeHash": "sha256:f4a135d3b4775ac2e7642b9a339feccafc73df4dc3389ea35066f3c7ecf596df"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderHeader",
@@ -39067,6 +39100,17 @@
       "shapeHash": "sha256:1b2650e1ca318400af8e52fb98914a95c8b9b6300ca95de1a695409c58a3f81c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#directAPIKnown",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "directAPIKnown",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(api API) bool"
+      },
+      "shapeHash": "sha256:d77d863149e9226377cafae2aed66aa8b5d08496c31443629689009a3be9e9d5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#directAPIProvider",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "directAPIProvider",
@@ -54423,6 +54467,17 @@
       "shapeHash": "sha256:cfaa7deb844aa5dc37ba94afae7af08116a225ed40df6ab8eb833f847254cf88"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ownStreamProviders",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ownStreamProviders",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]bool"
+      },
+      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ownedContinuationTurn",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ownedContinuationTurn",
@@ -57391,6 +57446,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#registerOwnStreamProvider",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "registerOwnStreamProvider",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string)"
+      },
+      "shapeHash": "sha256:eb6bd2c66239c05f4aac928c37f8b99e8b0c8f2c00348df68a6fc1c56eff5ee7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#registeredAPIProvider",
@@ -79259,6 +79325,50 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "apiRegistryProvider",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "apiRegistryProvider"
+      },
+      "shapeHash": "sha256:ed1e59e7e86dbe41d7c9528d6c4497e67bd45d4d532c26c763b33438c70f6ebd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Close",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "apiRegistryProvider.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.ID",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "apiRegistryProvider.ID",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#apiRegistryProvider.Stream",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "apiRegistryProvider.Stream",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, transcript github.com/MichaelKinsy/PiG/ai.TranscriptContext, options github.com/MichaelKinsy/PiG/ai.StreamOptions) (*github.com/MichaelKinsy/PiG/ai.AssistantMessageEventStream, error)"
+      },
+      "shapeHash": "sha256:3ad688308391858a4693f3db3647121c772e4c8993e8d4a58d0f062c0d433f62"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#apiStreamProvider",
