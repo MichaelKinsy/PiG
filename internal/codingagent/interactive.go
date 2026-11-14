@@ -302,7 +302,9 @@ type InteractiveMode struct {
 	markdownTheme       *tui.MarkdownTheme
 	markdownThemeIndent string
 	// markdownTransformerList is the list markdownTransformers last built, valid while the active theme and the extension runner still equal markdownTransformerTheme and markdownTransformerRunner. markdownTransformerMu guards the three: Markdown renders may run on more than one goroutine.
-	markdownTransformerMu     sync.Mutex
+	markdownTransformerMu sync.Mutex
+	// mermaidFoldScanned counts the bytes the Mermaid pre-check of this mode's transformers has read (containsFoldMermaid).
+	mermaidFoldScanned        atomic.Int64
 	markdownTransformerList   []extension.MarkdownTransformer
 	markdownTransformerTheme  *tui.Theme
 	markdownTransformerRunner *inproc.Runner
