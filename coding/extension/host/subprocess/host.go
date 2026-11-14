@@ -4868,8 +4868,9 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		conn.beginWork()
 		defer conn.endWork()
 		stateCtx := parent
-		if runAwaitsEvent(event) {
-			// The state push of a handler Pi awaits through the abort is part of the awaited dispatch: the abort must not end it either.
+		awaited := runAwaitsEvent(event) && parent.Done() != nil
+		if awaited {
+			// The state push of a handler Pi awaits through the abort is part of the awaited dispatch: the abort must not end it either; the request below reuses this context.
 			stateCtx = context.WithoutCancel(parent)
 		}
 		if err := me.host.pushStateTo(stateCtx, me, conn); err != nil {
@@ -4899,9 +4900,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				resp, err = conn.requestOrdered(parent, envelope, me.toolUpdates.order(conn, *toolUpdate, payload, args[0], boundaryWire))
 			default:
 				requestCtx := parent
+				if awaited {
+					requestCtx = stateCtx
+				}
 				if started := extension.DispatchStartedFromContext(parent); started != nil {
 					// The request is the handler's start: the process runs requests in the order they arrive.
-					requestCtx = withRequestIssued(parent, started)
+					requestCtx = withRequestIssued(requestCtx, started)
 				}
 				if len(args) > 0 {
 					if signal := beforeEventSignal(args[0]); signal != nil {
@@ -4909,9 +4913,9 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 						requestCtx = withRequestSignal(requestCtx, signal)
 					}
 				}
-				if runAwaitsEvent(event) && parent.Done() != nil {
+				if awaited {
 					// agent-loop.ts:738 awaits beforeToolCall, tool_result and context hooks with no race against the abort (runner.ts:1256-1274 emitToolCall): the run's abort reaches the handler as ctx.signal, not as the end of the wait.
-					requestCtx = withRequestSignal(context.WithoutCancel(requestCtx), parent)
+					requestCtx = withRequestSignal(requestCtx, parent)
 				}
 				resp, err = conn.Request(requestCtx, envelope)
 			}
