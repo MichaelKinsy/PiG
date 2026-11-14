@@ -976,12 +976,12 @@ allocs = 103
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkRequestLargeWriteFollowUp/completions"
-allocs = 81
+allocs = 72
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkRequestLargeWriteFollowUp/responses"
-allocs = 37
+allocs = 28
 
 [[benchmark]]
 package = "./ai"
