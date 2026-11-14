@@ -238260,6 +238260,17 @@
       "shapeHash": "sha256:bd41faed9088cb863f4be986de2ec32274aa3ee715a0e1d6330ccc5dd31b61e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#compareFieldsByIndex",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "compareFieldsByIndex",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a *field, b *field) int"
+      },
+      "shapeHash": "sha256:6eff577ea014194ac5bffcc0459fd30eb8be3b06b5782b91cfdf8dce9b3a1f0a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#compareFieldsByName",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
       "name": "compareFieldsByName",
@@ -240350,6 +240361,17 @@
       "shapeHash": "sha256:8e29662471c87a624090b974d35b3745c7898061975b31c44125e4b0ffd679b2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#siftDownFields",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "siftDownFields",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fields []field, root int, hi int, cmp func(a *field, b *field) int)"
+      },
+      "shapeHash": "sha256:04dab4419823075e0fe824ca0b3cd24aaf5e175a7aacd17a5ed426219a75af99"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#siftDownOrderEntries",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
       "name": "siftDownOrderEntries",
@@ -240414,6 +240436,17 @@
         "type": "[256]any"
       },
       "shapeHash": "sha256:cdda44eac671767724487d2126de838252a6ddbfb8ce8d725f97c501e7b9d14f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#sortFields",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "sortFields",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fields []field, cmp func(a *field, b *field) int)"
+      },
+      "shapeHash": "sha256:cf232cc29fd5c2cd44a55ec1fa55f3f85350b5d5419194f4af3f2ebbe92b5245"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#sortOrderEntries",
