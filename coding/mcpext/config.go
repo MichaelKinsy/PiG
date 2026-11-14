@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -441,7 +442,7 @@ func editMcpServers(path string, edit func(servers, parsed *orderedjson.Object) 
 	if err := os.MkdirAll(filepath.Dir(path), 0o777); err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, out.Bytes(), 0o666); err != nil {
+	if err := atomicfile.WriteFile(path, out.Bytes(), 0o666); err != nil {
 		return errors.New(tools.NodeFSError(err, "open", path))
 	}
 	return nil
