@@ -180,6 +180,7 @@ type Conn struct {
 	conn         net.Conn
 	closing      atomic.Bool
 	closed       atomic.Bool
+	terminating  atomic.Bool // Host.TerminateProcesses killed the extension's process: its end fails no pending request
 	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
 	modelRegistry bool
 
@@ -2477,6 +2478,10 @@ func (c *Conn) fail(err error) {
 		c.pendingMu.Lock()
 		c.requestsFailed = len(c.pending)
 		for id, ch := range c.pending {
+			if c.terminating.Load() {
+				// pig additive (D19): the process of the extension was killed because pig is about to exit. Pi's extension runs in pig's own process, so an end of pig never fails its pending request; the request stays pending until the process exits.
+				break
+			}
 			select {
 			case ch <- &Envelope{Type: MsgResponse, ID: id, Response: &ResponsePayload{Error: &ErrorInfo{Code: code, Message: err.Error()}}}:
 			default:

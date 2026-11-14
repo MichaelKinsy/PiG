@@ -2603,6 +2603,9 @@ func (h *Host) TerminateProcesses() {
 	trees := make(map[*processTree]struct{})
 	var reaped []<-chan struct{}
 	for _, me := range h.exts {
+		if conn := me.connection(); conn != nil {
+			conn.terminating.Store(true)
+		}
 		if proc, tree := me.processHandle(); tree != nil {
 			trees[tree] = struct{}{}
 		} else if proc != nil {
