@@ -39,7 +39,14 @@ func buildModelContext(ctx context.Context, spec string, services *coding.AgentS
 	if !ok {
 		return nil, "", "", fmt.Errorf("model %q has no provider prefix", spec)
 	}
-	model, err := buildModelFromRef(ctx, providerID, modelID, services)
+	selected := &codingagent.RuntimeModel{Provider: providerID, ID: modelID}
+	// An id the catalog does not carry is built as startup builds it: from the copy the resolver makes of one of the provider's models.
+	if services.ModelRuntime().GetModel(providerID, modelID) == nil {
+		if resolved := coding.ResolveCliModel(coding.ResolveCliModelOptions{CliModel: spec, ModelRuntime: services.ModelRuntime()}); resolved.Model != nil {
+			selected = runtimeModelOf(resolved.Model)
+		}
+	}
+	model, err := buildSelectedModel(ctx, selected, services)
 	return model, thinkingOverride, "", err
 }
 

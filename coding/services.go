@@ -654,8 +654,9 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 		registry := runtime.services.Registry()
 		// A model object an extension set is sent as it is: Pi's request uses the model it is given (model-runtime.ts:667-689 prepareRequest), and the Session replaces the object when the registry's model changes (refreshCurrentModelFromRegistry). A model the host built from a name takes the registry's current model of that name.
 		object := runtime.modelObjectOrigin(model) != nil
-		if refreshed := runtime.GetModel(providerID, model.ID); refreshed != nil && !object {
-			requestModel = refreshed
+		listed := runtime.GetModel(providerID, model.ID)
+		if listed != nil && !object {
+			requestModel = listed
 		}
 		auth, err := registry.ResolveRegistryModelAuth(ctx, requestModel, overrides)
 		if err != nil {
@@ -665,13 +666,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 			if options.APIKey == "" && modelRuntimeRequiresAuth(providerID) && registry.GetProvider(providerID) == nil && !registry.ModelRegistry.HasConfiguredAuth(providerID) {
 				return nil, nil, ai.StreamOptions{}, &modelRuntimeAuthMissingError{provider: providerID}
 			}
-			build := func() (*ai.Model, error) {
-				return buildModel(providerID+"/"+model.ID, runtime.services, options.APIKey)
-			}
-			if object {
-				build = func() (*ai.Model, error) { return buildRequestModel(model, runtime.services, options.APIKey) }
-			}
-			resolved, err := build()
+			resolved, err := buildUnauthenticatedRequestModel(model, listed, object, runtime.services, options.APIKey)
 			if err != nil {
 				return nil, nil, ai.StreamOptions{}, err
 			}
@@ -786,6 +781,12 @@ func (runtime *ModelRuntime) fail(ctx context.Context, stream *ai.AssistantMessa
 	_ = stream.Push(ai.ErrorEvent{Reason: reason, Error: message})
 }
 
+// testFauxModelID is the one model the harness provider lists (test/parity/testdata/test-faux-provider.ts:706).
+const testFauxModelID = "faux-1"
+
+// IsTestFauxModel reports whether id is a model the harness test-faux provider lists.
+func IsTestFauxModel(id string) bool { return id == testFauxModelID }
+
 // registerHarnessTestFaux registers the provider Pi's parity harness registers from an extension (test/parity/testdata/test-faux-provider.ts): one provider
 // with a configured key, so it is an available provider of the model snapshot as there, and every consumer of that snapshot (the footer's provider count,
 // the selectors, the model lists) sees what Pi's sees. The faux stream itself is built in (buildProviderForEntry).
@@ -795,7 +796,7 @@ func registerHarnessTestFaux(reg *icodingagent.ModelRegistry) error {
 		APIKey:  "unused",
 		API:     "test-faux",
 		Models: []extension.ProviderModelConfig{{
-			ID: "faux-1", Name: "Test Faux", API: "test-faux", Provider: "test-faux", BaseURL: "http://localhost:0",
+			ID: testFauxModelID, Name: "Test Faux", API: "test-faux", Provider: "test-faux", BaseURL: "http://localhost:0",
 			Input: ai.TestFauxInput(), ContextWindow: ai.TestFauxContextWindow, MaxTokens: ai.TestFauxMaxTokens,
 		}},
 	})

@@ -111,6 +111,18 @@ func buildRequestModel(model *ai.Model, svcs *AgentSessionServices, apiKey strin
 	return buildModelFromEntry(providerID, modelID, own, svcs, apiKey)
 }
 
+// buildUnauthenticatedRequestModel builds the request's model of model where the registry resolved no credentials for its provider (prepareRequest).
+// listed is the registry's model of the same provider and id, nil when it lists none; object reports a model object an extension set. A model object
+// and a model the registry does not list are built from their own members (buildRequestModel): the start-up copy of a custom model id
+// (BuildFallbackModel) has no definition but itself, and built by provider and id it is the provider's connection alone, with no output limit and
+// no compat. A model the registry lists is built by provider and id.
+func buildUnauthenticatedRequestModel(model, listed *ai.Model, object bool, svcs *AgentSessionServices, apiKey string) (*ai.Model, error) {
+	if object || listed == nil {
+		return buildRequestModel(model, svcs, apiKey)
+	}
+	return buildModel(model.ProviderMeta.ProviderID+"/"+model.ID, svcs, apiKey)
+}
+
 // BuildModelFromEntry constructs the Model for an already-resolved entry. The
 // CLI model resolver resolves the entry itself (catalog match, models.json, or
 // the provider's default-model fallback) and shares this construction with
@@ -137,6 +149,35 @@ func buildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEnt
 	provider = newRequestOptionsProvider(provider, providerID, entry.Headers)
 
 	return modelFromEntry(entry, provider), nil
+}
+
+// BuildFallbackModel builds the session model of fallback: a copy of one of its provider's models under an id no catalog carries, as
+// ResolveCliModel returns for an unknown `--model` id. Pi gives the session that object (main.ts:536-537 `options.model = resolved.model`),
+// so the model is built from the copy's own members and only the provider's connection is resolved. Resolving the provider and id a
+// second time finds the provider's connection settings and no model: no window, no output limit, no prices, no compat.
+func BuildFallbackModel(fallback *ai.Model, svcs *AgentSessionServices) (*ai.Model, error) {
+	if svcs == nil {
+		return nil, fmt.Errorf("coding: BuildFallbackModel: Services is required")
+	}
+	registry := svcs.Registry()
+	providerID, modelID := fallback.ProviderMeta.ProviderID, fallback.ID
+	if registry.GetProvider(providerID) != nil {
+		// A provider object streams the model it is given: the copy is bound to it as the catalog's own models are.
+		unbound := new(*fallback)
+		unbound.Provider = nil
+		return svcs.ModelRuntime().bindNativeModel(unbound), nil
+	}
+	entry := registry.ResolveFallbackModel(fallback)
+	if native := registry.NativeProvider(providerID); native != nil {
+		return bindNativeEntry(registry.ModelRegistry, native, entry), nil
+	}
+	// Radius runtime keys are in-memory metadata; the shared builder owns stored credential reads and refresh.
+	if _, radius := registry.RadiusOAuth(providerID); radius {
+		if key, ok := registry.RuntimeAPIKey(providerID); ok && key != "" {
+			entry.APIKey = key
+		}
+	}
+	return buildModelFromEntry(providerID, modelID, entry, svcs, "")
 }
 
 func modelFromEntry(entry icodingagent.ModelEntry, provider ai.Provider) *ai.Model {

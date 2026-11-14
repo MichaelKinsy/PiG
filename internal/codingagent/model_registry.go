@@ -681,6 +681,29 @@ func (r *ModelRegistry) ResolveGeneratedModel(providerID, modelID string, genera
 	return r.layerCatalogEntry(providerID, modelID, generatedModelEntry(providerID, modelID, generated))
 }
 
+// ResolveFallbackModel returns the entry of model, a copy of one of its provider's models under an id no catalog carries: what the CLI
+// resolver makes of an unknown `--model` id (model-resolver.ts buildFallbackModel: `{ ...baseModel, id: modelId, name: modelId }`).
+// Every model member (window, output limit, prices, input kinds, compat, thinking levels) is model's own. The provider's connection
+// (key, request headers, auth header, environment, TLS) is resolved for the id, as for any id the provider's lists do not define: the
+// copied model's own request headers and overrides belong to its id and are not carried over, as Pi sends the provider's headers only.
+func (r *ModelRegistry) ResolveFallbackModel(model *ai.Model) ModelEntry {
+	providerID, modelID := model.ProviderMeta.ProviderID, model.ID
+	if entry, found, _ := r.resolveRadiusModel(providerID, modelID); found {
+		return entry
+	}
+	entry := NativeModelEntry(model)
+	r.mu.RLock()
+	registration, registered := r.dynamic[providerID]
+	r.mu.RUnlock()
+	if !registered || registration.Models == nil {
+		return r.layerCatalogEntry(providerID, modelID, entry)
+	}
+	// A registration that brings its own model list defines the provider's connection for every id under it (Resolve).
+	connection, _ := r.Resolve(providerID, modelID)
+	entry.APIKey, entry.Headers, entry.AuthHeader, entry.Env, entry.Insecure = connection.APIKey, connection.Headers, connection.AuthHeader, connection.Env, connection.Insecure
+	return entry
+}
+
 // ResolveRemoteCatalogModel is ResolveGeneratedModel for a model the remote catalog overlay carries: a model the bundled catalog lacks, or one whose bundled record the overlay replaces.
 // The entry holds the overlay's window, limits and prices, so a model built from it matches the one ModelRuntime.getModel returns. It reports false for a model the overlay does not carry
 // and for one an explicit models list defines.
