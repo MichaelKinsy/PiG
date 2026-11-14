@@ -19701,6 +19701,17 @@
       "shapeHash": "sha256:1c21a2158b5874158f5675d0c6fbd1786e5703b477a3e8f3d91e28296d1f2bf0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#NextThinkingLevel",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "NextThinkingLevel",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m *Model, current ModelThinkingLevel) (ModelThinkingLevel, bool)"
+      },
+      "shapeHash": "sha256:5405a853d2dd217cc1c6a4c86331cd6dffd27035b7175af0037756eb8c41dd0a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#NodeFetch",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "NodeFetch",
@@ -52160,6 +52171,17 @@
         "type": "func(s string, from int, c byte) int"
       },
       "shapeHash": "sha256:cddb1ee8cfec2c074f4a3710bf908c049ec5c381cd80b075fd8e74360897fe55"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#nodeAltNameMismatch",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "nodeAltNameMismatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(mismatch crypto/x509.HostnameError) string"
+      },
+      "shapeHash": "sha256:f17a047ff7e7891f9141bd9a5985c17ed3ecd52574991b8110bd2bad272e4442"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#nodeBodyFailure",
@@ -307503,17 +307525,6 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#maxThinkingIndex",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "maxThinkingIndex",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model) int"
-      },
-      "shapeHash": "sha256:2db3fee2d0cdb76f3b72693f606779700f7fabfd6ab13acf3ed447f1d7fcbcc3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#maxUpdateBinaryBytes",

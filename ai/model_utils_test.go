@@ -268,3 +268,31 @@ func TestCalculateCostTierBoundaryMatchesUpstream(t *testing.T) {
 		}
 	}
 }
+
+// pi: packages/coding-agent/src/core/agent-session.ts cycleThinkingLevel (:2594-2604): the next level is levels[(indexOf(current)+1) % levels.length]
+// of the model's supported levels, and a model that does not reason has none.
+func TestNextThinkingLevel(t *testing.T) {
+	noOff := ThinkingLevelMap{ThinkingOff: nil}
+	for _, tc := range []struct {
+		name    string
+		model   *Model
+		current ModelThinkingLevel
+		want    ModelThinkingLevel
+		ok      bool
+	}{
+		{"off steps to minimal", &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}}, ThinkingOff, ThinkingMinimal, true},
+		{"the last level wraps to off", &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}}, ThinkingHigh, ThinkingOff, true},
+		{"off absent from the model: off goes to the lowest level", &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}, ThinkingLevelMap: noOff}, ThinkingOff, ThinkingMinimal, true},
+		{"off absent from the model: the last level wraps to the lowest", &Model{Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh}, ThinkingLevelMap: noOff}, ThinkingHigh, ThinkingMinimal, true},
+		{"reasoning flag without a highest level", &Model{ProviderMeta: ProviderMetadata{Reasoning: true}}, ThinkingMedium, ThinkingHigh, true},
+		{"not a reasoning model", &Model{}, ThinkingOff, "", false},
+		{"no model", nil, ThinkingOff, "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := NextThinkingLevel(tc.model, tc.current)
+			if got != tc.want || ok != tc.ok {
+				t.Fatalf("NextThinkingLevel = %q, %v; want %q, %v", got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+}

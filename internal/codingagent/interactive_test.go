@@ -435,7 +435,7 @@ func TestFilterAllowedTools(t *testing.T) {
 	})
 }
 
-// ─── levelsForModel / maxThinkingIndex ────────────────────────────────────────
+// ─── levelsForModel ────────────────────────────────────────────────────────────
 
 func TestLevelsForModel(t *testing.T) {
 	t.Run("nil model", func(t *testing.T) {
@@ -487,52 +487,6 @@ func TestLevelsForModel(t *testing.T) {
 		}
 		if levels[0] != "minimal" {
 			t.Errorf("expected first level minimal, got %s", levels[0])
-		}
-	})
-}
-
-func TestMaxThinkingIndex(t *testing.T) {
-	t.Run("nil model", func(t *testing.T) {
-		if got := maxThinkingIndex(nil); got != 0 {
-			t.Errorf("expected 0, got %d", got)
-		}
-	})
-
-	t.Run("model with high", func(t *testing.T) {
-		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelHigh},
-			ThinkingLevelMap: ai.ThinkingLevelMap{},
-		}
-		if got := maxThinkingIndex(m); got != 4 {
-			t.Errorf("expected 4, got %d", got)
-		}
-	})
-
-	t.Run("model with xhigh", func(t *testing.T) {
-		xh := "xhigh"
-		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelXHigh},
-			ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingXHigh: &xh},
-		}
-		if got := maxThinkingIndex(m); got != 5 {
-			t.Errorf("expected 5, got %d", got)
-		}
-	})
-
-	t.Run("model with no thinking", func(t *testing.T) {
-		m := &ai.Model{Capabilities: ai.ModelCapabilities{MaxThinking: ""}}
-		if got := maxThinkingIndex(m); got != 0 {
-			t.Errorf("expected 0, got %d", got)
-		}
-	})
-
-	t.Run("model with low", func(t *testing.T) {
-		m := &ai.Model{
-			Capabilities:     ai.ModelCapabilities{MaxThinking: ai.ThinkingLevelLow},
-			ThinkingLevelMap: ai.ThinkingLevelMap{},
-		}
-		if got := maxThinkingIndex(m); got != 2 {
-			t.Errorf("expected 2, got %d", got)
 		}
 	})
 }
