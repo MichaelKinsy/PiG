@@ -196010,9 +196010,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(runtime string, model map[string]any, request map[string]any, options map[string]any, simple bool) *ModelEventStream"
+        "type": "func(owner *graphObject, model map[string]any, request map[string]any, options map[string]any, simple bool) *ModelEventStream"
       },
-      "shapeHash": "sha256:ddd5d42432a880f1f0a4ec2113f96f7fbf1cdfd0c3b5c3ce91243e40cd9aa84d"
+      "shapeHash": "sha256:b78870f9552097d5fddfcc82db380dceb72da8adf84a69c709d15b82932fdfe6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRoute",
@@ -211776,6 +211776,17 @@
         "type": "func(value any, standIns map[rune]bool) int"
       },
       "shapeHash": "sha256:e57dddc57e293a3abe337450426438d17eb2b7efadac9c6f26930165f54d1b52"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#keepAlive",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "keepAlive",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(values ...any)"
+      },
+      "shapeHash": "sha256:7d526fab27625b2f6ab3d3ad764c916cafa1f573230a0f14c89fc40f91d6eabb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#keyHintGOOS",
