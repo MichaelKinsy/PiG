@@ -33,12 +33,13 @@ const (
 func TestToolCallEventHandlerIsAwaitedThroughTheAbort(t *testing.T) {
 	t.Parallel()
 	budget := testbudget.Wait(t)
-	_, exts, _, ctx := startQuitRuntimes(t, []string{"guard"}, map[string]string{"guard": quitToolCallSource})
+	h, exts, _, ctx := startQuitRuntimes(t, []string{"guard"}, map[string]string{"guard": quitToolCallSource})
 	handlers := exts["guard"].EventHandlers("tool_call")
 	if len(handlers) != 1 {
 		t.Fatalf("tool_call handlers = %d, want 1", len(handlers))
 	}
 	run, abort := context.WithCancel(ctx)
+	holdRunSignal(h, run)
 	type answer struct {
 		result any
 		err    error
@@ -48,6 +49,7 @@ func TestToolCallEventHandlerIsAwaitedThroughTheAbort(t *testing.T) {
 		result, err := handlers[0](extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "call_1", ToolName: "probe", Input: map[string]any{}}, run)
 		answered <- answer{result, err}
 	}()
+	awaitExtensionRequest(t, h, "guard")
 	abort()
 	select {
 	case got := <-answered:
@@ -74,6 +76,7 @@ func TestNodeRunHandlerThatNeverSettlesDoesNotHoldTheQuit(t *testing.T) {
 		t.Fatalf("turn_end handlers = %d, want 1", len(handlers))
 	}
 	go func() { _, _ = handlers[0](map[string]any{"type": "turn_end"}) }()
+	awaitExtensionRequest(t, h, "never")
 	h.EndInput()
 	select {
 	case <-drained:
@@ -98,13 +101,15 @@ const (
 func TestToolCallEventHandlerThrowingAfterTheAbortSurfaces(t *testing.T) {
 	t.Parallel()
 	budget := testbudget.Wait(t)
-	_, exts, _, ctx := startQuitRuntimes(t, []string{"guard"}, map[string]string{"guard": quitToolCallThrowSource})
+	h, exts, _, ctx := startQuitRuntimes(t, []string{"guard"}, map[string]string{"guard": quitToolCallThrowSource})
 	run, abort := context.WithCancel(ctx)
+	holdRunSignal(h, run)
 	errs := make(chan error, 1)
 	go func() {
 		_, err := exts["guard"].EventHandlers("tool_call")[0](extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "call_1", ToolName: "probe", Input: map[string]any{}}, run)
 		errs <- err
 	}()
+	awaitExtensionRequest(t, h, "guard")
 	abort()
 	select {
 	case err := <-errs:
@@ -128,6 +133,7 @@ func TestToolCallEventAwaitedAfterTheAbortEndsWhenTheExtensionProcessDies(t *tes
 		_, err := exts["never"].EventHandlers("tool_call")[0](extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "call_1", ToolName: "probe", Input: map[string]any{}}, run)
 		errs <- err
 	}()
+	awaitExtensionRequest(t, h, "never")
 	abort()
 	h.TerminateProcesses()
 	select {
@@ -138,4 +144,20 @@ func TestToolCallEventAwaitedAfterTheAbortEndsWhenTheExtensionProcessDies(t *tes
 	case <-time.After(budget):
 		t.Fatal("the request awaited after the abort did not end when the extension's process ended")
 	}
+}
+
+// awaitExtensionRequest returns once a request is in flight on the named extension's connection: an abort or the end of input sent before it would test a run that never reached the handler.
+func awaitExtensionRequest(t *testing.T, h *Host, name string) {
+	t.Helper()
+	h.mu.Lock()
+	me := h.exts[name]
+	h.mu.Unlock()
+	awaitPendingRequest(t, me.connection())
+}
+
+// holdRunSignal makes run the active run's signal of h, which a runtime exposes as ctx.signal (runner.ts:917-920): undefined while no run is active, so a handler that reads it would throw.
+func holdRunSignal(h *Host, run context.Context) {
+	bridge := NewUIBridge(func() {})
+	bridge.SetHostAction("getSignal", func() context.Context { return run })
+	h.SetUIBridge(bridge)
 }
