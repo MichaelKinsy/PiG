@@ -207,9 +207,7 @@ func writeAbortProbe(t *testing.T, layout string) string {
 func buildRustSDKFixture(t *testing.T, name string) string {
 	t.Helper()
 	target := t.TempDir()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
-	defer cancel()
-	cargo := exec.CommandContext(ctx, "cargo", "build", "--release", "--quiet")
+	cargo := exec.CommandContext(testbudget.Context(t), "cargo", "build", "--release", "--quiet")
 	cargo.Dir = filepath.Join("testdata", name)
 	cargo.Env = append(os.Environ(), "CARGO_TARGET_DIR="+target)
 	if out, err := cargo.CombinedOutput(); err != nil {
