@@ -62,6 +62,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-05c7426](#bf-05c7426) | CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace… | PiG's own defect | All platforms | Unreleased |
 | [BF-0630078](#bf-0630078) | MCP tool calls no longer fail with "Invalid MCP tools/call structured content" when the server returns… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0631c73](#bf-0631c73) | Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0635f23](#bf-0635f23) | A login refresh that took longer than ten seconds while another pig process opened the credential file was… | PiG's own defect | All platforms | Unreleased |
 | [BF-0636520](#bf-0636520) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
 | [BF-064181f](#bf-064181f) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
 | [BF-0684c43](#bf-0684c43) | A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a… | PiG's own defect | All platforms | Unreleased |
@@ -1016,6 +1017,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7475a64](#bf-7475a64) | A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7489735](#bf-7489735) | `pig -e <directory>` now loads a Node extension whose entry file is `index.mjs` and that has no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-74bc69b](#bf-74bc69b) | fix(rpc): every Session replacement aborts the compactions of its batch, and an abort before the request… | PiG's own defect | All platforms | Unreleased |
+| [BF-74be405](#bf-74be405) | A full disk or a killed process during a credential write could sign you out of every provider | PiG's own defect | Windows | Unreleased |
 | [BF-74c3fde](#bf-74c3fde) | Typing fast into an `@`, `#` or provider-trigger token, or while a slow autocomplete provider is still… | PiG's own defect | All platforms | Unreleased |
 | [BF-74e801f](#bf-74e801f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-74f806c](#bf-74f806c) | fix(agent): end the tool flow at custom user messages after /tree navigation (#203) | PiG's own defect | All platforms | Unreleased |
@@ -2789,6 +2791,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0631c73a3f` (2026-10-09), `7489735c3f` (2026-10-09)
 - **Tests:** `coding/extension/host/subprocess/builder_node_entry_test.go::TestResolveNodeEntrypointImportsAnIndexMjsDirectoryAsJiti`, `extensions/sdk-py/tests/test_overlay_width.py`, `extensions/sdk/overlay_width_test.go::TestRemoteRenderWidthFollowsUpstreamOverlayLayout`, `test/extension-conformance/api_append_entry_test.go::TestConformance_ExtensionAPIAppendEntry`, `test/extension-conformance/overlay_width_conformance_test.go::TestConformance_OverlayRenderWidth`
 - **Release note:** Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the overlay's width, 80 columns by default, as Pi and Node extensions do. They drew it at the full terminal width, so a full-width line was cut off at the overlay's edge.
+
+### BF-0635f23
+
+**A login refresh that took longer than ten seconds while another pig process opened the credential file was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A login refresh that took longer than ten seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.
+- **Root cause:** Modify treated a lock taken over while the refresh ran as a failure of the whole write, though the refreshed credential, possibly the only copy of a single-use refresh token, was already in hand.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0635f2339b` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A login refresh that took longer than ten seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.
 
 ### BF-0636520
 
@@ -15988,6 +16004,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `74bc69bea4` (2026-10-10)
 - **Tests:** `coding/cli/rpc_replacement_order_test.go::TestRPCReplacementAbortsTheCompactionOfItsBatch`, `coding/cli/rpc_replacement_order_test.go::TestRPCReplacementKeepsTheNothingToCompactAnswer`, `coding/session_test.go::TestCompactCancelsSynchronouslyFromStartEvent`
+
+### BF-74be405
+
+**A full disk or a killed process during a credential write could sign you out of every provider**
+
+- **Source:** PiG's own defect
+- **Symptom:** A full disk or a killed process during a credential write could sign you out of every provider.
+- **Root cause:** the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials.
+- **User impact:** Credential or permission exposure
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `74be4056e2` (2026-11-14)
+- **Tests:** `internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode`, `internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink`, `internal/atomicfile/atomicfile_test.go::TestWriteFileInReadOnlyDirectoryKeepsFile`, `internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile`
+- **Release note:** A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, a symlinked `auth.json` and, on Windows, its access rights are kept; a hard link to the old file and extended attributes on Unix are not carried over.
 
 ### BF-74c3fde
 

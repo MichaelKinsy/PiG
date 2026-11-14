@@ -1134,6 +1134,26 @@
       ]
     },
     {
+      "id": "BF-0635f23",
+      "title": "A login refresh that took longer than ten seconds while another pig process opened the credential file was…",
+      "symptom": "A login refresh that took longer than ten seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "rootCause": "Modify treated a lock taken over while the refresh ran as a failure of the whole write, though the refreshed credential, possibly the only copy of a single-use refresh token, was already in hand.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A login refresh that took longer than ten seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0635f2339b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0636520",
       "title": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
       "symptom": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
@@ -27645,6 +27665,31 @@
         "coding/cli/rpc_replacement_order_test.go::TestRPCReplacementAbortsTheCompactionOfItsBatch",
         "coding/cli/rpc_replacement_order_test.go::TestRPCReplacementKeepsTheNothingToCompactAnswer",
         "coding/session_test.go::TestCompactCancelsSynchronouslyFromStartEvent"
+      ]
+    },
+    {
+      "id": "BF-74be405",
+      "title": "A full disk or a killed process during a credential write could sign you out of every provider",
+      "symptom": "A full disk or a killed process during a credential write could sign you out of every provider.",
+      "rootCause": "the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, a symlinked `auth.json` and, on Windows, its access rights are kept; a hard link to the old file and extended attributes on Unix are not carried over.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "74be4056e2",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileInReadOnlyDirectoryKeepsFile",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile"
       ]
     },
     {
