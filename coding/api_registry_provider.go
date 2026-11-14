@@ -2,7 +2,6 @@ package coding
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -30,7 +29,7 @@ func (p *apiRegistryProvider) Stream(ctx context.Context, transcript ai.Transcri
 	}
 	api := ai.GetAPIProvider(p.api)
 	if api == nil {
-		return nil, fmt.Errorf("No API provider registered for api: %s", p.api)
+		return nil, ai.NoAPIProviderError(p.api)
 	}
 	options.APIKey = key
 	return api.StreamSimple(ctx, p.model, transcript, options)

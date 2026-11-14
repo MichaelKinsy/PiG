@@ -30,7 +30,7 @@ func streamSimpleAs(ctx context.Context, api API, model *Model, transcript Trans
 	meta.API = api
 	// upstream: compat.ts:290-293 (streamSimple resolves the api before the provider asserts any key)
 	if !directAPIKnown(api) {
-		return nil, unknownDirectAPIError(api)
+		return nil, NoAPIProviderError(api)
 	}
 	key, err := directSimpleAPIKey(meta, options)
 	if err != nil {
@@ -132,7 +132,7 @@ func directAPIProviderFor(api API, model *Model, key string, env ProviderEnv) (P
 	case APIMistralConversations:
 		return NewMistralAPIProvider(MistralConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Reasoning: meta.Reasoning})
 	default:
-		return nil, unknownDirectAPIError(api)
+		return nil, NoAPIProviderError(api)
 	}
 }
 
@@ -143,12 +143,6 @@ func directAPIKnown(api API) bool {
 		return true
 	}
 	return false
-}
-
-// unknownDirectAPIError is the error of an api with no implementation.
-// upstream: compat.ts:244-247 (resolveApiProvider)
-func unknownDirectAPIError(api API) error {
-	return fmt.Errorf("No API provider registered for api: %s", api)
 }
 
 // ApplyOmittedReasoning sets the native thinking options a simple stream sends when `reasoning` is omitted: Anthropic disables thinking and Google and Vertex send `thinking: { enabled: false }` unless the caller supplied native thinking.
