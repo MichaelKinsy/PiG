@@ -160897,6 +160897,17 @@
       "shapeHash": "sha256:b942351c3e098a41db99157c8258f538ec1b18babf795eb15b0933e94ffd3e6f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runAwaitsEvent",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "runAwaitsEvent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string) bool"
+      },
+      "shapeHash": "sha256:a069791dad0ceff3a47995491e721a05a5d7bba95738665aefc05fa7ba426f02"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runSignalFrame",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "runSignalFrame",
