@@ -2191,6 +2191,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fbd3640](#bf-fbd3640) | The legacy credential migration writes `auth.json` and the rewritten `settings.json` with the key order Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fbd59e3](#bf-fbd59e3) | `chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` "round-trips a worker's documents, tables… | PiG's own defect | All platforms | Unreleased |
 | [BF-fbd59e3-2](#bf-fbd59e3-2) | `chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is… | PiG's own defect | All platforms | Unreleased |
+| [BF-fbe92b6](#bf-fbe92b6) | A login refresh that took more than fifteen seconds while another pig process opened the credential file lost… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-fc028ee](#bf-fc028ee) | The reference web client no longer erases what the user is typing when a view is updated: an `input` or… | PiG's own defect | All platforms | Unreleased |
 | [BF-fc1703f](#bf-fc1703f) | Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-fc5baaf](#bf-fc5baaf) | `pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting… | PiG's own defect | All platforms | 0.5.0 |
@@ -32340,6 +32341,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/nextnode/app/app_workers_test.go::TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsCopiedToThePluginsHost`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive`, `chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest`
 - **Release note:** `chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc` is `ca-islamic-civil`, `ks-primary` is `ks-level1`, `kb-yes` is `kb`, `m0-names` is `m0-prprname`) and for the alias rules of several subtags (a language with a region or script, such as `sgn-BR`; `Qaai` is `Zinh`), so the `lang` and `dir` of a page and the locale chosen for a client no longer differ from Pi's for those tags. The tables are generated from the pinned Node by `testdata/locale_tables.mjs` and checked against its Intl.
 
+### BF-fbe92b6
+
+**A login refresh that took more than fifteen seconds while another pig process opened the credential file lost…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D651)
+- **Symptom:** A login refresh that took more than fifteen seconds while another pig process opened the credential file lost its lock, and the refreshed login was thrown away.
+- **Root cause:** the async lock heartbeat (stale/2 = 15 s) was longer than the sync acquirers stale window (10 s), so a live holder looked stale to them.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** (A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.
+- **Fix commits:** `73cb76959b` (2026-11-14), `d5b70c4804` (2026-11-14), `fbe92b66a0` (2026-11-14)
+- **Tests:** `internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode`, `internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink`, `internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile`, `internal/atomicfile/inplace_test.go::TestWriteFileCannotCreateAFileInADirectoryItCannotWrite`, `internal/atomicfile/inplace_test.go::TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason`, `internal/atomicfile/inplace_test.go::TestWriteFileReplacesAPlainFileAndReportsNothing`, `internal/atomicfile/inplace_test.go::TestWriteFileReportsARealFailureOfTheInPlaceWrite`, `internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceInADirectoryItCannotWrite` and 6 more in docs/bug-ledger.json
+- **Release note:** A login refresh that took more than fifteen seconds while another pig process opened the credential file lost its lock, and the refreshed login was thrown away. The lock is now renewed every five seconds, so a slow refresh keeps it. Divergence D651 (approved by the owner, 2026-11-14T14:10:39Z "proceed"): Pi renews its async auth lock every 15 s (proper-lockfile stale/2) while its sync readers take any lock older than 10 s; pig renews every 5 s. Why: a live holder is never taken over, so a rotating refresh token is not spent twice. Remove when: Pi renews faster than its sync stale window.
+
 ### BF-fc028ee
 
 **The reference web client no longer erases what the user is typing when a view is updated: an `input` or…**
@@ -32763,6 +32780,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
 | D636 | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | [BF-D636](#bf-d636) |
 | D645 | A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects… | [BF-88bbdd2](#bf-88bbdd2) |
+| D651 | Credential and state files are replaced through a temporary file where that changes nothing but the inode… | [BF-fbe92b6](#bf-fbe92b6) |
 
 ## Fix-titled commits that are not bugs in a release
 

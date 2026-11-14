@@ -61760,6 +61760,51 @@
       ]
     },
     {
+      "id": "BF-fbe92b6",
+      "title": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost…",
+      "symptom": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost its lock, and the refreshed login was thrown away.",
+      "rootCause": "the async lock heartbeat (stale/2 = 15 s) was longer than the sync acquirers stale window (10 s), so a live holder looked stale to them.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D651",
+      "removeWhen": "(A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost its lock, and the refreshed login was thrown away. The lock is now renewed every five seconds, so a slow refresh keeps it. Divergence D651 (approved by the owner, 2026-11-14T14:10:39Z \"proceed\"): Pi renews its async auth lock every 15 s (proper-lockfile stale/2) while its sync readers take any lock older than 10 s; pig renews every 5 s. Why: a live holder is never taken over, so a rotating refresh token is not spent twice. Remove when: Pi renews faster than its sync stale window.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "73cb76959b",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "d5b70c4804",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "fbe92b66a0",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile",
+        "internal/atomicfile/inplace_test.go::TestWriteFileCannotCreateAFileInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReplacesAPlainFileAndReportsNothing",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReportsARealFailureOfTheInPlaceWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceThroughAHardLink",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceWhereTheRenameIsRefused",
+        "internal/atomicfile/xattr_test.go::TestWriteFileCarriesExtendedAttributesOver",
+        "internal/atomicfile/xattr_test.go::TestWriteFileKeepsAPosixACL",
+        "internal/atomicfile/xattr_test.go::TestWriteFileWritesInPlaceWhenAnAttributeCannotBeCarried",
+        "internal/pilock/async_heartbeat_test.go::TestAsyncLockHeldPastTheSyncStaleWindowIsNotTaken"
+      ]
+    },
+    {
       "id": "BF-fc028ee",
       "title": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or…",
       "symptom": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.",
@@ -63068,6 +63113,11 @@
       "id": "D645",
       "title": "A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects…",
       "entry": "BF-88bbdd2"
+    },
+    {
+      "id": "D651",
+      "title": "Credential and state files are replaced through a temporary file where that changes nothing but the inode…",
+      "entry": "BF-fbe92b6"
     }
   ],
   "exemptCommits": {

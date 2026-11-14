@@ -32,7 +32,7 @@ const (
 	// asyncUpdate is the heartbeat of an async lock. Pi's is proper-lockfile's stale/2 = 15 s, longer than the 10 s after which a sync acquirer takes any lock, so a refresh that outlasts 10 s loses its lock to the next process that opens a store. A tick every 5 s keeps the lock's mtime fresher than SyncStale.
 	// pig divergence (D651): the async lock is renewed every 5 s where Pi renews every 15 s, so a live refresher is never taken over by a sync acquirer.
 	asyncUpdate = 5 * time.Second
-	maxDelay   = 2 * time.Second
+	maxDelay    = 2 * time.Second
 )
 
 // The platform and the waits of the retry loops. Tests replace them as Pi's tests replace process.platform, Math.random and the clock.
