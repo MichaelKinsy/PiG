@@ -720,8 +720,10 @@ func measure(raw json.RawMessage, known func(string) bool) (m measured, badKind 
 	m.ids = map[string]struct{}{}
 	m.bytes = len(raw)
 	// frame is one open object or array. An object remembers the member it is reading, whether it is a node, and its id.
+	// images is the view's own list of image bytes, and image one of its records.
 	type frame struct {
 		object, wantName, node bool
+		images, image          bool
 		name, id               string
 	}
 	var open []frame
@@ -757,7 +759,9 @@ func measure(raw json.RawMessage, known func(string) bool) (m measured, badKind 
 		text, isText := "", kind == '"'
 		if isText {
 			text = tok.String()
-			if len(text) > m.text {
+			// The bytes of an image are not text: they count in the snapshot's bytes and not as its longest text.
+			imageBytes := top >= 0 && open[top].image && open[top].name == "data"
+			if !imageBytes && len(text) > m.text {
 				m.text = len(text)
 			}
 		}
@@ -778,9 +782,9 @@ func measure(raw json.RawMessage, known func(string) bool) (m measured, badKind 
 		}
 		switch kind {
 		case '{':
-			open = append(open, frame{object: true, wantName: true})
+			open = append(open, frame{object: true, wantName: true, image: top >= 0 && open[top].images})
 		case '[':
-			open = append(open, frame{})
+			open = append(open, frame{images: top == 0 && open[top].object && open[top].name == "images"})
 		}
 	}
 }

@@ -6,10 +6,8 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,6 +15,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // harness manages a single tmux session running /tmp/pig-test.
@@ -62,7 +61,7 @@ func newHarness(t *testing.T) *harness {
 		_ = tmuxCommand("kill-session", "-t", session).Run()
 		t.Fatal(err)
 	}
-	h := &harness{t: t, session: session, bin: bin, pane: pane, livePaneProcesses: livePaneProcesses}
+	h := &harness{t: t, session: session, bin: bin, pane: pane, livePaneProcesses: testenv.LiveSessionProcesses}
 	t.Cleanup(h.kill)
 	return h
 }
@@ -227,8 +226,8 @@ func (h *harness) expectContains(timeout time.Duration, needles ...string) strin
 	return pane
 }
 
-// paneExitWait bounds how long kill waits for the session's processes to exit after tmux hangs them up. Pig exits within seconds of a hangup, so a process still running after this is a hung shutdown.
-const paneExitWait = 30 * time.Second
+// paneExitWait bounds how long kill waits for the session's processes to exit after tmux hangs them up.
+const paneExitWait = testenv.SessionExitWait
 
 // kill ends the session and returns once every process in it has exited; see hangUpSession.
 func (h *harness) kill() {
@@ -242,27 +241,17 @@ func killSession(t testing.TB, session string) error {
 	if err != nil {
 		return tmuxCommand("kill-session", "-t", session).Run()
 	}
-	return hangUpSession(t, session, pane, livePaneProcesses)
+	return hangUpSession(t, session, pane, testenv.LiveSessionProcesses)
 }
 
-// hangUpSession ends the tmux session whose pane shell has process ID pane and returns once every process in it has exited. tmux kill-session returns when its server has dropped the session; it hangs the pane's terminal up and does not wait for anything the pane started. Pig handles the hangup as a termination signal, and before it exits it writes its exit record into the agent directory, so a test that removes its PIG_HOME right after kill-session races that write and fails with "directory not empty". It returns the error of tmux kill-session; a process that does not exit, or a failure to list the processes, fails t.
+// hangUpSession ends the tmux session whose pane shell has process ID pane and returns once every process in it has exited; testenv.AwaitSessionExit states why a test waits for that. It returns the error of tmux kill-session; a process that does not exit, or a failure to list the processes, fails t.
 func hangUpSession(t testing.TB, session string, pane int, live func(session int) ([]int, error)) error {
 	t.Helper()
 	out, killErr := tmuxCommand("kill-session", "-t", session).CombinedOutput()
 	if killErr != nil {
 		killErr = fmt.Errorf("%w: %s", killErr, bytes.TrimSpace(out))
 	}
-	var alive []int
-	var err error
-	if !waitFor(paneExitWait, func() bool {
-		alive, err = live(pane)
-		return err != nil || len(alive) == 0
-	}) {
-		t.Errorf("processes %v of tmux session %s still running %s after kill-session", alive, session, paneExitWait)
-	}
-	if err != nil {
-		t.Errorf("list processes of tmux session %s: %v", session, err)
-	}
+	testenv.AwaitSessionExit(t, session, pane, live)
 	return killErr
 }
 
@@ -277,43 +266,6 @@ func paneSessionID(session string) (int, error) {
 		return 0, fmt.Errorf("tmux pane_pid %q: %w", out, err)
 	}
 	return pane, nil
-}
-
-// livePaneProcesses lists the processes of terminal session sid that have not exited. A zombie has exited and writes nothing more; it stays in the process table until its parent reaps it, which on a loaded host can lag the exit by seconds, so it does not count.
-func livePaneProcesses(sid int) ([]int, error) {
-	members, err := exec.Command("pgrep", "-s", strconv.Itoa(sid)).Output()
-	if err != nil {
-		if exit, ok := errors.AsType[*exec.ExitError](err); ok && exit.ExitCode() == 1 {
-			return nil, nil // pgrep exits 1 when no process matches.
-		}
-		return nil, fmt.Errorf("pgrep -s %d: %w", sid, err)
-	}
-	var stderr bytes.Buffer
-	states := exec.Command("ps", "-o", "pid=,stat=", "-p", strings.Join(strings.Fields(string(members)), ","))
-	states.Stderr = &stderr
-	out, err := states.Output()
-	if err != nil {
-		// ps exits 1 without a word when every listed process has gone since pgrep listed it.
-		if exit, ok := errors.AsType[*exec.ExitError](err); ok && exit.ExitCode() == 1 && stderr.Len() == 0 {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("ps: %w: %s", err, stderr.String())
-	}
-	var live []int
-	for line := range strings.Lines(string(out)) {
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			return nil, fmt.Errorf("ps reported %q, want a process ID and a state", line)
-		}
-		pid, err := strconv.Atoi(fields[0])
-		if err != nil {
-			return nil, fmt.Errorf("ps process ID %q: %w", fields[0], err)
-		}
-		if !strings.HasPrefix(fields[1], "Z") {
-			live = append(live, pid)
-		}
-	}
-	return live, nil
 }
 
 // buildBinary returns the cached path to a built ./cmd/pig binary.

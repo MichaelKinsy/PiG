@@ -2544,6 +2544,25 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    // mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+    ext.command(
+        "mcp_register_run",
+        "Register two MCP servers and report the active tools after each",
+        |ctx, _| {
+            let mut reads = Vec::new();
+            for name in ["conformance-run-a", "conformance-run-b"] {
+                if let Err(err) = ctx.register_mcp_server(name, json!({"url": format!("https://{name}.invalid/mcp")})) {
+                    return CommandResult::Error(err.to_string());
+                }
+                match ctx.get_active_tools() {
+                    Ok(names) => reads.push(names.join(",")),
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                }
+            }
+            ctx.notify(&format!("mcp_register_run:{}", reads.join("|")), "info");
+            CommandResult::Ok
+        },
+    );
     // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
     ext.command(
         "registry-model-probe",
@@ -2978,6 +2997,14 @@ fn main() {
         "Return text of the size in the argument",
         json!({"type": "object", "properties": {}}),
         |_ctx, params: Value| ToolResult::Json(json!({"content": [{"type": "text", "text": "a".repeat(params["n"].as_u64().unwrap_or(0) as usize)}]})),
+    );
+    // lone_decl: the other SDKs' fixtures put a lone UTF-16 surrogate into this declaration. A Rust String is UTF-8 and a serde_json::Value holds
+    // Strings, so neither can hold one: this fixture declares the tool with U+FFFD in each place.
+    ext.tool(
+        "lone_decl",
+        "D[\u{FFFD}]",
+        json!({"type": "object", "properties": {"K[\u{FFFD}\u{FFFD}]": {"type": "string", "description": "PD[\u{FFFD}]", "enum": ["E[\u{FFFD}]"], "default": "DF[\u{FFFD}]"}}}),
+        |_ctx, _params: Value| ToolResult::Json(json!({"content": [{"type": "text", "text": "lone"}]})),
     );
     ext.tool(
         "echo_params",

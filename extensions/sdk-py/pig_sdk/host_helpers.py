@@ -54,6 +54,9 @@ class _State:
     dialled: dict = {}
     # The paths whose connection read the host's shutdown frame while a factory-time call waited; ``run`` ends on it once it has registered (``take_shutdown``).
     shutdown: set = set()
+    # The notifies a factory-time call read on each connection, by path, in arrival order: state the host sent the extension that will run on it. ``run`` applies
+    # them when it takes the connection (``take_early_notifies``), before it reads on.
+    early_notifies: dict = {}
     # The extensions that are running (a packed cell runs several), each with the socket it serves in ``_served_socket``: the first that is still running
     # answers a helper that has no Context and no socket of its own.
     running: list = []
@@ -307,8 +310,13 @@ def loading_call(method: str, args: Any, owner: Any = None) -> Any:
                 _State.shutdown.add(path)
             elif kind == "request":
                 _answer_loading_request(sock, _State.owners.get(path), env)
-            elif kind == "notify" and (env.get("notify") or {}).get("method") == "events.release" and _State.owners.get(path) is not None:
-                _State.owners[path]._bus.release(str(((env.get("notify") or {}).get("args") or {}).get("handlerId") or ""))
+            elif kind == "notify" and (env.get("notify") or {}).get("method") == "events.release":
+                if _State.owners.get(path) is not None:
+                    _State.owners[path]._bus.release(str(((env.get("notify") or {}).get("args") or {}).get("handlerId") or ""))
+            elif kind == "notify":
+                # Any other notify is for the extension that will run on this connection (a state the host pushed before the register): never dropped.
+                with _State.lock:
+                    _State.early_notifies.setdefault(path, []).append(env)
         result = _State.results.pop(call_id)
         error = result.get("error")
         if error:
@@ -390,6 +398,12 @@ def take_shutdown(path: str) -> bool:
             _State.shutdown.discard(path)
             return True
         return False
+
+
+def take_early_notifies(path: str) -> list:
+    """The notifies the factory-time calls on ``path``'s connection read, in arrival order, for ``run`` to apply before it reads on."""
+    with _State.lock:
+        return _State.early_notifies.pop(path, [])
 
 
 def take_helper_socket(path: str) -> Any:

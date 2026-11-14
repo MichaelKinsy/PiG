@@ -1930,12 +1930,6 @@ snippet = "go q.drain()"
 
 [[hit]]
 check = "golifetime"
-file = "coding/extension/host/inproc/mcp_servers.go"
-func = "Runner.onMcpServersChange"
-snippet = "go r.drainMcpServersChanges()"
-
-[[hit]]
-check = "golifetime"
 file = "coding/extension/host/inproc/ui_prompt.go"
 func = "Runner.enqueueUIPromptLocked"
 snippet = "go r.drainUIPromptEvents()"
@@ -2973,12 +2967,6 @@ check = "nilslicenull"
 file = "ai/openai_responses.go"
 func = "responsesMessageConverter.convertAnchored"
 snippet = "content, _ := json.Marshal(parts)"
-
-[[hit]]
-check = "nilslicenull"
-file = "ai/openai_responses.go"
-func = "openAIResponsesProvider.Stream"
-snippet = "inputJSON, marshalErr := json.Marshal(msgs)"
 
 [[hit]]
 check = "nilslicenull"
@@ -6527,12 +6515,6 @@ check = "jsonclone"
 file = "ai/credential_json.go"
 func = "OAuthCredentials.marshalFields"
 snippet = "if err := json.Unmarshal(data, &known); err != nil {"
-
-[[hit]]
-check = "jsonclone"
-file = "ai/google.go"
-func = "marshalGeminiParameters"
-snippet = "if err := json.Unmarshal(encoded, &params); err != nil {"
 
 [[hit]]
 check = "jsonclone"

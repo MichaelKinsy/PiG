@@ -354,7 +354,9 @@ func isSchemaContainer(value any) bool {
 	return false
 }
 
-// UnmarshalJSON keeps schema key order as well as its validated data values.
+// UnmarshalJSON keeps schema key order as well as its validated data values. JSON.parse keeps a lone UTF-16 surrogate in a name, a description
+// and a schema's keys and text, and Pi sends a tool as it was parsed (anthropic-messages.ts:1925-1936 convertTools sanitizes nothing);
+// encoding/json reads one as U+FFFD, so a declaration that holds the escape of a surrogate is read by the decoder that keeps the unit.
 func (tool *ToolSchema) UnmarshalJSON(data []byte) error {
 	type wire ToolSchema
 	var decoded wire
@@ -363,7 +365,7 @@ func (tool *ToolSchema) UnmarshalJSON(data []byte) error {
 		ConstrainedSampling json.RawMessage `json:"constrainedSampling"`
 	}
 	envelope.wire = &decoded
-	if err := json.Unmarshal(data, &envelope); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &envelope); err != nil {
 		return err
 	}
 	if value := envelope.ConstrainedSampling; len(value) > 0 {
@@ -389,11 +391,13 @@ func (tool *ToolSchema) UnmarshalJSON(data []byte) error {
 }
 
 // MarshalJSON preserves imported parameter ordering when tool definitions cross a session or SDK boundary.
+// A lone UTF-16 surrogate in the name or the description is written as its escape, as JSON.stringify writes the tool into a session line and
+// an RPC line (session-manager.ts:1188, rpc/jsonl.ts:11); encoding/json alone writes U+FFFD for each of its bytes.
 func (tool ToolSchema) MarshalJSON() ([]byte, error) {
 	var sampling json.RawMessage
 	switch {
 	case tool.ConstrainedSampling != nil:
-		encoded, err := json.Marshal(tool.ConstrainedSampling)
+		encoded, err := jsstring.MarshalKeepingSurrogates(tool.ConstrainedSampling)
 		if err != nil {
 			return nil, err
 		}
@@ -402,7 +406,7 @@ func (tool ToolSchema) MarshalJSON() ([]byte, error) {
 		sampling = json.RawMessage("false")
 	}
 	if tool.parameterOrder == nil {
-		return json.Marshal(struct {
+		return jsstring.MarshalKeepingSurrogates(struct {
 			Name                string          `json:"name"`
 			Description         string          `json:"description"`
 			Parameters          map[string]any  `json:"parameters"`
@@ -414,7 +418,7 @@ func (tool ToolSchema) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(struct {
+	return jsstring.MarshalKeepingSurrogates(struct {
 		Name                string          `json:"name"`
 		Description         string          `json:"description"`
 		Parameters          json.RawMessage `json:"parameters"`
@@ -433,7 +437,7 @@ func (tool ToolSchema) ParametersJSON() ([]byte, error) {
 func marshalToolParameters(parameters map[string]any, order schemaObjectOrder) ([]byte, error) {
 	if order == nil {
 		//portlint:allow mapkeyorder no recorded order: a Go-authored map has no insertion order for JSON.stringify to keep, so its members are sorted (doc above)
-		return json.Marshal(parameters)
+		return jsstring.MarshalKeepingSurrogates(parameters)
 	}
 	var pathStorage [16]schemaContainer
 	encoded, err := appendSchemaWithOrder(nil, parameters, order, "", &schemaWalk{path: pathStorage[:0]})

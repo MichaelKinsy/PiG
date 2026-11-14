@@ -95,6 +95,15 @@
     (pig:tool ext "big_out" "Return text of the size in the argument" (core-schema "properties" (pig:obj))
               (lambda (ctx params) (declare (ignore ctx))
                 (core-text-content (make-string (pig:jget params "n") :initial-element #\a :element-type 'base-char))))
+    ;; lone_decl: a description, a parameter name and a parameter's text hold a lone UTF-16 surrogate
+    ;; (TestConformance_ToolDeclarationLoneSurrogatesAgreeAcrossSDKs).
+    (let ((high (code-char #xD83D)) (low (code-char #xDE00)))
+      (pig:tool ext "lone_decl" (format nil "D[~C]" high)
+                (core-schema "properties"
+                             (pig:obj (format nil "K[~C~C]" low high)
+                                      (pig:obj "type" "string" "description" (format nil "PD[~C]" high)
+                                               "enum" (vector (format nil "E[~C]" low)) "default" (format nil "DF[~C]" high))))
+                (lambda (ctx params) (declare (ignore ctx params)) (core-text-content "lone"))))
     (pig:tool ext "echo_params" "Return the arguments as the result details" (core-schema "properties" (pig:obj))
               (lambda (ctx params) (declare (ignore ctx)) (pig:obj "content" (vector (pig:obj "type" "text" "text" "echoed")) "details" params)))
     (pig:tool ext "nan_out" "Return details holding NaN and Infinity" (core-schema "properties" (pig:obj))
@@ -275,6 +284,14 @@
                                                                   (nreverse names)))))
   (pig:command ext "active_tools_get" "Report the active tools"
                (lambda (ctx args) (declare (ignore args)) (core-info ctx (concatenate 'string "active_tools:" (core-join (coerce (pig:ctx-get-active-tools ctx) 'list))))))
+  ;; mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
+  (pig:command ext "mcp_register_run" "Register two MCP servers and report the active tools after each"
+               (lambda (ctx args) (declare (ignore args))
+                 (let ((reads '()))
+                   (dolist (name '("conformance-run-a" "conformance-run-b"))
+                     (pig:ctx-register-mcp-server ctx name (pig:obj "url" (concatenate 'string "https://" name ".invalid/mcp")))
+                     (push (core-join (coerce (pig:ctx-get-active-tools ctx) 'list)) reads))
+                   (core-info ctx (concatenate 'string "mcp_register_run:" (core-join (nreverse reads) "|"))))))
   (pig:command ext "commands-probe" "Read the host's slash commands"
                (lambda (ctx args) (declare (ignore args))
                  (core-info ctx (pig:to-json (coerce (loop for c across (pig:ctx-get-commands ctx)

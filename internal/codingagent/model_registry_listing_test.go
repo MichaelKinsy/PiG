@@ -12,9 +12,11 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"testing"
+	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
@@ -363,15 +365,20 @@ func TestModelScopePatternsOverRoutingVariants(t *testing.T) {
 
 // A process that has only identified models (RuntimeModels, GetAllModelDataSources, a --model resolution) has built no routing variant: the
 // list of entries is still to build when it is first read, and a model that is kept builds one variant. Run in a process of its own, since any
-// other test of the package may have read the list.
+// other test of the package may have read the list, and with its collector off (GOGC=off): runtime.MemStats counts the whole process,
+// the collector's own allocations included (its workers' sudogs, the threads started for them), and under -race and load those crossed
+// the bound on keeping one variant.
 func TestIdentifyingModelsBuildsNoRoutingVariant(t *testing.T) {
 	if os.Getenv("PIG_TEST_IDENTIFY_ONLY") != "1" {
 		cmd := exec.Command(os.Args[0], "-test.run=^TestIdentifyingModelsBuildsNoRoutingVariant$", "-test.count=1")
-		cmd.Env = append(os.Environ(), "PIG_TEST_IDENTIFY_ONLY=1")
+		cmd.Env = append(os.Environ(), "PIG_TEST_IDENTIFY_ONLY=1", "GOGC=off")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("the fresh process failed: %v\n%s", err, out)
 		}
 		return
+	}
+	if percent := debug.SetGCPercent(-1); percent != -1 {
+		t.Fatalf("the measuring process collects at GOGC=%d, want GOGC=off", percent)
 	}
 	mallocs := func(run func()) uint64 {
 		var before, after runtime.MemStats
@@ -408,8 +415,21 @@ func TestIdentifyingModelsBuildsNoRoutingVariant(t *testing.T) {
 	if want := variant.Generated.OpenRouterVariant("nitro"); !reflect.DeepEqual(*kept, want) || kept.DisplayName != variant.Name() || kept.DisplayName != resolved.Model.Name {
 		t.Fatalf("the kept variant is %+v (resolved as %q, listed as %q), want the variant derived from its model %+v", *kept, resolved.Model.Name, variant.Name(), want)
 	}
-	if again := mallocs(func() { _ = variant.Entry() }); again != 0 {
-		t.Fatalf("the kept variant is built again (%d allocations)", again)
+	// The kept variant is not built again: a later read is the same entry holding the same record string. Every build derives the
+	// variant's record from its model's (ai's openRouterVariantNamed: derived.Record = deriveCatalogRecord(m.Record, id, name)), and
+	// deriveCatalogRecord makes a new string, by concatenation for a bundled row's reference and in a strings.Builder for JSON, also when
+	// the build is written over the held entry; the kept record is in use, so a new string cannot be at its address. The one build this
+	// would not see reuses the model's own record (rewriteRecordIdentity returns its argument for a record without an id and a name),
+	// so the kept record must be a derived one.
+	//
+	// An allocation count of the read cannot hold this: the count is the whole process's, so it is not exact for one call.
+	record, base := unsafe.StringData(kept.Record), unsafe.StringData(variant.Generated.Record) //nolint:gosec // G103: the test compares the data addresses of strings
+	if kept.Record == "" || record == base {
+		t.Fatalf("the kept variant %q has no record of its own to tell a second build by (%d bytes, its model's: %t)", kept.ID, len(kept.Record), record == base)
+	}
+	again := variant.Entry()
+	if read := unsafe.StringData(again.Record); again != kept || read != record { //nolint:gosec // G103: the test compares the data address of a string that must not be derived again
+		t.Fatalf("the kept variant is built again (entry %p with its record at %p, kept %p with its record at %p)", again, read, kept, record)
 	}
 	var listed []ai.GeneratedModel
 	if built := mallocs(func() { listed = builtinChatCatalogListed(openRouterProviderID) }); built < uint64(variants) {

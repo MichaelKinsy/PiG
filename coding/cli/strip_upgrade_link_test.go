@@ -3,17 +3,17 @@ package cli
 import (
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 )
 
-// The extension upgrade analysis type checks a Go extension with go/types and go/importer, about 1 MiB of code. The cli package does not link it, stripped or not: the go command builds and runs the analysis driver of the staged SDK (extensions/sdk/upgrade/driver). The test proves it by symbol: no build of cli references upgrade.Open, the entry of the type checker, so the linker drops go/types from every binary that links cli.
+// The extension upgrade analysis type checks a Go extension with go/types and go/importer, about 1 MiB of code. The cli package does not link it, stripped or not: the go command builds and runs the analysis driver of the staged SDK (extensions/sdk/upgrade/driver). The test proves it by symbol: no build of cli references a symbol of package upgrade, which imports go/types. cli imports upgrade/plan, the names of that package that read no types, so a binary that links cli links neither the type checker nor its package initializers.
 func TestCLIBuildsDoNotLinkTheUpgradeTypeChecker(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the cli package in -short mode")
 	}
-	const symbol = "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Open"
+	// The symbols of upgrade/plan and of the internal package behind it carry a longer path: only package upgrade itself matches.
+	const symbol = "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade."
 	references := func(tags string) bool {
 		archive := filepath.Join(t.TempDir(), "cli.a")
 		args := []string{"build", "-o", archive}
@@ -27,13 +27,11 @@ func TestCLIBuildsDoNotLinkTheUpgradeTypeChecker(t *testing.T) {
 		if err != nil {
 			t.Fatalf("go tool nm: %v", err)
 		}
-		return slices.ContainsFunc(strings.Split(string(out), "\n"), func(line string) bool {
-			return strings.HasSuffix(strings.TrimSpace(line), " "+symbol)
-		})
+		return strings.Contains(string(out), symbol)
 	}
 	for _, tags := range []string{"", "pig_strip_extension_sdk_go"} {
 		if references(tags) {
-			t.Errorf("a build of cli with tags %q references %s", tags, symbol)
+			t.Errorf("a build of cli with tags %q references a symbol of package upgrade (%s...)", tags, symbol)
 		}
 	}
 }

@@ -17,7 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	upgradeplan "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
@@ -30,9 +30,9 @@ type extensionDrift struct {
 	Name   string
 	Source string
 	Config subprocess.ExtConfig
-	Drift  []upgrade.Drift
+	Drift  []upgradeplan.Drift
 	// Plan is the type-checked plan of the upgrade when startup read the extension's types, else nil.
-	Plan *upgrade.Result
+	Plan *upgradeplan.Result
 }
 
 // sdkDriftOf returns the extensions that failed to load and are written for an older SDK. A packed cell reports one build failure for every extension in it, so a drift counts for an extension only when a file it names is in that extension's source.
@@ -57,13 +57,13 @@ func sdkDriftOf(ctx context.Context, upgrader *extensionUpgrader, errs []error, 
 				continue
 			}
 			roots := append([]string{config.Source}, config.GoWorkspaceModules...)
-			var own []upgrade.Drift
+			var own []upgradeplan.Drift
 			for _, drift := range failure.Drift {
 				if pathWithinAny(drift.File, roots) {
-					own = append(own, upgrade.Drift(drift))
+					own = append(own, upgradeplan.Drift(drift))
 				}
 			}
-			var plan *upgrade.Result
+			var plan *upgradeplan.Result
 			if upgrader != nil && isGoSourceExtension(config) {
 				if result, err := upgrader.analyze(ctx, config); err == nil {
 					if drift := result.Drift(); len(drift) > 0 {
@@ -187,7 +187,7 @@ func sdkDriftNotice(items []extensionDrift) string {
 			if drift.Rewrites || drift.File == "" {
 				continue
 			}
-			if rule, ok := upgrade.RuleByID(drift.Rule); ok {
+			if rule, ok := upgradeplan.RuleByID(drift.Rule); ok {
 				_, _ = fmt.Fprintf(&out, "    %s:%d: %s\n", drift.File, drift.Line, rule.Remedy)
 			}
 		}
@@ -219,7 +219,7 @@ type extensionUpgradeReport struct {
 	Status extensionUpgradeStatus
 	// Note explains a skipped or failed extension.
 	Note   string
-	Result *upgrade.Result
+	Result *upgradeplan.Result
 	// Unexpected are the build errors of the rewritten extension that the plan does not list.
 	Unexpected []string
 	// Backup is the directory that holds the files as they were.
@@ -245,8 +245,8 @@ type rewriteCheck struct {
 type extensionUpgrader struct {
 	configRoot string
 	// analyze reads the extension's types and plans the rewrites; check compiles the extension with them applied in a temporary directory; rebuild compiles it as startup does. They are seams for tests.
-	analyze func(ctx context.Context, config subprocess.ExtConfig) (*upgrade.Result, error)
-	check   func(ctx context.Context, config subprocess.ExtConfig, result *upgrade.Result) (rewriteCheck, error)
+	analyze func(ctx context.Context, config subprocess.ExtConfig) (*upgradeplan.Result, error)
+	check   func(ctx context.Context, config subprocess.ExtConfig, result *upgradeplan.Result) (rewriteCheck, error)
 	rebuild func(ctx context.Context, config subprocess.ExtConfig) error
 	now     func() time.Time
 }
@@ -352,7 +352,7 @@ func (u *extensionUpgrader) upgrade(ctx context.Context, config subprocess.ExtCo
 		report.Status, report.Note = upgradeFailed, fmt.Sprintf("back up the files: %v", err)
 		return report
 	}
-	written := make([]upgrade.FileChange, 0, len(result.Files))
+	written := make([]upgradeplan.FileChange, 0, len(result.Files))
 	for _, change := range result.Files {
 		if err := writeFileKeepingMode(change.Path, change.After); err != nil {
 			report.Status, report.Note = upgradeFailed, fmt.Sprintf("write %s: %v", change.Path, err)+restoreFiles(&report, written)
@@ -377,7 +377,7 @@ func (u *extensionUpgrader) upgrade(ctx context.Context, config subprocess.ExtCo
 }
 
 // restoreFiles writes back the original of each file an upgrade changed and returns the end of the report's note. With every file restored the backup holds nothing more, so it is removed.
-func restoreFiles(report *extensionUpgradeReport, changed []upgrade.FileChange) string {
+func restoreFiles(report *extensionUpgradeReport, changed []upgradeplan.FileChange) string {
 	var failed []error
 	for _, change := range changed {
 		if change.Created {
@@ -424,7 +424,7 @@ type backupFile struct {
 }
 
 // backup copies each file the plan rewrites into a directory under the configuration root, with a manifest that maps the copies back.
-func (u *extensionUpgrader) backup(config subprocess.ExtConfig, result *upgrade.Result) (string, error) {
+func (u *extensionUpgrader) backup(config subprocess.ExtConfig, result *upgradeplan.Result) (string, error) {
 	created := u.now().UTC()
 	name := backupNameUnsafe.ReplaceAllString(config.Name, "_")
 	dir, err := newBackupDir(filepath.Join(u.configRoot, "state", "extension-upgrade"), created.Format("20060102T150405Z")+"-"+name)
@@ -542,7 +542,7 @@ func printUpgradeReport(w io.Writer, report extensionUpgradeReport, showDiff boo
 			if relative, err := filepath.Rel(report.Source, change.Path); err == nil && !strings.HasPrefix(relative, "..") {
 				label = filepath.ToSlash(relative)
 			}
-			_, _ = fmt.Fprint(w, upgrade.Diff(label, change.Before, change.After))
+			_, _ = fmt.Fprint(w, upgradeplan.Diff(label, change.Before, change.After))
 		}
 	}
 	if report.Backup != "" {
@@ -564,14 +564,14 @@ func printUpgradeReport(w io.Writer, report extensionUpgradeReport, showDiff boo
 }
 
 // printManualChanges lists what the upgrade leaves for the author: each use with its file and line and the form to write, then the changes the compiler still rejects and any compile error that is not an SDK change.
-func printManualChanges(w io.Writer, result *upgrade.Result) {
+func printManualChanges(w io.Writer, result *upgradeplan.Result) {
 	for _, skipped := range result.Skipped {
 		_, _ = fmt.Fprintf(w, "  %s:%d: edit by hand (%s): %s\n", skipped.File, skipped.Line, skipped.Symbol, skipped.Reason)
 		switch {
 		case skipped.Suggest != "":
 			_, _ = fmt.Fprintf(w, "    write: %s\n", skipped.Suggest)
 		default:
-			if rule, ok := upgrade.RuleByID(skipped.Rule); ok {
+			if rule, ok := upgradeplan.RuleByID(skipped.Rule); ok {
 				_, _ = fmt.Fprintf(w, "    %s\n", rule.Remedy)
 			}
 		}
@@ -586,7 +586,7 @@ func printManualChanges(w io.Writer, result *upgrade.Result) {
 			continue
 		}
 		_, _ = fmt.Fprintf(w, "  still to change by hand: %s\n", drift)
-		if rule, ok := upgrade.RuleByID(drift.Rule); ok {
+		if rule, ok := upgradeplan.RuleByID(drift.Rule); ok {
 			_, _ = fmt.Fprintf(w, "    %s:%d: %s\n", drift.File, drift.Line, rule.Remedy)
 		}
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonwire"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -370,7 +371,7 @@ func (oaiMessage) carriesRequestStrings() {}
 func (oaiRequest) encodesRequestStrings() {}
 
 func (message oaiMessage) MarshalJSON() ([]byte, error) {
-	return marshalStringify(message.wire())
+	return jsstring.MarshalKeepingSurrogates(message.wire())
 }
 
 func (message oaiMessage) wire() any {
@@ -476,7 +477,8 @@ func (f oaiToolFunction) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(wire)
+	// The name and the description are written as JSON.stringify writes them: a lone UTF-16 surrogate as its escape (openai-completions.ts convertTools).
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // oaiToolFunctionWire is the value oaiToolFunction's MarshalJSON writes.
@@ -612,6 +614,8 @@ type oaiUsage struct {
 	CompletionTokensDetails *struct {
 		ReasoningTokens int `json:"reasoning_tokens,omitempty"`
 	} `json:"completion_tokens_details,omitempty"`
+	// ReasoningTokens is the count at the top level of usage, where GitHub Copilot reports it (Pi 86918f9eeb, #12019).
+	ReasoningTokens int `json:"reasoning_tokens,omitempty"`
 	// OpenRouter adds billing fields to streamed usage at runtime, although the OpenAI SDK does not type them (openai-completions.ts parseChunkUsage).
 	openRouterUsageAccounting
 }
@@ -634,9 +638,13 @@ func parseChunkUsage(raw *oaiUsage, cost ModelCost, openRouter bool) *Usage {
 		cacheReadTokens = *raw.CachedTokens
 	}
 	input := max(0, raw.PromptTokens-cacheReadTokens-cacheWriteTokens)
+	// `completion_tokens_details?.reasoning_tokens || rawUsage.reasoning_tokens || 0`: the top-level count when the nested one is missing or 0.
 	reasoning := 0
 	if raw.CompletionTokensDetails != nil {
 		reasoning = raw.CompletionTokensDetails.ReasoningTokens
+	}
+	if reasoning == 0 {
+		reasoning = raw.ReasoningTokens
 	}
 	usage := &Usage{
 		Input:       input,
@@ -2057,7 +2065,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		if !decodedFast {
 			chunk = oaiChunk{}
 			text := jsjson.NormalizeIntegers([]byte(data))
-			if err := json.Unmarshal(text, &chunk); err != nil {
+			if err := jsstring.UnmarshalKeepingSurrogates(text, &chunk); err != nil {
 				normalized, read, normalizable := []byte(nil), openAIChunkRead{}, false
 				if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 					normalized, read, normalizable = normalizeOpenAIChunkJS(text)

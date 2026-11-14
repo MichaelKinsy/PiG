@@ -224,8 +224,8 @@ func TestExtensionSetModelObjectAuthGate(t *testing.T) {
 		{"provider-with-configured-auth", "acme", true},
 		{"built-in-provider-without-credentials", "anthropic", false},
 		{"unknown-provider", "nonesuch", false},
-		// PiG's keyless ollama provider needs no credentials (modelRuntimeRequiresAuth); Pi has no such provider, so no Pi answer exists for it.
-		{"provider-that-needs-no-auth", "ollama", true},
+		// No provider is configured by its name: Pi's setModel action answers false for any provider outside the configured set (agent-session.ts:3584), and its prompt check refuses the same provider (agent-session.ts:2247-2259, `No API key found for ollama.`, auth-guidance.ts:22-25), with OLLAMA_HOST set as here.
+		{"provider-named-ollama-without-credentials", "ollama", false},
 	} {
 		before, entries := session.Model(), len(modelChanges())
 		object := handBuiltModelObject(t, row.provider, "handmade-9", ai.APIOpenAICompletions, "https://object.invalid/v1")

@@ -6,3 +6,8 @@ import "slices"
 func Sort(s []int) {
 	slices.SortFunc(s, func(x, y int) int { return x - y })
 }
+
+// Sorted is not linked either.
+func Sorted(s []int) []int {
+	return slices.SortedFunc(slices.Values(s), func(x, y int) int { return x - y })
+}

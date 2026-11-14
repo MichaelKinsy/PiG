@@ -318,7 +318,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `fullscreen` | 19 | 19 | 0 | 0 | 0 | 13 | not run |
 | `interactive-rendering` | 87 | 86 | 1 | 0 | 0 | 40 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
-| `model-resolver-selector` | 29 | 29 | 0 | 0 | 0 | 16 | not run |
+| `model-resolver-selector` | 30 | 30 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 33 | 33 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |
@@ -331,7 +331,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `settings` | 17 | 17 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 31 | 30 | 1 | 0 | 0 | 21 | not run |
 | `startup` | 27 | 26 | 1 | 0 | 0 | 10 | not run |
-| `tools` | 39 | 39 | 0 | 0 | 0 | 35 | not run |
+| `tools` | 40 | 40 | 0 | 0 | 0 | 40 | not run |
 | `tree` | 12 | 11 | 1 | 0 | 0 | 10 | not run |
 | `tui-components` | 40 | 40 | 0 | 0 | 0 | 36 | not run |
 

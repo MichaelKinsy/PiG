@@ -6,14 +6,17 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
-// editPreviewGate replaces computeEditsDiff with a stub that reports each start on started, counts calls per path and blocks until that path's gate opens.
+// editPreviewGate replaces computeEditsDiff with a stub that counts calls per path, reports each start on started and blocks until that path's gate opens. After
+// holdStarts a compute also waits, before it reports its start, for that path's enter gate, so a test fixes the order in which two computes start.
 type editPreviewGate struct {
 	started chan string
+	enter   map[string]chan struct{}
 	gates   map[string]chan struct{}
 	mu      sync.Mutex
 	calls   map[string]int
@@ -21,7 +24,7 @@ type editPreviewGate struct {
 
 func gateEditPreviews(t *testing.T, paths ...string) *editPreviewGate {
 	t.Helper()
-	g := &editPreviewGate{started: make(chan string, 16), gates: map[string]chan struct{}{}, calls: map[string]int{}}
+	g := &editPreviewGate{started: make(chan string, 16), enter: map[string]chan struct{}{}, gates: map[string]chan struct{}{}, calls: map[string]int{}}
 	for _, path := range paths {
 		g.gates[path] = make(chan struct{})
 	}
@@ -29,7 +32,11 @@ func gateEditPreviews(t *testing.T, paths ...string) *editPreviewGate {
 	computeEditsDiff = func(path string, _ []tools.EditReplacement, _ string) tools.EditDiffOutcome {
 		g.mu.Lock()
 		g.calls[path]++
+		enter := g.enter[path]
 		g.mu.Unlock()
+		if enter != nil {
+			<-enter
+		}
 		g.started <- path
 		<-g.gates[path]
 		return tools.EditDiffResult{Diff: "diff of " + path}
@@ -44,47 +51,102 @@ func (g *editPreviewGate) callsFor(path string) int {
 	return g.calls[path]
 }
 
+// holdStarts shuts an enter gate for every path. A test calls it before the first compute starts.
+func (g *editPreviewGate) holdStarts() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for path := range g.gates {
+		g.enter[path] = make(chan struct{})
+	}
+}
+
+// release opens every gate that is still shut, so no compute stays held.
+func (g *editPreviewGate) release() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, gates := range []map[string]chan struct{}{g.enter, g.gates} {
+		for _, gate := range gates {
+			select {
+			case <-gate:
+			default:
+				close(gate)
+			}
+		}
+	}
+}
+
 func editArgsOf(path string) json.RawMessage {
 	return json.RawMessage(`{"path":"` + path + `","edits":[{"oldText":"x","newText":"y"}]}`)
 }
 
 // renderers/edit.ts renderCall (:189) starts `void computeEditsDiff(...).then(preview => ...)` once per call, drops a preview whose args key changed while it was
-// computed, and only a preview of the current args is stored and followed by one invalidate. Each case here releases the compute gates only after every renderCall,
-// joins the compute goroutines and then reads the card's state, so the outcome does not depend on goroutine scheduling.
+// computed, and only a preview of the current args is stored and followed by one invalidate. Two previews in flight have no order: upstream's are promises that
+// settle in either order, PiG's are goroutines that the scheduler runs in either order. Each case fixes the order in which the two computes start and the order in
+// which they land, and reads the card's state after each step, once synctest.Wait reports every compute goroutine held at a gate or ended.
 func TestEditRenderCallPreviewIsStartedOnceAndStalePreviewIsDiscarded(t *testing.T) {
-	g := gateEditPreviews(t, "a.txt", "b.txt")
-	var invalidated atomic.Int32
-	card := map[string]any{}
-	render := func(path string) {
-		args := editArgsOf(path)
-		editRenderCall(args, nil, extension.ToolRenderContext{
-			Args: args, State: card, Cwd: t.TempDir(), ArgsComplete: true,
-			Invalidate: func() { invalidated.Add(1) },
+	const stale, current = "a.txt", "b.txt"
+	for _, tc := range []struct {
+		name          string
+		starts, lands [2]string
+	}{
+		{"the stale compute starts first and lands first", [2]string{stale, current}, [2]string{stale, current}},
+		{"the stale compute starts first and lands last", [2]string{stale, current}, [2]string{current, stale}},
+		{"the current compute starts first and lands last", [2]string{current, stale}, [2]string{stale, current}},
+		{"the current compute starts first and lands first", [2]string{current, stale}, [2]string{current, stale}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cwd := t.TempDir()
+			synctest.Test(t, func(t *testing.T) {
+				g := gateEditPreviews(t, stale, current)
+				g.holdStarts()
+				var invalidated atomic.Int32
+				card := map[string]any{}
+				render := func(path string) {
+					args := editArgsOf(path)
+					editRenderCall(args, nil, extension.ToolRenderContext{
+						Args: args, State: card, Cwd: cwd, ArgsComplete: true,
+						Invalidate: func() { invalidated.Add(1) },
+					})
+				}
+				state := builtInState(extension.ToolRenderContext{State: card})
+				defer func() { // a case that stops early still joins its computes before the stub is restored
+					g.release()
+					state.tasks.Wait()
+				}()
+
+				render(stale)
+				render(stale)   // the preview of these args is pending: no second compute starts
+				render(current) // the args changed: a compute for the new args starts
+				synctest.Wait() // every compute these calls started is held at its enter gate
+				if a, b := g.callsFor(stale), g.callsFor(current); a != 1 || b != 1 {
+					t.Fatalf("computes: a.txt %d, b.txt %d; want one each (a pending preview starts no second compute)", a, b)
+				}
+				for _, path := range tc.starts {
+					close(g.enter[path])
+					if got := <-g.started; got != path {
+						t.Fatalf("the compute of %q started, want the one whose enter gate opened: %q", got, path)
+					}
+				}
+				var want tools.EditDiffOutcome
+				wantInvalidated := int32(0)
+				for _, path := range tc.lands {
+					close(g.gates[path])
+					synctest.Wait() // that compute's goroutine stored or dropped its preview and ended
+					if path == current {
+						want, wantInvalidated = tools.EditDiffResult{Diff: "diff of " + current}, 1
+					}
+					state.mu.Lock()
+					preview := state.editPreview
+					state.mu.Unlock()
+					if preview != want {
+						t.Fatalf("after the compute of %s landed, preview = %+v, want %+v (only a preview of the current args is stored)", path, preview, want)
+					}
+					if n := invalidated.Load(); n != wantInvalidated {
+						t.Fatalf("after the compute of %s landed, invalidate ran %d times, want %d (once, for the current preview only)", path, n, wantInvalidated)
+					}
+				}
+			})
 		})
-	}
-	state := builtInState(extension.ToolRenderContext{State: card})
-
-	render("a.txt")
-	render("a.txt") // the preview of these args is pending: no second compute starts
-	render("b.txt") // the args changed: a compute for the new args starts
-	if got := <-g.started; got != "a.txt" {
-		t.Fatalf("first compute is for %q, want a.txt", got)
-	}
-	close(g.gates["a.txt"]) // the preview of the args that are no longer current lands
-	close(g.gates["b.txt"])
-	state.tasks.Wait()
-
-	if a, b := g.callsFor("a.txt"), g.callsFor("b.txt"); a != 1 || b != 1 {
-		t.Fatalf("computes: a.txt %d, b.txt %d; want one each (a pending preview starts no second compute)", a, b)
-	}
-	state.mu.Lock()
-	preview := state.editPreview
-	state.mu.Unlock()
-	if want := (tools.EditDiffResult{Diff: "diff of b.txt"}); preview != want {
-		t.Fatalf("preview = %+v, want the one computed for the current args %+v", preview, want)
-	}
-	if n := invalidated.Load(); n != 1 {
-		t.Fatalf("invalidate ran %d times, want once for the current preview only (a stale preview does not invalidate)", n)
 	}
 }
 

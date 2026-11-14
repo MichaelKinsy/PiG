@@ -31,6 +31,8 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 		{"default model", "default", "Error: No API key found for the selected model."},
 		{"no model", "none", "Error: No model selected."},
 		{"model without auth", "faux", "Error: No API key found for faux."},
+		// The check has no provider name in it (agent-session.ts:2247-2259): Pi 1.5.2 answers this for a models.json provider named ollama without an apiKey, OLLAMA_HOST set or not (RUN 2026-11-13).
+		{"model of a provider named ollama without auth", "ollama", "Error: No API key found for ollama."},
 		{"invalid section", "bad-section", "Invalid system prompt section name: preamble"},
 		{"null tools", "null-tools", "Cannot read properties of null (reading 'length')"},
 		// _preparePromptAndToolLoadout replays the transcript's system messages after before_agent_start (agent-session.ts:1738-1748); pi-ai's contentText cannot filter a numeric content.
@@ -78,6 +80,10 @@ func TestInteractivePromptValidationPrecedesBeforeAgentStart(t *testing.T) {
 			var model *ai.Model
 			if tc.model == "faux" || tc.model == "bad-section" || tc.model == "null-tools" || tc.model == "system-replay" || tc.model == "system-replay-bad-section" {
 				model = &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
+			}
+			if tc.model == "ollama" {
+				t.Setenv("OLLAMA_HOST", "http://127.0.0.1:9")
+				model = &ai.Model{ID: "faux-1", DisplayName: "faux-1", Provider: provider, ProviderMeta: ai.ProviderMetadata{ProviderID: "ollama"}, Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
 			}
 			if tc.model == "bad-section" || tc.model == "null-tools" || tc.model == "system-replay" || tc.model == "system-replay-bad-section" {
 				if err := configureFauxAuth(services, "test-key"); err != nil {

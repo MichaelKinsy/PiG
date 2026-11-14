@@ -164,3 +164,107 @@ func TestScanBatchesReportALoadError(t *testing.T) {
 		}
 	}
 }
+
+// orderedLedger is an async-contracts ledger that lists the upstream file ledgerModule ports as ordering-sensitive.
+const orderedLedger = "version = \"1\"\n\n[[files]]\npath = \"packages/agent/src/agent-loop.ts\"\ncontracts = [\"microtask-ordering\"]\n"
+
+// ledgerModule writes a module whose one file ports an upstream file and hands off to a goroutine with no join, with the ledger at test/parity/async-contracts.toml unless present is false.
+func ledgerModule(t *testing.T, ledger string, present bool) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := map[string]string{
+		"go.mod": "module example.com/m\n\ngo 1.26\n",
+		"m.go":   "// Ports packages/agent/src/agent-loop.ts\npackage m\n\nfunc Run(f func()) {\n\tgo f()\n}\n",
+	}
+	if present {
+		files["test/parity/async-contracts.toml"] = ledger
+	}
+	for name, content := range files {
+		path := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+// asyncorder reports the hand-off in a file whose upstream source the ledger lists as ordering-sensitive.
+func TestScanReadsTheAsyncContractsLedger(t *testing.T) {
+	hits, err := scan(ledgerModule(t, orderedLedger, true), "", []string{"./..."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(hits, func(h Hit) bool { return h.Check == "asyncorder" && h.File == "m.go" && h.Line == 5 }) {
+		t.Fatalf("hits = %+v, want an asyncorder hit at m.go:5", hits)
+	}
+}
+
+// A ledger that is missing, does not parse or lists no files stops the run before any analyzer runs, with the file and the decode error in the message. Read as an empty list it would switch asyncorder off while the gate stayed green.
+func TestRunFailsOnAnUnreadableAsyncContractsLedger(t *testing.T) {
+	for _, c := range []struct {
+		name, ledger string
+		present      bool
+		want         []string
+	}{
+		{"malformed", strings.Replace(orderedLedger, "agent-loop.ts\"", "agent-loop.ts\"\"", 1), true, []string{"async-contracts.toml", "line 4"}},
+		{"empty", "", true, []string{"async-contracts.toml", "lists no files"}},
+		{"no files", "version = \"1\"\n", true, []string{"async-contracts.toml", "lists no files"}},
+		{"no ordering row", strings.Replace(orderedLedger, "microtask-ordering", "promise-rejection", 1), true, []string{"async-contracts.toml", "lists no files with the microtask-ordering contract (1 [[files]] rows)"}},
+		{"missing", "", false, []string{"async-contracts.toml"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := ledgerModule(t, c.ledger, c.present)
+			var rc int
+			stderr := captureStderr(t, func() {
+				rc = run(dir, filepath.Join(dir, "baseline.toml"), "", []string{"./..."}, false, false)
+			})
+			if rc != 2 {
+				t.Fatalf("exit = %d, want 2; stderr: %s", rc, stderr)
+			}
+			for _, want := range c.want {
+				if !strings.Contains(stderr, want) {
+					t.Fatalf("stderr = %q, want it to name %q", stderr, want)
+				}
+			}
+		})
+	}
+}
+
+// A run without the driver's own read (go vet -vettool, analysistest) finds the ledger above the package, and a ledger that does not parse fails the asyncorder pass instead of reporting nothing.
+func TestScanFailsTheAsyncorderPassOnAMalformedLedger(t *testing.T) {
+	dir := ledgerModule(t, strings.Replace(orderedLedger, "agent-loop.ts\"", "agent-loop.ts\"\"", 1), true)
+	_, err := scan(dir, "", []string{"./..."})
+	if err == nil {
+		t.Fatal("scan passed over a ledger that does not parse")
+	}
+	for _, want := range []string{"asyncorder", "async-contracts.toml", "line 4"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("err = %v, want it to name %q", err, want)
+		}
+	}
+}
+
+// captureStderr returns what fn writes to os.Stderr.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	file, err := os.CreateTemp(t.TempDir(), "stderr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stderr
+	os.Stderr = file
+	defer func() { os.Stderr = old }()
+	fn()
+	os.Stderr = old
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(file.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}

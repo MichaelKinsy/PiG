@@ -14,16 +14,16 @@ import (
 // whether an extension sent it as a D107 view or mounted it. The surface turns the D107 events of its nodes into
 // activations, which the client maps to the mount's intents.
 
-// mountFirstKinds are the kinds of the first D107 set a mount surface draws. The image kind is not among them: a
-// mount's assets are not carried to the D107 image store.
+// mountFirstKinds are the kinds of the first D107 set a mount surface draws. The image kind is among them: a mount's
+// view carries the bytes of its images in its own `images` list, and the surface keeps them in a store of its own.
 var mountFirstKinds = []string{
 	ViewKindContainer, ViewKindBox, ViewKindText, ViewKindTruncatedText, ViewKindMarkdown, ViewKindSpacer, ViewKindDynamicBorder,
-	ViewKindSelectList, ViewKindSettingsList, ViewKindLoader, ViewKindHStack, ViewKindVStack, ViewKindLines,
+	ViewKindSelectList, ViewKindSettingsList, ViewKindImage, ViewKindLoader, ViewKindHStack, ViewKindVStack, ViewKindLines,
 	ViewKindUserMessage, ViewKindAssistantMessage, ViewKindToolExecution, ViewKindBashExecution, ViewKindDiff,
 }
 
-// MountNodeKinds returns the view node kinds a MountSurface draws, sorted: the first D107 set without image, and every
-// registered widget kind.
+// MountNodeKinds returns the view node kinds a MountSurface draws, sorted: the first D107 set and every registered
+// widget kind.
 func MountNodeKinds() []string {
 	kinds := slices.Concat(mountFirstKinds, slices.Collect(maps.Keys(viewWidgets)))
 	slices.Sort(kinds)
@@ -55,6 +55,9 @@ type MountSurfaceOptions struct {
 	// RowBudget returns the rows the mount is drawn with: a taller view is cut by its owner, so a grid draws fewer chip
 	// lines to fit. Nil or 0 means no cut.
 	RowBudget func() int
+	// Images is what the surfaces of one client share to draw their image nodes. Nil: the surface has its own, which
+	// transmits no image outside its rows.
+	Images *MountImages
 }
 
 // MountSurface draws the view of one plugin mount.
@@ -71,6 +74,10 @@ func NewMountSurface(o MountSurfaceOptions) *MountSurface {
 	m.s.repaint = o.Repaint
 	m.s.terminalRows = o.TerminalRows
 	m.s.rowBudget = o.RowBudget
+	m.s.mountImages = o.Images
+	if m.s.mountImages == nil {
+		m.s.mountImages = &MountImages{}
+	}
 	m.s.unfocused = true
 	m.s.sendEvent = m.event
 	return m
@@ -157,7 +164,11 @@ func (m *MountSurface) HandleMouse(event extension.RemoteMouseEvent) extension.V
 }
 
 // Close stops the surface: its loaders stop and its components are disposed.
-func (m *MountSurface) Close() { m.s.close() }
+func (m *MountSurface) Close() {
+	m.s.close()
+	// The images only this surface's nodes held are freed in the terminal.
+	m.s.mountImages.sweep()
+}
 
 // event maps a D107 event of a node to an activation or a leave. It runs outside the surface's lock.
 func (m *MountSurface) event(ev ViewEventPayload) {

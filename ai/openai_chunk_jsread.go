@@ -199,12 +199,18 @@ func normalizeOpenAIUsageMember(owner map[string]any) bool {
 		}
 		readCached = true
 	}
+	// `completion_tokens_details?.reasoning_tokens || rawUsage.reasoning_tokens || 0` reads the top-level count only when the nested one is falsy.
 	completion, _ := usageObject["completion_tokens_details"].(map[string]any)
-	if completion == nil {
+	switch {
+	case completion == nil:
 		delete(usageObject, "completion_tokens_details")
+	case !numberOrFalsy(completion, "reasoning_tokens"):
+		return false
+	case jsTruthy(completion["reasoning_tokens"]):
+		delete(usageObject, "reasoning_tokens")
 		return true
 	}
-	return numberOrFalsy(completion, "reasoning_tokens")
+	return numberOrFalsy(usageObject, "reasoning_tokens")
 }
 
 // jsIntegerNumber is Number(value) as a JSON number when it is an integer a Go int holds exactly.

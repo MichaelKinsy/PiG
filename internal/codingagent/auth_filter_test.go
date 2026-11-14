@@ -296,16 +296,6 @@ func TestAuthenticatedProviders_OpenAICodexOAuth_IncludesProvider(t *testing.T) 
 	}
 }
 
-func TestAuthenticatedProviders_OllamaHostEnv_Includes(t *testing.T) {
-	clearAllAuthEnv(t)
-	t.Setenv("OLLAMA_HOST", "http://localhost:11434")
-	dir := t.TempDir()
-	got := AuthenticatedProviders(dir)
-	if !got["ollama"] {
-		t.Errorf("expected ollama ∈ AuthenticatedProviders, got %v", got)
-	}
-}
-
 func TestAuthenticatedProviders_BedrockAuthDetected(t *testing.T) {
 	// amazon-bedrock is now a real reachable provider. When AWS auth
 	// signals are present, the picker should include it.
@@ -339,15 +329,12 @@ func TestAuthenticatedProviders_BedrockNoAuth_Excluded(t *testing.T) {
 
 // ReachableProviders must cover the whole built-in catalog: buildProviderForEntry
 // switches on each provider's API kind, so every composed catalog provider is
-// wireable. ollama is env-configured rather than catalog-declared.
+// wireable.
 func TestReachableProviders_IncludesEveryCatalogProvider(t *testing.T) {
 	got := ReachableProviders()
 	for _, provider := range ai.ListRuntimeProviders() {
 		if !got[provider] {
 			t.Errorf("ReachableProviders missing catalog provider %q", provider)
 		}
-	}
-	if !got["ollama"] {
-		t.Errorf("ReachableProviders missing ollama")
 	}
 }

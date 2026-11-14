@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"maps"
 	"net/url"
 	"os"
@@ -405,7 +406,7 @@ func collectPublishArtifacts(release publishRelease, dir string) ([]publishAsset
 	}
 	targets := release.targets
 	if targets == nil {
-		targets = slices.SortedFunc(maps.Keys(found), compareTargets)
+		targets = sortedTargets(maps.Keys(found))
 	}
 	if len(targets) == 0 {
 		return nil, fmt.Errorf("--artifacts %s holds no Piglet Binaries", dir)
@@ -434,7 +435,7 @@ func collectPublishArtifacts(release publishRelease, dir string) ([]publishAsset
 func missingPublishTargets(release publishRelease, missing map[Target]string) error {
 	var message strings.Builder
 	_, _ = fmt.Fprintf(&message, "Piglet %s %s has no signed Piglet Binary for %d target(s); nothing was built or uploaded:", release.piglet.Name, release.version, len(missing))
-	for _, target := range slices.SortedFunc(maps.Keys(missing), compareTargets) {
+	for _, target := range sortedTargets(maps.Keys(missing)) {
 		_, _ = fmt.Fprintf(&message, "\n  %s: %s", target, missing[target])
 	}
 	_, _ = fmt.Fprintf(&message, "\nBuild each missing target on a matching host with `pig piglet build %s --format binary --sign-key <key>`, collect the Binaries in one directory, and publish them with --artifacts <dir>.", release.pigletRef)
@@ -443,6 +444,13 @@ func missingPublishTargets(release publishRelease, missing map[Target]string) er
 
 func compareTargets(a, b Target) int {
 	return strings.Compare(a.String(), b.String())
+}
+
+// sortedTargets returns the targets of seq in the order of their names, nil for none. The targets are the keys of a map, so no two are equal; two with one name (an OS or architecture that holds a slash) keep the order the map gave them, as before.
+func sortedTargets(seq iter.Seq[Target]) []Target {
+	targets := slices.Collect(seq)
+	sortx.Func(targets, compareTargets)
+	return targets
 }
 
 func sortedAssets(assets []publishAsset) []publishAsset {

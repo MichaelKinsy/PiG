@@ -3,6 +3,7 @@
 package checks
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"os"
@@ -36,39 +37,76 @@ func (p *Pass) portedSources(pos token.Pos) []string {
 	return out
 }
 
+// asyncContractsFile is the ledger of the upstream async contracts, relative to the repository root.
+const asyncContractsFile = "test/parity/async-contracts.toml"
+
+// orderingLedger is the ordering-sensitive upstream files of one ledger file, or the reason it could not be read.
+type orderingLedger struct {
+	files map[string]bool
+	err   error
+}
+
 var (
-	orderingOnce  sync.Once
-	orderingFiles map[string]bool
+	orderingMu      sync.Mutex
+	orderingLedgers = map[string]orderingLedger{}
 )
 
-// orderingSensitive loads, from test/parity/async-contracts.toml, the upstream files whose contract includes microtask-ordering.
-func orderingSensitive(dir string) map[string]bool {
-	orderingOnce.Do(func() {
-		orderingFiles = map[string]bool{}
-		for d := dir; ; d = filepath.Dir(d) {
-			path := filepath.Join(d, "test", "parity", "async-contracts.toml")
-			if _, err := os.Stat(path); err == nil {
-				var ledger struct {
-					Files []struct {
-						Path      string   `toml:"path"`
-						Contracts []string `toml:"contracts"`
-					} `toml:"files"`
-				}
-				if _, err := toml.DecodeFile(path, &ledger); err == nil {
-					for _, f := range ledger.Files {
-						if slices.Contains(f.Contracts, "microtask-ordering") {
-							orderingFiles[f.Path] = true
-						}
-					}
-				}
-				return
-			}
-			if d == filepath.Dir(d) {
-				return
-			}
+// LoadAsyncContracts reads the async-contracts ledger of the repository at root, the list asyncorder checks against. A driver calls it before any analyzer runs. An analyzer has no error to return until a pass meets a goroutine hand-off in ported code, so without this call a ledger that is missing, does not parse or lists nothing would fail only the packages that have such a hand-off, and a tree where every hand-off is joined would pass with the check switched off.
+func LoadAsyncContracts(root string) error {
+	_, err := loadOrderingLedger(filepath.Join(root, filepath.FromSlash(asyncContractsFile)))
+	return err
+}
+
+// loadOrderingLedger returns the upstream files whose contract in the ledger at path includes microtask-ordering. A process reads a ledger once.
+func loadOrderingLedger(path string) (map[string]bool, error) {
+	orderingMu.Lock()
+	defer orderingMu.Unlock()
+	if ledger, ok := orderingLedgers[path]; ok {
+		return ledger.files, ledger.err
+	}
+	files, err := readOrderingLedger(path)
+	orderingLedgers[path] = orderingLedger{files: files, err: err}
+	return files, err
+}
+
+// readOrderingLedger fails on a ledger that cannot be read, does not parse, or lists no file with the microtask-ordering contract. Pi has such files at every pin, and asyncorder reports nothing without them, so an empty list is a damaged ledger (a renamed key, a table that lost its rows), not a clean one.
+func readOrderingLedger(path string) (map[string]bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var ledger struct {
+		Files []struct {
+			Path      string   `toml:"path"`
+			Contracts []string `toml:"contracts"`
+		} `toml:"files"`
+	}
+	if _, err := toml.Decode(string(data), &ledger); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	files := map[string]bool{}
+	for _, f := range ledger.Files {
+		if slices.Contains(f.Contracts, "microtask-ordering") {
+			files[f.Path] = true
 		}
-	})
-	return orderingFiles
+	}
+	if len(files) == 0 {
+		return nil, fmt.Errorf("%s: lists no files with the microtask-ordering contract (%d [[files]] rows); asyncorder would check nothing", path, len(ledger.Files))
+	}
+	return files, nil
+}
+
+// orderingSensitive returns the ordering-sensitive upstream files of the ledger of the repository that holds dir.
+func orderingSensitive(dir string) (map[string]bool, error) {
+	for d := dir; ; d = filepath.Dir(d) {
+		path := filepath.Join(d, filepath.FromSlash(asyncContractsFile))
+		if _, err := os.Stat(path); err == nil {
+			return loadOrderingLedger(path)
+		}
+		if d == filepath.Dir(d) {
+			return nil, fmt.Errorf("no %s in %s or a directory above it", asyncContractsFile, dir)
+		}
+	}
 }
 
 // AsyncOrder flags a goroutine hand-off with no synchronization point in code whose upstream contract is ordering-sensitive.
@@ -107,9 +145,17 @@ var AsyncOrder = newCheck("asyncorder",
 				if p.IsTest(g.Pos()) {
 					continue
 				}
-				dir := filepath.Dir(p.Fset.Position(g.Pos()).Filename)
-				for _, src := range p.portedSources(g.Pos()) {
-					if orderingSensitive(dir)[src] {
+				sources := p.portedSources(g.Pos())
+				if len(sources) == 0 {
+					continue
+				}
+				sensitive, err := orderingSensitive(filepath.Dir(p.Fset.Position(g.Pos()).Filename))
+				if err != nil {
+					p.Fail(err)
+					return
+				}
+				for _, src := range sources {
+					if sensitive[src] {
 						p.Reportf(g.Pos(), "goroutine hand-off in code ported from %s (microtask-ordering) with no join or ordering point", src)
 						break
 					}
