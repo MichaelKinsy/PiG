@@ -4,7 +4,6 @@ package codingagent
 
 import (
 	"errors"
-	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -59,21 +58,6 @@ func (m *InteractiveMode) refreshThinkingLevel() {
 	}
 }
 
-// maxThinkingIndex returns the highest index in the model's level slice that
-// the model supports. 0 means no thinking support (level is always "off").
-// Uses slices.Index so adding new levels never requires updating this function.
-func maxThinkingIndex(model *ai.Model) int {
-	if model == nil {
-		return 0
-	}
-	levels := levelsForModel(model)
-	idx := slices.Index(levels, string(model.Capabilities.MaxThinking))
-	if idx < 0 {
-		return 0
-	}
-	return idx
-}
-
 // initThinkingLevel binds the UI to the Session's already selected and clamped level, including restored session state.
 func (m *InteractiveMode) initThinkingLevel() {
 	m.hideThinking = m.opts.Settings.HideThinkingBlock
@@ -83,18 +67,16 @@ func (m *InteractiveMode) initThinkingLevel() {
 // cycleThinkingLevel advances to the next thinking level and updates state.
 // Mirrors upstream interactive-mode.ts:3292-3301.
 func (m *InteractiveMode) cycleThinkingLevel() {
-	maxIdx := maxThinkingIndex(m.opts.Model)
-	if maxIdx == 0 {
+	if _, ok := ai.NextThinkingLevel(m.opts.Model, ai.ModelThinkingLevel(m.sessionThinkingLevel())); !ok {
 		m.showStatus("Current model does not support thinking")
 		return
 	}
 
-	levels := levelsForModel(m.opts.Model)
 	// Pi's session.cycleThinkingLevel reads the Session's level when it runs, so a cycle made before an earlier one settles advances from the
 	// level that one set.
 	m.requestThinkingLevel(func() string {
-		cur := max(slices.Index(levels, string(m.agent.ThinkingLevel())), 0)
-		return levels[(cur+1)%(maxIdx+1)]
+		next, _ := ai.NextThinkingLevel(m.opts.Model, m.agent.ThinkingLevel())
+		return string(next)
 	}, false)
 }
 
