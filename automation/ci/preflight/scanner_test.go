@@ -491,6 +491,13 @@ func TestMergeTree(t *testing.T) {
 	ws := workspace{dir: t.TempDir(), remote: "file://" + remote}
 	d := &data{Repo: "o/r"}
 	d.Pull.Base.Ref = "main"
+	mergeTree := func(ctx context.Context, ws workspace, d *data) (bool, error) {
+		dir, err := mergeRepo(ctx, ws, d)
+		if err != nil {
+			return false, err
+		}
+		return mergeable(ctx, ws, dir)
+	}
 	for _, tc := range []struct {
 		pr   int
 		head string

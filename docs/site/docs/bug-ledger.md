@@ -256,6 +256,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-33fe10d](#bf-33fe10d) | `ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33fe10d-2](#bf-33fe10d-2) | Live-Pi oracles `TestExtensionSelectorMatchesPi` (4,320 probes) and `TestExtensionInputMatchesPi` (1,144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3452432](#bf-3452432) | Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-349959b](#bf-349959b) | CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch"… | PiG's own defect | All platforms | Unreleased |
 | [BF-34aa421](#bf-34aa421) | fix(agent): hand the stream function Pi's messages; repair the tool flow in the provider path | PiG's own defect | All platforms | Unreleased |
 | [BF-34b8e92](#bf-34b8e92) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-34bcd58](#bf-34bcd58) | OpenAI Responses prices a response that reports no `service_tier` at the requested tier, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
@@ -401,6 +402,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4f6992d](#bf-4f6992d) | Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f6992d-2](#bf-4f6992d-2) | Durable: a `PrepareArguments` result that is not an object fails validation as an `invalid_arguments` tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4fab2ef](#bf-4fab2ef) | Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4fc2ad0](#bf-4fc2ad0) | A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued… | PiG's own defect | All platforms | Unreleased |
 | [BF-4fc8c2e](#bf-4fc8c2e) | With an active Piglet, an extension that denies every tool with `SetActiveTools([])` is no longer widened… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4fd80d1](#bf-4fd80d1) | On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under… | PiG's own defect | Windows | 0.5.2 |
 | [BF-4fd80d1-2](#bf-4fd80d1-2) | On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in… | PiG's own defect | Windows, WSL | 0.5.2 |
@@ -701,6 +703,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6d0ec02](#bf-6d0ec02) | Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6dddc19](#bf-6dddc19) | An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-6dfa6bf](#bf-6dfa6bf) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6e6a0dd](#bf-6e6a0dd) | A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it | PiG's own defect | All platforms | 0.5.0 |
@@ -845,6 +848,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8897a1b](#bf-8897a1b) | Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-88cf285](#bf-88cf285) | `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before… | PiG's own defect | All platforms | Unreleased |
 | [BF-892827f](#bf-892827f) | `coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-893ff97](#bf-893ff97) | A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-89d167f](#bf-89d167f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -4904,6 +4908,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure`, `coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure` and 34 more in docs/bug-ledger.json
 - **Release note:** Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with `(cancelled)`. Escape had left the command running until it finished on its own. While an agent run streams, Escape still aborts the run and leaves a command started during it running, as Pi does.
 
+### BF-349959b
+
+**CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch"…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch" button adds.
+- **Root cause:** The pre-flight's signoff check failed PR #452 for its "Merge branch 'main' into ..." commits. GitHub's "Update branch" makes them: two parents, committed by GitHub <noreply@github.com>, signed by GitHub, and without a Signed-off-by line, which nobody can add. Every pull request kept current that way was rejected.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `349959b6ff` (2026-11-12)
+- **Tests:** `automation/ci/preflight/merges_test.go::TestAllCommitsParametersAreValidated`, `automation/ci/preflight/merges_test.go::TestSignoffExemptsOnlyGitHubsUpdateBranchMerge`, `automation/ci/preflight/merges_test.go::TestSignoffIsUndecidedWhenGitCannotTellAboutAMerge`, `automation/ci/preflight/scanner_test.go::TestMergeTree`
+- **Release note:** CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's "Update branch" button adds. That commit is GitHub's and cannot carry a `Signed-off-by` line, so the `signoff` check failed every pull request kept current that way. The check now exempts it, and only it: two parents, committed and verified by GitHub, the second parent on the base branch, and the tree git's own merge of the two parents writes. A merge made by hand, a merge of another branch and a merge with a conflict resolution or an edit still need the line, as does every commit the pull request adds.
+
 ### BF-34aa421
 
 **fix(agent): hand the stream function Pi's messages; repair the tool flow in the provider path**
@@ -6896,6 +6914,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4fab2efaa0` (2026-10-07)
 - **Tests:** None recorded.
 - **Release note:** Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected, ConversationBusy) report Pi's `name` and a V8-style `stack` when built by their constructors; the JSONL corruption constructor is now exported as NewJsonlCorruptionError.
+
+### BF-4fc2ad0
+
+**A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued messages were still being handed over ahead of them: a hold could reach a relay worker before its hello and end the link with `handshake: hold before hello`.
+- **Root cause:** LinkEnd.OnMessage drained the queue outside the guard while deliver() already saw the listener and called it directly, so a message arriving during the hand-over reached the listener ahead of the queued ones. In the relay worker the reader goroutine delivered a hold before the queued hello (worker error: protocol_error handshake: hold before hello, a third worker forked), flaky under load (TestExample13Relay, portmap-5). Messages arriving during the hand-over now queue behind it and the goroutine that set the listener delivers them in order.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4fc2ad082d` (2026-11-06)
+- **Tests:** `chord/next/host/host_example_13_test.go::TestExample13Relay`, `chord/next/link/ipc_test.go::TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver`
+- **Release note:** A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued messages were still being handed over ahead of them: a hold could reach a relay worker before its hello and end the link with `handshake: hold before hello`.
 
 ### BF-4fc8c2e
 
@@ -11060,6 +11092,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/config_selector_test.go::TestBuildResourceGroupsTiesKeepFirstSeenOrder`
 - **Release note:** The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto resources from different base directories); it followed Go map order (`tui/config_selector.go` BuildResourceGroups, config-selector.ts buildGroups; regression `TestBuildResourceGroupsTiesKeepFirstSeenOrder`).
 
+### BF-6dddc19
+
+**An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering.
+- **Root cause:** interactive mode answered an extension's ctx.abort() from the owner loop's side. First it waited for the run to settle, which the run could not do while it waited for the handler that made the call, so the call never returned and no later prompt was answered. Then it queued the cancellation on the loop and replied once the loop accepted the task, so a loop busy with earlier work left the run signal live when the handler resumed. Pi aborts the run signal before abort() returns and awaits nothing, and a handler the run awaits has no way to wait for that run's end.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a14dd43d7b` (2026-11-13), `6dddc19157` (2026-11-14), `a289ab6116` (2026-11-14)
+- **Tests:** `internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortAbortsTheRunSignalBeforeItReturnsWhileTheOwnerLoopIsBusy`, `internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortTwiceInOneTurnIsIdempotent`
+- **Release note:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering. The abort action waited for the turn to end, and the turn waited for the handler that made the call, so the call never returned: the turn stayed open and no later prompt was answered. The call now starts the abort and returns, as in Pi, for extensions of the Node, Go, Python, Rust and Lisp SDKs, and the run's `ctx.signal` is already aborted when it returns, even while the interactive loop is busy with earlier work. An extension that needs the turn to have ended cannot wait for it inside the handler the turn awaits, because the turn is waiting for that handler: it waits outside it, with `ctx.waitForIdle()` in a command handler (Pi offers that call on the command context only) or by acting from an `agent_settled` handler. Present in 0.2.0 through 0.7.0.
+
 ### BF-6debb12
 
 **fix(train): gate repairs after merging train 3 and the ordering stack**
@@ -13049,6 +13095,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8897a1b41f` (2026-10-30, #11566)
 - **Tests:** `internal/codingagent/interactive_resource_test.go::TestResourceCollisionDiagnostics_SkillIncludesSourceInfo`, `internal/codingagent/loaded_resources_diagnostics_test.go::TestShowLoadedResourcesListingThenDiagnostics`, `internal/codingagent/loaded_resources_quiet_upstream_test.go::TestLoadedResourcesQuietReloadUpstream`, `internal/codingagent/skill_collision_test.go::TestShowLoadedResourcesSkillConflicts`, `internal/codingagent/skill_file_metadata_test.go::TestSkillFileMetadataRetainsCollisionDiagnostics`
 - **Release note:** Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of them are validation warnings for skills that still load, not name collisions. Carried forward from Pi f14813e9 (earendil-works/pi#11521), past the 1.4.0+b3a29f11 pin.
+
+### BF-88cf285
+
+**`TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run).
+- **Root cause:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `88cf2855e3` (2026-11-13)
+- **Tests:** `env/daemon_wire_exec_oracle_test.go::TestDaemonRepliesBeforeBulkOutputLikePisDaemon`
+- **Release note:** `TestDaemonRepliesBeforeBulkOutputLikePisDaemon` failed on a loaded machine because it started to read before the daemon had queued the reply it measures, so it counted command output that its own reading drained as output "ahead of the reply" (2.7 MB against Pi's own daemon in one CI run). The defect was the test's: no daemon changes. Both daemons send a small reply ahead of the command output still in their queue, and the test bounds the output that arrives ahead of that reply. It read as soon as it had sent its request, or as soon as the request's effect (a `mkdir`) showed, which leaves the time until a worker of the daemon is scheduled to queue the reply: with the `mkdir` wait, 1.57 MB arrived ahead of the reply of PiG's daemon once in 400 runs on a loaded machine. The reply now answers the first of two chunk writes to one handle and the test reads once the second chunk is in the file: a daemon runs a handle's chunk writes in order, so the first reply is queued by then, and exactly one 64 KiB frame is ahead of it on both daemons. The command prints numbered lines instead of zeros, so the test also fails when output is missing, repeated or out of order.
 
 ### BF-892827f
 

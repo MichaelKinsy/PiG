@@ -82,6 +82,8 @@ Each check:
 | `scan` | (scan) the tool run, below |
 | `main` | files in main's tree the verdict depends on (globs; a directory counts with everything in it) |
 | `alert` | posted once as a comment of its own that mentions the PR's author when the check fails; again only after it passed in between, and never twice for the same head |
+
+One cheap check also asks git. `all-commits` with `exempt-update-branch-merges: true` (the `signoff` check) lets one commit go without the message line: the merge of the base branch that GitHub's "Update branch" makes. The API data says that a commit has two parents and that GitHub committed it and verifies it; for such a commit the run fetches the PR's commits (the repository `git merge-tree` already uses when GitHub has not computed `mergeable`) and asks whether the second parent is on the base branch and whether the commit's tree is the one `git merge-tree --write-tree <first parent> <second parent>` writes. Only then is it exempt (`merges.go`); a merge that misses a condition fails with that condition named, and a git failure leaves the check an error, which the next run decides again.
 | `revision` | raise it to decide the check again where nothing else changed |
 
 A scan:

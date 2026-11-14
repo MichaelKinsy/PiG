@@ -226,22 +226,47 @@ func validateAllCommits(p params) error {
 	if err := p.need("help"); err != nil {
 		return err
 	}
+	if v, ok := p[exemptUpdateBranch]; ok {
+		if _, isBool := v.(bool); !isBool || verified {
+			return errors.New(exemptUpdateBranch + " is true or false, and goes with a message pattern")
+		}
+	}
 	return p.regexps("message")
 }
 
 func ruleAllCommits(d *data, p params, _ *ruleEnv) outcome {
-	var bad []string
+	var bad, undecided []string
 	message := p.str("message")
+	exemptMerges, _ := p[exemptUpdateBranch].(bool)
+	exempted := 0
 	for _, c := range d.Commits {
 		switch {
 		case message == "" && !c.Commit.Verification.Verified:
 			bad = append(bad, fmt.Sprintf("%s (%s)", short(c.SHA), c.Commit.Verification.Reason))
-		case message != "" && !pattern(message).MatchString(c.Commit.Message):
+		case message == "" || pattern(message).MatchString(c.Commit.Message):
+		case !exemptMerges:
 			bad = append(bad, short(c.SHA))
+		default:
+			exempt, why, err := updateBranchMerge(c, d.Pull.Base.Ref)
+			switch {
+			case exempt:
+				exempted++
+			case err != nil:
+				undecided = append(undecided, fmt.Sprintf("%s (%v)", short(c.SHA), err))
+			case why != "":
+				bad = append(bad, fmt.Sprintf("%s (%s)", short(c.SHA), why))
+			default:
+				bad = append(bad, short(c.SHA))
+			}
 		}
 	}
-	if len(bad) > 0 {
+	switch {
+	case len(bad) > 0:
 		return fail("commit(s) %s: %s", strings.Join(bad, ", "), p.str("help"))
+	case len(undecided) > 0:
+		return outcome{result: resultError, reason: fmt.Sprintf("git could not tell whether commit(s) %s only merge %s", strings.Join(undecided, ", "), d.Pull.Base.Ref)}
+	case exempted > 0:
+		return pass(fmt.Sprintf("all %d commit(s) pass: %d of them GitHub's update-branch merge of %s, which holds nothing to sign off", len(d.Commits), exempted, d.Pull.Base.Ref))
 	}
 	return pass(fmt.Sprintf("all %d commit(s) pass", len(d.Commits)))
 }

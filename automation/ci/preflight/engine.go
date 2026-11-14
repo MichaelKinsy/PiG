@@ -57,13 +57,8 @@ func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version 
 		return resultDeferred, head, nil
 	}
 	ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(p.pr)), main: o.root, bin: o.bin, remote: o.gitBase, token: o.token}
-	if d.Pull.Mergeable == nil && d.Mode != modeReuse && d.Limit == "" {
-		if m, err := mergeTree(ctx, ws, d); err != nil {
-			logf(log, "mergeable: git merge-tree could not tell: %v", err)
-		} else {
-			d.Pull.Mergeable = &m
-			logf(log, "mergeable from git merge-tree: %v", m)
-		}
+	if d.Mode != modeReuse && d.Limit == "" {
+		askGit(ctx, ws, d, log)
 	}
 	ev := evaluate(cfg, d, env)
 	if len(ev.Scans) > 0 && d.Mode != modeReuse {
