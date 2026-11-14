@@ -1651,6 +1651,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | PiG's own defect | All platforms | Unreleased |
 | [BF-bd9ac3b](#bf-bd9ac3b) | Releasing a session's services no longer leaves the model selector's catalog refresh running | PiG's own defect | All platforms | Unreleased |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-be0c55b](#bf-be0c55b) | fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does | PiG's own defect | All platforms | Unreleased |
 | [BF-be2920a](#bf-be2920a) | A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-be8900b](#bf-be8900b) | A turn that ends with a provider error reading `Connection closed.`, such as a gateway cutting a stream with… | PiG's own defect | All platforms | Unreleased |
@@ -1832,6 +1833,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d71c4e2](#bf-d71c4e2) | Lower- and upper-casing in `tui`, `internal/codingagent` and `internal/nodespawn` keeps a lone UTF-16… | PiG's own defect | Windows | 0.7.0 |
 | [BF-d71c4e2-2](#bf-d71c4e2-2) | A glob filter, model scope or other `internal/minimatch` pattern with a numeric brace range beyond 2^53… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d73376b](#bf-d73376b) | fix: closing a registry's model tasks joins the native Models collection's own refresh and auth work | PiG's own defect | All platforms | Unreleased |
+| [BF-d777d4b](#bf-d777d4b) | fix(interactive): SIGTERM and SIGHUP at the stopped TUI of a pending quit end pig at once | PiG's own defect | All platforms | Unreleased |
 | [BF-d7855fd](#bf-d7855fd) | A subprocess extension's message, entry or tool renderer, or tool renderer resolver, that was busy past the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7bfea6](#bf-d7bfea6) | A git source whose ref has no repository (`git:#v1`) no longer panics, and a ref split out of an opaque-path… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7c7f86](#bf-d7c7f86) | fix(runtimecell): start a packed cell's members in order so a later member's factory cannot take the factory… | PiG's own defect | All platforms | Unreleased |
@@ -1957,6 +1959,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e098463](#bf-e098463) | A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e09d2bc](#bf-e09d2bc) | fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a… | PiG's own defect | All platforms | Unreleased |
 | [BF-e0a4613](#bf-e0a4613) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-e12859e](#bf-e12859e) | fix(interactive): a ctrl+c at the stopped TUI of a pending quit ends pig at once | PiG's own defect | All platforms | Unreleased |
 | [BF-e1634c0](#bf-e1634c0) | fix(chord): recover from a running worker's lost link, clear stale lock files at the starter, fail… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-e16cbba](#bf-e16cbba) | Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e1764c3](#bf-e1764c3) | A live `/skill:` message renders as the collapsed `[skill] name` block instead of the raw `<skill>` XML | PiG's own defect | All platforms | 0.5.0 |
@@ -24870,6 +24873,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB`, `ai/sse_long_line_test.go::TestSSEDecoderBoundsALine`, `ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength`
 - **Release note:** A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder. A line is now bounded where Pi's runtime bounds it, at Node's maximum string length (512 MiB), so a server that never ends a line cannot exhaust memory (D134).
 
+### BF-be0c55b
+
+**fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does
+- **Root cause:** the drain handler took the drained-loop report of the one process with a pending handler as the verdict for Pi's whole loop. Pi has one loop for every extension and pig has several processes, so the report said nothing about the others; an idle Node process could not be counted at all (it kept its transports referenced after input ended, so it never reached beforeExit and reported nothing), and a native runtime has no loop to report.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `be0c55bcc6` (2026-11-14)
+- **Tests:** None recorded.
+
 ### BF-be2920a
 
 **A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request…**
@@ -27377,6 +27393,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d73376b814` (2026-11-11)
 - **Tests:** `ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin`, `internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog`, `internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown`
 
+### BF-d777d4b
+
+**fix(interactive): SIGTERM and SIGHUP at the stopped TUI of a pending quit end pig at once**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(interactive): SIGTERM and SIGHUP at the stopped TUI of a pending quit end pig at once
+- **Root cause:** the signal shutdown assumed that it could always take shutdownMu and run the extension cleanup, but a pending quit holds that lock for as long as a runtime holds the dispose.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d777d4ba14` (2026-11-14)
+- **Tests:** None recorded.
+
 ### BF-d7855fd
 
 **A subprocess extension's message, entry or tool renderer, or tool renderer resolver, that was busy past the…**
@@ -29110,6 +29139,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e0a4613856` (2026-11-05)
 - **Tests:** `chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessThatExitedByItselfAfterItsLinkClosedWhileAChildHeldItsPipesIsNotReportedKilled`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits`
+
+### BF-e12859e
+
+**fix(interactive): a ctrl+c at the stopped TUI of a pending quit ends pig at once**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(interactive): a ctrl+c at the stopped TUI of a pending quit ends pig at once
+- **Root cause:** interruptShutdown gave the extensions a second to shut down (shutdownExtensionsBriefly), but the pending quit's dispose already emitted session_shutdown and holds shutdownMu while it waits for its author, so the second was spent on a lock that nothing releases. The interrupt now skips that wait when the quit by keys is disposing (quitDisposing), and goes on to the terminal restore and exit 130.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e12859ea5e` (2026-11-14)
+- **Tests:** None recorded.
 
 ### BF-e1634c0
 

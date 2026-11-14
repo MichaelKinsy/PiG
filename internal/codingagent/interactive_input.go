@@ -374,6 +374,7 @@ func (m *InteractiveMode) finishInteractiveShutdown() error {
 		return err
 	}
 	if !fromSignal {
+		m.quitDisposing.Store(true)
 		m.emitQuitShutdownAfterStop()
 		m.printResumeHint()
 	}

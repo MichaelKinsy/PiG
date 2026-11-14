@@ -115,12 +115,24 @@ func (f *drainIsolatedFixture) waitCount(want int) {
 // endInputAndQuit ends input, then starts the quit handler that never settles, and returns once the host applied the runtime's loop drain.
 func (f *drainIsolatedFixture) endInputAndQuit() {
 	f.t.Helper()
+	f.startQuit()
+	f.awaitDrained()
+}
+
+// startQuit ends input and starts the quit handler that never settles.
+func (f *drainIsolatedFixture) startQuit() {
+	f.t.Helper()
 	f.host.EndInput()
 	handlers := f.quit.EventHandlers("session_shutdown")
 	if len(handlers) != 1 {
 		f.t.Fatalf("session_shutdown handlers = %d, want 1", len(handlers))
 	}
 	go func() { _, _ = handlers[0](map[string]any{"type": "session_shutdown", "reason": "quit"}) }()
+}
+
+// awaitDrained returns once the host handed the drained loop to its owner: no runtime holds it any more.
+func (f *drainIsolatedFixture) awaitDrained() {
+	f.t.Helper()
 	select {
 	case <-f.drained:
 	case <-f.ctx.Done():
@@ -149,12 +161,20 @@ func TestDrainSpansIsolatedNodeProcesses(t *testing.T) {
 		// The command's window closed on the pending session change. Its runtime reports it suspended once input ended.
 		f.host.EndInput()
 		f.waitCount(1)
-		f.endInputAndQuit()
+		// The quit handler's process reports its drained loop. The command's process is serving a session change, which Pi's loop stays alive for: the host counts the command able to answer and does not hand the drained loop to its owner yet.
+		f.startQuit()
 		f.waitCount(0)
+		select {
+		case <-f.drained:
+			t.Fatal("the host handed the drained loop to its owner while another Node process waited on a session change")
+		default:
+		}
 		close(release)
 		if err := <-f.done; err != nil {
 			t.Fatalf("command: %v", err)
 		}
+		// The command answered and its process's loop drained: nothing holds the quit any more.
+		f.awaitDrained()
 	})
 
 	t.Run("a Promise nothing settles", func(t *testing.T) {
