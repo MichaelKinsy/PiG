@@ -1,0 +1,184 @@
+from = "1.5.2+a309480a"
+to = "1.5.2+3035f08d"
+
+[[files]]
+path = "apps/p3/docs/locks/design.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3e5a6c1eb, 6de6f44bb, c773ca2e5 (added, then edited twice); moved to apps/p3/docs/archive/locks/design.md by 3035f08d0. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/status-2026-11-13.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "8a21980ec, c773ca2e5 (added, then edited); moved to apps/p3/docs/archive/status-2026-11-13.md by 3035f08d0. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/README.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/archive/README.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds nine lines. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/names.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/overview.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/01-base-and-sessions.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/02-apply.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/03-transcript.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/04-admission.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/05-people-and-apps.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/06-locks.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/07-models.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/08-environments.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/09-prompt.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/10-agents.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/11-questions.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/12-files.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/13-mcp.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/14-views.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/15-ui.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/16-org.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/README.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/workflow.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 adds the working-set document. private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/archive"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3035f08d0 moves 51 older documents there (renames, no content change; 2 of them are the two rows above). private copy: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; the listing is checked by automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository, now equal to Pi apps/p3 at 3035f08d06; no text is quoted here."

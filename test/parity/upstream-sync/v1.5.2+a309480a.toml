@@ -1,0 +1,9 @@
+from = "1.5.2+827383a1"
+to = "1.5.2+a309480a"
+
+[[files]]
+path = "packages/chord/docs/admission/design.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "a309480a7 (docs(chord): admission before the factory, design). The file is a proposal, status \"proposed 2026-11-13 by the p3 session ... Not built\": host.serve takes an `admit` option that runs before the factory, a new failure kind `denied`, a level argument for the factory, a per-acknowledgement binding fence in remote/hold.ts. Pi has not implemented any of it (the commit changes only this document), so there is no behavior to port. PiG's host has nothing that contradicts it: chord/next/host ServeOptions (host_facet.go) holds Accepts, Linger and Untraced and no admission, the factory takes params and principal only, and no failure kind named denied exists. chord/README.md: Pi's chord design documents are not ported; the Go packages follow them. When Pi builds admission the port is a code row of that commit, not this document."
