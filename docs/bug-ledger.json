@@ -33687,6 +33687,28 @@
       ]
     },
     {
+      "id": "BF-8ed6366",
+      "title": "A key received after a /reload had completed could be dropped by the input loop; the editor now receives it…",
+      "symptom": "A key received after a /reload had completed could be dropped by the input loop; the editor now receives it, in the order typed.",
+      "rootCause": "awaitReloadStep dropped every key it received until it returned, so a select with the step already done and a key ready could take the key and discard it. A key received once the step is done is kept in reloadTailInput (cleared when the next step starts, as Pi drops what its awaits between steps read) and the input loop dispatches it, in order, before any later chunk (interactive_input.go: loop top and dispatchTerminalRead). Keys typed while a step is pending are still dropped. Unit test: TestReloadKeysAfterTheLastStepReachTheEditor (synctest, 40 rounds; red on the base 20 of 20 runs).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A key received after a /reload had completed could be dropped by the input loop; the editor now receives it, in the order typed. Keys typed while the reload runs are still dropped, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8ed6366ca3",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_reload_tail_input_test.go::TestReloadKeysAfterTheLastStepReachTheEditor"
+      ]
+    },
+    {
       "id": "BF-8f241ca",
       "title": "A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on…",
       "symptom": "A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on `openai-completions`, `openai-responses`, `google` and `anthropic-messages`, as Pi does, instead of `terminated (cause: ...)`.",
