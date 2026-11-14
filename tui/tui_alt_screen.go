@@ -1013,7 +1013,10 @@ func (t *TuiAltScreen) doRender() {
 	}
 	buf.WriteString(altEndSynchronizedOutput)
 	t.previousFrameBytes = buf.Len()
+	// The frame is one write; it takes the terminal writer for it, so a cursor or raw write from another goroutine is before the frame or after it.
+	t.outMu.Lock()
 	WriteToTerminal(t.out, buf.String())
+	t.outMu.Unlock()
 
 	changedWidth, changedHeight := 0, 0
 	if t.previousScreenWidth > 0 && t.previousScreenWidth != width {
