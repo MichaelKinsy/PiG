@@ -1055,6 +1055,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a110f68](#bf-a110f68) | fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12) | PiG's own defect | All platforms | Unreleased |
 | [BF-a11fc08](#bf-a11fc08) | fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product… | PiG's own defect | All platforms | Unreleased |
 | [BF-a13bae4](#bf-a13bae4) | A `read` result shown in the transcript no longer keeps the file text a second time as its structured content | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a14dd43](#bf-a14dd43) | An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-a156ef3](#bf-a156ef3) | On Linux, clipboard reads accept every `DISPLAY` spelling Pi's `xcb_connect` accepts: white space or a sign… | PiG's own defect | Linux | 0.5.0 |
 | [BF-a178939](#bf-a178939) | The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a18da32](#bf-a18da32) | fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does | PiG's own defect | All platforms | Unreleased |
@@ -15986,6 +15987,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `06c408c21d` (2026-10-11), `8ab5a89874` (2026-10-11), `a13bae4664` (2026-10-11), `eab3caf769` (2026-10-11)
 - **Tests:** `internal/codingagent/session_store_test.go::TestAppendedMessageIsHeldOnceWhenItsRecordDecodesToIt`, `internal/codingagent/session_store_test.go::TestAppendedToolResultWithTypedDetailsIsHeldOnce`, `internal/codingagent/tool_card_structured_test.go::TestReadCardKeepsTheTextOnceAndRenderersGetStructuredContent`, `internal/codingagent/tool_card_structured_test.go::TestToolCardKeepsStructuredContentItCannotDerive`, `internal/codingagent/tools/truncation_share_test.go::TestTruncatedResultDetailsShareTheReturnedText`
 - **Release note:** A `read` result shown in the transcript no longer keeps the file text a second time as its structured content. Renderers, including extension renderers, still receive the structured content the tool returned. In a 75-prompt session of file reads (about 4.2M tokens of context), memory at the end drops by another 20 MB or so.
+
+### BF-a14dd43
+
+**An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering.
+- **Root cause:** In interactive mode the abort host action waited for the run to settle. A handler the run awaits (message_update, tool_call, ...) that called ctx.abort() therefore never got its call back: the run could not end and no later prompt was answered. Pi starts the abort and returns (interactive-mode.ts:2399-2401, :4935-4937 void this.session.abort()); the action now posts the abort to the owner loop and returns. An extension that wants the run to have ended awaits ctx.waitForIdle(), as before.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a14dd43d7b` (2026-11-13)
+- **Tests:** None recorded.
+- **Release note:** An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering. The abort action waited for the turn to end, and the turn waited for the handler that made the call, so the call never returned: the turn stayed open and no later prompt was answered. The call now starts the abort and returns, as in Pi, for extensions of the Node, Go, Python, Rust and Lisp SDKs; an extension that needs the turn to have ended awaits `ctx.waitForIdle()`. Present in 0.2.0 through 0.7.0.
 
 ### BF-a156ef3
 

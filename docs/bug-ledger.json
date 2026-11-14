@@ -29216,6 +29216,26 @@
       ]
     },
     {
+      "id": "BF-a14dd43",
+      "title": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session…",
+      "symptom": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering.",
+      "rootCause": "In interactive mode the abort host action waited for the run to settle. A handler the run awaits (message_update, tool_call, ...) that called ctx.abort() therefore never got its call back: the run could not end and no later prompt was answered. Pi starts the abort and returns (interactive-mode.ts:2399-2401, :4935-4937 void this.session.abort()); the action now posts the abort to the owner loop and returns. An extension that wants the run to have ended awaits ctx.waitForIdle(), as before.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering. The abort action waited for the turn to end, and the turn waited for the handler that made the call, so the call never returned: the turn stayed open and no later prompt was answered. The call now starts the abort and returns, as in Pi, for extensions of the Node, Go, Python, Rust and Lisp SDKs; an extension that needs the turn to have ended awaits `ctx.waitForIdle()`. Present in 0.2.0 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a14dd43d7b",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a156ef3",
       "title": "On Linux, clipboard reads accept every `DISPLAY` spelling Pi's `xcb_connect` accepts: white space or a sign…",
       "symptom": "Previously these spellings failed, and image and text paste reported the clipboard as unavailable.",
