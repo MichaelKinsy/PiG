@@ -35346,6 +35346,30 @@
       ]
     },
     {
+      "id": "BF-cc061a0",
+      "title": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits",
+      "symptom": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits.",
+      "rootCause": "A quit by keys that waits for an author keeps its dispose pending. The ctrl+c that then ends pig (exit 130) ran no dispose, so the runtime of a Node author that holds a timer stayed behind. handleInterruptSignal terminates the extension processes before it exits, as the emergency exit does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits. The runtime process of a Node extension whose event loop was still alive, for example one that holds a timer, stayed behind after a quit by keys that was still waiting for an extension's session_shutdown handler. Nothing more is written to the session file at that exit. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cc061a0b20",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "f522a9c34a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-cc9370b",
       "title": "A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a…",
       "symptom": "A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a `ctx.ui.custom` factory, as in Pi: `showOverlay`, `hideOverlay`, `setFocus` and `terminal` work there, and `tui.requestRender()` also redraws the overlays the extension shows.",
