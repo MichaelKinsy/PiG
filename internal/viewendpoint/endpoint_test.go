@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/uiview"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -604,19 +605,33 @@ func TestASocketPathLongerThanAnAddressHoldsIsRefused(t *testing.T) {
 	}
 }
 
-// pig additive (D614): a line longer than the carrier's bound of one command line closes the connection.
+// pig additive (D614): a line longer than the carrier's bound of one command line closes the connection. The endpoint
+// closes the socket and ends the attachment after it, so a client that sees the close may look before the attachment is
+// gone; the test waits for the registry's own notice that the abilities changed, then checks them.
 func TestALineLongerThanTheCarriersBoundClosesTheConnection(t *testing.T) {
 	f := newFixture(t)
 	c := dial(t, f.serve())
 	c.attach()
+	changed := make(chan struct{}, 1)
+	f.h.reg.OnAbilities(func() {
+		select {
+		case changed <- struct{}{}:
+		default:
+		}
+	})
 	go func() {
 		_, _ = c.c.Write([]byte(`{"type":"ui_view_report","pad":"` + strings.Repeat("x", maxLineBytes+(64<<10))))
 	}()
 	if got := c.next(); got != nil {
 		t.Fatalf("an oversized line was answered: %v", got)
 	}
-	if f.h.reg.Abilities() != nil {
-		t.Fatal("the attachment of the closed connection is still held")
+	budget := time.After(testbudget.Wait(t))
+	for f.h.reg.Abilities() != nil {
+		select {
+		case <-changed:
+		case <-budget:
+			t.Fatal("the attachment of the closed connection is still held")
+		}
 	}
 }
 
