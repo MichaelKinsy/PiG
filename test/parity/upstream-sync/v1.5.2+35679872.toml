@@ -10,7 +10,7 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:mcp/naming_pi_test.go#TestMcpServerSummaryTakesTheFirstLineOfTheConfiguredDescriptionElseOfTheInstructions"]
 rationale = "3567987250: mcpServerSummary(description, instructions) is the first line of the trimmed description, else of the TRIMMED instructions, else empty. internal/mcpshared/naming.go McpServerSummary (re-exported as mcp.McpServerSummary) takes strings, where \"\" is Pi's undefined (both fall through `||`), and trims with String.prototype.trim (jsstring.Trim)."
-oracle = "not carried: pi-mcp is not a package the backports script patches (automation/pin/oracle.py BACKPORT_PACKAGES: pi-agent-core, pi-ai, pi-coding-agent, pi-tui), so the oracle and the vendored runtime keep the pin's naming.js without mcpServerSummary; the ported test is the upstream case itself, with Pi's inputs and results"
+oracle = "carried: 3567987250 (pi-mcp/naming.js: the oracle's and the vendored runtime's pi-mcp export mcpServerSummary; mcp.McpServerSummary is compared with it by mcp/naming_oracle_test.go TestMcpServerSummaryMatchesPiOracle)"
 
 [[files]]
 path = "packages/mcp/src/index.ts"
@@ -18,7 +18,7 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:mcp/naming_pi_test.go#TestMcpServerSummaryTakesTheFirstLineOfTheConfiguredDescriptionElseOfTheInstructions"]
 rationale = "3567987250: mcpServerSummary joins the exports of createMcpToolName and mcpNamespace; mcp.McpServerSummary is the Go export."
-oracle = "not carried: pi-mcp is not a package the backports script patches (automation/pin/oracle.py BACKPORT_PACKAGES: pi-agent-core, pi-ai, pi-coding-agent, pi-tui), so the oracle and the vendored runtime keep the pin's naming.js without mcpServerSummary; the ported test is the upstream case itself, with Pi's inputs and results"
+oracle = "carried: 3567987250 (pi-mcp/index.js re-exports mcpServerSummary, as the oracle's pi-mcp root does)"
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/index.ts"
@@ -26,7 +26,7 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:coding/mcpext/servers_section_test.go#TestMCPServersSectionSummarizesInstructionsThatStartWithABlankLine"]
 rationale = "3567987250: renderServersSection reads the summary through mcpServerSummary and the local serverSummary is deleted; coding/mcpext/extension.go calls mcp.McpServerSummary. Instructions that start with a blank line now give their first non-blank line (the old reading left the summary empty); asserted through RenderServersSection, the mcp_servers prompt section."
-oracle = "not carried: pi-mcp is not a package the backports script patches (automation/pin/oracle.py BACKPORT_PACKAGES: pi-agent-core, pi-ai, pi-coding-agent, pi-tui), so the oracle and the vendored runtime keep the pin's naming.js without mcpServerSummary; the ported test is the upstream case itself, with Pi's inputs and results"
+oracle = "carried: 3567987250 (pi-coding-agent/extensions/mcp/index.js reads mcpServerSummary; coding/mcpext/servers_section_oracle_test.go TestMCPServersSectionMatchesPiOracle compares the section with the oracle's renderServersSection, and the oracle's `pi` bundle is rebuilt with it)"
 
 [[files]]
 path = "packages/mcp/test/naming.test.ts"
@@ -34,7 +34,7 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:mcp/naming_pi_test.go#TestMcpServerSummaryTakesTheFirstLineOfTheConfiguredDescriptionElseOfTheInstructions"]
 rationale = "3567987250: describe mcpServerSummary, one case of four assertions (description with surrounding space and a second line over instructions; instructions starting with a blank line; a blank description falls through; both absent give empty), the four assertions of the Go test with the same inputs and results."
-oracle = "not carried: pi-mcp is not a package the backports script patches (automation/pin/oracle.py BACKPORT_PACKAGES: pi-agent-core, pi-ai, pi-coding-agent, pi-tui), so the oracle and the vendored runtime keep the pin's naming.js without mcpServerSummary; the ported test is the upstream case itself, with Pi's inputs and results"
+oracle = "not carried: packages/mcp/test is not shipped; the oracle runs the package itself, on the same four inputs and more, in mcp/naming_oracle_test.go"
 
 [[files]]
 path = "packages/mcp/CHANGELOG.md"
