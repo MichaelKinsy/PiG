@@ -1661,6 +1661,8 @@ func Main(args []string, options *MainOptions) {
 	interactive := codingagent.NewInteractiveMode(interactiveRuntime{rt}, iopts)
 	// SIGTERM must reach extensions before the root context is cancelled.
 	setTerminationShutdownHook(func() {
+		// A quit by keys that waits for its dispose has stopped the TUI: the signal ends the process at once, as Pi's does after its stop().
+		interactive.ExitIfQuitting(128 + int(receivedTerminationSignal.Load()))
 		interactive.ShutdownFromSignal()
 		// Pi's signal shutdown awaits runtimeHost.dispose(), which waits for a started OAuth refresh to be saved. Main cancels the root context, which owns the extension processes, as soon as this hook returns.
 		//portlint:allow ctxbackground Pi's signal shutdown awaits dispose() with no signal (interactive-mode.ts shutdown); this signal hook has no caller context

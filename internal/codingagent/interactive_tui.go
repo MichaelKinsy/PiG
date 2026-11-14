@@ -492,6 +492,21 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	if !m.interruptShutdown() {
 		return
 	}
+	m.exitAtSignal(130)
+}
+
+// ExitIfQuitting ends the process with status when a quit by keys has stopped the TUI and awaits its dispose (quitDisposing): Pi's stop() removed its signal
+// handlers, so SIGTERM and SIGHUP end its process at once, as SIGINT does (Pi 1.5.2 under tmux with a held quit: exit 143 and 129 after 26 ms). pig's signal shutdown
+// would wait for ever on the shutdownMu that the pending dispose holds. The caller has recorded the ending. It returns when no such quit is pending.
+func (m *InteractiveMode) ExitIfQuitting(status int) {
+	if m == nil || !m.quitDisposing.Load() {
+		return
+	}
+	m.exitAtSignal(status)
+}
+
+// exitAtSignal hands the terminal back and ends the process, and its extension processes, with status.
+func (m *InteractiveMode) exitAtSignal(status int) {
 	// The exit handler of Pi's process.exit (9df819de, #11170): a shutdown that timed out left the alternate screen and its modes on.
 	tui.RestoreTerminalOnExit()
 	tui.RestoreTerminalFromSignal()
@@ -505,7 +520,7 @@ func (m *InteractiveMode) handleInterruptSignal() {
 		m.opts.TerminateExtensionProcesses()
 	}
 	EndSessionMarker()
-	os.Exit(130)
+	os.Exit(status)
 }
 
 // interruptShutdown records the SIGINT and gives extensions their shutdown event, for at most a second. It reports false when a suspended session ignores the signal.
