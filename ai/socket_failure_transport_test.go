@@ -84,7 +84,7 @@ func TestConnectionFailureIsReportedToItsOwnRequest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return client.Do(request)
+		return client.Do(request) //nolint:gosec // G704: the request goes to the test's own loopback server.
 	}
 	response, err := post("hello")
 	if err != nil {
