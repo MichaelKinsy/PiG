@@ -978,6 +978,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6b97207](#bf-6b97207) | An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6c26be3](#bf-6c26be3) | A submission's `Wait` no longer fails with "Harness is closed" when a close begins before the wait wakes: a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6c31af7](#bf-6c31af7) | A custom message's `message_start` event keeps the members it started with, in their order, when a… | PiG's own defect | All platforms | Unreleased |
+| [BF-6c69d7b](#bf-6c69d7b) | Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort… | PiG's own defect | All platforms | Unreleased |
 | [BF-6c74cb8](#bf-6c74cb8) | fix(chord): a late kill of a finished evaluation never lands on the next one | PiG's own defect | All platforms | Unreleased |
 | [BF-6c7b377](#bf-6c7b377) | fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the… | PiG's own defect | All platforms | Unreleased |
 | [BF-6cb29f0](#bf-6cb29f0) | Started from a directory reached through a symlink, `pig install`/`remove`/`list`/`update` resolve local… | PiG's own defect | All platforms | 0.5.0 |
@@ -15530,6 +15531,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6c31af7a58` (2026-11-05)
 - **Tests:** `agent/message_custom_order_test.go::TestStartEventMessageOfACustomMessageIsRaceFreeWithAReplacement`, `agent/message_custom_order_test.go::TestStartEventMessageOfACustomMessageKeepsItsMembersAndOrderAcrossAReplacement`
 - **Release note:** A custom message's `message_start` event keeps the members it started with, in their order, when a `message_end` handler replaces the message; the replacement no longer reaches the start event a listener may still be reading.
+
+### BF-6c69d7b
+
+**Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The abort was delivered by `context.AfterFunc` on a goroutine of its own and could lose to a settlement that came a moment after it.
+- **Root cause:** Pi's awaitWithContext adds an abort listener that abort() runs synchronously and that rejects the wait at once; a settlement reaches the wait through a reaction, a microtask. So an abort in the section of a settlement wins, and a reaction that ran before the abort leaves the value. Go delivered the abort through context.AfterFunc, on a goroutine of its own: it could lose to a settlement that came a moment after the cancel, and attempt.activate then ran the factory of an attempt that was sealed while it waited for the old attempt's drain.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6c69d7b4c3` (2026-11-15)
+- **Tests:** `chord/context/abort_listener_test.go::TestOnAbortLeavesNoRegistrationBehind`, `chord/context/abort_listener_test.go::TestOnAbortListensToEverySourceOfADerivedContext`, `chord/context/abort_listener_test.go::TestOnAbortOnAnAbortedContextRunsAtOnce`, `chord/context/abort_listener_test.go::TestOnAbortRunsInsideTheCancelFunctionOnce`, `chord/context/abort_listener_test.go::TestOnAbortRunsListenersInTheOrderTheyWereAdded`, `chord/context/abort_listener_test.go::TestOnAbortSaysWhatItCannotListenTo`, `chord/context/abort_listener_test.go::TestOnAbortStopKeepsTheListenerFromRunning`, `chord/next/host/host_promise_order_test.go::TestThenWithContextLeavesNoListenerBehindWhenTheResultComesFirst` and 1 more in docs/bug-ledger.json
+- **Release note:** Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort in the section that made it, ordered with the promise's own settlement, as Pi does (the abort listener runs inside `abort()`, the settlement's continuation is a microtask). Before, the abort was delivered by `context.AfterFunc` on a goroutine of its own and could lose to a settlement that came a moment after it. The visible case: an attempt sealed while it waited for the previous attempt's drain (a decision change, or a reload, that sealed the successor as the old drain ended) could still run its factory once the drain ended, so a plugin saw the factory of an attempt that had been abandoned run (`[a:write a:write]` where Pi has `[a:write]`). `chord/context` gains `OnAbort`, the listener that runs inside the cancel function, in the cancelling section; an abort made from another goroutine is queued on the host's loop as an event when it is observed.
 
 ### BF-6c74cb8
 
