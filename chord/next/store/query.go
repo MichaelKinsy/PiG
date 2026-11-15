@@ -279,8 +279,9 @@ func EncodeCursor(table string, order Order, values []sqlite.SqliteValue) string
 
 // DecodeCursor is the order values of cursor (a trust boundary: an app hands it back): one made for table's order
 // (any condition) in the table named sqlName (another object's table of the same definition is another table), each
-// value of its column's type; `invalid/args` otherwise.
-func DecodeCursor(table *TableDefinition, sqlName string, order Order, cursor any) ([]sqlite.SqliteValue, error) {
+// value of its column's type (`column` finds a joined set's order columns: a query's Column; Pi's default is the table's
+// own columns); `invalid/args` otherwise.
+func DecodeCursor(table *TableDefinition, sqlName string, order Order, cursor any, column func(name string) (Column, bool)) ([]sqlite.SqliteValue, error) {
 	refuse := func() ([]sqlite.SqliteValue, error) {
 		return nil, invalidArgs("%s: the cursor is not one of this table's order", table.Name)
 	}
@@ -324,9 +325,9 @@ func DecodeCursor(table *TableDefinition, sqlName string, order Order, cursor an
 	}
 	out := make([]sqlite.SqliteValue, len(order.Columns))
 	for i, name := range order.Columns {
-		column := table.ByName[name]
+		found, _ := column(name)
 		// Order columns are non-opt `str` or `int` (checked when the query was built).
-		value, err := CheckScalar(column.Type, values[i], table.Name+": cursor")
+		value, err := CheckScalar(found.Type, values[i], table.Name+": cursor")
 		if err != nil {
 			return nil, err
 		}

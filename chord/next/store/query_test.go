@@ -74,12 +74,12 @@ func TestCursors(t *testing.T) {
 			t.Fatalf("cursor %q is not base64url", cursor)
 		}
 		want := []sqlite.SqliteValue{int64(5), "a\U0001F600", int64(2)}
-		got, err := DecodeCursor(T, "app:edits", order, cursor)
+		got, err := DecodeCursor(T, "app:edits", order, cursor, NewQuery(T).Column)
 		must(t, err)
 		qEqual(t, got, want)
 		other := NewQuery(T).Where(func(e, _ ColumnRefs) Condition { return Eq(e["id"], "x") }).OrderBy(byAt, "desc")
 		must(t, other.Err())
-		got, err = DecodeCursor(T, "app:edits", other.Order(), cursor)
+		got, err = DecodeCursor(T, "app:edits", other.Order(), cursor, other.Column)
 		must(t, err)
 		qEqual(t, got, want)
 	})
@@ -88,7 +88,7 @@ func TestCursors(t *testing.T) {
 		cursor := EncodeCursor("app:edits", order, []sqlite.SqliteValue{int64(5), "a", int64(2)})
 		refuse := func(definition *TableDefinition, sqlName string, order Order, cursor any) {
 			t.Helper()
-			_, err := DecodeCursor(definition, sqlName, order, cursor)
+			_, err := DecodeCursor(definition, sqlName, order, cursor, NewQuery(definition).Column)
 			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		}
 		refuse(T, "app:edits", NewQuery(T).Order(), cursor)
