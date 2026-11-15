@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -444,7 +445,7 @@ func PrepareCompaction(
 		// The projection has already selected the previous compaction's kept range.
 		boundaryStart = prevCompactionIndex + 1
 	}
-	tokensBefore := EstimateProjectedContextTokens(projection, pathEntries).Tokens
+	contextEstimate := EstimateProjectedContextTokens(projection, pathEntries)
 	cutPoint := findProjectedCutPoint(entries, boundaryStart, len(entries), s.KeepRecentTokens)
 	if cutPoint.FirstKeptEntryIndex >= len(entries) {
 		return nil
@@ -476,16 +477,18 @@ func PrepareCompaction(
 		ExtractFileOpsFromMessage(message, &fileOps)
 	}
 
-	return &CompactionPreparation{
+	prep := &CompactionPreparation{
 		FirstKeptEntryID:    firstKeptEntryID,
 		MessagesToSummarize: toSummarize,
 		TurnPrefixMessages:  turnPrefix,
 		IsSplitTurn:         cutPoint.IsSplitTurn,
-		TokensBefore:        tokensBefore,
+		TokensBefore:        contextEstimate.Tokens,
 		PreviousSummary:     previousSummary,
 		FileOps:             fileOps,
 		Settings:            s,
 	}
+	compactiontypes.SetTokenRatio(prep, providerTokenRatio(projection, contextEstimate))
+	return prep
 }
 
 // ─── LLM Summarization ────────────────────────────────────────────────────────
@@ -741,7 +744,99 @@ func GenerateSummaryWithUsageUsing(
 	callbacks ai.RetryCallbacks,
 	sessionID string,
 ) (string, *ai.Usage, error) {
-	chunks := splitForContextWindow(messages, model, reserveTokens, previousSummary, customInstructions)
+	return generateSummaryChunked(ctx, messages, model, reserveTokens, apiKey, headers, customInstructions, previousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, tokenRatioFromContext(ctx))
+}
+
+type tokenRatioKey struct{}
+
+// withTokenRatio carries the session's measured token ratio (D167) to [GenerateSummaryWithUsageUsing], whose signature is Pi's generateSummary and
+// has no room for it; Compact calls that function, as Pi's compact does.
+func withTokenRatio(ctx context.Context, ratio float64) context.Context {
+	return context.WithValue(ctx, tokenRatioKey{}, ratio)
+}
+
+func tokenRatioFromContext(ctx context.Context) float64 {
+	ratio, _ := ctx.Value(tokenRatioKey{}).(float64)
+	return ratio
+}
+
+// generateSummaryChunked is [GenerateSummaryWithUsageUsing] with the measured ratio of real to estimated tokens of the session (0: none measured).
+// A session without a measured ratio has nothing to calibrate the estimate against: it is summarized as the first form of D167 did
+// ([generateSummaryByShare]). With a ratio, a history that one request holds, that is the estimate of its conversation times the ratio and a margin,
+// of the summary it carries, of the instructions and the output it asks for together within the model's window, is that one request,
+// byte-identical to Pi's; otherwise it is the most messages that fit a request, chunk by chunk.
+func generateSummaryChunked(
+	ctx context.Context,
+	messages []agent.AgentMessage,
+	model *ai.Model,
+	reserveTokens int,
+	apiKey string,
+	headers map[string]string,
+	customInstructions string,
+	previousSummary string,
+	thinkingLevel ai.ModelThinkingLevel,
+	completer SimpleCompleter,
+	streamFn StreamFn,
+	env map[string]string,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
+	sessionID string,
+	tokenRatio float64,
+) (string, *ai.Usage, error) {
+	plan, ok := newSummaryPlan(model, reserveTokens, customInstructions, tokenRatio)
+	if !ok || len(messages) < 2 {
+		return generateSummaryByShare(ctx, messages, model, reserveTokens, apiKey, headers, customInstructions, previousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
+	}
+	// pig divergence (D167): pi sends the whole history in one request, so a history longer than the model's context window fails with the provider's overflow error and the session can never be compacted. PiG summarizes it chunk by chunk, each chunk updating the summary of the one before (the UPDATE_SUMMARIZATION_PROMPT path pi uses for a previous compaction), each chunk the most messages that fit a request that carries the summary so far.
+	sizes := plan.sizes(messages)
+	summary := previousSummary
+	var usage *ai.Usage
+	for start := 0; start < len(messages); {
+		end := start + leading(sizes[start:], plan.room(summary))
+		next, chunkUsage, err := generateSummaryChunk(ctx, messages[start:end], model, reserveTokens, apiKey, headers, customInstructions, summary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
+		if err != nil {
+			if !isContextOverflow(err) {
+				return "", nil, err
+			}
+			// The estimate the ratio calibrates was too low for this request and the provider refused it: the rest of the history is planned again
+			// by the share of the first form (generateSummaryAdaptive halves a chunk it still refuses), so the worst case is that form's requests
+			// and this one refused request.
+			rest, restUsage, err := generateSummaryByShare(ctx, messages[start:], model, reserveTokens, apiKey, headers, customInstructions, summary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
+			if err != nil {
+				return "", nil, err
+			}
+			return rest, combineUsage(usage, restUsage), nil
+		}
+		summary, usage = next, combineUsage(usage, chunkUsage)
+		start = end
+	}
+	return summary, usage, nil
+}
+
+// isContextOverflow reports whether a summary request failed with the provider's context-overflow answer.
+func isContextOverflow(err error) bool {
+	return ai.IsContextOverflow(ai.AssistantMessage{StopReason: ai.StopReasonError, ErrorMessage: err.Error()}, 0)
+}
+
+// generateSummaryByShare is the first form of D167: the history is split by splitByShare and each chunk is summarized by generateSummaryAdaptive.
+func generateSummaryByShare(
+	ctx context.Context,
+	messages []agent.AgentMessage,
+	model *ai.Model,
+	reserveTokens int,
+	apiKey string,
+	headers map[string]string,
+	customInstructions string,
+	previousSummary string,
+	thinkingLevel ai.ModelThinkingLevel,
+	completer SimpleCompleter,
+	streamFn StreamFn,
+	env map[string]string,
+	retry *ai.RetryPolicy,
+	callbacks ai.RetryCallbacks,
+	sessionID string,
+) (string, *ai.Usage, error) {
+	chunks := splitByShare(messages, model, reserveTokens, previousSummary, customInstructions)
 	if len(chunks) <= 1 {
 		return generateSummaryAdaptive(ctx, messages, model, reserveTokens, apiKey, headers, customInstructions, previousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
 	}
@@ -794,11 +889,107 @@ func generateSummaryAdaptive(
 	return summary, combineUsage(firstUsage, secondUsage), nil
 }
 
+// The size of a summary request is estimated, as everywhere in compaction, at four characters per token, and then scaled by the ratio of the
+// provider's real token count to that estimate, which PrepareCompaction measures on the session's latest assistant usage (compactiontypes.TokenRatioOf),
+// and by a margin.
+const (
+	// minTokenRatio: a measured ratio below 1 (more than four characters per token) is not trusted: prose is not what a summary request holds most of.
+	minTokenRatio = 1.0
+	// maxTokenRatio bounds a measured ratio against a corrupt usage, or one that counts what the messages do not hold (reasoning tokens): two
+	// tokens per four characters would already be a tokenizer of two characters per token.
+	maxTokenRatio = 2.0 // pig divergence (D167): the cap of the calibrated request size
+	// tokenRatioMargin is the slack on the calibrated estimate for what the estimate does not count: the request body's JSON framing and escapes
+	// (measured 2 to 3 % on the fake provider's bodies). Over the measurement grid (six window and output-cap shapes, a history of 30 to 120 % of the
+	// window, tokenizers of 4, 3.5, 3 and 2.5 characters per token, all with a usage that says so) 1.03 still had requests refused that the first
+	// form of D167 did not get, 1.05 had none and no request more than that form, 1.10 had none but made one request more in two cells.
+	tokenRatioMargin = 1.05
+)
+
+// scaledTokens is the estimate of the provider's tokens for chars characters.
+func scaledTokens(chars int, ratio float64) int {
+	return int(math.Ceil(float64(ceilQuarter(chars)) * ratio))
+}
+
+// summaryPlan is what the requests of one summary share: the window they must fit and the tokens each holds besides the conversation and the
+// summary it carries: the instructions (plain estimate) and the output the request asks for.
+type summaryPlan struct {
+	window int
+	fixed  int
+	ratio  float64
+}
+
+// newSummaryPlan returns the plan of a summary with the model's window; false when the session has no measured ratio, the window is unknown or the
+// instructions and the output alone fill it, where the first form of the split (or Pi's one request) applies.
+func newSummaryPlan(model *ai.Model, reserveTokens int, customInstructions string, measuredRatio float64) (summaryPlan, bool) {
+	if measuredRatio <= 0 || model == nil || model.Capabilities.ContextWindow <= 0 {
+		return summaryPlan{}, false
+	}
+	// A summary request asks for up to the model's output limit (max_completion_tokens; Pi 6fcb4867 sends no smaller cap); without a known
+	// limit, for the reserve as before. The provider refuses a request whose input and asked output together exceed the window, so this is the ONE
+	// output reserve.
+	maxTokens := capMaxTokens((8*reserveTokens)/10, nil)
+	if model.Capabilities.MaxOutputTokens > 0 {
+		maxTokens = model.Capabilities.MaxOutputTokens
+	}
+	ratio := min(max(measuredRatio, minTokenRatio), maxTokenRatio) * tokenRatioMargin
+	plan := summaryPlan{
+		window: model.Capabilities.ContextWindow,
+		fixed:  ceilQuarter(len(SummarizationSystemPrompt)+len(UPDATE_SUMMARIZATION_PROMPT)+len(customInstructions)) + maxTokens,
+		ratio:  ratio,
+	}
+	return plan, plan.window > plan.fixed
+}
+
+// room is the tokens of conversation a request that carries the summary carried has left.
+func (plan summaryPlan) room(carried string) int {
+	return plan.window - plan.fixed - scaledTokens(jsLength(carried), plan.ratio)
+}
+
+// sizes is the estimated tokens of each message as the summary request serializes it.
+func (plan summaryPlan) sizes(messages []agent.AgentMessage) []int {
+	sizes := make([]int, len(messages))
+	for index := range messages {
+		sizes[index] = scaledTokens(jsLength(SerializeConversation(convertToLlm(messages[index:index+1]))), plan.ratio) + 1
+	}
+	return sizes
+}
+
+// leading is how many of the leading sizes fit room together, at least one: a single message larger than room stays whole.
+func leading(sizes []int, room int) int {
+	used := 0
+	for index, size := range sizes {
+		if used > 0 && used+size > room {
+			return index
+		}
+		used += size
+	}
+	return len(sizes)
+}
+
+// splitForContextWindow splits messages into consecutive chunks that each fit one summary request: by the calibrated plan when the session has a
+// measured ratio, by the share of the first form of D167 when it has none. A history that fits, a model without a known window, and a single
+// message larger than a chunk each stay whole.
+func splitForContextWindow(messages []agent.AgentMessage, model *ai.Model, reserveTokens int, previousSummary, customInstructions string, tokenRatio float64) [][]agent.AgentMessage {
+	plan, ok := newSummaryPlan(model, reserveTokens, customInstructions, tokenRatio)
+	if !ok || len(messages) < 2 {
+		return splitByShare(messages, model, reserveTokens, previousSummary, customInstructions)
+	}
+	sizes := plan.sizes(messages)
+	room := plan.room("")
+	var chunks [][]agent.AgentMessage
+	for start := 0; start < len(messages); {
+		end := start + leading(sizes[start:], room)
+		chunks = append(chunks, messages[start:end])
+		start = end
+	}
+	return chunks
+}
+
 // summarizationInputShare is the share of the room a summary request has left that its conversation text may fill by character estimate, because the estimate is four characters per token.
 const summarizationInputShare = 0.75
 
-// splitForContextWindow splits messages into consecutive chunks whose serialized text fits one summary request of the model's context window: the window minus the summary the request carries and the one it asks for, the instructions, and a quarter of what is left. A history that fits, a model without a known window, and a single message larger than a chunk each stay whole.
-func splitForContextWindow(messages []agent.AgentMessage, model *ai.Model, reserveTokens int, previousSummary, customInstructions string) [][]agent.AgentMessage {
+// splitByShare splits messages into consecutive chunks whose serialized text fits one summary request of the model's context window: the window minus the summary the request carries and the one it asks for, the instructions, and a quarter of what is left. A history that fits, a model without a known window, and a single message larger than a chunk each stay whole. It is the split of the first form of D167, for a session without a measured token ratio and after a refused request.
+func splitByShare(messages []agent.AgentMessage, model *ai.Model, reserveTokens int, previousSummary, customInstructions string) [][]agent.AgentMessage {
 	if model == nil || model.Capabilities.ContextWindow <= 0 || len(messages) < 2 {
 		return [][]agent.AgentMessage{messages}
 	}
@@ -1005,7 +1196,7 @@ func Compact(
 
 	if prep.IsSplitTurn && len(prep.TurnPrefixMessages) > 0 {
 		history, prefix := prep.MessagesToSummarize, prep.TurnPrefixMessages
-		if chunks := splitForContextWindow(prefix, model, prep.Settings.ReserveTokens, prep.PreviousSummary, customInstructions); len(chunks) > 1 {
+		if chunks := splitForContextWindow(prefix, model, prep.Settings.ReserveTokens, prep.PreviousSummary, customInstructions, compactiontypes.TokenRatioOf(prep)); len(chunks) > 1 {
 			// pig divergence (D167): pi sends the whole turn prefix in one request. A prefix longer than the window moves all but its last window-sized part into the chunked history summary.
 			last := chunks[len(chunks)-1]
 			history = append(slices.Clip(history), prefix[:len(prefix)-len(last)]...)
@@ -1015,7 +1206,7 @@ func Compact(
 		var historyUsage *ai.Usage
 		if len(history) > 0 {
 			var err error
-			historySummary, historyUsage, err = GenerateSummaryWithUsageUsing(ctx, history, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
+			historySummary, historyUsage, err = GenerateSummaryWithUsageUsing(withTokenRatio(ctx, compactiontypes.TokenRatioOf(prep)), history, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
 			if err != nil {
 				return CompactionResult{}, err
 			}
@@ -1029,7 +1220,7 @@ func Compact(
 		usage = combineUsage(historyUsage, prefixUsage)
 	} else {
 		var err error
-		summary, usage, err = GenerateSummaryWithUsageUsing(ctx, prep.MessagesToSummarize, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
+		summary, usage, err = GenerateSummaryWithUsageUsing(withTokenRatio(ctx, compactiontypes.TokenRatioOf(prep)), prep.MessagesToSummarize, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
 		if err != nil {
 			return CompactionResult{}, err
 		}

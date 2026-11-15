@@ -267,6 +267,23 @@ func EstimateProjectedContextTokens(projection codingagent.SessionProjection, br
 	return agent.ContextUsageEstimate{Tokens: tokens, TrailingTokens: tokens, LastUsageIndex: -1}
 }
 
+// providerTokenRatio is the ratio of the provider's real token count to this package's four-characters-per-token estimate, measured on the span the
+// context estimate takes from the latest trusted assistant usage: the usage's tokens over the estimate of the messages up to and including that
+// assistant message. 0 when the estimate rests on no usage (a session without usage, or usage invalidated by a later compaction or context edit)
+// or the span has no estimate. The usage also counts the system prompt, the tool definitions and the reasoning, which the messages do not hold,
+// so the ratio is high, never low: the side a request that must not overflow the window needs. The messages are in memory and are already
+// walked for the estimate; no session history is read for this.
+func providerTokenRatio(projection codingagent.SessionProjection, estimate agent.ContextUsageEstimate) float64 {
+	if estimate.LastUsageIndex < 0 || estimate.UsageTokens <= 0 {
+		return 0
+	}
+	span := estimateMessagesTokens(projection.Messages[:estimate.LastUsageIndex+1])
+	if span <= 0 {
+		return 0
+	}
+	return float64(estimate.UsageTokens) / float64(span)
+}
+
 // contextEditTargetsAfter reports whether a context_edit entry targets a branch entry after index.
 func contextEditTargetsAfter(branchEntries []codingagent.SessionEntry, index int, edit codingagent.SessionEntry) bool {
 	var parsed codingagent.ContextEditEntry
