@@ -70,7 +70,7 @@ func TestExample66HostData(t *testing.T) {
 					if found != nil {
 						title, _ = found.Value("title").(string)
 					}
-					rows, err := table.Page(ctx, store.NewQuery(labels).Where(func(t store.ColumnRefs) store.Condition {
+					rows, err := table.Page(ctx, store.NewQuery(labels).Where(func(t, _ store.ColumnRefs) store.Condition {
 						return store.Eq(t["project"], address(id.(string)))
 					}), 10, store.PageOptions{})
 					if err != nil {

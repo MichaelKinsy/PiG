@@ -37,7 +37,7 @@ var (
 	})
 	lqOther = mustTableDef("other", store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Int())}, Key: []string{"id"}})
 	// lqNewest is the newest items first.
-	lqNewest = store.NewQuery(lqItems).OrderBy(func(item store.ColumnRefs) *store.ColumnRef { return item["id"] }, "desc")
+	lqNewest = store.NewQuery(lqItems).OrderBy(func(item, _ store.ColumnRefs) *store.ColumnRef { return item["id"] }, "desc")
 
 	lqItem  = contracts.Obj(contracts.Prop("id", contracts.Int()), contracts.Prop("text", contracts.Str()), contracts.Prop("meta", contracts.Opt(contracts.Obj())))
 	lqBoard = mustContract(contracts.Local("app.board", contracts.LocalDeclaration{

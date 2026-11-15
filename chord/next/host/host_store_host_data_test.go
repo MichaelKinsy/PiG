@@ -127,11 +127,11 @@ func shdSessionsFacet(t testing.TB) func(FacetHost, FacetSelf) error {
 				}),
 				"read": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					session := Session.Address(jsonObject("id", id.(string)))
-					page, err := rows.Page(ctx, store.NewQuery(shdLabelsTable).Where(func(t store.ColumnRefs) store.Condition { return store.Eq(t["session"], session) }), 50, store.PageOptions{})
+					page, err := rows.Page(ctx, store.NewQuery(shdLabelsTable).Where(func(t, _ store.ColumnRefs) store.Condition { return store.Eq(t["session"], session) }), 50, store.PageOptions{})
 					if err != nil {
 						return nil, err
 					}
-					pin, err := pins.Page(ctx, store.NewQuery(shdPinsTable).Where(func(t store.ColumnRefs) store.Condition { return store.Eq(t["session"], session) }), 1, store.PageOptions{})
+					pin, err := pins.Page(ctx, store.NewQuery(shdPinsTable).Where(func(t, _ store.ColumnRefs) store.Condition { return store.Eq(t["session"], session) }), 1, store.PageOptions{})
 					if err != nil {
 						return nil, err
 					}

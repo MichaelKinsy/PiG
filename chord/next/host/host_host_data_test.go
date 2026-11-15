@@ -136,7 +136,7 @@ func (w *hdWorld) waitBetween(ctx context.Context) error {
 
 // hdRowsOf is a page of the rows of session id in table.
 func hdRowsOf(ctx context.Context, table store.Table, definition *store.TableDefinition, id string) (store.Page, error) {
-	return table.Page(ctx, store.NewQuery(definition).Where(func(t store.ColumnRefs) store.Condition {
+	return table.Page(ctx, store.NewQuery(definition).Where(func(t, _ store.ColumnRefs) store.Condition {
 		return store.Eq(t["session"], Session.Address(jsonObject("id", id)))
 	}), 10, store.PageOptions{})
 }
@@ -154,7 +154,7 @@ func (w *hdWorld) setup(metaDefinition *documents.StateDefinition, labelsDefinit
 			if err != nil {
 				return contracts.Implementation{}, err
 			}
-			rows := self.Query(labels, store.NewQuery(labelsDefinition).Where(func(t store.ColumnRefs) store.Condition { return store.Eq(t["session"], hdS1) }), 10)
+			rows := self.Query(labels, store.NewQuery(labelsDefinition).Where(func(t, _ store.ColumnRefs) store.Condition { return store.Eq(t["session"], hdS1) }), 10)
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"meta":   Expose(pinned),

@@ -290,8 +290,8 @@ func TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample(t *testing.
 		t.Fatalf("hits of e1 = %v, want 2", row["hits"])
 	}
 	open := store.NewQuery(definition).
-		Where(func(row store.ColumnRefs) store.Condition { return store.Eq(row["done"], false) }).
-		OrderBy(func(row store.ColumnRefs) *store.ColumnRef { return row["at"] }, "desc")
+		Where(func(row, _ store.ColumnRefs) store.Condition { return store.Eq(row["done"], false) }).
+		OrderBy(func(row, _ store.ColumnRefs) *store.ColumnRef { return row["at"] }, "desc")
 	first, err := table.Page(background, open, 1, store.PageOptions{})
 	requireNoError(t, err)
 	next, err := table.Page(background, open, 1, store.PageOptions{After: first.Next})
@@ -299,7 +299,7 @@ func TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample(t *testing.
 	if first.Items[0]["id"] != "e3" || next.Items[0]["id"] != "e1" {
 		t.Fatalf("open pages = %v, %v, want e3 then e1", first.Items, next.Items)
 	}
-	finished, err := table.Count(background, store.NewQuery(definition).Where(func(row store.ColumnRefs) store.Condition { return store.Eq(row["done"], true) }))
+	finished, err := table.Count(background, store.NewQuery(definition).Where(func(row, _ store.ColumnRefs) store.Condition { return store.Eq(row["done"], true) }))
 	requireNoError(t, err)
 	if finished != 3 {
 		t.Fatalf("finished = %d, want 3", finished)
