@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/automation/ci/preflight/reviewed"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -458,14 +459,14 @@ func TestCheckCoEditsLedger(t *testing.T) {
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "change")
 	tip := gitIn(t, dir, "rev-parse", "HEAD")
-	run := func(l ...reviewEntry) []string {
+	run := func(l ...reviewed.Entry) []string {
 		p, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, l, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return p
 	}
-	good := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+	good := reviewed.Entry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
 	if p := run(good); len(p) != 0 {
 		t.Fatalf("matching entry rejected: %v", p)
 	}
@@ -487,7 +488,7 @@ func TestCheckCoEditsLedger(t *testing.T) {
 	if p := run(bad); len(p) != 1 || !strings.Contains(p[0], "does not name a Pi file") {
 		t.Fatalf("unknown Pi file accepted: %v", p)
 	}
-	if p := run(good, reviewEntry{Path: "pkg/gone_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "r"}); len(p) != 1 || !strings.Contains(p[0], "stale") {
+	if p := run(good, reviewed.Entry{Path: "pkg/gone_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "r"}); len(p) != 1 || !strings.Contains(p[0], "stale") {
 		t.Fatalf("stale entry accepted: %v", p)
 	}
 }
@@ -508,7 +509,7 @@ func TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation(t *testing.T) {
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "change\n\nPi-Behavior-Change: packages/x/a.ts:12")
 	tip := gitIn(t, dir, "rev-parse", "HEAD")
-	run := func(l ...reviewEntry) []string {
+	run := func(l ...reviewed.Entry) []string {
 		p, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, l, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -518,7 +519,7 @@ func TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation(t *testing.T) {
 	if p := run(); len(p) != 0 {
 		t.Fatalf("a cited commit is a finding: %v", p)
 	}
-	entry := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "the cited Pi line did not change"}
+	entry := reviewed.Entry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "the cited Pi line did not change"}
 	if p := run(entry); len(p) != 0 {
 		t.Fatalf("an entry for a cited commit was refused or left stale: %v", p)
 	}
@@ -546,15 +547,15 @@ func TestLedgerSurvivesSquashMerge(t *testing.T) {
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "change")
 	tip := gitIn(t, dir, "rev-parse", "HEAD")
-	entry := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+	entry := reviewed.Entry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
 
 	lint := func(rangeSpec string) (problems, prunable []string) {
 		t.Helper()
-		problems, err := checkCoEdits(dir, rangeSpec, time.Time{}, piNames, []reviewEntry{entry}, nil)
+		problems, err := checkCoEdits(dir, rangeSpec, time.Time{}, piNames, []reviewed.Entry{entry}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		prunable, err = prunableEntries(dir, rangeSpec, []reviewEntry{entry})
+		prunable, err = prunableEntries(dir, rangeSpec, []reviewed.Entry{entry})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -587,7 +588,7 @@ func TestLedgerSurvivesSquashMerge(t *testing.T) {
 	}
 
 	// An entry whose commit is in range and matches no finding still fails.
-	entry = reviewEntry{Path: "README.md", Commit: gitIn(t, dir, "rev-parse", "HEAD")[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+	entry = reviewed.Entry{Path: "README.md", Commit: gitIn(t, dir, "rev-parse", "HEAD")[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
 	if p, pr := lint(squashed + "..HEAD"); len(p) != 1 || !strings.Contains(p[0], "stale") || len(pr) != 0 {
 		t.Fatalf("in-range entry matching nothing: problems %v prunable %v", p, pr)
 	}
