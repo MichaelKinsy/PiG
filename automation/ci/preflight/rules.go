@@ -591,9 +591,11 @@ func admitByLedger(d *data, ledger []reviewed.Entry, known map[string]bool, reco
 	return open, notices, problems
 }
 
-// ledgerText is a text of a ledger row as a notice prints it: on one line, cut at maxNotice characters.
+// ledgerText is a text of a ledger row as a notice holds it: on one line and whole. A notice is stored in the record
+// of the verdict and a later run reuses it, so it is never cut here; the report cuts it when it prints (shownNotice).
+// The text is bounded by the ledger file, which the contents endpoint serves up to 1 MiB.
 func ledgerText(s string) string {
-	return clip(strings.Join(strings.Fields(s), " "), maxNotice)
+	return strings.Join(strings.Fields(s), " ")
 }
 
 func citeOf(r reviewed.Entry) string {

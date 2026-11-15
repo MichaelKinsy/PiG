@@ -190,7 +190,7 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	}
 	for _, c := range cfg.Checks {
 		for _, n := range ev.Checks[c.Name].Notices {
-			logf(w, "NOTE  %-20s %s", c.Name, inert(n))
+			logf(w, "NOTE  %-20s %s", c.Name, inert(shownNotice(n)))
 		}
 	}
 	if len(open) > 0 {
@@ -207,7 +207,7 @@ func report(w io.Writer, cfg config, ev evaluation) {
 			}
 		}
 		for _, n := range v.Notices {
-			logf(w, "::notice title=pre-flight %s #%d::%s", c.Name, ev.PR, annotation(n))
+			logf(w, "::notice title=pre-flight %s #%d::%s", c.Name, ev.PR, annotation(shownNotice(n)))
 		}
 	}
 }
@@ -234,9 +234,14 @@ func (w warning) where() string {
 const (
 	maxReason        = 1000
 	maxNotice        = 200
+	maxShownNotice   = 3 * maxNotice
 	maxWarnedFiles   = 20
 	maxCommentLength = 65536
 )
+
+// shownNotice is a notice as the log, the annotation and the comment print it: cut at maxShownNotice characters with an
+// ellipsis. The stored notice stays whole.
+func shownNotice(n string) string { return clip(n, maxShownNotice) }
 
 func clip(s string, n int) string {
 	if r := []rune(s); len(r) > n {

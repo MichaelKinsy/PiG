@@ -128,8 +128,9 @@ The state is unsigned: anyone with write access can edit the bot's comment.
 The Actions cache is the intended place once upstream's cache has room.
 
 A comment stays under GitHub's 65536 characters: warnings are folded to one per
-check and file, at most 20 files per check, notices cut at 200 and reasons at
-1000 characters; when the comment is still too long, its warnings are left out.
+check and file, at most 20 files per check, warning texts cut at 200, notices cut
+at 600 when printed (the stored record holds them whole) and reasons at 1000
+characters; when the comment is still too long, its warnings are left out.
 
 ## Content rules
 

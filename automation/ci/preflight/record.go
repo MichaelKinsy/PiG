@@ -40,7 +40,7 @@ func markdown(cfg config, d *data, ev evaluation) string {
 			}
 		}
 		for _, n := range v.Notices {
-			fmt.Fprintf(&b, "| 📝 | %s | %s |\n", c.Name, inertCell(n))
+			fmt.Fprintf(&b, "| 📝 | %s | %s |\n", c.Name, inertCell(shownNotice(n)))
 		}
 	}
 	if len(acks) > 0 {
