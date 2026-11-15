@@ -286,6 +286,37 @@ func TestPaceReturnsWhenTheLinkOrTheHostCloses(t *testing.T) {
 	}
 }
 
+// The same stops through a real hostLink: the host's close aborts its routing context (the host's abort signal; Accept / Connect
+// watch no context of theirs, so no other abort reaches a link), and the host closes a link of its own (a heartbeat that stays
+// silent, a protocol error). Each ends the wait of a reader in pace at once, while the paced task it waits for still runs.
+func TestPaceInTheLinkReaderReturnsAtOnceWhenTheHostOrTheLinkCloses(t *testing.T) {
+	for _, which := range []string{"the host closes", "the host closes the link"} {
+		t.Run(which, func(t *testing.T) {
+			server, peer := pacedLinked(t, func(FacetHost) error { return nil }, &arrivalLink{arrived: func([]byte) {}})
+			loop := server.loop().(*Loop)
+			hold := make(chan struct{})
+			pacedRunning(loop, hold, func() {})
+			// A frame the host handles, whose checkpoint then waits for the running paced task.
+			peer.Send(&link.ReleaseMessage{Origin: link.Some(1), Hold: 0})
+			waitsInPace(t, loop, 1)
+			closed := make(chan error, 1)
+			if which == "the host closes" {
+				go func() { closed <- server.Close(background) }()
+			} else {
+				server.enter(func() { server.links[0].close() })
+				closed <- nil
+			}
+			until(t, "the reader returns from pace while the paced task still runs", func() bool {
+				running, _, _, waiting := pacing(loop)
+				return waiting == 0 && running == 1
+			})
+			close(hold)
+			must(t, <-closed)
+			loop.quiesce()
+		})
+	}
+}
+
 // C5: a teardown parked on a real wait that only a LATER frame of the same link ends. The checkpoint waits for endings that
 // can run, not for one that waits for the peer: the reader goes on reading, the later frame arrives, the chain finishes. The
 // endings behind the parked head pile up meanwhile, unbounded, as in Pi (object.ts:1625-1633: `await teardown.previous`
