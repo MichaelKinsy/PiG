@@ -20,7 +20,7 @@ import (
 )
 
 // Ports packages/chord/src/node/plugins/testing.ts (`testPlugin`, slice 12 §6, "Testing a plugin alone"): a plugin built as
-// production builds it, evaluated with the app's real API modules, loaded on an in-memory host beside stub facets serving
+// production builds it, evaluated with the app's real API modules, loaded on an in-memory host beside stand-in facets serving
 // the contracts it uses. The registries it contributes to that nobody serves are served by a collecting facet, which
 // gathers their entries for the test; the contracts its requests wait for unserved are listed.
 //
@@ -29,18 +29,18 @@ import (
 // objects live on the NodeHost (`TestedPlugin.Host`, reached through NodeHost.Get and NodeHost.Hold), the stubs are Go facets
 // on a Go host that reach the plugin through the bridge (BridgedFacet) or JavaScript facets in modules loaded beside it
 // (CoreFacet), and the helper's own reads of the host's internals (the collection's fixed point, `unservedNames`) are control
-// requests of node/testing.mjs. The residue that cannot cross the process boundary (a live closure as a stub, `root`'s
+// requests of node/testing.mjs. The residue that cannot cross the process boundary (a live closure as a stand-in, `root`'s
 // closure, a registry token) is D502 and D503 (docs/parity/divergences).
 
 // pig divergence (D502): Pi's stubs are live JavaScript facets of one in-process host.
 //
-// TestStub is a stub facet of a Go test: the Go facet that serves the contracts a tested plugin uses, loaded on the helper's
-// Go host and bridged to the plugin's host (BridgedFacet), so its contracts must be local types without keyed members. A stub
+// TestStub is a stand-in facet of a Go test: the Go facet that serves the contracts a tested plugin uses, loaded on the helper's
+// Go host and bridged to the plugin's host (BridgedFacet), so its contracts must be local types without keyed members. A stand-in
 // that serves or contributes to a registry, or a remote type, is a JavaScript module (TestPluginOptions.Core).
 type TestStub struct {
-	// Name is the stub's plugin name (`@acme/notes`).
+	// Name is the stand-in's plugin name (`@acme/notes`).
 	Name string
-	// Facet is the stub, an ordinary Go facet.
+	// Facet is the stand-in, an ordinary Go facet.
 	Facet host.Facet
 	// Contracts are the local types the facet serves that the plugin uses.
 	Contracts []*contracts.Contract
@@ -233,7 +233,7 @@ func (t *TestedPlugin) loadStubs(options TestPluginOptions, principal data.Princ
 	return stubs, bridged, nil
 }
 
-// setupFailed is the error of a load whose plugins failed: a test of a plugin whose setup (or a stub's) failed has nothing to
+// setupFailed is the error of a load whose plugins failed: a test of a plugin whose setup (or a stand-in's) failed has nothing to
 // test. nil for none.
 func setupFailed(failed []host.PluginFailure) error {
 	if len(failed) == 0 {
@@ -410,7 +410,7 @@ func (t *TestedPlugin) Errors() []NodeHostError {
 
 // pig divergence (D503): the registry is named, not a token, and a value crosses as data.
 //
-// Contributions is the current entries of registry name, one the plugin contributes to that neither it nor a stub serves (the
+// Contributions is the current entries of registry name, one the plugin contributes to that neither it nor a stand-in serves (the
 // helper serves it, collecting), sorted by plugin as the registry's table is. A registry it does not collect is an error. A
 // value crosses as data.
 func (t *TestedPlugin) Contributions(name string, ctx context.Context) ([]Contribution, error) {
