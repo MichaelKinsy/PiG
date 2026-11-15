@@ -29,6 +29,7 @@ import (
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/compactprogress"
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -178,13 +179,14 @@ type Session struct {
 	// Compaction state.
 	// compacting is true while any compaction (manual or auto) is in flight.
 	manualCompacting      bool
-	compacting            atomic.Bool        // true while Compact() or runAutoCompaction() is in flight
-	compactMu             sync.Mutex         // protects compaction and tree-navigation ownership
-	compactCancel         context.CancelFunc // non-nil while Compact() or runAutoCompaction() is in flight
-	compactDone           chan struct{}      // closed when the current compaction releases ownership
-	compactAbortRequested bool               // cancellation arrived before compactCancel was installed
-	branchSumCancel       context.CancelFunc // non-nil while tree navigation owns its abortable operation
-	branchSumDone         chan struct{}      // closed when the current tree navigation releases ownership
+	compacting            atomic.Bool                              // true while Compact() or runAutoCompaction() is in flight
+	compactMu             sync.Mutex                               // protects compaction and tree-navigation ownership
+	compactCancel         context.CancelFunc                       // non-nil while Compact() or runAutoCompaction() is in flight
+	compactionProgress    atomic.Pointer[compactprogress.Progress] // the streamed-summary counter of the compaction in flight (pig divergence D652)
+	compactDone           chan struct{}                            // closed when the current compaction releases ownership
+	compactAbortRequested bool                                     // cancellation arrived before compactCancel was installed
+	branchSumCancel       context.CancelFunc                       // non-nil while tree navigation owns its abortable operation
+	branchSumDone         chan struct{}                            // closed when the current tree navigation releases ownership
 
 	// overflowRecoveryAttempted prevents recursive overflow compaction.
 	// Set to true on the first overflow recovery attempt; any subsequent
@@ -1447,6 +1449,20 @@ func (s *Session) Agent() *agent.Agent { return s.agent }
 // the public API surface; SDK consumers should use the public
 // Session methods (Path, ID, CWD, Messages, Send, etc.) instead.
 func (s *Session) Inner() *icodingagent.Session { return s.inner.Load() }
+
+// CompactionProgress is the streamed-summary counter of the compaction in flight, nil when none runs.
+//
+// pig divergence (D652): the interactive compaction line shows how much of the summary has streamed.
+func (s *Session) CompactionProgress() *compactprogress.Progress { return s.compactionProgress.Load() }
+
+// withCompactionProgress is ctx carrying a fresh Progress, which CompactionProgress returns until the compaction ends.
+//
+// pig divergence (D652): the summary requests count what they stream into it.
+func (s *Session) withCompactionProgress(ctx context.Context) context.Context {
+	progress := new(compactprogress.Progress)
+	s.compactionProgress.Store(progress)
+	return compactprogress.With(ctx, progress)
+}
 
 // ReplaceInner aborts work owned by the old Session, then installs the new
 // Session state, including whether its manager persists to a file.
@@ -2897,7 +2913,7 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 	entries := s.currentBranch()
 	s.mu.Unlock()
 
-	compactCtx, cancel := context.WithCancel(ctx)
+	compactCtx, cancel := context.WithCancel(s.withCompactionProgress(ctx))
 	s.compactMu.Lock()
 	s.compactCancel = cancel
 	abortRequested := s.compactAbortRequested
@@ -2909,6 +2925,7 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 		cancel()
 		s.compactMu.Lock()
 		s.compactCancel = nil
+		s.compactionProgress.Store(nil)
 		s.compactMu.Unlock()
 		s.finishCompaction()
 	})
@@ -3530,7 +3547,7 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 		return false, nil
 	}
 
-	compactCtx, cancel := context.WithCancel(ctx)
+	compactCtx, cancel := context.WithCancel(s.withCompactionProgress(ctx))
 	s.compactMu.Lock()
 	s.compactCancel = cancel
 	abortRequested := s.compactAbortRequested
@@ -3542,6 +3559,7 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 		cancel()
 		s.compactMu.Lock()
 		s.compactCancel = nil
+		s.compactionProgress.Store(nil)
 		s.compactMu.Unlock()
 	}()
 

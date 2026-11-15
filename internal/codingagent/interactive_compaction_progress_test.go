@@ -28,7 +28,7 @@ func (p *compactStreamProvider) Close() error { return nil }
 func (p *compactStreamProvider) Stream(ctx context.Context, _ ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 	p.calls++
 	stream := ai.NewAssistantMessageEventStream()
-	if p.calls <= p.chat {
+	if p.calls <= p.chat || p.calls > p.chat+1 {
 		message := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: strings.Repeat("reply ", 15_000)}}, Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonStop, Timestamp: time.Now().UnixMilli()}
 		_ = stream.Push(ai.StartEvent{Partial: message})
 		_ = stream.Push(ai.DoneEvent{Reason: message.StopReason, Message: message})
@@ -148,7 +148,7 @@ func TestCompactionLineShowsElapsedTimeAndStreamedTokens(t *testing.T) {
 	if err := stream.Push(ai.DoneEvent{Reason: ai.StopReasonStop, Message: done}); err != nil {
 		t.Fatal(err)
 	}
-	h.WaitIdle(t, 10*time.Second)
+	waitStatusGone(t, h)
 	if kind, label := h.Status(); kind != "" || label != "" {
 		t.Fatalf("after the compaction the indicator is %q %q, want none", kind, label)
 	}
@@ -162,6 +162,21 @@ func TestCompactionLineShowsElapsedTimeAndStreamedTokens(t *testing.T) {
 	}
 }
 
+// waitStatusGone waits until the compaction's end event has cleared the indicator: the Session is idle before its end event reaches the mode.
+func waitStatusGone(t *testing.T, h *icodingagent.TestHarness) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if kind, _ := h.Status(); kind == "" {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the compaction indicator was not cleared")
+		}
+		runtime.Gosched()
+	}
+}
+
 // Escape during the summary stream: "Compaction cancelled" as before, the session unchanged, the counter cleared and nothing left running.
 func TestCompactionEscapeDuringTheStreamLeavesNothingRunning(t *testing.T) {
 	h, session, provider, stream := compactingHarness(t)
@@ -170,7 +185,7 @@ func TestCompactionEscapeDuringTheStreamLeavesNothingRunning(t *testing.T) {
 	waitLabel(t, h, base.Add(5*time.Second), "5s · ~1.0k tokens")
 	entriesBefore := len(session.Inner().GetEntries())
 	h.Do(func() { h.Key("\x1b") })
-	h.WaitIdle(t, 10*time.Second)
+	waitStatusGone(t, h)
 	select {
 	case <-provider.abortDone:
 	case <-time.After(10 * time.Second):

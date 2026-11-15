@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -88,7 +89,77 @@ func (m *InteractiveMode) showCompactionStatusIndicator(reason string) {
 	case "overflow":
 		label = "Context overflow detected, Auto-compacting... "
 	}
-	m.showStatusIndicator(&tui.StatusIndicator{Kind: "compaction", Loader: tui.NewLoader(m.tuiInst, tui.ThemeFg("accent"), tui.ThemeFg("muted"), label+m.statusCancelHint(), nil)})
+	// pig divergence (D652): the label's elapsed time and streamed size are rewritten by the status tick (tickCompactionMessage); a retry of the summary keeps the compaction's start.
+	m.compactionLabel, m.compactionHint = label, m.statusCancelHint()
+	m.compactionShownSecs, m.compactionShownTokens = 0, 0
+	m.showStatusIndicator(&tui.StatusIndicator{Kind: "compaction", Loader: tui.NewLoader(m.tuiInst, tui.ThemeFg("accent"), tui.ThemeFg("muted"), compactionStatusMessage(label, 0, 0, m.compactionHint), nil)})
+	if m.compactionStartedAt.IsZero() {
+		m.compactionStartedAt = m.statusLastFrame
+	}
+}
+
+// compactionStatusMessage is the compaction line: the label, the elapsed time from the first second, the streamed size once a delta has arrived, and the hint last, so that the old line's two halves still hold around them (pig divergence D652).
+func compactionStatusMessage(label string, secs, tokens int, hint string) string {
+	buf := make([]byte, 0, 128)
+	buf = append(buf, label...)
+	if secs > 0 {
+		buf = appendCompactionElapsed(buf, secs)
+		if tokens > 0 {
+			buf = append(buf, " · ~"...)
+			buf = appendCompactionTokens(buf, tokens)
+			buf = append(buf, " tokens"...)
+		}
+		buf = append(buf, ' ')
+	} else if tokens > 0 {
+		buf = append(buf, "~"...)
+		buf = appendCompactionTokens(buf, tokens)
+		buf = append(buf, " tokens "...)
+	}
+	buf = append(buf, hint...)
+	return string(buf)
+}
+
+// appendCompactionElapsed appends whole seconds as "12s", "1m 12s" or "1h 2m 3s": the form of the tool footer's tui.FormatToolDuration without its tenths, appended without an allocation.
+func appendCompactionElapsed(buf []byte, secs int) []byte {
+	if hours := secs / 3600; hours > 0 {
+		buf = strconv.AppendInt(buf, int64(hours), 10)
+		buf = append(buf, "h "...)
+	}
+	if minutes := secs % 3600 / 60; secs >= 60 {
+		buf = strconv.AppendInt(buf, int64(minutes), 10)
+		buf = append(buf, "m "...)
+	}
+	buf = strconv.AppendInt(buf, int64(secs%60), 10)
+	return append(buf, 's')
+}
+
+// appendCompactionTokens appends the footer's token form: plain digits below a thousand, formatTokens above.
+func appendCompactionTokens(buf []byte, tokens int) []byte {
+	if tokens < 1000 {
+		return strconv.AppendInt(buf, int64(tokens), 10)
+	}
+	return append(buf, formatTokens(tokens)...)
+}
+
+// tickCompactionMessage rewrites the compaction line when the elapsed seconds or the streamed size changed since it was last written: one string, on the status tick the owner loop already runs, with the tick's own clock reading (pig divergence D652). It reports whether the line changed.
+func (m *InteractiveMode) tickCompactionMessage(now time.Time) bool {
+	indicator := m.activeStatusIndicator
+	if indicator == nil || indicator.Kind != "compaction" || m.compactionStartedAt.IsZero() {
+		return false
+	}
+	secs := int(max(0, now.Sub(m.compactionStartedAt)) / time.Second)
+	tokens := 0
+	if handle := m.opts.SessionHandle; handle != nil {
+		if progress := handle.CompactionProgress(); progress != nil {
+			tokens = progress.Tokens()
+		}
+	}
+	if secs == m.compactionShownSecs && tokens == m.compactionShownTokens {
+		return false
+	}
+	m.compactionShownSecs, m.compactionShownTokens = secs, tokens
+	indicator.SetMessageStep(compactionStatusMessage(m.compactionLabel, secs, tokens, m.compactionHint))
+	return true
 }
 
 func (m *InteractiveMode) showBranchSummaryStatusIndicator() {

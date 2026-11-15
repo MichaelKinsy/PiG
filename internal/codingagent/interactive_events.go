@@ -643,6 +643,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 		}
 		m.isCompacting = false
 		m.clearStatusIndicator("compaction")
+		m.compactionStartedAt = time.Time{} // pig divergence (D652): the next compaction dates itself
 
 		switch {
 		case e.Aborted:

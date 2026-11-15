@@ -298,6 +298,14 @@ func (l *Loader) TickStep() {
 	l.mu.Unlock()
 }
 
+// SetMessageStep replaces the message for an owner that draws the change itself, as TickStep does for the frame: it asks its TUI for no frame (pig divergence D652).
+func (l *Loader) SetMessageStep(message string) {
+	l.mu.Lock()
+	l.Message = message
+	l.Text.Invalidate()
+	l.mu.Unlock()
+}
+
 func (l *Loader) renderedIndicator() string {
 	if len(l.Frames) == 0 {
 		return ""
