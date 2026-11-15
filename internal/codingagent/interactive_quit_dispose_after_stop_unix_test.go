@@ -10,6 +10,9 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // quitDisposeRuntime records which dispose a shutdown ran: the plain one, or the one of a mode whose TUI has stopped.
@@ -144,5 +147,61 @@ func TestQuitSignalAtTheTerminalHandBackEndsThePendingQuit(t *testing.T) {
 				t.Errorf("the child ended with status %d, want %d:\n%s", code, tc.status, output)
 			}
 		})
+	}
+}
+
+// heldQuitRuntime is a runtime whose dispose of a quit by keys does not return until release is closed: an author that never reacts to the abort.
+type heldQuitRuntime struct {
+	InteractiveRuntime
+	entered chan<- struct{}
+	release <-chan struct{}
+}
+
+func (h heldQuitRuntime) EmitQuitShutdownAfterStop() {
+	close(h.entered)
+	<-h.release
+}
+
+// Pi's stop() removed its signal handlers, so a ctrl+c at the stopped TUI of a quit whose dispose cannot return ends Pi at once (130 after 28 to 32 ms under tmux). The
+// pending dispose has emitted session_shutdown already and holds shutdownMu, so the second that shutdownExtensionsBriefly grants would be spent on a lock that nothing
+// releases: pig took 1.01 to 1.03 s (e12859ea5e). No clock decides here: the wait's bound is set beyond the test's budget, and the dispose is released only after
+// interruptShutdown has returned, so an interrupt that waits for the lock cannot pass.
+func TestInterruptOfAPendingQuitDoesNotWaitForItsLock(t *testing.T) {
+	freshEnding(t)
+	var order []string
+	m := upstreamShutdownMode(t, &order, false)
+	m.opts.AgentDir = t.TempDir()
+	entered, release := make(chan struct{}), make(chan struct{})
+	m.runtimeHost = heldQuitRuntime{entered: entered, release: release}
+	m.signalShutdownWait = 24 * time.Hour
+	budget := testbudget.Wait(t)
+	released := false
+	releaseQuit := func() {
+		if !released {
+			released = true
+			close(release)
+		}
+	}
+	defer releaseQuit()
+	quit := make(chan error, 1)
+	go func() { quit <- m.finishInteractiveShutdown() }()
+	select {
+	case <-entered:
+	case <-time.After(budget):
+		t.Fatalf("the quit by keys did not reach its dispose within %s", budget)
+	}
+	interrupted := make(chan bool, 1)
+	go func() { interrupted <- m.interruptShutdown() }()
+	select {
+	case ok := <-interrupted:
+		if !ok {
+			t.Error("a running session ignored SIGINT")
+		}
+	case <-time.After(budget):
+		t.Fatalf("interruptShutdown waited %s for the lock that the pending dispose of the quit holds, which nothing releases while the quit is held", budget)
+	}
+	releaseQuit()
+	if err := <-quit; err != nil {
+		t.Fatal(err)
 	}
 }

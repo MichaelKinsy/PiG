@@ -599,6 +599,8 @@ type InteractiveMode struct {
 	quitDisposing atomic.Bool
 	// quitByKeys is set by finishInteractiveShutdown for a quit by keys, before it stops the TUI. stopInteractiveTui reads it, on the same goroutine, to mark the quit disposing as the terminal is handed back.
 	quitByKeys bool
+	// signalShutdownWait is how long shutdownExtensionsBriefly waits for the handlers; zero is the second it has always waited. A test that must tell the wait for the lock of a pending quit from the lack of that wait sets it beyond its own budget, so that the wait can end only by the lock.
+	signalShutdownWait time.Duration
 	// extensionKeybindings is the keybinding table extension state
 	// snapshots carry, republished when the keybindings reload.
 	extensionKeybindings atomic.Pointer[map[string]any]

@@ -561,9 +561,13 @@ func (m *InteractiveMode) shutdownExtensionsBriefly() {
 		m.shutdownFromSignal(false)
 		close(done)
 	}()
+	wait := m.signalShutdownWait
+	if wait == 0 {
+		wait = time.Second
+	}
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(wait):
 	}
 }
 
