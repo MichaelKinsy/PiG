@@ -52,6 +52,17 @@ func (k *eventClientHost) turn(work func()) {
 	k.inline.Store(false)
 }
 
+// waitDelivered waits for the listener's first delivery: Pi's `delivered.promise`, which replaced a loop of turns that
+// ended when `seen` held a value (the inflate runs off the client's turns, so no count of them is sure to cover it).
+func waitDelivered(t testing.TB, delivered <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-delivered:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the delivery never came")
+	}
+}
+
 // counts are the counters of the client's telemetry, by name (with `.reason` when it has one).
 func (k *eventClientHost) counts() map[string]float64 {
 	result := map[string]float64{}
@@ -240,8 +251,11 @@ func TestConsumerEvents(t *testing.T) {
 		t.Run("inflate nothing for a member nobody listens to, nor parse it; acknowledged all the same", func(t *testing.T) {
 			k := eventClient(t, eventClientOptions{})
 			var seen []any
+			delivered := make(chan struct{})
+			var deliveredOnce sync.Once
 			k.paddle(t, func(e contracts.EventDelivery[delta.JsonValue]) {
 				seen = append(seen, e.Value.(*delta.JsonObject).Value("y"))
+				deliveredOnce.Do(func() { close(delivered) })
 			})
 			deflated := func(y float64) link.Part {
 				text, err := link.JsonPart(jsonObject("y", y))
@@ -255,7 +269,10 @@ func TestConsumerEvents(t *testing.T) {
 				t.Fatalf("inflates = %v, want none", got)
 			}
 			k.Peer.Send(&link.EventMessage{Events: []link.WireEvent{{Hold: k.Hold, Member: names.Events["paddle"], At: 1, Value: deflated(2)}}})
-			rhWaitFor(t, func() bool { return len(eventAcks(k.Peer)) > 0 && sumInts(eventAcks(k.Peer)) == 2 })
+			// The web inflate runs on libuv's thread pool in Pi: no number of turns is sure to cover it, so the test waits for the delivery.
+			waitDelivered(t, delivered)
+			// Go's ack is sent by the client's own goroutine after the delivery (Pi's follows within the turn `transported` awaits): wait for that event.
+			rhWaitFor(t, func() bool { return sumInts(eventAcks(k.Peer)) == 2 })
 			settle(k.Peer)
 			requireEqual(t, "seen", seen, []any{2.0})
 			if got := k.counts()["chord.link.inflates"]; got != 1 {
@@ -319,8 +336,11 @@ func TestConsumerEvents(t *testing.T) {
 			held := newHeldInflate()
 			k := eventClient(t, eventClientOptions{Context: chordctx.WithTelemetry(background, held)})
 			var seen []any
+			delivered := make(chan struct{})
+			var deliveredOnce sync.Once
 			k.paddle(t, func(e contracts.EventDelivery[delta.JsonValue]) {
 				seen = append(seen, e.Value.(*delta.JsonObject).Value("y"))
+				deliveredOnce.Do(func() { close(delivered) })
 			})
 			text, err := link.JsonPart(jsonObject("y", 1.0))
 			must(t, err)
@@ -336,6 +356,8 @@ func TestConsumerEvents(t *testing.T) {
 			}
 			requireEqual(t, "event acks while the inflate holds the message", eventAcks(k.Peer), []int{})
 			close(held.release)
+			// The real inflate behind the gate runs on libuv's thread pool in Pi: wait for the delivery, not for turns.
+			waitDelivered(t, delivered)
 			rhWaitFor(t, func() bool { return len(eventAcks(k.Peer)) > 0 })
 			settle(k.Peer)
 			requireEqual(t, "seen", seen, []any{1.0})
