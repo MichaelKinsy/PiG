@@ -141,7 +141,7 @@ func TestExample66HostData(t *testing.T) {
 	}
 
 	// 5. Delete p1: its document and rows go; p2 and p9 stay.
-	deleted, err := server.DeleteHostData(address("p1"), background)
+	deleted, err := server.DeleteHostData(address("p1"), background, HostDeleteOptions{})
 	must(t, err)
 	if deleted != (store.HostDataCounts{Documents: 1, Rows: 2}) {
 		t.Fatalf("5. deleted = %+v, want {Documents:1 Rows:2}", deleted)

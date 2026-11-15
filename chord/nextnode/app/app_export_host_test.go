@@ -241,7 +241,7 @@ func TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfte
 	if err := real.DeleteHostData(projectAddress("p1"), background); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.app.Host.DeleteHostData(projectAddress("p1"), background); err != nil {
+	if _, err := s.app.Host.DeleteHostData(projectAddress("p1"), background, host.HostDeleteOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.app.DeleteData(projectAddress("p1"), background); err != nil {
@@ -309,9 +309,9 @@ func (h *goHost) ImportHostData(parts store.PartSource, ctx context.Context, opt
 	return h.Host.ImportHostData(parts, ctx, options)
 }
 
-func (h *goHost) DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error) {
+func (h *goHost) DeleteHostData(address contracts.Address, ctx context.Context, options host.HostDeleteOptions) (store.HostDataCounts, error) {
 	h.deleted = append(h.deleted, address.Key)
-	return h.Host.DeleteHostData(address, ctx)
+	return h.Host.DeleteHostData(address, ctx, options)
 }
 
 // exportedProject exports project p1 (with notes) of a started app: its archive's path.
