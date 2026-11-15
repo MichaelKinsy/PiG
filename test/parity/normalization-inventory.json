@@ -3317,6 +3317,35 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/fullscreen/09b-main-screen-compaction-40-columns.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\\.\\.\\. \\(escape to ─*)$",
+          "with": "${1}<SPINNER>${2}",
+          "reason": "Pi renders an animated spinner in the editor border; preserve its label, spacing and full border width."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: At 40 columns the compaction line is Pi's line cut at the border, on both sides.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "How do goroutines work internally?",
+            "capture_end": "faux-1"
+          },
+          "reason": "Owned visible surface: At 40 columns the compaction line is Pi's line cut at the border, on both sides.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/fullscreen/10-main-screen-compaction-settled.toml",
       "transforms": [
         {
