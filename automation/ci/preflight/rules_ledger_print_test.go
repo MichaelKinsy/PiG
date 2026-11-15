@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -349,5 +350,82 @@ func TestClippedNoticeIsNotAStoredVerdict(t *testing.T) {
 	log2, row2 := printed(second)
 	if log2 != log1 || row2 != row1 {
 		t.Errorf("a reused record prints another notice:\nfirst  %.400q\nsecond %.400q", log1, log2)
+	}
+}
+
+// shortenedRun is an evaluation whose report is too long for a comment: many long notices and one warning.
+func shortenedRun(t *testing.T) (cfg config, d *data, ev evaluation, env *ruleEnv) {
+	t.Helper()
+	cfg, err := loadConfig(configYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d = &data{
+		Files:          ledgerFiles(ledgerTestA),
+		Commits:        []prCommit{commit(ledgerCommitA, "a: b", true)},
+		ReviewedLedger: ledgerRow(ledgerCommitA, ledgerTestA, "NOBEHAVIOR", "", "A reason."),
+		CommitFiles:    changedBy([]string{ledgerTestA}, ledgerCommitA),
+	}
+	d.Repo, d.PR, d.Mode, d.Relevant, d.Version, d.BaseTip = "o/r", 7, modeFull, []string{"test-expectation"}, "v1", "basetip"
+	d.Pull.Head.SHA = "headsha"
+	env = ledgerEnv(t)
+	ev = evaluate(cfg, d, env)
+	v := ev.Checks["test-expectation"]
+	for i := range 80 {
+		v.Notices = append(v.Notices, fmt.Sprintf("note %d %s", i, strings.Repeat("n", 1000)))
+	}
+	v.Warnings = []warning{{File: "a/x.go", Blob: "b", Text: "a warning"}}
+	ev.Checks["test-expectation"] = v
+	return cfg, d, ev, env
+}
+
+// When the report is too long for a comment, the comment shows the verdicts without their warnings and notices. The
+// next run with unchanged inputs must not reuse that shortened record: its log, annotations and summary hold them.
+func TestShortenedCommentIsNotReusedAsTheVerdicts(t *testing.T) {
+	cfg, d, ev, env := shortenedRun(t)
+	r := newRecording(cfg, d, ev, prComment{})
+	if r.bodyErr != nil || !strings.Contains(r.body, shortened) {
+		t.Fatalf("the comment is not the shortened one (err %v)", r.bodyErr)
+	}
+	prev := parseState(r.body)
+	if prev == nil {
+		t.Fatal("the comment carries no state")
+	}
+	mode, reason := decideMode(prev, d.Version, "headsha", "basetip", bodyHash(d.Pull.Body))
+	if mode == modeReuse {
+		t.Errorf("mode %s (%s): the shortened record is reused", mode, reason)
+	}
+	d.Mode, d.Previous = mode, prev
+	again := evaluate(cfg, d, env)
+	var first, second bytes.Buffer
+	report(&first, cfg, ev)
+	report(&second, cfg, again)
+	if first.String() != second.String() {
+		t.Errorf("the next run prints another log:\nfirst  %.300q\nsecond %.300q", first.String(), second.String())
+	}
+	if markdown(cfg, d, ev) != markdown(cfg, d, again) {
+		t.Error("the next run has another report for the summary")
+	}
+	if !strings.Contains(second.String(), "::warning ") || !strings.Contains(second.String(), "::notice ") {
+		t.Errorf("the next run has no warning or notice annotation:\n%.300q", second.String())
+	}
+}
+
+// A report that fits a comment is stored whole and stays reusable.
+func TestFittingCommentStoresTheWholeVerdicts(t *testing.T) {
+	cfg, d, ev, _ := shortenedRun(t)
+	v := ev.Checks["test-expectation"]
+	v.Notices = v.Notices[:2]
+	ev.Checks["test-expectation"] = v
+	r := newRecording(cfg, d, ev, prComment{})
+	if strings.Contains(r.body, shortened) {
+		t.Fatal("a fitting report was shortened")
+	}
+	prev := parseState(r.body)
+	if prev == nil || len(prev.Checks["test-expectation"].Notices) != 2 || len(prev.Checks["test-expectation"].Warnings) != 1 {
+		t.Fatalf("the state lacks the notices or warnings: %+v", prev)
+	}
+	if mode, reason := decideMode(prev, d.Version, "headsha", "basetip", bodyHash(d.Pull.Body)); mode != modeReuse {
+		t.Errorf("mode %s (%s), want reuse", mode, reason)
 	}
 }
