@@ -25,8 +25,12 @@ type abortListener struct {
 // listenerSeq numbers the registrations of OnAbort.
 var listenerSeq atomic.Uint64
 
+// fire runs fn once, unless a cancel ran it or stop kept it from running. A listener that ran is held by no source: a cancel
+// clears the set of its own source only, and the others (the parent or signal it listens to as well) would keep a wait that
+// ended for the life of their context.
 func (l *abortListener) fire(cause error) {
 	if l.done.CompareAndSwap(false, true) {
+		l.unregister()
 		l.fn(cause)
 	}
 }
@@ -100,9 +104,11 @@ func abortSources(ctx context.Context, out []*abortContext) ([]*abortContext, bo
 // WithCancel under a parent that is cancelled) runs fn for the first of them to abort, with that one's cause.
 //
 // stop removes the registration and reports whether it kept fn from running; it is safe to call after fn ran, and from fn
-// itself. A caller that no longer waits MUST call it: a registration is held by every source until then. exact is false
-// when ctx can also be aborted by a context of another package (a deadline, a stdlib cancel), which OnAbort cannot listen to:
-// the caller needs context.AfterFunc for that source, which runs on a goroutine of its own.
+// itself. A caller whose wait ends without fn having run (its result came first, its owner went away) MUST call it: a
+// registration is held by every source it listens to, and a source may live much longer than the wait, until then. Once fn
+// ran no source holds the registration and stop has nothing to do. exact is false when ctx can also be aborted by a context
+// of another package (a deadline, a stdlib cancel), which OnAbort cannot listen to: the caller needs context.AfterFunc for
+// that source, which runs on a goroutine of its own.
 func OnAbort(ctx context.Context, fn func(cause error)) (stop func() bool, exact bool) {
 	l := &abortListener{fn: fn, seq: listenerSeq.Add(1)}
 	l.sources, exact = abortSources(ctx, nil)
@@ -130,17 +136,25 @@ func OnAbort(ctx context.Context, fn func(cause error)) (stop func() bool, exact
 		c.mu.Unlock()
 	}
 	if aborted != nil {
-		l.unregister()
 		l.fire(context.Cause(aborted.Context))
+	}
+	// A cancel of another source, or stop, may have settled the listener while this one registered on the later sources:
+	// nothing would take its registrations out then.
+	if l.done.Load() {
+		l.unregister()
 	}
 	return stop, exact
 }
 
-// unregister removes the listener from every source that holds it.
+// unregister removes the listener from every source that holds it; a set left empty is dropped, as a map keeps the buckets
+// it grew to, and a source that outlives its waits would keep the size of its busiest moment.
 func (l *abortListener) unregister() {
 	for _, c := range l.sources {
 		c.mu.Lock()
 		delete(c.listeners, l)
+		if len(c.listeners) == 0 {
+			c.listeners = nil
+		}
 		c.mu.Unlock()
 	}
 }
