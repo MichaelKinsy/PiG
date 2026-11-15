@@ -42,6 +42,9 @@ type Loop struct {
 	scheduled bool
 
 	tasks sync.WaitGroup
+	// hops counts the joined hops in flight, quiet is closed when it falls to zero (host_loop_seam.go); both guarded by mu.
+	hops  int
+	quiet chan struct{}
 
 	// idle are the coroutines of finished handlers; pending the handlers that parked or returned in the running section,
 	// whose rest runs when it ends (host_loop_lend.go). idle is guarded by mu, pending by the section.
@@ -97,7 +100,7 @@ func (l *Loop) Queue(job func()) {
 	}
 	l.mu.Unlock()
 	if start {
-		l.Go(func() { l.Run(func() {}) })
+		l.joined(func() { l.Run(func() {}) })
 	}
 }
 
