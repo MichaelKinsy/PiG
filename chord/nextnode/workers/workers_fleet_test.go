@@ -40,6 +40,8 @@ type fleetOptions struct {
 	start     func(address contracts.Address, ctx context.Context) (delta.JsonValue, error)
 	principal func() (data.Principal, error)
 	authorize func() (bool, error)
+	// admit is the route's admission, passed through CreateWorkers (slice 14 §2.3).
+	admit host.RouteAdmit
 	// onAuthorize runs for every hold the route authorizes, inside the server's section (the route's `authorize` runs there).
 	onAuthorize func(address contracts.Address)
 	// env is added to the workers' environment.
@@ -159,6 +161,7 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 			}
 			return true, nil
 		},
+		Admit: options.admit,
 		Principal: func(address contracts.Address) (data.Principal, error) {
 			if options.principal != nil {
 				return options.principal()

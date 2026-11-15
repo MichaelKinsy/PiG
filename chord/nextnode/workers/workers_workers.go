@@ -76,6 +76,9 @@ type WorkersOptions struct {
 	CompileCache string
 	// Authorize is the route's `authorize`: whether principal may reach address.
 	Authorize func(principal data.Principal, address contracts.Address) (bool, error)
+	// Admit is the route's admission (`RouteOptions.Admit`, slice 14 §2.3), passed through: no worker starts for a principal
+	// the decision does not allow. It reads only contracts the app's API owns (base code never reloads). Nil: none.
+	Admit host.RouteAdmit
 	// Principal is who the worker at address is (stamped on its link).
 	Principal func(address contracts.Address) (data.Principal, error)
 	// Start is the worker's start data (JSON), before each start; abortable (`Close`), an error fails the start.
@@ -436,6 +439,7 @@ func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions
 			return admitted, nil
 		},
 		Resolve: component.resolve,
+		Admit:   options.Admit,
 	}, ctx)
 	if err != nil {
 		return nil, err
