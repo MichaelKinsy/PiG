@@ -2698,6 +2698,23 @@ func requestSignal(ctx context.Context) context.Context {
 	return signal
 }
 
+// signalOnlyCtx is the context of an event Pi awaits through the run's abort (agent-loop.ts:738, runner.ts:1256-1274): the parent's values, none of its cancellation or deadline, and the parent as the request's signal (requestSignal). One allocation where WithoutCancel + WithValue made two.
+type signalOnlyCtx struct {
+	context.Context
+	signal context.Context
+}
+
+func (*signalOnlyCtx) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (*signalOnlyCtx) Done() <-chan struct{}       { return nil }
+func (*signalOnlyCtx) Err() error                  { return nil }
+
+func (c *signalOnlyCtx) Value(key any) any {
+	if key == (requestSignalKey{}) {
+		return c.signal
+	}
+	return c.Context.Value(key)
+}
+
 type requestWindowKey struct{}
 
 // requestWindowHandle is the start window of a tool_call request (agent.StartWindow): the request closes it once its handler ran to its first await: when the host

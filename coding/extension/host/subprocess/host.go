@@ -4870,8 +4870,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		stateCtx := parent
 		awaited := runAwaitsEvent(event) && parent.Done() != nil
 		if awaited {
-			// The state push of a handler Pi awaits through the abort is part of the awaited dispatch: the abort must not end it either; the request below reuses this context.
-			stateCtx = context.WithoutCancel(parent)
+			// The state push of a handler Pi awaits through the abort is part of the awaited dispatch: the abort must not end it either; the request below reuses this context, which also carries the abort as the handler's signal.
+			stateCtx = &signalOnlyCtx{Context: parent, signal: parent}
 		}
 		if err := me.host.pushStateTo(stateCtx, me, conn); err != nil {
 			return nil, me.dispatchError(fmt.Errorf("sync extension state for event %s: %w", event, me.host.invocationError(err)))
@@ -4907,15 +4907,11 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 					// The request is the handler's start: the process runs requests in the order they arrive.
 					requestCtx = withRequestIssued(requestCtx, started)
 				}
-				if len(args) > 0 {
+				if len(args) > 0 && !awaited {
 					if signal := beforeEventSignal(args[0]); signal != nil {
 						// runner.ts emit awaits every handler with event.signal aborted: the abort reaches the handler as its cancel, not as the end of the wait.
 						requestCtx = withRequestSignal(requestCtx, signal)
 					}
-				}
-				if awaited {
-					// agent-loop.ts:738 awaits beforeToolCall, tool_result and context hooks with no race against the abort (runner.ts:1256-1274 emitToolCall): the run's abort reaches the handler as ctx.signal, not as the end of the wait.
-					requestCtx = withRequestSignal(requestCtx, parent)
 				}
 				resp, err = conn.Request(requestCtx, envelope)
 			}
