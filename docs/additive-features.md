@@ -2408,7 +2408,8 @@ Locked by: `TestClihookOnTheProductionPath` (`coding/cli/clihook_test.go`: a chi
 
 Remove when: Pi accepts a hook of its own for the command line, a print run's output and status, and the retry defaults, or no Piglet fuses a member that registers one. Then the package, the three call sites, `SetDefaultRetryConfig` and this record go.
 
-Approval: pending. Whether the seam rides 0.8.0 is the owner's decision (verdict `handoffs/0.8.0/evidence/COPIG-FIVE-VERDICT.md`, commits 2 and 3).
+Approval: owner, 2026-11-15T06:56:17Z. Owner decision: approved 2026-11-15T06:56:17Z (handoffs/0.8.0/OWNER-DECISIONS.md, that line): D653 and the stacked retry-decider seam (D654) are approved for 0.8.0.
+SCRUTINIZED:approved 2026-11-15
 
 ## D654 A fused member decides which failed model requests PiG retries, how long it waits, and whether PiG prints its retry lines (`clihook.RetryPolicy.Decide`, `Silent`, `HTTPIdleTimeoutMs`)
 
@@ -2432,4 +2433,5 @@ Evidence: the allocation test fails when a failed request builds its failure res
 
 Remove when: Pi gives an extension a retry decision hook per failed request, or the Piglet needing it no longer exists.
 
-Approval: pending. The owner decides whether it rides 0.8.0 (the verdict COPIG-FIVE-VERDICT.md recommended 0.8.1 until Findings A and B were fixed; they are).
+Approval: owner, 2026-11-15T06:56:17Z. Owner decision: approved 2026-11-15T06:56:17Z (handoffs/0.8.0/OWNER-DECISIONS.md, that line): D653 and the stacked retry-decider seam (D654) are approved for 0.8.0.
+SCRUTINIZED:approved 2026-11-15
