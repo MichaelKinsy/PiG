@@ -1182,14 +1182,14 @@
     {
       "id": "BF-0635f23",
       "title": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential…",
-      "symptom": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "symptom": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it; for that provider the refreshed login replaces what the file holds, a later login or logout of it by the other process included, as in Pi.",
       "rootCause": "Modify treated a lock taken over while the refresh ran as a failure of the whole write, though the refreshed credential, possibly the only copy of a single-use refresh token, was already in hand.",
       "rootCauseSource": "release note",
       "userImpact": "Credential or permission exposure",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "releaseNote": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it; for that provider the refreshed login replaces what the file holds, a later login or logout of it by the other process included, as in Pi. This holds while the lock's own renewal has not yet noticed the takeover: once it has, the refresh still fails with the lock error and writes nothing, as in Pi.",
       "origin": "release note",
       "commits": [
         {
@@ -4665,7 +4665,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the file empty, and the next change then saved it with that one setting or decision alone, so every other setting or trust decision was lost. Both files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched; the bytes written are the same. Where one of them cannot be replaced atomically, for example a single file mounted into a container, pig writes it in place as before.",
+      "releaseNote": "A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the file empty, and the next change then saved it with that one setting or decision alone, so every other setting or trust decision was lost. Both files are now replaced as a whole through a temporary file in the same directory, so where one can be replaced a failed write leaves the old file untouched; the bytes written are the same. Where one of them cannot be replaced atomically, for example a single file mounted into a container, pig writes it in place as before, and a failure half way through that write can still leave the file empty or cut short.",
       "origin": "release note",
       "commits": [
         {
@@ -28289,10 +28289,10 @@
       "rootCause": "the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials.",
       "rootCauseSource": "release note",
       "userImpact": "Credential or permission exposure",
-      "platform": "Windows, Linux",
+      "platform": "Windows, macOS, Linux",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, owner, extended attributes (the POSIX ACL on Linux), a symlinked `auth.json` and, on Windows, its access rights are kept. pig replaces a file only when that changes nothing but the file itself: where a credential or settings file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, or a file with more than one hard link, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so.",
+      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so where it can be replaced a failed write leaves the old file untouched. Its mode, owner (where pig may set it), extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them, a symlinked `auth.json` and, on Windows, its access rights are kept. pig replaces a file only when that changes nothing but the file itself: where a credential or settings file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, a file with more than one hard link, a file whose extended attributes cannot be carried over, or a device or named pipe, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so. That guarantee does not cover an in-place write: one that fails half way can still leave the file empty or cut short, as before.",
       "origin": "release note",
       "commits": [
         {
@@ -33357,7 +33357,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during the legacy API-key migration could leave the file empty or cut short and lose your keybindings, your MCP servers or your settings. These files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Where one of them cannot be replaced atomically, for example a single file mounted into a container or a file in a directory pig cannot write into, pig writes it in place as before.",
+      "releaseNote": "A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during the legacy API-key migration could leave the file empty or cut short and lose your keybindings, your MCP servers or your settings. These files are now replaced as a whole through a temporary file in the same directory, so where one can be replaced a failed write leaves the old file untouched. Where one of them cannot be replaced atomically, for example a single file mounted into a container or a file in a directory pig cannot write into, pig writes it in place as before, and a failure half way through that write can still leave the file empty or cut short.",
       "origin": "release note",
       "commits": [
         {
@@ -58862,6 +58862,26 @@
         {
           "hash": "f1ed7db72d",
           "date": "2026-11-10"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-f1f2471",
+      "title": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an…",
+      "symptom": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an ordinary file, for example a device such as `/dev/null` or a named pipe, no longer swaps that node for a regular file. pig writes such a target in place, as Pi does, so the bytes reach the device and a full-device error is reported; no temporary file is made for it.",
+      "rootCause": "the shared writer treated every existing target as a regular file and replaced it by rename, which removed a device or pipe and left an ordinary file with the node's mode.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an ordinary file, for example a device such as `/dev/null` or a named pipe, no longer swaps that node for a regular file. pig writes such a target in place, as Pi does, so the bytes reach the device and a full-device error is reported; no temporary file is made for it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f1f2471bdf",
+          "date": "2026-11-14"
         }
       ],
       "tests": []
