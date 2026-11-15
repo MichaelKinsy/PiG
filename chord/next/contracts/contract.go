@@ -54,6 +54,16 @@ type ContractData struct {
 	Versions []VersionData
 	// Kinds is the kind of every member name ever declared in the history.
 	Kinds map[string]MemberKind
+	// Admission is a remote contract's admission, as its current version declares it; nil without one, and for local.
+	Admission *AdmissionData
+}
+
+// AdmissionData is a contract's admission (slice 14 §2.1): the schema of the value its factory is handed, and that
+// schema's fingerprint. Never part of the contract's fingerprint; a reload's staging compares it (the value is never
+// checked).
+type AdmissionData struct {
+	Schema      *Snapshot
+	Fingerprint string
 }
 
 // MemberKind is the kind of a member name.

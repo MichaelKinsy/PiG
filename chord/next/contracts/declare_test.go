@@ -290,3 +290,62 @@ func TestHostKeyedMembers(t *testing.T) {
 		wantError(t, err, "x: not a declared host kind")
 	})
 }
+
+// TestAdmission ports `admission (slice 14 §2.1)` of declare.test.ts. Designed out: the `expectTypeOf<AdmittedOf<...>>`
+// lines (TypeScript types only: a Go factory receives the value as delta.JsonValue), and `untyped.local(... admission)`
+// refused as an unknown key (a LocalDeclaration has no such field).
+func TestAdmission(t *testing.T) {
+	variants := []contracts.VariantEntry{variant("a", state(contracts.Prop("n", contracts.Int())))}
+	declare := func(admission *contracts.Schema) (*contracts.Contract, error) {
+		return contracts.Remote("doc", contracts.RemoteDeclaration{Version: 1, Params: noParams(), HostAddress: serverAddress, Admission: admission, Variants: variants})
+	}
+	schema := func(properties ...contracts.Property) *contracts.Schema {
+		schema := contracts.Obj(properties...)
+		return &schema
+	}
+
+	t.Run("is never part of the fingerprint, and has its own that a reload's staging compares", func(t *testing.T) {
+		plain := must(declare(nil))
+		admitted := must(declare(schema(contracts.Prop("mode", contracts.Str()))))
+		if admitted.Fingerprint != plain.Fingerprint {
+			t.Fatalf("fingerprints %s and %s differ", admitted.Fingerprint, plain.Fingerprint)
+		}
+		other := must(declare(schema(contracts.Prop("mode", contracts.Int()))))
+		if dataOf(t, admitted).Admission.Fingerprint == dataOf(t, other).Admission.Fingerprint {
+			t.Fatal("two admission schemas share a fingerprint")
+		}
+		if dataOf(t, plain).Admission != nil {
+			t.Fatal("a contract without an admission has one")
+		}
+	})
+
+	t.Run("is JSON only", func(t *testing.T) {
+		_, err := declare(schema(contracts.Prop("data", contracts.Bytes())))
+		wantError(t, err, "doc.admission: an admission's value is JSON only (no bytes())")
+	})
+
+	t.Run("is replaced by evolve's Admission(schema), the last edit of a version; the wire fingerprint stays an edit's", func(t *testing.T) {
+		v1 := must(declare(schema(contracts.Prop("mode", contracts.Str()))))
+		v2 := must(contracts.Evolve(v1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor { return e.AddState("a", "m", contracts.Int()) }))
+		v3 := must(contracts.Evolve(v2, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+			return e.Admission(contracts.Obj(contracts.Prop("mode", contracts.Str()), contracts.Prop("since", contracts.Int())))
+		}))
+		// Carried over unchanged by an edit that is not its own.
+		if dataOf(t, v2).Admission != dataOf(t, v1).Admission {
+			t.Fatal("an edit of the members replaced the admission")
+		}
+		if dataOf(t, v3).Admission.Fingerprint == dataOf(t, v1).Admission.Fingerprint {
+			t.Fatal("Admission(schema) kept the fingerprint")
+		}
+		// A version whose only edit is its admission has the previous version's members.
+		if v3.Fingerprint != v2.Fingerprint {
+			t.Fatalf("fingerprints %s and %s differ", v3.Fingerprint, v2.Fingerprint)
+		}
+		gained := must(contracts.Evolve(must(declare(nil)), func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+			return e.Admission(contracts.Obj(contracts.Prop("mode", contracts.Str())))
+		}))
+		if dataOf(t, gained).Admission == nil {
+			t.Fatal("a contract without one did not gain one")
+		}
+	})
+}
