@@ -489,14 +489,12 @@ func nqBareSessions() HostFacet {
 	})}
 }
 
-// nqWaitFails waits until the value of the page's member `sessions` fails, and is then the failure `message` names.
+// nqWaitFails is Pi's `await flushed()` that lets the failed run reach the member (Pi's `void load()`; the run here is on a
+// task the host's join counts), then the page's value fails with the failure `message` names.
 func nqWaitFails(t *testing.T, host Host, page *Reference, message string) {
 	t.Helper()
-	scopeEventually(t, "the page's value fails", func() bool {
-		flushed(host)
-		_, err := page.Member("sessions").Value()
-		return err != nil
-	})
+	flushed(host)
+	deliveredOn(host)
 	if _, err := page.Member("sessions").Value(); err == nil || !strings.Contains(err.Error(), message) {
 		t.Fatalf("the page's value: error = %v, want one containing %q", err, message)
 	}
@@ -517,11 +515,8 @@ func TestNamedQueryAPageFailsWhenItsSetIsUnboundAndHealsWhenItIsBoundAgain(t *te
 	reloadMust(t)(host.Reload([]HostFacet{nqPublisher(nqRows), club}, background, ReloadOptions{}))
 	_, err = mustGet(t, host, nqSessions, jsonObject()).Call("touch", jsonObject("id", "s0", "at", float64(7)), background)
 	must(t, err)
-	scopeEventually(t, "the page healed", func() bool {
-		flushed(host)
-		_, err := page.Member("sessions").Value()
-		return err == nil
-	})
+	flushed(host)
+	deliveredOn(host)
 	qrWant(t, "rows", nqPageRows(t, page), `{"rows":[{"session":"s0","title":"t0","touched":7},{"session":"s1","title":"t1","touched":1}],"more":false}`)
 }
 
@@ -544,11 +539,6 @@ func TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnserved
 	must(t, err)
 	calls := nexttest.ChangesOf(watch)
 	reloadMust(t)(host.Reload([]HostFacet{nqBareSessions(), nqClubPlugin(&nqProbe{})}, background, ReloadOptions{}))
-	scopeEventually(t, "the page's watch got the unserved set", func() bool {
-		flushed(host)
-		deliveredOn(host)
-		return calls.Len() > 0
-	})
 	flushed(host)
 	deliveredOn(host)
 	const unserved = `column set "sessions.columns" is not served`
@@ -837,11 +827,8 @@ func TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRest
 	dropped := nqMust(store.EvolveTable(nqRows, func(e *store.TableEditor) store.TableTailEditor { return e.Drop("title") }, store.EvolveOptions{Exposes: narrow}))
 	reloadMust(t)(host.Reload([]HostFacet{nqPublisher(dropped), club}, background, ReloadOptions{}))
 	// The read fails when the narrower set is bound (its query compiles no more): the watch gets that failure, once.
-	scopeEventually(t, "the page's watch got the failure", func() bool {
-		flushed(host)
-		deliveredOn(host)
-		return calls.Len() > 0
-	})
+	flushed(host)
+	deliveredOn(host)
 	want := `column "title" of column set "sessions.columns" is not what this read was written for`
 	if got := nqFailedMessages(calls.Items()); len(got) != 1 || got[0] != want || calls.Len() != 1 {
 		t.Fatalf("the watch got %v (%d calls), want one failure %q", got, calls.Len(), want)
@@ -853,11 +840,11 @@ func TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRest
 		return e.Add("title", store.Str(contracts.Default("restored")))
 	}, store.EvolveOptions{Exposes: nqSessionColumns}))
 	reloadMust(t)(host.Reload([]HostFacet{nqPublisher(restored), club}, background, ReloadOptions{}))
-	scopeEventually(t, "the page healed", func() bool {
-		flushed(host)
-		deliveredOn(host)
-		return slices.Equal(nqTitles(t, page), []string{"restored", "restored"})
-	})
+	flushed(host)
+	deliveredOn(host)
+	if got := nqTitles(t, page); !slices.Equal(got, []string{"restored", "restored"}) {
+		t.Fatalf("the page's titles = %v, want restored twice", got)
+	}
 	watch.Stop()
 }
 
@@ -870,12 +857,12 @@ func TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefuse
 	nqWaitFails(t, host, page, `column set "sessions.columns" is not served`)
 	exposed := nqMust(store.EvolveTable(hidden, func(e *store.TableEditor) store.TableTailEditor { return e.Add("more", store.Opt(store.Str())) }, store.EvolveOptions{Exposes: nqSessionColumns}))
 	reloadMust(t)(host.Reload([]HostFacet{nqPublisher(exposed), club}, background, ReloadOptions{}))
-	scopeEventually(t, "the page's rows are back", func() bool {
-		flushed(host)
-		deliveredOn(host)
-		value, err := page.Member("sessions").Value()
-		return err == nil && nexttest.JSONText(t, value) == `{"rows":[{"session":"s1","title":"t1","touched":1},{"session":"s0","title":"t0","touched":0}],"more":false}`
-	})
+	flushed(host)
+	deliveredOn(host)
+	value, err := page.Member("sessions").Value()
+	if err != nil || nexttest.JSONText(t, value) != `{"rows":[{"session":"s1","title":"t1","touched":1},{"session":"s0","title":"t0","touched":0}],"more":false}` {
+		t.Fatalf("the page's value = %v, %v; want its rows back", value, err)
+	}
 	// Another owner exposing the same name: its activation fails, the binding stays.
 	thief := exLocal("app.thief", contracts.Params{}, contracts.Mem("n", exInt()))
 	stolen := nqMust(store.DefineTable("stolen", store.TableOptions{
@@ -890,10 +877,10 @@ func TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefuse
 	})}
 	reloadMust(t)(host.Reload([]HostFacet{nqPublisher(exposed), club, thieves}, background, ReloadOptions{}))
 	_, _ = host.Get(background, thief, jsonObject(), GetOptions{})
-	scopeEventually(t, "the thief's activation failed", func() bool {
-		all := failures(errs.All())
-		return len(all) > 0 && all[len(all)-1] == "app.thief: broken"
-	})
+	deliveredOn(host)
+	if all := failures(errs.All()); len(all) == 0 || all[len(all)-1] != "app.thief: broken" {
+		t.Fatalf("the failures = %v, want the thief's activation failed last", all)
+	}
 	last := errs.All()[len(errs.All())-1]
 	if last.Failure.Error == nil || !strings.Contains(last.Failure.Error.Message, `exposed by tables "app.sessions:rows" and "app.thief:stolen"`) {
 		t.Fatalf("the last error = %+v, want the two tables named", last)
