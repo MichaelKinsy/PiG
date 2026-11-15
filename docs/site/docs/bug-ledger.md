@@ -281,6 +281,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-24a821d](#bf-24a821d) | The openai stream decoder follows openai 7.19.0, the version packages/ai declares: the stream ends at [DONE]… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a9b69](#bf-24a9b69) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
 | [BF-24b67cc](#bf-24b67cc) | Typing a space or a letter such as `é` right after a slash command whose arguments have completions no… | PiG's own defect | All platforms | Unreleased |
+| [BF-24de752](#bf-24de752) | A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential… | PiG's own defect | All platforms | Unreleased |
 | [BF-2544a44](#bf-2544a44) | A user `!` command whose earlier output was discarded from the rolling window, but whose remaining tail fits… | PiG's own defect | All platforms | Unreleased |
 | [BF-25a90ea](#bf-25a90ea) | fix(tui): scroll regions only where the terminal is trusted with them (D205 approved) | PiG's own defect | All platforms | Unreleased |
 | [BF-25aa7fd](#bf-25aa7fd) | A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary… | PiG's own defect | All platforms | 0.5.0 |
@@ -472,6 +473,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e00494](#bf-3e00494) | fix(session): a custom message entry whose content is null projects an empty list | PiG's own defect | All platforms | Unreleased |
+| [BF-3e06d84](#bf-3e06d84) | A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a… | PiG's own defect | All platforms | Unreleased |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-3ebb315](#bf-3ebb315) | Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack… | PiG's own defect | All platforms | Unreleased |
@@ -736,6 +738,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5d8eda1](#bf-5d8eda1) | `pig auth check` and `pig auth print-api-key` no longer reject `--api-key` that another option takes as its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5dbfed1](#bf-5dbfed1) | A scripted faux response can carry `DurationMs` | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5e106cc](#bf-5e106cc) | Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-5e36d87](#bf-5e36d87) | The assistant-message frame encoder no longer re-parses and re-serializes a whole tool call's arguments for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5e3e346](#bf-5e3e346) | An explicit `anthropic-beta` header, from a model's `headers` or the request, no longer makes a… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-5e55e0d](#bf-5e55e0d) | A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method… | PiG's own defect | All platforms | Unreleased |
@@ -1476,6 +1479,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a1af4d7](#bf-a1af4d7) | Fix BuildModel returning a model object for an id no registry lists | PiG's own defect | All platforms | Unreleased |
 | [BF-a1b0991](#bf-a1b0991) | The error for a model whose provider is not known now reads `Unknown provider: <id>` as in Pi, where it read… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1be545](#bf-a1be545) | The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig… | PiG's own defect | All platforms | Unreleased |
+| [BF-a1c68e2](#bf-a1c68e2) | Reading an extended attribute that is set between the size query and the read no longer panics, and on… | PiG's own defect | Windows | Unreleased |
 | [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-a1ec891](#bf-a1ec891) | fix(schema): no panic leaves the API, strings keep lone surrogates, references resolve as new URL does | PiG's own defect | All platforms | Unreleased |
 | [BF-a1efda7](#bf-a1efda7) | The Durable core's host no longer reads the extensions of the Harness settings before every event it sends… | PiG's own defect | All platforms | 0.7.0 |
@@ -1636,6 +1640,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b99457f](#bf-b99457f) | `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
 | [BF-ba3bf8f](#bf-ba3bf8f) | fix(chord): state.Batch.AssertOutside is a section of the host, so a caller's goroutine never reads the… | PiG's own defect | All platforms | Unreleased |
+| [BF-ba5258e](#bf-ba5258e) | On Windows a credential or settings write that Windows refuses because another program holds the file open… | PiG's own defect | Windows | Unreleased |
 | [BF-ba80002](#bf-ba80002) | fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too | PiG's own defect | Windows | Unreleased |
 | [BF-ba8b6b7](#bf-ba8b6b7) | `/logout` reads stored credentials with Pi's 15-second signal, so an unreadable `auth.json` reports "Could… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ba9c37b](#bf-ba9c37b) | Starting `pig` no longer waits for the daily cleanup of the extension cache | PiG's own defect | All platforms | 0.5.0 |
@@ -5866,6 +5871,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/editor_async_provider_test.go::TestForcedAutocompleteQueryDoesNotHoldInput`, `tui/editor_typed_autocomplete_oracle_test.go::TestEditorTypedCharactersOpenAClosedPopupLikePi`
 - **Release note:** Typing a space or a letter such as `é` right after a slash command whose arguments have completions no longer opens the argument popup unless Pi opens it. Pi opens a closed popup only for `/` at the start of the message, for a trigger character, and for a letter, digit, `.`, `-`, `_` or CJK character in a slash command or trigger context.
 
+### BF-24de752
+
+**A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential files) now gets the mode its writer asks for with your umask taken out, as in Pi.
+- **Root cause:** the helper chmodded the new temporary file to the requested mode, which no umask touches, and no test crossed the requested mode with the umask
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `24de752074` (2026-11-14), `65de6ddd86` (2026-11-14)
+- **Tests:** `internal/atomicfile/umask_test.go::TestWriteFileGivesANewFileTheModeOpenGives`
+- **Release note:** A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential files) now gets the mode its writer asks for with your umask taken out, as in Pi. The replacing write gave it exactly the requested mode: an MCP config could be created `rw-rw-rw-` under umask 022, and a settings, trust or keybindings file `rw-r--r--` under umask 077. `settings.json`, `trust.json` and `keybindings.json` now ask for Pi's mode (0666 before the umask). A file that exists keeps its mode.
+
 ### BF-2544a44
 
 **A user `!` command whose earlier output was discarded from the rolling window, but whose remaining tail fits…**
@@ -8508,6 +8527,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3e004947f7` (2026-11-13)
 - **Tests:** None recorded.
+
+### BF-3e06d84
+
+**A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does.
+- **Root cause:** the directory flush answered a value its only caller dropped, and the link was resolved with filepath.EvalSymlinks alone, which has no answer for a missing target
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `085dad13a2` (2026-11-14), `3e06d84430` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a file system that has no directory flush is still accepted. A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does.
 
 ### BF-3e755ef
 
@@ -12150,6 +12183,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5dbfed1576` (2026-10-08)
 - **Tests:** `ai/faux_duration_test.go::TestFauxScriptedDurationMsReachesEveryMessage`, `ai/faux_scripted_fields_oracle_test.go::TestFauxScriptedMessageMembersMatchPi`
 - **Release note:** A scripted faux response can carry `DurationMs`. It stays on every partial and the final message, as in Pi, and the stream measures a duration only when none is scripted.
+
+### BF-5e106cc
+
+**Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.
+- **Root cause:** the helper copied the attributes the replaced file has and never removed what the new file inherited, and no test put a default ACL on the directory
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5e106cc28d` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.
 
 ### BF-5e36d87
 
@@ -16433,7 +16480,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `74be4056e2` (2026-11-14)
 - **Tests:** `internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode`, `internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink`, `internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile`
-- **Release note:** A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so where it can be replaced a failed write leaves the old file untouched. Its mode, owner (where pig may set it), extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them, a symlinked `auth.json` and, on Windows, its access rights are kept. pig replaces a file only when that changes nothing but the file itself: where a credential or settings file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, a file with more than one hard link, a file whose extended attributes cannot be carried over, or a device or named pipe, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so. That guarantee does not cover an in-place write: one that fails half way can still leave the file empty or cut short, as before.
+- **Release note:** A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so where it can be replaced a failed write leaves the old file untouched. A file that exists keeps its mode, owner (where pig may set it), extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them, exactly the access it had (an ACL the directory would hand a new file is not added), a symlinked `auth.json` and, on Windows, its access rights; a file that does not exist yet gets the mode that is asked for with your umask taken out, as in Pi. pig replaces a file only when that changes nothing but the file itself: where a credential or settings file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, a file with more than one hard link, a file whose extended attributes cannot be carried over, or a device or named pipe, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so. That guarantee does not cover an in-place write: one that fails half way can still leave the file empty or cut short, as before.
 
 ### BF-74c3fde
 
@@ -22473,6 +22520,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/editor_file_search_noloop_test.go::TestFileSearchOfAnEditorWithNoLoopIsPublishedByTheCallersGoroutine`, `tui/editor_typed_race_oracle_test.go::TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi`, `tui/file_autocomplete_test.go::TestEditorDebouncesAttachmentAutocomplete`, `tui/file_autocomplete_test.go::TestEditor_AsyncFileSearchDoesNotBlock`, `tui/file_autocomplete_test.go::TestEditor_AsyncFileSearch_RealSubprocessDoesNotBlock`
 - **Release note:** The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig surface is one) takes the text current when its debounce ends when the editor has an owner loop, as Pi does, so a space, `é` or `/` typed right after `@al` no longer loses the search; with no loop the search leaves its answer for the caller's goroutine to publish instead of writing the editor from its own.
 
+### BF-a1c68e2
+
+**Reading an extended attribute that is set between the size query and the read no longer panics, and on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.
+- **Root cause:** the read retried on ERANGE only, which a zero-length buffer never gets, and the Windows call gave no backup name, so a failure left the replaced file deleted and the cleanup removed the replacement
+- **User impact:** Credential or permission exposure
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `58e14d8f3f` (2026-11-14), `a1c68e2beb` (2026-11-14)
+- **Tests:** `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement`, `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved`, `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames`, `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess`, `internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish`, `internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles`
+- **Release note:** Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.
+
 ### BF-a1da44d
 
 **The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands…**
@@ -24682,6 +24743,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ba3bf8fc0a` (2026-11-07)
 - **Tests:** `chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop`, `chord/next/surfaces/surfaces_follower_cancel_test.go::TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly`
+
+### BF-ba5258e
+
+**On Windows a credential or settings write that Windows refuses because another program holds the file open…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.
+- **Root cause:** the list of transient errors held the access, sharing and lock errors only, so the two refusals of ReplaceFileW that leave both files under their names were returned without the retry the divergence record promises
+- **User impact:** Credential or permission exposure
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `ba5258e0ef` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.
 
 ### BF-ba80002
 
