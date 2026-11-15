@@ -6,11 +6,11 @@ import (
 	"sync/atomic"
 )
 
-// Go-only helper (no Pi export): the abort listener of an AbortSignal. Pi's `signal.addEventListener("abort", listener)` runs
-// the listener synchronously inside `abort()`, before it returns, on the one thread there is (context/index.ts:138-153,
-// `awaitWithContext`). A Go context has no such listener: context.AfterFunc runs on a goroutine of its own, later than the
-// cancel and in no order against what the cancelling code does next. OnAbort is the listener a waiter needs to be ordered
-// with the code that cancels.
+// Ports packages/chord/src/context/index.ts (lines 138-153, `awaitWithContext`): the abort listener of an AbortSignal. Pi's
+// `signal.addEventListener("abort", listener)` runs the listener synchronously inside `abort()`, before it returns, on the one
+// thread there is. A Go context has no such listener: context.AfterFunc runs on a goroutine of its own, later than the cancel
+// and in no order against what the cancelling code does next. OnAbort is the listener a waiter needs to be ordered with the code
+// that cancels.
 
 // abortListener is one OnAbort registration, on every cancel of this package that can abort the context it listens to.
 type abortListener struct {
