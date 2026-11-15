@@ -371,8 +371,8 @@ func init() {
 			}
 			return importHostData(store.(Store), archiveOf(archive), hostImportPlan{Target: plan.Target, Existing: plan.Existing, Histories: histories}, commitOf(commit), ctx)
 		},
-		Delete: func(store any, key string, commit hostdata.Commit, ctx context.Context) (HostDataCounts, error) {
-			return deleteHostData(store.(Store), key, commitOf(commit), ctx)
+		Delete: func(store any, key string, commit hostdata.Commit, owners map[string]struct{}, ctx context.Context) (HostDataCounts, error) {
+			return deleteHostData(store.(Store), key, commitOf(commit), owners, ctx)
 		},
 	})
 }
@@ -420,15 +420,15 @@ func hostDataOwners(store Store, key string, archive *HostArchive, ctx context.C
 	chord := store.(*ChordStore)
 	kind := contracts.KindOfKey(key)
 	owners := map[string]struct{}{}
-	ownerOf := func(table string) string { return table[:strings.IndexByte(table, ':')] }
+	// The owners of the recorded tables, the archive's, and the records.
 	for _, record := range chord.Tables() {
 		if _, held := HostColumnName(record.Columns, kind); held {
-			owners[ownerOf(record.Table)] = struct{}{}
+			owners[OwnerOfTable(record.Table)] = struct{}{}
 		}
 	}
 	if archive != nil {
 		for _, table := range archive.Tables {
-			owners[ownerOf(table.Write.Table)] = struct{}{}
+			owners[OwnerOfTable(table.Write.Table)] = struct{}{}
 		}
 		for _, document := range archive.Documents {
 			owners[document.Record.Owner] = struct{}{}
@@ -469,13 +469,13 @@ func importHostData(store Store, archive *HostArchive, plan hostImportPlan, comm
 }
 
 // deleteHostData deletes the data of host key (canonical) from store in one commit: every record whose `host` is the
-// key retired, every row holding it in a `host(...)` column of its kind deleted (`deleteWhere`, counted). Internal, as
-// importHostData.
-func deleteHostData(store Store, key string, commit hostCommit, ctx context.Context) (HostDataCounts, error) {
+// key retired, every row holding it in a `host(...)` column of its kind deleted (`deleteWhere`, counted); with owners
+// (nil: all), only the records and tables of those owners (object types). Internal, as importHostData.
+func deleteHostData(store Store, key string, commit hostCommit, owners map[string]struct{}, ctx context.Context) (HostDataCounts, error) {
 	var counts HostDataCounts
 	apply := func(step *Step, writes *[]StoreWrite) error {
 		var err error
-		counts, err = removeHostData(step, key, writes)
+		counts, err = removeHostData(step, key, writes, owners)
 		return err
 	}
 	if err := commitOperation(store, apply, commit, ctx); err != nil {
@@ -502,7 +502,7 @@ func commitOperation(store Store, apply func(step *Step, writes *[]StoreWrite) e
 func applyImport(step *Step, archive *HostArchive, plan hostImportPlan, writes *[]StoreWrite, ctx context.Context) (HostDataCounts, error) {
 	target := plan.Target
 	if plan.Existing == ExistingReplace {
-		if _, err := removeHostData(step, target, writes); err != nil {
+		if _, err := removeHostData(step, target, writes, nil); err != nil {
 			return HostDataCounts{}, err
 		}
 	} else {
@@ -633,12 +633,21 @@ func importTable(step *Step, table *HostTable, source string, plan hostImportPla
 	return len(placed), nil
 }
 
-// removeHostData retires the records of host key and deletes its rows in step, recording the writes; returns the
-// counts.
-func removeHostData(step *Step, key string, writes *[]StoreWrite) (HostDataCounts, error) {
-	records, err := ListHostRecords(step, key, 0, MaxSafeInteger)
+// removeHostData retires the records of host key and deletes its rows in step, recording the writes; with owners, only
+// those owners' records and tables (nil: all). Returns the counts.
+func removeHostData(step *Step, key string, writes *[]StoreWrite, owners map[string]struct{}) (HostDataCounts, error) {
+	all, err := ListHostRecords(step, key, 0, MaxSafeInteger)
 	if err != nil {
 		return HostDataCounts{}, err
+	}
+	records := all
+	if owners != nil {
+		records = nil
+		for _, record := range all {
+			if _, owned := owners[record.Owner]; owned {
+				records = append(records, record)
+			}
+		}
 	}
 	for _, record := range records {
 		retired, err := RetireDocument(record.ID, record.Revision).Apply(step)
@@ -649,6 +658,11 @@ func removeHostData(step *Step, key string, writes *[]StoreWrite) (HostDataCount
 	}
 	rows := 0
 	for _, hosted := range hostColumnTables(step, contracts.KindOfKey(key)) {
+		if owners != nil {
+			if _, owned := owners[OwnerOfTable(hosted.table)]; !owned {
+				continue
+			}
+		}
 		count, err := step.RunCounted(`DELETE FROM `+Quote(hosted.table)+` WHERE `+Quote(hosted.column)+` = ?`, key)
 		if err != nil {
 			return HostDataCounts{}, err
@@ -680,6 +694,11 @@ func hasHostData(step *Step, key string) (bool, error) {
 
 // hostColumnTable is a recorded table with a host column.
 type hostColumnTable struct{ table, column string }
+
+// OwnerOfTable (upstream's `tableOwner`, a name the table-handle type already has here) is the owner (object type) of table, from its SQL name `<owner>:<table>`.
+func OwnerOfTable(table string) string {
+	return table[:strings.IndexByte(table, ':')]
+}
 
 // hostColumnTables are the recorded tables with a `host(...)` column of kind, with that column's name.
 func hostColumnTables(step *Step, kind string) []hostColumnTable {
