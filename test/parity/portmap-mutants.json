@@ -5741,8 +5741,8 @@
  "packages/chord/test/examples/32-startup.ts": [
   {
    "file": "chord/next/host/remote_remote_object.go",
-   "old": "\t\tif replica != nil {\n",
-   "new": "\t\tif replica == nil {\n"
+   "old": "\tcase RefStateLive:\n\t\tif replica != nil {\n",
+   "new": "\tcase RefStateLive:\n\t\tif replica == nil {\n"
   }
  ],
  "packages/chord/src/watch.ts": [
