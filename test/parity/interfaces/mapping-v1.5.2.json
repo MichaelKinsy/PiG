@@ -5448,7 +5448,8 @@
       ],
       "evidence": [
         "test:agent/stream_fn_descriptor_test.go#TestAgentEffectiveStreamFunction",
-        "test:internal/codingagent/cache_warmer_async_session_test.go#TestCacheWarmingRequestFailuresRecordNoUsageAndStillReschedule"
+        "test:internal/codingagent/cache_warmer_async_session_test.go#TestCacheWarmingRequestFailuresRecordNoUsageAndStillReschedule",
+        "test:internal/codingagent/compaction/provider_completer_progress_test.go#TestProviderCompleterProgressChangesNeitherRequestNorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -5470,7 +5471,8 @@
       ],
       "evidence": [
         "test:agent/stream_fn_descriptor_test.go#TestAgentEffectiveStreamFunction",
-        "test:internal/codingagent/cache_warmer_async_session_test.go#TestCacheWarmingRequestFailuresRecordNoUsageAndStillReschedule"
+        "test:internal/codingagent/cache_warmer_async_session_test.go#TestCacheWarmingRequestFailuresRecordNoUsageAndStillReschedule",
+        "test:internal/codingagent/compaction/provider_completer_progress_test.go#TestProviderCompleterProgressChangesNeitherRequestNorResult"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
