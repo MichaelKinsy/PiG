@@ -326,13 +326,6 @@ func holdingWrite() (held StagedWrite, entered <-chan struct{}, release func()) 
 	return held, reached, func() { once.Do(func() { close(gate) }) }
 }
 
-// queueTail is the store's commit queue tail: it changes whenever an entry takes its place.
-func (store *ChordStore) queueTail() <-chan struct{} {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	return store.tail
-}
-
 // startQueued runs call (a Commit, a Replay, an ApplyBatch) on a goroutine, as Pi starts a promise it awaits later, and
 // returns its result channel once call has taken its place in store's commit queue (or settled without one: a
 // refusal at the call). Entries started one after another through it queue in that order.
