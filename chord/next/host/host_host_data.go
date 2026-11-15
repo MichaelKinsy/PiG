@@ -3,7 +3,6 @@ package host
 import (
 	"context"
 	"slices"
-	"strings"
 	"sync"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -218,7 +217,7 @@ func importInto(site hostDataSite, parts store.PartSource, ctx context.Context, 
 					if _, found := histories[table]; found {
 						continue
 					}
-					if owner := ownerOf(table); !slices.Contains(missing, owner) {
+					if owner := store.OwnerOfTable(table); !slices.Contains(missing, owner) {
 						missing = append(missing, owner)
 					}
 				}
@@ -267,13 +266,9 @@ func compareUTF16(a, b string) int {
 	return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
 }
 
-// ownerOf is the owner of table `table` (its SQL name `<owner>:<table>`).
-func ownerOf(table string) string {
-	return table[:strings.IndexByte(table, ':')]
-}
-
-// deleteFrom deletes the data of address from the site's store, coordinated with the live owners (spec §5).
-func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Context) (store.HostDataCounts, error) {
+// deleteFrom deletes the data of address from the site's store, coordinated with the live owners (spec §5); with only (nil:
+// all), the data of those owners (the object types of one plugin: slice 14 §6) and nothing else.
+func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Context, only map[string]struct{}) (store.HostDataCounts, error) {
 	key, err := store.StoredText(address.Key, "deleteHostData: address")
 	if err != nil {
 		return store.HostDataCounts{}, err
@@ -281,12 +276,21 @@ func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Contex
 	var counts store.HostDataCounts
 	err = site.gate.turn(func(exclusive func(section func() error) error) error {
 		return exclusive(func() error {
-			owners, err := hostdata.Owners(site.store, key, nil, ctx)
+			all, err := hostdata.Owners(site.store, key, nil, ctx)
 			if err != nil {
 				return err
 			}
+			owners := all
+			if only != nil {
+				owners = map[string]struct{}{}
+				for owner := range all {
+					if _, wanted := only[owner]; wanted {
+						owners[owner] = struct{}{}
+					}
+				}
+			}
 			counts, err = coordinated(site, owners, key, ctx, func(commit hostdata.Commit) (store.HostDataCounts, error) {
-				return hostdata.Delete(site.store, key, commit, nil, ctx)
+				return hostdata.Delete(site.store, key, commit, only, ctx)
 			})
 			return err
 		})
