@@ -4,7 +4,12 @@ import (
 	"math/rand/v2"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
+
+// osc133ZonePrefix is upstream's OSC133_ZONE_PREFIX, the reference stripOsc133ZonePrefix is held to.
+var osc133ZonePrefix = lazyregexp.New("^(?:\x1b\\]133;[ABC](?:\x07|\x1b\\\\))+")
 
 // TestStripOsc133ZonePrefixMatchesRegexp pins the prefix fast path to the
 // upstream OSC133_ZONE_PREFIX replacement for leading, repeated, mid-line,
