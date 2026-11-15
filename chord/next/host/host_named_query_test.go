@@ -507,13 +507,20 @@ func TestNamedQueryAPageFailsWhenItsSetIsUnboundAndHealsWhenItIsBoundAgain(t *te
 }
 
 func TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnservedSet(t *testing.T) {
-	// Mine: a new club plugin value is new code: the club and the page restart with the sessions, each restart's end on tasks
-	// of its own. Pi's microtasks order them; here either the old page's live query fails first (its reference's value is that
-	// failure) or the reference holds its last rows first and the new page's failed attempt is shown as its failure. Every
-	// order gives the page's watch the failure; what the test waits on is that call.
+	// Mine: a new club plugin value is new code: the club and the page restart with the sessions, and which of three ends
+	// comes first is not an ordering of Pi's design. The sessions' successor drops the set when it activates (attempt.ts
+	// #bindSets, after its old attempt closed); the page's old attempt seals (its reference then holds the last rows) at the
+	// same step of its own restart, a few awaits before; Pi's microtasks give that one order each time (200 of 200 runs: the
+	// value holds its rows, the watch gets the failure), and a page with a call still running (its seal waits for the call to
+	// drain) the other (200 of 200: the value throws), with no case of Pi's naming either. Here the restarts run on tasks:
+	// either the old page's live query fails first (its reference's value is that failure) or the reference holds its last
+	// rows first and the new page's attempt, reading the unserved set, is shown failed. What both give, and what is
+	// asserted: the watch gets exactly one call, the failure (no value after the set was dropped: no rows shown), and the
+	// value is that failure or the page's last rows, never other rows.
 	chordStore := memoryStore(t)
 	host, _ := nqHosted(t, chordStore, &nqProbe{})
 	page := mustGet(t, host, nqTeamPage, jsonObject("team", "u12"))
+	last := nqPageRows(t, page)
 	watch, err := page.Member("sessions").Watch(background)
 	must(t, err)
 	calls := nexttest.ChangesOf(watch)
@@ -521,13 +528,23 @@ func TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnserved
 	scopeEventually(t, "the page's watch got the unserved set", func() bool {
 		flushed(host)
 		deliveredOn(host)
-		for _, message := range nqFailedMessages(calls.Items()) {
-			if strings.Contains(message, `column set "sessions.columns" is not served`) {
-				return true
-			}
-		}
-		return false
+		return calls.Len() > 0
 	})
+	flushed(host)
+	deliveredOn(host)
+	const unserved = `column set "sessions.columns" is not served`
+	if got := nqFailedMessages(calls.Items()); calls.Len() != 1 || len(got) != 1 || !strings.Contains(got[0], unserved) {
+		t.Fatalf("the watch got %d calls, failures %v; want exactly one, %q", calls.Len(), got, unserved)
+	}
+	value, err := page.Member("sessions").Value()
+	switch {
+	case err != nil:
+		if !strings.Contains(err.Error(), unserved) {
+			t.Fatalf("the page's value failed with %v, want %q", err, unserved)
+		}
+	case nexttest.JSONText(t, value) != last:
+		t.Fatalf("the page's value = %s, want its last rows %s or the failure", nexttest.JSONText(t, value), last)
+	}
 	watch.Stop()
 }
 
