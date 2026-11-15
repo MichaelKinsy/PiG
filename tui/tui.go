@@ -821,6 +821,11 @@ type tuiBase struct {
 	onHeightChange func(height int)
 
 	mu sync.Mutex // protects render state
+	// outMu is held for every write to out and direct, so one goroutine at a time is in the terminal writer. A main-screen frame takes it when its components
+	// have rendered and keeps it to its last write, an alternate-screen frame takes it for its one write, and HideCursor, ShowCursor, WriteRaw and
+	// QueryCellSize take it for theirs: such a write from another goroutine is before the bytes of a frame or after them, as on the one event loop of Pi
+	// (tui.ts showOverlay: terminal.hideCursor(), then requestRender()), and one from a Render of the frame is before them. Taken after mu, never before it.
+	outMu sync.Mutex
 
 	stopped bool // set by Stop(); prevents further Render() calls
 }
@@ -2173,6 +2178,10 @@ func (t *TuiMainScreen) doRender() {
 	// Resolve fake cursors before compositing so overlays and line slicing see plain SGR codes (tui-main-screen.ts doRender).
 	rootLines, rootVersion, kept := t.renderBorrowedSince(width, t.windowVersion)
 	newLines, unresolved := t.composeFrameLines(rootLines, width, height)
+	// The components have rendered, and what one of them wrote from its Render is out (the hidden cursor of a ShowOverlay, a WriteRaw). From here the frame
+	// only writes, and it keeps the terminal writer until its last write: a cursor or raw write from another goroutine waits for the whole frame.
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
 	hasOverlay := t.HasOverlay()
 	// The reset cache may compare with the last frame's input when that array
 	// is unchanged: a composed array is the renderer's own, and the root
@@ -2668,11 +2677,11 @@ func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, 
 		WriteToTerminal(t.out, buf.String())
 	}
 	t.hardwareCursorRow = targetRow
-	// Upstream shows or hides the cursor through terminal.showCursor/hideCursor, which bypass PI_TUI_WRITE_LOG.
+	// Upstream shows or hides the cursor through terminal.showCursor/hideCursor, which bypass PI_TUI_WRITE_LOG. The frame holds outMu.
 	if t.showHardwareCursor {
-		t.ShowCursor()
+		WriteToTerminal(t.cursorOut(), "\x1b[?25h")
 	} else {
-		t.HideCursor()
+		WriteToTerminal(t.cursorOut(), "\x1b[?25l")
 	}
 }
 
@@ -2688,18 +2697,26 @@ func (t *TuiMainScreen) RepaintAll() {
 
 // HideCursor hides the terminal cursor.
 func (t *tuiBase) HideCursor() {
-	WriteToTerminal(t.cursorOut(), "\033[?25l")
+	t.writeOwned(t.cursorOut(), "\033[?25l")
 }
 
 // WriteRaw writes data to the terminal as is, as upstream's
 // terminal.write does for a component that drives the terminal itself.
 func (t *tuiBase) WriteRaw(data string) {
-	WriteToTerminal(t.out, data)
+	t.writeOwned(t.out, data)
 }
 
 // ShowCursor shows the terminal cursor.
 func (t *tuiBase) ShowCursor() {
-	WriteToTerminal(t.cursorOut(), "\033[?25h")
+	t.writeOwned(t.cursorOut(), "\033[?25h")
+}
+
+// writeOwned is a write made outside the writes of a frame: it takes outMu, so it waits for the goroutine that is in the terminal writer, a frame until its
+// last write. A caller that holds outMu (a frame in its writes, a stop) writes with WriteToTerminal.
+func (t *tuiBase) writeOwned(out io.Writer, data string) {
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
+	WriteToTerminal(out, data)
 }
 
 // cursorOut is where cursor visibility goes: upstream's terminal.hideCursor and showCursor write to stdout directly, not through
@@ -2779,7 +2796,9 @@ func (t *TuiMainScreen) Start() {
 	t.stopped = false
 	t.HideCursor()
 	if t.colorSchemeNotificationsEnabled() {
+		t.outMu.Lock()
 		writeColorSchemeNotifications(t.out, true)
+		t.outMu.Unlock()
 	}
 	t.RequestRender()
 }
@@ -2789,10 +2808,12 @@ func (t *TuiMainScreen) Stop() { t.StopWithOptions(StopOptions{}) }
 func (t *TuiMainScreen) StopWithOptions(options StopOptions) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
 	t.stopWithOptionsLocked(options)
 }
 
-// stopWithOptionsLocked also serves the overflow path, which already holds the render lock.
+// stopWithOptionsLocked also serves the overflow path, a frame in its writes: mu and outMu are held.
 func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 	t.stopped = true
 	t.cancelPendingRenderLocked()
@@ -2814,7 +2835,7 @@ func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 		}
 		WriteToTerminal(t.out, "\r\n")
 	}
-	t.ShowCursor()
+	WriteToTerminal(t.cursorOut(), "\x1b[?25h")
 }
 
 // drawBox draws a box with title and content lines. Content clipping and padding use terminal-cell width and preserve ANSI styling without splitting graphemes.
