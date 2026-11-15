@@ -25,7 +25,7 @@ import (
 //
 // Go forms (Pi's one thread is gone, the order of what Pi starts "in one tick" is made explicit):
 //   - `store.commit = (...) => ...` (a wrapper around every commit, run when it is queued) is `storeseam.WrapAdopt`, called
-//     as a commit takes its place in the queue, which returns the adoption the commit uses. `tlCommits` counts
+//     as a commit takes its place in the queue, which returns the adoption the commit uses. `commitLog` counts
 //     the enlisted commits: `startInOrder` starts each call on a goroutine and waits until its commit enlisted before it
 //     starts the next, so the commits queue in the order Pi's calls are made and `probe.pending` (shifted at enlist) meets
 //     the commit it was queued for.
@@ -34,7 +34,7 @@ import (
 //   - `store.reads.on(set)[i].run = ...` (a run that fails) is `storeseam.FailRuns(read, fail)`: the read's runs in a
 //     commit's step fail with the error `fail` returns (nil restores the real run).
 //   - `await flushed()` after a group is `flushed(host)` then waiting for the store's OnCommitted listener to report the
-//     last seq (`tlCommits.reported`): the listener runs on a goroutine of the store.
+//     last seq (`commitLog.reported`): the listener runs on a goroutine of the store.
 //   - `screen.list.value` thrown is the error of Member("list").Value().
 
 func mustColumns(name string, options store.ColumnSetOptions) *store.ColumnSet {
@@ -223,7 +223,9 @@ func tlServeScreen(h FacetHost, screen *contracts.Contract, name string, first i
 			State: map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 			Methods: map[string]contracts.MethodFunction{
 				"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) },
-				"show": func(shown delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return nil, team.Set(shown.(string)) },
+				"show": func(shown delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+					return nil, team.Set(shown.(string))
+				},
 			},
 		}}, nil
 	}, ServeOptions{})
@@ -238,60 +240,6 @@ func tlFacetOf(first int) Facet {
 	})
 }
 
-// tlCommits is what the store's commits tell the test: how many enlisted (`WrapAdopt`), and the groups its OnCommitted listener
-// reported: one notification for several seq numbers is a group (`seq - last > 1`).
-type tlCommits struct {
-	mu       sync.Mutex
-	changed  *sync.Cond
-	enlisted int
-	groups   int
-	last     int64
-	reported int64
-}
-
-func newTlCommits(last int64) *tlCommits {
-	c := &tlCommits{last: last, reported: last}
-	c.changed = sync.NewCond(&c.mu)
-	return c
-}
-
-func (c *tlCommits) onCommitted(seq int64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if seq-c.last > 1 {
-		c.groups++
-	}
-	c.last, c.reported = seq, seq
-	c.changed.Broadcast()
-}
-
-func (c *tlCommits) enlist() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.enlisted++
-	c.changed.Broadcast()
-}
-
-// waitEnlisted waits until n commits enlisted; waitReported until the listener reported seq.
-func (c *tlCommits) waitEnlisted(n int) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for c.enlisted < n {
-		c.changed.Wait()
-	}
-}
-
-func (c *tlCommits) waitReported(seq int64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for c.reported < seq {
-		c.changed.Wait()
-	}
-}
-
-func (c *tlCommits) count() int { c.mu.Lock(); defer c.mu.Unlock(); return c.enlisted }
-func (c *tlCommits) grouped() int { c.mu.Lock(); defer c.mu.Unlock(); return c.groups }
-
 // tlProbe is what the store's wrapper does around every commit's adoption: `pending` is what each commit wrote (taken when it
 // enlists), applied to the truth before the adoption; `adopted` runs after it.
 type tlProbe struct {
@@ -300,7 +248,11 @@ type tlProbe struct {
 	adopted func()
 }
 
-func (p *tlProbe) push(wrote func()) { p.mu.Lock(); defer p.mu.Unlock(); p.pending = append(p.pending, wrote) }
+func (p *tlProbe) push(wrote func()) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.pending = append(p.pending, wrote)
+}
 func (p *tlProbe) shift() func() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -321,7 +273,7 @@ type tlWorld struct {
 	filler   *Reference
 	screen   *Reference
 	probe    *tlProbe
-	commits  *tlCommits
+	commits  *commitLog
 	hold     func() *transactionGate
 }
 
@@ -358,22 +310,20 @@ func (w *tlWorld) call(ref *Reference, args *delta.JsonObject) error {
 	_, err := ref.Call("write", args, background)
 	return err
 }
-func (w *tlWorld) sessionsWrite(args *delta.JsonObject) { w.t.Helper(); mustCall(w.t, w.sessions, "write", args) }
-func (w *tlWorld) clubWrite(args *delta.JsonObject)     { w.t.Helper(); mustCall(w.t, w.club, "write", args) }
-func (w *tlWorld) more()                                { w.t.Helper(); mustCall(w.t, w.screen, "more", nil) }
-func (w *tlWorld) show(team string)                     { w.t.Helper(); mustCall(w.t, w.screen, "show", team) }
+func (w *tlWorld) sessionsWrite(args *delta.JsonObject) {
+	w.t.Helper()
+	mustCall(w.t, w.sessions, "write", args)
+}
+func (w *tlWorld) clubWrite(args *delta.JsonObject) {
+	w.t.Helper()
+	mustCall(w.t, w.club, "write", args)
+}
+func (w *tlWorld) more()            { w.t.Helper(); mustCall(w.t, w.screen, "more", nil) }
+func (w *tlWorld) show(team string) { w.t.Helper(); mustCall(w.t, w.screen, "show", team) }
 
-// startInOrder starts each call on a goroutine, waiting for the commit it makes to enlist before the next starts (the order
-// Pi's calls are made in); the returned func waits for all of them.
+// startInOrder is commitLog.startInOrder over the world's commits.
 func (w *tlWorld) startInOrder(calls ...func()) (wait func()) {
-	var group sync.WaitGroup
-	for _, call := range calls {
-		before := w.commits.count()
-		group.Add(1)
-		go func() { defer group.Done(); call() }()
-		w.commits.waitEnlisted(before + 1)
-	}
-	return group.Wait
+	return w.commits.startInOrder(calls...)
 }
 
 // queued is `await Promise.all([filler.write(1), ...calls])`: the filler's commit runs alone (held in its backend
@@ -401,9 +351,12 @@ func (w *tlWorld) group(first, second func()) {
 	}
 }
 
-func (w *tlWorld) value() (rows []any, moreAfter bool) { w.t.Helper(); return mustListValue(w.t, w.screen) }
-func (w *tlWorld) ids() []string                       { rows, _ := w.value(); return sessionIDs(rows) }
-func (w *tlWorld) shown() string                       { rows, _ := w.value(); return tlShown(rows) }
+func (w *tlWorld) value() (rows []any, moreAfter bool) {
+	w.t.Helper()
+	return mustListValue(w.t, w.screen)
+}
+func (w *tlWorld) ids() []string { rows, _ := w.value(); return sessionIDs(rows) }
+func (w *tlWorld) shown() string { rows, _ := w.value(); return tlShown(rows) }
 
 // tlShown is `list.rows.map((row) => `${row.id}:${row.title}`).join(" ")`.
 func tlShown(rows []any) string {
@@ -635,7 +588,7 @@ func tlBare(t *testing.T, facet Facet) *tlWorld {
 
 // install starts the commit bookkeeping from the store's current seq on (Pi: the lines after the seeding in `hosted`).
 func (w *tlWorld) install() {
-	w.commits = newTlCommits(w.store.LastSeq())
+	w.commits = newCommitLog(w.store.LastSeq())
 	w.store.OnCommitted(w.commits.onCommitted, func(error) {})
 	storeseam.WrapAdopt(w.store, func(adopt storeseam.Adopt) storeseam.Adopt {
 		wrote := w.probe.shift()
@@ -693,7 +646,9 @@ func TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages(t *test
 				self := plain.(StoreSelf)
 				table := self.Table(data)
 				rows := self.Queries(table,
-					QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) { return jsonObject("id", float64(row["id"].(int64))), nil }},
+					QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
+						return jsonObject("id", float64(row["id"].(int64))), nil
+					}},
 					map[string]QueryBuilder{"all": {Build: func(delta.JsonValue) *store.Query {
 						return store.NewQuery(data).Where(func(r, _ store.ColumnRefs) store.Condition {
 							return store.Exists(gateSet, store.Match{{Column: "id", Ref: r["id"]}}, nil)
@@ -737,7 +692,7 @@ func TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages(t *test
 			tlServeFiller(h),
 			h.Serve(gatedContract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 				source := ListSource{Query: self.Get(rowsContract, jsonObject()).Queries("rows")["all"], Args: jsonObject()}
-				handle := self.List("rows", []ListSource{source}, ListOptions{First: 2})                                    
+				handle := self.List("rows", []ListSource{source}, ListOptions{First: 2})
 				return contracts.Implementation{Members: contracts.VariantImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 					Methods: map[string]contracts.MethodFunction{"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) }},
@@ -809,7 +764,9 @@ func TestTilingAPublishersMigrationThatChangesTheOrder(t *testing.T) {
 				self := plain.(StoreSelf)
 				table := self.Table(data)
 				rows := self.Queries(table,
-					QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) { return jsonObject("id", float64(row["id"].(int64))), nil }},
+					QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
+						return jsonObject("id", float64(row["id"].(int64))), nil
+					}},
 					map[string]QueryBuilder{"all": {Build: func(delta.JsonValue) *store.Query {
 						return store.NewQuery(data).
 							Join(touches, func(r store.ColumnRefs) store.Match { return store.Match{{Column: "id", Ref: r["id"]}} }).
@@ -824,7 +781,7 @@ func TestTilingAPublishersMigrationThatChangesTheOrder(t *testing.T) {
 			}, ServeOptions{}),
 			h.Serve(listedContract, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 				source := ListSource{Query: self.Get(rowsContract, jsonObject()).Queries("rows")["all"], Args: jsonObject()}
-				handle := self.List("rows", []ListSource{source}, ListOptions{First: 2})                                    
+				handle := self.List("rows", []ListSource{source}, ListOptions{First: 2})
 				return contracts.Implementation{Members: contracts.VariantImplementation{
 					State:   map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 					Methods: map[string]contracts.MethodFunction{"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) }},
@@ -1180,7 +1137,9 @@ func TestTilingTheInvariantWithTwoOwnersAndCommitGroups(t *testing.T) {
 					}
 				})
 				// The transaction removes, then adds: a session in both stays in the team.
-				return func() { w.clubWrite(jsonObject("remove", tlMembers("t", leaving...), "add", tlMembers("t", joining...))) }
+				return func() {
+					w.clubWrite(jsonObject("remove", tlMembers("t", leaving...), "add", tlMembers("t", joining...)))
+				}
 			}
 			for index := 0; index < 400; index++ {
 				stepName.Store(fmt.Sprintf("seed %d, step %d", seed, index))

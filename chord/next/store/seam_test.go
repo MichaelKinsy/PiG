@@ -91,4 +91,69 @@ func TestWrapAdopt(t *testing.T) {
 			"admit other", "adopt other 1 2",
 			"admit after", "adopt after 3 4")
 	})
+
+	t.Run("commits made on goroutines of their own, each once the one before enlisted, are one group adopted in that order: a later one sees what an earlier one wrote", func(t *testing.T) {
+		// What the host's tests rely on where Pi's calls of one turn enlist in call order: the signal of the wrapper is the
+		// commit having its place, and a commit started after the signal takes its place behind.
+		ctl := controlledStore(t)
+		edits, err := DefineTable("edits", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("at", Int())}, Key: []string{"id"}})
+		noError(t, err)
+		const tableName = "app.store:edits"
+		staged := StageTable(&TableDefinitionWrite{
+			Table: tableName, Version: edits.Version, State: StateReady, Columns: edits.Record, Key: edits.Key, Fingerprint: edits.Fingerprint,
+		})
+		var events []string
+		sees := func(name string) StagedWrite {
+			return stagedWrite{order: OrderWrite, apply: func(step *Step) ([]StoreWrite, error) {
+				version := 0
+				if record := step.Table(tableName); record != nil {
+					version = record.Version
+				}
+				events = append(events, fmt.Sprintf("%s sees %d", name, version))
+				return nil, nil
+			}}
+		}
+		fence := func(name string) CommitFence {
+			return CommitFence{
+				Admit: func() bool { return true },
+				Adopt: func(seq int64, _ []int64, _ int) error {
+					events = append(events, fmt.Sprintf("adopt %s %d", name, seq))
+					return nil
+				},
+			}
+		}
+		enlisted := make(chan struct{}, 4)
+		storeseam.WrapAdopt(ctl.store, func(adopt storeseam.Adopt) storeseam.Adopt {
+			enlisted <- struct{}{}
+			return adopt
+		})
+		gate := ctl.arm()
+		running := startCommit(ctl.store, fence("held"), created("held"))
+		<-enlisted
+		<-gate.Entered()
+		var settled []<-chan groupOutcome
+		for _, commit := range []struct {
+			name  string
+			write StagedWrite
+		}{{"a", staged}, {"b", sees("b")}, {"c", sees("c")}} {
+			outcome := make(chan groupOutcome, 1)
+			go func() {
+				seq, err := ctl.store.Commit([]StagedWrite{commit.write}, fence(commit.name), background)
+				outcome <- groupOutcome{Value: seq, Err: err}
+			}()
+			<-enlisted
+			settled = append(settled, outcome)
+		}
+		gate.Release()
+		seqOf(t, running)
+		for index, outcome := range settled {
+			if seq := seqOf(t, outcome); seq != int64(index+2) {
+				t.Fatalf("commit %d: seq = %d, want %d", index, seq, index+2)
+			}
+		}
+		sameEvents(t, events, "adopt held 1", "b sees 1", "c sees 1", "adopt a 2", "adopt b 3", "adopt c 4")
+		if got := ctl.transactions(); got != 2 {
+			t.Fatalf("transactions = %d, want 2: the three commits queued behind the held one are one group", got)
+		}
+	})
 }

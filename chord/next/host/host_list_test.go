@@ -21,7 +21,9 @@ import (
 // Ports packages/chord/test/host/list.test.ts (Pi 0db9861ec018, 473 lines): 16 cases (invariant x4, pages x6, arguments x1,
 // reload x3, declaration and memory x2). Subtest names are Pi's `it` texts.
 //
-// Go forms: `await Promise.all([...])` is `parallel(...)`; `await delivered()` is `deliveredOn(host)`; `await flushed()` is
+// Go forms: `await Promise.all([...])` is `parallel(...)`, or, where the calls make commits that Pi's call order enlists in
+// order (the invariant's groups), `commitLog.start` per call: each commit enlisted before the next call starts;
+// `await delivered()` is `deliveredOn(host)`; `await flushed()` is
 // `flushed(host)`; `screen.list.value` is `mustListValue(t, screen)`; a `ChordStore`'s `reads.on(set)?.size` is
 // `len(store.Reads.On(set))`; the two `Probe`s are structs of atomics and `instances` (weak references) as in
 // host_live_query_test.go.
@@ -84,7 +86,9 @@ func lsServeStore(h FacetHost, direction string, probe *lsStoreProbe) error {
 		rows := self.Queries(
 			table,
 			QueriesOptions{
-				Map:   func(row store.Row, _ PartnerRow) (delta.JsonValue, error) { return jsonObject("id", float64(row["id"].(int64)), "touched", float64(row["touched"].(int64))), nil },
+				Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
+					return jsonObject("id", float64(row["id"].(int64)), "touched", float64(row["touched"].(int64))), nil
+				},
 				Reads: []string{"id", "touched"},
 			},
 			map[string]QueryBuilder{
@@ -128,7 +132,9 @@ func lsServeStore(h FacetHost, direction string, probe *lsStoreProbe) error {
 					return tx(ctx, func(tx documents.Tx) error { return tx.Delete(table, store.Row{"id": int64(id.(float64))}) })
 				},
 				"clear": func(group delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					return tx(ctx, func(tx documents.Tx) error { return tx.DeleteWhere(table, store.Eq(store.NewColumnRef("group"), group)) })
+					return tx(ctx, func(tx documents.Tx) error {
+						return tx.DeleteWhere(table, store.Eq(store.NewColumnRef("group"), group))
+					})
 				},
 			},
 		}}, nil
@@ -142,8 +148,8 @@ func lsServeScreen(h FacetHost, first int, probe *lsProbe) error {
 		shown := self.Writable("a")
 		args := self.Derive([]any{shown}, func(values []any) (delta.JsonValue, error) { return jsonObject("group", values[0]), nil })
 		source := ListSource{Query: self.Get(lsStoreContract, jsonObject()).Queries("rows")["ofGroup"], Args: args}
-		handle := self.List("rows", []ListSource{source}, ListOptions{First: first})                             
-		probe.lists.add(listOf(handle))                                                                             
+		handle := self.List("rows", []ListSource{source}, ListOptions{First: first})
+		probe.lists.add(listOf(handle))
 		return contracts.Implementation{Members: contracts.VariantImplementation{
 			State: map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
 			Methods: map[string]contracts.MethodFunction{
@@ -207,8 +213,8 @@ func (w *lsWorld) put(id int, group string, touched int) {
 	w.t.Helper()
 	mustCall(w.t, w.rows, "write", []any{jsonObject("put", jsonObject("id", float64(id), "group", group, "touched", float64(touched)))})
 }
-func (w *lsWorld) drop(id int)  { w.t.Helper(); mustCall(w.t, w.rows, "drop", float64(id)) }
-func (w *lsWorld) more()        { w.t.Helper(); mustCall(w.t, w.screen, "more", nil) }
+func (w *lsWorld) drop(id int) { w.t.Helper(); mustCall(w.t, w.rows, "drop", float64(id)) }
+func (w *lsWorld) more()       { w.t.Helper(); mustCall(w.t, w.screen, "more", nil) }
 func (w *lsWorld) state() ([]int, bool) {
 	w.t.Helper()
 	rows, moreAfter := mustListValue(w.t, w.screen)
@@ -229,6 +235,7 @@ func TestListTheInvariant(t *testing.T) {
 		t.Run(fmt.Sprintf("after every frame the value is a gapless prefix of the true order (seed %d)", seed), func(t *testing.T) {
 			const first = 5
 			w := lsHosted(t, first, 12, nil, nil)
+			enlisted := countCommits(w.store)
 			r := newRandom(seed)
 			truth := map[int]int{}
 			for id := 1; id <= 12; id++ {
@@ -274,12 +281,12 @@ func TestListTheInvariant(t *testing.T) {
 				}
 			}
 			for step := 0; step < 300; step++ {
-				pending := []func(){}
+				type call struct {
+					run     func()
+					commits bool // the call makes a commit
+				}
+				pending := []call{}
 				described := []string{}
-				// Go: the commits of a group start on goroutines in no fixed order, so a group never holds two writes of one
-				// id, a row created in the group included (a touch of a row the group's bulk write creates runs before or after
-				// it): the truth does not depend on their order.
-				used := map[int]bool{}
 				// One commit, or a group of commits queued together.
 				commits := 1
 				if r.chance(0.2) {
@@ -295,10 +302,6 @@ func TestListTheInvariant(t *testing.T) {
 					pick, have := 0, len(live) > 0
 					if have {
 						pick = live[r.int(len(live))]
-						if used[pick] {
-							have = false
-						}
-						used[pick] = true
 					}
 					switch {
 					case kind < 4 && have:
@@ -306,19 +309,18 @@ func TestListTheInvariant(t *testing.T) {
 						truth[pick] = clock
 						at := clock
 						described = append(described, fmt.Sprintf("touch %d at %d", pick, at))
-						pending = append(pending, func() { w.touch(pick, at) })
+						pending = append(pending, call{func() { w.touch(pick, at) }, true})
 					case kind < 6:
 						id := nextID
 						nextID++
 						at := newAt()
 						truth[id] = at
-						used[id] = true // created in this group: a later pick of it would depend on the order the commits run in
 						described = append(described, fmt.Sprintf("put %d at %d", id, at))
-						pending = append(pending, func() { w.put(id, "a", at) })
+						pending = append(pending, call{func() { w.put(id, "a", at) }, true})
 					case kind < 8 && have:
 						delete(truth, pick)
 						described = append(described, fmt.Sprintf("drop %d", pick))
-						pending = append(pending, func() { w.drop(pick) })
+						pending = append(pending, call{func() { w.drop(pick) }, true})
 					case kind == 8:
 						// A bulk write of many pages' rows at once.
 						bulk := []any{}
@@ -327,17 +329,22 @@ func TestListTheInvariant(t *testing.T) {
 							nextID++
 							at := newAt()
 							truth[id] = at
-							used[id] = true
 							bulk = append(bulk, jsonObject("put", jsonObject("id", float64(id), "group", "a", "touched", float64(at))))
 						}
 						described = append(described, fmt.Sprintf("bulk %d..", nextID-4*first))
-						pending = append(pending, func() { mustCall(t, w.rows, "write", bulk) })
+						pending = append(pending, call{func() { mustCall(t, w.rows, "write", bulk) }, true})
 					default:
 						described = append(described, "more")
-						pending = append(pending, w.more)
+						pending = append(pending, call{w.more, false})
 					}
 				}
-				parallel(pending...)
+				// `await Promise.all(pending)`: Pi's calls of a turn enlist their commits in call order, and a later call of a group may
+				// pick (touch, drop) a row an earlier one creates: each commit is enlisted before the next call starts.
+				var started sync.WaitGroup
+				for _, p := range pending {
+					enlisted.start(&started, p.commits, p.run)
+				}
+				started.Wait()
 				flushed(w.host)
 				lastStep = fmt.Sprintf("step %d: %v", step, described)
 				check(fmt.Sprintf("seed %d, step %d", seed, step))

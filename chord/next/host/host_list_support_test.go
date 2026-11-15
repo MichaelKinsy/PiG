@@ -8,6 +8,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/storeseam"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
 // Support of host_tiling_test.go and host_list_test.go, from packages/chord/test/support.ts at Pi 0db9861ec018.
@@ -20,8 +22,8 @@ import (
 //   flushed    -> flushed(host)       (host_events_support_test.go:195)
 //   expectCollected -> expectCollected / collectedWithin (host_attempt_support_test.go:207, jobs_support_test.go:366)
 //   memoryStore -> memoryStore(t) (host_next_support_test.go:382); faultyStore(t) gives holdNextCommit (:559)
-// What is here: instancesOf (as `instances`), Promise.all (`parallel`), mulberry32 (`random`), the JSON readers of a
-// list value.
+// What is here: instancesOf (as `instances`), Promise.all (`parallel`; `commitLog.start` where the calls make commits and
+// their order matters), mulberry32 (`random`), the JSON readers of a list value.
 
 // instances is `instancesOf(Class, method)`: weak references to every instance a test's factory handed over (Pi patches the
 // prototype's method; Go has no prototype, the test's factory records what `self.List` / `ownQueries` returned: listOf,
@@ -57,9 +59,13 @@ func (i *instances[T]) at(index int) weak.Pointer[T] {
 // listOf is the list a handle of `self.List` stands for (a live attempt's).
 func listOf(handle *ListHandle) *list { return handle.list }
 
-// lsSettled waits until everything the lists of the host started on their own ran: the reads their readers queued for a source
-// that moved (qrSettled), the loads of their pages and the reads a rebound started (`list.idle`), and then the frames
-// published and delivered: what Pi's `await flushed()` lets the microtasks do, there being no I/O to wait for there.
+// lsSettled stands for Pi's `await flushed()` (packages/chord/test/support.ts:380-383: `new Promise((resolve) => setImmediate(resolve))`,
+// "waits until every pending promise callback has run"): it resolves once every microtask chain the code under test started has
+// run, the reads and loads of the lists and readers (`void this.read`, `load()`, the re-reads of a moved source) and the frames
+// they publish; Pi's memory store does no I/O, so those chains end in microtasks. lsSettled awaits the same set: the reads the
+// readers queued for a source that moved (qrSettled), the loads of the lists' pages and the reads a rebound started
+// (`list.idle`), then the host's turn queue (flushed) and the watch deliveries (deliveredOn). A call a test made has settled
+// when it returned, as Pi's awaited call has: lsSettled waits for what the lists started on their own after it.
 func lsSettled(host Host) {
 	qrSettled(host)
 	for _, l := range listsOf(host) {
@@ -123,6 +129,98 @@ func parallel(calls ...func()) {
 		}()
 	}
 	group.Wait()
+}
+
+// commitLog is what the store's commits tell a test (Pi's tests replace `store.commit`; Go has `storeseam.WrapAdopt`): how
+// many enlisted, and the groups its OnCommitted listener reported: one notification for several seq numbers is a group
+// (`seq - last > 1`).
+type commitLog struct {
+	mu       sync.Mutex
+	changed  *sync.Cond
+	enlisted int
+	groups   int
+	last     int64
+	reported int64
+}
+
+func newCommitLog(last int64) *commitLog {
+	c := &commitLog{last: last, reported: last}
+	c.changed = sync.NewCond(&c.mu)
+	return c
+}
+
+func (c *commitLog) onCommitted(seq int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if seq-c.last > 1 {
+		c.groups++
+	}
+	c.last, c.reported = seq, seq
+	c.changed.Broadcast()
+}
+
+func (c *commitLog) enlist() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.enlisted++
+	c.changed.Broadcast()
+}
+
+// waitReported waits until the listener reported seq.
+func (c *commitLog) waitReported(seq int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for c.reported < seq {
+		c.changed.Wait()
+	}
+}
+
+func (c *commitLog) count() int   { c.mu.Lock(); defer c.mu.Unlock(); return c.enlisted }
+func (c *commitLog) grouped() int { c.mu.Lock(); defer c.mu.Unlock(); return c.groups }
+
+// start starts call on a goroutine of group, in the order Pi's calls are made in. A call that makes a commit (`commits`) is
+// waited for until that commit enlisted, so the next call's commit queues behind it: Pi's calls of one turn enlist in call
+// order, and the queue adopts in the order of the enlisting, so the truth a test tracks call by call is the store's.
+func (c *commitLog) start(group *sync.WaitGroup, commits bool, call func()) {
+	before, finished := c.count(), false
+	group.Add(1)
+	go func() {
+		defer group.Done()
+		call()
+		c.mu.Lock()
+		finished = true
+		c.changed.Broadcast()
+		c.mu.Unlock()
+	}()
+	if !commits {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for c.enlisted <= before && !finished { // a call that fails before its commit enlists does not hold the test
+		c.changed.Wait()
+	}
+}
+
+// startInOrder starts calls that each make one commit, each once the commit of the one before enlisted; the returned func
+// waits for all of them.
+func (c *commitLog) startInOrder(calls ...func()) (wait func()) {
+	var group sync.WaitGroup
+	for _, call := range calls {
+		c.start(&group, true, call)
+	}
+	return group.Wait
+}
+
+// countCommits starts a commitLog over a store from its current seq on: every commit that takes its place in the store's queue
+// is counted (`storeseam.WrapAdopt`, the adoption itself unchanged).
+func countCommits(chordStore *store.ChordStore) *commitLog {
+	log := newCommitLog(chordStore.LastSeq())
+	storeseam.WrapAdopt(chordStore, func(adopt storeseam.Adopt) storeseam.Adopt {
+		log.enlist()
+		return adopt
+	})
+	return log
 }
 
 // firstError is the first non-nil of errs (a facet's serves in turn).
