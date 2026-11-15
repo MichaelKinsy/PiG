@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"unsafe"
@@ -102,6 +103,22 @@ func changed(before, after seen) string {
 		}
 	}
 	return strings.Join(parts, ", ")
+}
+
+// accessSet is what the entries of a DACL (in SDDL, each with its flags) let a principal do, as the ruling on the carry defines access: each entry's type,
+// rights and trustee, and the flags that say how far it reaches below the file (everything but the inherited flag), without the order and without
+// duplicates. ReplaceFileW adds explicit copies of inherited entries and clears the inherited flag, and neither changes who may open the file.
+func accessSet(aces string) string {
+	var kept []string
+	for _, ace := range strings.Split(strings.Trim(aces, "()"), ")(") {
+		fields := strings.Split(ace, ";")
+		if len(fields) > 1 {
+			fields[1] = strings.ReplaceAll(fields[1], "ID", "")
+		}
+		kept = append(kept, strings.Join(fields, ";"))
+	}
+	slices.Sort(kept)
+	return strings.Join(slices.Compact(kept), "")
 }
 
 // observation is the state of one file after one step of a route.
@@ -294,7 +311,7 @@ func shapes() []shape {
 			createWithDescriptor(t, path, "O:"+f.sid+"D:(A;;FA;;;"+f.sid+")")
 			return path
 		}},
-		{"neither, the token's default DACL", false, false, func(t testing.TB, f fixture) string {
+		{"AI, the token's default DACL as explicit entries, nothing inherited", false, true, func(t testing.TB, f fixture) string {
 			path := filepath.Join(f.plain, "file.json")
 			if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
 				t.Fatal(err)
@@ -371,7 +388,7 @@ func routes() []route {
 				replaceFile: noteReplaceFile(rec),
 				moveFile:    moveFile,
 				carry: func(from, to string) error {
-					err := carryDescriptor(from, to)
+					err := carryOnto(path)(from, to)
 					rec.note("path after the carry from the backup", to)
 					return err
 				},
@@ -393,7 +410,7 @@ func routes() []route {
 				},
 				moveFile: moveFile,
 				carry: func(from, to string) error {
-					err := carryDescriptor(from, to)
+					err := carryOnto(path)(from, to)
 					rec.note("file after the carry from the backup", to)
 					return err
 				},
@@ -404,7 +421,7 @@ func routes() []route {
 			if err != nil {
 				return err
 			}
-			if err := carryDescriptor(path, temp); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+			if err := carryDescriptor(path, temp, false); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
 				return err
 			}
 			rec.note("replacement after the second carry", temp)
@@ -487,8 +504,11 @@ func TestWindowsSecurityDescriptorMatrix(t *testing.T) {
 				}
 				reports = append(reports, report)
 				if r.name == "ReplaceFileW and the steps of replace" {
-					if between, ok := rec.find("path after ReplaceFileW"); ok && (between.aces != before.aces || between.protected != before.protected) {
-						t.Errorf("between ReplaceFileW and the carry the file had other entries or SE_DACL_PROTECTED than the file it replaced (changed: %s):%s", changed(before, between), rec)
+					// Between ReplaceFileW and the carry from the backup the file may have other ACE flags (the inherited flag of an entry dropped) and explicit copies
+					// of inherited entries: RUN 43699097748 showed both. What the ruling calls access is who may do what: SE_DACL_PROTECTED and the entries' type,
+					// rights and trustee. The final assertion below is the whole descriptor.
+					if between, ok := rec.find("path after ReplaceFileW"); ok && (accessSet(between.aces) != accessSet(before.aces) || between.protected != before.protected) {
+						t.Errorf("between ReplaceFileW and the carry the file had other access (SE_DACL_PROTECTED, or the entries' type, rights and trustee) than the file it replaced (changed: %s):%s", changed(before, between), rec)
 					}
 				}
 				if r.asserted && (report.changes[0] != "" || report.changes[1] != "") {
@@ -537,37 +557,45 @@ func TestWindowsWriteFileOfANewFileGivesTheStoresDescriptor(t *testing.T) {
 func TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite(t *testing.T) {
 	for _, r := range []route{routes()[0], uncuredRoute()} {
 		t.Run(r.name, func(t *testing.T) {
-			dir := t.TempDir()
-			path := filepath.Join(dir, "auth.json")
-			createAsTheStoreDoes(t, path)
-			before := mustSnapshot(t, path)
-			rec := &recording{}
-			if err := r.run(t, path, "written", rec); err != nil {
-				t.Fatalf("%v%s", err, rec)
-			}
-			written := mustSnapshot(t, path)
-			testenv.InheritOthersRead(t, dir)
-			propagated := mustSnapshot(t, path)
-			verdict := "inheritance did not reach the protected file"
-			if written.autoInherited {
-				verdict = "inheritance did not reach the protected auto-inherited file"
-			}
-			if propagated.aces != written.aces || propagated.protected != written.protected || strings.Contains(propagated.aces, ";WD)") {
-				verdict = "inheritance reached a protected file"
-				if written.autoInherited {
-					verdict = "inheritance reached a protected auto-inherited file"
-				}
-			}
-			message := fmt.Sprintf("%s (%s)\n   before the write      %s\n   after the write       %s\n   after the parent got an inheritable Everyone entry %s", verdict, r.name, before.sddl, written.sddl, propagated.sddl)
+			message, reached := inheritanceVerdict(t, r)
 			t.Log(message)
-			if strings.HasPrefix(verdict, "inheritance reached") {
+			if reached {
 				t.Error(message)
-			}
-			if ownerOnly, err := ownerfile.OwnerOnly(path, nil); err != nil || !ownerOnly {
-				t.Errorf("owner-only after the propagation = %v (%v), want true", ownerOnly, err)
 			}
 		})
 	}
+}
+
+// inheritanceVerdict runs the test above for one route and returns what it saw (the verdict and the descriptors) and whether inheritance reached the file.
+// The matrix prints it with its probes, so that a run in which a cell differs shows it too: a passing test prints nothing.
+func inheritanceVerdict(t testing.TB, r route) (message string, reached bool) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "auth.json")
+	createAsTheStoreDoes(t, path)
+	before := mustSnapshot(t, path)
+	rec := &recording{}
+	if err := r.run(t, path, "written", rec); err != nil {
+		t.Fatalf("%v%s", err, rec)
+	}
+	written := mustSnapshot(t, path)
+	testenv.InheritOthersRead(t, dir)
+	propagated := mustSnapshot(t, path)
+	verdict := "inheritance did not reach the protected file"
+	if written.autoInherited {
+		verdict = "inheritance did not reach the protected auto-inherited file"
+	}
+	if propagated.aces != written.aces || propagated.protected != written.protected || strings.Contains(propagated.aces, ";WD)") {
+		reached = true
+		verdict = "inheritance reached a protected file"
+		if written.autoInherited {
+			verdict = "inheritance reached a protected auto-inherited file"
+		}
+	}
+	if ownerOnly, err := ownerfile.OwnerOnly(path, nil); err != nil || !ownerOnly {
+		t.Errorf("owner-only after the propagation = %v (%v), want true", ownerOnly, err)
+	}
+	return fmt.Sprintf("%s (%s)\n   before the write      %s\n   after the write       %s\n   after the parent got an inheritable Everyone entry %s", verdict, r.name, before.sddl, written.sddl, propagated.sddl), reached
 }
 
 // carryProbe applies the descriptor of the file at from to the file at to through one Win32 call.
@@ -619,6 +647,17 @@ func carryProbes() []carryProbe {
 			}
 			return nil
 		}},
+		{"SetKernelObjectSecurity with SE_DACL_AUTO_INHERIT_REQ|SE_DACL_AUTO_INHERITED in the control and the protected flag named (NOT SHOWN BEFORE)", func(from, to string) error {
+			sd, err := readParts(from)
+			if err != nil {
+				return err
+			}
+			want, err := accessOf(sd)
+			if err != nil {
+				return err
+			}
+			return setAccessAsked(from, to, want)
+		}},
 		{"SetNamedSecurityInfo (DACL and the protected flag of the descriptor)", func(from, to string) error {
 			sd, err := readParts(from)
 			if err != nil {
@@ -640,7 +679,8 @@ func carryProbes() []carryProbe {
 			}
 			return windows.SetNamedSecurityInfo(to, windows.SE_FILE_OBJECT, info, nil, nil, dacl, nil)
 		}},
-		{"carryDescriptor (what the cure calls: SetKernelObjectSecurity with the protected flag named, owner and group where they differ, read back)", carryDescriptor},
+		{"carryDescriptor onto a temporary file (what the cure calls: the three calls in their order, owner and group where they differ, read back)", func(from, to string) error { return carryDescriptor(from, to, false) }},
+		{"carryDescriptor onto the live file (what the cure calls on the path: no SetNamedSecurityInfo)", func(from, to string) error { return carryDescriptor(from, to, true) }},
 	}
 }
 
@@ -669,6 +709,12 @@ func probeCarryRoutes(t *testing.T) {
 			rows = append(rows, fmt.Sprintf("    MoveFileEx of a file that carried the descriptor through SetKernelObjectSecurity over a store-created file (carry error: %v)\n      moved file before %s", carryErr, describe(carried)))
 			moveErr := moveFile(carried, victim)
 			rows = append(rows, fmt.Sprintf("      victim after the move %s (error: %v)", describe(victim), moveErr))
+		})
+	}
+	for _, r := range []route{routes()[0], uncuredRoute()} {
+		t.Run("probe/inheritance/"+r.name, func(t *testing.T) {
+			message, _ := inheritanceVerdict(t, r)
+			rows = append(rows, "  the parent-inheritable-Everyone test, "+message)
 		})
 	}
 	t.Logf("PROBES of the other routes on fresh files:\n%s", strings.Join(rows, "\n"))

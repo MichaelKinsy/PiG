@@ -37,8 +37,9 @@ var procReplaceFile = windows.NewLazySystemDLL("kernel32.dll").NewProc("ReplaceF
 
 // replace puts temp in place of path, which already has the access (DACL entries, SE_DACL_PROTECTED) of the file at path, carried by carryAttributes. A file
 // that exists is replaced with ReplaceFileW (see [replaceKeepingBackup] for the files a failure leaves, and for what is done after it succeeds): Microsoft
-// documents that it keeps the replaced file's attributes and streams and merges its DACL into the replacement, and the predecessor of this code found by
-// reading that it sets SE_DACL_AUTO_INHERITED on a file that did not have it; NOT VERIFIED BY RUN. So after it the descriptor of the replaced file is carried
+// documents that it keeps the replaced file's attributes and streams and merges its DACL into the replacement; RUN 43699097748 showed that it always leaves
+// SE_DACL_AUTO_INHERITED set on the file at path and can change the entries (the inherited flag of an entry dropped, explicit copies of inherited entries
+// added). So after it the descriptor of the replaced file is carried
 // back (carryDescriptor) and read back, which puts the old file back when the access differs. A file that does not exist yet is moved with MoveFileEx and
 // written through. Both are retried for fsretry.RenameBudget while another process holds the file open. On a file system without ReplaceFileW the target's
 // descriptor is carried onto temp before the move. The target is never truncated in place.
@@ -55,17 +56,23 @@ func replace(temp, path string, existed bool) error {
 		moveFile: func(from, to string) error {
 			return fsretry.Retry(ctx, nil, func() error { return moveFile(from, to) })
 		},
-		carry: carryDescriptor,
+		carry: carryOnto(path),
 	})
 	if !errors.Is(err, windows.ERROR_INVALID_FUNCTION) && !errors.Is(err, windows.ERROR_NOT_SUPPORTED) {
 		return err
 	}
 	// The replacement already has the access of the file (carryAttributes); this carries it again from the file as it is now, and tolerates only the
 	// flag a file system may set whatever it is given.
-	if err := carryDescriptor(path, temp); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+	if err := carryDescriptor(path, temp, false); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
 		return err
 	}
 	return fsretry.Retry(ctx, nil, func() error { return moveFile(temp, path) })
+}
+
+// carryOnto is the carry of a replacement of path: onto path itself it is made for the live file (see [carryDescriptor]), onto any other file for a
+// temporary one.
+func carryOnto(path string) func(from, to string) error {
+	return func(from, to string) error { return carryDescriptor(from, to, to == path) }
 }
 
 // replaceFile is ReplaceFileW(replaced, replacement, backup, no flags): the replaced file is kept under the backup name.

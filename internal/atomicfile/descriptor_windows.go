@@ -19,8 +19,7 @@ import (
 //     set it whatever the caller asked for, so a carry that leaves only that flag different is a success ([errAutoInheritedDiffers]);
 //   - the owner and the group, which are carried as far as the caller's token may set them, as on Unix.
 //
-// NOT VERIFIED BY RUN: no Windows machine was available when this was written. Which Win32 call keeps SE_DACL_AUTO_INHERITED is decided by the matrix in
-// descriptor_matrix_windows_test.go, which prints the descriptor before and after each call on the Windows job.
+// RUN 43699097748 (the first on Windows) decided the calls; what is still NOT shown is marked NOT SHOWN BY RUN where it is used (setAccessAsked).
 
 // descriptorParts are the parts of a security descriptor a replacement carries.
 const descriptorParts = windows.OWNER_SECURITY_INFORMATION | windows.GROUP_SECURITY_INFORMATION | windows.DACL_SECURITY_INFORMATION
@@ -61,19 +60,21 @@ func accessOf(descriptor *windows.SECURITY_DESCRIPTOR) (access, error) {
 // written to it and before it replaces anything. It is the Windows form of copying the extended attributes: a temporary file that cannot take the access is
 // an error, which WriteFile answers with an in-place write, as Pi writes, so that the file never has other access than it had.
 func carryAttributes(temp *os.File, path string) error {
-	if err := carryDescriptor(path, temp.Name()); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+	if err := carryDescriptor(path, temp.Name(), false); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
 		return err
 	}
 	return nil
 }
 
-// carryDescriptor gives the file at to the security descriptor of the file at from, with low-level calls that set the descriptor as it is given and run no
-// inheritance (SetNamedSecurityInfo does, and sets SE_DACL_AUTO_INHERITED), and reads the descriptor of to back. It returns nil when the access and
+// carryDescriptor gives the file at to the security descriptor of the file at from and reads the descriptor of to back ([carryAccess] decides which calls).
+// live says that to is the file at the name callers open, not a temporary file that no one has opened: there the call that runs inheritance
+// ([setAccessNamed]) is not made, so that the file never holds the parent's current inheritable entries; a source that was auto-inherited then keeps the flag
+// only when the file already has it (ReplaceFileW leaves it set) or the request for auto-inheritance sets it. It returns nil when the access and
 // SE_DACL_AUTO_INHERITED are as from's, [errAutoInheritedDiffers] when only SE_DACL_AUTO_INHERITED is not, and any other error when the access is not:
 // whatever the calls themselves reported, the read-back decides. The owner and the group are not read back: a token that may not set them (ERROR_INVALID_OWNER,
 // ERROR_INVALID_PRIMARY_GROUP, ERROR_PRIVILEGE_NOT_HELD, or no WRITE_OWNER on the file) leaves them as they are, as chown does on Unix. A file system that
 // keeps no security descriptor (the file at from has none: ERROR_NOT_SUPPORTED, ERROR_INVALID_FUNCTION) has nothing to carry.
-func carryDescriptor(from, to string) error {
+func carryDescriptor(from, to string, live bool) error {
 	source, err := windows.GetNamedSecurityInfo(from, windows.SE_FILE_OBJECT, descriptorParts)
 	if errors.Is(err, windows.ERROR_NOT_SUPPORTED) || errors.Is(err, windows.ERROR_INVALID_FUNCTION) {
 		return nil
@@ -88,8 +89,18 @@ func carryDescriptor(from, to string) error {
 	if want.absent {
 		return nil
 	}
-	setErr := errors.Join(setOwnerAndGroup(to, source), setAccess(to, source, want))
-	got, err := readAccess(to)
+	calls := carryCalls{
+		exact: func() error { return setAccess(to, source, want) },
+		asked: func() error { return setAccessAsked(from, to, want) },
+		named: func() error { return setAccessNamed(to, source, want) },
+		read:  func() (access, error) { return readAccess(to) },
+	}
+	if live {
+		calls.named = nil
+	}
+	ownerErr := setOwnerAndGroup(to, source)
+	got, setErr, err := carryAccess(want, calls)
+	setErr = errors.Join(ownerErr, setErr)
 	if err != nil {
 		return errors.Join(err, setErr)
 	}
@@ -122,22 +133,56 @@ func describeDifference(source *windows.SECURITY_DESCRIPTOR, to string) string {
 	return "wanted " + source.String() + ", have " + have
 }
 
+// daclInformation names the DACL and says whether it is protected, for the calls that set it.
+func daclInformation(want access) windows.SECURITY_INFORMATION {
+	if want.protected {
+		return windows.DACL_SECURITY_INFORMATION | windows.PROTECTED_DACL_SECURITY_INFORMATION
+	}
+	return windows.DACL_SECURITY_INFORMATION | windows.UNPROTECTED_DACL_SECURITY_INFORMATION
+}
+
 // setAccess sets the DACL of the file at to to the DACL of source, with the protection source has: through the file's handle, opened for WRITE_DAC alone,
 // with SetKernelObjectSecurity, which hands the descriptor to the file system as it is. Microsoft documents that function for kernel objects and points to
-// SetFileSecurity for files, which opens the file by name and calls the same system service; NOT VERIFIED BY RUN that it keeps the flags the way this does.
+// SetFileSecurity for files, which opens the file by name and calls the same system service. SHOWN BY RUN 43699097748: it keeps the entries and
+// SE_DACL_PROTECTED of every starting descriptor of the matrix (a source that is not protected and has no entries other than the temporary file's leaves the
+// temporary file protected), and leaves SE_DACL_AUTO_INHERITED off whatever source has.
 func setAccess(to string, source *windows.SECURITY_DESCRIPTOR, want access) error {
 	handle, err := openSecurityHandle(to, windows.WRITE_DAC)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = windows.CloseHandle(handle) }()
-	info := windows.SECURITY_INFORMATION(windows.DACL_SECURITY_INFORMATION)
-	if want.protected {
-		info |= windows.PROTECTED_DACL_SECURITY_INFORMATION
-	} else {
-		info |= windows.UNPROTECTED_DACL_SECURITY_INFORMATION
+	return windows.SetKernelObjectSecurity(handle, daclInformation(want), source)
+}
+
+// setAccessAsked is setAccess with the request for auto-inheritance in the control of the descriptor given (SE_DACL_AUTO_INHERIT_REQ and
+// SE_DACL_AUTO_INHERITED), on a copy of the source read again from from: the one route NOT SHOWN BY RUN, which the matrix's probe prints. The file system
+// takes the flag from the control of the descriptor it is given when it is asked for auto-inheritance (SetPrivateObjectSecurityEx's SEF_DACL_AUTO_INHERIT is
+// the same request); that it does so through this call is a reading of the documentation, and the read-back after the call decides.
+func setAccessAsked(from, to string, want access) error {
+	source, err := windows.GetNamedSecurityInfo(from, windows.SE_FILE_OBJECT, descriptorParts)
+	if err != nil {
+		return err
 	}
-	return windows.SetKernelObjectSecurity(handle, info, source)
+	if err := source.SetControl(windows.SE_DACL_AUTO_INHERIT_REQ|windows.SE_DACL_AUTO_INHERITED, windows.SE_DACL_AUTO_INHERIT_REQ|windows.SE_DACL_AUTO_INHERITED); err != nil {
+		return err
+	}
+	handle, err := openSecurityHandle(to, windows.WRITE_DAC)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = windows.CloseHandle(handle) }()
+	return windows.SetKernelObjectSecurity(handle, daclInformation(want), source)
+}
+
+// setAccessNamed is SetNamedSecurityInfo with the DACL and the protection of source. SHOWN BY RUN: it sets SE_DACL_AUTO_INHERITED, and it runs inheritance:
+// the parent's inheritable entries are added to an unprotected DACL that lacks them, and the inherited flag of the entries of a protected DACL is cleared.
+func setAccessNamed(to string, source *windows.SECURITY_DESCRIPTOR, want access) error {
+	dacl, _, err := source.DACL()
+	if err != nil {
+		return err
+	}
+	return windows.SetNamedSecurityInfo(to, windows.SE_FILE_OBJECT, daclInformation(want), nil, nil, dacl, nil)
 }
 
 // setOwnerAndGroup sets the owner and the group of the file at to to source's where they differ and the token may set them. An owner that the token may
