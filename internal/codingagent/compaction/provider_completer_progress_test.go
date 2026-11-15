@@ -18,7 +18,7 @@ import (
 func progressStream(deltas ...string) (agent.StreamFn, *[32]byte) {
 	var requestHash [32]byte
 	return func(_ context.Context, _ *ai.Model, transcript ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-		body, err := json.Marshal(transcript)
+		body, err := json.Marshal(transcript.FrozenContext())
 		if err != nil {
 			return nil, err
 		}
