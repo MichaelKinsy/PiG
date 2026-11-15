@@ -123,13 +123,16 @@ const (
 
 // WorkerState is one address's worker (R5): running or on its way, or failed (until `Retry` or a rollout) with a public
 // error: a fixed message (`worker failed to start`, `worker exited (SIGSEGV)`) or the child's redacted `fatal`. Pid and
-// StartedAt are set for a worker that lives, Error and At for a failed one.
+// StartedAt are set for a worker that lives, Error and At for a failed one. Incarnation is the incarnation of the host at the
+// worker's end of its link, once the link's handshake completed (the route's `opened`): empty before it and for a failed one;
+// a worker's next run has another.
 type WorkerState struct {
-	Status    WorkerStatus
-	Pid       int
-	StartedAt int64
-	Error     CrossedError
-	At        int64
+	Status      WorkerStatus
+	Pid         int
+	StartedAt   int64
+	Incarnation string
+	Error       CrossedError
+	At          int64
 }
 
 // WorkersError is what the component reports (and the state's watch listeners that threw): one of WorkerFailedError,
@@ -481,6 +484,8 @@ type ended struct {
 type child struct {
 	process *WorkerProcess
 	status  WorkerStatus
+	// incarnation is its host's incarnation, from its link's handshake on (the route's `opened`); empty before it.
+	incarnation string
 	// stopping: a stop was asked for: its exit is no crash.
 	stopping bool
 	cause    *cause
@@ -970,7 +975,18 @@ func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValu
 	if err != nil {
 		return host.ResolvedLink{}, err
 	}
-	return host.ResolvedLink{Link: spawned.process.Link, Principal: principal, Trusted: true}, nil
+	return host.ResolvedLink{Link: spawned.process.Link, Principal: principal, Trusted: true, Opened: func(incarnation string) {
+		c.loop.Run(func() { c.opened(record, spawned, incarnation) })
+	}}, nil
+}
+
+// opened: child's link completed its handshake with its host's incarnation (the route's `opened`): in the state before anything
+// else that host sent is handled, so a handler of its first call finds its `ctx.Incarnation()` there. It runs in a section.
+func (c *Workers) opened(record *routed, child *child, incarnation string) {
+	child.incarnation = incarnation
+	if record.child == child {
+		c.state.refresh()
+	}
 }
 
 // fork forks the address's worker and records its events on it as they happen. It runs in a section.
@@ -1578,7 +1594,11 @@ func stateOf(component *Workers) delta.JsonValue {
 			result.Set(key, delta.JsonObjectOf("status", string(WorkerFailed), "error", record.failure.err.json(), "at", float64(record.failure.at)))
 		case record.child != nil:
 			process := record.child.process
-			result.Set(key, delta.JsonObjectOf("status", string(record.child.status), "pid", float64(process.Pid), "startedAt", float64(process.StartedAt)))
+			entry := delta.JsonObjectOf("status", string(record.child.status), "pid", float64(process.Pid), "startedAt", float64(process.StartedAt))
+			if incarnation := record.child.incarnation; incarnation != "" {
+				entry.Set("incarnation", incarnation)
+			}
+			result.Set(key, entry)
 		}
 	}
 	return result

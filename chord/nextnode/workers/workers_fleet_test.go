@@ -273,6 +273,7 @@ func (f *fleet) stateOf(id string) *WorkerState {
 	if pid, ok := entry.Value("pid").(float64); ok {
 		state.Pid = int(pid)
 	}
+	state.Incarnation, _ = entry.Value("incarnation").(string)
 	if failure, ok := entry.Value("error").(*delta.JsonObject); ok {
 		state.Error.Message, _ = failure.Value("message").(string)
 		state.Error.Code, _ = failure.Value("code").(string)
