@@ -1,7 +1,7 @@
 {
-	"commit": "7cc21c24f6b5070924a6d9090a74c07f08686990",
+	"commit": "f57cd94843590a625d44a3ae8a06dfd98e98275a",
 	"pin": "b4afdddf44e059c67ccf5097e5317d913521b470",
-	"catchup": "7cc21c24f6b5070924a6d9090a74c07f08686990",
+	"catchup": "f57cd94843590a625d44a3ae8a06dfd98e98275a",
 	"patches": [
 		{
 			"name": "D636-apply-acquired-pick.patch",
@@ -221,7 +221,7 @@
 		},
 		{
 			"path": "pi/chord/src/host/host.ts",
-			"sha256": "2eb0ff54197cc0105ce1f51befb5c8f330e5583ee94464756e001da033a3460e"
+			"sha256": "7d5e75806ca939318df0b62904ffed2f7cd3243454f181ded926ef58c0a63ee0"
 		},
 		{
 			"path": "pi/chord/src/host/index.ts",
@@ -317,7 +317,7 @@
 		},
 		{
 			"path": "pi/chord/src/host/route.ts",
-			"sha256": "a0160818c9ac5c29dcb9d53c0fae169b37345a4616487d03071fc9b15e978887"
+			"sha256": "65171b7359fef635e2422def164e7325ec96b04b745b6264a1cd2bd0869f59a0"
 		},
 		{
 			"path": "pi/chord/src/host/routines.ts",
@@ -501,7 +501,7 @@
 		},
 		{
 			"path": "pi/chord/src/remote/host-link.ts",
-			"sha256": "14752a2420a6a5540b32675eb71d39f7a21cfe094a2db2f8fab86a279e9563b9"
+			"sha256": "f5d7c101a1b9be8edf2474aade3d170b8ebcccd9b67d6c0e53a7f69f4932b8a6"
 		},
 		{
 			"path": "pi/chord/src/remote/internal.ts",
@@ -721,7 +721,7 @@
 		},
 		{
 			"path": "pi/chord/src/store/store.ts",
-			"sha256": "0575b376e5137484396e4d006243269225947c57095993a77f96f4005364caf8"
+			"sha256": "fe2501420ab2f00d5fcfe072727e5b1f487e1ee5356c677baf8aea79c68958ed"
 		},
 		{
 			"path": "pi/chord/src/store/table-changes.ts",

@@ -147,11 +147,9 @@ func (c *consumerSide) call(hold int, method int, methodData *contracts.MethodDa
 	call := &outgoingCall{side: c, hold: hold, owner: owner, method: method, args: part, segments: payload.Segments, result: result, old: c.link.host.oldWork.of(ctx), trace: chordtelemetry.CarrierOf(chordctx.Telemetry(ctx))}
 	if ctx.Done() != nil {
 		loop := c.link.host.loop()
-		call.done = context.AfterFunc(ctx, func() {
-			loop.Run(func() {
-				c.cancel(call)
-				result.settle(nil, context.Cause(ctx))
-			})
+		call.done = onAbort(loop, ctx, func() {
+			c.cancel(call)
+			result.settle(nil, context.Cause(ctx))
 		})
 	}
 	c.window.submit(call)

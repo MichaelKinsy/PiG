@@ -1406,7 +1406,7 @@ func (b *binding) until(decide func(*RefState) decision, ctx context.Context) *k
 			settle(context.Cause(ctx))
 			return promise
 		}
-		stop = context.AfterFunc(ctx, func() { b.loop.Run(func() { settle(context.Cause(ctx)) }) })
+		stop = onAbort(b.loop, ctx, func() { settle(context.Cause(ctx)) })
 	}
 	each.check()
 	return promise

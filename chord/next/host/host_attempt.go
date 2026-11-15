@@ -1189,7 +1189,7 @@ func (a *attempt) call(method string, args any, ctx context.Context, parent tele
 		handlerCtx.settle()
 	})
 	// The caller's wait ends at once when the call's context is aborted: awaitWithContext(running, callContext).
-	stopWait := context.AfterFunc(callContext, func() { result.settle(nil, context.Cause(callContext)) })
+	stopWait := onAbort(host.loop(), callContext, func() { result.settle(nil, context.Cause(callContext)) })
 	loop := host.loop()
 	// The handler's synchronous part runs inside this section, as Pi's does: the section is lent to it (Loop.Lend) until it
 	// returns or parks (Park of its ctx, at the first wait for something that is not a section of the host).
@@ -1216,10 +1216,10 @@ func (a *attempt) call(method string, args any, ctx context.Context, parent tele
 			if span != nil {
 				span.EndWith(err, "method_failed", callContext)
 			}
-			// An abort that came before the handler returned wins, as Pi's `awaitWithContext` rejects at the abort: the
-			// listener of `AfterFunc` runs on a goroutine of its own and may not have settled the result yet.
-			// The child context follows its sources on a goroutine of its own, so the sources are read at once: an abort of the
-			// attempt (a followed Session that closed) that came before the handler returned is already one here.
+			// An abort that came before the handler returned wins, as Pi's `awaitWithContext` rejects at the abort: the listener
+			// (onAbort) queues its settlement at the abort, a microtask, which may not have run yet.
+			// The child context follows a source of another package (a deadline) on a goroutine of its own, so the sources are read
+			// at once: an abort of the attempt (a followed Session that closed) that came before the handler returned is already one here.
 			if cause := linked.aborted(); cause != nil {
 				result.settle(nil, cause)
 				return
