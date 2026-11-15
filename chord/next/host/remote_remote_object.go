@@ -328,6 +328,33 @@ func (r *remoteObject) unreachable(err *data.ChordError) {
 	}
 }
 
+// withheld: its route's admission holds it back with cause (slice 14 §2.3): released at its provider when it is held there
+// (its calls reject, `forbidden/revoked` for a denial), and `failed` with the cause; a denial drops its replicas. It stays on
+// its path: an allow holds it again.
+func (r *remoteObject) withheld(cause data.FailureCause) {
+	held := r.held
+	r.held = nil
+	err := cause.Error
+	if held != nil {
+		rejected := err
+		if cause.Kind == data.FailureDenied {
+			rejected = revoked(r.name, err)
+		}
+		held.side.release(held.id, rejected)
+	}
+	r.failure = err
+	r.endHold("failed", err)
+	if cause.Kind == data.FailureDenied {
+		r.bound = nil
+	}
+	if r.refState.Kind != RefStateEnded {
+		r.move(&RefState{Kind: RefStateFailed, Cause: cause})
+	}
+}
+
+// admitted: its route's admission allows it: loading (again, after what held it back) until its next binding.
+func (r *remoteObject) admitted() { r.startOver() }
+
 // dropped: the link dropped: loading until a new link's hold is bound (startOver).
 func (r *remoteObject) dropped(*data.ChordError) {
 	r.held = nil
@@ -687,7 +714,8 @@ func (r *remoteObject) wentLive() {
 // failed is a `failed` message: the provider's object failed and no attempt runs (RetryIn: the rest of its backoff
 // window), or the hold is unbound there or its object parked on a failed dependency (`waiting`), each new cause a new
 // message. On a bound hold it unbinds it (slice 7b, model §5): the members keep their last values until the next
-// `bound`. It fails on an error that is no wire error (a protocol error).
+// `bound`. A denial (`denied`: an admission refused this hold's caller, slice 14 §2.2) drops its replicas: no value of it
+// stays readable here. It fails on an error that is no wire error (a protocol error).
 func (r *remoteObject) failed(message *link.FailedMessage) error {
 	// A plugin's error a provider failed with is this object's failure, as a ChordError.
 	received, err := link.ErrorFromWire(message.Cause.Error)
@@ -697,6 +725,9 @@ func (r *remoteObject) failed(message *link.FailedMessage) error {
 	failure := data.AsChordError(received, r.name)
 	r.failure = failure
 	r.endHold("failed", failure)
+	if message.Cause.Kind == string(data.FailureDenied) {
+		r.bound = nil
+	}
 	next := &RefState{Kind: RefStateFailed, Cause: data.FailureCause{Kind: data.FailureKind(message.Cause.Kind), Error: failure}}
 	if message.RetryIn.Ok {
 		at := r.host.loop().Now() + int64(message.RetryIn.Value)

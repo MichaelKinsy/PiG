@@ -365,6 +365,18 @@ func (p *providerSide) upstreamDropped(entry *relayedHold, err *data.ChordError)
 	p.send(&link.LoadingMessage{Hold: entry.id})
 }
 
+// withheld: a route's admission holds relayed hold entry back with cause (slice 14 §2.3): its calls, in flight or waiting, are
+// answered with the cause's error (`forbidden/revoked` for a denial: access withdrawn under a running call), and the hold is
+// told `failed` with the cause.
+func (p *providerSide) withheld(entry *relayedHold, cause data.FailureCause) {
+	err := cause.Error
+	if cause.Kind == data.FailureDenied {
+		err = revoked(fmt.Sprintf("hold %d", entry.id), err)
+	}
+	p.rejectRelayed(entry, err, true)
+	p.send(&link.FailedMessage{Hold: entry.id, Cause: link.WireCause{Kind: string(cause.Kind), Error: wireError(cause.Error)}})
+}
+
 // rejectRelayed answers err to the calls of relayed hold entry: those still waiting for the upstream window (all false), or
 // all of them. The waiting ones leave their window before any slot is counted free, so a freed slot never forwards a call
 // being rejected.
