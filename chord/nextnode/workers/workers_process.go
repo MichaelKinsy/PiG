@@ -18,6 +18,7 @@ import (
 // `forkDriver`): started as a detached process group (the whole tree can be killed), stdout and stderr piped (the stderr
 // tail kept, both mirrored to the server's own when the app takes no output), its IPC link made at the fork so the child's
 // `hello` and early holds are queued, never lost; control messages, the link's close and the exit are told as they happen.
+// Its link is closed at its exit, before the exit is told (decision "A worker's exit is published after its link's work ended").
 //
 // Forced Go differences. A worker is an executable, not a Node module: `Entry` is its path and `ExecArgv` its arguments
 // (Node's `execArgv` and entry file). The IPC channel is workers_channel.go's. Events are called from the owned goroutines
@@ -53,7 +54,8 @@ type ProcessEvents struct {
 	LinkLost func()
 	// LinkClosed: its link was closed by the child's side (it exits, or it closed its IPC channel and may live on).
 	LinkClosed func()
-	Exited     func(exit Exit)
+	// Exited: it exited; its link is closed already (told by neither LinkLost nor LinkClosed when the exit closed it).
+	Exited func(exit Exit)
 }
 
 // stderrTailUnits is how much of a worker's stderr is kept for its failure: 4 KiB (UTF-16 code units, as the string it
@@ -260,6 +262,9 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 	if p.killed.Load() {
 		exit = killedExit(exit)
 	}
+	// The link's end is the exit's from here: the close of the channel the tree's end causes is told as neither a lost nor a
+	// closed link (Pi's `link.end()` sits right after the group's kill, before anything is told).
+	p.telling.ending()
 	p.tree.kill()
 	// Everything it wrote is told before its exit, and its exit waits for no stream's end: each reader settles what was
 	// written before the end and reads on, so a process outside the tree that holds its output or its channel holds neither
@@ -272,6 +277,9 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 	for _, told := range p.drains {
 		<-told.settled
 	}
+	// Before anyone hears of the exit: what it sent and the channel still holds is never handled, and the calls it made are
+	// aborted (the channel closes by itself only later, on its own event).
+	p.telling.release()
 	if events.Exited != nil {
 		events.Exited(exit)
 	}
@@ -354,6 +362,8 @@ type tellingLink struct {
 	mu       sync.Mutex
 	listener func()
 	closed   bool
+	// over: the process ended; whatever closes the link from here is told by the exit.
+	over bool
 }
 
 var _ link.Link = (*tellingLink)(nil)
@@ -362,7 +372,7 @@ func newTellingLink(inner link.Link, linkLost, linkClosed func()) *tellingLink {
 	l := &tellingLink{inner: inner, linkLost: linkLost, linkClosed: linkClosed}
 	inner.OnClose(func() {
 		l.mu.Lock()
-		here := l.closed
+		here := l.closed || l.over
 		l.closed = true
 		listener := l.listener
 		l.mu.Unlock()
@@ -382,7 +392,7 @@ func (l *tellingLink) OnMessage(listener func(message []byte)) { l.inner.OnMessa
 
 func (l *tellingLink) Close() {
 	l.mu.Lock()
-	if l.closed {
+	if l.closed || l.over {
 		l.mu.Unlock()
 		return
 	}
@@ -394,7 +404,14 @@ func (l *tellingLink) Close() {
 	l.inner.Close()
 }
 
-// release closes the link without telling who closed it: its process exited, and that was told.
+// ending marks the link's process as ended: its close, whoever causes it, is told by the exit, not as a lost or a closed link.
+func (l *tellingLink) ending() {
+	l.mu.Lock()
+	l.over = true
+	l.mu.Unlock()
+}
+
+// release closes the link without telling who closed it: its process exited, and that is told.
 func (l *tellingLink) release() {
 	l.mu.Lock()
 	l.closed = true
