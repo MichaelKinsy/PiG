@@ -27,7 +27,7 @@ const (
 type correction struct {
 	ID        string `json:"id"`
 	RootCause string `json:"rootCause"`
-	// DecidedBy names who decided that the derived text is wrong and where, and Reason says why the commit message cannot be the source: what it says and what is true.
+	// DecidedBy names the role that decided that the derived text is wrong, and where (a role, never a person), and Reason says why the commit message cannot be the source: what it says and what is true.
 	DecidedBy string `json:"decidedBy"`
 	Reason    string `json:"reason"`
 }
