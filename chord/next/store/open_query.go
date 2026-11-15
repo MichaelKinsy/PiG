@@ -59,6 +59,9 @@ type OpenQuery struct {
 	releases []func()
 	closed   bool
 	compiled Compiled
+	// compiling serializes the compiles: the one that ends last has compiled the latest bindings, so its plan is the one that
+	// stays. `NewOpenQuery` and `recompile` (called by a binding change on the goroutine that changed it) compile under it.
+	compiling sync.Mutex
 }
 
 // NewOpenQuery is the open query of spec in site; shape is what it reads. rebound is called whenever a binding changed and
@@ -67,13 +70,24 @@ type OpenQuery struct {
 func NewOpenQuery(site ReadSite, spec QuerySpec, shape ReadShape, rebound func(), ctx context.Context) *OpenQuery {
 	query := &OpenQuery{Spec: spec, Site: site, Ctx: ctx, shape: shape, rebound: rebound}
 	reads := site.Store.Reads
+	// The sets are watched first, so no change is missed; a change that arrives meanwhile compiles after this compile.
+	query.compiling.Lock()
+	defer query.compiling.Unlock()
 	for _, set := range SetsOf(spec.Query) {
 		release := reads.Watch(set, query.recompile)
 		query.releases = append(query.releases, release)
 	}
 	reads.Opened(query)
-	query.compiled = query.compile()
+	query.compileInto()
 	return query
+}
+
+// compileInto compiles the query for the bindings as they are and keeps that as its plan; the caller holds `compiling`.
+func (query *OpenQuery) compileInto() {
+	compiled := query.compile()
+	query.mu.Lock()
+	query.compiled = compiled
+	query.mu.Unlock()
 }
 
 // Owner is who offers the query.
@@ -157,9 +171,10 @@ func (query *OpenQuery) recompile() {
 		return
 	}
 	query.mu.Unlock()
-	compiled := query.compile()
+	query.compiling.Lock()
+	query.compileInto()
+	query.compiling.Unlock()
 	query.mu.Lock()
-	query.compiled = compiled
 	reads := slices.Clone(query.reads)
 	query.mu.Unlock()
 	for _, read := range reads {
@@ -266,26 +281,16 @@ func (read *OpenRead) Forget() {
 }
 
 // Load runs it once, outside the commit queue, and adopts the run in a batch; returns that run, nil when a commit's run
-// overtook it, a table it reads is held (it runs when the table is ready), or it was closed. Nothing fails: a query that
-// does not compile and a run that fails are failed runs.
-func (read *OpenRead) Load() *ReadRun {
-	query := read.query
-	site, ctx := query.Site, query.Ctx
-	compiled := query.Compiled()
-	read.mu.Lock()
-	closed := read.closed
-	read.mu.Unlock()
-	if closed {
-		return nil
+// overtook it, a table it reads is held (it runs when the table is ready), it was closed, or the index closed (nothing is
+// adopted after `Reads.Close`). Nothing fails: a query that does not compile and a run that fails are failed runs.
+func (read *OpenRead) Load() *ReadRun { return read.load(read.query.Ctx) }
+
+// load is Load under ctx: the context of the task a rebinding's reload runs on, or the query's.
+func (read *OpenRead) load(ctx context.Context) *ReadRun {
+	if run, settled := read.failCompile(); settled {
+		return run
 	}
-	if compiled.Err != nil {
-		failed := ReadRun{Kind: "failed", Err: compiled.Err}
-		// The adoption has no error to return; it runs in a section of the host (a first run is read outside them).
-		site.Batch.Section(func() {
-			_ = site.Batch.Within(func() error { read.sink.Adopt(failed); return nil }, ctx)
-		})
-		return &failed
-	}
+	site := read.query.Site
 	read.mu.Lock()
 	registered := read.read
 	generation := read.generation
@@ -306,10 +311,49 @@ func (read *OpenRead) Load() *ReadRun {
 	if overtaken {
 		return nil
 	}
+	adopted := false
 	site.Batch.Section(func() {
+		if site.Store.Reads.isClosed() {
+			return
+		}
+		adopted = true
 		_ = site.Batch.Within(func() error { registered.Adopt(run); return nil }, ctx)
 	})
+	if !adopted {
+		return nil
+	}
 	return &run
+}
+
+// failCompile is what Pi's `load` does before its first await: a closed read has nothing to load (settled, no run); a query
+// that does not compile hands its sink a failed run (settled, that run). Otherwise the read has to run: not settled.
+func (read *OpenRead) failCompile() (run *ReadRun, settled bool) {
+	query := read.query
+	compiled := query.Compiled()
+	read.mu.Lock()
+	closed := read.closed
+	read.mu.Unlock()
+	if closed {
+		return nil, true
+	}
+	if compiled.Err == nil {
+		return nil, false
+	}
+	failed := ReadRun{Kind: "failed", Err: compiled.Err}
+	// The adoption has no error to return; it runs in a section of the host (a first run is read outside them).
+	query.Site.Batch.Section(func() {
+		_ = query.Site.Batch.Within(func() error { read.sink.Adopt(failed); return nil }, query.Ctx)
+	})
+	return &failed, true
+}
+
+// Reload is Pi's `void open.load()` of a binding that changed: a read of a query that no longer compiles fails at once, as
+// `load` does before its first await (its owner may end before any task runs); a read that runs, runs on a task the index
+// owns (nothing waits for it; the index's close cancels and joins it, `Reads.Go`), and its error is its failed run.
+func (read *OpenRead) Reload() {
+	if _, settled := read.failCompile(); !settled {
+		read.query.Site.Store.Reads.Go(read.query.Ctx, func(ctx context.Context) { read.load(ctx) })
+	}
 }
 
 // Close takes it out of the index: no commit runs it again. A run a commit made already still reaches its sink.

@@ -12,8 +12,11 @@ package host
 //     `awaitTask`, off the host's section) until the first run settled; nothing it waits on can fail (Pi's `read` never
 //     rejects: a failed run is the source's failure, which `Open` reports as Opened{waiting}).
 //   - `void reading.read(...)` in `#moved` is an owned background task (`ReaderSite.Go`, the loop's `Go`): nothing awaits
-//     it. Pi registers each read synchronously, in call order; a blocking Read cannot, so the reader keeps ONE pending
-//     read (the latest target wins: an overtaken read is dropped by Pi too) and one task that drains it.
+//     it. Pi's `read` runs up to its first await when it is called (the open query is registered, the previous pending
+//     read closed): that part is `Reading.Open`, which a move runs in its own section, in call order. What awaits (the
+//     load) is blocking here, so the reader keeps ONE pending load (the latest read wins: an overtaken read's query is
+//     closed, its load would do nothing) and one task that drains it. The task may run after the attempt ended: the read a
+//     move opened exists by then (a set unbound in between fails the member, as in Pi) and the close drops the load.
 //   - the context cancels a read through the store (Read's ctx is the open query's: an aborted context makes the first
 //     run a failed run); nothing else in this file waits.
 //   - every field of a reader and of a GivenQuery is touched only inside a section of the host (`batch.Section`); `Open`
@@ -73,9 +76,11 @@ type Reading interface {
 	Ready() bool
 	// Failure is its failure; nil: none.
 	Failure() error
-	// Read reads target from now on; it returns once its first run settled (adopted, overtaken or held). It does not
-	// fail: a failed run is Failure. Not called inside a section of the host (it blocks on the store).
-	Read(target store.LiveTarget, ctx context.Context)
+	// Open is the part of Pi's `read` before its first await: it reads target from now on (its read is open and
+	// registered; the previous pending one is closed) and returns the load, which returns once the first run settled
+	// (adopted, overtaken or held). It does not fail: a failed run is Failure. Open is called inside a section of the
+	// host; the load is not (it blocks on the store).
+	Open(target store.LiveTarget, ctx context.Context) (load func())
 	// Fail is: what it should read cannot be read; the source fails, and nothing read before may heal it. Called
 	// inside a section.
 	Fail(err error, ctx context.Context)
@@ -84,18 +89,21 @@ type Reading interface {
 }
 
 // liveReading is a store.LiveQuery as a Reading: Pi's `read` resolves with the first run, which no caller of a reader
-// uses (the live query's own `load` looks at its failure), so Read has no result.
+// uses (the live query's own `load` looks at its failure), so the load has no result.
 type liveReading struct{ *store.LiveQuery }
 
 // newLiveReading is live as the reading of a live query or count reader.
 func newLiveReading(live *store.LiveQuery) Reading { return liveReading{live} }
 
-// Read reads target (store.LiveQuery.Read) and drops the first run.
-func (r liveReading) Read(target store.LiveTarget, ctx context.Context) { r.LiveQuery.Read(target, ctx) }
+// Open opens target's read (store.LiveQuery.Open); its load drops the first run.
+func (r liveReading) Open(target store.LiveTarget, ctx context.Context) func() {
+	load := r.LiveQuery.Open(target, ctx)
+	return func() { load() }
+}
 
-// pendingRead is the read a reader has queued: the latest target, and the calls of Open waiting for its first run.
+// pendingRead is the load a reader has queued: the latest read's, and the calls of Open waiting for its first run.
 type pendingRead struct {
-	target  store.LiveTarget
+	load    func()
 	waiters []chan struct{}
 }
 
@@ -154,7 +162,7 @@ func (r *reader) Open(ctx context.Context) Opened {
 			return
 		}
 		r.started = true
-		done = r.enqueue(target)
+		done = r.enqueue(r.reading.Open(target, ctx))
 	})
 	if refused != nil {
 		return *refused
@@ -201,16 +209,16 @@ func (r *reader) moved() {
 		return
 	}
 	// A failure of the run is the member's (a failed member with its last value); nothing awaits it.
-	r.enqueue(target)
+	r.enqueue(r.reading.Open(target, r.ctx))
 }
 
-// enqueue makes target the read to run next (it replaces a queued one: that read was overtaken before it ran) and
-// returns the channel closed once a read at or after it settled. Inside a section.
-func (r *reader) enqueue(target store.LiveTarget) chan struct{} {
+// enqueue makes load, the load of a read just opened, the one to run next (it replaces a queued one: that read was
+// overtaken before its load ran) and returns the channel closed once a load at or after it settled. Inside a section.
+func (r *reader) enqueue(load func()) chan struct{} {
 	if r.pending == nil {
 		r.pending = &pendingRead{}
 	}
-	r.pending.target = target
+	r.pending.load = load
 	done := make(chan struct{})
 	r.pending.waiters = append(r.pending.waiters, done)
 	if !r.draining {
@@ -237,9 +245,8 @@ func (r *reader) drain() {
 	defer r.drains.Done()
 	for {
 		var next *pendingRead
-		var ctx context.Context
 		r.given.batch.Section(func() {
-			next, ctx = r.pending, r.ctx
+			next = r.pending
 			r.pending = nil
 			if next == nil {
 				r.draining = false
@@ -248,7 +255,7 @@ func (r *reader) drain() {
 		if next == nil {
 			return
 		}
-		r.reading.Read(next.target, ctx)
+		next.load()
 		for _, each := range next.waiters {
 			close(each)
 		}
