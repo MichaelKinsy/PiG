@@ -39,6 +39,9 @@ func markdown(cfg config, d *data, ev evaluation) string {
 				acks = append(acks, ackEntry(c.Name, w))
 			}
 		}
+		for _, n := range v.Notices {
+			fmt.Fprintf(&b, "| 📝 | %s | %s |\n", c.Name, inertCell(shownNotice(n)))
+		}
 	}
 	if len(acks) > 0 {
 		fmt.Fprintf(&b, "\n<details><summary>To acknowledge a warning, add its entry to <code>%s</code></summary>\n\n```toml\n%s```\n</details>\n", acknowledgedPath, strings.Join(acks, "\n"))
@@ -48,6 +51,33 @@ func markdown(cfg config, d *data, ev evaluation) string {
 
 func cell(s string) string {
 	return strings.NewReplacer("|", `\|`, "\n", " ").Replace(s)
+}
+
+// inertCell is s as a table cell that cannot be anything else: one code span on one line with the pipe escaped. The
+// cells this tool prints from a reviewed ledger row go through it.
+func inertCell(s string) string {
+	return codeSpan(strings.ReplaceAll(s, "|", `\|`))
+}
+
+// codeSpan is s as one Markdown code span on one line. Text of a pull request (a file name, a ledger reason, the
+// reason of a verdict) goes through it into a comment, so that it becomes no further cell, no mention, no HTML tag, no
+// link and no fence. The span is fenced with one backtick more than the longest run in s.
+func codeSpan(s string) string {
+	s = flatten(s)
+	if strings.TrimSpace(s) == "" {
+		return ""
+	}
+	longest, run := 0, 0
+	for _, r := range s {
+		if r == '`' {
+			run++
+			longest = max(longest, run)
+		} else {
+			run = 0
+		}
+	}
+	fence := strings.Repeat("`", longest+1)
+	return fence + " " + s + " " + fence
 }
 
 func statusFor(cfg config, ev evaluation) (state, description string) {
@@ -241,7 +271,7 @@ func (r recording) sendVia(ctx context.Context, a *api, log io.Writer) error {
 	return nil
 }
 
-const shortened = "\nThe warnings are left out: with them the report is too long for a comment. The run's log and step summary hold them.\n"
+const shortened = "\nThe warnings and notices are left out: with them the report is too long for a comment. The run's log and step summary hold them.\n"
 
 func fits(body string) bool { return len(body) <= maxCommentLength }
 
@@ -253,10 +283,10 @@ func commentBody(cfg config, d *data, ev evaluation, report string, st state) (s
 	bare := ev
 	bare.Checks = map[string]verdict{}
 	for name, v := range ev.Checks {
-		v.Warnings = nil
+		v.Warnings, v.Notices = nil, nil
 		bare.Checks[name] = v
 	}
-	st.Checks = bare.Checks
+	st.Checks, st.Shortened = bare.Checks, true
 	body = withState(markdown(cfg, d, bare)+shortened, st)
 	if !fits(body) {
 		return "", fmt.Errorf("the comment would be %d characters even without its warnings, more than the %d GitHub takes", len(body), maxCommentLength)

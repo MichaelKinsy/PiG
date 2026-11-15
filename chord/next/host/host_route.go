@@ -63,8 +63,8 @@ type RouteHandle struct {
 	// an address nobody holds resolves at its next hold. Like Pi's `retry` it enters the host's loop and runs the app's
 	// `Resolve` inline, up to where it returns or suspends, before it returns. It reports whether it started a resolve
 	// (held, no link, none running): Pi's caller reads what its synchronous `resolve` recorded, which is one event loop's
-	// state; a Go caller that reads its own state in a later section than this call (the workers component reads its
-	// record then) cannot tell otherwise, because another address's or the same address's resolve may interleave.
+	// state, so a Go caller that reads its own state in a later section cannot tell from it whether this call started the
+	// resolve it finds there. The workers' rollout does not ask; as in Pi it lists the start its address has, whoever began it.
 	//
 	// Lock order (Pi has one event loop, so it states none): do not call Retry or Suspend while holding another loop or
 	// lock that `Resolve` (before its `chordctx.Suspend`) enters, nor one that a Link's Close enters (the host closes links

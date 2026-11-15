@@ -310,6 +310,12 @@ func TestRuleTestExpectation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "docs", "parity", "PORT_MAP.md"), []byte("| packages/coding-agent/src/core/agent.ts | x |\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Join(root, "test"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "test", "testdata-provenance.toml"), []byte("[[tooling]]\nprefix = \"automation/ci/other/\"\nreason = \"r\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	r, p := shippedRule(t, "test-expectation")
 	edit := []prFile{
 		{Filename: "a/a.go", Status: "modified", Patch: "@@ -1 +1 @@\n-x := 1\n+x := 2"},
@@ -464,6 +470,12 @@ func TestRuleTestExpectationEdges(t *testing.T) {
 	}
 	inventory := "packages/a/src/first.ts\npackages/b/src/second.ts\n"
 	if err := os.WriteFile(filepath.Join(root, "docs", "parity", "PORT_MAP.md"), []byte(inventory), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "test"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "test", "testdata-provenance.toml"), []byte("[[tooling]]\nprefix = \"automation/ci/other/\"\nreason = \"r\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	r, p := shippedRule(t, "test-expectation")

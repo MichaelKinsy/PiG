@@ -728,6 +728,26 @@
       ]
     },
     {
+      "id": "BF-06582c4",
+      "title": "A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process",
+      "symptom": "As in Pi, every continuation a listener queued runs before any microtask the emitter queues after `emit` returns, and the emitter's settle wait now covers every listener process of the emit: it used to end early when an earlier listener process had already answered (it was inside its own wait for an earlier emit of the same burst), failed or exited before the Host wrote the request of the next one, so that process's continuations could interleave with the emitter's later work.",
+      "rootCause": "The emission settled the first moment its pending map was empty, so a realm that reported before the dispatch loop had registered the next realm (a quiesce written before its dispatch response, a failed dispatch, a closed connection) closed it, and the emitter's events.settle returned without waiting for the realms the loop reached afterwards. Their continuations could then run between the emitter's later microtasks; in Pi every continuation a listener queued runs before any microtask the emitter queues after emit returns (event-bus.ts:15-17, 19-25).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process. As in Pi, every continuation a listener queued runs before any microtask the emitter queues after `emit` returns, and the emitter's settle wait now covers every listener process of the emit: it used to end early when an earlier listener process had already answered (it was inside its own wait for an earlier emit of the same burst), failed or exited before the Host wrote the request of the next one, so that process's continuations could interleave with the emitter's later work. PiG 0.3.0 through 0.7.0 have the defect. \u003c!-- tests: coding/extension/host/subprocess/event_bus_settle_test.go::TestDispatchEventEmissionStaysOpenUntilTheLoopHasRegisteredEveryListenerRealm, coding/extension/host/subprocess/event_bus_settle_test.go::TestDispatchEventEmissionSettlesWhenTheLoopEndsWithNoPendingListener, coding/extension/host/subprocess/event_bus_settle_test.go::TestHostEventBusEmitCallSettlesAfterEveryListenerRealm --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "06582c49c6",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-06a8890",
       "title": "fix(bug): tell the reporter exactly what to do with the /bug archive",
       "symptom": "fix(bug): tell the reporter exactly what to do with the /bug archive",
@@ -5343,6 +5363,26 @@
       "tests": []
     },
     {
+      "id": "BF-2844ff3",
+      "title": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole…",
+      "symptom": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole text and only the printed line is cut.",
+      "rootCause": "ledgerText no longer cuts: the notice in the stored record of a verdict holds the whole text of the ledger row (bounded by the 1 MiB the contents endpoint serves) and a run that reuses the record prints what the first run printed. The log, the annotation and the comment row cut it at 600 characters with an ellipsis through shownNotice. A comment too long for GitHub still leaves its notices out. README and changelog fragment updated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole text and only the printed line is cut.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2844ff315c",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-286d303",
       "title": "A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)…",
       "symptom": "Such a provider never composed (no models, its name replaced by its id, every stream an error), and a provider-level `baseUrl` was copied onto its models, which Pi does not do (it is only the context of `refreshModels`).",
@@ -7452,6 +7492,28 @@
       ],
       "tests": [
         "durable/contract/test/vitest-candidate-plugin.test.mjs"
+      ]
+    },
+    {
+      "id": "BF-363faed",
+      "title": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could…",
+      "symptom": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could start a workflow command on the runner, in the `::command::` form and in the legacy `##[command]` form.",
+      "rootCause": "The runner also reads \"##[command]data\". defang turns \"##[\" into \"# #[\" (plain ASCII, readable); inert is flatten plus defang plus a split leading \"::\", used for every PR text the report, logf and the run error print; logf defangs the whole line, so annotation data and the dry-run comment are covered too, as every print goes through logf. Comment cells of existing findings are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could start a workflow command on the runner, in the `::command::` form and in the legacy `##[command]` form. Every line the tool prints is now inert.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "363faed088",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestInertKeepsTextReadable"
       ]
     },
     {
@@ -12250,6 +12312,32 @@
         "tui/fake_cursor_test.go::TestResolveFakeCursorsTable",
         "tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput",
         "tui/tui_surface_test.go::TestTuiSurfaceResolvesTheFakeCursorOfDockLines"
+      ]
+    },
+    {
+      "id": "BF-546133a",
+      "title": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that…",
+      "symptom": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that file, as the line lint requires, so the two gates judge alike.",
+      "rootCause": "The commit must change the file. The line lint requires that the commit a row names changed the row's path; the pre-flight rule did not. For each commit that a row names, alone among the PR's commits, for a changed test file, the pre-flight asks the commit endpoint for the commit's files (pages of 100 until a page is short, at most 30 pages) and the check's input hash includes the answer. A commit that does not change the file is a finding (\"ledger row \u003csha10\u003e \u003cpath\u003e: that commit does not change the file\"). A failed call, a 404 for a commit the PR listed, or a file list that cannot be read in full leaves the check undecided. Tests (rules_ledger_commit_test.go): the commit changed the file…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that file, as the line lint requires, so the two gates judge alike.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "546133acb5",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestLogfPrintsAnErrorOnOneLine",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestAdmissionRequiresTheNamedCommitToChangeTheFile",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitFilesAreAnInputOfTheCheck",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestLedgerRowsOfTooManyCommitsAskToSplit",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextCannotStartAWorkflowCommand"
       ]
     },
     {
@@ -20510,6 +20598,26 @@
       ]
     },
     {
+      "id": "BF-730c233",
+      "title": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no…",
+      "symptom": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no warnings or notices; it now recomputes.",
+      "rootCause": "The state of a shortened comment is marked, and decideMode runs the checks again for such a state instead of reusing the verdicts that lack their warnings and notices. A state written before this field cannot be told from an honest empty one and is reused once more, until the head moves.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no warnings or notices; it now recomputes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "730c233072",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-731474b",
       "title": "`coding.DefineTool` returns the tool definition it is given, as Pi's `defineTool` does",
       "symptom": "`coding.DefineTool` returns the tool definition it is given, as Pi's `defineTool` does.",
@@ -27685,6 +27793,26 @@
       ]
     },
     {
+      "id": "BF-982a52a",
+      "title": "A Chord rollout lists every failed worker it retried",
+      "symptom": "A Chord rollout lists every failed worker it retried.",
+      "rootCause": "A rollout kept the entry of a failed worker it retried only when its own Retry answered that it had started the resolve, and the entry of one whose address already had a start running (the route starts a resolve itself when a worker link closes; a resolve ends only when its start settles) was dropped: the worker went on starting and the rollout list lacked it. Pi has no such test: it lists `routed.starting` after `retry`, whatever began it (workers.ts:598-601). The rollout now does the same.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord rollout lists every failed worker it retried. A worker whose address already had a start running when the rollout retried it (the route starts one itself when the worker's link closes) was left out of the rollout's list although its start went on, so the app saw one worker fewer than the rollout had brought up; the list now carries the start the address has after the retry, whoever began it, as Pi's does. \u003c!-- cause: the rollout kept a retried worker's entry only when its own Retry answered that it had started the resolve, assuming a start on a failed address was always its own; Pi lists whatever start the address has after the retry (workers.ts:598-601) --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "982a52a9f9",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-983d651",
       "title": "The bash truncation notice for a last line over 50 KB that ends with a newline reports the line's size…",
       "symptom": "The bash truncation notice for a last line over 50 KB that ends with a newline reports the line's size instead of `line is 0B` (Pi #10015).",
@@ -29357,6 +29485,33 @@
       ],
       "tests": [
         "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
+      ]
+    },
+    {
+      "id": "BF-a058b99",
+      "title": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on…",
+      "symptom": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
+      "rootCause": "The list is read from main's checkout only (the file is added to the check's main reads and to both sparse checkouts of the workflow), so a prefix that a pull request adds exempts nothing in that pull request. A list that is missing, empty or not TOML on main fails the check with that reason. Each skip is a notice (a NOTE line, a ::notice, a comment row) naming the file and the prefix. A ledger row for a skipped file is not needed, and the ledger is not read when every flagged file is skipped.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a058b99ea8",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/reviewed/tooling_test.go::TestParseToolingAndInTooling",
+        "automation/ci/preflight/rules_test.go::TestRuleTestExpectation",
+        "automation/ci/preflight/rules_test.go::TestRuleTestExpectationEdges",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationSkipsToolingDirectoriesOfMain",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsSkipsOnlyListedToolingDirectories",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckToolingRejectsEntriesThatWidenTheScope"
       ]
     },
     {
@@ -35705,6 +35860,30 @@
         "extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire",
         "test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs"
       ]
+    },
+    {
+      "id": "BF-cc061a0",
+      "title": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits",
+      "symptom": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits.",
+      "rootCause": "A quit by keys that waits for an author keeps its dispose pending. The ctrl+c that then ends pig (exit 130) ran no dispose, so the runtime of a Node author that holds a timer stayed behind. handleInterruptSignal terminates the extension processes before it exits, as the emergency exit does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits. The runtime process of a Node extension whose event loop was still alive, for example one that holds a timer, stayed behind after a quit by keys that was still waiting for an extension's session_shutdown handler. Nothing more is written to the session file at that exit. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cc061a0b20",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "f522a9c34a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-cc9370b",
@@ -47793,6 +47972,28 @@
       ],
       "tests": [
         "tui/markdown_render_oracle_test.go::TestMarkdownRenderMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-ffe1cf3",
+      "title": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its…",
+      "symptom": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its SBCL image: it warned `[not-embedded]`, a Piglet with no other member to fuse failed with \"nothing to embed or fuse\", and a Piglet with a fused member built a Binary that exited at startup with `baked Piglet Binary binary-packed extensions do not match its plan: missing [\u003cextension\u003e]`.",
+      "rootCause": "The component plan records a Lisp extension as binary-packed, but buildNativeArtifact had no packed-lisp case: the cell fell to the default branch, which warned [not-embedded] and embedded nothing. The Binary then refused to start because its plan named an extension its cells lacked, and a Piglet with no other member to fuse failed with \"nothing to embed or fuse\". Build the SBCL image through runtimecell.BuildLispPackedCell, as the Go and Rust cells are built, and embed it; the startup path already starts an embedded packed-lisp cell.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its SBCL image: it warned `[not-embedded]`, a Piglet with no other member to fuse failed with \"nothing to embed or fuse\", and a Piglet with a fused member built a Binary that exited at startup with `baked Piglet Binary binary-packed extensions do not match its plan: missing [\u003cextension\u003e]`. The build now builds the Lisp image and embeds it, the Binary starts it without SBCL, and a Piglet whose only extensions are Lisp extensions builds.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ffe1cf3473",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/pigletbuild/lisp_binary_test.go::TestPigletBinaryRunsItsLispExtension"
       ]
     },
     {
