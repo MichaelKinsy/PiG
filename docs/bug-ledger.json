@@ -26507,6 +26507,29 @@
       ]
     },
     {
+      "id": "BF-6acd45c",
+      "title": "chord: a watched derive that was read between two changes of its source in one commit published two frames…",
+      "symptom": "chord: a watched derive that was read between two changes of its source in one commit published two frames, the first diffed from the value read in between; over a link that was the protocol error `member twice in one state`, which closed the link (Pi f6600b58f347).",
+      "rootCause": "Derive.Invalidate lists a watched derive by its first marking in a batch only, which keeps the value its watches have; a read between two changes of its source made it clean and the next change listed it again, delivering two frames, the first diffed from the in-between value. Every marking still marks its dependents.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a watched derive that was read between two changes of its source in one commit published two frames, the first diffed from the value read in between; over a link that was the protocol error `member twice in one state`, which closed the link (Pi f6600b58f347). It publishes one frame per commit now, diffed from the value before the commit. A failure read in between and again at the end now reaches its watches.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6acd45c40c",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/remote_provider_test.go::TestProviderOneMessagePerLinkPerCommit",
+        "chord/next/state/derive_test.go::TestDeriveReadBetweenTwoChangesInOneBatch"
+      ]
+    },
+    {
       "id": "BF-6acf6a0",
       "title": "fix(durable/core): keep telemetry out of the hot publish body; report type; trace test",
       "symptom": "fix(durable/core): keep telemetry out of the hot publish body; report type; trace test",
@@ -36769,6 +36792,30 @@
       "tests": [
         "coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty",
         "coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne"
+      ]
+    },
+    {
+      "id": "BF-94a2516",
+      "title": "chord: a list or live query whose value was set several times in one commit (a list's row moving from one…",
+      "symptom": "chord: a list or live query whose value was set several times in one commit (a list's row moving from one loaded page to another) published one frame per set; over a link that was two entries for one member in one state message, the protocol error `member twice in one state`, which closed the link (Pi 36c709e720b6).",
+      "rootCause": "FramedSource lists itself in the batch by its first change only, keeping the value its watches have, and delivers one frame of the state the batch left, diffed from that value. Every change still marks its dependents (Pi #change, split in keep and markDependents because Go has no state value to pass). A list's row moving from one loaded page to another set the list once per adopted page; over a link that was the protocol error 'member 0 twice in one state', which closed the owner's link.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a list or live query whose value was set several times in one commit (a list's row moving from one loaded page to another) published one frame per set; over a link that was two entries for one member in one state message, the protocol error `member twice in one state`, which closed the link (Pi 36c709e720b6). It publishes one frame per commit now: its last value, diffed from the value before the commit.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "94a2516dde",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_list_test.go::TestListPages",
+        "chord/next/state/framed_test.go::TestFramedSourceFailingAndRecoveringInOneBatch",
+        "chord/next/state/framed_test.go::TestFramedSourceSetSeveralTimesInOneBatch"
       ]
     },
     {

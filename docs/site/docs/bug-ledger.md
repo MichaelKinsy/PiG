@@ -979,6 +979,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6a6fffa-9](#bf-6a6fffa-9) | `TestSettingsSelectorMatchesPi` opens each row under the Kitty keyboard protocol with CSI-u keys; no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6aa9446](#bf-6aa9446) | An interactive turn stopped with Escape, a signal or an extension's `ctx.abort()` is saved with the text Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-6ac4c8c](#bf-6ac4c8c) | Ctrl+V pastes clipboard text in Termux | A fix Pi shipped that PiG ported | Linux, Android and Termux | 0.5.0 |
+| [BF-6acd45c](#bf-6acd45c) | chord: a watched derive that was read between two changes of its source in one commit published two frames… | PiG's own defect | All platforms | Unreleased |
 | [BF-6acf6a0](#bf-6acf6a0) | fix(durable/core): keep telemetry out of the hot publish body; report type; trace test | PiG's own defect | All platforms | Unreleased |
 | [BF-6b584ff](#bf-6b584ff) | The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-6b97207](#bf-6b97207) | An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's… | PiG's own defect | All platforms | 0.7.0 |
@@ -1364,6 +1365,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-93f8b7c](#bf-93f8b7c) | fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api | PiG's own defect | All platforms | Unreleased |
 | [BF-94284ac](#bf-94284ac) | `pig -e git:<repo>@<branch>` no longer stays on its first checkout | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-942bc6c](#bf-942bc6c) | fix(coding-agent): preserve pi.exec spawn errors (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-94a2516](#bf-94a2516) | chord: a list or live query whose value was set several times in one commit (a list's row moving from one… | PiG's own defect | All platforms | Unreleased |
 | [BF-94bd9a5](#bf-94bd9a5) | Python SDK: a `setup` callback of `new_session` that leaves out the `data` of `append_custom_entry` or the… | PiG's own defect | All platforms | Unreleased |
 | [BF-94e3498](#bf-94e3498) | On Windows, PiG no longer searches `C:\etc\pig\piglets` or `C:\opt\pig\piglet.yaml` for a Piglet | PiG's own defect | Windows | 0.5.0 |
 | [BF-94e6796](#bf-94e6796) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | 0.5.2 |
@@ -15556,6 +15558,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/dotenv_autoload_test.go::TestLaunchDirectoryDotenvFilesDoNotReachPigEnvironment`, `internal/codingagent/clipboard_copy_test.go::TestCopyToClipboardReportsTheTermuxAPIRequirementOnAndroid`, `internal/codingagent/clipboard_copy_test.go::TestCopyToClipboardTermuxOnAndroidWritesThroughTermuxClipboardSet`, `internal/codingagent/clipboard_paste_test.go::TestClipboardPasteInsertsTermuxTextOnAndroid`, `internal/codingagent/clipboard_read_text_test.go::TestReadClipboardTextAndroidSkipsLinuxCommands`, `internal/codingagent/clipboard_read_text_test.go::TestReadClipboardTextTermuxReadsOnAndroid`, `internal/codingagent/selfupdate_test.go::TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable`
 - **Release note:** Ctrl+V pastes clipboard text in Termux. PiG read `termux-clipboard-get` only where the platform is `linux`, and Termux reports `android`. A failed copy in Termux now also shows the Termux:API install hint on Android.
 
+### BF-6acd45c
+
+**chord: a watched derive that was read between two changes of its source in one commit published two frames…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a watched derive that was read between two changes of its source in one commit published two frames, the first diffed from the value read in between; over a link that was the protocol error `member twice in one state`, which closed the link (Pi f6600b58f347).
+- **Root cause:** Derive.Invalidate lists a watched derive by its first marking in a batch only, which keeps the value its watches have; a read between two changes of its source made it clean and the next change listed it again, delivering two frames, the first diffed from the in-between value. Every marking still marks its dependents.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6acd45c40c` (2026-11-15)
+- **Tests:** `chord/next/host/remote_provider_test.go::TestProviderOneMessagePerLinkPerCommit`, `chord/next/state/derive_test.go::TestDeriveReadBetweenTwoChangesInOneBatch`
+- **Release note:** chord: a watched derive that was read between two changes of its source in one commit published two frames, the first diffed from the value read in between; over a link that was the protocol error `member twice in one state`, which closed the link (Pi f6600b58f347). It publishes one frame per commit now, diffed from the value before the commit. A failure read in between and again at the end now reaches its watches.
+
 ### BF-6acf6a0
 
 **fix(durable/core): keep telemetry out of the hot publish body; report type; trace test**
@@ -20898,6 +20914,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `942bc6c05b` (2026-10-22)
 - **Tests:** `coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty`, `coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne`
+
+### BF-94a2516
+
+**chord: a list or live query whose value was set several times in one commit (a list's row moving from one…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a list or live query whose value was set several times in one commit (a list's row moving from one loaded page to another) published one frame per set; over a link that was two entries for one member in one state message, the protocol error `member twice in one state`, which closed the link (Pi 36c709e720b6).
+- **Root cause:** FramedSource lists itself in the batch by its first change only, keeping the value its watches have, and delivers one frame of the state the batch left, diffed from that value. Every change still marks its dependents (Pi #change, split in keep and markDependents because Go has no state value to pass). A list's row moving from one loaded page to another set the list once per adopted page; over a link that was the protocol error 'member 0 twice in one state', which closed the owner's link.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `94a2516dde` (2026-11-15)
+- **Tests:** `chord/next/host/host_list_test.go::TestListPages`, `chord/next/state/framed_test.go::TestFramedSourceFailingAndRecoveringInOneBatch`, `chord/next/state/framed_test.go::TestFramedSourceSetSeveralTimesInOneBatch`
+- **Release note:** chord: a list or live query whose value was set several times in one commit (a list's row moving from one loaded page to another) published one frame per set; over a link that was two entries for one member in one state message, the protocol error `member twice in one state`, which closed the link (Pi 36c709e720b6). It publishes one frame per commit now: its last value, diffed from the value before the commit.
 
 ### BF-94bd9a5
 
