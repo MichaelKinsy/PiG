@@ -189,9 +189,9 @@ rationale = "92e1db6ca: the barrel exports BuiltQuery, ListHandle, QueryBuilder,
 [[files]]
 path = "packages/chord/src/host/list.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: self.list(name, [[namedQuery, args]], { first }) returns { value, more }: pages between fixed bookmarks (ListMemory kept by the object across attempts, ListOptions). A new file with no row in PORT_MAP (a file new after the pin has none, as for images/fit.ts); covered by test/host/list.test.ts (deferred below). Not ported."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_list_test.go#TestListTheInvariant", "test:chord/next/host/host_list_test.go#TestListPages", "test:chord/next/host/host_list_test.go#TestListArgumentsThatFollowAValue", "test:chord/next/host/host_list_test.go#TestListReload", "test:chord/next/host/host_list_test.go#TestListDeclarationAndMemory"]
+rationale = "92e1db6ca: self.list(name, [[namedQuery, args]], { first }) returns { value, more }: pages between fixed bookmarks (ListMemory kept by the object across attempts, ListOptions). Ported: chord/next/host/host_list.go; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/src/host/members.ts"
@@ -203,9 +203,9 @@ rationale = "92e1db6ca: checkQueries checks a `queries` member is what self.quer
 [[files]]
 path = "packages/chord/src/host/named-query.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: OwnQuery, ReferenceQuery, ownQueries, QueriesOptions and PartnerRow: the named queries of a queries member, implemented by the table's owner and read through a reference. A new file with no PORT_MAP row (new after the pin); covered by test/host/named-query.test.ts (deferred below). Not ported."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_named_query_test.go#TestNamedQueryTheMemberCheckRefusesAnythingButWhatSelfQueriesReturnedAListedQueryWithoutABuilderAndASecondSchema", "test:chord/next/host/host_named_query_test.go#TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTheTable", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAJoinedQueryReadsAPageAtATimeWithoutALiveRead", "test:chord/next/host/host_named_query_test.go#TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsListAlsoWhenTheQueryOrdersOrMatchesByOthers", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAPublisherWhoseNewCodeDeclaresNoTableServesItsSetNoMore", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAPageFailsWhenItsSetIsUnboundAndHealsWhenItIsBoundAgain", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnservedSet", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAnUnknownQueryOfAMemberIsInvalidAndARemoteObjectHasNone", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAPageChecksItsArgumentsByTheContractsSchemaAndWhatTheBuilderReturns", "test:chord/next/host/host_named_query_test.go#TestNamedQueryATargetIsWhatReadingItReadsAndDecodesAStoredRowAsItsPageDoes", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAReferenceTellsItsFollowersOfEveryOtherInstanceOfItsObject", "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAHostThatClosedServesNoSetAnymore", "test:chord/next/host/host_named_query_test.go#TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDeclaredNamingBoth", "test:chord/next/host/host_named_query_test.go#TestNamedQueryStagingAcceptsTheOwnNamedQueryCountedAsAnAttemptDoes", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRestoredTheyHeal", "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAReaderNeedsAStore", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAJoinedQueryMapsEachRowWithItsPartnersProjectedColumnsInThePartnersOrder", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing", "test:chord/next/host/host_named_query_old_code_test.go#TestNamedQueryAPluginKeepsItsOldCodeWhenItsNewFactoryDeclaresAReadWrongly", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAWriteAdmittedBeforeTheSealAndPausedAcrossItPublishesThenNoOldStatementRuns", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartARemovedProvidersReadsLeaveTheIndexItsReadersKeepTheirRowsAndAnotherOwnersCommitRunsNothing", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFailedFrameWhileAnotherOwnerCommits", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAListsMoreDuringTheMigrationWaitsForTheSuccessorNoReadOfTheOldStatementIsRegistered", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartKeepsNothingOfTheOldCodesNamedQueryOnceItsReadersReadTheSuccessors"]
+rationale = "92e1db6ca: OwnQuery, ReferenceQuery, ownQueries, QueriesOptions and PartnerRow: the named queries of a queries member, implemented by the table's owner and read through a reference. Ported: chord/next/host/host_named_query.go; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/src/host/object.ts"
@@ -217,16 +217,16 @@ rationale = "92e1db6ca: HostObject drops liveQueries, gains listMemory(name), qu
 [[files]]
 path = "packages/chord/src/host/query-reader.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the reader of a named query (liveQuery, count, page over a reference, with arguments as a watchable, following a restarted instance). A new file with no PORT_MAP row (new after the pin); covered by test/host/query-reader.test.ts (deferred below). Not ported."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_query_reader_test.go#TestQueryReaderOpen", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderProjection", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatFollowAValue", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsTheBuilderRefuses", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderFailures", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderAColumnSetNobodyServes", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderReadersBeforeNatives", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderAProvidersRestart", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderCount", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderMemory", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderTheCommitStepChoosesItsReads", "test:chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueTwoMovesWhileAReadRunsReadOnceWithTheLaterTarget", "test:chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading", "test:chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueAMoveBeforeTheFirstReadOnlyWakesItsAttempt"]
+rationale = "92e1db6ca: the reader of a named query (liveQuery, count, page over a reference, with arguments as a watchable, following a restarted instance). Ported: chord/next/host/host_query_reader.go; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/src/host/read-declarations.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the declarations staging records for queries, liveQuery, count and list (firstOf, listName, namedBuilders, namedQueryExpected, oneSource, tableExpected, undeclaredTable). A new file with no PORT_MAP row (new after the pin). Not ported."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_read_declarations_test.go#TestReadDeclarationRefusals", "test:chord/next/host/host_read_declarations_test.go#TestFirstOf", "test:chord/next/host/host_read_declarations_test.go#TestListName", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersIsReadyOnceEveryReaderHasAValueAndFollowsNone", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersParksWaitingOnAReadThatFailedWithTheCauseAReloadsReportNamesAndFollowsIt", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersParksLoadingOnAReadThatHasNotRunYetWithACauseTooAndHoldsUpTheFirstPass", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersBreaksOnAReadersOwnCode"]
+rationale = "92e1db6ca: the declarations staging records for queries, liveQuery, count and list (firstOf, listName, namedBuilders, namedQueryExpected, oneSource, tableExpected, undeclaredTable). Ported: chord/next/host/host_read_declarations.go; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/src/host/reference.ts"
@@ -245,9 +245,9 @@ rationale = "92e1db6ca: the recording `self` of staging gives separate inert han
 [[files]]
 path = "packages/chord/src/host/tiling.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the tiling of a list: pages between fixed bookmarks that stay live, with moves leaving no gap and no duplicate. A new file with no PORT_MAP row (new after the pin); covered by test/host/tiling.test.ts (deferred below). Not ported."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners", "test:chord/next/host/host_tiling_test.go#TestTilingOneCommitSeveralPages", "test:chord/next/host/host_tiling_test.go#TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages", "test:chord/next/host/host_tiling_test.go#TestTilingAPublishersMigrationThatChangesTheOrder", "test:chord/next/host/host_tiling_test.go#TestTilingSwitchesAndFailures", "test:chord/next/host/host_tiling_test.go#TestTilingTheInvariantWithTwoOwnersAndCommitGroups", "test:chord/next/host/host_tiling_go_test.go#TestTilingAPageThatBeginsAtACutRunsLastRowIsLoadedAgain"]
+rationale = "92e1db6ca: the tiling of a list: pages between fixed bookmarks that stay live, with moves leaving no gap and no duplicate. Ported: chord/next/host/host_tiling.go; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/src/index.ts"
@@ -413,16 +413,16 @@ rationale = "92e1db6ca: defineTable takes `exposes` (a ColumnSet, checked by che
 [[files]]
 path = "packages/chord/src/telemetry.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: three counters, chord.query.probes (keyed probes a commit asked), chord.query.skips (live queries a commit did not run again) and chord.query.rows (rows live query runs returned). Not ported: the Go telemetry schema (chord/next/telemetry/schema.go) has chord.query.runs only, and nothing in Go probes or skips; the counters belong to the port of the skip test. The vendored copy in chord/nextnode/surfaces/client/pi stays at its carried commit. PORT_MAP: 🟡."
+disposition = "ported"
+evidence = ["test:chord/next/telemetry/schema_slice14_test.go#TestSchemaDeclaresSlice14sQueryCountersAndAdmitEvent", "test:chord/next/store/skip_test.go#TestSkipsOwnTable", "test:chord/next/store/skip_test.go#TestSkipsJoinedAndExistsTables", "test:chord/next/store/skip_oracle_test.go#TestSkipOracleASkippedReadEqualsAFreshRun", "test:chord/next/store/skip_oracle_test.go#TestSkipOwnTable", "test:chord/next/store/skip_oracle_test.go#TestSkipJoinedTable", "test:chord/next/store/skip_oracle_test.go#TestSkipExistsTable", "test:chord/next/store/skip_oracle_test.go#TestSkipCost"]
+rationale = "92e1db6ca: three counters, chord.query.probes (keyed probes a commit asked), chord.query.skips (live queries a commit did not run again) and chord.query.rows (rows live query runs returned). Ported: chord/next/telemetry/schema.go (the counters chord.query.probes, chord.query.skips and chord.query.rows and the chord.admit event are declared; store/skip.go and the live query count them, attempt admission emits chord.admit); the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/test/bench/slice-14.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the slice 14 benchmark (named queries, lists, skips, joins), run by hand. Not ported with its production files."
+disposition = "ported"
+evidence = ["test:chord/next/host/bench_slice_14_test.go#TestBenchSlice14Exact"]
+rationale = "92e1db6ca: the slice 14 benchmark (named queries, lists, skips, joins), run by hand. Ported: ; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/test/bench/store.ts"
@@ -448,51 +448,51 @@ rationale = "92e1db6ca: the describe `queries members (slice 14 §3.1)`: 3 cases
 [[files]]
 path = "packages/chord/test/examples/70-named-queries.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: example of named queries over a store's table. Not ported; no PORT_MAP row (new after the pin)."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_example_70_test.go#TestExample70NamedQueries"]
+rationale = "92e1db6ca: example of named queries over a store's table. Ported: ; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/test/examples/71-lists.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: example of lists. Not ported; no PORT_MAP row (new after the pin)."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_example_71_test.go#TestExample71Lists"]
+rationale = "92e1db6ca: example of lists. Ported: ; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/test/examples/72-exists-and-joins.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: example of column sets, exists and joins across plugins. Not ported; no PORT_MAP row (new after the pin)."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_example_72_test.go#TestExample72ExistsAndJoins"]
+rationale = "92e1db6ca: example of column sets, exists and joins across plugins. Ported: ; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/test/host/list.test.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the tests of host/list.ts and tiling's use by lists. Pending with its production file (list.ts, deferred above); no test-mapping row (the mapping covers the pinned test files)."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_list_test.go#TestListTheInvariant", "test:chord/next/host/host_list_test.go#TestListPages", "test:chord/next/host/host_list_test.go#TestListArgumentsThatFollowAValue", "test:chord/next/host/host_list_test.go#TestListReload", "test:chord/next/host/host_list_test.go#TestListDeclarationAndMemory"]
+rationale = "92e1db6ca: the tests of host/list.ts and tiling's use by lists. Ported: the Go tests named in the evidence run every case of the file."
 
 [[files]]
 path = "packages/chord/test/host/named-query.test.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the tests of host/named-query.ts and the queries members. Pending with its production file (named-query.ts, deferred above)."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_named_query_test.go#TestNamedQueryTheMemberCheckRefusesAnythingButWhatSelfQueriesReturnedAListedQueryWithoutABuilderAndASecondSchema", "test:chord/next/host/host_named_query_test.go#TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTheTable", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAJoinedQueryReadsAPageAtATimeWithoutALiveRead", "test:chord/next/host/host_named_query_test.go#TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsListAlsoWhenTheQueryOrdersOrMatchesByOthers", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAPublisherWhoseNewCodeDeclaresNoTableServesItsSetNoMore", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAPageFailsWhenItsSetIsUnboundAndHealsWhenItIsBoundAgain", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnservedSet", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAnUnknownQueryOfAMemberIsInvalidAndARemoteObjectHasNone", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAPageChecksItsArgumentsByTheContractsSchemaAndWhatTheBuilderReturns", "test:chord/next/host/host_named_query_test.go#TestNamedQueryATargetIsWhatReadingItReadsAndDecodesAStoredRowAsItsPageDoes", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAReferenceTellsItsFollowersOfEveryOtherInstanceOfItsObject", "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAHostThatClosedServesNoSetAnymore", "test:chord/next/host/host_named_query_test.go#TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDeclaredNamingBoth", "test:chord/next/host/host_named_query_test.go#TestNamedQueryStagingAcceptsTheOwnNamedQueryCountedAsAnAttemptDoes", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRestoredTheyHeal", "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAReaderNeedsAStore", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAJoinedQueryMapsEachRowWithItsPartnersProjectedColumnsInThePartnersOrder", "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing", "test:chord/next/host/host_named_query_old_code_test.go#TestNamedQueryAPluginKeepsItsOldCodeWhenItsNewFactoryDeclaresAReadWrongly", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAWriteAdmittedBeforeTheSealAndPausedAcrossItPublishesThenNoOldStatementRuns", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartARemovedProvidersReadsLeaveTheIndexItsReadersKeepTheirRowsAndAnotherOwnersCommitRunsNothing", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFailedFrameWhileAnotherOwnerCommits", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAListsMoreDuringTheMigrationWaitsForTheSuccessorNoReadOfTheOldStatementIsRegistered", "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartKeepsNothingOfTheOldCodesNamedQueryOnceItsReadersReadTheSuccessors"]
+rationale = "92e1db6ca: the tests of host/named-query.ts and the queries members. Ported: the Go tests named in the evidence run every case of the file."
 
 [[files]]
 path = "packages/chord/test/host/query-reader.test.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the tests of host/query-reader.ts. Pending with its production file (query-reader.ts, deferred above)."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_query_reader_test.go#TestQueryReaderOpen", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderProjection", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatFollowAValue", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsTheBuilderRefuses", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderFailures", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderAColumnSetNobodyServes", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderReadersBeforeNatives", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderAProvidersRestart", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderCount", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderMemory", "test:chord/next/host/host_query_reader_test.go#TestQueryReaderTheCommitStepChoosesItsReads", "test:chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueTwoMovesWhileAReadRunsReadOnceWithTheLaterTarget", "test:chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading", "test:chord/next/host/host_query_reader_queue_test.go#TestQueryReaderQueueAMoveBeforeTheFirstReadOnlyWakesItsAttempt"]
+rationale = "92e1db6ca: the tests of host/query-reader.ts. Ported: the Go tests named in the evidence run every case of the file."
 
 [[files]]
 path = "packages/chord/test/host/tiling.test.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the tests of host/tiling.ts. Pending with its production file (tiling.ts, deferred above)."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners", "test:chord/next/host/host_tiling_test.go#TestTilingOneCommitSeveralPages", "test:chord/next/host/host_tiling_test.go#TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages", "test:chord/next/host/host_tiling_test.go#TestTilingAPublishersMigrationThatChangesTheOrder", "test:chord/next/host/host_tiling_test.go#TestTilingSwitchesAndFailures", "test:chord/next/host/host_tiling_test.go#TestTilingTheInvariantWithTwoOwnersAndCommitGroups", "test:chord/next/host/host_tiling_go_test.go#TestTilingAPageThatBeginsAtACutRunsLastRowIsLoadedAgain"]
+rationale = "92e1db6ca: the tests of host/tiling.ts. Ported: the Go tests named in the evidence run every case of the file."
 
 [[files]]
 path = "packages/chord/test/store/column-set.test.ts"
@@ -504,9 +504,9 @@ rationale = "92e1db6ca: the tests of store/column-set.ts. Ported: the Go tests n
 [[files]]
 path = "packages/chord/test/store/live-query.test.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the touching put costs two statements more than the other commit's (the keyed probe), not one; query_failed reports `query`, not `table`; the refresh test builds Reads and ReadRefresh stubs. The 12 cases of the pin keep their Go twins (test-mapping: ported, host_live_query_test.go and live_query_test.go at the pin's expectations). Not ported: the three changed expectations wait for the skip test and the Reads."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_live_query_test.go#TestLiveQueryActivationRunsTheQueryBeforeTheObjectGoesLiveOverTheRowsAlreadyStored", "test:chord/next/host/host_live_query_test.go#TestLiveQueryActivationARunThatFailsAtActivationFailsTheActivationBroken", "test:chord/next/host/host_live_query_test.go#TestLiveQueryPublicationAnInsertAnUpdateAndADeleteReachAWatchAsOpsInTheCommitsBatch", "test:chord/next/host/host_live_query_test.go#TestLiveQueryPublicationKeepsTheWindowAtItsLimitANewerRowPushesTheOldestOut", "test:chord/next/host/host_live_query_test.go#TestLiveQueryPublicationKeepsAnUnchangedRowTheSameObjectAcrossRunsAChangedOneNew", "test:chord/next/host/host_live_query_test.go#TestLiveQueryPublicationACommitWritingAnotherTableRunsNoQueryAndPublishesNothing", "test:chord/next/host/host_live_query_test.go#TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver", "test:chord/next/host/host_live_query_test.go#TestLiveQueryDeclarationRefusals", "test:chord/next/host/host_live_query_test.go#TestLiveQueryDeclarationStagingRefusesAQueryWithoutAValidLimitThePluginKeepsItsOldCode", "test:chord/next/host/host_live_query_test.go#TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHealsIt", "test:chord/next/host/host_live_query_test.go#TestLiveQueryMemoryCollectsARestartedAttemptsQuery", "test:chord/next/store/live_query_test.go#TestLiveQueryAppliedAgainAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBackAppliesAgainAlone", "test:chord/next/store/live_query_test.go#TestLiveQueryLoadReadsTheRowsAndACommitOverItsTableRunsItAgain", "test:chord/next/store/live_query_test.go#TestLiveQueryCountsTheRowsOfItsQuery", "test:chord/next/store/live_query_test.go#TestLiveQueryReadTakesAnotherTargetAndTheOnePreviousLeavesTheIndex", "test:chord/next/store/live_query_test.go#TestLiveQueryARunOfAReadItClosedIsDroppedWhenItsCommitAdoptsItAfterwards", "test:chord/next/store/live_query_test.go#TestLiveQueryDetachEndsItsReadsAndItsValueIsTheEnd", "test:chord/next/store/live_query_test.go#TestLiveQueryAFailureAtLoadIsReturnedNotReportedAFailureAfterItIsReportedOncePerEpisode", "test:chord/next/store/live_query_test.go#TestLiveQueryFailWithoutAReadIsAFailedMemberAndClosesItsReads", "test:chord/next/store/live_query_test.go#TestLiveQueryASetUnboundFailsItsMember", "test:chord/next/store/live_query_test.go#TestLiveQueryOpenOpensItsReadAtOnceAndABindingThatChangedBeforeItsLoadFailsItThen", "test:chord/next/store/live_query_test.go#TestDecodedRowsKeepAnUnchangedRowTheSameObjectAChangedOneNew", "test:chord/next/store/live_query_test.go#TestReadCountsTheRowsItsStatementReturnedOneMoreThanTheLimit"]
+rationale = "92e1db6ca: the touching put costs two statements more than the other commit's (the keyed probe), not one; query_failed reports `query`, not `table`; the refresh test builds Reads and ReadRefresh stubs. The 12 cases of the pin keep their Go twins (test-mapping: ported, host_live_query_test.go and live_query_test.go at the pin's expectations). Ported: the Go tests named in the evidence run every case of the file."
 
 [[files]]
 path = "packages/chord/test/store/read-plan.test.ts"
@@ -576,11 +576,18 @@ path = "packages/chord/test/host/host-data.test.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:chord/next/host/host_host_data_test.go#TestHostDataLiveOwnersFollowAnImportAPinnedKeyAndALiveQueryShowTheImportedDataAResidentKeyReadsIt", "test:chord/next/host/host_host_data_test.go#TestHostDataLiveOwnersAdoptEverySourceInOneBatchADeriveOverADocumentAndAQuerySeesOneFrameNeverATornState", "test:chord/next/host/host_host_data_test.go#TestHostDataLiveOwnersFollowADeleteThePinnedKeyReadsInitialTheLiveQueryIsEmpty", "test:chord/next/host/host_host_data_test.go#TestHostDataLiveOwnersWaitForATransactionOfATablesOwnerWithoutSlotsOrQueriesItsTwoReadsSeeTheSameRow", "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRemovesThatPluginsRecordsAndRowsOfTheAddressInOneCommitAndLeavesTheOthers", "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRunsTheReadsOverItsTablesAgainTheOwnersLiveQueryAndPinnedKeyFollowInThatCommit", "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRefusesAPluginThatIsNotLoadedHereAndChangesNothing", "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginWaitsForThatPluginsSlotLessOwnersAndNotForAnotherPluginsAnOwnerOfAnotherPluginWithItsLineHeldDoesNotHoldItUp", "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnAbortBeforeTheCommitWasAdmittedWritesNothing", "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing", "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing", "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnOwnerThatCannotReadAnImportedDocumentFailsAloneTheOtherOwnersAdopt", "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall", "test:chord/next/host/host_host_data_test.go#TestHostDataOlderAndNewerTablesAnOlderTablesRowsMigrateThroughTheOwnersHistoryItsOwnerActivatedForIt", "test:chord/next/host/host_host_data_test.go#TestHostDataOlderAndNewerTablesANewerTableInTheArchiveIsRefused", "test:chord/next/host/host_host_data_test.go#TestHostDataTheGateKeepsLoadPhasesOutWhileAnOperationIsExclusiveAndAnOperationWaitsForLoadPhasesUnderWay", "test:chord/next/host/host_host_data_test.go#TestHostDataTheGateAnOperationGivenUpWhileWaitingForItsTurnPassesTheTurnOn", "test:chord/next/host/host_host_data_test.go#TestHostDataReviewRound3AnActivationDuringAnImportAViewPinningTheBoardsKeyWaitsAndReadsWhatTheImportCommitted", "test:chord/next/host/host_host_data_test.go#TestHostDataReviewRound3AReloadDuringAnImportTheSuccessorLoadsAfterItAQueuedImportSeesTheTableItsSuccessorMigrated", "test:chord/next/host/host_host_data_test.go#TestHostDataReviewRound3ACancellationAfterTheCommitWasAdmittedChangesNothingItCommitsAndIsAdopted", "test:chord/next/host/host_host_data_test.go#TestHostDataReviewRound3ReleasesTheOwnersItActivatedHoweverTheImportEndsHereRefusedTheOwnerDeclaresNoSuchTable", "test:chord/next/host/host_host_data_test.go#TestHostDataObjectsAreOrderedByIdentityInUTF16CodeUnitOrderAsJavaScriptSortsThem", "test:chord/next/host/host_host_data_test.go#TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased"]
-rationale = "8270d9af6: three cases of host-data delete limited to one plugin (records and tables of that plugin only; the reads over its tables rerun; a plugin not loaded is refused invalid/args). Ported: the Go tests named in the evidence run these cases."
+rationale = "8270d9af6: three cases of host-data delete limited to one plugin (records and tables of that plugin only; the reads over its tables rerun; a plugin not loaded is refused invalid/args). Ported: the Go tests named in the evidence run every case of the file."
 
 [[files]]
 path = "packages/chord/test/link/message.test.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:chord/next/link/message_test.go#TestMessages", "test:chord/next/link/message_test.go#TestTheBinaryCodec", "test:chord/next/link/message_test.go#TestTheTextCodec", "test:chord/next/link/message_test.go#TestDescribeMessage", "test:chord/next/link/message_test.go#TestACodecMismatch", "test:chord/next/link/message_test.go#TestTheBinaryCodecsStrings"]
-rationale = "8270d9af6: the failure-cause byte case expects [0,1,2,3] and refuses 4; the text codec writes [\"f\",2,\"d\",...]; EVERY_KIND gains failed denied. Ported: the Go tests named in the evidence run these cases."
+rationale = "8270d9af6: the failure-cause byte case expects [0,1,2,3] and refuses 4; the text codec writes [\"f\",2,\"d\",...]; EVERY_KIND gains failed denied. Ported: the Go tests named in the evidence run every case of the file."
+
+[[files]]
+path = "packages/chord/test/host/read-declarations.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_read_declarations_test.go#TestReadDeclarationRefusals", "test:chord/next/host/host_read_declarations_test.go#TestFirstOf", "test:chord/next/host/host_read_declarations_test.go#TestListName", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersIsReadyOnceEveryReaderHasAValueAndFollowsNone", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersParksWaitingOnAReadThatFailedWithTheCauseAReloadsReportNamesAndFollowsIt", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersParksLoadingOnAReadThatHasNotRunYetWithACauseTooAndHoldsUpTheFirstPass", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersBreaksOnAReadersOwnCode"]
+rationale = "Pi 7cc21c24: the cases of openReaders (read-declarations.ts): ready once every reader has a value and follows none, parked waiting or loading with a cause, broken by a reader own code. Ported: the Go tests named in the evidence run every case of the file."

@@ -1047,7 +1047,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/telemetry-ingest/sender.ts` | `chord/next/telemetryingest/sender.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/node.ts` | `chord/telemetrysqlite/node.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/schema.ts` | `chord/telemetrysqlite/schema.go` | ✅ |
-| `packages/chord/src/telemetry.ts` | `chord/next/telemetry/schema.go, telemetry.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go; the vendored copy stays at its carried commit, not Pi 92e1db6ca) Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: the counters `chord.query.probes`, `chord.query.skips` and `chord.query.rows` | 🟡 |
+| `packages/chord/src/telemetry.ts` | `chord/next/telemetry/schema.go, telemetry.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go; the vendored copy stays at its carried commit, not Pi 92e1db6ca) | ✅ |
 | `packages/chord/src/tui/bridge.ts` | `chord/nextnode/tui/tui_bridge.go (launcher side)`, `chord/nextnode/surfaces/client/pi/chord/src/tui/bridge.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/tui/channel.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/channel.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/tui/frames.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/frames.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
