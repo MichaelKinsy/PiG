@@ -839,7 +839,7 @@ func init() {
 ```
 
 - `Handled` serves the invocation: PiG parses nothing and exits with `Exit`.
-- `Args` is what PiG parses otherwise. A nil `Args` is an empty command line, so return `env.Args` to leave it as it is.
+- `Args` is what PiG parses otherwise. A nil `Args` is an empty command line, so return the `Env.Args` you were given to leave it as it is.
 - `Retry` replaces the built-in retry defaults of 3 retries, a 2000 ms first delay and a 60000 ms cap. A `retry` member of settings.json still overrides each field it names.
 - `OwnPrintOutput` says the run is a print run whose output your extension writes. PiG then writes nothing to stdout and leaves the stderr line of a failed run to you. Write the output on `clihook.Stdout()` (nil in every other run) from an extension handler such as `agent_end`.
 - `clihook.SetExitCode(n)` sets the status of a print run that succeeded in PiG's terms. A failed run exits with 1, and a recorded 0 changes nothing.
