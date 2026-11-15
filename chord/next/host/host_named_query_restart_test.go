@@ -118,7 +118,6 @@ type prHosted struct {
 	provider *Reference
 	meter    context.Context
 	counts   func() map[string]float64
-	close    func()
 }
 
 func prHost(t *testing.T, chordStore *store.ChordStore) *prHosted {
@@ -206,7 +205,7 @@ func TestNamedQueryProvidersRestartAWriteAdmittedBeforeTheSealAndPausedAcrossItP
 			t.Fatal("a read of the old code's statement stayed registered")
 		}
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, h.Host)
 }
 
@@ -294,7 +293,7 @@ func TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFa
 		t.Fatalf("calls = %+v, want none", got)
 	}
 	qrWant(t, "rows", qrValue(t, view, "items"), `{"rows":[{"id":1,"text":"first"},{"id":2,"text":"second"}],"more":false}`)
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, h.Host)
 }
 

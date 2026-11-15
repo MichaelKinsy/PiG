@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -118,6 +119,23 @@ func TestRead(t *testing.T) {
 		read.Adopt(ReadRun{Kind: "failed", Err: errors.New("failed")})
 		if read.Latest(other) != nil || read.Latest(step) == nil {
 			t.Fatal("a failed run is not kept as adopted, and does not clear another step's tentative run")
+		}
+	})
+
+	t.Run("a failure and one that wraps it are two runs: Pi compares the run objects, so the tentative run stays", func(t *testing.T) {
+		// read.ts:115 `if (this.#tentative?.run === run) this.#tentative = undefined`: a failed run is the same run only when it
+		// carries the very failure; the step's failure wrapping the adopted one (or the reverse) is another failure, another run.
+		step := new(struct{ sqlite.SqliteExecutor })
+		first := errors.New("first")
+		wrapping := fmt.Errorf("wrapping: %w", first)
+		read.Ran(step, ReadRun{Kind: "failed", Err: wrapping})
+		read.Adopt(ReadRun{Kind: "failed", Err: first})
+		if got := read.Latest(step); got == nil || !errors.Is(got.Err, wrapping) {
+			t.Fatalf("the tentative run after the wrapped failure was adopted = %#v, want the step's own failed run", got)
+		}
+		read.Adopt(ReadRun{Kind: "failed", Err: wrapping})
+		if got := read.Latest(step); got != nil {
+			t.Fatalf("the tentative run after its own failure was adopted = %#v, want none", got)
 		}
 	})
 

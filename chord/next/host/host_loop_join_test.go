@@ -66,6 +66,49 @@ func TestLoopJoinWaitsForTheTasksATaskStartsInTheSectionOfItsContinuation(t *tes
 	}
 }
 
+// lendParked runs rest as what a handler does after its first park, lent the section h.enter runs: Pi's async function, whose
+// continuation after its first `await` is a microtask (a method handler, `route.resolve`).
+func lendParked(h *chordHost, rest func(ctx context.Context)) {
+	signal := parking.New()
+	ctx := context.WithValue(context.Background(), parking.Key, signal)
+	h.enter(func() {
+		h.loop().Lend(signal, func(bool) {
+			parking.Park(ctx)
+			rest(ctx)
+		})
+	})
+}
+
+func TestLoopJoinWaitsForWhatIsLeftOfAHandlerThatParked(t *testing.T) {
+	h := joinHost(t)
+	var rest atomic.Bool
+	lendParked(h, func(context.Context) { rest.Store(true) })
+	loopseam.Quiesce(h.loop())
+	if !rest.Load() {
+		t.Fatal("the join returned before the rest of a handler that parked ran")
+	}
+}
+
+func TestLoopJoinDoesNotWaitForAHandlerParkedOnAGateAndWaitsForItsRestOnceTheGateIsReleased(t *testing.T) {
+	h := joinHost(t)
+	gate := make(chan struct{})
+	var rest atomic.Bool
+	lendParked(h, func(ctx context.Context) {
+		_, _ = chordctx.Receive(ctx, gate)
+		rest.Store(true)
+	})
+	// The handler waits on a gate a test holds: Pi's `await held` pending, which `delivered()` does not wait for.
+	loopseam.Quiesce(h.loop())
+	if rest.Load() {
+		t.Fatal("the handler went on before its gate was released")
+	}
+	close(gate)
+	loopseam.Quiesce(h.loop())
+	if !rest.Load() {
+		t.Fatal("the join returned before the handler, whose gate was released just before, went on")
+	}
+}
+
 func TestLoopJoinDoesNotWaitForATaskParkedOnAGateAndWaitsForItsContinuationOnceTheWaitIsOver(t *testing.T) {
 	// Each wait a task can park in, and each way it ends: the gate the test released just before the next join (Pi's
 	// `resolve()` queues the continuation at once: nothing may be left for the goroutine to be scheduled), the context
