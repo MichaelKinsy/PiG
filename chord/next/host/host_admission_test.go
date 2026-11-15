@@ -1266,6 +1266,14 @@ func admLinked(t *testing.T, code admDocCode) *admOverLink {
 	}}
 }
 
+// admLinkDelivered is Pi's `delivered()` over a link, in the order the work flows: the server's work to its next wait (its rebuilds),
+// its frames across the link (Pi's `transported()`: the memory link's one task per hop), then the client's.
+func admLinkDelivered(l *linkedHosts) {
+	deliveredOn(l.Server)
+	settleLinked(l)
+	deliveredOn(l.Client)
+}
+
 func TestAdmissionOverALink(t *testing.T) {
 	t.Run("a call still waiting for a call-window slot at a denial is rejected forbidden/revoked, as one in flight, and never sent", func(t *testing.T) {
 		window := 1
@@ -1378,6 +1386,75 @@ func TestAdmissionOverALink(t *testing.T) {
 		must(t, client.Close(background))
 		must(t, server.Close(background))
 	})
+	t.Run("a denied hold is failed { denied }; a denial of a bound one drops its replicas, an allow binds it again", func(t *testing.T) {
+		l := admLinked(t, admDocCode{Built: &admLog{}})
+		doc := mustHold(t, l.Client, admDoc, jsonObject("id", "a"))
+		watch, err := refStateWatch(doc, background)
+		must(t, err)
+		states := statesOf(t, watch)
+		admLinkDelivered(l.linkedHosts)
+		admDenied(t, stateOfRef(doc), "no access")
+		_, err = l.Client.Get(background, admDoc, jsonObject("id", "a"), GetOptions{})
+		if got := told(err); got != [3]string{"forbidden", "", "no access"} {
+			t.Fatalf("getter rejected with %v", got)
+		}
+		l.set("write")
+		admLinkDelivered(l.linkedHosts)
+		if kind, variant, text := stateOfRef(doc).Kind, admVariant(doc), mustValue(t, doc, "text"); kind != RefStateLive || variant != "writer" || text != "t" {
+			t.Fatalf("[%v %v %v], want [live writer t]", kind, variant, text)
+		}
+		frames := admChanges(t, doc, "text")
+		l.set("none")
+		admLinkDelivered(l.linkedHosts)
+		if variant := admVariant(doc); variant != "" {
+			t.Fatalf("variant = %q, want none", variant)
+		}
+		if _, err := admValue(doc, "text"); told(err) != [3]string{"forbidden", "", "no access"} {
+			t.Fatalf("text.value threw %v", err)
+		}
+		expectValues(t, frames.Items(), failedFrame("no access"))
+		l.set("read")
+		admLinkDelivered(l.linkedHosts)
+		if kind, variant, text := stateOfRef(doc).Kind, admVariant(doc), mustValue(t, doc, "text"); kind != RefStateLive || variant != "reader" || text != "t" {
+			t.Fatalf("[%v %v %v], want [live reader t]", kind, variant, text)
+		}
+		expectValues(t, frames.Items(), failedFrame("no access"), "t")
+		expectStrings(t, states.All(), "failed: no access", "loading", "live", "failed: no access", "loading", "live")
+		doc.Release()
+		must(t, l.Client.Close(background))
+		must(t, l.Server.Close(background))
+	})
+
+	t.Run("a running call is answered forbidden/revoked by a denial, unavailable by another value", func(t *testing.T) {
+		l := admLinked(t, admDocCode{Built: &admLog{}, Gate: make(chan struct{})})
+		l.set("write")
+		doc := mustGet(t, l.Client, admDoc, jsonObject("id", "a"))
+		// Pi: `doc.variant === "writer" ? doc.write("x", context) : Promise.resolve()`, and `rejection` of the resolved one fails the case.
+		writing := func() *parkedCallResult {
+			t.Helper()
+			if variant := admVariant(doc); variant != "writer" {
+				t.Fatalf("variant = %q, want writer", variant)
+			}
+			return admStart(t, doc, "write", "x")
+		}
+		first := writing()
+		admLinkDelivered(l.linkedHosts)
+		l.set("none")
+		if got := told(admRejection(t, first)); got[0] != "forbidden" || got[1] != "revoked" {
+			t.Fatalf("first = %v, want forbidden/revoked", got)
+		}
+		l.set("write")
+		admLinkDelivered(l.linkedHosts)
+		second := writing()
+		admLinkDelivered(l.linkedHosts)
+		l.set("read")
+		if got := told(admRejection(t, second)); got[0] != "unavailable" {
+			t.Fatalf("second = %v, want unavailable", got)
+		}
+		must(t, l.Client.Close(background))
+		must(t, l.Server.Close(background))
+	})
+
 }
 
 // admActivity is `host.activity.value[field]`.
