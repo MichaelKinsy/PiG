@@ -8,6 +8,8 @@
 //
 // A fix-titled commit that is not a product bug is listed with a category and a reason in automation/ci/bugledger/exempt.txt, or carries a "Bug-Ledger: exempt <category>: <reason>" trailer. A follow-up commit of an existing fix carries "Bug-Ledger: see <commit>".
 //
+// A commit message is immutable, so the root cause an entry derives from it can be wrong for good. automation/ci/bugledger/corrections.json is the reviewed, hand-written list of the entries whose root cause is replaced: one object per entry with its id, the new rootCause (the only field that can be corrected), who decided and why. A correction names an entry of the ledger, and it is removed once the sources give the same text: `make bug-ledger-check` fails on a correction for an entry that does not exist, on one the ledger does not carry, and on one whose text the generator derives without it.
+//
 // A fix commit's tests are the Go tests its diff adds or edits and the tests its message names, resolved against the tree. A test a later commit moved keeps its fix when it kept its name (the one file that declares it); a renamed test needs a line in automation/ci/bugledger/moved-tests.txt.
 package main
 
@@ -72,6 +74,10 @@ func run(root, since string, check, strict bool) error {
 
 // runWith writes or checks the ledger. Writing keeps the committed entries whose fix is recorded unless refresh is set (see keepPrior); the strict check compares with the ledger the history implies, so it refreshes.
 func runWith(root, since string, check, strict, refresh bool) error {
+	corrections, err := readCorrections(root)
+	if err != nil {
+		return err
+	}
 	l, err := build(root, since)
 	if err != nil {
 		return err
@@ -84,6 +90,16 @@ func runWith(root, since string, check, strict, refresh bool) error {
 			}
 			keepPrior(l, prior.Entries, root, moved)
 		}
+	}
+	// The corrections are judged against what the history derives, so they are applied after that is known: the check names a correction that repeats it.
+	var correctionProblems []string
+	if check {
+		if committed, _, err := readCommitted(root); err == nil {
+			correctionProblems = checkCorrections(corrections, committed, l)
+		}
+	}
+	if stale := applyCorrections(l, corrections); !check && len(stale) > 0 {
+		return staleCorrections(stale)
 	}
 	canonical(l)
 	data, err := marshalJSON(l)
@@ -106,7 +122,7 @@ func runWith(root, since string, check, strict, refresh bool) error {
 		fmt.Printf("bug-ledger: %d entries written to %s and %s\n", len(l.Entries), jsonPath, pagePath)
 		return nil
 	}
-	return verify(root, l, data, page, strict)
+	return verify(root, l, data, page, strict, correctionProblems)
 }
 
 // printSummary prints the counts the page does not carry: a committed count would change in every pull request that adds an entry.
