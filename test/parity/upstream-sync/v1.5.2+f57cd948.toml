@@ -304,20 +304,20 @@ rationale = "f57cd9484: the example's server host has no store (`store: undefine
 [[files]]
 path = "packages/chord/test/examples/76-worker-reports/main.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "f57cd9484: the worker-reports example. Its Go twin is chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) on the branch follow/pi-main-38-chord-examples, which is not merged into the integration tip yet; the row flips to ported when it is."
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_example_76_test.go#TestExample76WorkerReports"]
+rationale = "f57cd9484: the worker-reports example (a worker reports to the server and its exit is published after the commits its reports queued). Ported: chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) runs the example's inputs and asserts its output."
 
 [[files]]
 path = "packages/chord/test/examples/76-worker-reports/contract.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "f57cd9484: the worker-reports example. Its Go twin is chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) on the branch follow/pi-main-38-chord-examples, which is not merged into the integration tip yet; the row flips to ported when it is."
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_example_76_test.go#TestExample76WorkerReports"]
+rationale = "f57cd9484: the worker-reports example (a worker reports to the server and its exit is published after the commits its reports queued). Ported: chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) runs the example's inputs and asserts its output."
 
 [[files]]
 path = "packages/chord/test/examples/76-worker-reports/worker.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "f57cd9484: the worker-reports example. Its Go twin is chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) on the branch follow/pi-main-38-chord-examples, which is not merged into the integration tip yet; the row flips to ported when it is."
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_example_76_test.go#TestExample76WorkerReports"]
+rationale = "f57cd9484: the worker-reports example (a worker reports to the server and its exit is published after the commits its reports queued). Ported: chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) runs the example's inputs and asserts its output."
