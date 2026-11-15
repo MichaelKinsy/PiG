@@ -210,3 +210,29 @@ func TestLedgerRowsOfTooManyCommitsAskToSplit(t *testing.T) {
 		})
 	}
 }
+
+// The finding of a row whose commit does not change the file names the path of the row, which the pull request wrote.
+func TestCommitCheckFindingTextCannotStartAWorkflowCommand(t *testing.T) {
+	for _, h := range hostileTexts {
+		t.Run(h.name, func(t *testing.T) {
+			name := "a/" + h.text + "_test.go"
+			d := &data{
+				Files:          ledgerFiles(name),
+				Commits:        []prCommit{commit(ledgerCommitA, "a: b", true)},
+				ReviewedLedger: ledgerRow(ledgerCommitA, name, "NOBEHAVIOR", "", "A reason."),
+				CommitFiles:    changedBy([]string{"a/other.go"}, ledgerCommitA),
+			}
+			log, _ := printedBy(t, d)
+			const commandOfError = "::error title=pre-flight test-expectation #7::"
+			if cmds := workflowCommands(log); len(cmds) != 1 || !strings.HasPrefix(cmds[0], commandOfError) {
+				t.Fatalf("the log runs %q, want the one error of the finding:\n%q", cmds, log)
+			}
+			if legacyLeft(log) {
+				t.Errorf("the log holds the sequence of a legacy workflow command:\n%q", log)
+			}
+			if !strings.Contains(log, "that commit does not change the file") {
+				t.Errorf("the finding is missing:\n%q", log)
+			}
+		})
+	}
+}

@@ -29,11 +29,12 @@ func logLines(log string) []string {
 	return strings.FieldsFunc(log, func(r rune) bool { return r == '\n' || r == '\r' })
 }
 
-// workflowCommands are the lines of the log the runner would run as a workflow command.
+// workflowCommands are the lines of the log the runner would run as a workflow command: "::command" and the legacy
+// "##[command]", at the start of the line or after spaces and tabs.
 func workflowCommands(log string) []string {
 	var out []string
 	for _, l := range logLines(log) {
-		if strings.HasPrefix(strings.TrimLeft(l, " \t"), "::") {
+		if at := strings.TrimLeft(l, " \t"); strings.HasPrefix(at, "::") || strings.HasPrefix(at, "##[") {
 			out = append(out, l)
 		}
 	}
@@ -100,7 +101,9 @@ type hostileText struct{ name, text string }
 
 // hostileTexts are what a pull request can put into a printed text: line breaks of every kind, GitHub's escapes as
 // literal text, and a workflow command at the start and in the middle.
-var hostileTexts = []hostileText{
+var hostileTexts = append(slices.Clone(plainHostileTexts), legacyHostileTexts()...)
+
+var plainHostileTexts = []hostileText{
 	{"a newline and a command", "ok\n::error file=x::injected"},
 	{"a carriage return and a mask", "ok\r::add-mask::x"},
 	{"a CRLF and a mask", "ok\r\n::add-mask::x"},
@@ -112,6 +115,30 @@ var hostileTexts = []hostileText{
 	{"the escape of a percent sign as text", "%25 %250A"},
 	{"a unicode line separator", "a\u2028::error::z"},
 }
+
+// legacyHostileTexts are the legacy workflow commands in every place a pull request can put them.
+func legacyHostileTexts() []hostileText {
+	var out []hostileText
+	for _, c := range []string{"##[error]x", "##[set-output name=a;]b", "##[add-mask]s"} {
+		for _, p := range []struct{ name, text string }{
+			{"alone", c},
+			{"after a newline", "ok\n" + c},
+			{"after a CRLF", "ok\r\n" + c},
+			{"after spaces", "ok\n  \t " + c},
+			{"in the middle", "a " + c + " b"},
+		} {
+			out = append(out, hostileText{"legacy " + c + " " + p.name, p.text})
+		}
+	}
+	return out
+}
+
+// legacyLeft says whether the log holds the sequence that opens a legacy workflow command anywhere. The tool prints
+// no such sequence of its own, so one in the log came from a pull request and was not made inert.
+func legacyLeft(log string) bool { return strings.Contains(log, "##[") }
+
+// inertForm is text with the sequence of a legacy workflow command made inert, the way the tool prints it.
+func inertForm(s string) string { return strings.ReplaceAll(s, "##[", "# #[") }
 
 // unescapeData is what the runner makes of the data of a workflow command.
 func unescapeData(s string) string {
@@ -141,11 +168,15 @@ func TestAdmittedExpectationTextCannotStartAWorkflowCommand(t *testing.T) {
 				if len(cmds) != 1 || !strings.HasPrefix(cmds[0], commandOfNotice) {
 					t.Fatalf("the log runs %q, want the one notice of the admission:\n%q", cmds, log)
 				}
+				if legacyLeft(log) {
+					t.Errorf("the log holds the sequence of a legacy workflow command:\n%q", log)
+				}
 				want := ledgerTestA + ": expected-value change admitted by reviewed ledger row aaaaaaaaaa, class NOBEHAVIOR"
 				if cite != "" {
 					want += " " + strings.Join(strings.Fields(cite), " ")
 				}
 				want += ": " + strings.Join(strings.Fields(reason), " ")
+				want = inertForm(want)
 				if got := unescapeData(strings.TrimPrefix(cmds[0], commandOfNotice)); got != want {
 					t.Errorf("the annotation data unescapes to %q, want %q", got, want)
 				}
@@ -229,6 +260,10 @@ func TestFindingTextCannotStartAWorkflowCommand(t *testing.T) {
 			if len(cmds) != 1 || !strings.HasPrefix(cmds[0], commandOfError) {
 				t.Fatalf("the log runs %q, want the one error of the finding:\n%q", cmds, log)
 			}
+			if legacyLeft(log) {
+				t.Errorf("the log holds the sequence of a legacy workflow command:\n%q", log)
+			}
+			name = inertForm(name)
 			if got := unescapeData(strings.TrimPrefix(cmds[0], commandOfError)); !strings.Contains(got, name) {
 				t.Errorf("the annotation data unescapes to %q, which lacks the file name %q", got, name)
 			}

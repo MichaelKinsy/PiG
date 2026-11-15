@@ -22,6 +22,9 @@ func TestLogfPrintsAnErrorOnOneLine(t *testing.T) {
 			if cmds := workflowCommands(out.String()); len(cmds) != 0 {
 				t.Errorf("the log runs %q:\n%q", cmds, out.String())
 			}
+			if legacyLeft(out.String()) {
+				t.Errorf("the log holds the sequence of a legacy workflow command:\n%q", out.String())
+			}
 			if n := len(logLines(out.String())); n != 1 {
 				t.Errorf("%d line(s), want one:\n%q", n, out.String())
 			}
@@ -49,6 +52,9 @@ func TestRunErrorOnStderrIsOneLine(t *testing.T) {
 				t.Fatalf("exit status %d, want 2; stderr:\n%q", rc, stderr.String())
 			}
 			lines := strings.Split(strings.TrimRight(stderr.String(), "\n"), "\n")
+			if legacyLeft(stderr.String()) {
+				t.Errorf("stderr holds the sequence of a legacy workflow command:\n%q", stderr.String())
+			}
 			if len(lines) != 1 || !strings.HasPrefix(lines[0], "preflight run:") {
 				t.Errorf("stderr is %d line(s), want the one run error:\n%q", len(lines), stderr.String())
 			}
@@ -82,6 +88,9 @@ func TestMergeableLogLineIsOneLine(t *testing.T) {
 			}
 			if !strings.Contains(log.String(), "git merge-tree could not tell") {
 				t.Fatalf("the merge line is missing:\n%s", log.String())
+			}
+			if legacyLeft(log.String()) {
+				t.Errorf("the log holds the sequence of a legacy workflow command:\n%q", log.String())
 			}
 			if cmds := workflowCommands(log.String()); len(cmds) != 0 {
 				t.Errorf("the log runs %q:\n%q", cmds, log.String())

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,5 +86,41 @@ func TestRuleTestExpectationToolingPrefixOfThePullRequestDoesNotCount(t *testing
 		if o := r.run(d, p, toolingEnv(t, provenance)); o.result != resultFail || !strings.Contains(o.reason, "in the PR body and a commit trailer") || len(o.notices) != 0 {
 			t.Errorf("a prefix of the PR exempted its own test with main's list %q: %+v", provenance, o)
 		}
+	}
+}
+
+// The NOTE of a skip names the file of the pull request; the log cannot run a command, old or legacy, from that name.
+func TestToolingNoteTextCannotStartAWorkflowCommand(t *testing.T) {
+	cfg, err := loadConfig(configYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range hostileTexts {
+		t.Run(h.name, func(t *testing.T) {
+			name := "automation/ci/preflight/" + h.text + "_test.go"
+			d := &data{Files: ledgerFiles(name), Commits: []prCommit{commit(ledgerCommitA, "a: b", true)}}
+			d.Repo, d.PR, d.Mode, d.Relevant = "o/r", 7, modeFull, []string{"test-expectation"}
+			var out bytes.Buffer
+			report(&out, cfg, evaluate(cfg, d, toolingEnv(t, toolingFile)))
+			log := out.String()
+			var commands, notes int
+			for _, l := range logLines(log) {
+				switch {
+				case strings.HasPrefix(l, "NOTE "):
+					notes++
+				case strings.HasPrefix(l, "PASS "):
+				case strings.HasPrefix(l, "::notice title=pre-flight test-expectation #7::"):
+					commands++
+				default:
+					t.Errorf("the log has the line %q, which the report does not print", l)
+				}
+			}
+			if cmds := workflowCommands(log); len(cmds) != 1 || commands != 1 || notes != 1 {
+				t.Errorf("the log runs %q with %d NOTE line(s), want the one notice:\n%q", cmds, notes, log)
+			}
+			if legacyLeft(log) {
+				t.Errorf("the log holds the sequence of a legacy workflow command:\n%q", log)
+			}
+		})
 	}
 }
