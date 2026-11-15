@@ -295,7 +295,9 @@ func (plan *ReadPlan) render() ConditionSql {
 	column := plan.sides.sql
 	return ConditionSql{
 		Column: column,
-		Exists: func(node ExistsNode, params *[]sqlite.SqliteValue) string { return plan.existsSql(node, params, column, 0) },
+		Exists: func(node ExistsNode, params *[]sqlite.SqliteValue) string {
+			return plan.existsSql(node, params, column, 0)
+		},
 	}
 }
 
