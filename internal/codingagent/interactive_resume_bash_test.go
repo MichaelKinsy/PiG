@@ -84,6 +84,7 @@ func resumeBashModeFromFile(t *testing.T, dir, path string) *InteractiveMode {
 		toolStarts:    make(map[string]time.Time),
 		outputPad:     1,
 	}
+	m.tuiInst.SetRenderDeadline(func(time.Time) {}) // the test owns the frames: a timer frame would write the plain buffer the test reads (tui ownFrames)
 	m.tuiInst.Add(m.chatContainer)
 	return m
 }

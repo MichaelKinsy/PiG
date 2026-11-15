@@ -9,6 +9,7 @@ import (
 func TestMainScreenExternalEditorRepaint(t *testing.T) {
 	var output strings.Builder
 	ui := NewWithOutput(&output, 80, 24)
+	ownFrames(ui)
 	ui.Add(&fixedLinesComponent{lines: []string{"dialog"}})
 	ui.Render()
 	output.Reset()
