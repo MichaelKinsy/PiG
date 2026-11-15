@@ -1,0 +1,55 @@
+# Behavior family: fullscreen
+# Surface: Pi 0.87.1 main-screen compaction transition, in a 40-column terminal.
+# Upstream evidence: paired Pi 1.5.2 and PiG captures of the 80-column scenario 09 retained the same conversation tail above the border line; here the terminal is 40 columns, where Pi's own label and hint (41 cells) are cut by the border.
+# pig divergence (D652): PiG's compaction line adds the elapsed time and the streamed size to Pi's label, and in a narrow
+# terminal they give way before the cancel hint does. At 40 columns Pi's own line (label and hint, 41 cells) does not fit
+# the border either, so both sides show Pi's line cut at the border, and the capture is the same on both whatever the
+# elapsed time.
+
+name = "09b-main-screen-compaction-40-columns"
+description = "At 40 columns the compaction line is Pi's line cut at the border, on both sides."
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+# TEST_FAUX_HOLD_COMPACTION keeps the summary pending until teardown, so the in-progress screen is a steady state.
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TUI_LIVE_PROBE=1", "TEST_FAUX_HOLD_COMPACTION=1"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TUI_LIVE_PROBE=1", "TEST_FAUX_HOLD_COMPACTION=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl", "--tui-mode", "regular"]
+
+[tmux]
+width = 40
+height = 20
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "How do goroutines work internally?"
+capture_end = "faux-1"
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+wait_contains = ["Compacting context... "]
+wait_timeout_seconds = 15
+wait_visible_contains = ["How do goroutines work internally?", "Compacting context... (escape to"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Compacting context... (escape to"]
+both_not_contain = ["[compaction]", "panic:", "goroutine ", "tokens", "· ~"]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: Only the spinner phase varies with capture timing. The line is Pi's label and the start of Pi's hint cut by the border on both sides, so every other cell of the row, the conversation rows, the footer counters and the border cells remain compared.
+
+[[assert.normalize_replace]]
+pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\.\.\. \(escape to ─*)$'
+with = '${1}<SPINNER>${2}'
+reason = "Pi renders an animated spinner in the editor border; preserve its label, spacing and full border width."

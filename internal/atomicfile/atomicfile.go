@@ -2,12 +2,12 @@
 package atomicfile
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync/atomic"
-
-	"github.com/MichaelKinsy/PiG/internal/ownerfile"
+	"syscall"
 )
 
 var (
@@ -29,32 +29,40 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 	inPlaceReporter.Store(&report)
 }
 
-// WriteFile replaces the file at path with data through a temporary file in the same directory: created private (never readable by anyone else, even
-// for a moment), written, fsynced and renamed over the file, whose directory entry is then flushed. A failure at any step removes the temporary file
-// and leaves the old file as it was. perm is the mode of a file that does not exist yet; an existing file keeps its mode.
+// WriteFile replaces the file at path with data through a temporary file in the same directory: written, fsynced and renamed over the file, whose
+// directory entry is then flushed. A failure at any step removes the temporary file and leaves the old file as it was. perm is the mode of a file that
+// does not exist yet, which it gets as open(2) gives it (the process umask taken out, as in Pi's writeFileSync); an existing file keeps its mode.
+// The temporary file of an existing file is created private (never readable by anyone else, even for a moment) and given the file's mode at the end.
 //
 // The rule: the file is replaced when that changes nothing but the inode; otherwise it is written in place, with the same bytes, exactly as Pi writes
 // it (writeFileSync), once, and the in-place write is reported to [SetInPlaceReporter]. A symbolic link is followed to its target, as writeFileSync does,
-// so the rename replaces the target and the link stays; the mode and, where the process may set them, the owner and group are kept, and so are the
+// also to a target that does not exist yet (a chain of links ends at the file the last one names, which is created; a loop is ELOOP), so the rename
+// replaces the target and the link stays; the mode and, where the process may set them, the owner and group are kept, and so are the
 // extended attributes of the file (on Linux they hold POSIX ACLs; on macOS the user's attributes), and on Windows the replaced file's DACL, attributes
 // and streams. In place is the answer where
 //   - the file has more than one hard link (a rename would leave the other names with the old bytes);
 //   - an extended attribute cannot be copied for a reason other than a file system that keeps none (never dropped silently);
 //   - the temporary file cannot be created in the directory because it refuses the process (EACCES, EROFS, EPERM: a directory the process cannot
 //     write, holding a file it can); or the rename is refused (EBUSY, EXDEV, ETXTBSY: a file mounted into a container on its own is a mount point).
+//   - the file is not a regular file (a device such as /dev/null, a named pipe): a rename would replace the node itself with an ordinary file that has its mode.
 //
 // A file the caller may not write (a read-only file) is refused as an in-place write would refuse it, and a write that fails for a real reason (a
 // full disk, an I/O error) is an error, in place or not. On Windows a rename another process's open handle refuses is retried for
 // [fsretry.RenameBudget] before its error is returned, and a refusal is never turned into an in-place write there.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
 	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
-	if resolved, resolveErr := filepath.EvalSymlinks(path); resolveErr == nil {
-		path = resolved
+	path, err := followLinks(path)
+	if err != nil {
+		return err
 	}
 	mode := perm.Perm()
 	var existing os.FileInfo
 	//perf:ok one stat and one open per credential write, which already syncs a file
 	if info, statErr := os.Stat(path); statErr == nil {
+		// A device or a named pipe is written, not replaced: a rename would put an ordinary file where the node was, with the node's mode, and the bytes would never reach it.
+		if !info.Mode().IsRegular() {
+			return writeInPlace(path, data, perm, fmt.Errorf("the file is a %s, which a replacement would remove", info.Mode().Type()))
+		}
 		existing = info
 		mode = info.Mode().Perm()
 		// Replacing a read-only file by rename would succeed where writing it fails.
@@ -84,19 +92,20 @@ func writeInPlace(path string, data []byte, perm os.FileMode, cause error) error
 	return os.WriteFile(path, data, perm)
 }
 
-// replaceThroughTemp writes data to a temporary file beside path and puts it in place of path. refusal is non-nil, with the file untouched and the
-// temporary file removed, where the platform refuses the replacement and the caller must write in place; err is a failure.
+// replaceThroughTemp writes data to a temporary file beside path and puts it in place of path. mode is the mode of the file being replaced, or the mode
+// asked for a file that does not exist yet. refusal is non-nil, with the file untouched and the temporary file removed, where the platform refuses the
+// replacement and the caller must write in place; err is a failure.
 func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.FileInfo) (refusal, err error) {
-	temp, err := ownerfile.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
+	temp, err := createTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*", mode, existing != nil)
 	if err != nil {
 		if refusesNewFile(err) {
 			return err, nil
 		}
 		return nil, err
 	}
-	replaced := false
+	keepTemp := false
 	defer func() {
-		if !replaced {
+		if !keepTemp {
 			_ = temp.Close()
 			_ = os.Remove(temp.Name())
 		}
@@ -108,10 +117,10 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		if err = copyAttributes(temp, path); err != nil {
 			return fmt.Errorf("an extended attribute cannot be carried over: %w", err), nil
 		}
-	}
-	// The mode comes last: an ACL set before it fixes the group bits, and chown can clear set-id bits.
-	if err = temp.Chmod(mode); err != nil {
-		return nil, err
+		// The mode comes last: an ACL set before it fixes the group bits, and chown can clear set-id bits. A new file already has the mode open gave it.
+		if err = temp.Chmod(mode); err != nil {
+			return nil, err
+		}
 	}
 	if _, err = temp.Write(data); err != nil {
 		return nil, err
@@ -123,24 +132,47 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		return nil, err
 	}
 	if err = replaceTemp(temp.Name(), path, existing != nil); err != nil {
+		if _, ok := errors.AsType[*keptFilesError](err); ok {
+			keepTemp = true // the temporary file holds data that exists nowhere else
+			return nil, err
+		}
 		if refusesReplace(err) {
 			return err, nil
 		}
 		return nil, err
 	}
-	replaced = true
-	// The rename is durable once its directory entry is; a platform that cannot open or sync a directory has nothing more to give.
-	syncDirectory(filepath.Dir(path))
+	keepTemp = true // the temporary file is the target now
+	// The rename is durable once its directory entry is. The file is replaced either way; a flush that fails for a real reason is the caller's to know.
+	if err = syncDirectory(filepath.Dir(path)); err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
-// syncDirectory flushes a directory's entries and reports whether it could; the write is complete either way.
-func syncDirectory(path string) bool {
-	dir, err := os.Open(path)
-	if err != nil {
-		return false
+// maxLinkHops is how many symbolic links the kernel follows in a path before it answers ELOOP (Linux and macOS allow 40 and 32).
+const maxLinkHops = 32
+
+// followLinks is the file writeFileSync writes for path: every symbolic link is followed, to the file or, where the file does not exist, to the path the
+// last link names, which the write creates; the links stay. A link that goes round in a circle is ELOOP, and one that names a file in a directory that
+// does not exist is ENOENT where the file is created, as writeFileSync fails: neither is turned into a regular file.
+func followLinks(path string) (string, error) {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved, nil
 	}
-	synced := dir.Sync() == nil
-	_ = dir.Close()
-	return synced
+	followed := path
+	for range maxLinkHops {
+		info, err := os.Lstat(followed)
+		if err != nil || info.Mode()&os.ModeSymlink == 0 {
+			return followed, nil
+		}
+		target, err := os.Readlink(followed)
+		if err != nil {
+			return path, nil
+		}
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(filepath.Dir(followed), target)
+		}
+		followed = target
+	}
+	return "", &os.PathError{Op: "open", Path: path, Err: syscall.ELOOP}
 }

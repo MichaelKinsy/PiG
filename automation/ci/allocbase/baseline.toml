@@ -2526,7 +2526,7 @@ allocs = 36566
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeToolCallEvent"
-allocs = 39
+allocs = 43
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -3631,17 +3631,17 @@ allocs = 46
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-0"
-allocs = 57
+allocs = 53
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-1000"
-allocs = 84
+allocs = 55
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-4000"
-allocs = 84
+allocs = 55
 
 [[benchmark]]
 package = "./tui"
@@ -4066,7 +4066,7 @@ allocs = 64818
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkMessageFrameLongTranscript/main-screen/msgs=10000"
-allocs = 23
+allocs = 20
 
 [[benchmark]]
 package = "./tui"
@@ -4451,17 +4451,17 @@ allocs = 17
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamingFrameLongTranscript/session/main-screen/msgs=100"
-allocs = 31
+allocs = 27
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamingFrameLongTranscript/session/main-screen/msgs=10000"
-allocs = 31
+allocs = 27
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkStreamingFrameLongTranscript/session/main-screen/msgs=2000"
-allocs = 30
+allocs = 27
 
 [[benchmark]]
 package = "./tui"

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -27,6 +28,7 @@ func TestShowTurnErrorRendersThroughShowErrorInTheThemeErrorColor(t *testing.T) 
 			m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir()})
 			m.chatContainer = tui.NewContainer()
 			m.tuiInst = tui.NewWithOutput(&out, 100, 30)
+			m.tuiInst.SetRenderDeadline(func(time.Time) {}) // the test owns the frames: a timer frame would write the plain buffer the test reads (tui ownFrames)
 			m.tuiInst.Add(m.chatContainer)
 			m.runCtx = context.Background()
 			m.showTurnError(tc.err)

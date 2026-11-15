@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/tui/termsim"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -14,6 +15,7 @@ func TestUpstreamOverlayShortContent(t *testing.T) {
 	t.Run("should render overlay when content is shorter than terminal height", func(t *testing.T) {
 		var output bytes.Buffer
 		ui := NewWithOutput(&output, 80, 24)
+		ownFrames(ui)
 		ui.Add(&recordingComponent{lines: []string{"Line 1", "Line 2", "Line 3"}})
 		ui.ShowOverlay(&recordingComponent{lines: []string{"OVERLAY_TOP", "OVERLAY_MID", "OVERLAY_BOT"}}, OverlayOptions{})
 		ui.Render()
@@ -64,6 +66,10 @@ func TestUpstreamOverlayStyleLeak(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var output bytes.Buffer
 			ui := NewWithOutput(&output, 20, 6)
+			// The test owns the frames, as the interactive mode does (SetRenderDeadline): ShowOverlay asks for a frame, and on a timer goroutine that frame draws
+			// into the bytes.Buffer while the test reads and resets it. Here a frame is drawn only when the test renders, so the bytes read are exactly those of
+			// its own Render calls and nothing else writes the buffer.
+			ui.SetRenderDeadline(func(time.Time) {})
 			ui.Add(&recordingComponent{lines: []string{"\x1b[3m" + strings.Repeat("X", 20) + "\x1b[23m", "INPUT"}})
 			if tt.overlay {
 				ui.ShowOverlay(&recordingComponent{lines: []string{"OVR"}}, OverlayOptions{row: overlayCells(0), col: overlayCells(5), width: overlayCells(3)})
@@ -131,6 +137,7 @@ func TestUpstreamTabWidth(t *testing.T) {
 	t.Run("keeps tab-containing overlays on one physical terminal row", func(t *testing.T) {
 		var output bytes.Buffer
 		ui := NewWithOutput(&output, 16, 3)
+		ownFrames(ui)
 		ui.Add(renderFuncComponent(func(width int) []string {
 			var lines []string
 			for _, s := range []string{"base 0", "base 1", "base 2"} {

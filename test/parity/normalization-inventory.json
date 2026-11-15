@@ -3285,6 +3285,18 @@
           "reason": "Pi renders an animated spinner in the editor border; preserve its label, spacing and full border width."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\\.\\.\\. )[0-9]s (\\(escape to cancel\\) ─*)$",
+          "with": "${1}<SPINNER>${2}${3}───",
+          "reason": "D652: PiG's line carries the seconds the compaction has run, which the capture time sets; the spinner phase is normalized as for Pi and the three cells of 'Ns ' are returned as dashes so the border width stays compared."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\\.\\.\\. )[0-9]{2}s (\\(escape to cancel\\) ─*)$",
+          "with": "${1}<SPINNER>${2}${3}────",
+          "reason": "D652: as the one-digit rule, for a capture taken after ten seconds: the four cells of 'NNs ' are returned as dashes."
+        },
+        {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: In-progress compaction retains the same settled conversation tail as Pi.",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
@@ -3296,6 +3308,35 @@
             "capture_end": "faux-1"
           },
           "reason": "Owned visible surface: In-progress compaction retains the same settled conversation tail as Pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/fullscreen/09b-main-screen-compaction-40-columns.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\\.\\.\\. \\(escape to ─*)$",
+          "with": "${1}<SPINNER>${2}",
+          "reason": "Pi renders an animated spinner in the editor border; preserve its label, spacing and full border width."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: At 40 columns the compaction line is Pi's line cut at the border, on both sides.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "How do goroutines work internally?",
+            "capture_end": "faux-1"
+          },
+          "reason": "Owned visible surface: At 40 columns the compaction line is Pi's line cut at the border, on both sides.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

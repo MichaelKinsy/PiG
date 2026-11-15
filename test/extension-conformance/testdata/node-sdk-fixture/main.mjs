@@ -1353,6 +1353,12 @@ export default function (pi) {
     const state = `event_signal:${mode}:${before}:${event.signal.aborted}:${answer}`;
     return name === "session_before_compact" ? { compaction: { summary: state, firstKeptEntryId: "k", tokensBefore: 1 } } : { label: state };
   }); } });
+  pi.registerCommand("tool_call_abort_probe", { description: "Subscribe to tool_call with a handler that answers from a dialog it opened", handler: async () => { pi.on("tool_call", async (event, ctx) => {
+    const mode = event.input?.mode ?? "";
+    let answer;
+    try { answer = await ctx.ui.input(`tool_call_abort:${mode}:pending`, "p"); } catch (error) { answer = `failed: ${error?.message ?? error}`; }
+    return { block: true, reason: `tool_call_abort:${mode}:${answer}` };
+  }); } });
   pi.registerCommand("event_ordered_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON, members in written order", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
   pi.registerCommand("event_keys_probe", { description: "Subscribe to the event named by the argument with a handler that reports the key order of its payload", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => { ctx.ui.notify("event_keys:" + name + ":" + JSON.stringify([Object.keys(event.payload), Object.keys(event.payload.zeta)]), "info"); }); } });
   pi.registerCommand("event_echo_probe", { description: "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event) => { switch (name) { case "turn_end": return { entries: event.entries }; case "context": return { messages: event.messages.slice(1) }; case "before_provider_request": return event.payload; case "tool_result": return { content: event.content, details: event.details }; case "message_end": return { message: event.message }; } throw new Error(`event_echo_probe has no echo for ${name}`); }); } });

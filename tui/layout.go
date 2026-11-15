@@ -6,7 +6,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -21,24 +20,33 @@ import (
 // union is dispatched with a type switch; JS Math.round becomes math.Round
 // (identical for the non-negative values here).
 
-// osc133ZonePrefix matches a run of OSC 133 A/B/C shell-integration zone marks
-// at the start of a line, which the paint path strips. Mirrors upstream
-// OSC133_ZONE_PREFIX.
-var osc133ZonePrefix = lazyregexp.New("^(?:\x1b\\]133;[ABC](?:\x07|\x1b\\\\))+")
-
-// osc133ZoneMark is the fixed start of every mark osc133ZonePrefix matches.
+// osc133ZoneMark is the fixed start of every OSC 133 zone mark.
 const osc133ZoneMark = "\x1b]133;"
 
-// stripOsc133ZonePrefix removes a leading run of OSC 133 zone marks, as
-// line.replace(OSC133_ZONE_PREFIX, "") does upstream. The pattern is anchored
-// at the start of the line, so a line not starting with a mark is returned
-// as is without running the regexp, whose ReplaceAllString copies the line
-// even when nothing matches. This runs for every painted row of every frame.
+// osc133ZoneMarks are the six complete marks the upstream pattern matches: zone A, B or C, ended by BEL or by ST (ESC \).
+var osc133ZoneMarks = [...]string{
+	"\x1b]133;A\x07", "\x1b]133;B\x07", "\x1b]133;C\x07",
+	"\x1b]133;A\x1b\\", "\x1b]133;B\x1b\\", "\x1b]133;C\x1b\\",
+}
+
+// stripOsc133ZonePrefix removes a leading run of OSC 133 A/B/C zone marks, each ended by BEL or ST (ESC \), as
+// line.replace(OSC133_ZONE_PREFIX, "") does upstream with /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/. It cuts the complete marks off the
+// front instead of running that pattern, whose ReplaceAllString allocates three times for a line that starts with a mark, and the
+// result is a substring of line. It runs for every line a frame rebuilds.
 func stripOsc133ZonePrefix(line string) string {
-	if !strings.HasPrefix(line, osc133ZoneMark) {
-		return line
+	for strings.HasPrefix(line, osc133ZoneMark) {
+		cut := false
+		for _, mark := range osc133ZoneMarks {
+			if rest, ok := strings.CutPrefix(line, mark); ok {
+				line, cut = rest, true
+				break
+			}
+		}
+		if !cut {
+			return line
+		}
 	}
-	return osc133ZonePrefix.ReplaceAllString(line, "")
+	return line
 }
 
 // LayoutRect is an axis-aligned rectangle in terminal cells.

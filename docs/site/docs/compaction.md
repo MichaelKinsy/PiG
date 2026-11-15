@@ -57,6 +57,8 @@ An empty or small session reports `Error: Compaction failed: Nothing to compact 
 
 Press Escape during a compaction to abort it. When the autocomplete list is open, Escape closes the list and the compaction continues, as in Pi.
 
+While a compaction runs, the line above the editor reads `Compacting context... (escape to cancel)` for the first second, then adds how long it has run and, once the summary streams, its size so far, for example `Compacting context... 1m 12s · ~14k tokens (escape to cancel)`. Pi shows the first form for the whole compaction (D652); the size is an estimate of the streamed text, and in a narrow terminal the elapsed time and the size give way before the cancel hint does. Automatic compaction and overflow recovery show the same suffix.
+
 In RPC mode, `compact` commands of one input batch run one after another. Pi 1.5.2 starts them at the same time, so a Session with enough history gets two overlapping compactions (D147). A Session replacement in the same batch aborts a running compaction, which answers one error and writes no entry (D148).
 
 ## What you lose
@@ -86,7 +88,7 @@ When the cut falls inside one long turn, PiG summarizes the start of that turn s
 
 PiG leaves thinking blocks out of the conversation it sends for summarization, as Pi 1.5.2 does, so a message with only thinking adds nothing. Pi 1.1.0 sent every thinking block whole, so a long thinking-only response could make the summary request overflow the model ([Pi #9602](https://github.com/earendil-works/pi/issues/9602)).
 
-When the messages to summarize are longer than the model's context window, PiG splits them into chunks that each fit one summary request and summarizes them in order. Each chunk's request carries the previous chunk's summary in `<previous-summary>`. A history that fits the window is one request, as in Pi. Pi 1.5.2 sends one request that the provider rejects (D167).
+When the messages to summarize, the summary the request carries, the instructions and the output the request asks for do not together fit the model's context window, PiG splits the messages into chunks that each fit one summary request and summarizes them in order. Each chunk's request carries the previous chunk's summary in `<previous-summary>`. A request is sized by the four-characters-per-token estimate, scaled by the ratio of the provider's real token count to that estimate on the session's latest assistant usage when the session has one; if the provider still rejects a request as too large, PiG splits the rest of the history by the plain estimate. A history that fits is one request, as in Pi. Pi 1.5.2 sends one request that the provider rejects (D167).
 
 PiG then appends the files the summarized part touched, as `<read-files>` and `<modified-files>` lists. A file that was both read and changed appears only under `<modified-files>`. The same two lists are stored as `readFiles` and `modifiedFiles` in the entry's `details`.
 

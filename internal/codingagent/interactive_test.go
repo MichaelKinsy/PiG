@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/compactprogress"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -1536,6 +1537,7 @@ func TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy(t *testing.T) {
 // and compaction decisions belong to coding.Session and are tested there.
 type recordingCompactHandle struct {
 	lastAssistant        *string
+	progress             *compactprogress.Progress
 	agent                *agent.Agent
 	thinkingSettings     *SettingsManager
 	inner                *Session
@@ -1632,6 +1634,12 @@ func (h *recordingCompactHandle) FlushDeferredCustomMessages() error {
 func (h *recordingCompactHandle) Agent() *agent.Agent             { return h.agent }
 func (h *recordingCompactHandle) Inner() *Session                 { return h.inner }
 func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent { return nil }
+func (h *recordingCompactHandle) CompactionStreamedTokens() int64 {
+	if h.progress == nil {
+		return 0
+	}
+	return int64(h.progress.Tokens())
+}
 func (h *recordingCompactHandle) SubscribeFunc(func(agent.AgentEvent)) func() {
 	return func() {}
 }

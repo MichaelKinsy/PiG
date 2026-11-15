@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/compactprogress"
 )
 
 // ProviderCompleter collects one summarization response from the caller's stream override or the model's provider. It preserves provider errors, usage and invalid-summary diagnostics.
@@ -67,6 +68,18 @@ func (c ProviderCompleter) CompleteSimple(
 	}
 	if err != nil {
 		return "", nil, fmt.Errorf("compaction completer: stream: %w", err)
+	}
+	if progress := compactprogress.From(ctx); progress != nil {
+		// pig divergence (D652): the interactive compaction line shows the size of the summary as it streams. The events are only counted; the result below is what Result returned before, the caller's context cancels the iteration as it ends the request.
+		progress.Reset()
+		for _, event := range stream.ObservePublishedEvents(ctx) {
+			switch event := event.(type) {
+			case ai.TextDeltaEvent:
+				progress.Add(len(event.Delta))
+			case ai.ThinkingDeltaEvent:
+				progress.Add(len(event.Delta))
+			}
+		}
 	}
 	message := stream.Result()
 	if ctx.Err() != nil {

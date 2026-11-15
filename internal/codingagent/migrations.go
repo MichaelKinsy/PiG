@@ -185,7 +185,8 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 				settings.Delete("apiKeys")
 				if updated, err := stringifyIndented(rawObject(settings)); err == nil {
 					// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
-					_ = atomicfile.WriteFile(settingsPath, updated, 0o644) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
+					// The file exists (it was just read), so its mode is kept; the request is Pi's, writeFileSync(settingsPath, ...) with no mode (migrations.ts:60): 0666.
+					_ = atomicfile.WriteFile(settingsPath, updated, 0o666) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
 				}
 			}
 		}

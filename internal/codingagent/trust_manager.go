@@ -271,7 +271,8 @@ func (s *ProjectTrustStore) write(data map[string]*bool) error {
 		return err
 	}
 	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
-	if err := atomicfile.WriteFile(s.trustPath, append(encoded, '\n'), 0o644); err != nil {
+	// upstream: coding-agent/src/core/trust-manager.ts:142 writeFileSync(path, ..., "utf-8"): no mode, so a new file is 0666 with the umask taken out.
+	if err := atomicfile.WriteFile(s.trustPath, append(encoded, '\n'), 0o666); err != nil {
 		return nodeerrno.FromPathError(err)
 	}
 	return nil

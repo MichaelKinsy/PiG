@@ -5688,6 +5688,31 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // tool_call_abort_probe subscribes to tool_call with a handler that answers from a dialog it opened (TestConformance_ToolCallHandlerIsAwaitedThroughTheAbort).
+    let tool_call_abort_subscriber = ext.event_subscriber();
+    let tool_call_abort_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "tool_call_abort_probe",
+        "Subscribe to tool_call with a handler that answers from a dialog it opened",
+        move |_ctx, _args| {
+            let subscription = subscribe(&tool_call_abort_subscriber, "tool_call", move |hctx, data| {
+                let mode = data
+                    .get("input")
+                    .and_then(|input| input.get("mode"))
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let answer = match hctx.input(&format!("tool_call_abort:{mode}:pending"), "p") {
+                    Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                    Err(error) => format!("failed: {error}"),
+                };
+                Ok(Some(serde_json::json!({"block": true, "reason": format!("tool_call_abort:{mode}:{answer}")})))
+            });
+            tool_call_abort_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     let event_ordered_result_subscriber = ext.event_subscriber();
     let event_ordered_result_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));

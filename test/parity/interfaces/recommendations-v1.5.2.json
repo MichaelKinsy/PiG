@@ -47613,7 +47613,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -47625,7 +47625,8 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsContextOverflow",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsContextOverflow",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#isContextOverflow"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -108025,7 +108026,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -108037,7 +108038,8 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsContextOverflow",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsContextOverflow",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#isContextOverflow"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -137196,7 +137198,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -137208,7 +137210,8 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsContextOverflow",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsContextOverflow",
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow"
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#isContextOverflow"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -337540,7 +337543,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "14 normalized-name Pig candidates are ambiguous."
+        "15 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -337556,6 +337559,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#modelsRefreshSignal.Err",
         "go:github.com/MichaelKinsy/PiG/ai#openAIStreamDecoder.Err",
         "go:github.com/MichaelKinsy/PiG/ai#sseDecoder.Err",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#signalOnlyCtx.Err",
         "go:github.com/MichaelKinsy/PiG/coding/uiview#misfit.err",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.Err",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.Err",

@@ -68,8 +68,12 @@ func TestPigletBinaryRunsItsLispExtension(t *testing.T) {
 			if !strings.Contains(stderr.String(), "Checksumming embedded cells") || strings.Contains(stderr.String(), "not-embedded") {
 				t.Fatalf("the build did not embed the Lisp cell:\n%s", stderr.String())
 			}
-			// The Binary runs the cell it embeds: nothing on PATH builds or finds an SBCL.
+			// The Binary runs the cell it embeds: nothing on PATH builds or finds an SBCL, and the Lisp source it was built
+			// from is gone, so a start that read the member's files again would fail here.
 			noToolchain := t.TempDir()
+			if err := os.RemoveAll(filepath.Join(root, "lispbin")); err != nil {
+				t.Fatal(err)
+			}
 
 			t.Run("starts", func(t *testing.T) {
 				if code, output := startPigletBinary(t, binary); code != 0 {
