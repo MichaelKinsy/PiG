@@ -12650,6 +12650,75 @@
       "tests": []
     },
     {
+      "id": "BF-3e66fd5",
+      "title": "A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the…",
+      "symptom": "GitHub Copilot, OpenAI Codex and every other OAuth login kept the dialog open with `Login failed: \u003cmessage\u003e` inside it until Escape, and anything typed went nowhere.",
+      "rootCause": "Pi restores the editor when a login rejects and shows the message with showError (interactive-mode.ts:6564-6573). The three PiG login flows kept the dialog open with Login failed: inside it. One loginRejection carries the error to the caller; the dialog closes without cancelling. Scenarios oauth/34-37, unit tests at the /login command path, the old pins rewritten.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the transcript shows the error as `Error: Failed to login to \u003cprovider name\u003e: \u003cmessage\u003e` in the error colour (for example `Error: Failed to login to GitHub Copilot: 401 Unauthorized: {\"message\":\"Bad credentials\"}`). Before, GitHub Copilot, OpenAI Codex and every other OAuth login kept the dialog open with `Login failed: \u003cmessage\u003e` inside it until Escape, and anything typed went nowhere. A credential that cannot be stored is reported the same way.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1accad07e9",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "210ff7a814",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "45f0a84d9e",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "8190b3ebd8",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "93a20e6393",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "93d41f24a6",
+          "date": "2026-11-12"
+        },
+        {
+          "hash": "3e66fd5b36",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/host/subprocess/runtime_node_vendor_script_test.go::TestVendorPiDistIsIdempotentOnTheCommittedTree",
+        "durable/codemode/describe_test.go::TestTheExtensionsSectionListsWhatDefaultInlineBudgetFitsUnlessTheOptionsNameABudget",
+        "durable/harness/harness_signals_test.go::TestSleepingOnSignals",
+        "durable/interop/interop_test.go::TestScriptedSessionJsonlFilesMatchPiDurable",
+        "durable/interop/interop_test.go::TestScriptedSessionStoresMatchPiDurable",
+        "durable/interop/interop_test.go::TestScriptedSessionsViewIdentically",
+        "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable",
+        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder",
+        "internal/codingagent/auth_warnings_test.go::TestOpenAICodexLoginReceivesSettingsDeviceID",
+        "internal/codingagent/export/ansi_html_oracle_test.go::TestAnsiToHTMLMatchesPiOracle",
+        "internal/codingagent/login_failure_test.go::TestRegisteredOAuthLoginRejectedReturnsPiFailure",
+        "internal/codingagent/login_failure_test.go::TestSlashLoginRejectedGitHubCopilotClosesDialogAndReportsError",
+        "internal/codingagent/login_failure_test.go::TestSlashLoginRejectedOpenAICodexClosesDialogAndReportsError",
+        "internal/codingagent/tools/bash_executor_oracle_test.go::TestBashOracleReadsPiSpillFileOnlyOnceItsStreamHasClosed",
+        "internal/codingagent/tools/bash_executor_oracle_test.go::TestExecuteBashWithOperationsMatchesPi",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsAcrossSDKs",
+        "test/integration/login_test.go::TestAnthropicLoginAcceptsPastedRedirectURL",
+        "test/parity/interface-closure/autobind/mirror_guard_test.go::TestAFailedCheckNamesAMirrorThatIsNotThePinnedBuild",
+        "test/parity/scenarios/oauth/34-login-failure-device-unauthorized.toml",
+        "test/parity/scenarios/oauth/35-login-failure-code-exchange-400.toml",
+        "test/parity/scenarios/oauth/36-login-failure-connection-refused.toml",
+        "test/parity/scenarios/oauth/37-login-cancel-mid-device-flow.toml",
+        "tui/text_row_bound_test.go::TestTextAfterOneChangeRetainsAboutAsMuchAsATextDrawnOnce"
+      ]
+    },
+    {
       "id": "BF-3e755ef",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -28404,6 +28473,26 @@
       ]
     },
     {
+      "id": "BF-752aef5",
+      "title": "A throttled frame whose timer callback had already passed its generation check could still draw once more…",
+      "symptom": "A throttled frame whose timer callback had already passed its generation check could still draw once more after a direct `Render()`, a forced render request or a `Stop()` had cancelled it: the check is made under the render lock and released before the frame takes it again.",
+      "rootCause": "The extra frame was forced in a test with the frame parked at its first clock read; it was not observed in a real terminal.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A throttled frame whose timer callback had already passed its generation check could still draw once more after a direct `Render()`, a forced render request or a `Stop()` had cancelled it: the check is made under the render lock and released before the frame takes it again. The frame now checks its generation again when it takes the frame lock and draws nothing when it lost it, as in Pi, where `renderNow` cancels the timer and nothing renders until the next request (`tui.ts` `renderNow`, `scheduleRender`). The extra frame was forced in a test with the frame parked at its first clock read; it was not observed in a real terminal.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "752aef5e27",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-75426aa",
       "title": "The `/login` and `/logout` provider picker and the `/tree` selector show the terminal cursor in their search…",
       "symptom": "The `/login` and `/logout` provider picker and the `/tree` selector show the terminal cursor in their search and label inputs only while they hold focus, as Pi does.",
@@ -32365,6 +32454,30 @@
       ]
     },
     {
+      "id": "BF-8a4cf80",
+      "title": "A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process",
+      "symptom": "As in Pi, every continuation a listener queued runs before any microtask the emitter queues after `emit` returns, and the emitter's settle wait now covers every listener process of the emit: it used to end early when an earlier listener process had already answered (it was inside its own wait for an earlier emit of the same burst), failed or exited before the Host wrote the request of the next one, so that process's continuations could interleave with the emitter's later work.",
+      "rootCause": "The emission settled the first moment its pending map was empty, so a realm that reported before the dispatch loop had registered the next realm (a quiesce written before its dispatch response, a failed dispatch, a closed connection) closed it, and the emitter's events.settle returned without waiting for the realms the loop reached afterwards. Their continuations could then run between the emitter's later microtasks; in Pi every continuation a listener queued runs before any microtask the emitter queues after emit returns (event-bus.ts:15-17, 19-25).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process. As in Pi, every continuation a listener queued runs before any microtask the emitter queues after `emit` returns, and the emitter's settle wait now covers every listener process of the emit: it used to end early when an earlier listener process had already answered (it was inside its own wait for an earlier emit of the same burst), failed or exited before the Host wrote the request of the next one, so that process's continuations could interleave with the emitter's later work.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8a4cf80a3e",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_bus_settle_test.go::TestDispatchEventEmissionSettlesWhenTheLoopEndsWithNoPendingListener",
+        "coding/extension/host/subprocess/event_bus_settle_test.go::TestDispatchEventEmissionStaysOpenUntilTheLoopHasRegisteredEveryListenerRealm",
+        "coding/extension/host/subprocess/event_bus_settle_test.go::TestHostEventBusEmitCallSettlesAfterEveryListenerRealm"
+      ]
+    },
+    {
       "id": "BF-8a88c34",
       "title": "On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version",
       "symptom": "On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version.",
@@ -33684,6 +33797,28 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-8ed6366",
+      "title": "A key received after a /reload had completed could be dropped by the input loop; the editor now receives it…",
+      "symptom": "A key received after a /reload had completed could be dropped by the input loop; the editor now receives it, in the order typed.",
+      "rootCause": "awaitReloadStep dropped every key it received until it returned, so a select with the step already done and a key ready could take the key and discard it. A key received once the step is done is kept in reloadTailInput (cleared when the next step starts, as Pi drops what its awaits between steps read) and the input loop dispatches it, in order, before any later chunk (interactive_input.go: loop top and dispatchTerminalRead). Keys typed while a step is pending are still dropped. Unit test: TestReloadKeysAfterTheLastStepReachTheEditor (synctest, 40 rounds; red on the base 20 of 20 runs).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A key received after a /reload had completed could be dropped by the input loop; the editor now receives it, in the order typed. Keys typed while the reload runs are still dropped, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8ed6366ca3",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_reload_tail_input_test.go::TestReloadKeysAfterTheLastStepReachTheEditor"
       ]
     },
     {
@@ -39755,6 +39890,35 @@
         "chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick",
         "chord/nextnode/app/app_web_stored_pick_test.go::TestAPageAppliesAThemeStoredBeforeItOpens",
         "chord/nextnode/app/app_web_stored_pick_test.go::TestThePagesLanguageFollowsAPickStoredBeforeThePageOpens"
+      ]
+    },
+    {
+      "id": "BF-D647",
+      "title": "A message or entry that an extension renders is drawn as the placeholder `[\u003ccustomType\u003e]` until the…",
+      "symptom": "none.",
+      "rootCause": "the renderer lives in another process. Waiting for its answer inside the frame is blocking IPC on the render loop, which stalls every key and every other frame for as long as the extension takes, up to the inactivity boundary. Drawing nothing for the message instead of the placeholder moves every later row when the answer arrives.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D647",
+      "removeWhen": "the first frame that shows a message or entry draws the component the renderer returned, not `[\u003ccustomType\u003e]`, without a wait on the render loop: that is, a test that builds the proxy, draws it once and gets the component's rows with the loop never blocked (the renderer's answer obtained before the message's first frame, off the loop), or the renderer runs in the host's process.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "b6507a915b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/render_padding_test.go::TestRenderProxyOutputPadRefreshRejectsStaleGeneration",
+        "coding/extension/host/subprocess/render_proxy_early_click_test.go::TestClickPairOfOneReadReachesTheCardBehindItsPlaceholder",
+        "coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyClickBeforeAFailedFirstAnswerIsDropped",
+        "coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyClickBeforeTheFirstFrameReachesTheDrawnComponent",
+        "coding/extension/host/subprocess/render_proxy_early_click_test.go::TestRenderProxyHeldClickDiesWithItsProxy",
+        "coding/extension/host/subprocess/render_proxy_test.go::TestRenderProxyRenderNeverWaitsForIPC",
+        "test/extension-conformance/renderer_click_test.go::TestRendererClickBeforeTheFirstFrameAcrossSDKs"
       ]
     },
     {
@@ -63993,6 +64157,11 @@
       "id": "D645",
       "title": "A name that is an `Object.prototype` member is no entry of eighteen Stock lookups, where Pi's plain objects…",
       "entry": "BF-88bbdd2"
+    },
+    {
+      "id": "D647",
+      "title": "A message or entry that an extension renders is drawn as the placeholder `[\u003ccustomType\u003e]` until the…",
+      "entry": "BF-D647"
     },
     {
       "id": "D648",

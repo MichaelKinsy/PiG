@@ -89,6 +89,12 @@ func TestLiteralHangBoundsDetectsEveryForm(t *testing.T) {
 		{"output.waitQuiet(0, needle, 2*time.Second, testbudget.Wait(t))", 0},
 		{"expires := time.Now().Add(time.Hour).UnixMilli()", 0},
 		{"old := time.Now().Add(-time.Minute)", 0},
+		{"cert := &x509.Certificate{NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(24 * time.Hour)}", 0},
+		{"cert := &x509.Certificate{NotAfter: time.Now().Add(24 * time.Hour)}", 0},
+		{"pkix := tls.Certificate{NotAfter: time.Now().Add(time.Hour), Leaf: nil}; deadline := time.Now().Add(2 * time.Second)", 1},
+		{"w := &waiter{notAfter: time.Now().Add(2 * time.Second)}", 1},
+		{"w := &waiter{Deadline: time.Now().Add(2 * time.Second)}", 1},
+		{"w := &waiter{NotAfter: time.Now().Add(24 * time.Hour), Expires: time.Now().Add(time.Hour)}", 1},
 		{"time.Sleep(2 * time.Second)", 0},
 	} {
 		body, err := parser.ParseExpr("func() {" + tc.src + "}")
@@ -106,12 +112,19 @@ type hangBoundSite struct {
 	what string
 }
 
-// literalHangBounds reports each literal duration of one second or more that bounds a wait in body: a hang-bound call argument, a `budget:` field, or a `time.Now().Add` deadline. A `time.Now().Add(...)` whose result is converted with Unix or UnixMilli is a timestamp, not a deadline.
+// literalHangBounds reports each literal duration of one second or more that bounds a wait in body: a hang-bound call argument, a `budget:` field, or a `time.Now().Add` deadline. A `time.Now().Add(...)` is a timestamp, not a deadline, when its result is converted with Unix or UnixMilli or when it is the value of a `NotBefore` or `NotAfter` key of a composite literal: a certificate's validity period bounds no event the test waits for.
 func literalHangBounds(body ast.Node) []hangBoundSite {
 	timestamps := map[ast.Node]bool{}
 	ast.Inspect(body, func(n ast.Node) bool {
-		if selector, ok := n.(*ast.SelectorExpr); ok && (selector.Sel.Name == "Unix" || selector.Sel.Name == "UnixMilli") {
-			timestamps[ast.Unparen(selector.X)] = true
+		switch node := n.(type) {
+		case *ast.SelectorExpr:
+			if node.Sel.Name == "Unix" || node.Sel.Name == "UnixMilli" {
+				timestamps[ast.Unparen(node.X)] = true
+			}
+		case *ast.KeyValueExpr:
+			if key, ok := node.Key.(*ast.Ident); ok && (key.Name == "NotBefore" || key.Name == "NotAfter") {
+				timestamps[ast.Unparen(node.Value)] = true
+			}
 		}
 		return true
 	})

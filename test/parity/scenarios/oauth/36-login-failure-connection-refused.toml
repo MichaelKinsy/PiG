@@ -1,0 +1,50 @@
+# Upstream evidence: Pi 1.5.2 showLoginDialog (interactive-mode.ts:6543-6576): a login whose network request is refused rejects with the runtime's own message; the editor is restored (:6564) and showError prints `Error: Failed to login to <provider name>: <message>` (:6573, :4809-4813).
+# The provider (testdata/login-failure/node.mjs) posts the pasted code to a closed loopback port; Pi and PiG's Node runtime load the same file, so the runtime's message ("fetch failed") is the same on both sides.
+name = "36-login-failure-connection-refused"
+description = "A pasted-code OAuth login whose token request is refused closes the dialog and reports Error: Failed to login to <provider> in the transcript"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 60
+capture_start = "Error: Failed to login to Refused Endpoint"
+capture_end = "typed-after-failure"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/login login-refused", "Escape", "Enter"]
+wait_contains = ["Paste the sign-in code"]
+
+[[tmux.steps]]
+keys = ["abc", "Enter"]
+wait_contains = ["fetch failed"]
+
+[[tmux.steps]]
+keys = ["typed-after-failure"]
+wait_visible_contains = ["typed-after-failure"]
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/provider-object-login/agent", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/provider-object-login/agent", "PIG_CODING_AGENT_DIR=", "PIG_HOME=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/login-failure/node.mjs"]
+pi_extensions = ["testdata/login-failure/node.mjs"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Error: Failed to login to Refused Endpoint: fetch failed"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: The rows between the error line and the editor's top border are screen filler: the editor sits at the bottom of the 40-row screen, so the count depends on how tall each binary's startup header is (PiG lists the loaded extension), not on the login. Only the run of line breaks before the border is collapsed; the error text, its colour escapes, the border and the typed text stay compared.
+[[assert.normalize_replace]]
+pattern = '\n+(\x1b\[[0-9;]*m─)'
+with = "\n${1}"
+reason = "Filler rows between the transcript and the bottom-anchored editor depend on the startup header height of each binary."

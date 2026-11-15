@@ -315,7 +315,7 @@ func TestReadDetectsTheCompleteGIFSignature(t *testing.T) {
 	for _, signature := range []string{"GIF87a", "GIF89a"} {
 		// Pi 1.2.0 packages/durable/test/tools.test.ts:203 "detects the complete %s signature" (it.each)
 		t.Run("detects the complete "+signature+" signature", func(t *testing.T) {
-			if got := detectSupportedImageMimeType([]byte(signature)); got != "image/gif" {
+			if got := DetectSupportedImageMimeType([]byte(signature)); got != "image/gif" {
 				t.Errorf("mime = %q, want image/gif", got)
 			}
 		})

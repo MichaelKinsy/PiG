@@ -207,6 +207,13 @@ func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, 
 			continue
 		default:
 		}
+		// Keys a /reload took after its last awaited step had completed precede everything routed after that step (awaitReloadStep).
+		if tail, ok := m.takeReloadTailInput(); ok {
+			if err := dispatchRead(inputChunk{data: tail}); err != nil {
+				return err
+			}
+			continue
+		}
 		// Prioritize terminal input over agent/render events. During tool output or
 		// streaming, eventCh/uiTaskCh can stay hot; without this pre-check a waiting
 		// keystroke can sit behind repeated render work.
@@ -337,8 +344,16 @@ func (m *InteractiveMode) dispatchTerminalRead(ctx context.Context, input inputC
 		// render once per acknowledged frame, and an animation then runs
 		// at the frontend's frame rate instead of its own.
 		dispatched = dispatched || (len(input.data) > 0 && !m.frontendTookInput)
-		if dispatchErr != nil || changed == nil {
+		if dispatchErr != nil {
 			return dispatchErr
+		}
+		// The keys a /reload took after its last awaited step follow this chunk, before the rest of its read and everything routed later.
+		if tail, ok := m.takeReloadTailInput(); ok {
+			input = inputChunk{data: tail}
+			continue
+		}
+		if changed == nil {
+			return nil
 		}
 		select {
 		case <-ctx.Done():
