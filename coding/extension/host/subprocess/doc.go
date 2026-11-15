@@ -19,8 +19,10 @@
 // stderr, so an SDK appends one whole diagnostic per write and the host's handle appends too. The host forwards what an extension's own code writes to PiG's terminal
 // (Host.extensionOutput) and Pi writes no stack for a throwing handler, so an SDK's diagnostics must not go there; the SDK writes them to stderr only when the variable is
 // unset or the log cannot be written, and bounds what it writes to the log. An isolated process gets its own log, a packed cell process its cell's, and the fused extensions
-// of a Piglet Binary, which run in the host's process and share its environment, one log for the Host. What the Go runtime writes for a fatal error is not an SDK diagnostic
-// and stays on stderr.
+// of a Piglet Binary, which run in the host's process and share its environment, one log for the Host. The first two the host creates and reads. The fused one has no
+// reader: the host names a path that does not exist (PIG_EXT_LOG_CREATE=1 lets the Go SDK create it) and the SDK makes the file with the first diagnostic, so a session in
+// which no handler fails puts nothing in the temporary directory, as Pi's puts nothing; Shutdown and TerminateHostProcesses remove it. What the Go runtime writes for a
+// fatal error is not an SDK diagnostic and stays on stderr.
 //
 // # Architecture
 //
