@@ -201,6 +201,8 @@ type followedKind uint8
 const (
 	followedLive followedKind = iota
 	followedLacking
+	// followedDenied: an admission refused its caller (slice 14 §2.2): no value is kept, reads throw the error.
+	followedDenied
 	followedLoading
 	followedFailed
 )
@@ -846,13 +848,14 @@ func (b *binding) moved() {
 	}
 }
 
-// live resolves when the reference is live; rejects with a broken failure's error, or its end. Getters wait for it.
+// live resolves when the reference is live; rejects with a broken or denied failure's error (neither heals by waiting), or
+// its end. Getters wait for it.
 func (b *binding) live(ctx context.Context) *keyedPromise[struct{}] {
 	return b.until(func(current *RefState) decision {
 		if current.Kind == RefStateLive {
 			return doneDecision
 		}
-		if current.Kind == RefStateFailed && current.Cause.Kind == data.FailureBroken {
+		if current.Kind == RefStateFailed && (current.Cause.Kind == data.FailureBroken || current.Cause.Kind == data.FailureDenied) {
 			return decision{kind: decisionFailed, err: current.Cause.Error}
 		}
 		return waitDecision
@@ -1817,6 +1820,8 @@ func place(source *referenceSource, found followed, attached attachable) {
 		source.bind(found.source)
 	case followedLacking:
 		source.vanish(found.err, chordctx.Background())
+	case followedDenied:
+		source.deny(found.err, chordctx.Background())
 	case followedLoading:
 		if takesLast() {
 			source.bind(found.last)

@@ -289,6 +289,12 @@ type pinnedKey struct {
 // off), then the drain, the closes in reverse, derives detached; its object releases its references. Documents and job runs
 // stay on the object.
 type attempt struct {
+	// decision is an admitted type's decision, from its `admit` until its object releases it (`releaseAdmission`); allowed is
+	// what its admission allowed, followedVerdict what it follows (the last verdict it read, by identity). Pi's `#decision`,
+	// `#admitted` and `#followed`.
+	decision        *Decision
+	allowed         *verdict
+	followedVerdict *verdict
 	// trace is what its activation span links to and its number; activation its current `chord.activate` span (nil when
 	// the host records nothing); parkedAt when it parked, for the park's duration.
 	trace      attemptTrace
@@ -785,6 +791,9 @@ func (a *attempt) OnLive(fn OnLiveHandler) {
 // Job implements Self.
 func (a *attempt) Job(definition *JobDefinition, implementation JobImplementation) JobHandle {
 	a.assertDeclaring("job")
+	if err := refuseAdmittedJob(a.served, a.object.text); err != nil {
+		panic(err)
+	}
 	object := a.object
 	if _, twice := a.jobNames[definition.Name]; twice {
 		panic(declarationError(`%s: job "%s" is declared twice`, object.text, definition.Name))
@@ -827,18 +836,34 @@ func (a *attempt) activate(ending *keyedPromise[struct{}]) *keyedPromise[activat
 		a.settleCheck(nil)
 		result.resolve(outcome)
 	}
-	if ending == nil {
-		a.activateSteps(dl, finish)
-		return result
-	}
-	ending.thenWithContext(a.opening, func(_ struct{}, err error) {
-		if err != nil {
-			// An ending never rejects: only an abandonment (the deadline) ends this wait early.
-			finish(*a.abandoned)
+	proceed := func() {
+		if ending == nil {
+			a.activateSteps(dl, finish)
 			return
 		}
-		a.activateSteps(dl, finish)
-	})
+		ending.thenWithContext(a.opening, func(_ struct{}, err error) {
+			if err != nil {
+				// An ending never rejects: only an abandonment (the deadline) ends this wait early.
+				finish(*a.abandoned)
+				return
+			}
+			a.activateSteps(dl, finish)
+		})
+	}
+	// An admitted type's admission runs before that wait (slice 14 §2.2): only its factory waits for the previous instance's
+	// teardown.
+	if entry := a.served; entry.kind == servedRemote && entry.admission != nil {
+		a.runAdmission(entry.admission, dl).then(func(refused *activation, _ error) {
+			if refused != nil {
+				finish(*refused)
+				return
+			}
+			a.admitEvent("allow")
+			proceed()
+		})
+		return result
+	}
+	proceed()
 	return result
 }
 
@@ -2113,7 +2138,10 @@ func (a *attempt) declare() (factoryResult, error) {
 		if object.served.kind == servedLocal {
 			return object.served.local(object.params, a)
 		}
-		// A remote object's identity has its principal.
+		// A remote object's identity has its principal; an admitted one's factory gets what its admission allowed.
+		if object.served.admission != nil {
+			return object.served.admitted(object.params, object.principal, a.allowed.value, a)
+		}
 		return object.served.remote(object.params, object.principal, a)
 	})
 	if err != nil {

@@ -107,7 +107,7 @@ func openReaders(host *chordHost, readers []*reader, wake state.Dependent, long 
 			return
 		}
 		each := readers[index]
-		long.blockedBy(blocker{label: label, state: blockerLoading})
+		long.blockedBy(&blocker{label: label, state: blockerLoading})
 		awaitTask(host, func() (Opened, error) { return each.Open(ctx), nil }).then(func(opened Opened, _ error) {
 			if opened.Kind == OpenedReady {
 				open(index + 1)
@@ -120,7 +120,7 @@ func openReaders(host *chordHost, readers []*reader, wake state.Dependent, long 
 				settle(parkResult{kind: parkingParked, shown: refLoading, firstPass: false, cause: &cause})
 				return
 			}
-			long.blockedBy(blocker{label: label, state: blockerFailed})
+			long.blockedBy(&blocker{label: label, state: blockerFailed})
 			err := data.AsChordError(opened.Err, label)
 			if opened.Kind == OpenedBroken {
 				settle(parkResult{kind: parkingBroken, err: err})

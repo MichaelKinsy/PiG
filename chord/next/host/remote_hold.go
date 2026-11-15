@@ -351,11 +351,11 @@ func (h *hold) moved() {
 			h.untap()
 			return
 		}
-		var cause *data.ChordError
+		var cause *data.FailureCause
 		if shown.Kind == RefStateFailed {
-			cause = shown.Cause.Error
+			cause = &shown.Cause
 		}
-		h.unbind(cause)
+		h.unbind(cause, object)
 	}
 	h.pending(object)
 }
@@ -395,7 +395,7 @@ func (h *hold) memberHealed(index int) {
 // names it was bound with keep arriving (sent before its consumer learnt of the `loading`): each gets exactly one answer from
 // what it waits on, the instance it already runs on (its result, or `released` at the seal) or its object's gate (the new
 // instance's result, its failure, `park_timeout`, its end), design §22.
-func (h *hold) unbind(err *data.ChordError) {
+func (h *hold) unbind(cause *data.FailureCause, object *chordObject) {
 	if h.state.kind == holdBound {
 		h.stopFollowing(&h.state)
 	}
@@ -403,8 +403,12 @@ func (h *hold) unbind(err *data.ChordError) {
 	h.failures = nil
 	h.retired = link.NoRetired
 	h.touchedFlag = false
-	if err != nil {
-		h.provider.unbound(h, err)
+	if cause != nil {
+		refusal := cause.Error
+		if cause.Kind == data.FailureDenied {
+			refusal = revoked(object.label(), refusal)
+		}
+		h.provider.unbound(h, refusal)
 		h.state = holdState{kind: holdPending}
 		return
 	}
@@ -451,8 +455,13 @@ func (h *hold) pending(object *chordObject) {
 		}
 		h.provider.send(message)
 		// Told a failure, its consumer rejects what it still waits on: calls by the old names are not taken any more. One that
-		// still arrives was sent before its consumer learnt of the failure.
-		h.latest = &holdDecoding{refused: shown.Cause.Error}
+		// still arrives was sent before its consumer learnt of the failure; for a denial that is access withdrawn under the
+		// call (`forbidden/revoked`), whether it had reached this host or not.
+		refusal := shown.Cause.Error
+		if shown.Cause.Kind == data.FailureDenied {
+			refusal = revoked(object.label(), refusal)
+		}
+		h.latest = &holdDecoding{refused: refusal}
 		h.state = holdState{kind: holdPending, told: shown.Cause.Error}
 	case RefStateLoading:
 		if current.told != nil {
