@@ -96,11 +96,6 @@ var admDoc = mustContract(contracts.Remote("test.doc", contracts.RemoteDeclarati
 	},
 }))
 
-// admDocV2: Doc with another admission schema (the same wire fingerprint): a reload does not rehearse across it.
-var admDocV2 = mustContract(contracts.Evolve(admDoc, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-	return e.Admission(contracts.Obj(contracts.Prop("mode", contracts.OneOf("read", "write")), contracts.Prop("since", contracts.Int())))
-}))
-
 // admPanel: a consumer of a document on the same host: a derive over its text.
 var admPanel = mustContract(contracts.Local("test.panel", contracts.LocalDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
@@ -152,10 +147,8 @@ func admAccessFacet(code admAccessCode, contract *contracts.Contract, accepts co
 						return nil, data.Broken(errors.New("access is broken"))
 					}
 					if code.Opened != nil {
-						select {
-						case <-code.Opened:
-						case <-ctx.Done():
-							return nil, ctx.Err()
+						if _, err := chordctx.Receive(ctx, code.Opened); err != nil {
+							return nil, err
 						}
 					}
 					return nil, nil
@@ -272,12 +265,8 @@ func admDocFacet(code admDocCode, contract *contracts.Contract, shares *admLog) 
 					if code.OpenIgnoresAbandon {
 						// Pi's open takes no context: `await code.opened`, an abandoned attempt's open still ends.
 						_, _ = chordctx.Receive(context.WithoutCancel(ctx), code.Opened)
-					} else {
-						select {
-						case <-code.Opened:
-						case <-ctx.Done():
-							return nil, ctx.Err()
-						}
+					} else if _, err := chordctx.Receive(ctx, code.Opened); err != nil {
+						return nil, err
 					}
 					code.Natives.Append("open")
 					return nil, nil
@@ -1511,22 +1500,107 @@ func TestAdmissionAReloadOfAnAdmissionsSource(t *testing.T) {
 		must(t, s.h.Close(background))
 	})
 
+	t.Run("to an equal decision: the running call completes, nothing is rebuilt, the decision is kept while the source loads", func(t *testing.T) {
+		built, natives := &admLog{}, &admLog{}
+		gate, opened := make(chan struct{}), make(chan struct{})
+		readyNow := make(chan struct{})
+		close(readyNow)
+		code := admDocCode{Built: built, Gate: gate, Opened: readyNow, Natives: natives}
+		s := admServed(t, code, admOptions{Mode: "write"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		watch, err := refStateWatch(doc, background)
+		must(t, err)
+		states := statesOf(t, watch)
+		writing := admStart(t, doc, "write", "x")
+		// The source's successor stays loading until its native opens: the last decision is kept meanwhile.
+		report, err := s.reload(map[string]Facet{"access": admAccessFacet(admAccessCode{Opened: opened}, admAccess, nil)})
+		must(t, err)
+		if len(report.Objects) != 1 || report.Objects[0].Object != "test.access" || report.Objects[0].Kind != ReloadRestarted {
+			t.Fatalf("report.objects = %+v, want [test.access restarted]", report.Objects)
+		}
+		s.delivered()
+		access := mustHold(t, s.h, admAccess, jsonObject())
+		if kind := stateOfRef(access).Kind; kind != RefStateLoading {
+			t.Fatalf("access = %v, want loading", kind)
+		}
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("doc = %v, want live", kind)
+		}
+		close(gate)
+		if value, err := writing.wait(background); err != nil || value != "write:x" {
+			t.Fatalf("write = %v, %v, want write:x", value, err)
+		}
+		close(opened)
+		s.delivered()
+		if kind := stateOfRef(access).Kind; kind != RefStateLive {
+			t.Fatalf("access = %v, want live", kind)
+		}
+		// The modes are the store's documents: the same decision, no new attempt, no native reopened.
+		expectStrings(t, built.Items(), "a:write")
+		expectStrings(t, natives.Items(), "open")
+		expectStrings(t, states.All())
+		expectNoErrors(t, s.errors)
+		access.Release()
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("whose contract is bumped without accepts seals its readers until their code follows; with accepts it seals nothing", func(t *testing.T) {
+		built := &admLog{}
+		s := admServed(t, admDocCode{Built: built}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		// Version 1 still bound through `accepts` (an added member needs no mapping): the reader is untouched.
+		_, err := s.reload(map[string]Facet{"access": admAccessFacet(admAccessCode{}, admAccessV2, admAccepts1())})
+		must(t, err)
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		expectStrings(t, built.Items(), "a:read")
+		// Without `accepts` the reader's version is refused: failed, not loading, so it fails closed.
+		_, err = s.reload(map[string]Facet{"access": admAccessFacet(admAccessCode{}, admAccessV2, nil)})
+		must(t, err)
+		s.delivered()
+		if message := admWaiting(t, doc).Cause.Error.Message; !strings.Contains(message, "test.access v1") {
+			t.Fatalf("message = %q, want it to contain test.access v1", message)
+		}
+		_, err = s.reload(map[string]Facet{"access": admAccessFacet(admAccessCode{}, admAccessV2, admAccepts1())})
+		must(t, err)
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("that removes it parks its readers on it; serving it again rebuilds them", func(t *testing.T) {
+		built := &admLog{}
+		s := admServed(t, admDocCode{Built: built}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		none := DefineFacet(func(FacetHost, FacetSelf) error { return nil })
+		_, err := s.reload(map[string]Facet{"access": none})
+		must(t, err)
+		s.delivered()
+		admWaiting(t, doc)
+		_, err = s.reload(map[string]Facet{"access": admAccessFacet(admAccessCode{}, admAccess, nil)})
+		must(t, err)
+		// A new store object: its modes start over, and the reader is denied until it is allowed again.
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Fatalf("state = %+v, want failed denied", st)
+		}
+		s.set("read", "server")
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		must(t, s.h.Close(background))
+	})
+
 }
 
 // --- a reload of the admitted type (Pi 1113-1288; "2.5, test 20") ---------------------------------------------------------
-
-// admReports is Pi's `reports(errors)`: `activation_failed: <message>` for an activation failure, the kind for the rest.
-func admReports(errs *hostErrors) []string {
-	out := []string{}
-	for _, e := range errs.All() {
-		if e.Kind == ErrActivationFailed {
-			out = append(out, string(e.Kind)+": "+e.Failure.Error.Message)
-			continue
-		}
-		out = append(out, string(e.Kind))
-	}
-	return out
-}
 
 func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 	t.Run("records the new admit without effects and rehearses the new factory with an equal admission fingerprint", func(t *testing.T) {
@@ -1918,4 +1992,8 @@ func TestAdmissionACommitInFlightAtTheCut(t *testing.T) {
 		must(t, h.Close(background))
 		must(t, chordStore.Close(background))
 	})
+}
+
+func admAccepts1() contracts.AcceptsTable {
+	return contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{}}}
 }
