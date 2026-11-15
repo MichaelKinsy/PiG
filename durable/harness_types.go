@@ -42,6 +42,16 @@ const (
 	WhenIdleReject WhenIdle = "reject"
 )
 
+// OnAbort is what a conversation abort does with a queued input submission (types.ts SubmissionDraft onAbort).
+type OnAbort string
+
+const (
+	// OnAbortWithdraw, the default, settles the queued input unanswered with reason aborted.
+	OnAbortWithdraw OnAbort = "withdraw"
+	// OnAbortKeep leaves the input queued through Conversation.Abort and abort cascades.
+	OnAbortKeep OnAbort = "keep"
+)
+
 // InputEntry is the entry an input is placed as, instead of pi.user: an application kind, and data the transcript shows,
 // such as its author. Its model message is still the input's user message (types.ts InputEntry).
 type InputEntry struct {
@@ -66,6 +76,11 @@ type SubmissionDraft struct {
 	// input never starts a run of its own. With WhenBusy steer it steers the current run or is refused; a run that
 	// answered and waits for its afterRun tasks is still busy, and such an input queues and starts the next run.
 	WhenIdle WhenIdle
+	// OnAbort is what Conversation.Abort and abort cascades do with the input while it is queued: OnAbortWithdraw, the
+	// default, settles it unanswered with reason aborted; OnAbortKeep leaves it queued, as a failed run leaves its queue
+	// under AfterFailedRun keep, so the next input places it and that run answers it. For input its sender cannot take
+	// back, such as another agent's message. Submission.Abort withdraws it either way. Only input submissions carry it.
+	OnAbort OnAbort
 	// InputEntry places an input as that entry; nil places it as pi.user without data. Only input submissions carry it
 	// (types.ts SubmissionDraft: an input's `entry` is an InputEntry, a write's is an EntryDraft).
 	InputEntry *InputEntry
