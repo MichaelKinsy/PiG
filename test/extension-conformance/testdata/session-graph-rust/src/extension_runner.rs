@@ -117,6 +117,8 @@ pub fn extension_runner_script(ctx: &Context, args: &Value) -> io::Result<Value>
     )?;
     loader.reload(None)?;
     let loaded = loader.get_extensions()?;
+    // The loader's last use: from here only the loaded extensions name it (the runner below puts their loader's handle on the wire).
+    drop(loader);
     let paths: Vec<Value> = loaded
         .extensions
         .iter()

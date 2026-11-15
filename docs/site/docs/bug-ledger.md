@@ -137,6 +137,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0f669b1](#bf-0f669b1) | The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread… | PiG's own defect | All platforms | Unreleased |
 | [BF-0f8866c](#bf-0f8866c) | fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+ | PiG's own defect | All platforms | Unreleased |
 | [BF-0f8bc0f](#bf-0f8bc0f) | `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the… | PiG's own defect | All platforms | Unreleased |
+| [BF-0fde943](#bf-0fde943) | fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement | PiG's own defect | All platforms | Unreleased |
 | [BF-0ff9f4a](#bf-0ff9f4a) | A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ffb06a](#bf-0ffb06a) | fix(tui): diff rows with a CR are wrapped like Pi's Text | PiG's own defect | All platforms | Unreleased |
 | [BF-1003d2e](#bf-1003d2e) | fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi) | PiG's own defect | All platforms | Unreleased |
@@ -359,6 +360,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2f881ba](#bf-2f881ba) | "Your first extension" now says that `pig install --validate-only` exits 1 when the extension does not build | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2fb2917](#bf-2fb2917) | fix(interactive): label skill diagnostics [Skill warnings] and show the model scope in the fullscreen header | PiG's own defect | All platforms | Unreleased |
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-301270f](#bf-301270f) | An extension that emits an event to listeners in another extension process no longer pays a host round trip… | PiG's own defect | All platforms | Unreleased |
 | [BF-305432b](#bf-305432b) | fix(coding-agent): stop macOS shell groups before killing them (Pi) | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3063e76](#bf-3063e76) | `setLabel` from an extension writes Pi's three label entries: no `label` member for a call without a label… | PiG's own defect | All platforms | Unreleased |
@@ -758,6 +760,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-60cc9c5](#bf-60cc9c5) | chord: a worker that fails right after it started now reports its reason | PiG's own defect | Windows | Unreleased |
+| [BF-60e15bd](#bf-60e15bd) | A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded… | PiG's own defect | All platforms | Unreleased |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb](#bf-61300bb) | MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb-2](#bf-61300bb-2) | Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists… | PiG's own defect | All platforms | 0.5.0 |
@@ -2000,6 +2003,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e42ae82](#bf-e42ae82) | `SettingsManager` structured getters (settings-manager.ts getBranchSummarySettings, getRetrySettings… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e44a3a9](#bf-e44a3a9) | fix(chord/nextnode/workers): a child is idle by a flag, not by a zero time | PiG's own defect | All platforms | Unreleased |
 | [BF-e48a02f](#bf-e48a02f) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
+| [BF-e4b5861](#bf-e4b5861) | fix(view): a second size of an image is a placement only while its first placement is not drawn | PiG's own defect | All platforms | Unreleased |
 | [BF-e4b9bd5](#bf-e4b9bd5) | A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between… | PiG's own defect | All platforms | Unreleased |
 | [BF-e4f8e35](#bf-e4f8e35) | OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-e516ccd](#bf-e516ccd) | An extension that stopped reading its connection while its component was being invalidated could hold the… | PiG's own defect | All platforms | Unreleased |
@@ -3889,6 +3893,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0f8bc0f0de` (2026-11-05)
 - **Tests:** `coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive`, `coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting`
 - **Release note:** `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the current response to finish before reloading.` while a response is running, and with `Wait for compaction to finish before reloading.` during compaction or tree navigation, instead of shutting the extensions down under a running tool, which then failed with a stale-context error. A refused reload leaves the extensions and the running tool's context untouched, and the extension sees the error in every SDK.
+
+### BF-0fde943
+
+**fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement
+- **Root cause:** the placement cache of (view_mount_image.go place) keyed the terminal image by ref+cols+rows, so a component that renders at more than one width in a frame, or two components of one image at two sizes, were each given an image of their own and its bytes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0fde943c25` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageInAnHStackIsTransmittedOncePerRef`, `coding/extension/host/subprocess/view_mount_image_test.go::TestMountImageUpdateSecondMountAndEnd`
 
 ### BF-0ff9f4a
 
@@ -6951,6 +6968,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2fc2307be4` (2026-10-11)
 - **Tests:** `internal/yaml12/parse_mutation_test.go::TestParseMatchesTheLibraryOnCollectionTagsOnScalars`
 - **Release note:** A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in the key's text, as the yaml library prints it; it used to be quoted (`!!map "1"`) as a string scalar is, so the object key differed.
+
+### BF-301270f
+
+**An extension that emits an event to listeners in another extension process no longer pays a host round trip…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that emits an event to listeners in another extension process no longer pays a host round trip, and its allocations, for a varying share of its emits (a cost only: what the emits return is unchanged).
+- **Root cause:** A listener realm that already waits in a synchronous call when events.dispatch reaches it reports events.quiesce at once. It wrote the report after the response, in a separate write, so the Host read the two in two reads in a varying share of the emits: the emit goroutine checked emission.pending before the report was applied, returned an emission, and the emitter paid an events.settle round trip (33 to 120 of 200 emits per burst). The report now goes first; the Host applies one connection's frames in wire order, so the verdict no longer depends on read timing. The protocol is otherwise unchanged. The runtime pack and its digest are regenerated.
+- **User impact:** Extra allocation or slower run
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `301270f76a` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/xref_quiesce_order_test.go::TestXrefListenerRealmReportsQuiesceBeforeItsDispatchResponse`
+- **Release note:** An extension that emits an event to listeners in another extension process no longer pays a host round trip, and its allocations, for a varying share of its emits (a cost only: what the emits return is unchanged). The listener process now reports that it has run its listeners before it sends its answer, so the host settles the emit when the answer arrives and does not depend on whether a second read has already delivered the report; the same 200 emits cost the same frames and allocations on every run.
 
 ### BF-305432b
 
@@ -12458,6 +12489,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `60cc9c5bd3` (2026-11-13)
 - **Tests:** `chord/nextnode/workers/workers_fixture_test.go::TestMain`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterItOpenedItsChannel`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessLinkClosedByThisSideWhileItsChannelsReaderIsHeldDoesNotWaitForIt`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsChannelsReaderTookWhatItsChildWrote`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsOutputWhenItsChannelsReaderEndedFirst`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterWhatItsChannelsReaderTookIsTold`
 - **Release note:** chord: a worker that fails right after it started now reports its reason. The server could handle a worker's exit before it had read, or before it had handed over, the last messages the worker wrote (its answer to a waiting holder and its `fatal` report); it then closed the connection and recorded the fixed `worker failed to start` (in p2, under load: a session whose worker dies at its start showed that text where Pi shows why, for example `Unknown model`). As in Node, which emits a child's messages before its `exit` event, the exit is now told after the channel's reader took and told everything the worker wrote. Limits: not run on Windows, where a worker that ends before the server accepted its pipe connection can still lose its last messages.
+
+### BF-60e15bd
+
+**A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get "Unknown or released session graph object" from the host, at random and more often under memory pressure.
+- **Root cause:** A Go extension that built session graph objects failed at random under allocation pressure with Unknown or released session graph object: the SDK released an object when its Go value was collected, but a call that put the handle on the wire, a model stream, and a LoadedExtension (which named its loader by string) did not keep the value. Every call that names an object now keeps it until the host has answered (graphMethodCall, the constructors that take objects, the runtime of a loader, createAgentSession, the model stream goroutine), and a LoadedExtension holds its loader object.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `60e15bd01e` (2026-11-14), `7cc188258c` (2026-11-14), `81cc293a90` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get "Unknown or released session graph object" from the host, at random and more often under memory pressure. The SDK released the host's object when its wrapper was collected or dropped, but the later call named the object by a handle string that nothing kept the wrapper alive for: `ExtensionRunner` built from the extensions a loader returned, a method call on the object's last use, and a model stream on a `ModelRuntime` the program had already let go of. An object now stays valid while anything that names its handle is still in use or in flight. Affects 0.5.2 through 0.7.0.
 
 ### BF-612955a
 
@@ -29724,6 +29769,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e48a02f7ec` (2026-10-11)
 - **Tests:** `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `tui/select_filterable_test.go::TestFilterableListShowsNoLabelWhenNoCellRemains`
+
+### BF-e4b5861
+
+**fix(view): a second size of an image is a placement only while its first placement is not drawn**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(view): a second size of an image is a placement only while its first placement is not drawn
+- **Root cause:** the placement cache of (view_mount_image.go place) keyed the terminal image by ref+cols+rows, and the first cut of the cure used placement 0 beside a second placement, which kitty draws half.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e4b5861a96` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageAtTwoSizesAtOnceIsTwoImages`, `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageInAnHStackIsTransmittedOncePerRef`, `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageIsFreedAtItsLastPlacement`, `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImagePlacementIDReachesTheTerminalThroughTheFrame`, `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageResizeSendsNoBytesAndKeepsFewPlacements`
 
 ### BF-e4b9bd5
 

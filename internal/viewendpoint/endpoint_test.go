@@ -116,6 +116,34 @@ func (f *fixture) settle() {
 	f.e.mu.Unlock()
 }
 
+// abilitiesChanged returns a channel that holds a token once the registry's abilities have changed since it was last
+// received from: an attachment began or ended. It is made after the attachments a test waits on.
+func (f *fixture) abilitiesChanged() <-chan struct{} {
+	changed := make(chan struct{}, 1)
+	f.h.reg.OnAbilities(func() {
+		select {
+		case changed <- struct{}{}:
+		default:
+		}
+	})
+	return changed
+}
+
+// awaitDetached waits until no client is attached, on the registry's own notice that its abilities changed, and reports
+// false when the bound testbudget gives the wait passed first.
+func (f *fixture) awaitDetached(changed <-chan struct{}) bool {
+	f.t.Helper()
+	budget := time.After(testbudget.Wait(f.t))
+	for f.h.reg.Abilities() != nil {
+		select {
+		case <-changed:
+		case <-budget:
+			return false
+		}
+	}
+	return true
+}
+
 // serve binds the fixture's host and returns the socket's path.
 func (f *fixture) serve() string {
 	f.t.Helper()
@@ -612,26 +640,15 @@ func TestALineLongerThanTheCarriersBoundClosesTheConnection(t *testing.T) {
 	f := newFixture(t)
 	c := dial(t, f.serve())
 	c.attach()
-	changed := make(chan struct{}, 1)
-	f.h.reg.OnAbilities(func() {
-		select {
-		case changed <- struct{}{}:
-		default:
-		}
-	})
+	changed := f.abilitiesChanged()
 	go func() {
 		_, _ = c.c.Write([]byte(`{"type":"ui_view_report","pad":"` + strings.Repeat("x", maxLineBytes+(64<<10))))
 	}()
 	if got := c.next(); got != nil {
 		t.Fatalf("an oversized line was answered: %v", got)
 	}
-	budget := time.After(testbudget.Wait(t))
-	for f.h.reg.Abilities() != nil {
-		select {
-		case <-changed:
-		case <-budget:
-			t.Fatal("the attachment of the closed connection is still held")
-		}
+	if !f.awaitDetached(changed) {
+		t.Fatal("the attachment of the closed connection is still held")
 	}
 }
 
@@ -727,46 +744,76 @@ func TestAClientThatDoesNotReadHoldsNoOtherClient(t *testing.T) {
 	}
 }
 
+// unreadIntents is the "big" intents the tests of replies nobody reads raise: 1200 answers of 32768 bytes are 39 MiB,
+// past the endpoint's bound of unwritten replies and any socket buffer.
+const unreadIntents = 1200
+
+// pipeClient serves one end of an in-memory pipe as a connection of the endpoint and returns the client at the other.
+// A pipe is synchronous, so the connection's writer waits in its first Write until the client reads: a client that
+// reads nothing is written nothing, whatever the scheduler does. The wiring is admit's, without its check of the peer's
+// user, which a pipe has no kernel to answer.
+func (f *fixture) pipeClient() *client {
+	f.t.Helper()
+	f.serve()
+	s := f.e.srv
+	serverEnd, clientEnd := net.Pipe()
+	f.t.Cleanup(func() { _ = clientEnd.Close() })
+	k := &conn{s: s, c: serverEnd}
+	k.wake = sync.NewCond(&k.mu)
+	s.mu.Lock()
+	s.conns[k] = struct{}{}
+	s.work.Go(k.write)
+	s.work.Go(k.read)
+	s.mu.Unlock()
+	return &client{t: f.t, c: clientEnd, r: bufio.NewReaderSize(clientEnd, 1<<20)}
+}
+
+// unreadAnswers mounts a view for c, which is attached as n, raises unreadIntents "big" intents, reads none of their
+// answers while they settle, waits for the endpoint to cut the connection at its bound of unwritten replies, and
+// returns how many lines the client is written after the cut.
+func (f *fixture) unreadAnswers(c *client, n string) (written int) {
+	f.t.Helper()
+	ref := f.mount("board", "one")
+	c.until("ui_view")
+	changed := f.abilitiesChanged()
+	for i := range unreadIntents {
+		c.send(intentLine("b"+strconv.Itoa(i), n, ref, "big"))
+	}
+	for range unreadIntents {
+		<-f.p.started
+	}
+	close(f.p.gate)
+	if !f.awaitDetached(changed) {
+		f.t.Fatal("the client that read no answer still holds its attachment")
+	}
+	for c.next() != nil {
+		written++
+	}
+	return written
+}
+
 // pig additive (D614): replies nobody reads are bounded too. A client that raises intents and reads none of their
-// answers is cut when 8388608 bytes of them are unwritten; the endpoint keeps serving others.
+// answers is cut when 8388608 bytes of them are unwritten; the endpoint keeps serving others. The endpoint promises the
+// cut, and no answer before it: how many reach the client first is the socket's buffer and the writer's turn, so the
+// test asks only that the client is not written all of them.
 func TestRepliesNobodyReadsCutTheConnection(t *testing.T) {
 	f := newFixture(t)
 	path := f.serve()
 	c := dial(t, path)
-	n := c.attach()
-	ref := f.mount("board", "one")
-	c.until("ui_view")
-	const intents = 1200
-	for i := range intents {
-		c.send(intentLine("b"+strconv.Itoa(i), n, ref, "big"))
-	}
-	for range intents {
-		<-f.p.started
-	}
-	close(f.p.gate)
-	// Every answer settles; 1200 answers of 32768 bytes are 39 MiB, past the bound and any socket buffer.
-	deadline := time.Now().Add(30 * time.Second)
-	for f.h.reg.Abilities() != nil && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if f.h.reg.Abilities() != nil {
-		t.Fatal("the client that read no answer still holds its attachment")
-	}
-	read, done := 0, 0
-	for {
-		m := c.next()
-		if m == nil {
-			break
-		}
-		read++
-		if data, ok := m["data"].(map[string]any); ok && data["outcome"] == "done" {
-			done++
-		}
-	}
-	if read >= intents || done == 0 {
-		t.Fatalf("the client was written %d answers, %d of them done, of %d: want some and not all", read, done, intents)
+	if written := f.unreadAnswers(c, c.attach()); written >= unreadIntents {
+		t.Fatalf("the client was written %d answers of %d: the bound did not cut the connection", written, unreadIntents)
 	}
 	dial(t, path).attach()
+}
+
+// pig additive (D614): the cut does not wait for the writer. With the writer held by a client that reads nothing, the
+// bound still cuts the connection and the answers it holds are dropped: the client is written none of them.
+func TestRepliesNobodyReadsCutTheConnectionWhileTheWriterIsHeld(t *testing.T) {
+	f := newFixture(t)
+	c := f.pipeClient()
+	if written := f.unreadAnswers(c, c.attach()); written != 0 {
+		t.Fatalf("the client was written %d answers with the writer held", written)
+	}
 }
 
 // pig additive (D614): a client that connects while the host is being unbound is closed with it. No client is left

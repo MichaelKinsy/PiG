@@ -16,6 +16,7 @@ func CreateExtensionRuntime(c Context) (*ExtensionRuntime, error) {
 
 // extensionRuntimeOf is the runtime of the extensions a loader loaded: `loader.getExtensions().runtime`.
 func extensionRuntimeOf(c Context, loader *graphObject) (*ExtensionRuntime, error) {
+	defer keepAlive(loader)
 	object, err := newGraphObject(c, "ExtensionRuntime", "of", loader.Handle())
 	if err != nil {
 		return nil, err

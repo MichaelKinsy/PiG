@@ -2681,7 +2681,7 @@ allocs = 58
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkXrefEventBusEmit/two-realms"
-allocs = 56069
+allocs = 54215
 
 [[benchmark]]
 package = "./internal/codingagent"

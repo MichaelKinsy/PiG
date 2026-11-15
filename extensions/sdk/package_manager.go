@@ -64,6 +64,7 @@ type DefaultPackageManager struct{ object *graphObject }
 
 // NewDefaultPackageManager is `new DefaultPackageManager(options)`.
 func NewDefaultPackageManager(c Context, options PackageManagerOptions) (*DefaultPackageManager, error) {
+	defer keepAlive(options.SettingsManager.object)
 	object, err := newGraphObject(c, "DefaultPackageManager", "new", map[string]any{
 		"cwd": options.Cwd, "agentDir": options.AgentDir, "settingsManager": options.SettingsManager.Handle(), "builtinExtensions": options.BuiltinExtensions,
 	})
