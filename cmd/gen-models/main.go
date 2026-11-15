@@ -8,6 +8,11 @@
 // Without -src it ports packages/ai/catalog/generate.ts: it fetches models.dev (v2), OpenRouter, Vercel AI Gateway, NVIDIA NIM and
 // Radius, builds every provider's catalog (internal/modelgen/providers) and writes the provider data files (-data-output) and
 // the public catalog JSON (-json-output), byte for byte as Pi's generator writes them.
+//
+// The responses it builds from come from the network, from -record/-replay (a directory of recorded responses), or from a catalog source,
+// the committed recording the repository's catalogs are made of (automation/gen/catalog-source): -record-source fetches live and replaces
+// the source when the run succeeds (make model-catalogs-live), -replay-source runs offline over it and writes the manifest generatedAt the
+// source's fetch time, so a regeneration writes the same bytes on any day.
 package main
 
 import (
@@ -131,6 +136,56 @@ var (
 	reDataImport = regexp.MustCompile(`import\s+values\s+from\s+"(\./data/[^"]+\.json)"`)
 )
 
+// runGeneration runs the generator over live responses, a recording, or a catalog source, and returns the exit status. It owns the
+// scratch directories, so the process exit leaves none behind.
+func runGeneration(options generatorOptions, record, replay, recordSourceDir, replaySourceDir string) int {
+	modes := 0
+	for _, mode := range []string{record, replay, recordSourceDir, replaySourceDir} {
+		if mode != "" {
+			modes++
+		}
+	}
+	if modes > 1 {
+		fmt.Fprintln(os.Stderr, "Error: -record, -replay, -record-source and -replay-source cannot be combined")
+		return 1
+	}
+	var finish func() error
+	switch {
+	case recordSourceDir != "":
+		var cleanup func()
+		var err error
+		if finish, cleanup, err = recordSource(recordSourceDir); err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			return 1
+		}
+		defer cleanup()
+	case replaySourceDir != "":
+		cleanup, err := replaySource(replaySourceDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			return 1
+		}
+		defer cleanup()
+	default:
+		if err := configureFixtures(record, replay); err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			return 1
+		}
+	}
+	if err := generateModels(options); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		return 1
+	}
+	if finish != nil {
+		if err := finish(); err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			return 1
+		}
+		fmt.Println("Recorded the catalog source under", recordSourceDir)
+	}
+	return 0
+}
+
 func main() {
 	src := flag.String("src", "", "path to upstream models.generated.ts or .js: emit the Go catalogs from it")
 	out := flag.String("out", "ai/models_generated.go", "output Go file for chat models")
@@ -145,24 +200,18 @@ func main() {
 	pretty := flag.Bool("pretty", false, "generation: indent JSON output")
 	record := flag.String("record", "", "generation: store every upstream response under this directory")
 	replay := flag.String("replay", "", "generation: serve the responses recorded under this directory instead of fetching")
+	recordSourceDir := flag.String("record-source", "", "generation: fetch live and, when the run succeeds, replace the catalog source (responses.tar.gz and meta.json) in this directory")
+	replaySourceDir := flag.String("replay-source", "", "generation: serve the catalog source in this directory instead of fetching; the manifest generatedAt is its fetch time")
 	flag.Parse()
 	if *src == "" {
-		if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" {
-			if err := configureFixtures(*record, *replay); err != nil {
-				fmt.Fprintln(os.Stderr, "Error:", err)
-				os.Exit(1)
-			}
-			if err := generateModels(generatorOptions{strict: *strict, dataOnly: *dataOnly, jsonOnly: *jsonOnly, jsonOutputDir: *jsonOutput, dataOutputDir: *dataOutput, pretty: *pretty}); err != nil {
-				fmt.Fprintln(os.Stderr, "Error:", err)
-				os.Exit(1)
-			}
-			return
+		if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" || *recordSourceDir != "" || *replaySourceDir != "" {
+			os.Exit(runGeneration(generatorOptions{strict: *strict, dataOnly: *dataOnly, jsonOnly: *jsonOnly, jsonOutputDir: *jsonOutput, dataOutputDir: *dataOutput, pretty: *pretty}, *record, *replay, *recordSourceDir, *replaySourceDir))
 		}
 		fmt.Fprintln(os.Stderr, "gen-models: -src is required")
 		os.Exit(2)
 	}
-	if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" {
-		fmt.Fprintln(os.Stderr, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record and -replay generate catalog data and cannot be combined with -src")
+	if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" || *recordSourceDir != "" || *replaySourceDir != "" {
+		fmt.Fprintln(os.Stderr, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record, -replay, -record-source and -replay-source generate catalog data and cannot be combined with -src")
 		os.Exit(2)
 	}
 	if *imageOut == "" {

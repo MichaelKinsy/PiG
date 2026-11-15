@@ -12,7 +12,7 @@
   ],
   "evidence": [
    "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
   ],
   "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
   "rationale": "ImageModel: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
@@ -23,7 +23,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -36,7 +36,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -49,7 +49,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -62,7 +62,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -75,7 +75,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -88,7 +88,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -101,7 +101,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -114,7 +114,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -127,7 +127,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -140,7 +140,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -153,7 +153,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/images_registry.go#GetImageModels"
@@ -175,7 +175,7 @@
   ],
   "evidence": [
    "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
   ],
   "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
   "rationale": "ClassifierModel: every upstream property maps to a Go field (types reviewed against the upstream declaration); production and tests attributed by go/types.",
@@ -186,7 +186,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -199,7 +199,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -212,7 +212,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -225,7 +225,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -238,7 +238,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -251,7 +251,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -264,7 +264,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -277,7 +277,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -290,7 +290,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -303,7 +303,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
@@ -316,7 +316,7 @@
     ],
     "evidence": [
      "test:ai/wire_shape_upstream_test.go#TestModelTypeDiscriminatorsMatchUpstreamLiterals",
-     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+     "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
     ],
     "production": [
      "call:ai/builtin_providers.go#GetBuiltinClassifierModels"

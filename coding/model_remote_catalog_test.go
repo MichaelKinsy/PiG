@@ -15,7 +15,7 @@ import (
 // and a window and prices that replace a bundled model's.
 var remoteCatalogRecords = map[string][]string{
 	"github-copilot": {
-		`{"id":"claude-fable-5.2","name":"Claude Fable 5.2","api":"anthropic-messages","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":true,"input":["text","image"],"cost":{"input":10,"output":50,"cacheRead":1,"cacheWrite":12.5},"contextWindow":1000000,"maxTokens":128000}`,
+		`{"id":"zz-fixture-claude-fable-6","name":"Claude Fable 6","api":"anthropic-messages","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":true,"input":["text","image"],"cost":{"input":10,"output":50,"cacheRead":1,"cacheWrite":12.5},"contextWindow":1000000,"maxTokens":128000}`,
 		`{"id":"claude-haiku-4.5","name":"Claude Haiku 4.5","api":"openai-completions","provider":"github-copilot","baseUrl":"https://api.individual.githubcopilot.com","reasoning":false,"input":["text"],"cost":{"input":3,"output":4,"cacheRead":0.3,"cacheWrite":0},"contextWindow":123456,"maxTokens":8000}`,
 	},
 	"openai": {
@@ -69,15 +69,26 @@ func remoteCatalogServices(t *testing.T) *AgentSessionServices {
 // no bundled record, so building it from the bundled catalog alone gave a model with no window and no prices.
 func TestBuildModelCarriesTheCatalogWindowAndPrices(t *testing.T) {
 	services := remoteCatalogServices(t)
+	// A bundled model the remote catalog does not carry: its window and prices are the bundled record's (the registry's), whatever the catalog data is.
+	var bundled ai.GeneratedModel
+	for _, candidate := range ai.ListModels("github-copilot") {
+		if candidate.ID != "claude-haiku-4.5" {
+			bundled = candidate
+			break
+		}
+	}
+	if bundled.ID == "" {
+		t.Fatal("the bundled catalog has no github-copilot model besides claude-haiku-4.5")
+	}
 	for _, tc := range []struct {
 		name, spec         string
 		window             int
 		inputRate, outRate float64
 	}{
-		{"remote-only model with a dot in its id", "github-copilot/claude-fable-5.2", 1_000_000, 10, 50},
+		{"remote-only model with a dot in its id", "github-copilot/zz-fixture-claude-fable-6", 1_000_000, 10, 50},
 		{"remote-only model with a slash and a colon in its id", "openai/acme/spark:beta", 400_000, 1, 2},
 		{"bundled model the remote catalog replaces", "github-copilot/claude-haiku-4.5", 123_456, 3, 4},
-		{"bundled model", "github-copilot/claude-fable-5.1", 1_000_000, 10, 50},
+		{"bundled model", "github-copilot/" + bundled.ID, bundled.ContextWindow, bundled.InputCostPerMTokens, bundled.OutputCostPerMTokens},
 		{"models.json model with a contextWindow", "custom-proxy/with-window", 64_000, 0, 0},
 		{"models.json model without a contextWindow", "custom-proxy/no-window", 128_000, 0, 0},
 	} {
@@ -114,7 +125,7 @@ func TestResumedSessionKeepsTheWindowOfARemoteOnlyModel(t *testing.T) {
 	if refreshed := services.ModelRuntime().Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(false)}); refreshed.Aborted || len(refreshed.Errors) != 0 {
 		t.Fatalf("refresh=%v", refreshed)
 	}
-	saved, err := BuildModel("github-copilot/claude-fable-5.2", services)
+	saved, err := BuildModel("github-copilot/zz-fixture-claude-fable-6", services)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +137,7 @@ func TestResumedSessionKeepsTheWindowOfARemoteOnlyModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	usage := &ai.Usage{Input: 2, CacheRead: 294000, CacheWrite: 1400, Output: 860}
-	if _, err := source.Inner().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, API: ai.APIAnthropicMessages, Provider: "github-copilot", ModelID: "claude-fable-5.2", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "hi"}}, StopReason: ai.StopReasonStop, Usage: usage}}); err != nil {
+	if _, err := source.Inner().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, API: ai.APIAnthropicMessages, Provider: "github-copilot", ModelID: "zz-fixture-claude-fable-6", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "hi"}}, StopReason: ai.StopReasonStop, Usage: usage}}); err != nil {
 		t.Fatal(err)
 	}
 	path := source.Path()
@@ -147,7 +158,7 @@ func TestResumedSessionKeepsTheWindowOfARemoteOnlyModel(t *testing.T) {
 		}
 	})
 	model := resumed.Model()
-	if model == nil || model.ID != "claude-fable-5.2" {
+	if model == nil || model.ID != "zz-fixture-claude-fable-6" {
 		t.Fatalf("resumed model = %+v", model)
 	}
 	if model.Capabilities.ContextWindow != 1_000_000 {

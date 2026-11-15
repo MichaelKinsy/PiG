@@ -19,12 +19,12 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// copilotFableRecord is the github-copilot claude-fable-5.2 row of a refreshed models-store.json. The generated catalog and Pi's pin carry no such row, so
+// copilotFableRecord is the github-copilot zz-fixture-claude-fable-6 row of a refreshed models-store.json. The generated catalog and Pi's pin carry no such row, so
 // the model reaches the session through the remote catalog alone. baseUrl is the faux Copilot endpoint.
-const copilotFableRecord = `{"api":"anthropic-messages","baseUrl":"%s","compat":{"forceAdaptiveThinking":true,"supportsMidConvoSystemMessages":true},"contextWindow":1000000,"cost":{"input":8,"output":40,"cacheRead":0.2,"cacheWrite":10},"headers":{"User-Agent":"GitHubCopilotChat/0.35.0","Editor-Version":"vscode/1.107.0","Editor-Plugin-Version":"copilot-chat/0.35.0","Copilot-Integration-Id":"vscode-chat"},"id":"claude-fable-5.2","input":["text","image"],"maxTokens":128000,"name":"Claude Fable 5.2","provider":"github-copilot","reasoning":true,"thinkingLevelMap":{"off":null,"xhigh":"xhigh","max":"max"},"type":"chat"}`
+const copilotFableRecord = `{"api":"anthropic-messages","baseUrl":"%s","compat":{"forceAdaptiveThinking":true,"supportsMidConvoSystemMessages":true},"contextWindow":1000000,"cost":{"input":8,"output":40,"cacheRead":0.2,"cacheWrite":10},"headers":{"User-Agent":"GitHubCopilotChat/0.35.0","Editor-Version":"vscode/1.107.0","Editor-Plugin-Version":"copilot-chat/0.35.0","Copilot-Integration-Id":"vscode-chat"},"id":"zz-fixture-claude-fable-6","input":["text","image"],"maxTokens":128000,"name":"Claude Fable 6","provider":"github-copilot","reasoning":true,"thinkingLevelMap":{"off":null,"xhigh":"xhigh","max":"max"},"type":"chat"}`
 
 const copilotFableSummaryStream = `event: message_start
-data: {"type":"message_start","message":{"id":"m1","type":"message","role":"assistant","model":"claude-fable-5.2","content":[],"usage":{"input_tokens":10,"output_tokens":1}}}
+data: {"type":"message_start","message":{"id":"m1","type":"message","role":"assistant","model":"zz-fixture-claude-fable-6","content":[],"usage":{"input_tokens":10,"output_tokens":1}}}
 
 event: content_block_start
 data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
@@ -48,7 +48,7 @@ type copilotFableRequest struct {
 	body                map[string]any
 }
 
-// copilotFableSession builds the session of a github-copilot claude-fable-5.2 model that only the remote catalog lists, against a Copilot-shaped faux
+// copilotFableSession builds the session of a github-copilot zz-fixture-claude-fable-6 model that only the remote catalog lists, against a Copilot-shaped faux
 // endpoint. Pi: packages/coding-agent/src/core/agent-session.ts (compact). Pi 1.5.2 sent the same request and showed the same text for each fault below
 // when probed through the parity harness against the same faux server (the faults and the request shape are the contract of this file).
 func copilotFableSession(t *testing.T, handler func(n int, w http.ResponseWriter)) (*Session, func() []copilotFableRequest) {
@@ -88,7 +88,7 @@ func copilotFableSession(t *testing.T, handler func(n int, w http.ResponseWriter
 	}
 	t.Cleanup(services.Close)
 	services.Registry().SetRuntimeAPIKey("github-copilot", "copilot-token")
-	model, err := BuildModel("github-copilot/claude-fable-5.2", services)
+	model, err := BuildModel("github-copilot/zz-fixture-claude-fable-6", services)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestCompactionOfARefreshedCopilotFableModelSendsTheModelRequest(t *testing.
 	}
 	// The summary request names the refreshed model, asks for the output limit of the model (Pi 6fcb4867: no fixed cap), sends adaptive thinking at the
 	// clamped level, and carries no tools.
-	want := map[string]any{"model": "claude-fable-5.2", "max_tokens": float64(128000), "stream": true, "thinking": map[string]any{"type": "adaptive", "display": "summarized"}, "output_config": map[string]any{"effort": "low"}}
+	want := map[string]any{"model": "zz-fixture-claude-fable-6", "max_tokens": float64(128000), "stream": true, "thinking": map[string]any{"type": "adaptive", "display": "summarized"}, "output_config": map[string]any{"effort": "low"}}
 	for key, value := range want {
 		if fmt.Sprint(request.body[key]) != fmt.Sprint(value) {
 			t.Errorf("%s=%v, want %v", key, request.body[key], value)

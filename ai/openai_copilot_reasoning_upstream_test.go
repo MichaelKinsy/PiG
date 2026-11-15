@@ -14,6 +14,29 @@ import (
 	"testing"
 )
 
+// zzEffortFixture is a chat-completions model of a fixed fixture catalog: a hand-written record (id zz-fixture-..., never a models.dev id) that goes through
+// the path a catalog record takes (GeneratedModel.ToModel and ToCapabilities), so the behaviour under test does not follow models.dev data. compat is the
+// record's compat bag and levels its thinkingLevelMap; the shapes below are the ones Pi's catalog gives the models the tests are about.
+func zzEffortFixture(provider, id string, compat *ModelCompat, levels ThinkingLevelMap) *Model {
+	generated := GeneratedModel{ID: id, Provider: provider, DisplayName: "ZZ Fixture " + id, API: APIOpenAICompletions, BaseURL: "https://fixture.invalid/v1",
+		Compat: compat, ThinkingLevelMap: levels, ContextWindow: 128000, MaxOutputTokens: 8192, Reasoning: levels != nil, Capabilities: []string{"text"}}
+	model := generated.ToModel()
+	model.Capabilities = generated.ToCapabilities()
+	model.Capabilities.MaxThinking = thinkingMaxLevel(generated.Reasoning, generated.ThinkingLevelMap)
+	model.ProviderMeta.API = APIOpenAICompletions
+	return model
+}
+
+var (
+	// zzCopilotEffortCompat is the compat of Pi's github-copilot chat-completions records that gained supportsReasoningEffort (Pi #12110).
+	zzCopilotEffortCompat = func() *ModelCompat {
+		return &ModelCompat{SupportsStrictMode: new(true), SupportsStore: new(false), SupportsDeveloperRole: new(false), SupportsReasoningEffort: new(true)}
+	}
+	// zzLowMediumHigh is the effort map of Pi's gemini-4-argon / gemini-3.8-flash records; zzLowHighMax the one of kimi-k3.
+	zzLowMediumHigh = ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingXHigh: nil, ThinkingMax: nil}
+	zzLowHighMax    = ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: nil, ThinkingHigh: new("high"), ThinkingXHigh: nil, ThinkingMax: new("max")}
+)
+
 // copilotReasoningUsage is a chunk usage with Pi's counts (prompt 10, completion 40, no cache read), the nested details member and the
 // top-level reasoning_tokens member as raw JSON; an empty string leaves the member out.
 func copilotReasoningUsage(nested, top string) string {
@@ -62,10 +85,13 @@ func TestOpenAICompletionsTopLevelReasoningTokensUpstream(t *testing.T) {
 	const head = `{"id":"chatcmpl-copilot-reasoning","choices":[{"delta":{"content":"OK"},"finish_reason":null}]}`
 	request := Context{Messages: []Message{UserMessage{Content: UserText("Reply with exactly OK")}}}
 	models := map[string]func() *Model{
+		// Pi's own case (:1790) names this catalog model; the others are fixture records of the shapes a built-in provider, a Moonshot-style provider and a custom model give.
 		"github-copilot/gemini-4-argon": func() *Model { return toolChoiceModel(t, "github-copilot", "gemini-4-argon", false) },
-		"openai/gpt-4o-mini":            func() *Model { return toolChoiceModel(t, "openai", "gpt-4o-mini", true) },
-		"moonshotai/kimi-k3":            func() *Model { return toolChoiceModel(t, "moonshotai", "kimi-k3", false) },
-		"custom base URL":               func() *Model { return localToolChoiceModel("local-reasoner", "Local Reasoner") },
+		"fixture openai without compat": func() *Model { return zzEffortFixture("openai", "zz-fixture-plain", nil, nil) },
+		"fixture moonshotai": func() *Model {
+			return zzEffortFixture("moonshotai", "zz-fixture-moonshot", &ModelCompat{SupportsReasoningEffort: new(true), SupportsStore: new(false), SupportsDeveloperRole: new(false), MaxTokensField: "max_tokens", ThinkingFormat: "openai"}, zzLowHighMax)
+		},
+		"custom base URL": func() *Model { return localToolChoiceModel("local-reasoner", "Local Reasoner") },
 	}
 	for modelName, model := range models {
 		for _, row := range copilotReasoningUsageRows {
@@ -139,12 +165,23 @@ func TestParseChunkUsageTopLevelReasoningTokens(t *testing.T) {
 	}
 }
 
-// openai-completions-tool-choice.test.ts:1809 "sends reasoning_effort for GitHub Copilot completions models with effort levels",
-// with the other levels of the three Copilot records and rows that the change must leave as they were: a level-less request, two
-// other providers' models and a custom base URL model.
+// openai-completions-tool-choice.test.ts:1809 "sends reasoning_effort for GitHub Copilot completions models with effort levels": Pi's rows are the
+// catalog model gemini-4-argon at low and high. The other levels, a level-less request, the effort map with a max level, other providers' shapes and a
+// custom base URL model are fixture records (see zzEffortFixture): they test the map -> reasoning_effort behaviour, not models.dev's data.
 func TestGitHubCopilotCompletionsReasoningEffortUpstream(t *testing.T) {
 	catalog := func(provider, id string) func() *Model {
 		return func() *Model { return toolChoiceModel(t, provider, id, false) }
+	}
+	copilot := func(levels ThinkingLevelMap) func() *Model {
+		return func() *Model {
+			return zzEffortFixture("github-copilot", "zz-fixture-copilot", zzCopilotEffortCompat(), levels)
+		}
+	}
+	zai := func() *Model {
+		return zzEffortFixture("zai", "zz-fixture-zai", &ModelCompat{SupportsReasoningEffort: new(true), SupportsStore: new(false), SupportsDeveloperRole: new(false), MaxTokensField: "max_tokens", ThinkingFormat: "zai"}, zzLowHighMax)
+	}
+	moonshot := func() *Model {
+		return zzEffortFixture("moonshotai", "zz-fixture-moonshot", &ModelCompat{SupportsReasoningEffort: new(true), SupportsStore: new(false), SupportsDeveloperRole: new(false), MaxTokensField: "max_tokens", ThinkingFormat: "openai"}, zzLowHighMax)
 	}
 	for _, row := range []struct {
 		name  string
@@ -154,20 +191,19 @@ func TestGitHubCopilotCompletionsReasoningEffortUpstream(t *testing.T) {
 	}{
 		{"copilot gemini-4-argon low (Pi)", catalog("github-copilot", "gemini-4-argon"), "low", `"low"`},
 		{"copilot gemini-4-argon high (Pi)", catalog("github-copilot", "gemini-4-argon"), "high", `"high"`},
-		{"copilot gemini-4-argon medium", catalog("github-copilot", "gemini-4-argon"), "medium", `"medium"`},
-		{"copilot gemini-4-argon no level", catalog("github-copilot", "gemini-4-argon"), "", ""},
-		{"copilot gemini-3.8-flash low", catalog("github-copilot", "gemini-3.8-flash"), "low", `"low"`},
-		{"copilot gemini-3.8-flash medium", catalog("github-copilot", "gemini-3.8-flash"), "medium", `"medium"`},
-		{"copilot gemini-3.8-flash high", catalog("github-copilot", "gemini-3.8-flash"), "high", `"high"`},
-		{"copilot kimi-k3 low", catalog("github-copilot", "kimi-k3"), "low", `"low"`},
-		{"copilot kimi-k3 high", catalog("github-copilot", "kimi-k3"), "high", `"high"`},
-		{"copilot kimi-k3 max", catalog("github-copilot", "kimi-k3"), "max", `"max"`},
-		{"copilot kimi-k3 no level", catalog("github-copilot", "kimi-k3"), "", ""},
+		{"copilot fixture low-medium-high: medium", copilot(zzLowMediumHigh), "medium", `"medium"`},
+		{"copilot fixture low-medium-high: no level", copilot(zzLowMediumHigh), "", ""},
+		{"copilot fixture low-medium-high: low", copilot(zzLowMediumHigh), "low", `"low"`},
+		{"copilot fixture low-medium-high: high", copilot(zzLowMediumHigh), "high", `"high"`},
+		{"copilot fixture low-high-max: low", copilot(zzLowHighMax), "low", `"low"`},
+		{"copilot fixture low-high-max: high", copilot(zzLowHighMax), "high", `"high"`},
+		{"copilot fixture low-high-max: max", copilot(zzLowHighMax), "max", `"max"`},
+		{"copilot fixture low-high-max: no level", copilot(zzLowHighMax), "", ""},
 		// Unchanged by the commit.
-		{"moonshotai kimi-k3 high", catalog("moonshotai", "kimi-k3"), "high", `"high"`},
-		{"moonshotai kimi-k3 max", catalog("moonshotai", "kimi-k3"), "max", `"max"`},
-		{"moonshotai kimi-k3 no level", catalog("moonshotai", "kimi-k3"), "", ""},
-		{"zai glm-5.3 high", catalog("zai", "glm-5.3"), "high", `"high"`},
+		{"moonshot-shaped fixture high", moonshot, "high", `"high"`},
+		{"moonshot-shaped fixture max", moonshot, "max", `"max"`},
+		{"moonshot-shaped fixture no level", moonshot, "", ""},
+		{"zai-shaped fixture high", zai, "high", `"high"`},
 		{"custom base URL high", func() *Model { return localToolChoiceModel("local-reasoner", "Local Reasoner") }, "high", `"high"`},
 		{"custom base URL low", func() *Model { return localToolChoiceModel("local-reasoner", "Local Reasoner") }, "low", `"low"`},
 		{"custom base URL no level", func() *Model { return localToolChoiceModel("local-reasoner", "Local Reasoner") }, "", ""},
@@ -185,37 +221,5 @@ func TestGitHubCopilotCompletionsReasoningEffortUpstream(t *testing.T) {
 				t.Fatalf("reasoning_effort=%q (present %v), want %s", got, present, row.want)
 			}
 		})
-	}
-}
-
-// The catalog records behind the request: supportsReasoningEffort and the effort map models.dev lists for each model.
-func TestGitHubCopilotCompletionsCatalogReasoningUpstream(t *testing.T) {
-	for _, row := range []struct {
-		id   string
-		want ThinkingLevelMap
-	}{
-		{"gemini-4-argon", ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingXHigh: nil, ThinkingMax: nil}},
-		{"gemini-3.8-flash", ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high"), ThinkingXHigh: nil, ThinkingMax: nil}},
-		{"kimi-k3", ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: nil, ThinkingHigh: new("high"), ThinkingXHigh: nil, ThinkingMax: new("max")}},
-	} {
-		t.Run(row.id, func(t *testing.T) {
-			model := toolChoiceModel(t, "github-copilot", row.id, false)
-			compat := model.ProviderMeta.Compat
-			if compat == nil || compat.SupportsReasoningEffort == nil || !*compat.SupportsReasoningEffort {
-				t.Fatalf("compat=%#v, want supportsReasoningEffort true", compat)
-			}
-			if compat.SupportsStore == nil || *compat.SupportsStore || compat.SupportsDeveloperRole == nil || *compat.SupportsDeveloperRole {
-				t.Fatalf("compat=%#v, want supportsStore and supportsDeveloperRole false as before", compat)
-			}
-			if !reflect.DeepEqual(model.ThinkingLevelMap, row.want) {
-				t.Fatalf("thinkingLevelMap=%#v", model.ThinkingLevelMap)
-			}
-		})
-	}
-	// Every Copilot chat-completions record is one of the three: a record this test does not know would be a catalog change to read.
-	for _, generated := range GeneratedModels {
-		if generated.Provider == "github-copilot" && generated.API == APIOpenAICompletions && generated.ID != "gemini-4-argon" && generated.ID != "gemini-3.8-flash" && generated.ID != "kimi-k3" {
-			t.Errorf("github-copilot/%s is a chat-completions record this test has no row for", generated.ID)
-		}
 	}
 }

@@ -103,7 +103,7 @@ For Anthropic key-taking tests, `ANTHROPIC_AUTH_TOKEN` is not an API key. Pi's `
 
 Bedrock accepts any complete credential alternative in the table. A partial IAM pair does not enable a test. The AWS SDK still owns credential loading and validation. Vertex accepts a Cloud API key or project, location, and ADC. An explicitly supplied invalid credential file fails during authentication; it is not treated as an absent secret. Default gcloud ADC discovery uses `~/.config/gcloud/application_default_credentials.json`.
 
-Compatibility rows come from `configured` and `forcedEager` in [`ai/testdata/port-wave-13/anthropic_e2e_cases.json`](../../ai/testdata/port-wave-13/anthropic_e2e_cases.json). Credential names come from the provider catalog, not a separate live-provider map. Update this table when the selected providers or live tests change.
+Compatibility rows come from `configured` and `forcedEager` of the output of [`test/parity/testdata/generate-anthropic-e2e-cases.mjs`](../../test/parity/testdata/generate-anthropic-e2e-cases.mjs) (the oracle Pi's catalog, read at run time). Credential names come from the provider catalog, not a separate live-provider map. Update this table when the selected providers or live tests change.
 
 ## Test labels
 

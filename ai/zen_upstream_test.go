@@ -1,11 +1,9 @@
 package ai
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -16,19 +14,12 @@ type openCodeModelCase struct {
 	ID       string `json:"id"`
 }
 
-// The case denominator is the reviewed snapshot of Pi's MODELS, not PiG's catalog. Regenerate from the pinned package with: node test/parity/testdata/generate-zen-models.mjs > ai/testdata/zen-models.json
+// The case denominator is the OpenCode Zen and Go models of the oracle Pi's MODELS (its generator over the recording), read at run time: not PiG's catalog and no snapshot file.
 func upstreamOpenCodeCases(t *testing.T) []openCodeModelCase {
 	t.Helper()
-	data, err := os.ReadFile("testdata/zen-models.json")
+	data, err := exec.CommandContext(t.Context(), "node", "../test/parity/testdata/generate-zen-models.mjs").CombinedOutput()
 	if err != nil {
-		t.Fatal(err)
-	}
-	oracle, err := exec.CommandContext(t.Context(), "node", "../test/parity/testdata/generate-zen-models.mjs").CombinedOutput()
-	if err != nil {
-		t.Fatalf("read pinned Pi case denominator: %v\n%s", err, oracle)
-	}
-	if !bytes.Equal(data, oracle) {
-		t.Fatal("zen-models snapshot differs from pinned Pi; regenerate it with the command above")
+		t.Fatalf("read the oracle Pi's case denominator: %v\n%s", err, data)
 	}
 	var cases []openCodeModelCase
 	if err := json.Unmarshal(data, &cases); err != nil {

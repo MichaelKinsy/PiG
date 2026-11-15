@@ -2,12 +2,13 @@ package ai
 
 import (
 	"encoding/json"
-	"os"
+	"os/exec"
 	"slices"
 	"testing"
 )
 
-// The Pi 1.0.3 snapshot retains JavaScript localeCompare selection, not Go map or byte ordering.
+// The cases are the oracle Pi's (its catalog is Pi's generator over the recording in automation/gen/catalog-source; the script runs at test time, so a
+// catalog refresh changes them with no file edit). The selection retains JavaScript localeCompare selection, not Go map or byte ordering.
 // upstream: packages/ai/test/anthropic-eager-tool-input-e2e.test.ts:34-85 and anthropic-long-cache-retention-e2e.test.ts:22-70.
 type anthropicAcceptanceCases struct {
 	All, Configured, ForcedEager []string
@@ -15,9 +16,9 @@ type anthropicAcceptanceCases struct {
 
 func loadAnthropicAcceptanceCases(t *testing.T) anthropicAcceptanceCases {
 	t.Helper()
-	data, err := os.ReadFile("testdata/port-wave-13/anthropic_e2e_cases.json")
+	data, err := exec.CommandContext(t.Context(), "node", "../test/parity/testdata/generate-anthropic-e2e-cases.mjs").CombinedOutput()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("read the oracle Pi's Anthropic cases: %v\n%s", err, data)
 	}
 	var cases anthropicAcceptanceCases
 	if err := json.Unmarshal(data, &cases); err != nil {
@@ -41,7 +42,7 @@ func assertAnthropicCatalogDenominator(t *testing.T, cases anthropicAcceptanceCa
 	all := slices.Clone(cases.All)
 	slices.Sort(all)
 	if !slices.Equal(all, expected) {
-		t.Fatal("Anthropic model denominator differs from the Pi 1.2.0 fixture; see testdata/port-wave-13/README.md")
+		t.Fatal("Anthropic model denominator differs from the oracle Pi's catalog (test/parity/testdata/generate-anthropic-e2e-cases.mjs)")
 	}
 }
 

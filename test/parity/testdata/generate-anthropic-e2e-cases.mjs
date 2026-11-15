@@ -1,11 +1,12 @@
-// Generates ai/testdata/port-wave-13/anthropic_e2e_cases.json from the published pinned pi-ai catalog.
+// Prints the Anthropic Messages models of the oracle Pi's catalog and the probes the upstream tests select from them (JSON on stdout);
+// ai/anthropic_e2e_catalog_test.go runs it, so no snapshot is committed and a catalog refresh needs no file edit.
 // The probe selection is packages/ai/test/anthropic-eager-tool-input-e2e.test.ts:34-85 and
-// anthropic-long-cache-retention-e2e.test.ts:22-70 (identical selectors). Run from the repository root:
-//   node test/parity/testdata/generate-anthropic-e2e-cases.mjs > ai/testdata/port-wave-13/anthropic_e2e_cases.json
+// anthropic-long-cache-retention-e2e.test.ts:22-70 (identical selectors). Run from anywhere:
+//   node test/parity/testdata/generate-anthropic-e2e-cases.mjs
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 
-const dist = process.env.PIG_PUBLISHED_AI_DIST ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist");
+const dist = process.env.PIG_PUBLISHED_AI_DIST ?? resolve(import.meta.dirname, "../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist");
 const { getModels, getProviders } = await import(pathToFileURL(resolve(dist, "compat.js")).href);
 
 const cases = getProviders().flatMap((provider) =>

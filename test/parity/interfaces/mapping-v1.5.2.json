@@ -11482,9 +11482,9 @@
         "call:ai/classifier.go#classifierErrorResult"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -11504,9 +11504,9 @@
         "call:ai/classifier.go#Models.classify"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -11526,9 +11526,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
-        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
-        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
       ]
     },
     {
@@ -11548,9 +11548,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -11570,9 +11570,9 @@
         "call:ai/model_types.go#ClassifierModel.CostRates"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi",
-        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
-        "test:ai/calculate_cost_any_model_test.go#TestCalculateCostAcceptsAnyModelType"
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
       ]
     },
     {
@@ -11592,9 +11592,9 @@
         "call:ai/builtin_providers.go#cloneClassifierModel"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
-        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage"
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
       ]
     },
     {
@@ -11614,9 +11614,9 @@
         "call:ai/classifier.go#classifierErrorResult"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -11636,9 +11636,9 @@
         "call:ai/builtin_providers.go#cloneClassifierModel"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -11658,7 +11658,7 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage",
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/models_typed_regression_test.go#TestModelsCatalogCodecRoundTripsEveryModelType"
       ]
     },
@@ -11679,9 +11679,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -11702,8 +11702,8 @@
       ],
       "evidence": [
         "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
-        "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
+        "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi"
       ]
     },
     {
@@ -18424,9 +18424,9 @@
         "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -18446,9 +18446,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -18468,9 +18468,9 @@
         "call:ai/model_types.go#ImageModel.CostRates"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi",
-        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream",
-        "test:ai/calculate_cost_any_model_test.go#TestCalculateCostAcceptsAnyModelType"
+        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"
       ]
     },
     {
@@ -18490,9 +18490,9 @@
         "call:ai/model_types.go#anyModelHeaders"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream",
-        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
+        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"
       ]
     },
     {
@@ -18512,9 +18512,9 @@
         "call:ai/model_types.go#ImageModel.ModelID"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -18534,9 +18534,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/images_upstream_test.go#TestImagesUpstream",
-        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi"
+        "test:ai/images_upstream_test.go#TestImagesUpstream"
       ]
     },
     {
@@ -18556,9 +18556,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage",
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/models_typed_regression_test.go#TestModelsCatalogCodecRoundTripsEveryModelType",
-        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
       ]
     },
     {
@@ -18578,9 +18578,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi",
-        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"
+        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi"
       ]
     },
     {
@@ -18600,9 +18600,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -18623,8 +18623,8 @@
       ],
       "evidence": [
         "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
-        "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
+        "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream"
       ]
     },
     {
@@ -27282,8 +27282,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceMaxTokensUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -27517,9 +27517,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream",
+        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
       ]
     },
     {
@@ -27650,8 +27650,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -27672,8 +27672,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -27760,8 +27760,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_thinking_budget_field_upstream_test.go#TestOpenAICompletionsThinkingBudgetFieldSelectsTheWireKeyLikePi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -28534,9 +28534,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream",
+        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
       ]
     },
     {
@@ -56145,9 +56145,9 @@
         "call:ai/classifier.go#classifierErrorResult"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -56167,9 +56167,9 @@
         "call:ai/classifier.go#Models.classify"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -56189,9 +56189,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
-        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream",
-        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+        "test:ai/cloudflare_workers_ai_system_one_upstream_test.go#TestCloudflareWorkersAISystemOneUpstream"
       ]
     },
     {
@@ -56211,9 +56211,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -56233,9 +56233,9 @@
         "call:ai/model_types.go#ClassifierModel.CostRates"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi",
-        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
-        "test:ai/calculate_cost_any_model_test.go#TestCalculateCostAcceptsAnyModelType"
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
       ]
     },
     {
@@ -56255,9 +56255,9 @@
         "call:ai/builtin_providers.go#cloneClassifierModel"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
-        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage"
+        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
       ]
     },
     {
@@ -56277,9 +56277,9 @@
         "call:ai/classifier.go#classifierErrorResult"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -56299,9 +56299,9 @@
         "call:ai/builtin_providers.go#cloneClassifierModel"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -56321,7 +56321,7 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage",
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/models_typed_regression_test.go#TestModelsCatalogCodecRoundTripsEveryModelType"
       ]
     },
@@ -56342,9 +56342,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -56365,8 +56365,8 @@
       ],
       "evidence": [
         "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
-        "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
+        "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi"
       ]
     },
     {
@@ -63871,9 +63871,9 @@
         "call:ai/images.go#RegisterImagesAPIProvider"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -63893,9 +63893,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -63915,9 +63915,9 @@
         "call:ai/model_types.go#ImageModel.CostRates"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi",
-        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream",
-        "test:ai/calculate_cost_any_model_test.go#TestCalculateCostAcceptsAnyModelType"
+        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"
       ]
     },
     {
@@ -63937,9 +63937,9 @@
         "call:ai/model_types.go#anyModelHeaders"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream",
-        "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream"
+        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"
       ]
     },
     {
@@ -63959,9 +63959,9 @@
         "call:ai/model_types.go#ImageModel.ModelID"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/images_registry_dispatch_upstream_test.go#TestImagesAPIRegistryDispatchesByModelAPI"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -63981,9 +63981,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/images_upstream_test.go#TestImagesUpstream",
-        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi"
+        "test:ai/images_upstream_test.go#TestImagesUpstream"
       ]
     },
     {
@@ -64003,9 +64003,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage",
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/models_typed_regression_test.go#TestModelsCatalogCodecRoundTripsEveryModelType",
-        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
       ]
     },
     {
@@ -64025,9 +64025,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi",
-        "test:ai/openrouter_images_upstream_test.go#TestOpenRouterImagesUpstream"
+        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi"
       ]
     },
     {
@@ -64047,9 +64047,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/openrouter_images_edge_oracle_test.go#TestOpenRouterImagesEdgeResponsesMatchPi"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -64070,8 +64070,8 @@
       ],
       "evidence": [
         "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
-        "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
+        "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream"
       ]
     },
     {
@@ -73034,8 +73034,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceMaxTokensUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -73269,9 +73269,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream",
+        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
       ]
     },
     {
@@ -73402,8 +73402,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -73424,8 +73424,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -73512,8 +73512,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_thinking_budget_field_upstream_test.go#TestOpenAICompletionsThinkingBudgetFieldSelectsTheWireKeyLikePi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -74330,9 +74330,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream",
+        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
       ]
     },
     {
@@ -90500,8 +90500,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceMaxTokensUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -90735,9 +90735,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream",
+        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
       ]
     },
     {
@@ -90868,8 +90868,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -90890,8 +90890,8 @@
       ],
       "evidence": [
         "test:ai/openai_compat_upstream_test.go#TestUpstreamCompatDetection",
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -90978,8 +90978,8 @@
       ],
       "evidence": [
         "test:ai/catalog_options_upstream_test.go#TestTogetherModels",
-        "test:ai/openai_thinking_budget_field_upstream_test.go#TestOpenAICompletionsThinkingBudgetFieldSelectsTheWireKeyLikePi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream"
       ]
     },
     {
@@ -91197,9 +91197,9 @@
         "call:ai/openai.go#openAIProvider.systemPromptRole"
       ],
       "evidence": [
-        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsCatalogReasoningUpstream",
-        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi",
-        "test:ai/openai_tool_choice_formats_upstream_test.go#TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream"
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestGitHubCopilotCompletionsReasoningEffortUpstream",
+        "test:ai/openai_copilot_reasoning_upstream_test.go#TestOpenAICompletionsTopLevelReasoningTokensUpstream",
+        "test:ai/openai_responses_shared_oracle_test.go#TestConvertResponsesMessagesMatchesPi"
       ]
     },
     {
@@ -96732,7 +96732,7 @@
       ],
       "evidence": [
         "test:ai/provider_catalogs_test.go#TestProviderCatalogCasesCoverEveryModelsFile",
-        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchPinnedData",
+        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchOracleData",
         "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsReturnCopies"
       ]
     },
@@ -96754,7 +96754,7 @@
       ],
       "evidence": [
         "test:ai/provider_catalogs_test.go#TestProviderCatalogCasesCoverEveryModelsFile",
-        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchPinnedData",
+        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchOracleData",
         "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsReturnCopies"
       ]
     },
@@ -96776,7 +96776,7 @@
       ],
       "evidence": [
         "test:ai/provider_catalogs_test.go#TestProviderCatalogCasesCoverEveryModelsFile",
-        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchPinnedData",
+        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchOracleData",
         "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsReturnCopies"
       ]
     },

@@ -14,10 +14,12 @@ import (
 // for every provider shape, instead of an object with no api, endpoint or limits that a request would send to a host the user never configured.
 type unlistedShape struct{ name, provider, listedID, storeOnlyID, storeRow, auth, models string }
 
+// The store-only id of the oauth shape is a fixture id (zz-fixture-...) that models.dev can never list, so a catalog refresh cannot make the model a built-in one.
+// The expectation is Pi's: modelRuntime.getModel returns the store row's model and nothing for an unlisted id.
 func unlistedShapes() []unlistedShape {
 	return []unlistedShape{
-		{"oauth-provider", "github-copilot", "gpt-6.1-sol", "claude-fable-5.2",
-			`{"api":"anthropic-messages","baseUrl":"https://api.individual.githubcopilot.com","compat":{"forceAdaptiveThinking":true},"contextWindow":1000000,"cost":{"input":8,"output":40,"cacheRead":0.2,"cacheWrite":10},"id":"claude-fable-5.2","input":["text","image"],"maxTokens":128000,"name":"Claude Fable 5.2","provider":"github-copilot","reasoning":true,"thinkingLevelMap":{"off":null,"xhigh":"xhigh","max":"max"},"type":"chat"}`,
+		{"oauth-provider", "github-copilot", "gpt-6.1-sol", "zz-fixture-claude-fable-6",
+			`{"api":"anthropic-messages","baseUrl":"https://api.individual.githubcopilot.com","compat":{"forceAdaptiveThinking":true},"contextWindow":1000000,"cost":{"input":8,"output":40,"cacheRead":0.2,"cacheWrite":10},"id":"zz-fixture-claude-fable-6","input":["text","image"],"maxTokens":128000,"name":"Claude Fable 6","provider":"github-copilot","reasoning":true,"thinkingLevelMap":{"off":null,"xhigh":"xhigh","max":"max"},"type":"chat"}`,
 			`{"github-copilot":{"type":"oauth","refresh":"refresh-fake","access":"tid=0;exp=9999999999;proxy-ep=proxy.individual.githubcopilot.com;sku=seed","expires":9999999999000}}`, ""},
 		{"api-key-provider", "groq", "openai/gpt-oss-120b", "zz-store-only-1",
 			`{"api":"openai-completions","baseUrl":"https://pi.dev/openai/v1","contextWindow":400000,"cost":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0},"id":"zz-store-only-1","input":["text"],"maxTokens":64000,"name":"ZZ Store Only 1","provider":"groq","reasoning":true,"thinkingLevelMap":{"off":null},"type":"chat"}`,

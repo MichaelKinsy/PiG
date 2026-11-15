@@ -28,6 +28,10 @@ func TestResolveModel_ExactCatalog_NoWarning(t *testing.T) {
 	agentDirForModelOverride = dir
 	t.Cleanup(func() { agentDirForModelOverride = "" })
 
+	bundled, ok := ai.LookupModelExact("github-copilot/gpt-6.1-sol")
+	if !ok {
+		t.Fatal("the bundled catalog has no github-copilot/gpt-6.1-sol")
+	}
 	model, _, warning, err := resolveModel("github-copilot/gpt-6.1-sol", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
@@ -35,8 +39,8 @@ func TestResolveModel_ExactCatalog_NoWarning(t *testing.T) {
 	if warning != "" {
 		t.Errorf("warning = %q, want empty for a catalogued model", warning)
 	}
-	if model.Capabilities.ContextWindow != 1050000 {
-		t.Errorf("context window = %d, want 1050000 (copilot gpt-6.1-sol)", model.Capabilities.ContextWindow)
+	if model.Capabilities.ContextWindow != bundled.ContextWindow {
+		t.Errorf("context window = %d, want the bundled record's %d (copilot gpt-6.1-sol)", model.Capabilities.ContextWindow, bundled.ContextWindow)
 	}
 }
 

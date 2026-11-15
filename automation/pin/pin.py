@@ -630,9 +630,16 @@ def cmd_check_oracle(_: argparse.Namespace) -> None:
             raise PinError(f"the installed dependency tree differs from the frozen closure{with_carried}:\n  " + "\n  ".join(problems[:20]))
     if data.get("backports", "") != oracle.backports_digest(pin):
         raise PinError("the installed Pi carries other post-release backports than automation/gen/pi-post-release-backports.mjs lists; rebuild with `pin.py install-oracle --force`")
+    if data.get("catalog", "") != oracle.catalog_digest(pin):
+        raise PinError("the installed Pi's catalog data was made from another recording or overlay than automation/gen/catalog-source holds; rebuild with `pin.py install-oracle --force`")
+    if data.get("catalog"):
+        installed_data = oracle.data_digest(oracle.backport_places(oracle.SDK_TS / "node_modules")["pi-ai"] / "dist" / "providers" / "data")
+        if installed_data != data.get("catalog_data_sha256"):
+            raise PinError(f"the installed Pi's provider data has the digest {installed_data}, its build stamped {data.get('catalog_data_sha256')}; rebuild with `pin.py install-oracle --force`")
     problem = oracle.bundle_problem(oracle.SDK_TS / "node_modules", data)
     if problem:
         raise PinError(f"{problem}; rebuild with `pin.py install-oracle --force`")
+    catalog = f"; catalog data {data['catalog_data_sha256'][:12]} from the recording of {oracle.catalog_fetched_at()}" if data.get("catalog") else ""
     carried = f"; backports {data['backports'][:12]} in the compiled output and in the pi bundle {data.get('bundle_sha256', '')[:12] or '(none: the bin is compiled output)'}" if data.get("backports") else ""
     if pin == pinlib.committed():
         from carried import oracle_ledger_problems
@@ -642,7 +649,7 @@ def cmd_check_oracle(_: argparse.Namespace) -> None:
             raise PinError("the sync ledgers follow Pi commits whose changes the oracle does not account for (it would answer as the pin):\n  " + "\n  ".join(unaccounted))
     if dependencies and closure is not None:
         carried += f"; closure {data['closure_sha256'][:12]}: the frozen {oracle.frozen_closure_digest(pin)[:12]} with {len(dependencies)} carried " + ("dependency" if len(dependencies) == 1 else "dependencies") + " (" + ", ".join(f"{d['name']} {d['to']} of Pi {d['id']}" for d in dependencies) + ")"
-    print(f"check-oracle: Pi {pin.version} (source build of {pin.commit[:8]}{carried})")
+    print(f"check-oracle: Pi {pin.version} (source build of {pin.commit[:8]}{carried}{catalog})")
 
 
 def main() -> None:

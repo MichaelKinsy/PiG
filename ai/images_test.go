@@ -15,13 +15,13 @@ func TestImageModelRegistry_OpenRouterGeneratedModels(t *testing.T) {
 	}
 	models := GetImageModels(ProviderImagesOpenRouter)
 	publishedOpenRouter := 0
-	for _, model := range loadPublishedCatalog(t)["image"] {
+	for _, model := range loadOracleCatalog(t)["image"] {
 		if model["provider"] == ProviderImagesOpenRouter {
 			publishedOpenRouter++
 		}
 	}
 	if len(models) != publishedOpenRouter || publishedOpenRouter == 0 {
-		t.Fatalf("GetImageModels(openrouter) length = %d, want published pi-ai %s image-catalog count %d", len(models), UpstreamVersionString(), publishedOpenRouter)
+		t.Fatalf("GetImageModels(openrouter) length = %d, want the oracle Pi %s image-catalog count %d", len(models), UpstreamVersionString(), publishedOpenRouter)
 	}
 	for _, id := range []string{"google/gemini-3-pro-image", "google/gemini-3.1-flash-image", "microsoft/mai-image-2.5-pro", "openai/gpt-image-2", "krea/krea-2-large", "qwen/qwen-image-3", "qwen/qwen-image-3-pro"} {
 		if _, ok := GetImageModel(ProviderImagesOpenRouter, id); !ok {

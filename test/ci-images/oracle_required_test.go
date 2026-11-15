@@ -117,7 +117,7 @@ func TestOracleDependentTestsEndThroughPioracleMissing(t *testing.T) {
 	root := repoRoot(t)
 	for _, file := range []string{
 		"cmd/check-model-data/main_published_test.go",
-		"ai/catalog_published_test.go",
+		"ai/catalog_oracle_data_test.go",
 		"ai/registry_test.go",
 		"test/docs-drift/adapted_headings_test.go",
 		"test/parity/upstreampackages/upstreampackages_test.go",

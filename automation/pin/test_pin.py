@@ -492,6 +492,9 @@ class SharedStoreTests(unittest.TestCase):
         }
         for name, fake in fakes.items():
             stack.enter_context(mock.patch.object(oracle, name, fake))
+        # The committed recording belongs to the committed pin: these fake builds of another commit carry no catalog data (a test that wants one writes its own).
+        stack.enter_context(mock.patch.object(oracle, "CATALOG_SOURCE", self.store / "no-recording"))
+        stack.enter_context(mock.patch.object(oracle, "CATALOG_OVERLAY", self.store / "no-recording" / "pi-overlay"))
 
     def identity(self, label: str) -> None:
         """Switch to the frozen inputs of another worktree of the same pin commit."""
@@ -687,6 +690,35 @@ class SharedStoreTests(unittest.TestCase):
         stack.enter_context(mock.patch.object(oracle, "carried_dependencies", lambda *_a: []))  # the fake closure installs no dependency to replace
         return applied
 
+    def recording(self, pi_commit: str) -> Path:
+        """A recording of the catalog source for the committed pin (the real file set, fake bytes): meta.json, the archive and one overlay file."""
+        root = self.store / "recording"
+        (root / "pi-overlay").mkdir(parents=True)
+        (root / "meta.json").write_text(json.dumps({"fetchedAt": "2026-01-01T00:00:00.000Z", "piCommit": pi_commit}))
+        (root / "responses.tar.gz").write_bytes(b"archive")
+        (root / "pi-overlay" / "file.ts").write_text("overlay")
+        return root
+
+    def test_the_catalog_data_of_the_oracle_is_made_from_the_recording_of_the_committed_pin_only(self):
+        self.carries_backports()
+        root = self.recording(COMMIT.commit)
+        with mock.patch.object(oracle, "CATALOG_SOURCE", root), mock.patch.object(oracle, "CATALOG_OVERLAY", root / "pi-overlay"):
+            digest = oracle.catalog_digest(COMMIT)
+            self.assertRegex(digest, "^[0-9a-f]{64}$")
+            self.assertEqual(oracle.catalog_digest(pinlib.Pin("c" * 40, "c" * 40, "1.1.0", "1.1.0+cccccccc")), "", "another commit takes no recording")
+            (root / "responses.tar.gz").write_bytes(b"archive!")
+            self.assertNotEqual(oracle.catalog_digest(COMMIT), digest, "one changed byte of the recording is another oracle")
+            (root / "responses.tar.gz").write_bytes(b"archive")
+            (root / "pi-overlay" / "file.ts").write_text("overlay!")
+            self.assertNotEqual(oracle.catalog_digest(COMMIT), digest, "a changed overlay file is another oracle")
+
+    def test_a_recording_made_for_another_pin_stops_the_build(self):
+        self.carries_backports()
+        root = self.recording("c" * 40)
+        with mock.patch.object(oracle, "CATALOG_SOURCE", root), mock.patch.object(oracle, "CATALOG_OVERLAY", root / "pi-overlay"):
+            with self.assertRaisesRegex(pinlib.PinError, "names the Pi generator of commit c+, the pin is b+"):
+                oracle.ensure(COMMIT)
+
     def test_the_committed_pins_oracle_carries_the_backports_and_is_stamped_with_them(self):
         applied = self.carries_backports()
         built = oracle.ensure(COMMIT)
@@ -716,7 +748,7 @@ class SharedStoreTests(unittest.TestCase):
         applied = self.carries_backports()
         calls = []
 
-        def rebuild(source, modules):
+        def rebuild(source, modules, catalog=None):
             calls.append((source, modules, list(applied)))
             return "f" * 64
 
@@ -728,10 +760,10 @@ class SharedStoreTests(unittest.TestCase):
     def test_a_backported_build_whose_pi_bin_runs_another_bundle_than_it_stamped_is_not_the_oracle(self):
         self.carries_backports()
         self.binary = "dist/bundle/cli.js"
-        with mock.patch.object(oracle, "rebuild_bundle", lambda _source, _modules: ""):  # a build of the code that patched the compiled output only
+        with mock.patch.object(oracle, "rebuild_bundle", lambda _source, _modules, _catalog=None: ""):  # a build of the code that patched the compiled output only
             unbundled = oracle.ensure(COMMIT)
         self.assertNotIn("bundle_sha256", json.loads((unbundled.parent / oracle.STAMP).read_text()))
-        with mock.patch.object(oracle, "rebuild_bundle", lambda _source, modules: oracle.tree_digest(oracle.bundle_of(modules))):
+        with mock.patch.object(oracle, "rebuild_bundle", lambda _source, modules, _catalog=None: oracle.tree_digest(oracle.bundle_of(modules))):
             rebuilt = oracle.ensure(COMMIT)
             self.assertNotEqual(unbundled.resolve(), rebuilt.resolve(), "a build whose bundle is the pin's was reused as the backported oracle")
             self.assertEqual(oracle.ensure(COMMIT), rebuilt, "a build whose bundle is the stamped one must be reused")
@@ -1228,8 +1260,16 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(oracle.bundle_problem(self.modules, {}), "", "an oracle without backports runs the pin's bundle")
         self.assertIn("compiled output only", oracle.bundle_problem(self.modules, {"backports": "b"}))
         self.assertEqual(oracle.bundle_problem(self.modules, {"backports": "b", "bundle_sha256": digest}), "")
+        self.assertIn("compiled output only", oracle.bundle_problem(self.modules, {"catalog": "c"}), "catalog data in the compiled output only is not the bundle's data")
+        self.assertEqual(oracle.bundle_problem(self.modules, {"catalog": "c", "bundle_sha256": digest}), "")
         self.chunk.write_text("changed")
         self.assertIn(f"its build stamped {digest}", oracle.bundle_problem(self.modules, {"backports": "b", "bundle_sha256": digest}))
+
+    def test_the_identity_of_an_oracle_names_the_recording_its_catalog_data_was_made_from(self):
+        plain = oracle.identity("d", "c", "b")
+        self.assertEqual(oracle.identity("d", "c", "b", ""), plain, "an oracle without catalog data keeps its identity")
+        self.assertNotEqual(oracle.identity("d", "c", "b", "one"), plain)
+        self.assertNotEqual(oracle.identity("d", "c", "b", "one"), oracle.identity("d", "c", "b", "two"), "another recording is another oracle")
 
     def test_the_digest_of_a_tree_is_that_of_its_files_in_path_order(self):
         tree = self.root / "tree"

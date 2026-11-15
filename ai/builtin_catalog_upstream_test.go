@@ -57,7 +57,7 @@ import (
 // The pinned 1.0.4 provider catalogs are `providers/<id>.models.ts` modules that flatten `providers/data/<id>.json` into
 // a chat, an image and a classifier model record per provider. The Go catalogs are generated from the same data: every
 // provider module must list the same model keys with the same identity, endpoint, capability and price fields.
-func TestBuiltinCatalogsMatchPinnedProviderDataModules(t *testing.T) {
+func TestBuiltinCatalogsMatchOracleProviderData(t *testing.T) {
 	modules, err := filepath.Glob("../.upstream/current/packages/ai/src/providers/*.models.ts")
 	if err != nil || len(modules) == 0 {
 		t.Fatalf("upstream provider model modules: %v", err)
@@ -77,7 +77,7 @@ func TestBuiltinCatalogsMatchPinnedProviderDataModules(t *testing.T) {
 		}
 		seen[provider[1]] = true
 		t.Run(provider[1], func(t *testing.T) {
-			raw := readPinnedMirror(t, "../.upstream/current/packages/ai/src/providers/data/"+data[1]+".json")
+			raw := readOracleProviderData(t, data[1])
 			var groups map[string]map[string]map[string]any
 			if err := json.Unmarshal(raw, &groups); err != nil {
 				t.Fatal(err)

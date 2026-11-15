@@ -546,6 +546,6 @@ rationale = "7f021f0ee: the two event cases that waited for the web inflate by t
 [[files]]
 path = "packages/ai/test/together-models.test.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "0a25dd15e: the Together Kimi K3 case expects maxTokens 1048576 (was 131072). Pi's Together models come from models.dev at its build (catalog/providers/together.ts, modelsDevModels; src/providers/data is not in Pi's git), so the test follows live data, not a Pi source change. PiG's catalog (ai/models_generated.go) is the snapshot of the pin, Together Kimi K3 max output 131072, and ai/catalog_options_upstream_test.go:66 expects 131072, consistent with it. Not ported: it needs a re-snapshot of the catalog from models.dev (a data refresh, not a per-test edit). Row 188 (model catalog snapshot older than models.dev: Together Kimi K3 max output 131072 vs 1048576), decided by the coordinators; a separate lane measures the refresh."
+disposition = "ported"
+evidence = ["test:ai/catalog_options_upstream_test.go#TestTogetherModels"]
+rationale = "0a25dd15e: the Together Kimi K3 case expects maxTokens 1048576 (was 131072; the test file is sha256:1ea6e1f715ef... at Pi main 7cc21c24f6b5, together-models.test.ts:27). Pi's Together models come from models.dev at its build, so the test follows live data. Row 188 moved PiG's catalog from the snapshot of the pin to Pi's own generator over the committed recording of automation/gen/catalog-source (2026-11-15T15:26:04Z), which gives Together Kimi K3 max output 1048576; TestTogetherModels asserts that value, as Pi main's test does. A later refresh of the recording that changes the value is a reviewed data change that edits this test as Pi's own test is edited."
