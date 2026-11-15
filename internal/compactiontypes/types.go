@@ -61,7 +61,14 @@ type CompactionPreparation struct {
 	PreviousSummary     string               `json:"previousSummary,omitempty"`
 	FileOps             FileOperations       `json:"fileOps"`
 	Settings            CompactionSettings   `json:"settings"`
-	// TokenRatio is the provider's real token count over the four-characters-per-token estimate, measured on the session's latest assistant usage; 0 when
-	// the session has none. It sizes the summary requests (pig divergence D167) and is not part of the extension event.
-	TokenRatio float64 `json:"-"`
+	// tokenRatio is the provider's real token count over the four-characters-per-token estimate, measured on the session's latest assistant usage; 0
+	// when the session has none. It sizes the summary requests (pig divergence D167). It is unexported, so Pi's field set is all the extension API
+	// type shows; SetTokenRatio and TokenRatioOf are the compaction pipeline's only way to it.
+	tokenRatio float64
 }
+
+// SetTokenRatio records the measured token ratio on a preparation (see CompactionPreparation.tokenRatio).
+func SetTokenRatio(prep *CompactionPreparation, ratio float64) { prep.tokenRatio = ratio }
+
+// TokenRatioOf is the token ratio SetTokenRatio recorded on prep; 0 when the session had no trusted usage.
+func TokenRatioOf(prep CompactionPreparation) float64 { return prep.tokenRatio }

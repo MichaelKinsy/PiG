@@ -6,6 +6,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/compactiontypes"
 )
 
 func TestSummaryPlanTokenRatio(t *testing.T) {
@@ -46,7 +47,8 @@ func TestCompactionOfACalibratedSessionSizesRequestsByItsRatio(t *testing.T) {
 		t.Run(fmt.Sprintf("history %dk at %d characters per token", test.thousandTokens, test.charsPerToken), func(t *testing.T) {
 			completer := &windowCompleter{window: 1_000_000, outputCap: 128_000, charsPerToken: test.charsPerToken, summaryChars: 4000}
 			model := &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 1_000_000, MaxOutputTokens: 128_000}}
-			prep := CompactionPreparation{FirstKeptEntryID: "kept", MessagesToSummarize: overWindowMessages(test.thousandTokens, 4000-15), TokenRatio: test.ratio, Settings: CompactionSettings{ReserveTokens: 16384}}
+			prep := CompactionPreparation{FirstKeptEntryID: "kept", MessagesToSummarize: overWindowMessages(test.thousandTokens, 4000-15), Settings: CompactionSettings{ReserveTokens: 16384}}
+			compactiontypes.SetTokenRatio(&prep, test.ratio)
 			result, err := Compact(t.Context(), prep, model, "key", nil, "", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, "")
 			if err != nil {
 				t.Fatalf("compaction failed: %v", err)
@@ -125,10 +127,10 @@ func TestPrepareCompactionMeasuresTheProviderTokenRatio(t *testing.T) {
 	settings.KeepRecentTokens = 1
 	// two messages of 40,000 characters: 20,000 tokens by the estimate; the provider counted 30,000
 	prep := PrepareCompaction(entries(30_000), settings)
-	if prep == nil || prep.TokenRatio < 1.49 || prep.TokenRatio > 1.51 {
+	if prep == nil || compactiontypes.TokenRatioOf(*prep) < 1.49 || compactiontypes.TokenRatioOf(*prep) > 1.51 {
 		t.Fatalf("prep %+v, want a ratio of 1.5", prep)
 	}
-	if prep := PrepareCompaction(entries(0), settings); prep == nil || prep.TokenRatio != 0 {
+	if prep := PrepareCompaction(entries(0), settings); prep == nil || compactiontypes.TokenRatioOf(*prep) != 0 {
 		t.Fatalf("prep %+v, want no ratio without usage", prep)
 	}
 }

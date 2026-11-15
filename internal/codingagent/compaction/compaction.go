@@ -477,17 +477,18 @@ func PrepareCompaction(
 		ExtractFileOpsFromMessage(message, &fileOps)
 	}
 
-	return &CompactionPreparation{
+	prep := &CompactionPreparation{
 		FirstKeptEntryID:    firstKeptEntryID,
 		MessagesToSummarize: toSummarize,
 		TurnPrefixMessages:  turnPrefix,
 		IsSplitTurn:         cutPoint.IsSplitTurn,
 		TokensBefore:        contextEstimate.Tokens,
-		TokenRatio:          providerTokenRatio(projection, contextEstimate),
 		PreviousSummary:     previousSummary,
 		FileOps:             fileOps,
 		Settings:            s,
 	}
+	compactiontypes.SetTokenRatio(prep, providerTokenRatio(projection, contextEstimate))
+	return prep
 }
 
 // ─── LLM Summarization ────────────────────────────────────────────────────────
@@ -876,7 +877,7 @@ func generateSummaryAdaptive(
 }
 
 // The size of a summary request is estimated, as everywhere in compaction, at four characters per token, and then scaled by the ratio of the
-// provider's real token count to that estimate, which PrepareCompaction measures on the session's latest assistant usage (CompactionPreparation.TokenRatio),
+// provider's real token count to that estimate, which PrepareCompaction measures on the session's latest assistant usage (compactiontypes.TokenRatioOf),
 // and by a margin.
 const (
 	// minTokenRatio: a measured ratio below 1 (more than four characters per token) is not trusted: prose is not what a summary request holds most of.
@@ -1182,7 +1183,7 @@ func Compact(
 
 	if prep.IsSplitTurn && len(prep.TurnPrefixMessages) > 0 {
 		history, prefix := prep.MessagesToSummarize, prep.TurnPrefixMessages
-		if chunks := splitForContextWindow(prefix, model, prep.Settings.ReserveTokens, prep.PreviousSummary, customInstructions, prep.TokenRatio); len(chunks) > 1 {
+		if chunks := splitForContextWindow(prefix, model, prep.Settings.ReserveTokens, prep.PreviousSummary, customInstructions, compactiontypes.TokenRatioOf(prep)); len(chunks) > 1 {
 			// pig divergence (D167): pi sends the whole turn prefix in one request. A prefix longer than the window moves all but its last window-sized part into the chunked history summary.
 			last := chunks[len(chunks)-1]
 			history = append(slices.Clip(history), prefix[:len(prefix)-len(last)]...)
@@ -1192,7 +1193,7 @@ func Compact(
 		var historyUsage *ai.Usage
 		if len(history) > 0 {
 			var err error
-			historySummary, historyUsage, err = generateSummaryChunked(ctx, history, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, prep.TokenRatio)
+			historySummary, historyUsage, err = generateSummaryChunked(ctx, history, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, compactiontypes.TokenRatioOf(prep))
 			if err != nil {
 				return CompactionResult{}, err
 			}
@@ -1206,7 +1207,7 @@ func Compact(
 		usage = combineUsage(historyUsage, prefixUsage)
 	} else {
 		var err error
-		summary, usage, err = generateSummaryChunked(ctx, prep.MessagesToSummarize, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, prep.TokenRatio)
+		summary, usage, err = generateSummaryChunked(ctx, prep.MessagesToSummarize, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, compactiontypes.TokenRatioOf(prep))
 		if err != nil {
 			return CompactionResult{}, err
 		}

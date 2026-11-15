@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/compactiontypes"
 )
 
 // windowCompleter answers like a provider with a context window: a request whose input (its text at charsPerToken characters per token) and the
@@ -52,7 +53,8 @@ func oldSplitRequests(messages []agent.AgentMessage, window, outputCap int) int 
 func compactHistory(t *testing.T, completer *windowCompleter, messages []agent.AgentMessage, window, outputCap int, tokenRatio float64) (CompactionResult, error) {
 	t.Helper()
 	model := &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: window, MaxOutputTokens: outputCap}}
-	prep := CompactionPreparation{FirstKeptEntryID: "kept", MessagesToSummarize: messages, TokenRatio: tokenRatio, Settings: CompactionSettings{ReserveTokens: 16384}}
+	prep := CompactionPreparation{FirstKeptEntryID: "kept", MessagesToSummarize: messages, Settings: CompactionSettings{ReserveTokens: 16384}}
+	compactiontypes.SetTokenRatio(&prep, tokenRatio)
 	return Compact(t.Context(), prep, model, "key", nil, "", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, "")
 }
 
