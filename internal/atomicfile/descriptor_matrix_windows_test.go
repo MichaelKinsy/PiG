@@ -384,12 +384,18 @@ func routes() []route {
 			rec.note("replacement after the copy", temp)
 			return moveFile(temp, path)
 		}},
-		{"ReplaceFileW alone (nothing carried)", false, func(t testing.TB, path, data string, rec *recording) error {
+		{"ReplaceFileW alone (nothing carried, through the steps)", false, func(t testing.TB, path, data string, rec *recording) error {
 			temp := privateTemp(t, path, data)
 			rec.note("replacement as created", temp)
-			err := replaceFile(path, temp, temp+".bak")
-			rec.note("path after ReplaceFileW", path)
-			_ = os.Remove(temp + ".bak")
+			err := replaceKeepingBackup(path, temp, replaceSteps{
+				replaceFile: func(replaced, replacement, backup string) error {
+					err := replaceFile(replaced, replacement, backup)
+					rec.note("path after ReplaceFileW", replaced)
+					return err
+				},
+				moveFile: moveFile,
+				copyDACL: func(string, string) error { return nil },
+			})
 			if err != nil {
 				_ = os.Remove(temp)
 			}
