@@ -50,7 +50,11 @@ func TestCredentialWritesGoInPlaceThroughAHardLink(t *testing.T) {
 		if err := store.Set(fixtureAPIKeys[0], Credential{Type: CredentialAPIKey, Key: "key-login"}); err != nil {
 			t.Fatalf("API key login through %s: %v", target, err)
 		}
-		if _, err := RefreshStoredOAuth(context.Background(), store, fixtureExpiredOAuth, oauth, func(Credential) bool { return true }); err != nil {
+		if _, err := store.Modify(context.Background(), fixtureLiveOAuth[0], func(cur *Credential) (*Credential, error) {
+			next := *cur
+			next.Access, next.Refresh, next.Expires = "access-refreshed", "refresh-refreshed", 4102444800000
+			return &next, nil
+		}); err != nil {
 			t.Fatalf("refresh through %s: %v", target, err)
 		}
 	}
