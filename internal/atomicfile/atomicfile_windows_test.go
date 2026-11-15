@@ -158,7 +158,7 @@ func TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay(t *te
 			return &os.LinkError{Op: "replace", Old: temp, New: replaced, Err: errUnableToMoveReplacement2}
 		},
 		moveFile: moveFile,
-		carry:    carryDescriptor,
+		carry:    carryOnto(path),
 	})
 	if err != nil {
 		t.Fatalf("replaceKeepingBackup = %v, want the replacement finished", err)
@@ -195,7 +195,7 @@ func TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish(t *tes
 			}
 			return moveFile(from, to)
 		},
-		carry: carryDescriptor,
+		carry: carryOnto(path),
 	})
 	if !errors.Is(err, errUnableToMoveReplacement2) || !errors.Is(err, refused) {
 		t.Fatalf("replaceKeepingBackup = %v, want both the replace error and the refused move", err)

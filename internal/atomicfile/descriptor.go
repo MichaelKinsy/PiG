@@ -48,6 +48,56 @@ func carryVerdict(want, got access) error {
 	return nil
 }
 
+// carryCalls are the Win32 calls that give a file the access of another, and the call that reads it back (descriptor_windows.go builds them; a test fakes them).
+// Each set call may fail or do something other than its name says: the read-back after it decides.
+type carryCalls struct {
+	// exact sets the entries and SE_DACL_PROTECTED as they are given, through the low-level call that runs no inheritance. The Windows job showed that it
+	// clears SE_DACL_AUTO_INHERITED whatever the descriptor given had, and keeps the entries of every starting descriptor of the matrix.
+	exact func() error
+	// asked is the one route the Windows job has not shown: the same low-level call with the request for auto-inheritance (SE_DACL_AUTO_INHERIT_REQ and
+	// SE_DACL_AUTO_INHERITED) in the control of the descriptor given. It is tried only for a descriptor that has SE_DACL_AUTO_INHERITED.
+	asked func() error
+	// named is SetNamedSecurityInfo, which the Windows job showed sets SE_DACL_AUTO_INHERITED but also runs inheritance, which can add entries to an
+	// unprotected DACL and rewrites the inherited flag of the entries of a protected one. It is nil for the file at the name callers open: the window in which
+	// that file would hold the parent's current inheritable entries is not opened there.
+	named func() error
+	read  func() (access, error)
+}
+
+// carryAccess gives a file the access want and reads it back, and returns what it read last and the errors the set calls returned. A file that already has
+// want's access and flag is not touched: nothing is called. Otherwise exact goes first, so that the access is right whatever the other calls do (it is skipped
+// when the access already is want's and only the flag is missing, so that it does not clear what is right). When want has SE_DACL_AUTO_INHERITED and the file
+// has not, asked and then named (when it is not nil) are tried in that order, each followed by a read-back: the first that leaves want's access and the flag
+// ends it, and a call that leaves other access is undone by exact again, which leaves the flag off. So the result has want's access whenever exact gave it,
+// and the flag when a call set it without touching the access.
+func carryAccess(want access, calls carryCalls) (got access, callErrs, err error) {
+	apply := func(call func() error) error {
+		callErrs = errors.Join(callErrs, call())
+		got, err = calls.read()
+		return err
+	}
+	if got, err = calls.read(); err != nil || carryVerdict(want, got) == nil {
+		return got, nil, err
+	}
+	if !want.autoInherited || !want.sameAccess(got) {
+		if apply(calls.exact) != nil || !want.autoInherited || !want.sameAccess(got) || got.autoInherited {
+			return got, callErrs, err
+		}
+	}
+	for _, call := range []func() error{calls.asked, calls.named} {
+		if call == nil {
+			continue
+		}
+		if apply(call) != nil || carryVerdict(want, got) == nil {
+			return got, callErrs, err
+		}
+		if !want.sameAccess(got) && (apply(calls.exact) != nil || !want.sameAccess(got)) {
+			return got, callErrs, err
+		}
+	}
+	return got, callErrs, err
+}
+
 // ignoreOwnerRefusal drops the errors a token gets for an owner or a group it may not set, as an EPERM from chown is dropped on Unix: the file then belongs to
 // whom it belonged. Any other error is returned.
 func ignoreOwnerRefusal(err error) error {
