@@ -42686,6 +42686,29 @@
       ]
     },
     {
+      "id": "BF-eade544",
+      "title": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning)…",
+      "symptom": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.",
+      "rootCause": "The verdict reason and a warning's file in the table of the comment, and the reason quoted in an alert comment, were plain Markdown. A file name or a reason holding a fence, a mention, an HTML tag or a link could change the comment. Every call site now prints them through codeSpan, the helper the admission notice row already used, so cell is now that one code span cell and inertCell is gone.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eade544cc1",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestAlertBodyQuotesTheReasonInertly",
+        "automation/ci/preflight/print_inert_test.go::TestCellFenceOutgrowsTheBackticksInTheText"
+      ]
+    },
+    {
       "id": "BF-eb34085",
       "title": "The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name…",
       "symptom": "The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name ending in U+0085 keeps it.",
