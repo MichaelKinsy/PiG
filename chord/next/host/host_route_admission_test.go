@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -20,12 +19,10 @@ import (
 // upstream and rejects their calls `forbidden/revoked`; the fence after a denial; one decision per principal and address; a
 // failed source; `RouteHandle.retry`; a hold behind the route's own route (`invalid/cycle`).
 //
-// Forced Go differences. Pi's `await transported()` drains every microtask, the route's settle included:
-// a Go settle is an owned task, so `settled` (below) waits for every decision of the route to leave `settling` (a condition on
-// the admission's own state, no sleep) around the link flush. A positive expectation of a hold's state waits for it
-// (untilKind); a negative one (nothing resolved, nothing forwarded) is read after `settled`. A hold's calls block, so a call in
-// flight runs on a goroutine whose result the test receives.
-// The settle of a decision is a task the route owns: what a hold shows because of it is read after `settled`.
+// Forced Go differences. Pi's `await transported()` drains every microtask, the route's settle included: a Go settle is a
+// joined hop of the server's loop (host_route_admission.go), so `settled` (below) is `transported()` plus `deliveredOn`: no
+// wait of its own, and a hold's state is read right after it. A hold's calls block, so a call in flight is started in one
+// section (startCallWith) and its result awaited after, as Pi awaits the promise `notes.add(...)` returned.
 
 // --- the gate -----------------------------------------------------------------------------------------------------------
 
@@ -89,13 +86,6 @@ func gateAdmit(principal data.Principal, _ contracts.Address, self AdmitSelf) (a
 
 // --- the rig ------------------------------------------------------------------------------------------------------------
 
-// decisionTracker is Pi's `instancesOf(Decision, "declare")`: every decision of the route seen so far, weakly (a snapshot of
-// the route's decisions: no hook in the code under test).
-type decisionTracker struct {
-	seen  []weak.Pointer[Decision]
-	known map[weak.Pointer[Decision]]bool
-}
-
 // gatedRelay is Pi's `routeGated()`: a relay whose route asks the admission, and how the test sets a principal kind's mode.
 type gatedRelay struct {
 	*relayed
@@ -103,7 +93,8 @@ type gatedRelay struct {
 	gate  *Reference
 	raw   *rawWorkers
 	links []*link.MemoryLink
-	track decisionTracker
+	// tabs are the hosts of the extra tabs (tabOf).
+	tabs []Host
 }
 
 // gated is `routeGated(options)`: options override the route's admission and the server's facet. raw is the rawWorkers the
@@ -117,7 +108,7 @@ func routeGated(t testing.TB, options relayedOptions, raw *rawWorkers) *gatedRel
 		options.Server = serveGate
 	}
 	rel := relay(t, options)
-	return &gatedRelay{relayed: rel, t: t, gate: mustGet(t, rel.Server, Gate, jsonObject()), raw: raw, track: decisionTracker{known: map[weak.Pointer[Decision]]bool{}}}
+	return &gatedRelay{relayed: rel, t: t, gate: mustGet(t, rel.Server, Gate, jsonObject()), raw: raw}
 }
 
 // set is `set(mode, who)`: who's mode in the gate (the owner's by default).
@@ -140,62 +131,40 @@ func (g *gatedRelay) Transported() {
 	transported(g.links...)
 }
 
-// route is the server's route of `Session`.
-func (g *gatedRelay) route() *route { return g.Server.(*chordHost).routes["session"] }
+// hostsOf are the hosts of a relay Pi's `transported()` runs the microtasks of: the server, the tab and the latest worker
+// of every address.
+func hostsOf(rel *relayed) []Host {
+	hosts := []Host{rel.Server, rel.Tab}
+	rel.Workers.Range(func(_, worker any) bool {
+		hosts = append(hosts, worker.(Host))
+		return true
+	})
+	return hosts
+}
 
-// settled is `await transported()` after something an admission decides: what is in flight arrived, every decision of the
-// route left `settling`, and what that made arrived.
+// settled is Pi's `await transported()` after something an admission decides: what is in flight arrived, the settles the
+// change started (joined hops of the server's loop) and the deliveries they made ran to their end (deliveredOn), and what
+// that made arrived. No condition of its own.
 func (g *gatedRelay) settled() {
 	g.t.Helper()
 	g.Transported()
-	chord := g.Server.(*chordHost)
-	until(g.t, "every decision of the route settled", func() bool {
-		idle := true
-		chord.enter(func() {
-			for _, asked := range g.route().admission.asked {
-				if asked.state.kind == askedSettling {
-					idle = false
-				}
-			}
-		})
-		return idle
-	})
+	deliveredOn(append(hostsOf(g.relayed), g.tabs...)...)
 	g.Transported()
 }
 
-// decisions snapshots the route's decisions into the tracker and returns how many were seen so far.
-func (g *gatedRelay) decisions() int {
-	g.Server.(*chordHost).enter(func() {
-		for _, asked := range g.route().admission.asked {
-			made := weak.Make(asked.decision)
-			if !g.track.known[made] {
-				g.track.known[made] = true
-				g.track.seen = append(g.track.seen, made)
-			}
-		}
-	})
-	return len(g.track.seen)
+// settledOn is settled for a relay with no links of its own.
+func settledOn(rel *relayed) {
+	rel.Transported()
+	deliveredOn(hostsOf(rel)...)
+	rel.Transported()
 }
 
-// tabOf is a client connected to `server` as principal.
-func (g *gatedRelay) tabOf(principal data.Principal) Host {
-	g.t.Helper()
-	tab := newHost(g.t, HostOptions{OnError: func(HostError) {}})
-	mustLoad(g.t)(tab.Load(nil, background))
-	a, b := link.MemoryLinkPair()
-	must(g.t, g.Server.Accept(a, LinkOptions{Principal: principal, Codec: testCodec()}, background))
-	must(g.t, tab.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
-	g.links = append(g.links, a, b)
-	return tab
-}
-
-// rawTab is a raw tab on a new link the server accepts as principal.
-func (g *gatedRelay) rawTab(principal data.Principal) *RawPeer {
-	g.t.Helper()
-	a, b := link.MemoryLinkPair()
-	must(g.t, g.Server.Accept(a, LinkOptions{Principal: principal, Codec: testCodec()}, background))
-	g.links = append(g.links, a, b)
-	return newRawPeer(g.t, b, rawPeerOptions{})
+// wantKind is `expect(ref.state.value.kind).toBe(kind)`, read at once: Pi's test made its `await transported()` before it.
+func wantKind(t testing.TB, ref *Reference, kind RefStateKind) {
+	t.Helper()
+	if got := kindOf(ref); got != kind {
+		t.Fatalf("state = %s, want %s", got, kind)
+	}
 }
 
 // kindOf is `ref.state.value.kind`.
@@ -233,26 +202,10 @@ func toldOf(t testing.TB, err error) errorTold {
 	return errorTold{string(chordErr.Code), string(chordErr.Reason), chordErr.Message}
 }
 
-// wireTold is toldOf of a wire error.
-func wireTold(t testing.TB, wire link.WireError) errorTold {
-	t.Helper()
-	received, err := link.ErrorFromWire(wire)
-	must(t, err)
-	return toldOf(t, received)
-}
-
 func workerCount(rel *relayed) int {
 	count := 0
 	rel.Workers.Range(func(any, any) bool { count++; return true })
 	return count
-}
-
-func workerReferences(rel *relayed, key string) int {
-	worker := rel.Worker(key)
-	if worker == nil {
-		return 0
-	}
-	return activityOf(worker).References
 }
 
 // --- before the first allow ---------------------------------------------------------------------------------------------
@@ -281,8 +234,8 @@ func TestRouteAdmissionBeforeTheFirstAllowNothingIsResolvedOrForwardedADeniedHol
 			t.Fatalf("resolves = %v, workers = %d, want none", resolves, workers)
 		}
 		g.set("yes")
-		untilKind(t, notes, RefStateLive)
 		g.settled()
+		wantKind(t, notes, RefStateLive)
 		if count, err := notes.Member("count").Value(); err != nil || count != float64(0) {
 			t.Fatalf("count = %v, %v, want 0", count, err)
 		}
@@ -315,8 +268,8 @@ func TestRouteAdmissionBeforeTheFirstAllowRouteHandleRetryResolvesNothingWhileEv
 			t.Fatalf("resolves = %v, want none", resolves)
 		}
 		g.set("yes")
-		untilKind(t, notes, RefStateLive)
 		g.settled()
+		wantKind(t, notes, RefStateLive)
 		if resolves := g.Resolves(); len(resolves) != 1 || resolves[0] != "session|S1" {
 			t.Fatalf("resolves = %v, want session|S1", resolves)
 		}
@@ -324,7 +277,7 @@ func TestRouteAdmissionBeforeTheFirstAllowRouteHandleRetryResolvesNothingWhileEv
 }
 
 // Pi: "before the first allow › an admission holding a type placed behind its own route fails the hold invalid/cycle; a
-// throwing admit breaks it". Covers: route.path's ADMITTING refusal (production draft), decision.declare's error.
+// throwing admit breaks it". Covers: route.path's ADMITTING refusal (host_route_admission.go), decision.declare's error.
 func TestRouteAdmissionBeforeTheFirstAllowAnAdmissionHoldingATypePlacedBehindItsOwnRouteFailsTheHoldInvalidCycleAThrowingAdmitBreaksIt(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		cyclic := relay(t, relayedOptions{Admit: func(_ data.Principal, address contracts.Address, self AdmitSelf) (any, error) {
@@ -333,8 +286,8 @@ func TestRouteAdmissionBeforeTheFirstAllowAnAdmissionHoldingATypePlacedBehindIts
 		}})
 		defer closeHosts(t, cyclic.Tab, cyclic.Server)
 		notes := mustHold(t, cyclic.Tab, PlacedNotes, jsonObject("session", "S1"))
-		untilKind(t, notes, RefStateFailed)
-		cyclic.Transported()
+		settledOn(cyclic)
+		wantKind(t, notes, RefStateFailed)
 		cause := failedWith(t, notes)
 		if cause.Kind != data.FailureBroken || cause.Error.Code != data.CodeInvalid || cause.Error.Reason != data.ReasonCycle {
 			t.Fatalf("cause = %s %+v, want broken invalid/cycle", cause.Kind, cause.Error)
@@ -348,8 +301,8 @@ func TestRouteAdmissionBeforeTheFirstAllowAnAdmissionHoldingATypePlacedBehindIts
 		}})
 		defer closeHosts(t, throwing.Tab, throwing.Server)
 		broken := mustHold(t, throwing.Tab, PlacedNotes, jsonObject("session", "S1"))
-		untilKind(t, broken, RefStateFailed)
-		throwing.Transported()
+		settledOn(throwing)
+		wantKind(t, broken, RefStateFailed)
 		cause = failedWith(t, broken)
 		if cause.Kind != data.FailureBroken || !strings.Contains(cause.Error.Message, "admit threw") {
 			t.Fatalf("cause = %s %q, want broken: admit threw", cause.Kind, cause.Error.Message)
@@ -359,4 +312,3 @@ func TestRouteAdmissionBeforeTheFirstAllowAnAdmissionHoldingATypePlacedBehindIts
 		}
 	})
 }
-
