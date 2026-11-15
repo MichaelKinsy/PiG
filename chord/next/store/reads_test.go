@@ -198,11 +198,9 @@ func (w *readsWorld) opened(t *testing.T, handle *TableHandle, q *Query) *opened
 	spec := QuerySpec{Query: q, Table: handle.Sql.Table, Projection: Projection{}, Owner: handle}
 	// A binding changed: its one read runs again, as a live query's.
 	result.query = NewOpenQuery(ReadSite{Store: w.store, Batch: result.batch}, spec, ReadRows, func() {
-		result.loading.Add(1)
-		go func() {
-			defer result.loading.Done()
+		result.loading.Go(func() {
 			result.open.Load()
-		}()
+		})
 	}, background)
 	result.open = result.query.Read(ReadKind{Kind: "rows", Range: Range{Limit: 5}}, result.runs)
 	result.open.Load()

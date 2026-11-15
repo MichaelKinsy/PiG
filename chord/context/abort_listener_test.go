@@ -151,8 +151,7 @@ func TestOnAbortListensToEverySourceOfADerivedContext(t *testing.T) {
 }
 
 func TestOnAbortSaysWhatItCannotListenTo(t *testing.T) {
-	stdlib, cancelStdlib := context.WithCancel(context.Background())
-	defer cancelStdlib()
+	stdlib := t.Context()
 	under, cancelUnder := WithCancel(stdlib)
 	defer cancelUnder(nil)
 	cases := map[string]struct {

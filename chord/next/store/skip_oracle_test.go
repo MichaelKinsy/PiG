@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"testing"
@@ -519,9 +520,7 @@ func (d *oracleDefs) measured(t *testing.T, only []string, seed func(changes fun
 
 func oracleSession(id string, fields Row) Row {
 	row := Row{"id": id, "app": "club", "creator": "anna", "private": false, "state": "idle", "lastTouch": int64(100), "title": id}
-	for name, value := range fields {
-		row[name] = value
-	}
+	maps.Copy(row, fields)
 	return row
 }
 
