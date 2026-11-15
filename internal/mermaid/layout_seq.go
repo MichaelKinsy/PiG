@@ -192,7 +192,7 @@ func layoutSequence(seq *sequence) *canvas {
 	}
 	endRow := func(k int) int {
 		item := seq.items[k]
-		// A self-message stub returns two rows below where it left.
+		// A self-message loop returns two rows below where it left.
 		if item.kind == seqMessage && item.from == item.to {
 			return rows[k] + 2
 		}

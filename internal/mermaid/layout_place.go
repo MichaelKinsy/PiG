@@ -541,7 +541,7 @@ func placeLr(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 	// spreading or local returns here: LR boxes are three rows tall, so the
 	// centre row is the only usable port on a side.)
 	isSkip := func(e edge) bool { return e.from != e.to && ranks[e.to]-ranks[e.from] > 1 }
-	// A back-edge target's bottom-entry `▲` stub sits one row below its box; a
+	// A back-edge target's bottom-entry `▲` spur sits one row below its box; a
 	// straight run through that cell would appear to carry the arrival.
 	stubRows := map[int]bool{}
 	for _, e := range g.edges {

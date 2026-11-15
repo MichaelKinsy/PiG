@@ -273,7 +273,7 @@ func routeBackAdjacent(c *canvas, from, to placed, e edge, bus int) {
 	}
 }
 
-// routeSelf draws a self-edge: a stub loop hanging below the box.
+// routeSelf draws a self-edge: a short loop hanging below the box.
 func routeSelf(c *canvas, p placed, e edge) {
 	bottom := p.y + p.h - 1
 	exitX := p.cx + 1
