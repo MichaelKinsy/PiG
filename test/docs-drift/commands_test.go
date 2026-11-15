@@ -378,6 +378,7 @@ var foreignFlags = map[string]string{
 	"--json-only": "the model catalog generator (development.md)", "--json-output": "the model catalog generator (development.md)", "--strict": "the model catalog generator (development.md)",
 	// A hidden flag: `pig --help` omits it on purpose, because it is an explicit unsafe opt-in. Piglet runtime (coding/piglet/runtime.go) reads it.
 	"--unsafe-host":                "hidden unsafe opt-in of the Piglet runtime",
+	"--print-token":                "the bridge of the reference web client (examples/ui-view-web, a Node program; ui-views.md), not a pig flag",
 	"--no-install":                 "Bun, as PiG starts it for the TypeScript extension runtime (typescript-runtimes.md)",
 	"--config":                     "Bun, as PiG starts it for the TypeScript extension runtime (typescript-runtimes.md)",
 	"--no-env-file":                "Bun, as PiG starts it for the TypeScript extension runtime (typescript-runtimes.md)",

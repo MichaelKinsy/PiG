@@ -199,7 +199,7 @@ func statusOf(t *testing.T, url, host string) int {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	return res.StatusCode
 }
 
@@ -395,7 +395,7 @@ func TestBridgeSendsNoReferrerAndHoldsNoTokenForAnotherUser(t *testing.T) {
 			t.Fatal(err)
 		}
 		body, _ := io.ReadAll(res.Body)
-		res.Body.Close()
+		_ = res.Body.Close()
 		if res.StatusCode != c.status {
 			t.Errorf("GET %s = %d, want %d", c.path, res.StatusCode, c.status)
 		}
