@@ -64449,6 +64449,17 @@
       "shapeHash": "sha256:8a7ec676cf60126a9a7543f1fd16da23f83a9a5c169092bac9ca9e3774acc09c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#thinkingLevelSupported",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "thinkingLevelSupported",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(m *Model, level ModelThinkingLevel) bool"
+      },
+      "shapeHash": "sha256:08818dc1022392c2139d50e47e6306e7259ca4950da9e03a2eea79fff97b79aa"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#thinkingLevelUnsupported",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "thinkingLevelUnsupported",
@@ -343717,6 +343728,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.hiddenThinkingText",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AssistantMessageComponent.hiddenThinkingText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.invalidateStructureLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "AssistantMessageComponent.invalidateStructureLocked",
@@ -391919,6 +391941,17 @@
       "shapeHash": "sha256:301b93a043296526861390722dbf828cdcd2737239700bda2c9aa3ee26bcbc6d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#hiddenThinkingMemo",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "hiddenThinkingMemo",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "hiddenThinkingMemo"
+      },
+      "shapeHash": "sha256:7cd5e6ce625c81185cbfdf45d6aee246269ae1712008b5941983799a53d823f2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#hideImagesUnderOverlay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "hideImagesUnderOverlay",
@@ -399837,17 +399870,6 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#osc133ZonePrefix",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "osc133ZonePrefix",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#oscColorResponsePattern",
