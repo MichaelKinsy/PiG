@@ -456,6 +456,7 @@ export default function meter(pi) {
 
 - Every shape also takes the optional `key`, `fill`, `stroke: { color, width }`, `opacity` and `transform` (six numbers). A color is `#rrggbb`, `#rrggbbaa` or a theme color token.
 - `regions: [{ key, shape, gestures, intent, name, role }]` turns a gesture inside `shape` into a declared intent. `key` is unique among the regions. `shape` is a `rect`, an `ellipse` or a closed `polyline`. `gestures` lists `activate`, `press`, `release` or `drag`. `name` is required, and `role` is optional. The client tests which region a pointer is in, and it raises the intent with an argument of the intent's `arg` shape. Declare a region's intent without `nodeKey`.
+- A client raises a region's `activate` for a click, and a web page also raises it when Enter or Space reaches the focused region. The web page puts that `activate` at the centre of the region's shape, and its argument carries no mark that tells it from a click. The terminal draws no drawings, so it raises none. Keep a separate button for the default action, or give the region a shape whose centre is a place you can act on.
 - A drawing has at most 4096 shapes nested 8 deep, 1048576 pixels and 64 regions, and never more shapes or pixels than `abilities.drawing.shapes` and `abilities.drawing.pixels` (code `limit`).
 
 ## Slots
@@ -499,18 +500,18 @@ Every SDK has every call, and its mount takes the same members. The Go, Python, 
 | Capability | Terminal (`viewClient: terminal`) | Reference web page (`examples/ui-view-web`) |
 |---|---|---|
 | Slots | `widget-above` and `widget-below` (at most 10 rows each), `panel` (at most half the terminal's rows), `dialog`; every other slot is not drawn at this version | all twelve slots, each in its own section of the page |
-| `dialog` | a titled frame centred over the screen, eight tenths of the terminal's columns and rows; its `size.columns` and `size.rows` claims are the cells inside the frame. It takes the keys when it is shown, unless the user types in the editor: then it waits as one row above the editor (`<title>: F6 to enter`) and leaves an `unfocused` notice. Escape returns the keys to the editor, and the mount stays live. Several dialogs stack, the last on top. A hidden dialog is not listed | drawn in its section of the page, like every other slot |
-| Node kinds | every kind of [Nodes](#nodes) | every kind of [Nodes](#nodes) except `grid`, which is not drawn at this version |
-| Limits of one mount | 512 nodes, depth 16, 262144 snapshot bytes, 65536 text bytes, 16 mounts, 4096 intent argument bytes | 2048 nodes, depth 32, 1048576 snapshot bytes, 65536 text bytes, 32 mounts, 65536 intent argument bytes |
-| `title` | panels are tabs, labelled by `title`, or by `key` without one | not used at this version: a tab is labelled by `key` |
+| `dialog` | a titled frame centred over the screen, eight tenths of the terminal's columns and rows; its `size.columns` and `size.rows` claims are the cells inside the frame. It takes the keys when it is shown, unless the user types in the editor: then it waits as one row above the editor (`<title>: F6 to enter`) and leaves an `unfocused` notice. Escape returns the keys to the editor, and the mount stays live; with a `dismiss` intent, the first Escape raises it instead. Several dialogs stack, the last on top. A hidden dialog is not listed | drawn in its section of the page, like every other slot |
+| Node kinds | every kind of [Nodes](#nodes) | every kind of [Nodes](#nodes) |
+| Limits of one mount | 512 nodes, depth 16, 262144 snapshot bytes, 65536 text bytes, 16 mounts, 4096 intent argument bytes | 2048 nodes, depth 32, 4194304 snapshot bytes, 65536 text bytes, 32 mounts, 65536 intent argument bytes |
+| `title` | panels are tabs, labelled by `title`, or by `key` without one; a dialog frame carries it | the heading of the mount, and the label of a panel's tab, or `key` without one |
 | Intents with `nodeKey` | raised by the keys and clicks of the node | raised by the keys and clicks of the node |
-| Intents without `nodeKey` | raised by a binding only | a button on the mount, labelled with the intent's `name` |
-| `bindings` | keys work in a focused panel, and the named bindings are listed under it; gestures are not offered | not used at this version |
-| Hidden mount with `whenHidden` | a dim tab; Enter raises the intent | not offered at this version |
-| `dismiss` intent | not raised at this version: Escape returns the keys to the editor | not raised at this version |
-| Focus | F6 walks from the editor through the tabs and back, Escape returns to the editor | the `focus` order is the tab order |
+| Intents without `nodeKey` | raised by a binding only, apart from the `whenHidden` and `dismiss` intents of the rows below; for any other the plugin gets a notice that the terminal offers no control | a button in the mount's header, labelled with the intent's verb in words and titled with its `name`, unless a binding, a region of a drawing or `whenHidden` raises the intent |
+| `bindings` | keys work in a focused panel or dialog, and the named bindings are listed under it; gestures are not offered, and the plugin gets an `unsupported` notice | key bindings fire while the focus is in the mount, and a named one is also a button that shows its key; swipes are not offered, and the plugin gets an `unsupported` notice |
+| Hidden mount with `whenHidden` | a dim tab; Enter raises the intent | a button that reads the mount's title, in the list of hidden views above the prompt |
+| `dismiss` intent | raised with `{}` by Escape in a focused `dialog`; a second Escape returns the keys to the editor | raised with `{}` by Escape in a `dialog` or `overlay` mount |
+| Focus | F6 walks from the editor through the tabs and back, Escape returns to the editor; a `focus` record that requests it moves the keys to its node | the `focus` order is the tab order, and a changed `focus` record moves the focus to its node |
 | `a11y` | not used at this version | `name`, `description`, `role`, the states and the relations become ARIA attributes |
-| Drawings | not drawn at this version | not drawn at this version |
+| Drawings | not drawn at this version: the terminal states no drawing profile | drawn: the `scene` and `pixels` profiles, with each region of a drawing as a focusable element that takes the pointer and the keyboard |
 
 <!-- site-only:begin -->
 [Terminal UI](tui.md#extension-views) lists the terminal's rows and keys. [Piglets](piglets.md#view-client) describes `viewClient` and `viewEndpoint`.
