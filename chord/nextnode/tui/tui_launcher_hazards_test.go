@@ -145,7 +145,7 @@ func TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop(t 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	l := &Launcher{base: base, ctx: ctx, cancel: cancel, events: make(chan func(), eventQueue), loopDone: make(chan struct{}),
-		exited: make(chan int, 1), sockets: map[int]*linkSocket{}, term: nullTerminal{}, output: io.Discard}
+		exited: make(chan int, 1), ended: make(chan struct{}), sockets: map[int]*linkSocket{}, term: nullTerminal{}, output: io.Discard}
 	generation := 1
 	l.generation = generation
 	// Terminate waits for the sandbox's exit: closed here, the child is the test's.
