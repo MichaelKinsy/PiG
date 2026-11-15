@@ -884,7 +884,7 @@ const (
 	minTokenRatio = 1.0
 	// maxTokenRatio bounds a measured ratio against a corrupt usage, or one that counts what the messages do not hold (reasoning tokens): two
 	// tokens per four characters would already be a tokenizer of two characters per token.
-	maxTokenRatio = 2.0
+	maxTokenRatio = 2.0 // pig divergence (D167): the cap of the calibrated request size
 	// tokenRatioMargin is the slack on the calibrated estimate for what the estimate does not count: the request body's JSON framing and escapes
 	// (measured 2 to 3 % on the fake provider's bodies). Over the measurement grid (six window and output-cap shapes, a history of 30 to 120 % of the
 	// window, tokenizers of 4, 3.5, 3 and 2.5 characters per token, all with a usage that says so) 1.03 still had requests refused that the first
