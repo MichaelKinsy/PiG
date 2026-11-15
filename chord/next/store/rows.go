@@ -219,10 +219,7 @@ func (codec *RowCodec) Decode(ctx context.Context, stored sqlite.SqliteRow) (Row
 		if value == nil {
 			continue
 		}
-		switch column.Type {
-		case ColBool:
-			row[column.Name] = value == int64(1)
-		case ColJson:
+		if column.Type == ColJson {
 			version, err := sqlite.RowInt(stored, VersionColumn(column.Name))
 			if err != nil {
 				return nil, err
@@ -233,24 +230,38 @@ func (codec *RowCodec) Decode(ctx context.Context, stored sqlite.SqliteRow) (Row
 				return nil, err
 			}
 			row[column.Name] = cell
-		case ColNum:
-			if integer, ok := value.(int64); ok {
-				value = float64(integer)
-			}
-			row[column.Name] = value
-		default:
-			if column.Host != nil {
-				address, err := column.Host.Address(value.(string))
-				if err != nil {
-					return nil, err
-				}
-				row[column.Name] = address
-				continue
-			}
-			row[column.Name] = value
+			continue
 		}
+		cell, err := DecodeScalar(column, value)
+		if err != nil {
+			return nil, err
+		}
+		row[column.Name] = cell
 	}
 	return row, nil
+}
+
+// ScalarColumn is a column that is not a `json(...)` one: its cells are scalars (Pi's type of that name; Go has one
+// Column struct, so this is a name for the use).
+type ScalarColumn = Column
+
+// DecodeScalar is a stored scalar cell (not NULL) as reads return it: a boolean from 0 and 1, an address from a
+// `host(...)` key, a number as a float64 (SQLite stores a whole `num` as an integer).
+func DecodeScalar(column ScalarColumn, value sqlite.SqliteValue) (any, error) {
+	switch column.Type {
+	case ColBool:
+		return value == int64(1), nil
+	case ColNum:
+		if integer, ok := value.(int64); ok {
+			return float64(integer), nil
+		}
+	case ColStr:
+		// A `host(...)` column holds the keys of addresses of its kind.
+		if column.Host != nil {
+			return column.Host.Address(value.(string))
+		}
+	}
+	return value, nil
 }
 
 // Stored is a row as reads return it with its `host(...)` cell as stored (the address's key), for the evaluator, which
