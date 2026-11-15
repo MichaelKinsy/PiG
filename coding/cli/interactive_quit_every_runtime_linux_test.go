@@ -139,15 +139,14 @@ func TestInteractiveQuitWaitsForACommandInFlight(t *testing.T) {
 	}
 }
 
-// quitEscapeBound is how long pig may take to end after a key or a signal at the stopped TUI of a held quit. Pi 1.5.2 under tmux: 24 to 29 ms.
-const quitEscapeBound = 500 * time.Millisecond
-
 // TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds: a quit that a native command in flight holds (TestInteractiveQuitWaitsForACommandInFlight)
 // must have the escape Pi has. Pi's stop() removed its signal handlers, so at the stopped TUI ctrl+c, SIGINT, SIGTERM and SIGHUP each end Pi at once: exit 130, 130,
 // 143 and 129 after 24 to 29 ms (Pi 1.5.2 under tmux, a Node interval beside the silent handler). ctrl+d a second time does nothing, in Pi and in pig.
 //
 // pig took the second a pending dispose holds shutdownMu for ctrl+c (1.01 to 1.03 s), and for SIGTERM and SIGHUP its signal shutdown waited on that lock for ever: no
-// exit in 5 s.
+// exit in 5 s. No clock decides here: the command in flight stays held (its connection is never answered) up to the exit, so an exit that needed the lock to be released
+// cannot pass, and the exit is awaited up to the hang bound. The second that the interrupt of a pending quit must not wait is pinned by
+// TestInterruptOfAPendingQuitDoesNotWaitForItsLock (internal/codingagent). pig's own exit waits for its killed extension processes to be reaped (D19), as long as the load makes it.
 func TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds(t *testing.T) {
 	t.Parallel()
 	if _, err := exec.LookPath("tmux"); err != nil {
@@ -205,7 +204,6 @@ func TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds(t *t
 			if status, exited := p.status(); exited {
 				t.Fatalf("pig exited (status %d) while the command in flight had not finished", status)
 			}
-			ended := time.Now()
 			tc.end(p)
 			status := 0
 			p.await("pig's exit", func() bool {
@@ -213,9 +211,6 @@ func TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds(t *t
 				status = code
 				return exited
 			})
-			if took := time.Since(ended); took > quitEscapeBound {
-				t.Errorf("pig took %s to end after %s at the stopped TUI of a held quit, want at most %s (Pi: 24 to 29 ms)", took, tc.name, quitEscapeBound)
-			}
 			if status != tc.status {
 				t.Errorf("pig exited with status %d after %s, want %d", status, tc.name, tc.status)
 			}

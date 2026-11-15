@@ -214,9 +214,6 @@ import sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 func Extension() *sdk.Extension { return sdk.New("idle-go") }
 `
 
-// quitInterruptBound is how long pig may take to exit after a ctrl+c at a stopped TUI whose quit is held. The wait it must not make lasts a second.
-const quitInterruptBound = 500 * time.Millisecond
-
 // quitPane is one pig in interactive mode in the pane of a tmux server of its own. The pane stays when its program exits, so the exit status can be read.
 type quitPane struct {
 	t      *testing.T
@@ -581,15 +578,16 @@ func TestInteractiveQuitWithAnExtensionProviderTurnInFlight(t *testing.T) {
 				p.keys("Enter")
 			}
 			wantStatus := 0
-			var interrupted time.Time
 			if tc.held {
-				// ctrl+c at the stopped TUI ends Pi by the signal itself (its stop() removed its handlers), which a shell reports as 130; pig exits 130 from its handler.
+				// ctrl+c at the stopped TUI ends Pi by the signal itself (its stop() removed its handlers), which a shell reports as 130; pig exits 130 from its handler. That it does so
+				// at once (Pi: 130 after 28 to 32 ms under tmux) and does not spend a second on the lock that its pending dispose holds is pinned without a clock by
+				// TestInterruptOfAPendingQuitDoesNotWaitForItsLock (internal/codingagent). Here no time decides: pig's exit waits for its killed extension processes to be reaped
+				// (D19), which takes as long as the load makes it, so the exit is awaited up to the hang bound, and the author is never released.
 				wantStatus = 130
 				p.await("the stopped TUI", p.cooked)
 				if status, exited := p.status(); exited {
 					t.Fatalf("pig exited by itself (status %d) while its author's runtime, which cannot report an idle loop, had not answered", status)
 				}
-				interrupted = time.Now()
 				p.keys("C-c")
 			}
 			status := 0
@@ -600,11 +598,6 @@ func TestInteractiveQuitWithAnExtensionProviderTurnInFlight(t *testing.T) {
 			})
 			if status != wantStatus {
 				t.Errorf("pig exited with status %d after %s, want %d", status, tc.key, wantStatus)
-			}
-			// Pi's stop() removed its signal handlers, so the ctrl+c at the stopped TUI ends Pi at once: 130 after 28 to 32 ms under tmux. pig's handler has no shutdown
-			// event left to give a quit whose dispose is pending; it took 1.01 to 1.03 s, the second of shutdownExtensionsBriefly spent on a lock that dispose holds.
-			if took := time.Since(interrupted); tc.held && took > quitInterruptBound {
-				t.Errorf("pig took %s to exit after the ctrl+c at its stopped TUI, want at most %s (Pi: about 30 ms)", took, quitInterruptBound)
 			}
 			budget := testbudget.Wait(t)
 			deadline := time.Now().Add(budget)

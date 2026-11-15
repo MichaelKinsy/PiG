@@ -13894,6 +13894,30 @@
       "tests": []
     },
     {
+      "id": "BF-4246f80",
+      "title": "A ctrl+c, SIGTERM or SIGHUP that arrives as a quit by keys (ctrl+d, ctrl+c twice, `/quit`) hands the terminal…",
+      "symptom": "A ctrl+c, SIGTERM or SIGHUP that arrives as a quit by keys (ctrl+d, ctrl+c twice, `/quit`) hands the terminal back now ends PiG at once, as it ends Pi: Pi removes its signal handlers in the same call that restores the terminal, so no signal finds a quit that is still to dispose.",
+      "rootCause": "finishInteractiveShutdown held shutdownMu from its first line but set quitDisposing, the mark that interruptShutdown (ctrl+c) and ExitIfQuitting (SIGTERM, SIGHUP) read to skip that lock, only after stopInteractiveTui returned, and the terminal turns cooked inside stopInteractiveTui. A signal between the restore and the mark found the quit unmarked: interruptShutdown waited its second on the lock that the pending quit's dispose holds, ExitIfQuitting returned and the termination hook went on to ShutdownFromSignal, which waits on the same lock for ever. The window is the rest of stopInteractiveTui after the restore (a fullscreen transcript exit, the stop's own work); it was found by reading…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A ctrl+c, SIGTERM or SIGHUP that arrives as a quit by keys (ctrl+d, ctrl+c twice, `/quit`) hands the terminal back now ends PiG at once, as it ends Pi: Pi removes its signal handlers in the same call that restores the terminal, so no signal finds a quit that is still to dispose. PiG marked the quit as disposing only after the terminal was restored, so a signal in between waited a second (ctrl+c) or for ever (SIGTERM, SIGHUP) for a lock the pending quit holds. The window was introduced by the unreleased change that made these signals end a pending quit at once; no release has it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4246f80e83",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_quit_dispose_after_stop_unix_test.go::TestQuitByKeysIsMarkedDisposingBeforeTheTerminalTurnsCooked",
+        "internal/codingagent/interactive_quit_dispose_after_stop_unix_test.go::TestQuitByKeysThatEndsInACrashIsNotMarkedDisposing",
+        "internal/codingagent/interactive_quit_dispose_after_stop_unix_test.go::TestQuitSignalAtTheTerminalHandBackEndsThePendingQuit"
+      ]
+    },
+    {
       "id": "BF-4259631",
       "title": "An extension's direct call into a pi-ai API module (`openAICompletionsApi()` and the other bridged APIs)…",
       "symptom": "An extension's direct call into a pi-ai API module (`openAICompletionsApi()` and the other bridged APIs) sends the model's base URL as given, as Pi's API modules do.",

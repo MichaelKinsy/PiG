@@ -379,16 +379,19 @@ func (m *InteractiveMode) finishInteractiveShutdown() error {
 	m.shutdownMu.Lock()
 	defer m.shutdownMu.Unlock()
 	fromSignal := m.signalShutdownDone.Swap(true)
+	m.quitByKeys = !fromSignal
 	inputErr := m.stopTerminalInput()
 	m.remoteEditorEvents.drain()
 	m.stopInteractiveTui()
 	if err := m.requestedExitError(); err != nil {
+		m.quitDisposing.Store(false)
 		if inputErr != nil {
 			return errors.Join(inputErr, err)
 		}
 		return err
 	}
 	if !fromSignal {
+		// A stop that an earlier caller already ran marked nothing: the quit is pending from here at the latest.
 		m.quitDisposing.Store(true)
 		m.emitQuitShutdownAfterStop()
 		m.printResumeHint()

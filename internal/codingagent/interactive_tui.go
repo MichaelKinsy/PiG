@@ -417,6 +417,10 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	if drainErr != nil {
 		m.exitIfDeadTerminal(drainErr)
 	}
+	// upstream: interactive-mode.ts:7283-7300 (stop() restores the terminal and, as its last step, removes the signal handlers, in one synchronous call, so no signal reaches a handler of the quit after the terminal is cooked; shutdown calls it at :4505, before `await this.runtimeHost.dispose()`, :4506). The quit by keys holds shutdownMu from here to its dispose's end, and a signal that finds it unmarked would wait for that lock: SIGINT for a second, SIGTERM and SIGHUP for ever.
+	if m.quitByKeys {
+		m.quitDisposing.Store(true)
+	}
 	// A fullscreen exit that prints the transcript switches to the main-screen renderer without starting it, renders there, and stops it as a regular run stops: parked below the last line, then CRLF. The resume hint keeps the alternate screen's own preserve-screen exit.
 	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:stopInteractiveTui
 	if m.altScreen != nil && m.fullscreenExitOutput() == FullscreenExitOutputTranscript {
@@ -557,9 +561,13 @@ func (m *InteractiveMode) shutdownExtensionsBriefly() {
 		m.shutdownFromSignal(false)
 		close(done)
 	}()
+	wait := m.signalShutdownWait
+	if wait == 0 {
+		wait = time.Second
+	}
 	select {
 	case <-done:
-	case <-time.After(time.Second):
+	case <-time.After(wait):
 	}
 }
 
