@@ -421,7 +421,7 @@ func TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHea
 	}
 	var reported []string
 	for _, err := range b.errors.All() {
-		reported = append(reported, string(err.Kind)+":"+err.Table)
+		reported = append(reported, string(err.Kind)+":"+err.Query)
 	}
 	if strings.Join(reported, ",") != "query_failed:items" {
 		t.Fatalf("errors = %v", reported)

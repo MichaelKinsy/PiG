@@ -465,7 +465,7 @@ func (o *attemptQueryOwner) Label() string { return o.attempt.object.text }
 
 // Report reports a run's failure as `query_failed`.
 func (o *attemptQueryOwner) Report(err error) {
-	o.attempt.object.host.report(HostError{Kind: ErrQueryFailed, Object: o.attempt.object.text, Table: o.table, Error: err})
+	o.attempt.object.host.report(HostError{Kind: ErrQueryFailed, Object: o.attempt.object.text, Query: o.table, Error: err})
 }
 
 // Query implements StoreSelf: a live query is run before the object goes live (after its tables are prepared), again in
@@ -480,7 +480,7 @@ func (a *attempt) Query(given store.Table, q *store.Query, limit int64) chord.Wa
 		declared = declared || (table != nil && each.handle == table)
 	}
 	if !declared {
-		panic(declarationError("%s: self.query: the table is not one this factory declared", object.text))
+		panic(undeclaredTable(object.text, "query"))
 	}
 	if err := store.CheckLiveQuery(table.Definition, q, limit, object.text); err != nil {
 		panic(err)

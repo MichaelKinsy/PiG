@@ -321,6 +321,24 @@ func keyOption(what string, key []*HostKind) *HostKind {
 	panic(fmt.Sprintf("%s: expected at most one key host kind, got %d", what, len(key)))
 }
 
+// QueriesMember is a queries member's declaration (slice 14 §3.1): named queries over one of the object's tables, each with
+// the schema of its arguments (Args, in declaration order, upstream's `QueryArguments`), whose rows are values of Item; only
+// in local contracts.
+type QueriesMember struct {
+	Item Schema
+	Args []Property
+}
+
+func (*QueriesMember) localMember() {}
+
+// Queries declares a queries member of a local contract: the named queries other objects on the host may read, each with its
+// argument schema (part of the fingerprint). The handle of `self.queries(...)` implements it. A nil args is no object (as for
+// Params) and is refused when the contract is declared; an opt(...) item panics as Keyed's schema does.
+func Queries(item Schema, args []Property) *QueriesMember {
+	refuseOptional("Queries", item)
+	return &QueriesMember{Item: item, Args: args}
+}
+
 // EventDeclaration is an event member's declaration in a local contract's flat members (decision "Events:
 // fire-and-forget members"): the schema of the JSON values its object emits.
 type EventDeclaration struct {
@@ -367,7 +385,7 @@ func NewMethod(sides ...Schema) *Method {
 	return method
 }
 
-// LocalMember is a local contract's member: a state schema (Schema), a *Method, a *KeyedMember or an *EventDeclaration.
+// LocalMember is a local contract's member: a state schema (Schema), a *Method, a *KeyedMember, a *QueriesMember or an *EventDeclaration.
 type LocalMember interface {
 	localMember()
 }

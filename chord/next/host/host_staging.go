@@ -432,7 +432,7 @@ func (r *recordingSelf) Query(_ store.Table, q *store.Query, limit int64) chord.
 	label := r.object.text
 	table, declared := r.tables.get(q.Table.Name)
 	if !declared || table != q.Table {
-		panic(declarationError("%s: self.query: the table is not one this factory declared", label))
+		panic(undeclaredTable(label, "query"))
 	}
 	if err := store.CheckLiveQuery(table, q, limit, label); err != nil {
 		panic(err)
