@@ -402,11 +402,10 @@ func (*recordingDocuments) Fail(*data.ChordError) {}
 // inertTableOwner is the owner of a recording's table handles: never live, so every read and query returns errInert.
 type inertTableOwner struct{ label string }
 
-func (o inertTableOwner) Label() string               { return o.label }
-func (o inertTableOwner) Scope() any                  { return nil }
-func (o inertTableOwner) Queries() *store.LiveQueries { return nil }
-func (o inertTableOwner) AssertLive() error           { return errInert }
-func (o inertTableOwner) Fail(*data.ChordError)       {}
+func (o inertTableOwner) Label() string         { return o.label }
+func (o inertTableOwner) Scope() any            { return nil }
+func (o inertTableOwner) AssertLive() error     { return errInert }
+func (o inertTableOwner) Fail(*data.ChordError) {}
 
 // Table implements StoreSelf.
 func (r *recordingSelf) Table(definition *store.TableDefinition) store.Table {

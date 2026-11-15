@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -304,4 +306,56 @@ func TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample(t *testing.
 	if finished != 3 {
 		t.Fatalf("finished = %d, want 3", finished)
 	}
+}
+
+// runSink is what a read hands its runs to.
+type runSink struct {
+	mu   sync.Mutex
+	runs []store.ReadRun
+}
+
+func (sink *runSink) Adopt(run store.ReadRun) {
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	sink.runs = append(sink.runs, run)
+}
+
+func (sink *runSink) taken() []store.ReadRun {
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	return slices.Clone(sink.runs)
+}
+
+// Pi packages/chord/src/documents/transaction.ts `#refreshQueries` (slice 14 §3.2) stages the refresh of the store's reads
+// whether or not a read exists now: "one opened while this commit waits is refreshed too". Pi has no test at the
+// transaction: its reads.test.ts and live-query.test.ts reach it through a host, a refresh built by hand, or
+// `pausedPut` (store/reads_test.go here). This test commits a transaction that wrote a table, with no read over it when the
+// commit was staged: a read opened while the commit waits in the queue runs in its step and its run is adopted.
+func TestTablesInATransactionTheReadRefreshIsStagedEvenWithoutAReadAReadOpenedWhileTheCommitWaitsRuns(t *testing.T) {
+	s := storedOn(t, nil, false, nil)
+	edits := changeTables(t, s, 1)[0]
+	held := newHeldWrite()
+	holding := make(chan error, 1)
+	go func() {
+		_, err := s.store.Commit([]store.StagedWrite{held}, openFence, background)
+		holding <- err
+	}()
+	<-held.entered
+	queued := goTx(s.attempts[0], func(tx Tx) (any, error) {
+		return nil, tx.Put(edits, store.Row{"id": "e1", "path": "a/1", "hits": int64(1)})
+	}, background)
+	waitFor(t, "the commit queued in the store", func() bool { return commitQueued(s.o) })
+	// The commit is staged and no read of the table exists: this one is opened now, with no result (never skipped).
+	sink := &runSink{}
+	spec := store.QuerySpec{Query: store.NewQuery(edits.Definition), Table: edits.Sql.Table, Projection: store.Projection{}, Owner: edits}
+	open := store.NewOpenQuery(store.ReadSite{Store: s.store, Batch: s.o.batch}, spec, store.ReadRows, func() {}, background)
+	open.Read(store.ReadKind{Kind: "rows", Range: store.Range{Limit: 5}}, sink)
+	held.release()
+	<-holding
+	requireNoError(t, awaitTx(t, queued).err)
+	runs := sink.taken()
+	if len(runs) != 1 || runs[0].Kind != "rows" || len(runs[0].Result.Rows) != 1 || runs[0].Result.Rows[0]["id"] != "e1" {
+		t.Fatalf("runs adopted = %+v, want the one run of the commit's step, with the row it wrote", runs)
+	}
+	open.Close()
 }

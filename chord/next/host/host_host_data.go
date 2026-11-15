@@ -313,10 +313,10 @@ type slotRead struct {
 	changed documents.ChangedDocument
 }
 
-// queryRead is a live query a change re-runs and adopts.
+// queryRead is a read of the store a change runs again and adopts.
 type queryRead struct {
-	query *store.LiveQuery
-	run   store.QueryRun
+	read *store.RegisteredRead
+	run  store.ReadRun
 }
 
 // hostDataReads is what the live owners hold of a host's data, read again inside the commit step, after its writes.
@@ -370,10 +370,9 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 				}
 			}
 		}
-		for _, object := range objects {
-			for _, query := range object.queries().OnHostKind(kind) {
-				queries = append(queries, &queryRead{query: query})
-			}
+		// Every read over a table with a host column of the kind, joined and `exists` tables included (slice 14 §5).
+		for _, read := range site.store.Reads.OnHostKind(kind) {
+			queries = append(queries, &queryRead{read: read})
 		}
 	})
 	// Counted and adopted under the caller's telemetry; nothing after admission is cancelled by its signal.
@@ -387,7 +386,8 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 			each.changed = changed
 		}
 		for _, each := range queries {
-			each.run = each.query.Rerun(step, quiet)
+			each.run = each.read.Run(step, quiet)
+			each.read.Ran(step.Executor, each.run)
 		}
 		return nil
 	}}
@@ -409,7 +409,7 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 						}
 						// Each read ran in the step before `COMMIT`.
 						for _, each := range queries {
-							each.query.Adopt(each.run)
+							each.read.Adopt(each.run)
 						}
 						return nil
 					}, quiet)

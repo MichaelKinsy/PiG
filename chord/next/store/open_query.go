@@ -280,8 +280,10 @@ func (read *OpenRead) Load() *ReadRun {
 	}
 	if compiled.Err != nil {
 		failed := ReadRun{Kind: "failed", Err: compiled.Err}
-		// The adoption has no error to return.
-		_ = site.Batch.Within(func() error { read.sink.Adopt(failed); return nil }, ctx)
+		// The adoption has no error to return; it runs in a section of the host (a first run is read outside them).
+		site.Batch.Section(func() {
+			_ = site.Batch.Within(func() error { read.sink.Adopt(failed); return nil }, ctx)
+		})
 		return &failed
 	}
 	read.mu.Lock()
@@ -304,7 +306,9 @@ func (read *OpenRead) Load() *ReadRun {
 	if overtaken {
 		return nil
 	}
-	_ = site.Batch.Within(func() error { registered.Adopt(run); return nil }, ctx)
+	site.Batch.Section(func() {
+		_ = site.Batch.Within(func() error { registered.Adopt(run); return nil }, ctx)
+	})
 	return &run
 }
 

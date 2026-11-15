@@ -316,8 +316,9 @@ type attempt struct {
 	// tables are the tables it declared, by name.
 	tables     []declaredTable
 	tableNames map[string]struct{}
-	// queries are its live queries, run at activation (after the tables are prepared), detached at its end.
-	queries []*store.LiveQuery
+	// queries are its own live queries with what each reads, run at activation (after the tables are prepared), detached at
+	// its end.
+	queries []ownQuery
 	// references are those this attempt declared with `self.get`.
 	references []declaredReference
 	// dependencies are its dependencies (`self.get` references and `self.registry` values) in declaration order: the parked
@@ -437,9 +438,6 @@ func (o *attemptTableOwner) Label() string { return o.attempt.object.text }
 // Scope is the object's documents: a transaction of another object refuses the handle.
 func (o *attemptTableOwner) Scope() any { return o.attempt.object.documents }
 
-// Queries are the object's live queries, across its attempts: what a commit writing a table re-runs.
-func (o *attemptTableOwner) Queries() *store.LiveQueries { return o.attempt.object.queries() }
-
 // AssertLive returns `released` once the object ended. Table reads call it from a handler's goroutine, outside the host's
 // sections, where the object's end (a section) may write the state it reads: it takes a section of its own (Go form of
 // Pi's single thread; Run is inline when the caller is in one).
@@ -454,10 +452,17 @@ func (o *attemptTableOwner) Fail(err *data.ChordError) {
 	o.attempt.object.failLive(o.attempt, liveFailure{kind: data.FailureBroken, err: err})
 }
 
+// ownQuery is one of an attempt's own live queries (`self.query`) and what it reads.
+type ownQuery struct {
+	live   *store.LiveQuery
+	target store.LiveTarget
+}
+
 // attemptQueryOwner is the attempt's object as the owner of a live query: failures after its activation are reported.
 type attemptQueryOwner struct {
 	attempt *attempt
-	table   string
+	// query is what `query_failed` names: the table's name for `self.query`.
+	query string
 }
 
 // Label names the object in messages.
@@ -465,7 +470,7 @@ func (o *attemptQueryOwner) Label() string { return o.attempt.object.text }
 
 // Report reports a run's failure as `query_failed`.
 func (o *attemptQueryOwner) Report(err error) {
-	o.attempt.object.host.report(HostError{Kind: ErrQueryFailed, Object: o.attempt.object.text, Query: o.table, Error: err})
+	o.attempt.object.host.report(HostError{Kind: ErrQueryFailed, Object: o.attempt.object.text, Query: o.query, Error: err})
 }
 
 // Query implements StoreSelf: a live query is run before the object goes live (after its tables are prepared), again in
@@ -485,9 +490,23 @@ func (a *attempt) Query(given store.Table, q *store.Query, limit int64) chord.Wa
 	if err := store.CheckLiveQuery(table.Definition, q, limit, object.text); err != nil {
 		panic(err)
 	}
-	live := store.NewLiveQuery(table, q, limit, &attemptQueryOwner{attempt: a, table: table.Definition.Name}, object.host.batch)
-	table.Owner.Queries().Add(live)
-	a.queries = append(a.queries, live)
+	definition := table.Definition
+	// The owner's window: its value the rows themselves.
+	live := store.NewLiveQuery(store.ReadSite{Store: table.Store, Batch: object.host.batch}, &attemptQueryOwner{attempt: a, query: definition.Name}, store.LiveShape{
+		Kind: "rows",
+		// Checked above: a positive integer.
+		Range:   store.Range{Limit: int(limit)},
+		Present: func(rows []delta.JsonValue, _ bool) delta.JsonValue { return rows },
+	})
+	target := store.LiveTarget{
+		// The query is of `table`'s (checked above); every column of the row is read.
+		Spec: store.QuerySpec{Query: q, Table: table.Sql.Table, Projection: store.Projection{}, Owner: table},
+		// A table's rows hold its columns' values: scalars and JSON.
+		Decode: func(stored store.StoredRead, ctx context.Context) (delta.JsonValue, error) {
+			return store.DecodedRowJSON(definition, stored, ctx)
+		},
+	}
+	a.queries = append(a.queries, ownQuery{live: live, target: target})
 	return Expose(live)
 }
 
@@ -1318,8 +1337,8 @@ func (a *attempt) detach() {
 	for _, derive := range a.derives {
 		derive.Detach(ended)
 	}
-	for _, query := range a.queries {
-		query.Detach(ended)
+	for _, each := range a.queries {
+		each.live.Detach(ended)
 	}
 	for _, follow := range a.follows {
 		follow.detach()
@@ -1520,7 +1539,7 @@ func (a *attempt) loadQueries(index int, done func(err error)) {
 		return
 	}
 	each := a.queries[index]
-	awaitTask(a.object.host, func() (struct{}, error) { return struct{}{}, each.Load(a.opening) }).then(
+	awaitTask(a.object.host, func() (struct{}, error) { return struct{}{}, each.live.Load(each.target, a.opening) }).then(
 		func(_ struct{}, err error) {
 			if err != nil {
 				done(err)
