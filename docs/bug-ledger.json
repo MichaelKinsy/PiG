@@ -4778,32 +4778,6 @@
       ]
     },
     {
-      "id": "BF-24de752",
-      "title": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential…",
-      "symptom": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential files) now gets the mode its writer asks for with your umask taken out, as in Pi.",
-      "rootCause": "A file that did not exist yet was created 0600 and then chmodded to the mode the caller asked for, which no umask touches: a caller asking 0666 (mcp.json, the keybindings migration) got a world-writable file where Pi writeFileSync gives rw-r--r-- under umask 022, and one asking 0644 got a group- and world-readable file under umask 077. A new file is now created with open(O_CREAT|O_EXCL, perm) (Unix), so the kernel applies the umask and the default ACL as for Pi; an existing file keeps its temporary file private and is given exactly its own mode at the end. The umask is never read (reading it sets it, which races with other threads creating files).",
-      "rootCauseSource": "commit",
-      "userImpact": "Credential or permission exposure",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential files) now gets the mode its writer asks for with your umask taken out, as in Pi. The replacing write gave it exactly the requested mode: an MCP config could be created `rw-rw-rw-` under umask 022, and a settings, trust or keybindings file `rw-r--r--` under umask 077. `settings.json`, `trust.json` and `keybindings.json` now ask for Pi's mode (0666 before the umask). A file that exists keeps its mode. \u003c!-- cause: the helper chmodded the new temporary file to the requested mode, which no umask touches, and no test crossed the requested mode with the umask --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "24de752074",
-          "date": "2026-11-14"
-        },
-        {
-          "hash": "65de6ddd86",
-          "date": "2026-11-14"
-        }
-      ],
-      "tests": [
-        "internal/atomicfile/umask_test.go::TestWriteFileGivesANewFileTheModeOpenGives"
-      ]
-    },
-    {
       "id": "BF-25a90ea",
       "title": "fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)",
       "symptom": "fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)",
@@ -5006,6 +4980,65 @@
         "test/extension-conformance/serialize_conversation_test.go::TestConformance_SerializeConversationAgreesAcrossSDKs",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-26b210c",
+      "title": "On Windows a credential or settings write that Windows refuses because another program holds the file open…",
+      "symptom": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.",
+      "rootCause": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows",
+      "class": "ahead-of-pi",
+      "divergence": "D651",
+      "removeWhen": "(A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once. \u003c!-- cause: the list of transient errors held the access, sharing and lock errors only, so the two refusals of ReplaceFileW that leave both files under their names were returned without the retry the divergence record promises --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "26b210c014",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "ab6595bc39",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/acl_linux_test.go::TestWriteFileKeepsExactlyTheAccessOfTheFileItReplaces",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile",
+        "internal/atomicfile/inplace_test.go::TestWriteFileCannotCreateAFileInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReplacesAPlainFileAndReportsNothing",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReportsARealFailureOfTheInPlaceWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceThroughAHardLink",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceWhereTheRenameIsRefused",
+        "internal/atomicfile/linknode_test.go::TestWriteFileThroughALinkEndsWhereAnInPlaceWriteEnds",
+        "internal/atomicfile/nonregular_test.go::TestWriteFileWritesANonRegularTargetInPlace",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
+        "internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFailsLikeWriteFileSyncForALinkItCannotFollow",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFollowsAChainOfLinksToAMissingTarget",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFollowsALinkToAMissingTarget",
+        "internal/atomicfile/syncdir_test.go::TestWriteFileReportsADirectorySyncFailure",
+        "internal/atomicfile/syncdir_test.go::TestWriteFileToleratesAFileSystemThatCannotSyncADirectory",
+        "internal/atomicfile/umask_test.go::TestWriteFileGivesANewFileTheModeOpenGives",
+        "internal/atomicfile/xattr_grow_test.go::TestGetXattrReadsAnAttributeThatGrowsBetweenTheCalls",
+        "internal/atomicfile/xattr_test.go::TestWriteFileCarriesExtendedAttributesOver",
+        "internal/atomicfile/xattr_test.go::TestWriteFileKeepsAPosixACL",
+        "internal/atomicfile/xattr_test.go::TestWriteFileWritesInPlaceWhenAnAttributeCannotBeCarried",
+        "internal/codingagent/state_file_mode_test.go::TestStateFilesGetPiModeUnderUmask",
+        "internal/fsretry/transient_codes_test.go::TestTransientWindowsCode",
+        "internal/fsretry/transient_windows_test.go::TestTransientRenameClassifiesWindowsErrors"
       ]
     },
     {
@@ -8390,30 +8423,6 @@
       ]
     },
     {
-      "id": "BF-3e06d84",
-      "title": "A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a…",
-      "symptom": "A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does.",
-      "rootCause": "Root-Cause: syncDirectory answered a bool that its only caller ignored, written as one tolerance for every failure because the unsupported case was the one anticipated. Signed-off-by: Michael Kinsy \u003c54590707+MichaelKinsy@users.noreply.github.com\u003e",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a file system that has no directory flush is still accepted. A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does. \u003c!-- cause: the directory flush answered a value its only caller dropped, and the link was resolved with filepath.EvalSymlinks alone, which has no answer for a missing target --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "085dad13a2",
-          "date": "2026-11-14"
-        },
-        {
-          "hash": "3e06d84430",
-          "date": "2026-11-14"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-3e755ef",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -8870,6 +8879,26 @@
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchWritesJSONStringifyText",
         "internal/codingagent/trust_store_stringify_test.go::TestProjectTrustStoreWritesJSONStringifyInUTF16KeyOrder"
       ]
+    },
+    {
+      "id": "BF-41120c0",
+      "title": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the…",
+      "symptom": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.",
+      "rootCause": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it. \u003c!-- cause: the helper copied the attributes the replaced file has and never removed what the new file inherited, and no test put a default ACL on the directory --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "41120c0e67",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-411a8cb",
@@ -12012,6 +12041,30 @@
       ]
     },
     {
+      "id": "BF-541820e",
+      "title": "A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a…",
+      "symptom": "A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does.",
+      "rootCause": "Root-Cause: syncDirectory answered a bool that its only caller ignored, written as one tolerance for every failure because the unsupported case was the one anticipated. Signed-off-by: Michael Kinsy \u003c54590707+MichaelKinsy@users.noreply.github.com\u003e",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a file system that has no directory flush is still accepted. A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does. \u003c!-- cause: the directory flush answered a value its only caller dropped, and the link was resolved with filepath.EvalSymlinks alone, which has no answer for a missing target --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4dfa69b67e",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "541820ef23",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-54283ce",
       "title": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
       "symptom": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
@@ -13820,26 +13873,6 @@
         "ai/faux_duration_test.go::TestFauxScriptedDurationMsReachesEveryMessage",
         "ai/faux_scripted_fields_oracle_test.go::TestFauxScriptedMessageMembersMatchPi"
       ]
-    },
-    {
-      "id": "BF-5e106cc",
-      "title": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the…",
-      "symptom": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.",
-      "rootCause": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.",
-      "rootCauseSource": "release note",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it. \u003c!-- cause: the helper copied the attributes the replaced file has and never removed what the new file inherited, and no test put a default ACL on the directory --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "5e106cc28d",
-          "date": "2026-11-14"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-5e36d87",
@@ -28299,6 +28332,32 @@
       ]
     },
     {
+      "id": "BF-9b91740",
+      "title": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential…",
+      "symptom": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential files) now gets the mode its writer asks for with your umask taken out, as in Pi.",
+      "rootCause": "A file that did not exist yet was created 0600 and then chmodded to the mode the caller asked for, which no umask touches: a caller asking 0666 (mcp.json, the keybindings migration) got a world-writable file where Pi writeFileSync gives rw-r--r-- under umask 022, and one asking 0644 got a group- and world-readable file under umask 077. A new file is now created with open(O_CREAT|O_EXCL, perm) (Unix), so the kernel applies the umask and the default ACL as for Pi; an existing file keeps its temporary file private and is given exactly its own mode at the end. The umask is never read (reading it sets it, which races with other threads creating files).",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential files) now gets the mode its writer asks for with your umask taken out, as in Pi. The replacing write gave it exactly the requested mode: an MCP config could be created `rw-rw-rw-` under umask 022, and a settings, trust or keybindings file `rw-r--r--` under umask 077. `settings.json`, `trust.json` and `keybindings.json` now ask for Pi's mode (0666 before the umask). A file that exists keeps its mode. \u003c!-- cause: the helper chmodded the new temporary file to the requested mode, which no umask touches, and no test crossed the requested mode with the umask --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9b91740704",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "c7b4ed4b93",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/umask_test.go::TestWriteFileGivesANewFileTheModeOpenGives"
+      ]
+    },
+    {
       "id": "BF-9ba2589",
       "title": "fix(agent): write a decoded message as the object it was decoded from",
       "symptom": "fix(agent): write a decoded message as the object it was decoded from",
@@ -29585,37 +29644,6 @@
       ],
       "tests": [
         "schema/errors_golden_test.go::TestHandWrittenCaseErrorsMatchPi"
-      ]
-    },
-    {
-      "id": "BF-a1c68e2",
-      "title": "Reading an extended attribute that is set between the size query and the read no longer panics, and on…",
-      "symptom": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.",
-      "rootCause": "The call now gives a backup name, with which every state is known: 1175 and 1176 leave both files under their names (the file at path is the old one), 1177 leaves the original as the backup and nothing at path. 1177 is finished by moving the replacement into place (its DACL first taken from the backup), reversed by moving the backup back when that fails, and when neither can be done both files are kept and named in the error; the temporary file of such a failure is never deleted. A success deletes the backup. The decision is platform-neutral code tested with injected file systems; the syscall itself was NOT RUN (no Windows host).",
-      "rootCauseSource": "commit",
-      "userImpact": "Credential or permission exposure",
-      "platform": "Windows",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back. \u003c!-- cause: the read retried on ERANGE only, which a zero-length buffer never gets, and the Windows call gave no backup name, so a failure left the replaced file deleted and the cleanup removed the replacement --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "58e14d8f3f",
-          "date": "2026-11-14"
-        },
-        {
-          "hash": "a1c68e2beb",
-          "date": "2026-11-14"
-        }
-      ],
-      "tests": [
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess",
-        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
-        "internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles"
       ]
     },
     {
@@ -33160,28 +33188,6 @@
       ]
     },
     {
-      "id": "BF-ba5258e",
-      "title": "On Windows a credential or settings write that Windows refuses because another program holds the file open…",
-      "symptom": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.",
-      "rootCause": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.",
-      "rootCauseSource": "release note",
-      "userImpact": "Credential or permission exposure",
-      "platform": "Windows",
-      "class": "ahead-of-pi",
-      "divergence": "D651",
-      "removeWhen": "(A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.",
-      "fixedIn": "Unreleased",
-      "releaseNote": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once. \u003c!-- cause: the list of transient errors held the access, sharing and lock errors only, so the two refusals of ReplaceFileW that leave both files under their names were returned without the retry the divergence record promises --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "ba5258e0ef",
-          "date": "2026-11-14"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-ba5e8ab",
       "title": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned…",
       "symptom": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory.",
@@ -35629,6 +35635,26 @@
         {
           "hash": "cb3eb3bea2",
           "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-cb4481f",
+      "title": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an…",
+      "symptom": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an ordinary file, for example a device such as `/dev/null` or a named pipe, no longer swaps that node for a regular file. pig writes such a target in place, as Pi does, so the bytes reach the device and a full-device error is reported; no temporary file is made for it.",
+      "rootCause": "For a device node (/dev/null, /dev/full) or a named pipe in a directory the process can write, the rename removed the node and left an ordinary file with the node's mode: the bytes never reached the device, a full-disk error was not returned, and a 0666 node became a 0666 credential file. Pi's writeFileSync writes to the node.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an ordinary file, for example a device such as `/dev/null` or a named pipe, no longer swaps that node for a regular file. pig writes such a target in place, as Pi does, so the bytes reach the device and a full-device error is reported; no temporary file is made for it. \u003c!-- cause: the shared writer treated every existing target as a regular file and replaced it by rename, which removed a device or pipe and left an ordinary file with the node's mode. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb4481fdbc",
+          "date": "2026-11-14"
         }
       ],
       "tests": []
@@ -43412,6 +43438,37 @@
       ]
     },
     {
+      "id": "BF-ee5045c",
+      "title": "Reading an extended attribute that is set between the size query and the read no longer panics, and on…",
+      "symptom": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.",
+      "rootCause": "The call now gives a backup name, with which every state is known: 1175 and 1176 leave both files under their names (the file at path is the old one), 1177 leaves the original as the backup and nothing at path. 1177 is finished by moving the replacement into place (its DACL first taken from the backup), reversed by moving the backup back when that fails, and when neither can be done both files are kept and named in the error; the temporary file of such a failure is never deleted. A success deletes the backup. The decision is platform-neutral code tested with injected file systems; the syscall itself was NOT RUN (no Windows host).",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back. \u003c!-- cause: the read retried on ERANGE only, which a zero-length buffer never gets, and the Windows call gave no backup name, so a failure left the replaced file deleted and the cleanup removed the replacement --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ea2e967070",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "ee5045c2d1",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
+        "internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles"
+      ]
+    },
+    {
       "id": "BF-ee5fdb1",
       "title": "`pig status` no longer reports a shared extension name as an unhealthy duplicate",
       "symptom": "`pig status` no longer reports a shared extension name as an unhealthy duplicate.",
@@ -43838,26 +43895,6 @@
         "ai/mistral_chunk_member_type_oracle_test.go::TestMistralChunkMistypedMembersMatchPi",
         "ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesMistypedMembersMatchPi"
       ]
-    },
-    {
-      "id": "BF-f1f2471",
-      "title": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an…",
-      "symptom": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an ordinary file, for example a device such as `/dev/null` or a named pipe, no longer swaps that node for a regular file. pig writes such a target in place, as Pi does, so the bytes reach the device and a full-device error is reported; no temporary file is made for it.",
-      "rootCause": "For a device node (/dev/null, /dev/full) or a named pipe in a directory the process can write, the rename removed the node and left an ordinary file with the node's mode: the bytes never reached the device, a full-disk error was not returned, and a 0666 node became a 0666 credential file. Pi's writeFileSync writes to the node.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an ordinary file, for example a device such as `/dev/null` or a named pipe, no longer swaps that node for a regular file. pig writes such a target in place, as Pi does, so the bytes reach the device and a full-device error is reported; no temporary file is made for it. \u003c!-- cause: the shared writer treated every existing target as a regular file and replaced it by rename, which removed a device or pipe and left an ordinary file with the node's mode. --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "f1f2471bdf",
-          "date": "2026-11-14"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-f20cc08",
@@ -48185,7 +48222,7 @@
     {
       "id": "D651",
       "title": "Credential and state files are replaced through a temporary file where that changes nothing but the inode…",
-      "entry": "BF-ba5258e"
+      "entry": "BF-26b210c"
     }
   ],
   "exemptCommits": {
