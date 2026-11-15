@@ -968,3 +968,10 @@ commit = "599e3ddb3157cf09ae67c58c0fa659612c2edac6"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "A test-helper expectation for the isolated home: Go telemetry is switched off there so no sidecar writes into a removed home. No Pi behavior is involved."
+
+[[entry]]
+path = "ai/auth_pi_lock_test.go"
+commit = "241a0a8c599c4951bf031fc1c6e63ff07494e854"
+class = "CITE"
+cite = "packages/coding-agent/src/core/auth-storage.ts:188"
+reason = "Pi withLockAsync (auth-storage.ts:188) writes the modifier's result with writeFileSync as long as its heartbeat has not reported a compromise yet, and throws only after it has (throwIfCompromised, TestAuthStorageLockCompromisedDuringModifyUpstream). The Go test that expected no write whenever the lock file had been removed inside the modifier is renamed and now expects the modifier's credential and the other providers in the file; the reported-compromise case stays an error and is covered by the upstream test."
