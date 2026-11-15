@@ -742,11 +742,22 @@ type relayPause struct {
 	seconds int
 }
 
-// relayThrottled is a tab throttled to 64 KiB/s holding the 500 KB document view of a worker that streams a reply at 100
+// relayThrottled runs relayThrottledRun once per iteration, each on a fresh fixture: the scenario consumes its tab and
+// worker (a stalled link, a streamed reply, a reset producer), so an iteration cannot continue the previous one.
+func relayThrottled(b *testing.B, relayed bool, pause relayPause) {
+	b.ReportAllocs()
+	for b.Loop() {
+		b.StopTimer()
+		relayThrottledRun(b, relayed, pause)
+		b.StartTimer()
+	}
+}
+
+// relayThrottledRun is a tab throttled to 64 KiB/s holding the 500 KB document view of a worker that streams a reply at 100
 // tokens/s, in virtual time (10 ms steps): 2 s of streaming, the pause, 10 s more of streaming, then until the tab caught
 // up. relayed: through a server (it forwards at once, the worker folds the tab origin's ops); direct: on the worker (it
-// folds the ops in its pending queues).
-func relayThrottled(b *testing.B, relayed bool, pause relayPause) {
+// folds the ops in its pending queues). The fixture is built and closed with the timer stopped; only the scenario is timed.
+func relayThrottledRun(b *testing.B, relayed bool, pause relayPause) {
 	b.Helper()
 	var throttle *throttledLink
 	if relayed {
@@ -838,38 +849,37 @@ func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *thrott
 		throttle.step(relayStep)
 		settle()
 	}
-	b.ReportAllocs()
-	if b.Loop() {
-		for range 2000 / relayStep {
-			step(true, false)
-		}
-		for !caughtUp() {
-			step(false, false)
-		}
-		heap0 := benchSettledHeap()
-		throttle.setStalled(pause.stall)
-		for range pause.seconds * 1000 / relayStep {
-			step(true, true)
-		}
-		heap := int64(benchSettledHeap()) - int64(heap0)
-		throttle.setStalled(false)
-		stallEnd := clock
-		delivered0 := throttle.deliveredBytes()
-		providerEnd.reset()
-		recovered := -1
-		for i := 0; recovered < 0 && i < 120_000/relayStep; i++ {
-			step(clock-stallEnd < 10_000, false)
-			if caughtUp() {
-				recovered = clock - stallEnd
-			}
-		}
-		b.ReportMetric(float64(recovered)/1000, "s-to-catch-up")
-		b.ReportMetric(float64(throttle.deliveredBytes()-delivered0), "wire-B-until-then")
-		b.ReportMetric(float64(heap)/1024, "heap-KiB-during-pause")
-		b.ReportMetric(float64(outside.Microseconds())/float64(max(outsideCount, 1)), "commit-us-outside")
-		b.ReportMetric(float64(during.Microseconds())/float64(max(duringCount, 1)), "commit-us-during")
-		b.ReportMetric(float64(providerEnd.longestHandling().Microseconds()), "longest-handling-us")
+	b.StartTimer()
+	for range 2000 / relayStep {
+		step(true, false)
 	}
+	for !caughtUp() {
+		step(false, false)
+	}
+	heap0 := benchSettledHeap()
+	throttle.setStalled(pause.stall)
+	for range pause.seconds * 1000 / relayStep {
+		step(true, true)
+	}
+	heap := int64(benchSettledHeap()) - int64(heap0)
+	throttle.setStalled(false)
+	stallEnd := clock
+	delivered0 := throttle.deliveredBytes()
+	providerEnd.reset()
+	recovered := -1
+	for i := 0; recovered < 0 && i < 120_000/relayStep; i++ {
+		step(clock-stallEnd < 10_000, false)
+		if caughtUp() {
+			recovered = clock - stallEnd
+		}
+	}
+	b.StopTimer()
+	b.ReportMetric(float64(recovered)/1000, "s-to-catch-up")
+	b.ReportMetric(float64(throttle.deliveredBytes()-delivered0), "wire-B-until-then")
+	b.ReportMetric(float64(heap)/1024, "heap-KiB-during-pause")
+	b.ReportMetric(float64(outside.Microseconds())/float64(max(outsideCount, 1)), "commit-us-outside")
+	b.ReportMetric(float64(during.Microseconds())/float64(max(duringCount, 1)), "commit-us-during")
+	b.ReportMetric(float64(providerEnd.longestHandling().Microseconds()), "longest-handling-us")
 	store.Release()
 	view.Release()
 }
@@ -936,7 +946,7 @@ func BenchmarkRelayCalls(b *testing.B) {
 		b.ReportMetric(float64(len(alone)), "calls")
 	})
 	b.Run("tab B while tab A has 10,000 calls in flight or queued; tab A until the last result", func(b *testing.B) {
-		if b.Loop() {
+		for b.Loop() {
 			var done sync.WaitGroup
 			finished := make(chan struct{})
 			start := time.Now()
