@@ -744,7 +744,20 @@ func GenerateSummaryWithUsageUsing(
 	callbacks ai.RetryCallbacks,
 	sessionID string,
 ) (string, *ai.Usage, error) {
-	return generateSummaryChunked(ctx, messages, model, reserveTokens, apiKey, headers, customInstructions, previousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, 0)
+	return generateSummaryChunked(ctx, messages, model, reserveTokens, apiKey, headers, customInstructions, previousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, tokenRatioFromContext(ctx))
+}
+
+type tokenRatioKey struct{}
+
+// withTokenRatio carries the session's measured token ratio (D167) to [GenerateSummaryWithUsageUsing], whose signature is Pi's generateSummary and
+// has no room for it; Compact calls that function, as Pi's compact does.
+func withTokenRatio(ctx context.Context, ratio float64) context.Context {
+	return context.WithValue(ctx, tokenRatioKey{}, ratio)
+}
+
+func tokenRatioFromContext(ctx context.Context) float64 {
+	ratio, _ := ctx.Value(tokenRatioKey{}).(float64)
+	return ratio
 }
 
 // generateSummaryChunked is [GenerateSummaryWithUsageUsing] with the measured ratio of real to estimated tokens of the session (0: none measured).
@@ -1193,7 +1206,7 @@ func Compact(
 		var historyUsage *ai.Usage
 		if len(history) > 0 {
 			var err error
-			historySummary, historyUsage, err = generateSummaryChunked(ctx, history, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, compactiontypes.TokenRatioOf(prep))
+			historySummary, historyUsage, err = GenerateSummaryWithUsageUsing(withTokenRatio(ctx, compactiontypes.TokenRatioOf(prep)), history, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
 			if err != nil {
 				return CompactionResult{}, err
 			}
@@ -1207,7 +1220,7 @@ func Compact(
 		usage = combineUsage(historyUsage, prefixUsage)
 	} else {
 		var err error
-		summary, usage, err = generateSummaryChunked(ctx, prep.MessagesToSummarize, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID, compactiontypes.TokenRatioOf(prep))
+		summary, usage, err = GenerateSummaryWithUsageUsing(withTokenRatio(ctx, compactiontypes.TokenRatioOf(prep)), prep.MessagesToSummarize, model, prep.Settings.ReserveTokens, apiKey, headers, customInstructions, prep.PreviousSummary, thinkingLevel, completer, streamFn, env, retry, callbacks, sessionID)
 		if err != nil {
 			return CompactionResult{}, err
 		}
