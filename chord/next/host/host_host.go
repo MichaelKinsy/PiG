@@ -483,6 +483,15 @@ func durationOr(value *time.Duration, fallback time.Duration) time.Duration {
 	return *value
 }
 
+// onLoopOf is how loop tells whether the caller runs one of its sections: nil for a loop that cannot tell (a test's
+// virtual-time loop).
+func onLoopOf(loop sectionLoop) func() bool {
+	if inside, ok := loop.(interface{ onLoop() bool }); ok {
+		return inside.onLoop
+	}
+	return nil
+}
+
 // loop is the host's event loop.
 func (h *chordHost) loop() sectionLoop { return h.events }
 

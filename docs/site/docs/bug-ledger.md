@@ -1527,6 +1527,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-edf1862](#bf-edf1862) | Tool rows and streamed answers no longer highlight the same code again on every redraw | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ee5045c](#bf-ee5045c) | Reading an extended attribute that is set between the size query and the read no longer panics, and on… | PiG's own defect | Windows | Unreleased |
 | [BF-ee5fdb1](#bf-ee5fdb1) | `pig status` no longer reports a shared extension name as an unhealthy duplicate | PiG's own defect | All platforms | 0.7.0 |
+| [BF-ee72731](#bf-ee72731) | Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort… | PiG's own defect | All platforms | Unreleased |
 | [BF-ee96daf](#bf-ee96daf) | Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eeee29b](#bf-eeee29b) | `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still… | PiG's own defect | All platforms | 0.7.0 |
@@ -22547,6 +22548,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ee5fdb16d8` (2026-10-25, #348)
 - **Tests:** `coding/cli/status_command_test.go::TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity`, `coding/cli/status_command_test.go::TestStatusWarnsOnDuplicatePackageExtensionIdentity`
 - **Release note:** `pig status` no longer reports a shared extension name as an unhealthy duplicate. Two Packages that both expose `src/index.ts` resolve to the same `"src"` public name, and the loader identifies an extension by its path: it renames the later copies (`"src:2"`) and loads them all, as Pi loads every extension path. The report keeps them enabled and moves the finding to a new `warnings` list, so `pig status` exits 0 and `pig status --json` stays `"healthy": true`. Skills, prompts and themes key their runtime set by name, so their duplicates remain errors.
+
+### BF-ee72731
+
+**Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The abort was delivered by `context.AfterFunc` on a goroutine of its own and could lose to a settlement that came a moment after it.
+- **Root cause:** Pi's awaitWithContext adds an abort listener that abort() runs synchronously and that rejects the wait at once; a settlement reaches the wait through a reaction, a microtask. So an abort in the section of a settlement wins, and a reaction that ran before the abort leaves the value. Go delivered the abort through context.AfterFunc, on a goroutine of its own: it could lose to a settlement that came a moment after the cancel, and attempt.activate then ran the factory of an attempt that was sealed while it waited for the old attempt's drain.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ee72731368` (2026-11-15)
+- **Tests:** `chord/context/abort_listener_test.go::TestOnAbortLeavesNoRegistrationBehind`, `chord/context/abort_listener_test.go::TestOnAbortListensToEverySourceOfADerivedContext`, `chord/context/abort_listener_test.go::TestOnAbortOnAContextWithoutAbortSignalNeverHearsItsParent`, `chord/context/abort_listener_test.go::TestOnAbortOnAContextWithoutAbortSignalOfAnAbortedParentDoesNotRun`, `chord/context/abort_listener_test.go::TestOnAbortOnAnAbortedContextRunsAtOnce`, `chord/context/abort_listener_test.go::TestOnAbortRunsInsideTheCancelFunctionOnce`, `chord/context/abort_listener_test.go::TestOnAbortRunsListenersInTheOrderTheyWereAdded`, `chord/context/abort_listener_test.go::TestOnAbortSaysWhatItCannotListenTo` and 3 more in docs/bug-ledger.json
+- **Release note:** Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort in the section that made it, ordered with the promise's own settlement, as Pi does (the abort listener runs inside `abort()`, the settlement's continuation is a microtask). Before, the abort was delivered by `context.AfterFunc` on a goroutine of its own and could lose to a settlement that came a moment after it. The visible case: an attempt sealed while it waited for the previous attempt's drain (a decision change, or a reload, that sealed the successor as the old drain ended) could still run its factory once the drain ended, so a plugin saw the factory of an attempt that had been abandoned run (`[a:write a:write]` where Pi has `[a:write]`). `chord/context` gains `OnAbort`, the listener that runs inside the cancel function, in the cancelling section; an abort made from another goroutine is queued on the host's loop as an event when it is observed. Affects 0.7.0. <!-- cause: thenWithContext delivered a context's abort through context.AfterFunc on a goroutine of its own, where Pi's awaitWithContext runs the abort listener synchronously inside abort(), so an abort made before a settlement in the same section could lose to the settlement's continuation --> <!-- tests: TestThenWithContextOrdersAbortAgainstSettlement, TestThenWithContextLeavesNoListenerBehindWhenTheResultComesFirst, TestReloadAnAttemptSealedWhileItWaitsForTheOldDrainNeverRunsItsFactoryWhenTheDrainEndsInTheSameSection, TestOnAbortRunsInsideTheCancelFunctionOnce, TestOnAbortOnAnAbortedContextRunsAtOnce, TestOnAbortOnAContextWithoutAbortSignalNeverHearsItsParent -->
 
 ### BF-ee96daf
 
