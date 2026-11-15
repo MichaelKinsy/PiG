@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"slices"
 	"sync/atomic"
@@ -139,22 +140,19 @@ func TestAWorkersExitAStopResolvesOnceTheExitWasPublishedAfterTheCommitsItsWorke
 	reportsCall(t, control, "report", "queued")
 	<-held.Entered()
 	queued := lastSeq()
-	// What the state's watcher saw when the entry went: the store's last seq, and whether the stop had resolved.
-	var atGone atomic.Int64
-	var stopAtGone atomic.Bool
-	var stopped atomic.Bool
-	gone := make(chan struct{})
-	watcher := f.watchEntry("S1", func() {
-		atGone.Store(lastSeq())
-		stopAtGone.Store(stopped.Load())
-		close(gone)
-	})
-	defer watcher()
-	result := make(chan error, 1)
+	// What the stop's caller saw at the instant its stop resolved, read by the stop's own goroutine right after the stop returned (an
+	// event of the stop's end, not a poll): the state's entry and the store's last seq. The held commit landed, then the exit was
+	// published (the state's value is rewritten in the section that closes `gone`), then the stop resolved. A watcher's frame
+	// reaches it on its own goroutine, after the stop's caller may have run, so it does not say which came first.
+	type resolution struct {
+		err   error
+		state *WorkerState
+		seq   int64
+	}
+	result := make(chan resolution, 1)
 	go func() {
 		err := f.workers.Stop(session("S1"), background)
-		stopped.Store(true)
-		result <- err
+		result <- resolution{err: err, state: f.stateOf("S1"), seq: lastSeq()}
 	}()
 	handled(t, child)
 	select {
@@ -166,18 +164,15 @@ func TestAWorkersExitAStopResolvesOnceTheExitWasPublishedAfterTheCommitsItsWorke
 		t.Fatalf("state = %+v, want stopping", got)
 	}
 	held.Release()
-	if err := <-result; err != nil {
-		t.Fatal(err)
+	resolved := <-result
+	if resolved.err != nil {
+		t.Fatal(resolved.err)
 	}
-	<-gone
-	if f.stateOf("S1") != nil {
-		t.Fatalf("state = %+v, want none", f.stateOf("S1"))
+	if resolved.state != nil {
+		t.Fatalf("state when the stop resolved = %+v, want none: the exit is published before the stop resolves", resolved.state)
 	}
-	if atGone.Load() <= queued {
-		t.Fatalf("the store's last seq at the exit's publication = %d, want after the held commit (%d)", atGone.Load(), queued)
-	}
-	if stopAtGone.Load() {
-		t.Fatal("the stop had resolved when the exit was published")
+	if resolved.seq <= queued {
+		t.Fatalf("the store's last seq when the stop resolved = %d, want after the held commit (%d)", resolved.seq, queued)
 	}
 	if lines := linesOf(t, journal); !slices.Equal(lines, []string{"queued"}) {
 		t.Fatalf("journal = %q", lines)
@@ -205,7 +200,7 @@ func TestAWorkersExitCloseDuringTheSettleWaitReturnsWithItsContextAndTheExitIsPu
 	ended, cancel := context.WithCancelCause(background)
 	cancelled := context.Canceled
 	cancel(cancelled)
-	if err := f.workers.Close(ended); err != cancelled {
+	if err := f.workers.Close(ended); !errors.Is(err, cancelled) {
 		t.Fatalf("Close = %v, want its context's cause: it waits for the exit to be published", err)
 	}
 	if got := f.stateOf("S1"); got == nil {

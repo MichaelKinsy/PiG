@@ -141,27 +141,6 @@ func linesOf(t testing.TB, journal *host.Reference) []string {
 	return lines
 }
 
-// watchEntry calls gone, once, in the frame of the workers' state that no longer has session id's entry after one that had it; the
-// returned func stops the watch.
-func (f *fleet) watchEntry(id string, gone func()) (stop func()) {
-	watch, err := f.workers.State().Watch(background)
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	var present, called bool
-	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-		object, _ := call.Value.(*delta.JsonObject)
-		if _, ok := object.Value("session|" + id).(*delta.JsonObject); ok {
-			present = true
-		} else if present && !called {
-			called = true
-			gone()
-		}
-		return nil
-	})
-	return func() { _, _ = watch.Stop() }
-}
-
 // childOf is the child of session id as the component has it (a look into the component, under its loop): nil when none.
 func (f *fleet) childOf(id string) *child {
 	component := f.workers

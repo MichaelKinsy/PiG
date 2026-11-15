@@ -18,13 +18,19 @@ const Control = remote("test.control", {
 			methods: {
 				crash: method(int()),
 				busy: method(int()),
-				block: method(str()),
 				localCalls: method(int(), int()),
 				report: method(str()),
 				reportAndExit: method(str()),
 			},
 		},
 	},
+});
+
+const Blocker = remote("test.blocker", {
+	version: 1,
+	params: { id: str() },
+	hostAddress: ({ id }) => Session({ id }),
+	variants: { main: { methods: { block: method(str()) } } },
 });
 
 // What a worker reports to the server (control.ts `Reports`).
@@ -57,17 +63,6 @@ export default defineFacet((facet) => {
 					await busy.pulse(ms, ctx);
 					return null;
 				},
-				// Blocks this host's event loop (Pi's `block`, a busy loop) until the file `release` exists, for 2 s at most: nothing
-				// the process is sent (an abort, a close) is read meanwhile. The call settles first; `node blocked` is printed once
-				// the loop is blocked, in the turn that blocks it.
-				block: async (release) => {
-					setTimeout(() => {
-						console.log("node blocked");
-						const cell = new Int32Array(new SharedArrayBuffer(4));
-						for (const end = Date.now() + 2000; !existsSync(release) && Date.now() < end; ) Atomics.wait(cell, 0, 0, 5);
-					}, 0);
-					return null;
-				},
 				// The worker's Go code counts the messages it sends to the server between the two lines.
 				localCalls: async (n, ctx) => {
 					console.log("local calls begin");
@@ -88,4 +83,23 @@ export default defineFacet((facet) => {
 			},
 		};
 	});
+	// The worker's own fixture code (`BlockNode`) blocks this host's event loop through a type of its own: `Control` holds the server's
+	// `Reports`, which a worker with no server that serves them cannot be given. Pi's `block` is a busy loop of `ms` in `Control`; this
+	// one waits for a file, for a test that must keep the loop blocked until the server saw something.
+	facet.serve(Blocker, () => ({
+		variant: "main",
+		members: {
+			// Blocks this host's event loop (a busy loop) until the file `release` exists, for 2 s at most: nothing the process is sent
+			// (an abort, a close) is read meanwhile. The call settles first; `node blocked` is printed once the loop is blocked, in the
+			// turn that blocks it.
+			block: async (release) => {
+				setTimeout(() => {
+					console.log("node blocked");
+					const cell = new Int32Array(new SharedArrayBuffer(4));
+					for (const end = Date.now() + 2000; !existsSync(release) && Date.now() < end; ) Atomics.wait(cell, 0, 0, 5);
+				}, 0);
+				return null;
+			},
+		},
+	}));
 });

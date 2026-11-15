@@ -497,6 +497,8 @@ type child struct {
 	shipped string
 	// reloading is closed when its outstanding reload settled; reloads queue behind it, one outstanding at a time.
 	reloading chan struct{}
+	// gone is closed once its exit was published (left): its address's next start may go on.
+	gone chan struct{}
 	// reloaded is the waiter of its outstanding reload.
 	reloaded func(reply FromWorker)
 	// ended is set once its link is gone or it exited: every reload queued behind settles with it.
@@ -546,7 +548,9 @@ type Workers struct {
 	// environment is the workers' environment: Env, with NODE_COMPILE_CACHE from CompileCache unless Env sets it (Pi's `#environment`).
 	environment map[string]string
 	loop        *host.Loop
-	clock       clock
+	// store is the server host's store, if it has one (Pi's `#store`: `openStore`'s, the one maker of a `Store`).
+	store *store.ChordStore
+	clock clock
 
 	// addresses is Pi's `Map<string, Routed>`, in insertion order; guarded by the loop.
 	addresses map[string]*routed
@@ -581,6 +585,7 @@ func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
 		options.BaseDir = filepath.Clean(options.BaseDir)
 	}
 	c := &Workers{options: options, environment: workersEnvironment(options), loop: host.NewLoop(), addresses: map[string]*routed{}, buildDone: make(chan struct{})}
+	c.store, _ = options.Store.(*store.ChordStore)
 	c.clock = options.clock
 	if c.clock == nil {
 		c.clock = c.loop
@@ -623,7 +628,7 @@ func (c *Workers) task(fn func()) {
 }
 
 // resolve is the route's `resolve`: a failed address returns at once its (public) failure, nothing forks; otherwise a
-// start, after the previous child's exit.
+// start, after the previous child's exit was published.
 func (c *Workers) resolve(address contracts.Address, routing context.Context) (host.ResolvedLink, error) {
 	var started *outcome[host.ResolvedLink]
 	var record *routed
@@ -837,11 +842,11 @@ func (c *Workers) forget(record *routed) {
 // app's `Start` that ignores its context too), a forked child is stopped.
 func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedLink, error) {
 	address := record.address
-	// After the previous child's exit (its link may close first): a crash recorded meanwhile fails this start.
+	// After the previous child's exit was published (`gone`; its link is closed before): a crash recorded meanwhile fails this start.
 	var exited <-chan struct{}
 	c.loop.Run(func() {
 		if record.child != nil {
-			exited = record.child.process.Exited()
+			exited = record.child.gone
 		}
 	})
 	if exited != nil {
@@ -922,7 +927,7 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 		}
 		spawned.process.Kill()
 	})
-	<-spawned.process.Exited()
+	<-spawned.gone
 	var final *failure
 	c.loop.Run(func() { final = record.failure })
 	if c.isClosing() {
@@ -1004,6 +1009,7 @@ func (c *Workers) fork(record *routed, entry string) (*child, error) {
 		started:   newOutcome[struct{}](),
 		ready:     newOutcome[CrossedReport](),
 		reloading: reloading,
+		gone:      make(chan struct{}),
 	}
 	record.child = spawned
 	c.state.refresh()
@@ -1096,13 +1102,16 @@ func (c *Workers) linkClosed(child *child) {
 	})
 }
 
-// exited: child exited: a stop's exit forgets it, as does a lost link the address recovers from (`worker_link_lost`: its
-// holders' route resolves again, a start after this exit); any other is a crash that fails the address (`worker_exited` and
-// `worker_failed` once, the full error and stderr tail for the app's logs only), except once the component closes.
+// exited: child exited, its link closed before this was told (WorkerProcess): what it sent and was not handled yet is dropped
+// and the calls it made are aborted, so a transaction of theirs not yet at its commit is refused. Its waiters end now; its
+// exit is published (left) once the commits queued in the server's store before now settled (the only changes of its calls that
+// can still land: a queued commit ignores its caller's abort). Until then the state still shows it, and its address's next
+// start waits (child.gone).
 func (c *Workers) exited(record *routed, child *child, exit Exit) {
 	if child.grace != nil {
 		child.grace.Stop()
 	}
+	// Read now: what its events recorded up to its exit.
 	clean := child.stopping && child.cause == nil
 	why := child.cause
 	if why == nil {
@@ -1111,6 +1120,10 @@ func (c *Workers) exited(record *routed, child *child, exit Exit) {
 	public := publicExit(exit, child)
 	if why.public != nil {
 		public = *why.public
+	}
+	var failure *cause
+	if !clean {
+		failure = &cause{err: why.err, public: &public, killed: why.killed, lost: why.lost}
 	}
 	child.started.reject(uncrossed(public))
 	child.ready.reject(uncrossed(public))
@@ -1123,19 +1136,42 @@ func (c *Workers) exited(record *routed, child *child, exit Exit) {
 			return struct{}{}, nil
 		})
 	}
+	// `(this.#store?.settled() ?? Promise.resolve()).then(...)` (workers.ts:683): `settled` never rejects, and a host without a store
+	// waits for nothing (the publication is then in this section, where Pi's `then` continues in the next microtask: nothing of
+	// this component runs in between).
+	if c.store == nil {
+		c.left(record, child, exit, failure)
+		close(child.gone)
+		return
+	}
+	settled := c.store.Settled()
+	c.task(func() {
+		<-settled
+		c.loop.Run(func() {
+			c.left(record, child, exit, failure)
+			close(child.gone)
+		})
+	})
+}
+
+// left publishes child's exit: a stop's exit (no failure) forgets it, as does a lost link the address recovers from
+// (`worker_link_lost`: its holders' route resolves again, a start after this); any other is a crash that fails the address
+// (`worker_exited` and `worker_failed` once, the full error and stderr tail for the app's logs only), except once the component
+// closes. It runs in a section.
+func (c *Workers) left(record *routed, child *child, exit Exit, failure *cause) {
 	if record.child != child {
 		return
 	}
 	record.child = nil
-	if !clean && !c.isClosing() {
-		if why.lost && c.recovers(record) {
-			c.options.OnError(WorkerLinkLostError{Address: record.address.Key, Error: why.err})
+	if failure != nil && !c.isClosing() {
+		if failure.lost && c.recovers(record) {
+			c.options.OnError(WorkerLinkLostError{Address: record.address.Key, Error: failure.err})
 		} else {
 			// A failed start's kill is the component's own act (Opus's second recheck): only `worker_failed`.
-			if !why.killed {
+			if !failure.killed {
 				c.options.OnError(WorkerExitedError{Address: record.address.Key, Code: exit.Code, Signal: exit.Signal})
 			}
-			c.fail(record, cause{err: why.err, public: &public, killed: why.killed}, child.process.StderrTail())
+			c.fail(record, *failure, child.process.StderrTail())
 		}
 	}
 	c.state.refresh()
@@ -1182,7 +1218,7 @@ func (c *Workers) failLocked(record *routed, why cause, stderrTail string) error
 	return uncrossed(*why.public)
 }
 
-// stop is a stop: `shutdown`, the grace, then the tree killed; it returns at its exit.
+// stop is a stop: `shutdown`, the grace, then the tree killed; it returns once its exit was published (`gone`).
 func (c *Workers) stop(record *routed) error {
 	var exited <-chan struct{}
 	c.loop.Run(func() {
@@ -1193,7 +1229,7 @@ func (c *Workers) stop(record *routed) error {
 		child.stopping = true
 		c.shutdown(child)
 		c.state.refresh()
-		exited = child.process.Exited()
+		exited = child.gone
 	})
 	if exited != nil {
 		<-exited
