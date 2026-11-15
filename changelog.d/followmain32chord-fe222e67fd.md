@@ -1,3 +1,0 @@
-### Known issues
-
-- chord: 0.8.0 implements Pi's Chord through Pi c3cc91632d0a and lacks the first part of Pi's slice 14 (Pi 92e1db6ca): named live queries (`queries` members, `self.liveQuery`, `self.count`), column sets, `exists` and joins, and lists (`self.list`), and with them the skip of live queries a commit cannot change and the `chord.query.probes`, `chord.query.skips` and `chord.query.rows` counters. A host that does not use them is unaffected: no fingerprint, wire frame or stored format changes, so a Pi client at 0db9861ec works against it and the reverse. `HostError` `query_failed` still names the table in `Table`, where Pi names the query. The app kit's `AppInfoFacet` and `WorkerInfoFacet` already exist.

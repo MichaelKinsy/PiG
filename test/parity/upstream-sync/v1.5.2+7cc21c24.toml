@@ -1,15 +1,17 @@
 from = "1.5.2+c3cc9163"
-to = "1.5.2+7f021f0e"
+to = "1.5.2+7cc21c24"
 
-# The range c3cc91632d0a..7f021f0eebfa outside apps/p2 and apps/p3: 92e1db6ca (slice 14, first part: named live queries, column
-# sets, exists and joins, lists), a merge, 0db9861ec (the app kit exports its start-data facets), and the two test-only commits 0a25dd15e (Together Kimi K3) and 7f021f0ee (consumer event tests). The Go chord
-# implements Pi through c3cc91632d0a and does not implement slice 14. Every row below says so: `deferred` rows are work
-# the port has not done (they lie behind PORT_MAP's 🟡 rows of the changed files), `designed-out` rows are documents.
-# Interop for an app that declares no named query and uses no list: no fingerprint, wire frame or stored format changes
-# (fingerprint.ts adds a node only for a `queries` member; link/ and remote/ frames, cursors and the catalog are
-# untouched), so a Pi client at 0db9861ec works against this host and the reverse. The vendored Pi blobs under
-# chord/nextnode/{surfaces/client,plugins/node}/pi stay at their carried commits (manifest `commit` and `carried`):
-# they must run against the Go port they ship with, and the Go port does not have slice 14.
+# The range c3cc91632d0a..7cc21c24f6b5 outside apps/p2 and apps/p3: slice 14 (92e1db6ca, first part: named live queries,
+# column sets, exists and joins, lists; 8270d9af6, second part: admission with a typed value, route admission, host-data
+# delete by plugin), 0db9861ec (the app kit exports its start-data facets), and the test-only commits 0a25dd15e (Together
+# Kimi K3) and 7f021f0ee (consumer event tests). The Go chord ports slice 14 on port/chord-slice-14-*; a row is
+# `ported` only when every Pi test file that covers its source has a Go twin for every case. `deferred` rows are the
+# sources that still wait on one named case, example or document (each names what it waits on); `designed-out` rows are
+# documents, barrels and benchmarks the Go port has no counterpart of.
+# Interop for an app that declares no named query, no list, no admission and no route admit: no fingerprint, wire frame
+# or stored format changes, except the failure cause `denied` (binary byte 3, text letter d; the refused byte moves from
+# 3 to 4): a Pi client at 0db9861ec decodes a `denied` cause only after it takes the same range. The vendored Pi blobs
+# under chord/nextnode/{surfaces/client,plugins/node}/pi are re-vendored at 7cc21c24f6b5 (manifest `commit`).
 
 [[files]]
 path = "packages/chord/CHANGELOG.md"
@@ -133,14 +135,14 @@ rationale = "92e1db6ca: a local contract's history declaration may hold `queries
 [[files]]
 path = "packages/chord/src/contracts/index.ts"
 change = "modified"
-disposition = "n/a"
+disposition = "designed-out"
 evidence = []
 rationale = "92e1db6ca: the barrel exports NamedQuery, QueryPage, QueriesMember and queries. A barrel: Go packages export names directly; the names exist when contracts.go gets the queries member (see contract.ts, schema.ts)."
 
 [[files]]
 path = "packages/chord/src/contracts/internal.ts"
 change = "modified"
-disposition = "n/a"
+disposition = "designed-out"
 evidence = []
 rationale = "92e1db6ca: the internal barrel re-exports Snapshot and snapshotArguments. A barrel for Chord's layers; snapshotArguments exists in Go (chord/next/contracts/snapshot.go)."
 
@@ -163,7 +165,7 @@ path = "packages/chord/src/host/attempt.ts"
 change = "modified"
 disposition = "deferred"
 evidence = []
-rationale = "92e1db6ca: self.queries(table, { map, reads, partnerReads }, builders), self.liveQuery(namedQuery, args, { first }), self.count and self.list, with BuiltQuery, QueryBuilders and ListHandle, and self.query rebuilt over the Read engine. Not ported: chord/next/host/host_attempt.go has self.query over LiveQuery only. Existing programs (no named query, no list) behave as before. PORT_MAP: 🟡."
+rationale = "92e1db6ca: self.queries(table, { map, reads, partnerReads }, builders), self.liveQuery(namedQuery, args, { first }), self.count and self.list, with BuiltQuery, QueryBuilders and ListHandle, and self.query rebuilt over the Read engine. Ported (first part): chord/next/host/host_attempt.go (queries, liveQuery, count, list, query over the Read engine). Second part (8270d9af6 (slice 14, second part)): an attempt of an admitted type runs its admission first (`Decision`, `Allowed`), parks on it as on a dependency and follows it until its seal. Waits on test/examples/69-admission.ts, test/host/dependencies.test.ts and test/host/reference-source.test.ts."
 
 [[files]]
 path = "packages/chord/src/host/host-data.ts"
@@ -177,12 +179,12 @@ path = "packages/chord/src/host/host.ts"
 change = "modified"
 disposition = "deferred"
 evidence = []
-rationale = "92e1db6ca: HostError `query_failed` carries `query` (the table's name for self.query, the named query's label for liveQuery, count and list) in place of `table`; a closing host calls object.unbindSets() after tearing every object down. Not ported: Go's HostError has Table (host_error.go:102). The report is host-local (an argument of the host's onError), not a wire value. PORT_MAP: 🟡."
+rationale = "92e1db6ca: HostError `query_failed` carries `query` (the table's name for self.query, the named query's label for liveQuery, count and list) in place of `table`; a closing host calls object.unbindSets() after tearing every object down. Ported (first part): chord/next/host/host_error.go and host_host.go (query_failed carries Query; a closing host unbinds the sets). Second part (8270d9af6 (slice 14, second part)): `RouteOptions.admit` reaches the route and `deleteHostData` takes `options.plugin` (ported, host_host_data_test.go). Waits on route-admission.ts."
 
 [[files]]
 path = "packages/chord/src/host/index.ts"
 change = "modified"
-disposition = "n/a"
+disposition = "designed-out"
 evidence = []
 rationale = "92e1db6ca: the barrel exports BuiltQuery, ListHandle, QueryBuilder, QueryBuilders, ListOptions, PartnerRow and QueriesOptions. A barrel: Go imports the package; the names arrive with attempt.go, list and named-query when ported."
 
@@ -196,9 +198,9 @@ rationale = "92e1db6ca: self.list(name, [[namedQuery, args]], { first }) returns
 [[files]]
 path = "packages/chord/src/host/members.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: checkQueries checks a `queries` member is what self.queries returned (ownQueries) with a builder for every listed query and no unlisted one. Not ported. PORT_MAP: 🟡."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_named_query_test.go#TestNamedQueryTheMemberCheckRefusesAnythingButWhatSelfQueriesReturnedAListedQueryWithoutABuilderAndASecondSchema"]
+rationale = "92e1db6ca: checkQueries checks a `queries` member is what self.queries returned (ownQueries) with a builder for every listed query and no unlisted one. Ported: chord/next/host/host_members.go (checkQueries); the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/src/host/named-query.ts"
@@ -212,7 +214,7 @@ path = "packages/chord/src/host/object.ts"
 change = "modified"
 disposition = "deferred"
 evidence = []
-rationale = "92e1db6ca: HostObject drops liveQueries, gains listMemory(name), queryMember(member, name) and unbindSets() (the column sets its tables exposed are served no more). Not ported. PORT_MAP: 🟡."
+rationale = "92e1db6ca: HostObject drops liveQueries, gains listMemory(name), queryMember(member, name) and unbindSets() (the column sets its tables exposed are served no more). Ported (first part): chord/next/host/host_object.go (listMemory, queryMember, unbindSets). Second part (8270d9af6 (slice 14, second part)): `ServedAdmission`; a changed admission seals the attempt and admits a new one, a denial is `failed { denied }`, holders are listed only while allowed. Waits on test/examples/69-admission.ts."
 
 [[files]]
 path = "packages/chord/src/host/query-reader.ts"
@@ -233,26 +235,26 @@ path = "packages/chord/src/host/reference.ts"
 change = "modified"
 disposition = "deferred"
 evidence = []
-rationale = "92e1db6ca: a reference exposes its object's named queries (ReferenceQuery per queries member), queryMember(member, name) and followInstance(moved), told when another instance is live. Not ported. PORT_MAP: 🟡."
+rationale = "92e1db6ca: a reference exposes its object's named queries (ReferenceQuery per queries member), queryMember(member, name) and followInstance(moved), told when another instance is live. Ported (first part): chord/next/host/host_reference.go (ReferenceQuery, queryMember, followInstance). Second part (8270d9af6 (slice 14, second part)): a `denied` reference state keeps no value and its reads throw. Waits on test/examples/69-admission.ts and test/host/reference-source.test.ts."
 
 [[files]]
 path = "packages/chord/src/host/staging.ts"
 change = "modified"
 disposition = "deferred"
 evidence = []
-rationale = "92e1db6ca: the recording `self` of staging gives separate inert handles for tables, named queries and references, records queries/liveQuery/count/list declarations through read-declarations, and checks a column set is exposed once (checkExposedOnce). Not ported. PORT_MAP: 🟡."
+rationale = "92e1db6ca: the recording `self` of staging gives separate inert handles for tables, named queries and references, records queries/liveQuery/count/list declarations through read-declarations, and checks a column set is exposed once (checkExposedOnce). Ported (first part): chord/next/host/host_staging.go (inert handles, read declarations, CheckExposedOnce). Second part (8270d9af6 (slice 14, second part)): `servedAdmission`: only a remote contract that declares an admission is served with `admit`. Waits on test/examples/69-admission.ts."
 
 [[files]]
 path = "packages/chord/src/host/tiling.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners", "test:chord/next/host/host_tiling_test.go#TestTilingOneCommitSeveralPages", "test:chord/next/host/host_tiling_test.go#TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages", "test:chord/next/host/host_tiling_test.go#TestTilingAPublishersMigrationThatChangesTheOrder", "test:chord/next/host/host_tiling_test.go#TestTilingSwitchesAndFailures", "test:chord/next/host/host_tiling_test.go#TestTilingTheInvariantWithTwoOwnersAndCommitGroups", "test:chord/next/host/host_tiling_go_test.go#TestTilingAPageThatBeginsAtACutRunsLastRowIsLoadedAgain"]
+evidence = ["test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners", "test:chord/next/host/host_tiling_test.go#TestTilingOneCommitSeveralPages", "test:chord/next/host/host_tiling_test.go#TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages", "test:chord/next/host/host_tiling_test.go#TestTilingAPublishersMigrationThatChangesTheOrder", "test:chord/next/host/host_tiling_test.go#TestTilingSwitchesAndFailures", "test:chord/next/host/host_tiling_test.go#TestTilingTheInvariantWithTwoOwnersAndCommitGroups", "test:chord/next/host/host_tiling_go_test.go#TestTilingAPageThatBeginsAtACutRunsLastRowIsLoadedAgain", "test:chord/next/host/host_tiling_go_test.go#TestTilingPagesThatMeetAtABoundDoNotOverlap", "test:chord/next/host/host_tiling_go_test.go#TestTilingAFailedPageThatGrewPastItsLimitIsNotCut"]
 rationale = "92e1db6ca: the tiling of a list: pages between fixed bookmarks that stay live, with moves leaving no gap and no duplicate. Ported: chord/next/host/host_tiling.go; the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/src/index.ts"
 change = "modified"
-disposition = "n/a"
+disposition = "designed-out"
 evidence = []
 rationale = "92e1db6ca: the aggregate barrel no longer exports the type WhereNode as @internal. A barrel; types only."
 
@@ -261,7 +263,7 @@ path = "packages/chord/src/remote/remote-object.ts"
 change = "modified"
 disposition = "deferred"
 evidence = []
-rationale = "92e1db6ca: queryMember(member) on a remote object throws invalid/member (`has no queries member`: named queries are local). Not ported: chord/next/host/remote_remote_object.go has no queryMember. PORT_MAP: 🟡."
+rationale = "92e1db6ca: queryMember(member) on a remote object throws invalid/member (`has no queries member`: named queries are local). Ported (first part): chord/next/host/remote_remote_object.go (queryMember refuses). Second part (8270d9af6 (slice 14, second part)): `withheld(cause)`: a route's admission holds a remote object back (a denial releases its hold, rejects its calls as revoked and drops its replicas). Waits on route-admission.ts."
 
 [[files]]
 path = "packages/chord/src/state/framed.ts"
@@ -273,7 +275,7 @@ rationale = "92e1db6ca: FramedOwner and the framed source: a JSON source whose o
 [[files]]
 path = "packages/chord/src/state/internal.ts"
 change = "modified"
-disposition = "n/a"
+disposition = "designed-out"
 evidence = []
 rationale = "92e1db6ca: the internal barrel re-exports framed.ts. A barrel for Chord's layers."
 
@@ -301,7 +303,7 @@ rationale = "92e1db6ca: exists(Set, match, condition), existsNode(Set, match, no
 [[files]]
 path = "packages/chord/src/store/index.ts"
 change = "modified"
-disposition = "n/a"
+disposition = "designed-out"
 evidence = []
 rationale = "92e1db6ca: the barrel exports defineColumns, ColumnSet, exists, existsNode, compile, EvolveOptions and the read types. A barrel: the Go package exports names directly, those names arrive with the files they name."
 
@@ -427,16 +429,16 @@ rationale = "92e1db6ca: the slice 14 benchmark (named queries, lists, skips, joi
 [[files]]
 path = "packages/chord/test/bench/store.ts"
 change = "modified"
-disposition = "deferred"
+disposition = "designed-out"
 evidence = []
-rationale = "92e1db6ca: the store benchmark drops its LiveQueries stub (two lines). Not ported: follows the port of Reads."
+rationale = "92e1db6ca: the store benchmark drops its LiveQueries stub (two lines): an import and a field, no behavior. The Go port has no counterpart of the file (chord/next/store and host benches build no such stub), so the change has nothing to port."
 
 [[files]]
 path = "packages/chord/test/bench/sync-worker.ts"
 change = "modified"
-disposition = "deferred"
+disposition = "designed-out"
 evidence = []
-rationale = "92e1db6ca: the sync worker benchmark drops its LiveQueries stub. Not ported: follows the port of Reads."
+rationale = "92e1db6ca: the sync worker benchmark drops its LiveQueries stub: an import and a field, no behavior. The Go port has no counterpart of the file, so the change has nothing to port."
 
 [[files]]
 path = "packages/chord/test/contracts/declare.test.ts"
@@ -491,7 +493,7 @@ rationale = "92e1db6ca: the tests of host/query-reader.ts. Ported: the Go tests 
 path = "packages/chord/test/host/tiling.test.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners", "test:chord/next/host/host_tiling_test.go#TestTilingOneCommitSeveralPages", "test:chord/next/host/host_tiling_test.go#TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages", "test:chord/next/host/host_tiling_test.go#TestTilingAPublishersMigrationThatChangesTheOrder", "test:chord/next/host/host_tiling_test.go#TestTilingSwitchesAndFailures", "test:chord/next/host/host_tiling_test.go#TestTilingTheInvariantWithTwoOwnersAndCommitGroups", "test:chord/next/host/host_tiling_go_test.go#TestTilingAPageThatBeginsAtACutRunsLastRowIsLoadedAgain"]
+evidence = ["test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners", "test:chord/next/host/host_tiling_test.go#TestTilingOneCommitSeveralPages", "test:chord/next/host/host_tiling_test.go#TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages", "test:chord/next/host/host_tiling_test.go#TestTilingAPublishersMigrationThatChangesTheOrder", "test:chord/next/host/host_tiling_test.go#TestTilingSwitchesAndFailures", "test:chord/next/host/host_tiling_test.go#TestTilingTheInvariantWithTwoOwnersAndCommitGroups", "test:chord/next/host/host_tiling_go_test.go#TestTilingAPageThatBeginsAtACutRunsLastRowIsLoadedAgain", "test:chord/next/host/host_tiling_go_test.go#TestTilingPagesThatMeetAtABoundDoNotOverlap", "test:chord/next/host/host_tiling_go_test.go#TestTilingAFailedPageThatGrewPastItsLimitIsNotCut"]
 rationale = "92e1db6ca: the tests of host/tiling.ts. Ported: the Go tests named in the evidence run every case of the file."
 
 [[files]]
@@ -532,9 +534,9 @@ rationale = "92e1db6ca: the tests of store/skip.ts. Ported: the Go tests named i
 [[files]]
 path = "packages/chord/test/support.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "92e1db6ca: the test scaffolding drops its LiveQueries stub from the fake object (queries: new LiveQueries()). Its Go form is the shared helpers in chord/next/host/host_next_support_test.go; they change when Reads is ported."
+disposition = "ported"
+evidence = ["test:chord/next/host/host_next_support_test.go#RouteAdmit", "test:chord/next/host/host_next_support_test.go#transported"]
+rationale = "92e1db6ca: the test scaffolding drops its LiveQueries stub from the fake object (queries: new LiveQueries()). Its Go form is the shared helpers in chord/next/host/host_next_support_test.go; its RouteOptions twin carries the route's admission (second part). Ported: chord/next/host/host_next_support_test.go (the route options carry Admit; the shared helpers are the Go twins); the Pi cases that cover it run in the Go tests named in the evidence."
 
 [[files]]
 path = "packages/chord/test/remote/consumer.test.ts"
@@ -591,3 +593,213 @@ change = "added"
 disposition = "ported"
 evidence = ["test:chord/next/host/host_read_declarations_test.go#TestReadDeclarationRefusals", "test:chord/next/host/host_read_declarations_test.go#TestFirstOf", "test:chord/next/host/host_read_declarations_test.go#TestListName", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersIsReadyOnceEveryReaderHasAValueAndFollowsNone", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersParksWaitingOnAReadThatFailedWithTheCauseAReloadsReportNamesAndFollowsIt", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersParksLoadingOnAReadThatHasNotRunYetWithACauseTooAndHoldsUpTheFirstPass", "test:chord/next/host/host_read_declarations_test.go#TestOpeningReadersBreaksOnAReadersOwnCode"]
 rationale = "Pi 7cc21c24: the cases of openReaders (read-declarations.ts): ready once every reader has a value and follows none, parked waiting or loading with a cause, broken by a reader own code. Ported: the Go tests named in the evidence run every case of the file."
+
+[[files]]
+path = "packages/chord/src/remote/hold.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_hold_kept_test.go#TestHoldCallsCrossingAFailedOrABoundOnTheWire"]
+rationale = "8270d9af6 (slice 14, second part): one binding fence per unacknowledged `bound` (a hold that rebinds several times before the first `ack`), the `pending` and `binding` states. Ported: chord/next/host/remote_hold.go (one binding fence per unacknowledged bound; a hold's pending/binding states); the Pi cases that cover it run in the Go tests named in the evidence."
+
+[[files]]
+path = "packages/chord/src/remote/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_hold_kept_test.go#TestHoldCallsCrossingAFailedOrABoundOnTheWire"]
+rationale = "8270d9af6 (slice 14, second part): the served holds with a fence not acknowledged yet drop their fences as the acks of this host's messages arrive. Ported: chord/next/host/remote_provider.go (fenced holds drop their fences as acks arrive); the Pi cases that cover it run in the Go tests named in the evidence."
+
+[[files]]
+path = "packages/chord/src/remote/relay.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_relay_events_test.go#TestRelayedCallsInTheUpstreamWindow"]
+rationale = "8270d9af6 (slice 14, second part): a `failed { denied }` rejects the waiting calls as `forbidden/revoked`, as the calls in flight are. Ported: chord/next/host/remote_relay.go (a denied failure rejects the waiting calls forbidden/revoked); the Pi cases that cover it run in the Go tests named in the evidence."
+
+[[files]]
+path = "packages/chord/src/remote/consumer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_relay_events_test.go#TestRelayedCallsInTheUpstreamWindow", "test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents"]
+rationale = "8270d9af6 (slice 14, second part): a denied cause rejects the calls of its hold as `revoked`; a call made after it meets the denied reference and gets its plain `forbidden`. Ported: chord/next/host/remote_consumer.go (a denied failed message rejects the calls of its hold as revoked); the Pi cases that cover it run in the Go tests named in the evidence."
+
+[[files]]
+path = "packages/chord/src/node/workers/workers.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_admit_test.go#TestStartsOnDemandPassesAdmitToItsRouteADeniedPrincipalStartsNoWorkerAnAllowedOneDoes"]
+rationale = "8270d9af6 (slice 14, second part): `WorkersOptions.admit` is passed to the route. Ported: chord/nextnode/workers/workers_workers.go (WorkersOptions.Admit is passed to the route); the Pi cases that cover it run in the Go tests named in the evidence."
+
+[[files]]
+path = "packages/chord/test/host/admission.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_admission_test.go#TestAdmissionDenyThenAllow", "test:chord/next/host/host_admission_test.go#TestAdmissionTheWatchTable", "test:chord/next/host/host_admission_test.go#TestAdmissionAFailedAdmittedObject", "test:chord/next/host/host_admission_test.go#TestAdmissionAnAdmissionsRequests", "test:chord/next/host/host_admission_test.go#TestAdmissionPresenceLingerParkedLongAndRetry", "test:chord/next/host/host_admission_test.go#TestAdmissionDeclarationErrors", "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink", "test:chord/next/host/host_admission_test.go#TestAdmissionAReloadOfAnAdmissionsSource", "test:chord/next/host/host_admission_test.go#TestAdmissionAReloadOfTheAdmittedType", "test:chord/next/host/host_admission_test.go#TestAdmissionWhatADenialRemoves", "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut", "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery", "test:chord/next/host/host_admission_settle_test.go#TestDecisionSettleWait", "test:chord/next/host/host_admission_telemetry_test.go#TestAdmissionRecordsItsDecisionOnItsActivationSpan"]
+rationale = "8270d9af6 (slice 14, second part): the 43 cases of the admission (decisions, seals, holds and calls under a denial, reloads, the declaration policy). Ported: the Go tests named in the evidence run these cases."
+
+[[files]]
+path = "packages/chord/test/link/channel.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/channel_test.go#TestTheHandshake", "test:chord/next/link/channel_test.go#TestACodecMismatchOfChannels", "test:chord/next/link/channel_test.go#TestTheHeartbeat", "test:chord/next/link/channel_test.go#TestTrustedLinks", "test:chord/next/link/channel_test.go#TestAFence", "test:chord/next/link/channel_test.go#TestInOrderHandling", "test:chord/next/link/channel_test.go#TestASendDuringTheHandshakeIsFlushedWithTheQueuedMessages", "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello"]
+rationale = "8270d9af6 (slice 14, second part): the two cases of `a fence`. Ported: the Go tests named in the evidence run these cases."
+
+[[files]]
+path = "packages/chord/test/node/workers/workers.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_admit_test.go#TestStartsOnDemandPassesAdmitToItsRouteADeniedPrincipalStartsNoWorkerAnAllowedOneDoes"]
+rationale = "8270d9af6 (slice 14, second part): the case `passes admit to its route`. Ported: the Go tests named in the evidence run these cases."
+
+[[files]]
+path = "packages/chord/test/node/workers/support.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_admit_test.go#TestStartsOnDemandPassesAdmitToItsRouteADeniedPrincipalStartsNoWorkerAnAllowedOneDoes", "test:chord/nextnode/workers/workers_fleet_test.go#admit"]
+rationale = "8270d9af6 (slice 14, second part): the helper's `admit` option passes the route's admission to createWorkers. Its Go form is the fleet's `admit` option of workers_fleet_test.go. Ported: chord/nextnode/workers/workers_fleet_test.go (fleetOptions.admit); the Pi cases that cover it run in the Go tests named in the evidence."
+
+[[files]]
+path = "packages/chord/test/remote/hold.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_hold_test.go#TestHoldParts", "test:chord/next/host/remote_hold_test.go#TestHoldFailedMembers", "test:chord/next/host/remote_hold_test.go#TestHoldTransientFailures", "test:chord/next/host/remote_hold_test.go#TestHoldGC", "test:chord/next/host/remote_hold_test.go#TestHoldGCPending", "test:chord/next/host/remote_hold_test.go#TestHoldNoticesOfAFailedObject", "test:chord/next/host/remote_hold_test.go#TestHoldsThatBindToNothingYet", "test:chord/next/host/remote_hold_test.go#TestHoldAReconnectingConsumer", "test:chord/next/host/remote_hold_test.go#TestHoldRetiredMembers", "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull", "test:chord/next/host/remote_hold_test.go#TestHoldRetriesAcrossLinksQuiesceAtTheirBudget", "test:chord/next/host/remote_hold_kept_test.go#TestHoldCallsInFlightAcrossALoadingUnbind", "test:chord/next/host/remote_hold_kept_test.go#TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay", "test:chord/next/host/remote_hold_kept_test.go#TestHoldCallsCrossingAFailedOrABoundOnTheWire", "test:chord/next/host/remote_hold_gate_test.go#TestCallsOverALinkWhileARestartWaitsACallArrivingWhileTheOldAttemptDrainsAndTheSuccessorsRequestOpensWaitsForTheNewCodeNeverNotReady", "test:chord/next/host/remote_hold_gate_test.go#TestReloadARecordedFactoryMayPinAKeyOnItsInertReference", "test:chord/next/host/remote_hold_reload_test.go#TestHoldsAcrossAReload", "test:chord/next/host/remote_hold_reload_test.go#TestHoldsAcrossMoreThanOneSwapKeepsARealSubscriberWhenAChangedConstantLaterBecomesDynamic", "test:chord/next/host/remote_hold_reload_test.go#TestAHoldAfterItsObjectsLiveFailureFollowsAMemberReExposingAnotherObjectsSourceUntilTheAdmittedCommitsPublished", "test:chord/next/host/remote_hold_reload_test.go#TestAHoldAcrossASwapWhoseMappingFailsGetsTheMembersFailureInItsFreshBoundAndHealsWithTheNewSource", "test:chord/next/host/remote_hold_reload_test.go#TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsEndBindsSafely", "test:chord/next/host/remote_hold_reload_test.go#TestHoldsAcrossAReloadAReferenceMadeDuringAVersionDroppingReloadsDrainJoinsTheOldLiveBindingNoFreshAdmission", "test:chord/next/host/remote_hold_reload_test.go#TestHoldsAcrossAReloadTwoReferencesSharingOneHoldFollowARestartADroppedVersionAndARemovalTogether"]
+rationale = "8270d9af6 (slice 14, second part): the cases `fences each unacknowledged bound` and `drops a fence with the ack of its bound`. Ported: the Go tests named in the evidence run these cases."
+
+[[files]]
+path = "packages/chord/test/remote/path.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_path_test.go#TestPathAsksForALinkAndHoldsEveryHolderOnEachLink", "test:chord/next/host/remote_path_test.go#TestPathTellsHoldersWhenItsLinkDrops", "test:chord/next/host/remote_path_test.go#TestPathReportsItsLastHoldersDetach", "test:chord/next/host/remote_path_test.go#TestPathSaysWhatChangedAHolderAttachedWithoutALinkADropTheLastReleaseFailsItsHoldersWaiting", "test:chord/next/host/remote_path_test.go#TestPathCountsAJoinToAHeldHolderAsARequestWithoutALinkNoneWithOne", "test:chord/next/host/remote_path_test.go#TestPathTellsWhetherItsRouteSuspendedItAPathWithoutARouteNeverIs", "test:chord/next/host/remote_path_test.go#TestGatedPathHoldsOnlyWhatItsGateAdmitsOnItsLinksAndWantsALinkOnlyForThose", "test:chord/next/host/remote_path_test.go#TestGatedPathForwardsAHolderADenialReleasedOnTheLinkOnlyBehindAFenceOneNeverForwardedNeedsNone", "test:chord/next/host/remote_path_test.go#TestGatedPathAHolderItsGateTakesBackWhenTheLinkIsLostWantsNoLinkAndIsOnNoneUntilItIsForwardedAgain", "test:chord/next/host/remote_path_test.go#TestGatedPathADenialBeforeTheFenceRanCancelsItALostLinkDropsItAndTheNextLinkHoldsWhatIsAdmitted"]
+rationale = "8270d9af6 (slice 14, second part): the four cases of `a gated path`. Ported: the Go tests named in the evidence run these cases."
+
+[[files]]
+path = "packages/chord/test/remote/relay.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_relay_test.go#TestRelayIDsAndOrigins", "test:chord/next/host/remote_relay_test.go#TestRelayPartsAreNeverParsed", "test:chord/next/host/remote_relay_test.go#TestRelayWindow", "test:chord/next/host/remote_relay_test.go#TestRelayUpstreamDrop", "test:chord/next/host/remote_relay_test.go#TestRelayParentLinkThatIsDown", "test:chord/next/host/remote_relay_test.go#TestRelayDownstreamRelease", "test:chord/next/host/remote_relay_test.go#TestRelayDownstreamDrop", "test:chord/next/host/remote_relay_test.go#TestRelayGoneFromUpstream", "test:chord/next/host/remote_relay_test.go#TestRelayGC", "test:chord/next/host/remote_relay_test.go#TestRelayReceivedBuffers", "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs", "test:chord/next/host/remote_relay_test.go#TestRelayLimitsAndCompression", "test:chord/next/host/remote_relay_test.go#TestRelayForwardACallsOldWorkFlagFromATrustedDownstreamLinkOnlyAPageCannotClaimOldWork", "test:chord/next/host/remote_relay_test.go#TestRelayForwardsAWorkersResultAfterTheStateTheRelaysOwnObjectsKeepWaitingForTheTabEveryAckReachesItsSender", "test:chord/next/host/remote_relay_test.go#TestRelayHoldKeepsTheArrivedCarriersKeyOrderWhenItRecordsNothing", "test:chord/next/host/remote_relay_test.go#TestRelayCallKeepsTheArrivedCarriersKeyOrderWhenItRecordsNothing", "test:chord/next/host/remote_relay_events_test.go#TestRelayedCallsInTheUpstreamWindow", "test:chord/next/host/remote_relay_events_test.go#TestRelayEvents", "test:chord/next/host/remote_relay_events_test.go#TestRelayEventsAcrossRealHostsReachATabThroughTheRelayAndThroughTheServersReExposure", "test:chord/next/host/remote_relay_events_test.go#TestRelayedCallsInARealWorkersFiniteWindowNeverExceedItWhenAHoldWithAForwardedCallIsReleased"]
+rationale = "8270d9af6 (slice 14, second part): the case `failed { denied }: the waiting calls are rejected forbidden/revoked`. Ported: the Go tests named in the evidence run these cases."
+
+[[files]]
+path = "packages/chord/src/host/admission.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the admission of a served type (`admit`, Decision, Allowed, Verdict, refuseAdmittedJob). Ported in chord/next/host/host_admission.go and its three test files (the 43 cases of test/host/admission.test.ts run). Waits on test/examples/69-admission.ts, which has no Go example yet."
+
+[[files]]
+path = "packages/chord/src/host/route-admission.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): a route's admission, asked once per principal and address. Ported in chord/next/host/host_route_admission.go (20 of the 21 cases of test/host/route-admission.test.ts run). Waits on the case `ends denied whenever the denial arrives: ${turns} turns into the settle` (a decision that changes while it is settled)."
+
+[[files]]
+path = "packages/chord/src/host/route.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): `RouteOptions.admit`; a route with an admission resolves an address only for holds its decisions allow (host_route.go). Waits on route-admission.ts: test/host/route-admission.test.ts is not fully ported."
+
+[[files]]
+path = "packages/chord/src/host/dependencies.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): a dependency an admission refused parks its dependent `failed { denied }` (no parked_long report; `Blocked`, `Parking`). Ported in host_dependencies.go; the two cases of `a denied dependency (slice 14 §2.2)` in test/host/dependencies.test.ts have no Go twin yet (a gap reported to Main)."
+
+[[files]]
+path = "packages/chord/src/host/reference-source.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): `deny(error)`: a refused reference keeps no value. Ported in host_reference_source.go; the case `a denied reference's source (slice 14 §2.2) › keeps no value` of test/host/reference-source.test.ts has no Go twin yet (a gap reported to Main)."
+
+[[files]]
+path = "packages/chord/src/host/facet.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): `ServeArguments`: a contract that declares an `admission` is served with `admit`. Ported in host_facet.go. Waits on test/examples/69-admission.ts."
+
+[[files]]
+path = "packages/chord/src/link/channel.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): `Channel.fence(then)`: runs `then` once everything the peer sent before it saw a `ping` sent now has arrived. Ported (link.Channel.Fence, TestAFence); waits on route-admission.ts: its `the fence after a denial` cases (test/host/route-admission.test.ts) cover the fence."
+
+[[files]]
+path = "packages/chord/src/remote/host-link.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): `HostLink.fence` delegates to the channel's. Ported (remote_host_link.go); waits on route-admission.ts: its fence cases run through the link."
+
+[[files]]
+path = "packages/chord/src/remote/path.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): a gated path holds only what its gate admits, forwards a denial only behind a fence and drops it with a lost link. Ported (remote_path.go; the four cases of `a gated path` run in remote_path_test.go); waits on route-admission.ts: test/host/route-admission.test.ts covers it through its fence cases."
+
+[[files]]
+path = "packages/chord/src/host/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the barrel exports the admission names. A barrel: Go imports the package."
+
+[[files]]
+path = "packages/chord/src/remote/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the barrel imports `revoked`. A barrel: Go imports the package."
+
+[[files]]
+path = "packages/chord/src/contracts/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the contracts notes on the admission member. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/link/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the link notes on the fence. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/remote/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the remote notes on the fence and the gated path. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/test/examples/69-admission.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the admission example. Not ported: no chord/next/host/host_example_69_test.go yet (the examples 70 to 72 are)."
+
+[[files]]
+path = "packages/chord/test/host/route-admission.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the 21 cases of the route admission. 20 run in host_route_admission_test.go and host_route_admission_settle_test.go; `ends denied whenever the denial arrives: ${turns} turns into the settle` has no Go twin yet."
+
+[[files]]
+path = "packages/chord/test/host/dependencies.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the two cases of `a denied dependency (slice 14 §2.2)` (a dependent parks showing the denial; no parked_long report). No Go twin yet (a gap reported to Main); the other 13 cases are ported."
+
+[[files]]
+path = "packages/chord/test/host/reference-source.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "8270d9af6 (slice 14, second part): the case `a denied reference's source (slice 14 §2.2)` (it keeps no value). No Go twin yet (a gap reported to Main); the other 21 cases are ported."
