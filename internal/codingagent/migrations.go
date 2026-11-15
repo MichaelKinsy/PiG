@@ -179,7 +179,8 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 				}
 				settings.Delete("apiKeys")
 				if updated, err := stringifyIndented(rawObject(settings)); err == nil {
-					_ = os.WriteFile(settingsPath, updated, 0644) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
+					// The file exists (it was just read); the request is Pi's, writeFileSync(settingsPath, ...) with no mode (migrations.ts:60): 0666.
+					_ = os.WriteFile(settingsPath, updated, 0o666) // upstream: coding-agent/src/migrations.ts:migrateAuthToAuthJson
 				}
 			}
 		}

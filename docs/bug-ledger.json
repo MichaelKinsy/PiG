@@ -728,6 +728,26 @@
       ]
     },
     {
+      "id": "BF-06582c4",
+      "title": "A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process",
+      "symptom": "As in Pi, every continuation a listener queued runs before any microtask the emitter queues after `emit` returns, and the emitter's settle wait now covers every listener process of the emit: it used to end early when an earlier listener process had already answered (it was inside its own wait for an earlier emit of the same burst), failed or exited before the Host wrote the request of the next one, so that process's continuations could interleave with the emitter's later work.",
+      "rootCause": "The emission settled the first moment its pending map was empty, so a realm that reported before the dispatch loop had registered the next realm (a quiesce written before its dispatch response, a failed dispatch, a closed connection) closed it, and the emitter's events.settle returned without waiting for the realms the loop reached afterwards. Their continuations could then run between the emitter's later microtasks; in Pi every continuation a listener queued runs before any microtask the emitter queues after emit returns (event-bus.ts:15-17, 19-25).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process. As in Pi, every continuation a listener queued runs before any microtask the emitter queues after `emit` returns, and the emitter's settle wait now covers every listener process of the emit: it used to end early when an earlier listener process had already answered (it was inside its own wait for an earlier emit of the same burst), failed or exited before the Host wrote the request of the next one, so that process's continuations could interleave with the emitter's later work. PiG 0.3.0 through 0.7.0 have the defect. \u003c!-- tests: coding/extension/host/subprocess/event_bus_settle_test.go::TestDispatchEventEmissionStaysOpenUntilTheLoopHasRegisteredEveryListenerRealm, coding/extension/host/subprocess/event_bus_settle_test.go::TestDispatchEventEmissionSettlesWhenTheLoopEndsWithNoPendingListener, coding/extension/host/subprocess/event_bus_settle_test.go::TestHostEventBusEmitCallSettlesAfterEveryListenerRealm --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "06582c49c6",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-06a8890",
       "title": "fix(bug): tell the reporter exactly what to do with the /bug archive",
       "symptom": "fix(bug): tell the reporter exactly what to do with the /bug archive",
@@ -4983,6 +5003,65 @@
       ]
     },
     {
+      "id": "BF-26b210c",
+      "title": "On Windows a credential or settings write that Windows refuses because another program holds the file open…",
+      "symptom": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.",
+      "rootCause": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows",
+      "class": "ahead-of-pi",
+      "divergence": "D651",
+      "removeWhen": "(A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows a credential or settings write that Windows refuses because another program holds the file open (an indexer, an editor, a sync client) is now retried for the ten-second budget in two more cases, `ERROR_UNABLE_TO_REMOVE_REPLACED` and `ERROR_UNABLE_TO_MOVE_REPLACEMENT`, as it already was for access and sharing errors, as the divergence record D651 says; the write used to fail at once. \u003c!-- cause: the list of transient errors held the access, sharing and lock errors only, so the two refusals of ReplaceFileW that leave both files under their names were returned without the retry the divergence record promises --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "26b210c014",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "ab6595bc39",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/acl_linux_test.go::TestWriteFileKeepsExactlyTheAccessOfTheFileItReplaces",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile",
+        "internal/atomicfile/inplace_test.go::TestWriteFileCannotCreateAFileInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReplacesAPlainFileAndReportsNothing",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReportsARealFailureOfTheInPlaceWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceThroughAHardLink",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceWhereTheRenameIsRefused",
+        "internal/atomicfile/linknode_test.go::TestWriteFileThroughALinkEndsWhereAnInPlaceWriteEnds",
+        "internal/atomicfile/nonregular_test.go::TestWriteFileWritesANonRegularTargetInPlace",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
+        "internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFailsLikeWriteFileSyncForALinkItCannotFollow",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFollowsAChainOfLinksToAMissingTarget",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFollowsALinkToAMissingTarget",
+        "internal/atomicfile/syncdir_test.go::TestWriteFileReportsADirectorySyncFailure",
+        "internal/atomicfile/syncdir_test.go::TestWriteFileToleratesAFileSystemThatCannotSyncADirectory",
+        "internal/atomicfile/umask_test.go::TestWriteFileGivesANewFileTheModeOpenGives",
+        "internal/atomicfile/xattr_grow_test.go::TestGetXattrReadsAnAttributeThatGrowsBetweenTheCalls",
+        "internal/atomicfile/xattr_test.go::TestWriteFileCarriesExtendedAttributesOver",
+        "internal/atomicfile/xattr_test.go::TestWriteFileKeepsAPosixACL",
+        "internal/atomicfile/xattr_test.go::TestWriteFileWritesInPlaceWhenAnAttributeCannotBeCarried",
+        "internal/codingagent/state_file_mode_test.go::TestStateFilesGetPiModeUnderUmask",
+        "internal/fsretry/transient_codes_test.go::TestTransientWindowsCode",
+        "internal/fsretry/transient_windows_test.go::TestTransientRenameClassifiesWindowsErrors"
+      ]
+    },
+    {
       "id": "BF-26b6705",
       "title": "The RPC test harness no longer races on its recorded output error (found by a `go test -race ./coding/...`…",
       "symptom": "The RPC test harness no longer races on its recorded output error (found by a `go test -race ./coding/...` run); test-only.",
@@ -5279,6 +5358,26 @@
           "hash": "2843d60cd9",
           "date": "2026-10-30",
           "pr": "11509"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-2844ff3",
+      "title": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole…",
+      "symptom": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole text and only the printed line is cut.",
+      "rootCause": "ledgerText no longer cuts: the notice in the stored record of a verdict holds the whole text of the ledger row (bounded by the 1 MiB the contents endpoint serves) and a run that reuses the record prints what the first run printed. The log, the annotation and the comment row cut it at 600 characters with an ellipsis through shownNotice. A comment too long for GitHub still leaves its notices out. README and changelog fragment updated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole text and only the printed line is cut.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2844ff315c",
+          "date": "2026-11-14"
         }
       ],
       "tests": []
@@ -7396,6 +7495,28 @@
       ]
     },
     {
+      "id": "BF-363faed",
+      "title": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could…",
+      "symptom": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could start a workflow command on the runner, in the `::command::` form and in the legacy `##[command]` form.",
+      "rootCause": "The runner also reads \"##[command]data\". defang turns \"##[\" into \"# #[\" (plain ASCII, readable); inert is flatten plus defang plus a split leading \"::\", used for every PR text the report, logf and the run error print; logf defangs the whole line, so annotation data and the dry-run comment are covered too, as every print goes through logf. Comment cells of existing findings are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could start a workflow command on the runner, in the `::command::` form and in the legacy `##[command]` form. Every line the tool prints is now inert.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "363faed088",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestInertKeepsTextReadable"
+      ]
+    },
+    {
       "id": "BF-364cc57",
       "title": "RPC model objects of built-in models match Pi's: each keeps its catalog entry's own member order and spelling…",
       "symptom": "RPC model objects of built-in models match Pi's: each keeps its catalog entry's own member order and spelling (`\"type\"` last for most models, first for others; `inputLimits.images` as the entry spells it), and a `models.json` override keeps the changed members in place, with merged objects listing the catalog's members first.",
@@ -8820,6 +8941,26 @@
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchWritesJSONStringifyText",
         "internal/codingagent/trust_store_stringify_test.go::TestProjectTrustStoreWritesJSONStringifyInUTF16KeyOrder"
       ]
+    },
+    {
+      "id": "BF-41120c0",
+      "title": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the…",
+      "symptom": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.",
+      "rootCause": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it. \u003c!-- cause: the helper copied the attributes the replaced file has and never removed what the new file inherited, and no test put a default ACL on the directory --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "41120c0e67",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-411a8cb",
@@ -11078,6 +11219,30 @@
       "tests": []
     },
     {
+      "id": "BF-4ec88b4",
+      "title": "A full disk or a killed process during a credential write could sign you out of every provider",
+      "symptom": "A full disk or a killed process during a credential write could sign you out of every provider.",
+      "rootCause": "auth.json was written in place (opened, truncated, written), so a full disk, a size limit or a killed process during the write left it empty or cut short. It is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed), so such a failure leaves the old file whole. The mode, the owner where the process may set it, and the extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them are kept; a symlinked auth.json is followed; on Windows ReplaceFileW keeps the replaced file's DACL. A read-only auth.json is refused as before. A file with more than one hard link, or whose extended attributes cannot be carried over, is written in place as before, as in Pi, and so are a single file mounted into a container, a file in a directory that cannot be written, and a device or named pipe.",
+      "rootCauseSource": "correction",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows, macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so where it can be replaced a failed write leaves the old file untouched. A file that exists keeps its mode, owner (where pig may set it), extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them, exactly the access it had (an ACL the directory would hand a new file is not added), a symlinked `auth.json` and, on Windows, its access rights; a file that does not exist yet gets the mode that is asked for with your umask taken out, as in Pi. pig replaces a file only when that changes nothing but the file itself: where a credential file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, a file with more than one hard link, a file whose extended attributes cannot be carried over, or a device or named pipe, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so. That guarantee does not cover an in-place write: one that fails half way can still leave the file empty or cut short, as before. \u003c!-- cause: auth.json was written in place (opened, truncated, written), so a full disk, a size limit or a killed process during the write left it empty or cut short. It is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed), so such a failure leaves the old file whole. The mode, the owner where the process may set it, and the extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them are kept; a symlinked auth.json is followed; on Windows ReplaceFileW keeps the replaced file's DACL. A read-only auth.json is refused as before. A file with more than one hard link, or whose extended attributes cannot be carried over, is written in place as before, as in Pi, and so are a single file mounted into a container, a file in a directory that cannot be written, and a device or named pipe. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4ec88b40bc",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile"
+      ]
+    },
+    {
       "id": "BF-4f079a7",
       "title": "An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being…",
       "symptom": "An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being refreshed is no longer sent again after the refresh; other requests waiting on the same refresh still complete.",
@@ -11938,6 +12103,30 @@
       ]
     },
     {
+      "id": "BF-541820e",
+      "title": "A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a…",
+      "symptom": "A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does.",
+      "rootCause": "Root-Cause: syncDirectory answered a bool that its only caller ignored, written as one tolerance for every failure because the unsupported case was the one anticipated. Signed-off-by: Michael Kinsy \u003c54590707+MichaelKinsy@users.noreply.github.com\u003e",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a file system that has no directory flush is still accepted. A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does. \u003c!-- cause: the directory flush answered a value its only caller dropped, and the link was resolved with filepath.EvalSymlinks alone, which has no answer for a missing target --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4dfa69b67e",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "541820ef23",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-54283ce",
       "title": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
       "symptom": "fix(extension): Shutdown closes live child sessions and releases the objects they hold",
@@ -12123,6 +12312,32 @@
         "tui/fake_cursor_test.go::TestResolveFakeCursorsTable",
         "tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput",
         "tui/tui_surface_test.go::TestTuiSurfaceResolvesTheFakeCursorOfDockLines"
+      ]
+    },
+    {
+      "id": "BF-546133a",
+      "title": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that…",
+      "symptom": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that file, as the line lint requires, so the two gates judge alike.",
+      "rootCause": "The commit must change the file. The line lint requires that the commit a row names changed the row's path; the pre-flight rule did not. For each commit that a row names, alone among the PR's commits, for a changed test file, the pre-flight asks the commit endpoint for the commit's files (pages of 100 until a page is short, at most 30 pages) and the check's input hash includes the answer. A commit that does not change the file is a finding (\"ledger row \u003csha10\u003e \u003cpath\u003e: that commit does not change the file\"). A failed call, a 404 for a commit the PR listed, or a file list that cannot be read in full leaves the check undecided. Tests (rules_ledger_commit_test.go): the commit changed the file…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that file, as the line lint requires, so the two gates judge alike.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "546133acb5",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestLogfPrintsAnErrorOnOneLine",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestAdmissionRequiresTheNamedCommitToChangeTheFile",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitFilesAreAnInputOfTheCheck",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestLedgerRowsOfTooManyCommitsAskToSplit",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextCannotStartAWorkflowCommand"
       ]
     },
     {
@@ -20383,6 +20598,26 @@
       ]
     },
     {
+      "id": "BF-730c233",
+      "title": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no…",
+      "symptom": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no warnings or notices; it now recomputes.",
+      "rootCause": "The state of a shortened comment is marked, and decideMode runs the checks again for such a state instead of reusing the verdicts that lack their warnings and notices. A state written before this field cannot be told from an honest empty one and is reused once more, until the head moves.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no warnings or notices; it now recomputes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "730c233072",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-731474b",
       "title": "`coding.DefineTool` returns the tool definition it is given, as Pi's `defineTool` does",
       "symptom": "`coding.DefineTool` returns the tool definition it is given, as Pi's `defineTool` does.",
@@ -26981,6 +27216,26 @@
       ]
     },
     {
+      "id": "BF-93b5de0",
+      "title": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential…",
+      "symptom": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it; for that provider the refreshed login replaces what the file holds, a later login or logout of it by the other process included, as in Pi.",
+      "rootCause": "When another process took auth.json's lock while a refresh was in flight (the sync lock goes stale after 10 s, a slow refresh outlasts it), Modify returned the compromise error and dropped the credential the refresh had obtained, which may have spent a single-use refresh token. While the lock's heartbeat has not yet reported the takeover, Modify now writes that provider's entry alone, under a lock of its own, into the file as it is then; what the other process wrote stays, and Pi persists the credential in that case. Once the heartbeat has reported the takeover, Modify still returns the lock error and writes nothing, as Pi throws. An fn that fails still writes nothing.",
+      "rootCauseSource": "correction",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it; for that provider the refreshed login replaces what the file holds, a later login or logout of it by the other process included, as in Pi. This holds while the lock's own renewal has not yet noticed the takeover: once it has, the refresh still fails with the lock error and writes nothing, as in Pi. \u003c!-- cause: When another process took auth.json's lock while a refresh was in flight (the sync lock goes stale after 10 s, a slow refresh outlasts it), Modify returned the compromise error and dropped the credential the refresh had obtained, which may have spent a single-use refresh token. While the lock's heartbeat has not yet reported the takeover, Modify now writes that provider's entry alone, under a lock of its own, into the file as it is then; what the other process wrote stays, and Pi persists the credential in that case. Once the heartbeat has reported the takeover, Modify still returns the lock error and writes nothing, as Pi throws. An fn that fails still writes nothing. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "93b5de031b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-93c09d6",
       "title": "A local package source that is a file Node cannot import, such as a packed `.tgz`, fails to load as in Pi…",
       "symptom": "A local package source that is a file Node cannot import, such as a packed `.tgz`, fails to load as in Pi (`Failed to load extension: Unknown file extension \".tgz\" for \u003cpath\u003e`, exit 1) instead of being run as a program and failing with \"permission denied\".",
@@ -27564,6 +27819,26 @@
         "chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder",
         "internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages"
       ]
+    },
+    {
+      "id": "BF-982a52a",
+      "title": "A Chord rollout lists every failed worker it retried",
+      "symptom": "A Chord rollout lists every failed worker it retried.",
+      "rootCause": "A rollout kept the entry of a failed worker it retried only when its own Retry answered that it had started the resolve, and the entry of one whose address already had a start running (the route starts a resolve itself when a worker link closes; a resolve ends only when its start settles) was dropped: the worker went on starting and the rollout list lacked it. Pi has no such test: it lists `routed.starting` after `retry`, whatever began it (workers.ts:598-601). The rollout now does the same.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord rollout lists every failed worker it retried. A worker whose address already had a start running when the rollout retried it (the route starts one itself when the worker's link closes) was left out of the rollout's list although its start went on, so the app saw one worker fewer than the rollout had brought up; the list now carries the start the address has after the retry, whoever began it, as Pi's does. \u003c!-- cause: the rollout kept a retried worker's entry only when its own Retry answered that it had started the resolve, assuming a start on a failed address was always its own; Pi lists whatever start the address has after the retry (workers.ts:598-601) --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "982a52a9f9",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-983d651",
@@ -28210,6 +28485,32 @@
         "coding/extension/host/runtimecell/hash_inputs_test.go::TestCommandVersionCachesWarmProbeAndDetectsReplacement",
         "coding/extension/host/subprocess/node_recovery_test.go::TestNodeUnattributableCrashRestartsWholeGroup",
         "internal/codingagent/tools/bash_group_stack_windows_test.go::TestWin_JobQueriesSurviveAGoroutineStackMove"
+      ]
+    },
+    {
+      "id": "BF-9b91740",
+      "title": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential…",
+      "symptom": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential files) now gets the mode its writer asks for with your umask taken out, as in Pi.",
+      "rootCause": "A file that did not exist yet was created 0600 and then chmodded to the mode the caller asked for, which no umask touches: a caller asking 0666 (mcp.json, the keybindings migration) got a world-writable file where Pi writeFileSync gives rw-r--r-- under umask 022, and one asking 0644 got a group- and world-readable file under umask 077. A new file is now created with open(O_CREAT|O_EXCL, perm) (Unix), so the kernel applies the umask and the default ACL as for Pi; an existing file keeps its temporary file private and is given exactly its own mode at the end. The umask is never read (reading it sets it, which races with other threads creating files).",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A new file that pig writes (`settings.json`, `trust.json`, `keybindings.json`, the MCP config, the credential files) now gets the mode its writer asks for with your umask taken out, as in Pi. The replacing write gave it exactly the requested mode: an MCP config could be created `rw-rw-rw-` under umask 022, and a settings, trust or keybindings file `rw-r--r--` under umask 077. `settings.json`, `trust.json` and `keybindings.json` now ask for Pi's mode (0666 before the umask). A file that exists keeps its mode. \u003c!-- cause: the helper chmodded the new temporary file to the requested mode, which no umask touches, and no test crossed the requested mode with the umask --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9b91740704",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "c7b4ed4b93",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/umask_test.go::TestWriteFileGivesANewFileTheModeOpenGives"
       ]
     },
     {
@@ -29212,6 +29513,33 @@
       ],
       "tests": [
         "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
+      ]
+    },
+    {
+      "id": "BF-a058b99",
+      "title": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on…",
+      "symptom": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
+      "rootCause": "The list is read from main's checkout only (the file is added to the check's main reads and to both sparse checkouts of the workflow), so a prefix that a pull request adds exempts nothing in that pull request. A list that is missing, empty or not TOML on main fails the check with that reason. Each skip is a notice (a NOTE line, a ::notice, a comment row) naming the file and the prefix. A ledger row for a skipped file is not needed, and the ledger is not read when every flagged file is skipped.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a058b99ea8",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/reviewed/tooling_test.go::TestParseToolingAndInTooling",
+        "automation/ci/preflight/rules_test.go::TestRuleTestExpectation",
+        "automation/ci/preflight/rules_test.go::TestRuleTestExpectationEdges",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationSkipsToolingDirectoriesOfMain",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsSkipsOnlyListedToolingDirectories",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckToolingRejectsEntriesThatWidenTheScope"
       ]
     },
     {
@@ -35495,6 +35823,26 @@
       "tests": []
     },
     {
+      "id": "BF-cb4481f",
+      "title": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an…",
+      "symptom": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an ordinary file, for example a device such as `/dev/null` or a named pipe, no longer swaps that node for a regular file. pig writes such a target in place, as Pi does, so the bytes reach the device and a full-device error is reported; no temporary file is made for it.",
+      "rootCause": "For a device node (/dev/null, /dev/full) or a named pipe in a directory the process can write, the rename removed the node and left an ordinary file with the node's mode: the bytes never reached the device, a full-disk error was not returned, and a 0666 node became a 0666 credential file. Pi's writeFileSync writes to the node.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an ordinary file, for example a device such as `/dev/null` or a named pipe, no longer swaps that node for a regular file. pig writes such a target in place, as Pi does, so the bytes reach the device and a full-device error is reported; no temporary file is made for it. \u003c!-- cause: the shared writer treated every existing target as a regular file and replaced it by rename, which removed a device or pipe and left an ordinary file with the node's mode. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb4481fdbc",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-cbc986b",
       "title": "BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file…",
       "symptom": "BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's decoders.",
@@ -35540,6 +35888,30 @@
         "extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire",
         "test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs"
       ]
+    },
+    {
+      "id": "BF-cc061a0",
+      "title": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits",
+      "symptom": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits.",
+      "rootCause": "A quit by keys that waits for an author keeps its dispose pending. The ctrl+c that then ends pig (exit 130) ran no dispose, so the runtime of a Node author that holds a timer stayed behind. handleInterruptSignal terminates the extension processes before it exits, as the emergency exit does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits. The runtime process of a Node extension whose event loop was still alive, for example one that holds a timer, stayed behind after a quit by keys that was still waiting for an extension's session_shutdown handler. Nothing more is written to the session file at that exit. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cc061a0b20",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "f522a9c34a",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-cc9370b",
@@ -42535,6 +42907,29 @@
       ]
     },
     {
+      "id": "BF-eade544",
+      "title": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning)…",
+      "symptom": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.",
+      "rootCause": "The verdict reason and a warning's file in the table of the comment, and the reason quoted in an alert comment, were plain Markdown. A file name or a reason holding a fence, a mention, an HTML tag or a link could change the comment. Every call site now prints them through codeSpan, the helper the admission notice row already used, so cell is now that one code span cell and inertCell is gone.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eade544cc1",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestAlertBodyQuotesTheReasonInertly",
+        "automation/ci/preflight/print_inert_test.go::TestCellFenceOutgrowsTheBackticksInTheText"
+      ]
+    },
+    {
       "id": "BF-eb34085",
       "title": "The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name…",
       "symptom": "The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name ending in U+0085 keeps it.",
@@ -43270,6 +43665,37 @@
       "tests": [
         "internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
         "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender"
+      ]
+    },
+    {
+      "id": "BF-ee5045c",
+      "title": "Reading an extended attribute that is set between the size query and the read no longer panics, and on…",
+      "symptom": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.",
+      "rootCause": "The call now gives a backup name, with which every state is known: 1175 and 1176 leave both files under their names (the file at path is the old one), 1177 leaves the original as the backup and nothing at path. 1177 is finished by moving the replacement into place (its DACL first taken from the backup), reversed by moving the backup back when that fails, and when neither can be done both files are kept and named in the error; the temporary file of such a failure is never deleted. A success deletes the backup. The decision is platform-neutral code tested with injected file systems; the syscall itself was NOT RUN (no Windows host).",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back. \u003c!-- cause: the read retried on ERANGE only, which a zero-length buffer never gets, and the Windows call gave no backup name, so a failure left the replaced file deleted and the cleanup removed the replacement --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ea2e967070",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "ee5045c2d1",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
+        "internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles"
       ]
     },
     {
@@ -47600,6 +48026,28 @@
       ]
     },
     {
+      "id": "BF-ffe1cf3",
+      "title": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its…",
+      "symptom": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its SBCL image: it warned `[not-embedded]`, a Piglet with no other member to fuse failed with \"nothing to embed or fuse\", and a Piglet with a fused member built a Binary that exited at startup with `baked Piglet Binary binary-packed extensions do not match its plan: missing [\u003cextension\u003e]`.",
+      "rootCause": "The component plan records a Lisp extension as binary-packed, but buildNativeArtifact had no packed-lisp case: the cell fell to the default branch, which warned [not-embedded] and embedded nothing. The Binary then refused to start because its plan named an extension its cells lacked, and a Piglet with no other member to fuse failed with \"nothing to embed or fuse\". Build the SBCL image through runtimecell.BuildLispPackedCell, as the Go and Rust cells are built, and embed it; the startup path already starts an embedded packed-lisp cell.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its SBCL image: it warned `[not-embedded]`, a Piglet with no other member to fuse failed with \"nothing to embed or fuse\", and a Piglet with a fused member built a Binary that exited at startup with `baked Piglet Binary binary-packed extensions do not match its plan: missing [\u003cextension\u003e]`. The build now builds the Lisp image and embeds it, the Binary starts it without SBCL, and a Piglet whose only extensions are Lisp extensions builds.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ffe1cf3473",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/pigletbuild/lisp_binary_test.go::TestPigletBinaryRunsItsLispExtension"
+      ]
+    },
+    {
       "id": "BF-ffeb469",
       "title": "A long session keeps less memory for each turn it has compacted away",
       "symptom": "A long session keeps less memory for each turn it has compacted away.",
@@ -48022,6 +48470,11 @@
     {
       "id": "D615",
       "title": "The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider…"
+    },
+    {
+      "id": "D651",
+      "title": "Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi…",
+      "entry": "BF-26b210c"
     }
   ],
   "exemptCommits": {

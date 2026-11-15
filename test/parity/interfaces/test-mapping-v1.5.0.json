@@ -4284,7 +4284,7 @@
         "ai/auth_create_test.go#TestAuthStorageCreatesEmptyFileOnConstruction",
         "ai/auth_pi_lock_test.go#TestAuthStoragePreservesExistingMode",
         "ai/auth_pi_lock_test.go#TestAuthStorageCancelledModifierRetainsLockUntilReturn",
-        "ai/auth_pi_lock_test.go#TestAuthStorageCompromisedModifierDoesNotWrite",
+        "ai/auth_pi_lock_test.go#TestAuthStorageModifierPersistsItsCredentialAfterTheLockWasTaken",
         "ai/auth_storage_lock_upstream_test.go#TestAuthStoragePreAbortedFileOperationUpstream",
         "ai/auth_storage_lock_upstream_test.go#TestAuthStorageHeldFileLockCancellationUpstream",
         "ai/auth_storage_lock_upstream_test.go#TestAuthStorageCancelledFileCallbackRetainsOwnershipUpstream",
