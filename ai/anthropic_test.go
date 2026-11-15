@@ -1249,16 +1249,19 @@ func TestAnthropicStreamUsesModelMaxTokensWhenUnset(t *testing.T) {
 
 	p := NewAnthropicProvider(AnthropicConfig{
 		APIKey:  "test-key",
-		Model:   "claude-sonnet-5",
+		Model:   "zz-fixture-anthropic",
 		BaseURL: srv.URL,
+		// A fixture record (id zz-fixture-..., never a models.dev id): with no maxTokens option the request carries the model output limit (Pi
+		// packages/ai/src/api/anthropic-messages.ts:1480 max_tokens: options?.maxTokens ?? model.maxTokens).
+		ModelMetadata: &Model{ID: "zz-fixture-anthropic", Capabilities: ModelCapabilities{MaxOutputTokens: 4321}},
 	})
 	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hello")}}}), StreamOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = stream.Result()
-	if got, _ := body["max_tokens"].(float64); got != 128000 {
-		t.Fatalf("max_tokens = %v, want 128000", body["max_tokens"])
+	if got, _ := body["max_tokens"].(float64); got != 4321 {
+		t.Fatalf("max_tokens = %v, want 4321 (the fixture model's output limit)", body["max_tokens"])
 	}
 }
 

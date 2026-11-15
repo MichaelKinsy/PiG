@@ -69,6 +69,17 @@ func remoteCatalogServices(t *testing.T) *AgentSessionServices {
 // no bundled record, so building it from the bundled catalog alone gave a model with no window and no prices.
 func TestBuildModelCarriesTheCatalogWindowAndPrices(t *testing.T) {
 	services := remoteCatalogServices(t)
+	// A bundled model the remote catalog does not carry: its window and prices are the bundled record's (the registry's), whatever the catalog data is.
+	var bundled ai.GeneratedModel
+	for _, candidate := range ai.ListModels("github-copilot") {
+		if candidate.ID != "claude-haiku-4.5" {
+			bundled = candidate
+			break
+		}
+	}
+	if bundled.ID == "" {
+		t.Fatal("the bundled catalog has no github-copilot model besides claude-haiku-4.5")
+	}
 	for _, tc := range []struct {
 		name, spec         string
 		window             int
@@ -77,7 +88,7 @@ func TestBuildModelCarriesTheCatalogWindowAndPrices(t *testing.T) {
 		{"remote-only model with a dot in its id", "github-copilot/zz-fixture-claude-fable-6", 1_000_000, 10, 50},
 		{"remote-only model with a slash and a colon in its id", "openai/acme/spark:beta", 400_000, 1, 2},
 		{"bundled model the remote catalog replaces", "github-copilot/claude-haiku-4.5", 123_456, 3, 4},
-		{"bundled model", "github-copilot/claude-fable-5.1", 1_000_000, 10, 50},
+		{"bundled model", "github-copilot/" + bundled.ID, bundled.ContextWindow, bundled.InputCostPerMTokens, bundled.OutputCostPerMTokens},
 		{"models.json model with a contextWindow", "custom-proxy/with-window", 64_000, 0, 0},
 		{"models.json model without a contextWindow", "custom-proxy/no-window", 128_000, 0, 0},
 	} {

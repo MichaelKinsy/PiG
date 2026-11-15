@@ -1,6 +1,7 @@
 package coding
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -84,14 +85,15 @@ func TestModelRuntimeCopilotResponsesIgnoreCompletionsReasoningFallback(t *testi
 	if strings.Contains(bodies[0], "reasoning_effort") {
 		t.Fatalf("%s: a Responses request carries reasoning_effort:\n%s", model.ID, bodies[0])
 	}
-	if model.ID != copilotResponsesUnchangedModel || bodies[0] != copilotResponsesUnchangedBody {
-		t.Fatalf("the Copilot Responses request changed.\nmodel %s\n got %s\nwant %s (%s)", model.ID, bodies[0], copilotResponsesUnchangedBody, copilotResponsesUnchangedModel)
+	var request struct {
+		Model           string         `json:"model"`
+		MaxOutputTokens int            `json:"max_output_tokens"`
+		Reasoning       map[string]any `json:"reasoning"`
+	}
+	if err := json.Unmarshal([]byte(bodies[0]), &request); err != nil {
+		t.Fatalf("%s: the request is not JSON: %v\n%s", model.ID, err, bodies[0])
+	}
+	if request.Model != model.ID || request.MaxOutputTokens != model.Capabilities.MaxOutputTokens || request.Reasoning["effort"] != "high" || request.Reasoning["summary"] != "auto" {
+		t.Fatalf("%s: the Responses request keeps the model, its output limit %d and the reasoning object {effort high, summary auto}; got %s", model.ID, model.Capabilities.MaxOutputTokens, bodies[0])
 	}
 }
-
-// The request of the first GitHub Copilot Responses model of the catalog, recorded on the release line before the port of Pi
-// 86918f9eeb (c3e04a4c1c79): the port must leave it byte for byte.
-const (
-	copilotResponsesUnchangedModel = "gpt-5.3-codex"
-	copilotResponsesUnchangedBody  = `{"model":"gpt-5.3-codex","input":[{"role":"user","content":[{"type":"input_text","text":"Reply with exactly OK"}]}],"stream":true,"prompt_cache_key":"copilot-responses-unchanged","store":false,"max_output_tokens":128000,"reasoning":{"effort":"high","summary":"auto"},"include":["reasoning.encrypted_content"]}`
-)

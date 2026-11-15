@@ -33,7 +33,7 @@ rationale = "The azure provider reads AZURE_OPENAI_API_KEY."
 path = "packages/ai/src/models.generated.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:ai/registry_test.go#TestRegistryHasModels", "test:ai/registry_test.go#TestCatalogPin100"]
+evidence = ["test:ai/registry_test.go#TestRegistryHasModels", "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"]
 rationale = "The generated catalog barrel lists the azure provider; make model-catalogs regenerates ai/models_generated.go and ai/providers_generated.go from the published package."
 
 [[files]]
@@ -47,7 +47,7 @@ rationale = "Models.refresh refreshes a stored OAuth credential through refreshS
 path = "packages/ai/src/providers/all.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:ai/registry_test.go#TestCatalogPin100"]
+evidence = ["test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"]
 rationale = "The barrel registers azureProvider; Go's GeneratedProviders lists azure in barrel order."
 
 [[files]]
@@ -75,14 +75,14 @@ rationale = "A generated TypeScript catalog shard; Go reads ai/models_generated.
 path = "packages/ai/src/providers/azure.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream", "test:ai/registry_test.go#TestCatalogPin100"]
+evidence = ["test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream", "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"]
 rationale = "azureProvider: the provider is azure with name Azure; its openai-completions models resolve the Azure endpoint and send the deployment name as the request model (ai/azure.go, applied by NewOpenAIProvider for the azure provider ID)."
 
 [[files]]
 path = "packages/ai/src/types.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:ai/registry_test.go#TestCatalogPin100"]
+evidence = ["test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"]
 rationale = "KnownProvider lists azure instead of azure-openai-responses; PiG's provider IDs are strings checked against the generated catalog."
 
 [[files]]
