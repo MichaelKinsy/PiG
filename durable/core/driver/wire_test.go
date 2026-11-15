@@ -86,3 +86,26 @@ func TestScanQueriesCarryTheWireNames(t *testing.T) {
 		t.Fatalf("task query, no filter = %s", got)
 	}
 }
+
+// The submit event (and the transaction op's arguments) carries onAbort only for keep: never "withdraw", never null.
+func TestSubmissionEventCarriesOnAbortOnlyForKeep(t *testing.T) {
+	draft := durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("k"), WhenBusy: durable.WhenBusyFollowUp, RequestId: new("r")}
+	for _, tc := range []struct {
+		onAbort durable.OnAbort
+		want    string
+	}{
+		{"", `{"content":"k","conversationId":3,"requestId":"r","type":"input","whenBusy":"followUp"}`},
+		{durable.OnAbortWithdraw, `{"content":"k","conversationId":3,"requestId":"r","type":"input","whenBusy":"followUp"}`},
+		{"later", `{"content":"k","conversationId":3,"requestId":"r","type":"input","whenBusy":"followUp"}`},
+		{durable.OnAbortKeep, `{"content":"k","conversationId":3,"onAbort":"keep","requestId":"r","type":"input","whenBusy":"followUp"}`},
+	} {
+		draft.OnAbort = tc.onAbort
+		got, err := json.Marshal(submissionEvent(3, draft))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != tc.want {
+			t.Errorf("onAbort %q: event = %s, want %s", tc.onAbort, got, tc.want)
+		}
+	}
+}

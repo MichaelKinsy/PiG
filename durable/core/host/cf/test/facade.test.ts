@@ -157,6 +157,17 @@ test("a rejected input with whenIdle reject is Pi's error: ConversationIdle", as
   assert.deepEqual(core.ofKind(EVENT.submit)[0]!.body.whenIdle, "reject", "the draft's whenIdle reaches the core")
 })
 
+test("a draft's onAbort keep reaches the core in the submit event, and a draft without it sends no field", async () => {
+  const core = new ScriptedCore(ev => ev.kind === EVENT.submit ? { notices: [published({ submissions: [{ id: 4, requestId: "", status: "queued" }] }), apiResult(ev.body.id, { ok: { id: 4, status: "queued" } })] } : undefined)
+  const h = await harness(core)
+  const c = new Conversation(h, 1)
+  await c.submit({ type: "input", content: "k", whenBusy: "followUp", onAbort: "keep" }, context)
+  await c.submit({ type: "input", content: "p" }, context)
+  const [kept, plain] = core.ofKind(EVENT.submit).map(ev => ev.body)
+  assert.equal(kept!.onAbort, "keep", "the draft's onAbort reaches the core")
+  assert.equal("onAbort" in plain!, false, "the default is the absent field")
+})
+
 test("a continue submits as a draft of its own type, with no content", async () => {
   const core = new ScriptedCore(ev => ev.kind === EVENT.submit ? { notices: [published({ submissions: [{ id: 4, requestId: "", status: "placed" }] }), apiResult(ev.body.id, { ok: { id: 4, status: "placed" } })] } : undefined)
   const h = await harness(core)
