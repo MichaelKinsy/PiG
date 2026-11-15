@@ -115,6 +115,20 @@ func relayedCause(wire link.WireError, hold int) (*data.ChordError, error) {
 	return data.AsChordError(received, fmt.Sprintf("hold %d", hold)), nil
 }
 
+// relayedFailure is what the calls of relayed hold `hold` still waiting for the upstream window are answered when upstream
+// fails it with cause: its error, `forbidden/revoked` for a denial (access withdrawn under a call that waits, as under one in
+// flight: slice 14 §2.3).
+func relayedFailure(cause link.WireCause, hold int) (*data.ChordError, error) {
+	err, malformed := relayedCause(cause.Error, hold)
+	if malformed != nil {
+		return nil, malformed
+	}
+	if cause.Kind == string(data.FailureDenied) {
+		return revoked(fmt.Sprintf("hold %d", hold), err), nil
+	}
+	return err, nil
+}
+
 // entryID is the id a provider entry is held under.
 func entryID(entry providerEntry) int {
 	switch typed := entry.(type) {
@@ -312,7 +326,7 @@ func (p *providerSide) forward(message link.ConsumerMessage, from *hostLink) err
 		if entry == nil {
 			return nil
 		}
-		cause, err := relayedCause(forwarded.Cause.Error, entry.id)
+		cause, err := relayedFailure(forwarded.Cause, entry.id)
 		if err != nil {
 			return err
 		}
