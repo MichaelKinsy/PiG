@@ -971,7 +971,7 @@ func (o *chordObject) failLive(a *attempt, cause liveFailure) {
 	// included), then stop. A retry's factory and hydration wait for both (its ending), so no old commit lands in a new
 	// attempt.
 	loop := o.host.loop()
-	settled := awaitTask(o.host, func() (struct{}, error) {
+	settled := awaitEnding(o.host, func() (struct{}, error) {
 		o.documents.Settled()
 		return struct{}{}, nil
 	})
@@ -980,7 +980,7 @@ func (o *chordObject) failLive(a *attempt, cause liveFailure) {
 		o.stopFollowing(a)
 		frozen.resolve(struct{}{})
 	})
-	closing := promiseAll2(loop, awaitTask(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil }), frozen)
+	closing := promiseAll2(loop, awaitEnding(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil }), frozen)
 	done := newKeyedPromise[[]*closeFailed](loop)
 	closing.then(func(failures []*closeFailed, _ error) {
 		a.detach()
@@ -1281,12 +1281,12 @@ func (o *chordObject) endOld(old *attempt, ready *readiness, due int64) *keyedPr
 			// slot unbinds now, before an `ack` could bind it to nothing; bound holds and references follow it on until it
 			// stopped changing.
 			o.notify()
-			awaitTask(host, func() (struct{}, error) {
+			awaitEnding(host, func() (struct{}, error) {
 				o.documents.Settled()
 				return struct{}{}, nil
 			}).then(func(struct{}, error) {
 				o.stopFollowing(old)
-				awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
+				awaitEnding(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
 					func(failures []*closeFailed, _ error) {
 						old.detach()
 						ended.resolve(failures)
@@ -1395,7 +1395,7 @@ func (o *chordObject) retryReloaded() *attempt {
 	}
 	closing := newKeyedPromise[[]*closeFailed](loop)
 	closeOld := func(struct{}, error) {
-		awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
+		awaitEnding(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
 			func(failures []*closeFailed, _ error) {
 				old.detach()
 				old.releaseReferences()
@@ -1614,7 +1614,7 @@ func (o *chordObject) failedAttempt(a *attempt, cause data.FailureCause) {
 	o.failure = cause.Error
 	a.seal(o.ended(), cutRestart)
 	loop := o.host.loop()
-	closing := awaitTask(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil })
+	closing := awaitEnding(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil })
 	done := newKeyedPromise[[]*closeFailed](loop)
 	closing.then(func(failures []*closeFailed, _ error) {
 		a.detach()
@@ -1858,19 +1858,29 @@ func (o *chordObject) tearDown(td teardown, reason NativeCloseReason) []*closeFa
 // of an ending starts, as a counted task, in the section that settles previous (a promise reaction: the count never falls
 // to zero between the previous ending's last step and this one's first), and until then it is a reaction of previous (a
 // closure), not a goroutine parked on it. previous is nil when no ending of the identity runs: the work starts at once.
-// Its outcome settles the returned promise in a section, as awaitTask's.
+// Its outcome settles the returned promise in a section, as awaitTask's. The task is paced (Loop.pace): the reader of a link
+// does not read the next frame while it can run.
 func awaitAfter[T any](host *chordHost, previous *keyedPromise[struct{}], work func() (T, error)) *keyedPromise[T] {
-	if previous == nil {
-		return awaitTask(host, work)
-	}
 	promise := newKeyedPromise[T](host.loop())
-	previous.then(func(struct{}, error) {
-		goTask(host.loop(), work, func() {
+	endingMade(host.loop())
+	start := func() {
+		goPacedTask(host.loop(), work, func() {
 			value, err := work()
 			host.enter(func() { promise.settle(value, err) })
 		})
-	})
+	}
+	if previous == nil {
+		start()
+	} else {
+		previous.then(func(struct{}, error) { start() })
+	}
 	return promise
+}
+
+// awaitEnding is awaitTask for the work of an ending that waits for no predecessor (a failed attempt's close, a restart's old
+// attempt's): a paced task, as an ending that does.
+func awaitEnding[T any](host *chordHost, work func() (T, error)) *keyedPromise[T] {
+	return awaitAfter(host, nil, work)
 }
 
 // tearDownAfter drains and closes a sealed attempt, then releases its references (after the closes, which may use them),

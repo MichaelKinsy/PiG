@@ -48,11 +48,9 @@ func bpRun(t *testing.T, n, ids int) {
 		s.Peer.Send(hold(each))
 		s.Peer.Send(&link.ReleaseMessage{Origin: link.Some(each), Hold: 0})
 	}
-	rhSync(t, s.Peer)
+	syncWithin(t, s.Peer, loop)
 	loop.quiesce()
-	s.Peer.mu.Lock()
-	s.Peer.received = nil
-	s.Peer.mu.Unlock()
+	s.Peer.discard()
 	runtime.GC()
 
 	var (
@@ -77,9 +75,7 @@ func bpRun(t *testing.T, n, ids int) {
 			heap := int(sample[0].Value.Uint64())
 			g := runtime.NumGoroutine()
 			peakTasks, peakParked, peakG, peakHeap = max(peakTasks, tasks), max(peakParked, parked), max(peakG, g), max(peakHeap, heap)
-			s.Peer.mu.Lock()
-			s.Peer.received = nil
-			s.Peer.mu.Unlock()
+			s.Peer.discard()
 		}
 	}()
 	var before, after runtime.MemStats
@@ -90,7 +86,7 @@ func bpRun(t *testing.T, n, ids int) {
 		s.Peer.Send(&link.ReleaseMessage{Origin: link.Some(1000 + each), Hold: 0})
 	}
 	sent := time.Since(started)
-	rhSync(t, s.Peer)
+	syncWithin(t, s.Peer, loop)
 	read := time.Since(started)
 	loop.mu.Lock()
 	atRead := len(loop.inflight)
@@ -148,12 +144,10 @@ func TestBackpressureHeapPerPendingEnding(t *testing.T) {
 	s.Peer.Send(hold(1))
 	s.Peer.Next("bound")
 	s.Peer.Send(&link.ReleaseMessage{Origin: link.Some(1), Hold: 0})
-	rhSync(t, s.Peer)
+	syncWithin(t, s.Peer, loop)
 	loop.quiesce()
 	heap := func() (uint64, int) {
-		s.Peer.mu.Lock()
-		s.Peer.received = nil
-		s.Peer.mu.Unlock()
+		s.Peer.discard()
 		runtime.GC()
 		runtime.GC()
 		var m runtime.MemStats
@@ -165,7 +159,7 @@ func TestBackpressureHeapPerPendingEnding(t *testing.T) {
 		s.Peer.Send(hold(origin))
 		s.Peer.Send(&link.ReleaseMessage{Origin: link.Some(origin), Hold: 0})
 	}
-	rhSync(t, s.Peer)
+	syncWithin(t, s.Peer, loop)
 	loop.quiesce()
 	after, goroutinesAfter := heap()
 	t.Logf("BPHEAP pending=%d tasksAlive=%d goroutines+=%d heapKiB/ending=%.2f", n, tasksAlive(loop), goroutinesAfter-goroutinesBefore, float64(after-before)/1024/float64(n))

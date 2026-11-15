@@ -120,7 +120,11 @@ func (l *hostLink) send(message link.Message) {
 	if l.channel == nil {
 		return
 	}
-	if err := l.channel.Send(message); err != nil {
+	// A paced ending's send may block on the transport: a real wait, which pace does not wait for (Loop.sending).
+	sending := l.host.paceSend()
+	err := l.channel.Send(message)
+	l.host.paceSent(sending)
+	if err != nil {
 		l.host.report(HostError{Kind: ErrProtocolError, Error: err})
 	}
 }
@@ -223,6 +227,8 @@ func (l *hostLink) Message(message link.Message) (*link.Handling, error) {
 		}
 		handling, err = l.dispatch(message)
 	})
+	// Pi's microtask checkpoint before the next frame (Loop.pace): the reader reads on once no paced ending can run.
+	l.host.pace(l.closing)
 	return handling, err
 }
 
