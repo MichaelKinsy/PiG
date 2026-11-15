@@ -40,7 +40,7 @@ var (
 		contracts.Mem("put", contracts.NewMethod(prItem)),
 		// As put, without waiting for its commit: a write that is no running call's.
 		contracts.Mem("later", contracts.NewMethod(prItem)))
-	prGates = exLocal("app.gates", contracts.Params{}, contracts.Mem("put", contracts.NewMethod(exInt())))
+	prGates  = exLocal("app.gates", contracts.Params{}, contracts.Mem("put", contracts.NewMethod(exInt())))
 	prView   = exLocal("app.view", contracts.Params{}, contracts.Mem("items", exObj(exProp("rows", exArr(prItem)), exProp("more", exBool()))))
 	prScreen = exLocal("app.screen", contracts.Params{},
 		contracts.Mem("items", exObj(exProp("rows", exArr(prItem)), exProp("moreAfter", exBool()))),
@@ -237,9 +237,11 @@ func TestNamedQueryProvidersRestartARemovedProvidersReadsLeaveTheIndexItsReaders
 	view := mustGet(t, h.Host, prView, jsonObject())
 	before, err := view.Member("items").Value()
 	must(t, err)
+	// Two reads over each table: the view's live query and the first page of the screen's list (an object of empty params
+	// lives from the load, the screen of `others` included, as in Pi).
 	for _, table := range []string{"app.provider:texts", "app.gates:gate"} {
-		if reads := chordStore.Reads.On(table); len(reads) != 1 {
-			t.Fatalf("the view's read is registered over %s %d times before the reload, want once", table, len(reads))
+		if reads := chordStore.Reads.On(table); len(reads) != 2 {
+			t.Fatalf("the view's and the screen's reads are registered over %s %d times before the reload, want twice", table, len(reads))
 		}
 	}
 	if _, err := h.Reload([]HostFacet{prOthers}, background, ReloadOptions{}); err != nil {
