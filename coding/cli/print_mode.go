@@ -18,12 +18,12 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/rpcclient"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
 	"golang.org/x/term"
 )
 
@@ -127,6 +127,8 @@ type printModeOptions struct {
 	// stdout and stderr default to the process's raw stdout and stderr.
 	stdout io.Writer
 	stderr io.Writer
+	// ownOutput is a fused member's clihook.Result.OwnPrintOutput: the member writes the run's stdout and the words of a failed run's stderr line.
+	ownOutput bool
 	// convertEvent defaults to rpcAgentEvent, upstream's toJsonEvent.
 	convertEvent func(agent.AgentEvent) ([]any, error)
 	// toolRegistryAllowed and toolRegistryExcluded bound the tool registry pi.getAllTools() reports (see toolRegistryFilters); startPrintMode takes them from the command line.
@@ -196,7 +198,8 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			}
 		}
 		opts.stdout = codingagent.RawStdoutWriter()
-		if clihook.OwnPrintOutput() {
+		if opts.ownOutput {
+			// pig additive (D653): a fused member that owns the print output gets the raw stdout; PiG writes none.
 			clihook.SetStdout(opts.stdout)
 			opts.stdout = io.Discard
 		}
@@ -641,8 +644,9 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		return nil
 	}
 	resultStderr := opts.stderr
-	if clihook.OwnPrintOutput() {
-		resultStderr = io.Discard // a fused member that owns the print output words a failed run's error itself
+	if opts.ownOutput {
+		// pig additive (D653): a fused member that owns the print output words a failed run's error itself.
+		resultStderr = io.Discard
 	}
 	return writePrintModeResult(current().Messages(), opts.stdout, resultStderr)
 }

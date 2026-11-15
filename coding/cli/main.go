@@ -44,8 +44,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
-
-	"github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
 	"golang.org/x/term"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -58,6 +56,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
@@ -756,7 +755,8 @@ func Main(args []string, options *MainOptions) {
 		}
 	}
 
-	// A fused member's CLI hook owns the command line first (extensions/sdk/clihook).
+	// pig additive (D653): a fused member's CLI hook owns the command line before PiG parses any of it (extensions/sdk/clihook).
+	var ownPrintOutput bool
 	if hook := clihook.Registered(); hook != nil {
 		res := hook(clihook.Env{Args: args, Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Getenv: os.Getenv, Chdir: os.Chdir,
 			StdinTTY: term.IsTerminal(int(os.Stdin.Fd())), StdoutTTY: term.IsTerminal(int(os.Stdout.Fd()))})
@@ -764,8 +764,9 @@ func Main(args []string, options *MainOptions) {
 			exitProcess(res.Exit)
 		}
 		args = res.Args
-		clihook.SetOwnPrintOutput(res.OwnPrintOutput)
+		ownPrintOutput = res.OwnPrintOutput
 		if res.Retry != nil {
+			// pig additive (D653): the member's retry defaults; settings.json `retry` still overrides each field.
 			codingagent.SetDefaultRetryConfig(codingagent.RetryConfig{Enabled: true, MaxRetries: res.Retry.MaxRetries,
 				BaseDelayMs: res.Retry.BaseDelayMs, MaxAgentDelayMs: res.Retry.MaxAgentDelayMs})
 		}
@@ -1475,7 +1476,7 @@ func Main(args []string, options *MainOptions) {
 		})
 		timings.PrintTimings()
 		startAutomaticExtensionCacheGC(ctx)
-		if exitCode, err := startPrintMode(ctx, host, printModeOptions{Mode: mode, Messages: extraMessages, InitialMessage: initialMessage, InitialImages: initialImages}); err != nil {
+		if exitCode, err := startPrintMode(ctx, host, printModeOptions{Mode: mode, Messages: extraMessages, InitialMessage: initialMessage, InitialImages: initialImages, ownOutput: ownPrintOutput}); err != nil {
 			// A run stopped by a termination signal reports 128+signum and
 			// stays quiet, matching upstream's print-mode signal handlers.
 			if signalErr, ok := errors.AsType[*signalExitError](err); ok {
@@ -1486,6 +1487,7 @@ func Main(args []string, options *MainOptions) {
 			}
 			exitProcess(exitCode)
 		}
+		// pig additive (D653): a fused member's status after a print run that succeeded in PiG's terms; a failed run keeps PiG's 1.
 		if code, ok := clihook.ExitCode(); ok && code != 0 {
 			exitProcess(code)
 		}

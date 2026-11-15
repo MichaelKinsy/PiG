@@ -2659,6 +2659,7 @@ func DefaultRetryConfig() RetryConfig {
 // GetRetrySettings returns retry settings with defaults applied.
 // Mirrors upstream SettingsManager.getRetrySettings (settings-manager.ts:683-690).
 func (sm *SettingsManager) GetRetrySettings() RetryConfig {
+	// pig additive (D653): a fused member's clihook Retry replaces the built-in defaults; with none set this is upstream's 3 / 2000 / 60000.
 	result := DefaultRetryConfig()
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
