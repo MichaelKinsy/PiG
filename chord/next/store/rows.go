@@ -42,6 +42,8 @@ type EncodedRow struct {
 	Row    StoredRow
 	// Columns is each written `json(...)` column's version, in column order.
 	Columns *delta.JsonObject
+	// Key is the row's key parameters in key order (what `EncodedKey.Params` is of a key).
+	Key []sqlite.SqliteValue
 	// ID is the row's key identity, as EncodedKey.ID.
 	ID string
 }
@@ -179,7 +181,7 @@ func (codec *RowCodec) Put(row any, version int) (*EncodedRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &EncodedRow{Params: params, Row: stored, Columns: versions, ID: string(id)}, nil
+	return &EncodedRow{Params: params, Row: stored, Columns: versions, Key: keyParams, ID: string(id)}, nil
 }
 
 // Key checks and encodes a key (a trust boundary): an object with exactly the key columns; `invalid/args` otherwise.

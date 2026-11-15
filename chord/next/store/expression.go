@@ -156,6 +156,15 @@ func (set SetNode) Get(column string) (ExprNode, bool) {
 	return ExprNode{}, false
 }
 
+// Columns are the assigned columns, in order (Pi's `Object.keys(set)`).
+func (set SetNode) Columns() []string {
+	columns := make([]string, len(set))
+	for index, entry := range set {
+		columns[index] = entry.Column
+	}
+	return columns
+}
+
 // With is set with column set to node, after the others (an existing entry is replaced in place): Pi's
 // `{ ...set, [column]: node }`.
 func (set SetNode) With(column string, node ExprNode) SetNode {
