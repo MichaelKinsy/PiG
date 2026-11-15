@@ -56,7 +56,7 @@ var (
 			contracts.Mem("drop", contracts.NewMethod(contracts.Int())),
 		},
 	}))
-	qrPage = contracts.Obj(contracts.Prop("rows", contracts.Arr(qrNote)), contracts.Prop("more", contracts.Bool()))
+	qrPage  = contracts.Obj(contracts.Prop("rows", contracts.Arr(qrNote)), contracts.Prop("more", contracts.Bool()))
 	qrBoard = mustContract(contracts.Local("app.board", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("board", contracts.Str())},
 		Members: []contracts.LocalEntry{contracts.Mem("notes", qrPage), contracts.Mem("count", contracts.Int())},
@@ -91,7 +91,9 @@ func qrInt(value any) int64 {
 	panic("not an int")
 }
 
-func qrNoteJSON(id int64, text any) *delta.JsonObject { return jsonObject("id", float64(id), "text", text) }
+func qrNoteJSON(id int64, text any) *delta.JsonObject {
+	return jsonObject("id", float64(id), "text", text)
+}
 
 // qrServeStore is Pi's `serveStore(h, probe, declare)`.
 func qrServeStore(h FacetHost, probe *qrProbe) error {
@@ -288,7 +290,7 @@ func TestQueryReaderOpen(t *testing.T) {
 		if calls.Len() != 1 {
 			t.Fatalf("calls = %d, want 1", calls.Len())
 		}
-		watch.Stop()
+		_, _ = watch.Stop()
 		closeHosts(t, h.Host)
 	})
 }
@@ -332,7 +334,7 @@ func qrServeFiltered(h FacetHost, factories *[]string) error {
 	if err := h.Serve(qrFilter, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
 		board := plain.Writable("a")
 		return contracts.Implementation{Members: contracts.VariantImplementation{
-			State: map[string]chord.Watchable[delta.JsonValue]{"board": plain.Derive([]any{board}, func(values []any) (delta.JsonValue, error) { return values[0].(delta.JsonValue), nil })},
+			State: map[string]chord.Watchable[delta.JsonValue]{"board": plain.Derive([]any{board}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
 			Methods: map[string]contracts.MethodFunction{"show": func(arg delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
 				return nil, board.Set(arg)
 			}},
@@ -408,7 +410,7 @@ func TestQueryReaderArgumentsThatFollowAValue(t *testing.T) {
 		qrPut(t, notes, 3, "a", "a3")
 		qrPut(t, notes, 4, "b", "b4")
 		qrWant(t, "rows after the old board's note and the new one's", qrRows(t, view), `[{"id":4,"text":"b4"},{"id":2,"text":"b2"}]`)
-		watch.Stop()
+		_, _ = watch.Stop()
 		closeHosts(t, host)
 	})
 }
@@ -443,7 +445,7 @@ func TestQueryReaderArgumentsTheBuilderRefuses(t *testing.T) {
 		qrSettled(host)
 		flushed(host)
 		qrWant(t, "rows", qrRows(t, view), `[{"id":1,"text":"edited"}]`)
-		watch.Stop()
+		_, _ = watch.Stop()
 		closeHosts(t, host)
 	})
 }
@@ -544,9 +546,9 @@ var (
 		}
 		return set
 	}()
-	qrTags     = mustTableDef("tags", store.TableOptions{Version: 1, Columns: append([]store.ColumnProp(nil), qrTagSet.Schemas...), Key: []string{"note", "tag"}, Exposes: qrTagSet})
-	qrTagStore = mustContract(contracts.Local("app.tags", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("tag", contracts.NewMethod(contracts.Obj(contracts.Prop("note", contracts.Int()), contracts.Prop("tag", contracts.Str()))))}}))
-	qrTagged   = mustContract(contracts.Local("app.tagged", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("notes", qrPage)}}))
+	qrTags        = mustTableDef("tags", store.TableOptions{Version: 1, Columns: append([]store.ColumnProp(nil), qrTagSet.Schemas...), Key: []string{"note", "tag"}, Exposes: qrTagSet})
+	qrTagStore    = mustContract(contracts.Local("app.tags", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("tag", contracts.NewMethod(contracts.Obj(contracts.Prop("note", contracts.Int()), contracts.Prop("tag", contracts.Str()))))}}))
+	qrTagged      = mustContract(contracts.Local("app.tagged", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("notes", qrPage)}}))
 	qrTaggedNotes = mustContract(contracts.Local("app.tagged-notes", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{
 		contracts.Mem("notes", contracts.Queries(qrNote, []contracts.Property{contracts.Prop("tagged", contracts.Obj(contracts.Prop("tag", contracts.Str())))})),
 		contracts.Mem("put", contracts.NewMethod(contracts.Obj(contracts.Prop("id", contracts.Int()), contracts.Prop("board", contracts.Str()), contracts.Prop("text", contracts.Str())))),
@@ -573,7 +575,9 @@ func qrServeTags(h FacetHost) error {
 func qrServeTagged(h FacetHost, extra func(self Self)) error {
 	if err := h.Serve(qrTaggedNotes, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
 		table := plain.(StoreSelf).Table(qrMine)
-		notes := plain.(StoreSelf).Queries(table, QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) { return qrNoteJSON(qrInt(row["id"]), row["text"]), nil }},
+		notes := plain.(StoreSelf).Queries(table, QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
+			return qrNoteJSON(qrInt(row["id"]), row["text"]), nil
+		}},
 			map[string]QueryBuilder{"tagged": {Build: func(args delta.JsonValue) *store.Query {
 				tag := args.(*delta.JsonObject).Value("tag").(string)
 				return store.NewQuery(qrMine).Where(func(n, _ store.ColumnRefs) store.Condition {
@@ -782,7 +786,7 @@ func TestQueryReaderAProvidersRestart(t *testing.T) {
 		if calls.Len() != 1 {
 			t.Fatalf("frames = %d, want 1", calls.Len())
 		}
-		watch.Stop()
+		_, _ = watch.Stop()
 		closeHosts(t, host)
 	})
 }

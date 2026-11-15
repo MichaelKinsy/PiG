@@ -506,11 +506,11 @@ type hdOwning struct {
 	names []string
 }
 
-func (o hdOwning) Serve(Type any, implementation any, options ServeOptions) error {
-	if typ, ok := Type.(*contracts.Contract); ok && !slices.Contains(o.names, typ.Name) {
+func (o hdOwning) Serve(served any, implementation any, options ServeOptions) error {
+	if typ, ok := served.(*contracts.Contract); ok && !slices.Contains(o.names, typ.Name) {
 		return nil
 	}
-	return o.FacetHost.Serve(Type, implementation, options)
+	return o.FacetHost.Serve(served, implementation, options)
 }
 
 // hdTwoPlugins is `setup()` over two plugins: `@test/board` serves the board and its view, `@test/ledger` the ledger; S1 has
@@ -619,7 +619,9 @@ func TestHostDataADeleteLimitedToOnePluginWaitsForThatPluginsSlotLessOwnersAndNo
 		t.Fatalf("deleted = %+v, want {Documents:1 Rows:1}", counts)
 	}
 	// One limited to the ledger's plugin does.
-	deleting := hdGo(func() (store.HostDataCounts, error) { return h.DeleteHostData(hdS1, background, hdOnly("@test/ledger")) })
+	deleting := hdGo(func() (store.HostDataCounts, error) {
+		return h.DeleteHostData(hdS1, background, hdOnly("@test/ledger"))
+	})
 	hdEventually(t, "the delete waiting for the ledger's line", func() bool { return hdWaitingOnLine(h, "test.ledger") > 0 })
 	hdPending(t, "the delete", deleting)
 	close(gate)
