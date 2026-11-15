@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/fsretry"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The Windows job of CI selects the packages that have a Windows-only test file: this file makes it run internal/atomicfile, whose other tests are
@@ -215,16 +216,14 @@ func TestWindowsSyncDirectoryDoesNotFail(t *testing.T) {
 }
 
 // A symbolic link is followed and stays a link: the file it names is replaced, as D651 says for every platform. Creating a link needs the privilege or
-// the developer mode, so a runner without it skips the cell.
+// the developer mode; testenv.Symlink skips the cell, naming Developer Mode, on a runner without it.
 func TestWindowsWriteFileFollowsASymbolicLink(t *testing.T) {
 	dir := t.TempDir()
 	target, link := filepath.Join(dir, "target.json"), filepath.Join(dir, "link.json")
 	if err := os.WriteFile(target, []byte("old"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(target, link); err != nil {
-		t.Skipf("no symbolic links here: %v", err)
-	}
+	testenv.Symlink(t, target, link)
 	if err := WriteFile(link, []byte("new"), 0o600); err != nil {
 		t.Fatal(err)
 	}

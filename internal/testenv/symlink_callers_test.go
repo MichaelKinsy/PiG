@@ -152,6 +152,7 @@ var fileSymlinkCallers = map[string]string{
 	"internal/codingagent/context_files_symlink_test.go::TestLoadProjectContextFilesNestedWorktreeSymlinkedContext":                                            "file link; AGENTS.md in a nested worktree links to the main repo's file (#10681)",
 	"automation/ci/preflight/scanner_test.go::TestSymlinksOfAPRAreNotFollowed":                                                                                 "file link; the pull request's head commits a link to a file outside the checkout, which the scan must flatten instead of following",
 	"automation/ci/preflight/scanner_test.go::TestFlattenSymlinksNeverEntersALink":                                                                             "file links, one relative; the directory link uses RequireDirectoryLink",
+	"internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileFollowsASymbolicLink":                                                                 "file link; the write must follow a link to a file and replace the file it names, which a junction (a directory link) cannot stand in for",
 }
 
 // Windows-building tests keep Symlink for file links only, so the directory-link behavior they exercise runs on a stock Windows host.
