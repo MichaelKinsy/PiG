@@ -28,8 +28,10 @@ type LinkEnd struct {
 	mu       sync.Mutex
 	closed   bool
 	listener func(message []byte)
-	// queued is the messages that arrived before the listener was set.
+	// queued is the messages that arrived before the listener was set, or while they were handed to it; draining is true
+	// while OnMessage hands them over.
 	queued        [][]byte
+	draining      bool
 	closeListener func()
 }
 
@@ -40,7 +42,8 @@ func (end *LinkEnd) Closed() bool {
 	return end.closed
 }
 
-// OnMessage sets the listener and hands it what was queued.
+// OnMessage sets the listener and hands it what was queued. A message that arrives while the queue is handed over is queued
+// behind it, so the listener sees them in arrival order; the goroutine that set the listener hands them over.
 func (end *LinkEnd) OnMessage(listener func(message []byte)) {
 	end.mu.Lock()
 	// A closed end delivers nothing: keeping the listener would keep its owner.
@@ -49,15 +52,24 @@ func (end *LinkEnd) OnMessage(listener func(message []byte)) {
 		return
 	}
 	end.listener = listener
-	queued := end.queued
-	end.queued = nil
-	end.mu.Unlock()
-	for _, message := range queued {
-		// A listener may close the link: what is still queued then is dropped.
-		if end.Closed() {
+	if end.draining {
+		// The hand-over under way continues with the new listener.
+		end.mu.Unlock()
+		return
+	}
+	end.draining = true
+	for {
+		// A listener may close the link: what is still queued then is dropped (ended cleared it).
+		if end.closed || end.listener == nil || len(end.queued) == 0 {
+			end.draining = false
+			end.mu.Unlock()
 			return
 		}
-		listener(message)
+		message, current := end.queued[0], end.listener
+		end.queued = end.queued[1:]
+		end.mu.Unlock()
+		current(message)
+		end.mu.Lock()
 	}
 }
 
@@ -81,13 +93,13 @@ func (end *LinkEnd) deliver(message []byte) {
 		return
 	}
 	listener := end.listener
-	if listener == nil {
+	if listener == nil || end.draining {
 		end.queued = append(end.queued, message)
+		end.mu.Unlock()
+		return
 	}
 	end.mu.Unlock()
-	if listener != nil {
-		listener(message)
-	}
+	listener(message)
 }
 
 // ended closes this end (once): nothing is delivered any more, and nothing the listeners reach is kept.

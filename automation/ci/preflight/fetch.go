@@ -18,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/automation/ci/preflight/reviewed"
 )
 
 type state struct {
@@ -29,6 +31,9 @@ type state struct {
 	Body    string             `json:"body"`
 	Status  string             `json:"status,omitempty"`
 	Alerted []string           `json:"alerted,omitempty"`
+	// Shortened is set when the comment was too long and the checks above are stored without their warnings and
+	// notices: such a state is not a verdict to reuse.
+	Shortened bool `json:"shortened,omitempty"`
 }
 
 type verdict struct {
@@ -36,6 +41,8 @@ type verdict struct {
 	Result   string    `json:"result"`
 	Reason   string    `json:"reason,omitempty"`
 	Warnings []warning `json:"warnings,omitempty"`
+	// Notices are the lines of the check's output that name what it let pass for a reviewer to see; none asks for anything.
+	Notices []string `json:"notices,omitempty"`
 }
 
 type warning struct {
@@ -73,6 +80,10 @@ type data struct {
 	Previous     *state             `json:"previous,omitempty"`
 	SourceErrors map[string]string  `json:"source_errors,omitempty"`
 	Acknowledged string             `json:"acknowledged,omitempty"`
+	// ReviewedLedger is the text of test/parity/testprune-reviewed.toml at the PR's head commit.
+	ReviewedLedger string `json:"reviewed_ledger,omitempty"`
+	// CommitFiles are the files each commit has changed that a ledger row names for a changed test file, by commit sha.
+	CommitFiles map[string][]string `json:"commit_files,omitempty"`
 }
 
 func (d *data) failed(mu *sync.Mutex, log io.Writer, source string, err error) {
@@ -113,6 +124,8 @@ func decideMode(prev *state, version, head, base, body string) (mode, reason str
 		return modeFull, "the head or main moved since the previous run"
 	case prev.Body != body:
 		return modeFull, "the description changed since the previous run"
+	case prev.Shortened:
+		return modeFull, "the previous comment was too long and left out the warnings and notices"
 	}
 	for _, v := range prev.Checks {
 		if v.Result == resultError || v.Result == resultPending {
@@ -311,8 +324,18 @@ func (f *fetcher) waveTwo(ctx context.Context, reads map[string]bool) {
 			return nil
 		})
 	}
+	if reads["reviewed-ledger"] {
+		f.source("reviewed-ledger", func() error {
+			text, err := f.fileAtHead(ctx, reviewed.File, head)
+			if err != nil {
+				return err
+			}
+			d.ReviewedLedger = text
+			return f.readLedgerCommits(ctx, text)
+		})
+	}
 	f.source("acknowledged", func() error {
-		text, err := f.acknowledged(ctx, head)
+		text, err := f.fileAtHead(ctx, acknowledgedPath, head)
 		if err == nil {
 			d.Acknowledged = text
 		}
@@ -324,19 +347,21 @@ func (f *fetcher) waveTwo(ctx context.Context, reads map[string]bool) {
 	f.wg.Wait()
 }
 
-func (f *fetcher) acknowledged(ctx context.Context, head string) (string, error) {
+// fileAtHead reads one file of the repository at the PR's head commit, never at a branch name: the text is the one the
+// verdict is about, whatever the branch does meanwhile. A file the head does not have is empty text.
+func (f *fetcher) fileAtHead(ctx context.Context, filePath, head string) (string, error) {
 	var file struct {
 		Content  string `json:"content"`
 		Encoding string `json:"encoding"`
 	}
-	err := f.a.get(ctx, fmt.Sprintf("%s/contents/%s?ref=%s", f.prefix, acknowledgedPath, head), &file, false)
+	err := f.a.get(ctx, fmt.Sprintf("%s/contents/%s?ref=%s", f.prefix, filePath, head), &file, false)
 	switch {
 	case hasStatus(err, http.StatusNotFound):
 		return "", nil
 	case err != nil:
 		return "", err
 	case file.Encoding != "base64":
-		return "", fmt.Errorf("%s has encoding %q", acknowledgedPath, file.Encoding)
+		return "", fmt.Errorf("%s has encoding %q", filePath, file.Encoding)
 	}
 	raw, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(file.Content, "\n", ""))
 	return string(raw), err
@@ -397,10 +422,19 @@ func writeJSON(path string, v any) error {
 
 var logMu sync.Mutex
 
+// logf prints one line of the log. An error among args is printed inert: an error of the API, of git or of a parser
+// can quote text of the pull request, and a line that starts with "::" or "##[" is a workflow command. The line as a
+// whole is defanged too (annotation data, the comment of a dry run): logf is the one exit of the log.
 func logf(w io.Writer, format string, args ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
-	_, _ = fmt.Fprintf(w, format+"\n", args...)
+	shown := slices.Clone(args)
+	for i, a := range shown {
+		if err, ok := a.(error); ok {
+			shown[i] = inert(err.Error())
+		}
+	}
+	_, _ = io.WriteString(w, defang(fmt.Sprintf(format+"\n", shown...)))
 }
 
 func short(sha string) string { return sha[:min(len(sha), 9)] }
@@ -410,4 +444,56 @@ func formatBool(b *bool) string {
 		return "unknown"
 	}
 	return strconv.FormatBool(*b)
+}
+
+// maxCommitFilePages bounds the pages of one commit's file list: the API lists at most 3000 files of a commit.
+const maxCommitFilePages = 30
+
+// readLedgerCommits lists the files of each commit a ledger row names for a changed test file, one commit at a time,
+// pages included. A ledger the rule cannot read, or rows of more than maxLedgerCommits commits, are for the rule to
+// report: nothing is fetched then. Any other failure, a 404 included (the PR's own commit list named the commit), is the
+// source's failure.
+func (f *fetcher) readLedgerCommits(ctx context.Context, text string) error {
+	rows, err := reviewed.Parse(text)
+	if err != nil {
+		return nil
+	}
+	shas := ledgerCommits(f.d, rows)
+	if len(shas) > maxLedgerCommits {
+		return nil
+	}
+	files := map[string][]string{}
+	for _, sha := range shas {
+		names, err := f.commitFiles(ctx, sha)
+		if err != nil {
+			return err
+		}
+		files[sha] = names
+	}
+	if len(files) > 0 {
+		f.d.CommitFiles = files
+	}
+	return nil
+}
+
+// commitFiles are the files one commit changed: the pages of the commit endpoint's file list, until a page is short.
+func (f *fetcher) commitFiles(ctx context.Context, sha string) ([]string, error) {
+	var names []string
+	for page := 1; page <= maxCommitFilePages; page++ {
+		var c struct {
+			Files []struct {
+				Filename string `json:"filename"`
+			} `json:"files"`
+		}
+		if err := f.a.get(ctx, fmt.Sprintf("%s/commits/%s?per_page=%d&page=%d", f.prefix, sha, perPage, page), &c, false); err != nil {
+			return nil, err
+		}
+		for _, file := range c.Files {
+			names = append(names, file.Filename)
+		}
+		if len(c.Files) < perPage {
+			return names, nil
+		}
+	}
+	return nil, fmt.Errorf("commit %s changes more than %d files: the API does not list them all", short10(sha), maxCommitFilePages*perPage)
 }

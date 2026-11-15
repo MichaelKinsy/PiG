@@ -10,6 +10,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 type evaluation struct {
@@ -38,6 +39,8 @@ func sourceValue(d *data, name string) any {
 		return d.DependsOn
 	case "dependency-graph":
 		return d.Dependencies
+	case "reviewed-ledger":
+		return map[string]any{"ledger": d.ReviewedLedger, "commit_files": d.CommitFiles}
 	}
 	return nil
 }
@@ -58,7 +61,7 @@ func cheapInputHash(d *data, c check) string {
 func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 	ev := evaluation{Repo: d.Repo, PR: d.PR, Head: d.Pull.Head.SHA, Base: d.BaseTip, Version: d.Version, Engine: cfg.EngineRevision, Checks: map[string]verdict{}}
 	var prev map[string]verdict
-	if d.Previous != nil && d.Previous.Engine == cfg.EngineRevision {
+	if d.Previous != nil && d.Previous.Engine == cfg.EngineRevision && !d.Previous.Shortened {
 		prev = d.Previous.Checks
 	}
 	if d.Mode == modeReuse && prev != nil {
@@ -88,7 +91,7 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 			v.Result, v.Reason = resultScan, "waits for its scan"
 		default:
 			o := decide(d, c, env)
-			v.Result, v.Reason, v.Warnings = o.result, clip(o.reason, maxReason), perFile(o.warnings)
+			v.Result, v.Reason, v.Warnings, v.Notices = o.result, clip(o.reason, maxReason), perFile(o.warnings), o.notices
 		}
 		ev.Checks[c.Name] = v
 	}
@@ -171,18 +174,23 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	var open []string
 	for _, c := range cfg.Checks {
 		v := ev.Checks[c.Name]
-		logf(w, "%s %-20s %s", resultMark[v.Result], c.Name, v.Reason)
+		logf(w, "%s %-20s %s", resultMark[v.Result], c.Name, inert(v.Reason))
 	}
 	for _, c := range cfg.Checks {
 		for _, x := range ev.Checks[c.Name].Warnings {
 			if x.Acknowledged {
-				logf(w, "ACK   %-20s %s", c.Name, x.where())
+				logf(w, "ACK   %-20s %s", c.Name, inert(x.where()))
 				continue
 			}
-			logf(w, "WARN  %-20s %s", c.Name, x.where())
+			logf(w, "WARN  %-20s %s", c.Name, inert(x.where()))
 			if x.File != "" {
 				open = append(open, ackEntry(c.Name, x))
 			}
+		}
+	}
+	for _, c := range cfg.Checks {
+		for _, n := range ev.Checks[c.Name].Notices {
+			logf(w, "NOTE  %-20s %s", c.Name, inert(shownNotice(n)))
 		}
 	}
 	if len(open) > 0 {
@@ -197,6 +205,9 @@ func report(w io.Writer, cfg config, ev evaluation) {
 			if !x.Acknowledged {
 				logf(w, "::warning title=pre-flight %s #%d::%s", c.Name, ev.PR, annotation(x.where()))
 			}
+		}
+		for _, n := range v.Notices {
+			logf(w, "::notice title=pre-flight %s #%d::%s", c.Name, ev.PR, annotation(shownNotice(n)))
 		}
 	}
 }
@@ -223,15 +234,53 @@ func (w warning) where() string {
 const (
 	maxReason        = 1000
 	maxNotice        = 200
+	maxShownNotice   = 3 * maxNotice
 	maxWarnedFiles   = 20
 	maxCommentLength = 65536
 )
+
+// shownNotice is a notice as the log, the annotation and the comment print it: cut at maxShownNotice characters with an
+// ellipsis. The stored notice stays whole.
+func shownNotice(n string) string { return clip(n, maxShownNotice) }
 
 func clip(s string, n int) string {
 	if r := []rune(s); len(r) > n {
 		return string(r[:n-1]) + "…"
 	}
 	return s
+}
+
+// legacyOpen opens a legacy workflow command ("##[error]x", "##[set-output name=a;]b", "##[add-mask]s"), which the
+// runner reads in a job log next to "::command::data".
+const legacyOpen = "##["
+
+// defang is s with every legacyOpen made inert: "##[" becomes "# #[", plain ASCII that reads the same and is no
+// command. The tool prints no legacyOpen of its own, so logf applies defang to every line it writes.
+func defang(s string) string { return strings.ReplaceAll(s, legacyOpen, "# #[") }
+
+// inert is text of a pull request (a file name, a commit subject, a ledger reason, cite or path, an error that quotes
+// them) as it is printed into the job log: on one line (see flatten), with defang applied, and with a leading "::"
+// (after spaces) written ": :". A line that starts with "::" or "##[" is a workflow command, so text of a pull
+// request must never start a line: it cannot follow a line break here, and every print puts a fixed word of the tool
+// before it. Annotation data is escaped by annotation, and logf defangs the whole line.
+func inert(s string) string {
+	s = defang(flatten(s))
+	if rest := strings.TrimLeft(s, " \t"); strings.HasPrefix(rest, "::") {
+		s = s[:len(s)-len(rest)] + ": :" + rest[2:]
+	}
+	return s
+}
+
+// flatten is s with every control character and line separator replaced by a space. Text of a pull request goes
+// through it into the job log: a line break would let that text start a line of its own, and a line that starts with
+// "::" is a workflow command.
+func flatten(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || unicode.In(r, unicode.Zl, unicode.Zp) {
+			return ' '
+		}
+		return r
+	}, s)
 }
 
 func perFile(ws []warning) []warning {

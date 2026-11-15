@@ -186,6 +186,9 @@ func (rt *Runtime) EmitQuitShutdown() {
 		return
 	}
 	if session := rt.Session(); session != nil {
+		// pig divergence (D247): dispose awaits the interrupted run's settlement before session_shutdown (Pi main 7a53c310a, #9126).
+		//portlint:allow ctxbackground Pi's dispose awaits session.abort() with no signal and no timeout (agent-session-runtime.ts dispose); the mode's quit has no caller context
+		_ = session.Abort(context.Background())
 		session.EmitSessionShutdown("quit")
 	}
 }
@@ -199,6 +202,7 @@ func (rt *Runtime) EmitQuitShutdownContext(ctx context.Context) {
 	if session == nil {
 		return
 	}
+	// No abort here, unlike EmitQuitShutdown: the pinned Pi's dispose emits session_shutdown at once (agent-session-runtime.ts dispose, Pi 1.5.0), and the signal hook of print mode holds the Agent while this runs (HoldAgentEvents), so an aborted run could not settle and the wait for it would never end.
 	if runner := session.currentRunner(); runner != nil && runner.HasHandlers(icodingagent.EventSessionShutdown) {
 		_, _ = runner.Emit(ctx, extension.SessionShutdownEvent{Type: icodingagent.EventSessionShutdown, Reason: "quit"})
 	}

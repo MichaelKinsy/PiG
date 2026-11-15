@@ -224,6 +224,8 @@ type InteractiveMode struct {
 	// turnSettled is closed when the active run settles; waitForIdle waits
 	// on it. Guarded by queueMu; nil while no run is active.
 	turnSettled chan struct{}
+	// turnEnded is closed when the goroutine of the run that turnSettled belongs to has returned, which is after the run's agent_settled handlers. The quit by keys waits for it (settleRunAtQuit). Guarded by queueMu.
+	turnEnded chan struct{}
 
 	// agent_settled handlers finish as one awaited dispatch before an action
 	// they start may begin another run. The mutex covers subprocess host-call
@@ -532,6 +534,8 @@ type InteractiveMode struct {
 	remoteEditorEvents remoteEventQueue
 	// tuiStopped is set once the TUI stopped, for writers off the owner loop.
 	tuiStopped atomic.Bool
+	// interruptExiting is set once a SIGINT's exit has begun to end the extension processes (handleInterruptSignal): a quit that the owner loop still serves prints no resume hint beside that exit.
+	interruptExiting atomic.Bool
 	// extensionKeybindings is the keybinding table extension state
 	// snapshots carry, republished when the keybindings reload.
 	extensionKeybindings atomic.Pointer[map[string]any]
@@ -1468,6 +1472,9 @@ var stdoutIsTTY = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
 
 // printResumeHint writes the resume command after the terminal is restored on an interactive quit, only for a persisted session with an existing file and TTY stdout.
 func (m *InteractiveMode) printResumeHint() {
+	if m.interruptExiting.Load() {
+		return
+	}
 	cmd := m.resumeHintCommand()
 	if cmd == "" {
 		return
