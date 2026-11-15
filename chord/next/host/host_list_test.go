@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
@@ -554,8 +555,7 @@ func TestListReload(t *testing.T) {
 		lsExpect(t, "before", shown, []int{10, 9, 8, 7, 6, 5, 4, 3, 2})
 		must(t, reload(w, w.plugins["store"], lsScreenPlugin(3, probe)))
 		// The first activation, staging's recording run, and the successor: it starts once the old attempt's work ended (the
-		// reload returns before), so the test waits for its factory, then for the reads it started.
-		until(t, "the successor's factory", func() bool { return probe.factories.Load() >= 3 })
+		// reload returns before): that work is a task of the host's loop, which deliveredOn joins, then the reads it started.
 		lsSettled(w.host)
 		if n := probe.factories.Load(); n != 3 {
 			t.Fatalf("factories = %d, want 3", n)
@@ -607,10 +607,8 @@ func TestListReload(t *testing.T) {
 		next := lsStorePlugin("desc", &lsStoreProbe{declare: func(self StoreSelf) {
 			self.Open(func(ctx context.Context) (any, error) {
 				close(opening)
-				select { // Pi awaits `opened.promise`
-				case <-opened:
-				case <-ctx.Done():
-				}
+				// Pi awaits `opened.promise`: a park, which the loop's join does not count as running.
+				_, _ = chordctx.Receive(ctx, opened)
 				return nil, nil
 			}, func(any, NativeCloseReason, context.Context) error { return nil })
 		}})

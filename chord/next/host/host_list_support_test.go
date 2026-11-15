@@ -67,6 +67,9 @@ func listOf(handle *ListHandle) *list { return handle.list }
 // (`list.idle`), then the host's turn queue (flushed) and the watch deliveries (deliveredOn). A call a test made has settled
 // when it returned, as Pi's awaited call has: lsSettled waits for what the lists started on their own after it.
 func lsSettled(host Host) {
+	// First the tasks of the loop (a reload's successor starts in one and makes its lists and reads): the lists below are those
+	// that exist once they ran.
+	deliveredOn(host)
 	qrSettled(host)
 	for _, l := range listsOf(host) {
 		l.idle()
