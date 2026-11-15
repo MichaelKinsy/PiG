@@ -187,6 +187,9 @@ func (t *timedLink) longestHandling() time.Duration {
 }
 
 // ipcFramedPort is a link.IpcPort over a socket: length-prefixed frames, a leading 0x00 marks a message of the link.
+// Node emits a channel's messages from its event loop, after the synchronous section that made the link (`ipcLink(child)`
+// in the parent, `ipcLink(process)` in the child) and so registered its listeners: no message arrives before them. The
+// port reads nothing until start, which the code that made the link calls once it has.
 type ipcFramedPort struct {
 	conn net.Conn
 	mu   sync.Mutex
@@ -198,10 +201,12 @@ type ipcFramedPort struct {
 }
 
 func newIpcFramedPort(conn net.Conn) *ipcFramedPort {
-	port := &ipcFramedPort{conn: conn, connected: true}
-	go port.read()
-	return port
+	return &ipcFramedPort{conn: conn, connected: true}
 }
+
+// start begins the delivery of the socket's frames to the registered listeners: the event loop's first turn after the
+// section that registered them.
+func (port *ipcFramedPort) start() { go port.read() }
 
 func (port *ipcFramedPort) read() {
 	for {
@@ -277,7 +282,7 @@ func (port *ipcFramedPort) Connected() bool {
 	return port.connected
 }
 
-// ipcPair is the two ports of one loopback socket.
+// ipcPair is the two ports of one loopback socket; neither reads until its owner calls start.
 func ipcPair(b testing.TB) (*ipcFramedPort, *ipcFramedPort) {
 	b.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -344,8 +349,13 @@ func benchRelayServerOf(b testing.TB, kind relayWorkerKind, entries string) *ben
 				resolved = counted
 			} else {
 				parent, child := ipcPair(b)
-				startRelayWorker(b, start, link.IpcLink(child))
+				// The child's port reads once its link is made, the parent's once the route's link is: the worker's `hello`, sent
+				// when it connects, waits in the socket until then, as a message of Node's channel waits for its event loop.
+				childLink := link.IpcLink(child)
+				child.start()
+				startRelayWorker(b, start, childLink)
 				counted := newCountedLink(link.IpcLink(parent))
+				parent.start()
 				server.mu.Lock()
 				server.workerLinks = append(server.workerLinks, counted)
 				server.mu.Unlock()
