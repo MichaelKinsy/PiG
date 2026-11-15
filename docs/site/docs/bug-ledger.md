@@ -1500,6 +1500,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ea90fb3](#bf-ea90fb3) | A running `!cmd` block keeps only the last 2000 lines or 50 KB it shows instead of every byte the command… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eaa4ed7](#bf-eaa4ed7) | F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ead285d](#bf-ead285d) | Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147) | PiG's own defect | All platforms | 0.5.0 |
+| [BF-eade544](#bf-eade544) | Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning)… | PiG's own defect | All platforms | Unreleased |
 | [BF-eb34085](#bf-eb34085) | The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eb6626f](#bf-eb6626f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-eba1115](#bf-eba1115) | Starting a new Session in a working directory that was removed, where the system still reports its path… | PiG's own defect | macOS | 0.7.0 |
@@ -22170,6 +22171,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ead285ddfa` (2026-10-10)
 - **Tests:** `coding/cli/rpc_replacement_order_test.go::TestRPCCompactsOfOneBatchDoNotCancelEachOther`
 - **Release note:** Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147).
+
+### BF-eade544
+
+**Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.
+- **Root cause:** The verdict reason and a warning's file in the table of the comment, and the reason quoted in an alert comment, were plain Markdown. A file name or a reason holding a fence, a mention, an HTML tag or a link could change the comment. Every call site now prints them through codeSpan, the helper the admission notice row already used, so cell is now that one code span cell and inertCell is gone.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eade544cc1` (2026-11-14)
+- **Tests:** `automation/ci/preflight/print_inert_test.go::TestAlertBodyQuotesTheReasonInertly`, `automation/ci/preflight/print_inert_test.go::TestCellFenceOutgrowsTheBackticksInTheText`
+- **Release note:** Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.
 
 ### BF-eb34085
 

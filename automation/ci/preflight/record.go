@@ -40,7 +40,7 @@ func markdown(cfg config, d *data, ev evaluation) string {
 			}
 		}
 		for _, n := range v.Notices {
-			fmt.Fprintf(&b, "| 📝 | %s | %s |\n", c.Name, inertCell(shownNotice(n)))
+			fmt.Fprintf(&b, "| 📝 | %s | %s |\n", c.Name, cell(shownNotice(n)))
 		}
 	}
 	if len(acks) > 0 {
@@ -49,13 +49,8 @@ func markdown(cfg config, d *data, ev evaluation) string {
 	return b.String()
 }
 
+// cell is s as a table cell that cannot be anything else: one code span on one line with the pipe escaped.
 func cell(s string) string {
-	return strings.NewReplacer("|", `\|`, "\n", " ").Replace(s)
-}
-
-// inertCell is s as a table cell that cannot be anything else: one code span on one line with the pipe escaped. The
-// cells this tool prints from a reviewed ledger row go through it.
-func inertCell(s string) string {
 	return codeSpan(strings.ReplaceAll(s, "|", `\|`))
 }
 
@@ -176,7 +171,7 @@ func alertsFor(cfg config, ev evaluation, prev *state, posted []string) (due []c
 }
 
 func alertBody(c check, d *data, ev evaluation) string {
-	return fmt.Sprintf("@%s %s\n\n%s on `%s`: %s\n\n%s", d.Pull.User.Login, c.Alert, c.Name, short(ev.Head), ev.Checks[c.Name].Reason, alertMark(c.Name, ev.Head))
+	return fmt.Sprintf("@%s %s\n\n%s on `%s`: %s\n\n%s", d.Pull.User.Login, c.Alert, c.Name, short(ev.Head), codeSpan(ev.Checks[c.Name].Reason), alertMark(c.Name, ev.Head))
 }
 
 func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOptions, log io.Writer) error {
