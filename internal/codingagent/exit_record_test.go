@@ -112,6 +112,38 @@ func TestExitRecordChild(t *testing.T) {
 		waitParked(1)
 		release()
 		select {}
+	case "signal-exit-sigint", "signal-exit-sigterm", "signal-exit-sighup", "second-signal-exit":
+		// A quit by keys has stopped the TUI and holds its dispose (finishInteractiveShutdown: quitDisposing), and a signal ends the process. The signal exit ends
+		// the extension processes; the host reads the end of the process that held the quit as a drained loop and runs the exit of a drained quit (exitAtDrainedQuit:
+		// exitProcess(0), on a goroutine of the host's). The fake host does that inside the termination and waits until that exit has either ended the process with
+		// its 0 or parked behind the signal exit, so the order the real host leaves to the scheduler is forced: a status other than the signal's is the loss.
+		var terminations atomic.Int32
+		sentinel := terminatedSentinel(agentDir)
+		var m *InteractiveMode
+		m = NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9", TerminateExtensionProcesses: func() {
+			sentinel()
+			if terminations.Add(1) > 1 {
+				return
+			}
+			if scenario == "second-signal-exit" {
+				go m.ExitIfQuitting(143)
+			} else {
+				go func() {
+					BeforeExit()
+					os.Exit(0)
+				}()
+			}
+			waitParked(1)
+		}})
+		m.quitDisposing.Store(true)
+		switch scenario {
+		case "signal-exit-sigterm":
+			m.ExitIfQuitting(143)
+		case "signal-exit-sighup":
+			m.ExitIfQuitting(129)
+		default:
+			m.handleInterruptSignal()
+		}
 	case "extension-shutdown-then-dead-terminal":
 		m := emergencyChildMode(agentDir)
 		m.requestExtensionShutdown()

@@ -55,8 +55,11 @@ func buildPig(t *testing.T) string {
 	return pigBinary.path
 }
 
+// bridge is a running bridge: the page's base address, the page open.html that sends a browser to it (the file `address`
+// is beside it) and the session secret its tests share (auth).
 type bridge struct {
-	base, token string
+	base, openFile string
+	signIn         *signIn
 }
 
 // startBridge runs bridge.mjs over a pig with the demo extension and the faux model, and returns the page's address.
@@ -88,7 +91,8 @@ func nodeBinary(t *testing.T) string {
 	return node
 }
 
-// runBridge runs bridge.mjs with args on any free port and returns the page's address.
+// runBridge runs bridge.mjs with args on any free port and returns the page's address. It reads the address from the
+// file the bridge's first line names, as an author following the README does.
 func runBridge(t *testing.T, node string, env []string, args ...string) bridge {
 	t.Helper()
 	cmd := exec.Command(node, append([]string{"bridge.mjs", "--port", "0"}, args...)...)
@@ -109,12 +113,7 @@ func runBridge(t *testing.T, node string, env []string, args ...string) bridge {
 	if err != nil {
 		t.Fatalf("the bridge printed no address: %v", err)
 	}
-	address := strings.TrimSpace(strings.TrimPrefix(line, "ui-view-web: "))
-	base, token, ok := strings.Cut(address, "/?token=")
-	if !ok || !strings.HasPrefix(base, "http://127.0.0.1:") {
-		t.Fatalf("the bridge printed %q", line)
-	}
-	return bridge{base: base, token: token}
+	return bridgeFrom(t, line)
 }
 
 type page struct {
@@ -130,7 +129,8 @@ func (b bridge) open(t *testing.T) *page {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, b.base+"/events?token="+b.token, nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, b.base+"/events", nil)
+	req.Header.Set("Authorization", b.auth(t))
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +178,10 @@ func (p *page) relay(res *http.Response, session chan<- string) {
 
 func (p *page) post(line string) int {
 	p.t.Helper()
-	res, err := http.Post(p.b.base+"/send?token="+p.b.token+"&session="+p.session, "text/plain", strings.NewReader(line))
+	req, _ := http.NewRequest(http.MethodPost, p.b.base+"/send?session="+p.session, strings.NewReader(line))
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Authorization", p.b.auth(p.t))
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		p.t.Fatal(err)
 	}
@@ -254,9 +257,9 @@ func TestBridgeRelaysTheCarrier(t *testing.T) {
 		t.Fatalf("GET /client.js = %d", status)
 	}
 	if status, _ := get(t, b.base+"/events"); status != 403 {
-		t.Errorf("GET /events without the token = %d, want 403", status)
+		t.Errorf("GET /events without the secret = %d, want 403", status)
 	}
-	if status, _ := get(t, b.base+"/events?token="+b.token, "Origin", "http://example.com"); status != 403 {
+	if status, _ := get(t, b.base+"/events", "Authorization", b.auth(t), "Origin", "http://example.com"); status != 403 {
 		t.Errorf("GET /events from another origin = %d, want 403", status)
 	}
 	if status, _ := get(t, b.base+"/bridge.mjs"); status != 403 {
@@ -350,7 +353,7 @@ func TestBridgeRelaysTheCarrier(t *testing.T) {
 func TestPageDrawsFocusesAndRaisesIntents(t *testing.T) {
 	b := startBridge(t)
 	browser := browsertest.Start(t)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.focus(); form.elements.message.value = "/ui-demo"; form.requestSubmit(); })()`)
 	browser.Wait(`document.querySelector('[data-key="demo"]') !== null`)
@@ -410,7 +413,7 @@ func openWith(t *testing.T, extensions ...string) (*browsertest.Browser, func(li
 	}
 	b := startBridge(t, load...)
 	browser := browsertest.Start(t)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	return browser, func(line string) {
 		t.Helper()

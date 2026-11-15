@@ -23,16 +23,23 @@ package codingagent
 //  2. One emergency exit. emergencyTerminalExit runs once. Pi's is `never`, so a second caller never returns either: it
 //     blocks behind the first, which ends the process with 129. Every caller was written for a call that does not
 //     return (a crash on a dead terminal, Run's unwinding to exit 1).
-//  3. The emergency exit outranks the other exits. A path about to call os.Exit (BeforeExit) blocks behind a running
-//     emergency exit, so the status is Pi's 129, and otherwise waits for the line that is in flight, so os.Exit never
-//     overtakes the record.
+//  3. The emergency exit and a signal exit outrank the other exits. A path about to call os.Exit (BeforeExit) blocks behind a
+//     running emergency exit, so the status is Pi's 129, and behind a running signal exit (exitAtSignal, claimed before it ends
+//     the extension processes), so the status is the signal's: Pi's process has no handler for a signal after stop() and dies
+//     by it (130, 143, 129), with no second exit that could end it otherwise. Ending the extension processes is what makes
+//     the host start the exit of a drained quit (exitAtDrainedQuit, status 0) beside the signal exit; without the claim the
+//     two raced to os.Exit (row 183). Otherwise BeforeExit waits for the line that is in flight, so os.Exit never overtakes
+//     the record.
 //  4. Extensions before the kill. The emergency exit gives extensions their signal shutdown (session_shutdown, reason
 //     "quit") after the record is on disk and before it kills their processes, for at most a second; an emission the
 //     signal goroutine started is joined inside that second, not cut (shutdownExtensionsBriefly).
 //  5. Flush before exit. The owner returns from RecordEnding only after the line is appended and closed, and a caller
 //     that lost the claim blocks until then.
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // processEnding is the process's single exit record. flushed closes once the owner's line is on disk.
 type processEnding struct {
@@ -95,9 +102,32 @@ func RecordEnding(agentDir, reason string) bool {
 
 // BeforeExit is called by a path that is about to end the process with os.Exit and did not claim the record through
 // RecordEnding, or that lost the claim. It never returns while an emergency exit is running, because that exit ends the
-// process with 129 as Pi's does (step 3 of the contract); otherwise it returns once the line another path claimed is on
-// disk. With no ending in flight it returns at once.
+// process with 129 as Pi's does, or while a signal exit is running, because that exit ends it with the signal's status
+// (step 3 of the contract); otherwise it returns once the line another path claimed is on disk. With no ending in flight it
+// returns at once.
 func BeforeExit() {
+	if signalExiting.Load() {
+		select {}
+	}
+	beforeSignalExit()
+}
+
+// signalExiting is set by the one exitAtSignal that runs; the process ends in it with the signal's status.
+var signalExiting atomic.Bool
+
+// claimSignalExit makes the caller the process's signal exit. A second signal exit blocks behind the first and never
+// returns, as the second emergency exit does (step 2): the first signal's status is the one that ends the process, as the
+// first signal kills Pi's. The claim is made before anything the exit does to the extension processes, so no other exit
+// that their end starts can reach os.Exit first.
+func claimSignalExit() {
+	if !signalExiting.CompareAndSwap(false, true) {
+		select {}
+	}
+}
+
+// beforeSignalExit is BeforeExit for the signal exit itself, which has claimed the right to end the process: it yields to
+// a running emergency exit and otherwise waits for the line that is in flight.
+func beforeSignalExit() {
 	if emergencyExiting.Load() {
 		select {}
 	}

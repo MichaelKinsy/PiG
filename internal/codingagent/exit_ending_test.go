@@ -227,3 +227,40 @@ func TestExtensionShutdownAndDeadTerminalLeaveOneLine(t *testing.T) {
 		t.Fatalf("exit.log = %q, want only the extension shutdown", exitLogText(agentDir))
 	}
 }
+
+// A signal at the stopped TUI of a held quit ends the process with the signal's status, whichever exit the host's reading of the ended extension processes starts
+// beside it (row 183). Pi's one process has no second exit: a signal after stop() finds no handler and kills it (130, 143, 129). In pig the signal exit ends the
+// extension processes, the host reads the end of the process that held the quit as a drained loop, and the exit of a drained quit (exitProcess(0)) raced the signal's
+// os.Exit: about 1 run in 100 of the held-quit rows ended with 0, on a host with any load. The child forces the order in which the drained quit's exit reaches its
+// os.Exit inside the termination (step 3 of the contract: a signal exit outranks the other exits).
+func TestSignalExitAtAHeldQuitIsNotOvertakenByTheDrainedQuitExit(t *testing.T) {
+	for _, tc := range []struct {
+		name, scenario string
+		status         int
+	}{
+		{"ctrl+c and SIGINT", "signal-exit-sigint", 130},
+		{"SIGTERM", "signal-exit-sigterm", 143},
+		{"SIGHUP", "signal-exit-sighup", 129},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			agentDir := t.TempDir()
+			output, code := runExitRecordChild(t, tc.scenario, agentDir)
+			if code != tc.status {
+				t.Fatalf("exit code = %d, want %d (0 is the exit of the drained quit overtaking the signal's)\n%s", code, tc.status, output)
+			}
+			if !extensionsTerminated(agentDir) {
+				t.Fatalf("the signal exit ended the process without ending the extension processes\n%s", output)
+			}
+		})
+	}
+}
+
+// A second signal exit while the first is in flight changes nothing: the first signal's status ends the process, as the first signal kills Pi's (a second caller blocks
+// behind it, as the second emergency exit does).
+func TestSecondSignalExitBlocksBehindTheFirst(t *testing.T) {
+	agentDir := t.TempDir()
+	output, code := runExitRecordChild(t, "second-signal-exit", agentDir)
+	if code != 130 {
+		t.Fatalf("exit code = %d, want 130 (143 is the second signal's exit ending the process first)\n%s", code, output)
+	}
+}

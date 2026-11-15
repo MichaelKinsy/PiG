@@ -2639,15 +2639,77 @@ type ProviderRetryConfig struct {
 	MaxRetryDelayMs int
 }
 
+// builtinRetryConfig is upstream's retry default: 3 retries (settings-manager.ts:21), 2000 ms base (:22), 60000 ms cap.
+var builtinRetryConfig = RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxAgentDelayMs: 60000}
+
+var defaultRetryConfig atomic.Pointer[RetryConfig]
+
+// SetDefaultRetryConfig replaces the retry defaults GetRetrySettings starts from; a settings.json `retry` member still overrides each
+// field. A fused Piglet member sets it through its CLI hook (clihook.Result.Retry), before the Session starts.
+func SetDefaultRetryConfig(config RetryConfig) { defaultRetryConfig.Store(&config) }
+
+// DefaultRetryConfig is the retry configuration a Session uses when no settings file names one.
+func DefaultRetryConfig() RetryConfig {
+	if config := defaultRetryConfig.Load(); config != nil {
+		return *config
+	}
+	return builtinRetryConfig
+}
+
+var (
+	defaultRetryDecider       atomic.Pointer[ai.RetryDecider]
+	defaultRetrySilent        atomic.Bool
+	defaultHTTPIdleMsOverride atomic.Pointer[int]
+)
+
+// SetDefaultRetryDecider installs the retry classifier and delay hook a fused Piglet member supplies through
+// clihook.Result.Retry. Nil restores PiG's built-in classifier and exponential schedule.
+// pig additive (D654): inert unless a fused member installs a decider.
+func SetDefaultRetryDecider(decider ai.RetryDecider, silent bool) {
+	if decider == nil {
+		defaultRetryDecider.Store(nil)
+	} else {
+		defaultRetryDecider.Store(&decider)
+	}
+	defaultRetrySilent.Store(silent)
+}
+
+// DefaultRetryDecider returns the installed retry decider, or nil when PiG's built-in retry rules apply.
+func DefaultRetryDecider() ai.RetryDecider {
+	if p := defaultRetryDecider.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
+
+// DefaultRetrySilent reports whether PiG's built-in interactive retry status indicator and final "Retry failed after ..."
+// error line are suppressed because the piglet renders its own.
+func DefaultRetrySilent() bool { return defaultRetrySilent.Load() }
+
+// SetDefaultHTTPIdleTimeoutMs replaces the default HTTP idle timeout GetHttpIdleTimeoutMs uses when settings.json names
+// none; nil restores PiG's built-in 300000 ms default.
+func SetDefaultHTTPIdleTimeoutMs(timeoutMs *int) {
+	if timeoutMs == nil {
+		defaultHTTPIdleMsOverride.Store(nil)
+		return
+	}
+	v := *timeoutMs
+	defaultHTTPIdleMsOverride.Store(&v)
+}
+
+// DefaultHTTPIdleTimeoutMs is the HTTP idle timeout a Session uses when no settings file names one.
+func DefaultHTTPIdleTimeoutMs() int {
+	if p := defaultHTTPIdleMsOverride.Load(); p != nil {
+		return *p
+	}
+	return defaultHTTPIdleTimeoutMs
+}
+
 // GetRetrySettings returns retry settings with defaults applied.
 // Mirrors upstream SettingsManager.getRetrySettings (settings-manager.ts:683-690).
 func (sm *SettingsManager) GetRetrySettings() RetryConfig {
-	result := RetryConfig{
-		Enabled:         true,
-		MaxRetries:      3,     // upstream default: 3 (settings-manager.ts:21)
-		BaseDelayMs:     2000,  // upstream default: 2000ms (settings-manager.ts:22)
-		MaxAgentDelayMs: 60000, // upstream default cap for exponential retry backoff
-	}
+	// pig additive (D653): a fused member's clihook Retry replaces the built-in defaults; with none set this is upstream's 3 / 2000 / 60000.
+	result := DefaultRetryConfig()
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 	s := &sm.merged
@@ -2747,7 +2809,7 @@ func (s *Settings) httpIdleTimeoutMs() (int, error) {
 		return 0, fmt.Errorf("Invalid httpIdleTimeoutMs setting: %v", s.httpIdleTimeoutInvalid)
 	}
 	if s.HTTPIdleTimeoutMs == nil {
-		return defaultHTTPIdleTimeoutMs, nil
+		return DefaultHTTPIdleTimeoutMs(), nil
 	}
 	timeoutMs, ok := parseHTTPIdleTimeoutMs(*s.HTTPIdleTimeoutMs)
 	if !ok {

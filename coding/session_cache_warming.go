@@ -63,6 +63,10 @@ func cacheWarmingStreamFn(session func() *Session) agent.StreamFn {
 			if err != nil {
 				return nil, err
 			}
+			// pig additive (D654): a request keeps the status, headers and stream state of its failure only when a retry decider is installed.
+			if icodingagent.DefaultRetryDecider() != nil {
+				ctx = ai.WithFailureResponse(ctx)
+			}
 			s.startCacheWarming(model, transcript, options)
 			// The transcript is validated and immutable, so the runtime shares its messages and does not validate them again.
 			return s.modelRuntime.StreamSimple(ctx, model, transcript.FrozenContext(), options), nil

@@ -507,12 +507,17 @@ func (m *InteractiveMode) ExitIfQuitting(status int) {
 	m.exitAtSignal(status)
 }
 
-// exitAtSignal hands the terminal back and ends the process, and its extension processes, with status.
+// exitAtSignal hands the terminal back and ends the process, and its extension processes, with status. It claims the signal exit before it touches the extension
+// processes (claimSignalExit): their end makes the host start the exit of a drained quit (exitAtDrainedQuit, status 0), which BeforeExit parks behind the claim, so
+// the status is the signal's as in Pi, whose process a signal kills at once after stop() (row 183: the two exits raced to os.Exit and the 0 won about 1 run in 100).
+// The termination of the processes waits for them at most processWaitDelay (D56, TerminateProcesses), the one bound this exit has; Pi has none, its extensions die
+// with its process.
 func (m *InteractiveMode) exitAtSignal(status int) {
+	claimSignalExit()
 	// The exit handler of Pi's process.exit (9df819de, #11170): a shutdown that timed out left the alternate screen and its modes on.
 	tui.RestoreTerminalOnExit()
 	tui.RestoreTerminalFromSignal()
-	BeforeExit()
+	beforeSignalExit()
 	// pig additive (D19): Pi's extensions end with its process. Here they are processes of their own, and this exit runs no dispose that would end them: a quit by keys that waits for an author (finishInteractiveShutdown) holds its dispose when the ctrl+c arrives, so the runtime of that author would stay behind. Ending the processes fails that author's pending request with an error of the host's own, which Pi's process, dead at the signal, never produces, and the owner loop still serves the waiting quit: so the Session stops persisting and the quit's resume hint is withheld first, or that error would be written into the session file as the turn's message and the quit would go on to its hint beside this exit.
 	m.interruptExiting.Store(true)
 	if session, ok := m.opts.SessionHandle.(interface{ Dispose() }); ok {

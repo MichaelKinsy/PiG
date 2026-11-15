@@ -64,6 +64,8 @@ const (
 
 // marshalerCensus classes every receiver of MarshalJSON or MarshalJSONTo in ai, ai/providers/bedrock and agent. A receiver that is not here fails
 // the census by name: its author classes it, and a receiver a provider request can hold gets a probe.
+// The probes of the Mistral receivers are in marshaler_census_mistral_test.go, which a build that strips mistral-conversations does not have; its
+// twin marshaler_census_mistral_stripped_test.go classes the same receivers there, as the census parses every source file whatever its build tags.
 var marshalerCensus = map[string]censusRow{
 	"ai.anthTool": {probe: func() any {
 		return anthTool{Name: loneSurrogateProbe, Description: loneSurrogateProbe, InputSchema: censusProbeSchema()}
@@ -77,17 +79,11 @@ var marshalerCensus = map[string]censusRow{
 	"ai.ResponsesInputItem": {probe: func() any {
 		return ResponsesInputItem{Type: "function_call", CallID: "call_1", Name: loneSurrogateProbe, Arguments: json.RawMessage(`"{}"`)}
 	}},
-	"ai.mistralToolFn": {probe: func() any {
-		return mistralToolFn{Name: loneSurrogateProbe, Description: loneSurrogateProbe, Parameters: censusProbeSchema()}
-	}, sameUnderEncodingJSON: true},
 	"ai.anthContentBlock": {probe: func() any {
 		return anthContentBlock{Type: "tool_use", ID: "toolu_1", Name: loneSurrogateProbe, Input: map[string]any{"k": loneSurrogateProbe}}
 	}},
 	"ai.oaiMessage": {probe: func() any {
 		return oaiMessage{Role: "tool", Content: "r", ToolCallID: "call_1", ToolName: loneSurrogateProbe}
-	}},
-	"ai.mistralWireMessages": {probe: func() any {
-		return mistralWireMessages{{Role: "tool", Name: loneSurrogateProbe, Content: "r", ToolCallID: "call00001"}}
 	}},
 	"ai.geminiFunctionDecl": {probe: func() any {
 		return geminiFunctionDecl{{Key: "name", Value: loneSurrogateProbe}, {Key: "description", Value: loneSurrogateProbe}}

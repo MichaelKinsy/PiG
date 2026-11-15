@@ -1,7 +1,9 @@
 package subprocess
 
 import (
+	"crypto/rand"
 	"os"
+	"path/filepath"
 	"slices"
 	"sync"
 )
@@ -31,10 +33,16 @@ func createExtLog(pattern string) (*os.File, error) {
 	return file, nil
 }
 
+// extLogCreateEnvName, set to "1" beside PIG_EXT_LOG, lets the Go SDK create the log on its first write (extensions/sdk diagnostic.go). Only the fused extensions get it.
+const extLogCreateEnvName = "PIG_EXT_LOG_CREATE"
+
 // withExtLog is env with PIG_EXT_LOG naming path, in place of any entry the host's own environment carries (an extension that starts a pig passes its own). An empty path
-// leaves no entry, so the process's SDK writes its diagnostics to stderr.
+// leaves no entry, so the process's SDK writes its diagnostics to stderr. The log of a process of its own is made by the host, so no entry lets the SDK create it: a pig that
+// a fused extension started would otherwise pass the permission of its parent's log on.
 func withExtLog(env []string, path string) []string {
-	env = slices.DeleteFunc(slices.Clone(env), func(value string) bool { return envHasKey(value, extLogEnvName) })
+	env = slices.DeleteFunc(slices.Clone(env), func(value string) bool {
+		return envHasKey(value, extLogEnvName) || envHasKey(value, extLogCreateEnvName)
+	})
 	if path == "" {
 		return env
 	}
@@ -42,29 +50,28 @@ func withExtLog(env []string, path string) []string {
 }
 
 // fusedExtLog is the log of the fused extensions, which run in the host's own process and share its environment, as they share PIG_EXT_HOST_INFO. There is no
-// stderr copy of theirs to read it with: a fused extension writes its stderr to the host's own.
+// stderr copy of theirs to read it with: a fused extension writes its stderr to the host's own. Nothing reads the file but a person who looks for it, so the Host
+// names a path and does not create the file: the SDK creates it when it writes the first diagnostic, and a session in which no handler fails puts nothing in the
+// temporary directory, as Pi's does. The Host removes it when it closes and when the process ends through TerminateHostProcesses; a process that is killed
+// outright after a diagnostic leaves it.
 type fusedExtLog struct {
 	mu   sync.Mutex
 	path string
 }
 
-// export creates the log on first use and points this process's PIG_EXT_LOG at it. A failure leaves no entry, so the SDK writes to stderr.
+// export chooses the log's path on first use and points this process's PIG_EXT_LOG at it, with the permission for the SDK to create it. The name is 128 random bits,
+// so it cannot be guessed to plant a link at it, and the SDK's creating open does not follow one where the platform has the flag.
 func (l *fusedExtLog) export() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.path == "" {
-		file, err := createExtLog("pig-ext-fused-*.log")
-		if err != nil {
-			_ = os.Unsetenv(extLogEnvName)
-			return
-		}
-		l.path = file.Name()
-		_ = file.Close()
+		l.path = filepath.Join(os.TempDir(), "pig-ext-fused-"+rand.Text()+".log")
 	}
 	_ = os.Setenv(extLogEnvName, l.path)
+	_ = os.Setenv(extLogCreateEnvName, "1")
 }
 
-// remove deletes the log, and the entry if a later Host in this process has not replaced it.
+// remove deletes the log if a diagnostic created it, and the entries if a later Host in this process has not replaced them.
 func (l *fusedExtLog) remove() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -74,6 +81,7 @@ func (l *fusedExtLog) remove() {
 	//perf:ok once per fused Host close, not per event: it must read the live variable because a later Host in this process may have replaced the entry
 	if os.Getenv(extLogEnvName) == l.path {
 		_ = os.Unsetenv(extLogEnvName)
+		_ = os.Unsetenv(extLogCreateEnvName)
 	}
 	_ = os.Remove(l.path)
 	l.path = ""

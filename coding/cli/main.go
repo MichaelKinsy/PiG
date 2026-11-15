@@ -57,6 +57,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
@@ -752,6 +753,44 @@ func Main(args []string, options *MainOptions) {
 		if p := binarypiglet.Default(); p != nil {
 			pigstrip.SetPiglet(p.Name)
 			undoBinaryStrip = p.Strip.Record()
+		}
+	}
+
+	// pig additive (D653): a fused member's CLI hook owns the command line before PiG parses any of it (extensions/sdk/clihook).
+	var ownPrintOutput bool
+	if hook := clihook.Registered(); hook != nil {
+		res := hook(clihook.Env{Args: args, Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Getenv: os.Getenv, Chdir: os.Chdir,
+			StdinTTY: term.IsTerminal(int(os.Stdin.Fd())), StdoutTTY: term.IsTerminal(int(os.Stdout.Fd()))})
+		if res.Handled {
+			exitProcess(res.Exit)
+		}
+		args = res.Args
+		ownPrintOutput = res.OwnPrintOutput
+		if res.Retry != nil {
+			// pig additive (D653): the member's retry defaults; settings.json `retry` still overrides each field.
+			codingagent.SetDefaultRetryConfig(codingagent.RetryConfig{Enabled: true, MaxRetries: res.Retry.MaxRetries,
+				BaseDelayMs: res.Retry.BaseDelayMs, MaxAgentDelayMs: res.Retry.MaxAgentDelayMs})
+			var decider ai.RetryDecider
+			if decide := res.Retry.Decide; decide != nil {
+				decider = func(attempt, maxAttempts int, response ai.AssistantMessage) ai.RetryDecision {
+					failure := clihook.RetryFailure{
+						Attempt:      attempt,
+						MaxRetries:   maxAttempts,
+						ErrorMessage: response.ErrorMessage,
+					}
+					if response.FailureResponse != nil {
+						failure.Status = response.FailureResponse.Status
+						failure.Headers = response.FailureResponse.Headers
+						failure.StreamStarted = response.FailureResponse.StreamStarted
+					}
+					d := decide(failure)
+					return ai.RetryDecision{Retry: d.Retry, DelayMs: d.DelayMs}
+				}
+			}
+			codingagent.SetDefaultRetryDecider(decider, res.Retry.Silent)
+		}
+		if res.HTTPIdleTimeoutMs != nil {
+			codingagent.SetDefaultHTTPIdleTimeoutMs(res.HTTPIdleTimeoutMs)
 		}
 	}
 
@@ -1459,7 +1498,7 @@ func Main(args []string, options *MainOptions) {
 		})
 		timings.PrintTimings()
 		startAutomaticExtensionCacheGC(ctx)
-		if exitCode, err := startPrintMode(ctx, host, printModeOptions{Mode: mode, Messages: extraMessages, InitialMessage: initialMessage, InitialImages: initialImages}); err != nil {
+		if exitCode, err := startPrintMode(ctx, host, printModeOptions{Mode: mode, Messages: extraMessages, InitialMessage: initialMessage, InitialImages: initialImages, ownOutput: ownPrintOutput}); err != nil {
 			// A run stopped by a termination signal reports 128+signum and
 			// stays quiet, matching upstream's print-mode signal handlers.
 			if signalErr, ok := errors.AsType[*signalExitError](err); ok {
@@ -1469,6 +1508,10 @@ func Main(args []string, options *MainOptions) {
 				printCLIError("%v", err)
 			}
 			exitProcess(exitCode)
+		}
+		// pig additive (D653): a fused member's status after a print run that succeeded in PiG's terms; a failed run keeps PiG's 1.
+		if code, ok := clihook.ExitCode(); ok && code != 0 {
+			exitProcess(code)
 		}
 		return
 	}

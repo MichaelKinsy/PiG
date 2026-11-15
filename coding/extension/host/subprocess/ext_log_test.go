@@ -57,28 +57,62 @@ func TestExtLogHostWritesDoNotOverwriteAnSDKAppend(t *testing.T) {
 	}
 }
 
-// Fused extensions share the host's environment, so the host exports one log for them and removes it with the Host.
-func TestFusedExtLogIsExportedAndRemoved(t *testing.T) {
+// fusedLogTemp points the temporary directory at a directory of the test, with no log of an earlier Host exported, and returns it.
+func fusedLogTemp(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, dir)
+	}
 	t.Setenv(extLogEnvName, "")
+	t.Setenv(extLogCreateEnvName, "")
+	return dir
+}
+
+func tempNames(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+	return names
+}
+
+// Fused extensions share the host's environment, so the host exports one log path for them and removes the log with the Host. The path names no file until the SDK
+// writes the first diagnostic (TestFusedExtLogIsCreatedByTheFirstDiagnostic), and the entries that give the SDK the permission to create it go with the log.
+func TestFusedExtLogIsExportedAndRemoved(t *testing.T) {
+	tmp := fusedLogTemp(t)
 	var log fusedExtLog
 	log.export()
 	path := os.Getenv(extLogEnvName)
-	if path == "" || !strings.HasPrefix(filepath.Base(path), "pig-ext-fused-") {
-		t.Fatalf("PIG_EXT_LOG = %q after export", path)
+	if filepath.Dir(path) != tmp || !strings.HasPrefix(filepath.Base(path), "pig-ext-fused-") {
+		t.Fatalf("PIG_EXT_LOG = %q after export, want a pig-ext-fused name in %s", path, tmp)
 	}
-	if _, err := os.Stat(path); err != nil {
-		t.Fatalf("the log does not exist: %v", err)
+	if got := os.Getenv(extLogCreateEnvName); got != "1" {
+		t.Errorf("%s = %q after export, want 1", extLogCreateEnvName, got)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("export created the log: %v", err)
 	}
 	log.export()
 	if again := os.Getenv(extLogEnvName); again != path {
 		t.Errorf("a second export chose %q, want the same log %q", again, path)
 	}
+	if err := os.WriteFile(path, []byte("sdk diagnostic\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	log.remove()
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Errorf("the log remains after remove: %v", err)
 	}
-	if got := os.Getenv(extLogEnvName); got != "" {
-		t.Errorf("PIG_EXT_LOG = %q after remove, want it unset", got)
+	for _, name := range []string{extLogEnvName, extLogCreateEnvName} {
+		if got := os.Getenv(name); got != "" {
+			t.Errorf("%s = %q after remove, want it unset", name, got)
+		}
 	}
 }
 

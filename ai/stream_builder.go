@@ -497,9 +497,36 @@ func (builder *assistantStreamBuilder) recordTransportFailure(err error) {
 	if err == nil {
 		return
 	}
+	builder.recordFailureResponse(err)
 	if diagnostic, ok := transportFailureDiagnostic(err, builder.started); ok {
 		AppendAssistantMessageDiagnostic(builder.partial, diagnostic)
 	}
+}
+
+// recordFailureResponse stores the HTTP status, response headers and stream-start state of a failed request for a custom retry policy. It records
+// nothing unless the request's context came from WithFailureResponse.
+func (builder *assistantStreamBuilder) recordFailureResponse(err error) {
+	recorder := failureResponseRecorderOf(builder.ctx)
+	if recorder == nil {
+		return
+	}
+	info := &FailureResponse{StreamStarted: builder.started}
+	if own, ok := errors.AsType[*providerError](err); ok && own != nil {
+		if own.status != nil {
+			info.Status = *own.status
+		}
+	} else if reported, ok := errors.AsType[ProviderRequestError](err); ok {
+		if st := reported.ProviderStatus(); st != nil {
+			info.Status = *st
+		}
+		if hdr := reported.ProviderHeaders(); len(hdr) > 0 {
+			info.Headers = headersToRecord(hdr)
+		}
+	}
+	if info.Headers == nil {
+		info.Headers = recorder.headersOf(info.Status)
+	}
+	builder.partial.FailureResponse = info
 }
 
 // failureMessage is the ErrorMessage recorded for err.

@@ -1871,6 +1871,7 @@ func (p *openAIResponsesProvider) streamResponse(ctx context.Context, httpReq *h
 			if p.api() == APIAzureOpenAIResponses {
 				name = "Azure OpenAI"
 			}
+			noteFailureResponse(ctx, resp)
 			return openAIHTTPError(resp.StatusCode, b, name+" API error")
 		}
 		if !p.cfg.Codex {

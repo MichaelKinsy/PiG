@@ -949,6 +949,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6996de6](#bf-6996de6) | fix(durable/core): keep the reservation decision in a scheduler field, not two closure variables (TinyGo heap… | PiG's own defect | All platforms | Unreleased |
 | [BF-69b9811](#bf-69b9811) | Two PiG builds that share a config root (two installed versions, or stock PiG beside a Piglet Binary) no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-69c175b](#bf-69c175b) | fix(models): models.json entries keep exposed limits and cost; bound thinking-only messages in summaries; pin… | PiG's own defect | All platforms | Unreleased |
+| [BF-69c19c3](#bf-69c19c3) | After ctrl+c, SIGINT, SIGTERM or SIGHUP while a quit was held by a native extension command (a Go, Rust… | PiG's own defect | All platforms | Unreleased |
 | [BF-69cd9d2](#bf-69cd9d2) | PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-69f6341](#bf-69f6341) | The Radius relay WebSocket URL is built with the WHATWG URL parser, as Pi's `new URL` does: gateway hosts are… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a46bc7](#bf-6a46bc7) | The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process… | PiG's own defect | All platforms | 0.7.0 |
@@ -1752,6 +1753,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c8a90a6](#bf-c8a90a6) | Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8e3d86](#bf-c8e3d86) | Settings submenus: the type-to-filter box no longer shows a hardware cursor marker (Pi never focuses it), and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c910f98](#bf-c910f98) | fix(photonimage): decode Radiance HDR as Photon does | PiG's own defect | All platforms | Unreleased |
+| [BF-c96c624](#bf-c96c624) | A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c98be55](#bf-c98be55) | The renderer's width and height are read through one atomic snapshot | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c98e9f9](#bf-c98e9f9) | Without `HOME` set, the project trust check takes the home directory from the user database, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c9acbea](#bf-c9acbea) | A Session listener that queues more messages than the Session's event buffer holds (64 by default), while it… | PiG's own defect | All platforms | 0.5.0 |
@@ -15134,6 +15136,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `69c175bf60` (2026-10-09)
 - **Tests:** `coding/model_default_provider_race_test.go::TestExtensionProviderIsConfiguredWhenTheDefaultModelIsResolved`
 
+### BF-69c19c3
+
+**After ctrl+c, SIGINT, SIGTERM or SIGHUP while a quit was held by a native extension command (a Go, Rust…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After ctrl+c, SIGINT, SIGTERM or SIGHUP while a quit was held by a native extension command (a Go, Rust, Python or Lisp command still running when you quit with ctrl+d, beside another extension whose shutdown never finishes), pig could exit with status 0 instead of the signal's status (130, 130, 143, 129), as Pi's process does; in about one run in 120 of the held-quit tests the shell saw 0 while `exit.log` said `received SIGINT (exit 130)`.
+- **Root cause:** exitAtSignal ended the extension processes before its os.Exit, which made the host run the exit of a drained quit (exitProcess(0)) on a goroutine of its own; the two exits raced to os.Exit, and the 0 won when the scheduler ran it first
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `69c19c3161` (2026-11-15)
+- **Tests:** `coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds`, `internal/codingagent/exit_ending_test.go::TestSecondSignalExitBlocksBehindTheFirst`, `internal/codingagent/exit_ending_test.go::TestSignalExitAtAHeldQuitIsNotOvertakenByTheDrainedQuitExit`
+- **Release note:** After ctrl+c, SIGINT, SIGTERM or SIGHUP while a quit was held by a native extension command (a Go, Rust, Python or Lisp command still running when you quit with ctrl+d, beside another extension whose shutdown never finishes), pig could exit with status 0 instead of the signal's status (130, 130, 143, 129), as Pi's process does; in about one run in 120 of the held-quit tests the shell saw 0 while `exit.log` said `received SIGINT (exit 130)`. The signal's exit ends the extension processes, the host read the end of the process that held the quit as an empty event loop and started the exit of a drained quit (status 0) beside it, and whichever of the two reached `os.Exit` first ended pig. The signal's exit now claims the end of the process before it touches the extension processes, and every other exit waits behind it (D102); the wait for the extension processes to end is the one it was (D56). No release has this: the held quit of a native command is not in 0.7.0 or earlier.
+
 ### BF-69cd9d2
 
 **PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the…**
@@ -26305,6 +26321,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `c910f98660` (2026-10-29)
 - **Tests:** `internal/photonimage/hdrdecode_test.go::TestDecodeHDRReadsBothRunLengthEncodingsAndFlatPixels`, `internal/photonimage/hdrdecode_test.go::TestDecodeHDRRefusesWhatImageRefuses`, `internal/photonimage/hdrdecode_test.go::TestDecodeRoutesHDR`, `internal/photonimage/hdrdecode_test.go::TestExp2fIsExactForTheExponentsOfRGBE`, `internal/photonimage/hdrdecode_test.go::TestHDRConversionTableIsLibms`
+
+### BF-c96c624
+
+**A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the session ends, and creates none unless an extension handler fails.
+- **Root cause:** A Piglet Binary with a fused extension put pig-ext-fused-N.log into the temporary directory for the whole session and left it behind when the process ended through TerminateHostProcesses (a hung-up terminal, SIGINT, the crash exit, the end of print and rpc mode). Pi writes no such file.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c96c624b89` (2026-11-15)
+- **Tests:** `coding/extension/host/subprocess/ext_log_test.go::TestFusedExtLogIsExportedAndRemoved`, `coding/extension/host/subprocess/fused_ext_log_test.go::TestFusedExtLogEndsWithTheProcess`, `coding/extension/host/subprocess/fused_ext_log_test.go::TestFusedExtLogIsCreatedByTheFirstDiagnostic`, `coding/extension/host/subprocess/fused_ext_log_test.go::TestWithExtLogDropsThePermissionToCreate`, `extensions/sdk/diagnostic_create_test.go::TestDiagnosticCreatesTheLogOnlyWithThePermission`, `extensions/sdk/diagnostic_create_test.go::TestDiagnosticDoesNotCreateThroughASymbolicLink`, `test/integration/fused_ext_log_exit_test.go::TestFusedExtensionLogInTempDirectory`
+- **Release note:** A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the session ends, and creates none unless an extension handler fails.
 
 ### BF-c98be55
 

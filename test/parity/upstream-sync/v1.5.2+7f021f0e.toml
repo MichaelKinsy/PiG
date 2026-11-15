@@ -1,0 +1,551 @@
+from = "1.5.2+c3cc9163"
+to = "1.5.2+7f021f0e"
+
+# The range c3cc91632d0a..7f021f0eebfa outside apps/p2 and apps/p3: 92e1db6ca (slice 14, first part: named live queries, column
+# sets, exists and joins, lists), a merge, 0db9861ec (the app kit exports its start-data facets), and the two test-only commits 0a25dd15e (Together Kimi K3) and 7f021f0ee (consumer event tests). The Go chord
+# implements Pi through c3cc91632d0a and does not implement slice 14. Every row below says so: `deferred` rows are work
+# the port has not done (they lie behind PORT_MAP's 🟡 rows of the changed files), `designed-out` rows are documents.
+# Interop for an app that declares no named query and uses no list: no fingerprint, wire frame or stored format changes
+# (fingerprint.ts adds a node only for a `queries` member; link/ and remote/ frames, cursors and the catalog are
+# untouched), so a Pi client at 0db9861ec works against this host and the reverse. The vendored Pi blobs under
+# chord/nextnode/{surfaces/client,plugins/node}/pi stay at their carried commits (manifest `commit` and `carried`):
+# they must run against the Go port they ship with, and the Go port does not have slice 14.
+
+[[files]]
+path = "packages/chord/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca, 0db9861ec: Pi's Chord changelog entries (named queries, lists, column sets, counters, the app kit's facets). PiG's user-visible statement is its own changelog.d fragment (known issue: no slice 14)."
+
+[[files]]
+path = "packages/chord/docs/benchmarks.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: the benchmark notes of slice 14. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: the decisions of slice 14. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: the design text of slice 14 (reads, column sets, lists). Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/plugin-authoring.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: plugin authoring of named queries and column sets. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/slice-14-design.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: the design of slice 14. Pi's chord documents are not ported (chord/README.md); it is the reading list of the port of slice 14."
+
+[[files]]
+path = "packages/chord/docs/slice-14.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: the slice 14 specification. Pi's chord documents are not ported (chord/README.md); it is the reading list of the port of slice 14."
+
+[[files]]
+path = "packages/chord/docs/slices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: the slice list. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/host/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: the host layer's notes on named queries. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/store/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "92e1db6ca: the store layer's notes on reads, column sets and the skip test. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/node/app/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "0db9861ec: two sentences saying the kit exports appInfoFacet and workerInfoFacet. Pi's chord documents are not ported (chord/README.md); the Go doc comments of nextnode/app AppInfoFacet and WorkerInfoFacet say it."
+
+[[files]]
+path = "packages/chord/src/node/app/index.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = ["test:chord/nextnode/app/info_upstream_test.go#TestAppInfoServesTheDataDirectoryNameVersionAndOwner", "test:chord/nextnode/app/info_upstream_test.go#TestWorkerInfoServesItsAddressAndItsStartData"]
+rationale = "0db9861ec: the barrel adds appInfoFacet and workerInfoFacet to its exports (no other source change). The Go package already exports both: chord/nextnode/app/info.go:52 AppInfoFacet and :78 WorkerInfoFacet, which serve AppInfo and WorkerInfo for an app that runs hosts of its own; the two tests above serve them. Nothing changes in Go."
+
+[[files]]
+path = "packages/chord/src/contracts/contract.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the `queries` member kind (MemberKind gains \"queries\", VariantData.queries, QueriesData) and the types NamedQuery, QueryPage and NamedQueriesOf of Implementation. Not ported: chord/next/contracts/contract.go has no queries kind. A contract without a queries member behaves and fingerprints as before. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/contracts/declare.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: a local contract may list `queries(Item, { name: args })` members (readQueries, the kind recording, the refusal in a remote contract: `queries members are only in local contracts`, argument schemas closed). Not ported: chord/next/contracts/declare.go declares no such member. Covered by the 3 new cases of test/contracts/declare.test.ts (deferred below). PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/contracts/evolve.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: evolve carries `queries` members over unchanged and refuses a new member whose name a queries member holds. Not ported (no queries members exist in Go). PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/contracts/fingerprint.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: variantNormal adds one node per `queries` member ({ queries: item, args: named }). A contract without a queries member adds nothing, so every existing fingerprint is unchanged (Pi's fingerprint.test pinned value did not move); a Go contract also has none. Not ported: the node of a queries member. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/contracts/history.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: a local contract's history declaration may hold `queries` members (type only in Pi). Not ported (no queries members in Go). PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/contracts/index.ts"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "92e1db6ca: the barrel exports NamedQuery, QueryPage, QueriesMember and queries. A barrel: Go packages export names directly; the names exist when contracts.go gets the queries member (see contract.ts, schema.ts)."
+
+[[files]]
+path = "packages/chord/src/contracts/internal.ts"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "92e1db6ca: the internal barrel re-exports Snapshot and snapshotArguments. A barrel for Chord's layers; snapshotArguments exists in Go (chord/next/contracts/snapshot.go)."
+
+[[files]]
+path = "packages/chord/src/contracts/schema.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: QueriesMember, QueryArguments and the `queries(item, args)` declaration function. Not ported: chord/next/contracts/schema.go has no QueriesMember. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/documents/transaction.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the commit stages ReadRefresh over the store's Reads (every live read over a table the transaction wrote, whoever owns it) in place of refreshOf(tables, context); the skip test then runs only the reads the writes can change. Not ported: chord/next/documents/transaction.go refreshes the object's own live queries as before (every one over a written table). No peer sees the difference: it is statements the database runs. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/host/attempt.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: self.queries(table, { map, reads, partnerReads }, builders), self.liveQuery(namedQuery, args, { first }), self.count and self.list, with BuiltQuery, QueryBuilders and ListHandle, and self.query rebuilt over the Read engine. Not ported: chord/next/host/host_attempt.go has self.query over LiveQuery only. Existing programs (no named query, no list) behave as before. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/host/host-data.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the host-kind rewrite reads the store's reads over every table with a host column of the kind (reads.onHostKind: joined and exists tables included) and calls read.run/ran/adopt, in place of the objects' liveQueries. Not ported: Go rewrites the object's own live queries. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/host/host.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: HostError `query_failed` carries `query` (the table's name for self.query, the named query's label for liveQuery, count and list) in place of `table`; a closing host calls object.unbindSets() after tearing every object down. Not ported: Go's HostError has Table (host_error.go:102). The report is host-local (an argument of the host's onError), not a wire value. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/host/index.ts"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "92e1db6ca: the barrel exports BuiltQuery, ListHandle, QueryBuilder, QueryBuilders, ListOptions, PartnerRow and QueriesOptions. A barrel: Go imports the package; the names arrive with attempt.go, list and named-query when ported."
+
+[[files]]
+path = "packages/chord/src/host/list.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: self.list(name, [[namedQuery, args]], { first }) returns { value, more }: pages between fixed bookmarks (ListMemory kept by the object across attempts, ListOptions). A new file with no row in PORT_MAP (a file new after the pin has none, as for images/fit.ts); covered by test/host/list.test.ts (deferred below). Not ported."
+
+[[files]]
+path = "packages/chord/src/host/members.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: checkQueries checks a `queries` member is what self.queries returned (ownQueries) with a builder for every listed query and no unlisted one. Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/host/named-query.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: OwnQuery, ReferenceQuery, ownQueries, QueriesOptions and PartnerRow: the named queries of a queries member, implemented by the table's owner and read through a reference. A new file with no PORT_MAP row (new after the pin); covered by test/host/named-query.test.ts (deferred below). Not ported."
+
+[[files]]
+path = "packages/chord/src/host/object.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: HostObject drops liveQueries, gains listMemory(name), queryMember(member, name) and unbindSets() (the column sets its tables exposed are served no more). Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/host/query-reader.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the reader of a named query (liveQuery, count, page over a reference, with arguments as a watchable, following a restarted instance). A new file with no PORT_MAP row (new after the pin); covered by test/host/query-reader.test.ts (deferred below). Not ported."
+
+[[files]]
+path = "packages/chord/src/host/read-declarations.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the declarations staging records for queries, liveQuery, count and list (firstOf, listName, namedBuilders, namedQueryExpected, oneSource, tableExpected, undeclaredTable). A new file with no PORT_MAP row (new after the pin). Not ported."
+
+[[files]]
+path = "packages/chord/src/host/reference.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: a reference exposes its object's named queries (ReferenceQuery per queries member), queryMember(member, name) and followInstance(moved), told when another instance is live. Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/host/staging.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the recording `self` of staging gives separate inert handles for tables, named queries and references, records queries/liveQuery/count/list declarations through read-declarations, and checks a column set is exposed once (checkExposedOnce). Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/host/tiling.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tiling of a list: pages between fixed bookmarks that stay live, with moves leaving no gap and no duplicate. A new file with no PORT_MAP row (new after the pin); covered by test/host/tiling.test.ts (deferred below). Not ported."
+
+[[files]]
+path = "packages/chord/src/index.ts"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "92e1db6ca: the aggregate barrel no longer exports the type WhereNode as @internal. A barrel; types only."
+
+[[files]]
+path = "packages/chord/src/remote/remote-object.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: queryMember(member) on a remote object throws invalid/member (`has no queries member`: named queries are local). Not ported: chord/next/host/remote_remote_object.go has no queryMember. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/state/framed.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: FramedOwner and the framed source: a JSON source whose owner sets its value whole (a live query's rows, a list's pages), one diff frame per batch, failing and recovering as a derive does. The existing LiveQuery source in chord/next/store/live_query.go frames the same way (diff from the rows its watches had), so existing frames are unchanged. A new file with no PORT_MAP row (new after the pin). Not ported as its own source."
+
+[[files]]
+path = "packages/chord/src/state/internal.ts"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "92e1db6ca: the internal barrel re-exports framed.ts. A barrel for Chord's layers."
+
+[[files]]
+path = "packages/chord/src/store/column-set.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: defineColumns(name, { columns, key, indexes? }), ColumnSet, checkExposes and checkExposedOnce: the set one plugin's table exposes to another plugin's exists and joins. A new file with no PORT_MAP row (new after the pin); covered by test/store/column-set.test.ts (deferred below). Not ported."
+
+[[files]]
+path = "packages/chord/src/store/evaluate.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the in-memory evaluator throws `exists is not evaluated in memory` for an exists node (only reads, run in the database, test it). Not ported: Go's expression has no exists node to refuse. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/expression.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: exists(Set, match, condition), existsNode(Set, match, node), compile(Set, condition), whereNode and the join of a set (`query(Table).join(Set, match)`), nodes given as data checked. Not ported: chord/next/store/expression.go has none. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/index.ts"
+change = "modified"
+disposition = "n/a"
+evidence = []
+rationale = "92e1db6ca: the barrel exports defineColumns, ColumnSet, exists, existsNode, compile, EvolveOptions and the read types. A barrel: the Go package exports names directly, those names arrive with the files they name."
+
+[[files]]
+path = "packages/chord/src/store/live-query.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: LiveQuery rebuilt over Read, OpenQuery and the store's Reads (QueryRefresh and refreshOf removed): a commit reruns a live query only when it can change it. Not ported: chord/next/store/live_query.go reruns the object's live queries over a written table. Observable only as statement counts (the one-row put costs one more statement, the keyed probe) and the new telemetry counters; query_failed's field is `query` (host.ts). PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/open-query.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: OpenQuery and QuerySpec: a query kept compiled against the store's bindings while someone reads it, recompiled when a column set it names moves. A new file with no PORT_MAP row (new after the pin). Not ported."
+
+[[files]]
+path = "packages/chord/src/store/page.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: readPage, the page of a read plan (a table handle's page now goes through it; the cursor format is unchanged). A new file with no PORT_MAP row (new after the pin). Not ported."
+
+[[files]]
+path = "packages/chord/src/store/query.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: Query gains `joined` and `join`, `whereNode`; decodeCursor takes the order's column types (cursor format unchanged). Not ported: chord/next/store/query.go. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/read-plan.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: ReadPlan, Projection, Range and StoredRead: the SQL of a read (rows, count, windows, joins, exists) compiled against the store's bindings. A new file with no PORT_MAP row (new after the pin); covered by test/store/read-plan.test.ts (deferred below). Not ported."
+
+[[files]]
+path = "packages/chord/src/store/read.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: Read, ReadKind, ReadRun and ReadSink: one live read the store runs again and adopts. A new file with no PORT_MAP row (new after the pin). Not ported."
+
+[[files]]
+path = "packages/chord/src/store/reads.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: Reads (the store's index of live reads by table and its column-set bindings), ReadRefresh and setsOf. A new file with no PORT_MAP row (new after the pin); covered by test/store/reads.test.ts (deferred below). Not ported."
+
+[[files]]
+path = "packages/chord/src/store/rows.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: decodeScalar is exported (a stored scalar as reads return it: boolean from 0 and 1, an address from a host key); the row decoder calls it. Go decodes the same cells in chord/next/store/rows.go (ColBool, Host.Address); only the exported helper a read's mapping uses is absent. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/skip.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the skip test: Change and the decision, by assigned columns or one keyed probe, whether a commit's writes can change a read. A new file with no PORT_MAP row (new after the pin); covered by test/store/skip.test.ts (deferred below). Not ported."
+
+[[files]]
+path = "packages/chord/src/store/sql.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: whereSql takes a ConditionSql (column naming and exists rendering) so a read can qualify columns and render exists; a write's condition renders as before. Not ported: chord/next/store/sql.go. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/store.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: ChordStore gains `reads` (a Reads). Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/table-changes.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the overlay keeps the columns each bulk write assigned and builds changes(), the Change list the skip test takes. Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/table-evolve.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: evolveTable takes EvolveOptions { exposes } (the previous version's set when left out, none for \"none\"). Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/table-handle.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: a handle's page and count go through ReadPlan and readPage; a query with `exists` is read, a joined one refused; the owner no longer holds liveQueries. Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/store/table.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: defineTable takes `exposes` (a ColumnSet, checked by checkExposes, not part of the table's fingerprint). Not ported. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/src/telemetry.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: three counters, chord.query.probes (keyed probes a commit asked), chord.query.skips (live queries a commit did not run again) and chord.query.rows (rows live query runs returned). Not ported: the Go telemetry schema (chord/next/telemetry/schema.go) has chord.query.runs only, and nothing in Go probes or skips; the counters belong to the port of the skip test. The vendored copy in chord/nextnode/surfaces/client/pi stays at its carried commit. PORT_MAP: 🟡."
+
+[[files]]
+path = "packages/chord/test/bench/slice-14.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the slice 14 benchmark (named queries, lists, skips, joins), run by hand. Not ported with its production files."
+
+[[files]]
+path = "packages/chord/test/bench/store.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the store benchmark drops its LiveQueries stub (two lines). Not ported: follows the port of Reads."
+
+[[files]]
+path = "packages/chord/test/bench/sync-worker.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the sync worker benchmark drops its LiveQueries stub. Not ported: follows the port of Reads."
+
+[[files]]
+path = "packages/chord/test/contracts/declare.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the describe `queries members (slice 14 §3.1)`: 3 cases (declare named queries with their own kind and the argument schema in the fingerprint, carried over by evolve; typed implementation as one named query per listed name; refused in a remote contract and unclosed argument schemas). The 14 cases of the pin keep their Go twin (test-mapping: ported). Not ported: the 3 new cases wait for the queries member."
+
+[[files]]
+path = "packages/chord/test/examples/70-named-queries.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: example of named queries over a store's table. Not ported; no PORT_MAP row (new after the pin)."
+
+[[files]]
+path = "packages/chord/test/examples/71-lists.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: example of lists. Not ported; no PORT_MAP row (new after the pin)."
+
+[[files]]
+path = "packages/chord/test/examples/72-exists-and-joins.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: example of column sets, exists and joins across plugins. Not ported; no PORT_MAP row (new after the pin)."
+
+[[files]]
+path = "packages/chord/test/host/list.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tests of host/list.ts and tiling's use by lists. Pending with its production file (list.ts, deferred above); no test-mapping row (the mapping covers the pinned test files)."
+
+[[files]]
+path = "packages/chord/test/host/named-query.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tests of host/named-query.ts and the queries members. Pending with its production file (named-query.ts, deferred above)."
+
+[[files]]
+path = "packages/chord/test/host/query-reader.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tests of host/query-reader.ts. Pending with its production file (query-reader.ts, deferred above)."
+
+[[files]]
+path = "packages/chord/test/host/tiling.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tests of host/tiling.ts. Pending with its production file (tiling.ts, deferred above)."
+
+[[files]]
+path = "packages/chord/test/store/column-set.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tests of store/column-set.ts. Pending with its production file (column-set.ts, deferred above)."
+
+[[files]]
+path = "packages/chord/test/store/live-query.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the touching put costs two statements more than the other commit's (the keyed probe), not one; query_failed reports `query`, not `table`; the refresh test builds Reads and ReadRefresh stubs. The 12 cases of the pin keep their Go twins (test-mapping: ported, host_live_query_test.go and live_query_test.go at the pin's expectations). Not ported: the three changed expectations wait for the skip test and the Reads."
+
+[[files]]
+path = "packages/chord/test/store/read-plan.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tests of store/read-plan.ts. Pending with its production file (read-plan.ts, deferred above)."
+
+[[files]]
+path = "packages/chord/test/store/reads.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tests of store/reads.ts. Pending with its production file (reads.ts, deferred above)."
+
+[[files]]
+path = "packages/chord/test/store/skip.test.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the tests of store/skip.ts. Pending with its production file (skip.ts, deferred above)."
+
+[[files]]
+path = "packages/chord/test/support.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "92e1db6ca: the test scaffolding drops its LiveQueries stub from the fake object (queries: new LiveQueries()). Its Go form is the shared helpers in chord/next/host/host_next_support_test.go; they change when Reads is ported."
+
+[[files]]
+path = "packages/chord/test/remote/consumer.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents", "test:chord/next/host/remote_consumer_events_test.go#waitDelivered"]
+rationale = "7f021f0ee: the two event cases that waited for the web inflate by turns (`for (turn < 50 && seen.length === 0) await transported()`, `for (turn < 5 && seen.length === 0)`) wait for the listener's delivery (`delivered.promise`, resolved by the listener): libuv's thread pool runs the real inflate, so no number of turns is sure to cover it. The async contract: the test waits on the first delivery to the listener, then one more turn, then asserts. Go: both cases (`inflate nothing for a member nobody listens to…` and `keep the event window exhausted while an asynchronous inflate holds the message…`) in remote_consumer_events_test.go close a channel from the listener (sync.Once) and wait on it with waitDelivered (a 10 s bound, no sleep, no turn count) before the assertions. Go's ack is sent by the client's own goroutine after the delivery, so each case also waits for the ack event as before (rhWaitFor on the acks the peer saw, not a turn count). The base test already waited on that ack, not on turns: no red exists; 50 runs under -race passed on the base and after (counts in the commit message)."
+
+[[files]]
+path = "packages/ai/test/together-models.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "0a25dd15e: the Together Kimi K3 case expects maxTokens 1048576 (was 131072). Pi's Together models come from models.dev at its build (catalog/providers/together.ts, modelsDevModels; src/providers/data is not in Pi's git), so the test follows live data, not a Pi source change. PiG's catalog (ai/models_generated.go) is the snapshot of the pin, Together Kimi K3 max output 131072, and ai/catalog_options_upstream_test.go:66 expects 131072, consistent with it. Not ported: it needs a re-snapshot of the catalog from models.dev (a data refresh, not a per-test edit). Row 188 (model catalog snapshot older than models.dev: Together Kimi K3 max output 131072 vs 1048576), decided by the coordinators; a separate lane measures the refresh."
