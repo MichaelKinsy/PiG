@@ -59,6 +59,8 @@ func (m *InteractiveMode) awaitReloadStep(parent context.Context, work func(cont
 	if err := parent.Err(); err != nil {
 		return context.Cause(parent)
 	}
+	// Pi's awaits between the steps read the keys that arrived after a step and drop them, so no step hands a key on to the next.
+	m.reloadTailInput = nil
 	if m.runCtx != nil {
 		m.currentInputTicket.resume()
 		m.currentInputTicket.settle()
@@ -91,8 +93,13 @@ func (m *InteractiveMode) awaitReloadStep(parent context.Context, work func(cont
 			return err
 		case <-cancelled:
 			cancelled = nil
-		case <-input:
-			// The reload box owns input; it has no key actions.
+		case key := <-input:
+			// The reload box owns input; it has no key actions, and a key that arrives while the step is pending is dropped, as in Pi (packages/tui/src/tui.ts:1153-1158). A key taken once the step has completed arrived after the awaited work: Pi reads it after the synchronous tail that follows its last await (interactive-mode.ts:6671-6698) and the editor, which the dismissed box gives the input back to, receives it. The input loop dispatches it, in order, before any key routed later (takeReloadTailInput); a later step drops it as Pi's awaits between steps do.
+			select {
+			case <-done:
+				m.reloadTailInput = append(m.reloadTailInput, key)
+			default:
+			}
 		case task := <-m.uiTaskCh:
 			task()
 		case <-m.renderWakeCh:
@@ -107,4 +114,15 @@ func (m *InteractiveMode) awaitReloadStep(parent context.Context, work func(cont
 			}
 		}
 	}
+}
+
+// takeReloadTailInput returns the oldest key awaitReloadStep kept for the editor, or false when none waits. Owner loop only.
+func (m *InteractiveMode) takeReloadTailInput() ([]byte, bool) {
+	if len(m.reloadTailInput) == 0 {
+		return nil, false
+	}
+	key := m.reloadTailInput[0]
+	m.reloadTailInput[0] = nil
+	m.reloadTailInput = m.reloadTailInput[1:]
+	return key, true
 }

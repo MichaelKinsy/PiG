@@ -757,8 +757,10 @@ type tuiBase struct {
 	resetRenderState func()
 
 	// render is the concrete renderer's per-frame paint, set by the
-	// constructor. Mirrors upstream's abstract TuiBase.doRender().
-	render func()
+	// constructor. Mirrors upstream's abstract TuiBase.doRender(). It reports
+	// whether the frame began: false when the screen was stopped or the frame
+	// had lost its generation (frameGate) by the time it held the frame lock.
+	render func(gate frameGate) bool
 	// mountedRoots returns the rendered document roots when they differ from
 	// the base children. Mirrors upstream's getMountedRoots override.
 	mountedRoots func() []Component
@@ -1570,7 +1572,7 @@ func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory 
 	if showHardwareCursor != nil {
 		t.showHardwareCursor = *showHardwareCursor
 	}
-	t.render = t.doRender
+	t.render = t.drawFrame
 	t.updateSize()
 	t.kitty = detectKitty()
 	return t
@@ -1590,7 +1592,7 @@ func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
 		},
 	}
 	t.setSize(cols, rows)
-	t.render = t.doRender
+	t.render = t.drawFrame
 	return t
 }
 
@@ -2195,6 +2197,19 @@ func (t *tuiBase) runScheduledRender(generation uint64) {
 	t.renderScheduled(generation)
 }
 
+// frameGate is what a frame that a timer's callback started carries to the frame lock. The callback checks its generation under mu and then releases it, so a
+// direct Render, a forced request or a Stop can run before the frame holds the lock; the frame, with the gate it was started with, checks again there. Pi's
+// callback runs on the one event loop: a renderNow between its check and its render cannot happen (tui.ts:1026-1031, 1075-1080).
+type frameGate struct {
+	generation uint64
+	scheduled  bool // false for a direct Render, which owns the frame it draws
+}
+
+// frameSupersededLocked reports whether a frame started with gate lost its generation since its callback checked it. mu must be held.
+func (t *tuiBase) frameSupersededLocked(gate frameGate) bool {
+	return gate.scheduled && gate.generation != t.renderGeneration
+}
+
 func (t *tuiBase) renderScheduled(generation uint64) {
 	t.mu.Lock()
 	current := generation == t.renderGeneration && !t.stopped.Load()
@@ -2202,20 +2217,24 @@ func (t *tuiBase) renderScheduled(generation uint64) {
 	if !current {
 		return
 	}
-	t.renderAndReschedule()
+	t.renderAndReschedule(generation)
 }
 
 // renderAndReschedule performs the actual render and schedules a follow-up
 // frame if more render requests arrived. It must run on whichever goroutine
 // owns component-tree mutation (the main loop when renderOnMain is set).
-func (t *tuiBase) renderAndReschedule() {
+func (t *tuiBase) renderAndReschedule(generation uint64) {
 	began := t.now()
 	terminal, counted := t.Terminal().(screenWriterTerminal)
 	var sent uint64
 	if counted {
 		sent = terminal.writesSent()
 	}
-	t.render()
+	if !t.render(frameGate{generation: generation, scheduled: true}) {
+		// Stopped, or a direct Render, a forced request or a Stop took the generation after the callback's check: the frame drew nothing and the
+		// request that superseded it has its own frame.
+		return
+	}
 
 	t.mu.Lock()
 	t.lastFrameCost = t.now().Sub(began)
@@ -2270,7 +2289,7 @@ func (t *tuiBase) Render() {
 		return
 	}
 	t.CancelPendingRender()
-	t.render()
+	t.render(frameGate{})
 }
 
 func findCursorPosition(lines []string, height int) (widthx.CursorPosition, int, string, bool) {
@@ -2390,14 +2409,20 @@ func (t *TuiMainScreen) applyLineResetsCachedWithCursor(lines []string, cursorRo
 }
 
 //perf:hot
-func (t *TuiMainScreen) doRender() {
+func (t *TuiMainScreen) doRender() { t.drawFrame(frameGate{}) }
+
+// drawFrame is the main screen's frame: gate says which frame started it (frameGate). It reports whether the frame began.
+//
+//perf:hot
+func (t *TuiMainScreen) drawFrame(gate frameGate) (began bool) {
 	t.lockFrame()
 	defer t.unlockFrame()
-	// A frame whose timer callback passed renderScheduled's check is not stopped by a Stop that runs before this lock: Stop has shown the cursor and parked it below the content, and a frame drawn now would hide it again. Stop sets stopped under mu, which the frame holds here, and Start clears it under mu (TuiAltScreen.doRender and TuiSurface.doRender make the same check). Pi runs its timer callback on the one event loop, where nothing runs between the callback's `stopped` check and its render (tui.ts:1075-1080).
-	if t.stopped.Load() {
-		return
+	// A frame whose timer callback passed renderScheduled's check is not stopped by a Stop that runs before this lock: Stop has shown the cursor and parked it below the content, and a frame drawn now would hide it again. Stop sets stopped under mu, which the frame holds here, and Start clears it under mu (TuiAltScreen.drawFrame and TuiSurface.drawFrame make the same check). Pi runs its timer callback on the one event loop, where nothing runs between the callback's `stopped` check and its render (tui.ts:1075-1080).
+	if t.stopped.Load() || t.frameSupersededLocked(gate) {
+		return false
 	}
 	t.frameBeganLocked()
+	began = true
 
 	t.updateSize()
 	width, height := t.size()
@@ -2779,6 +2804,7 @@ func (t *TuiMainScreen) doRender() {
 	t.prevLines = newLines
 	t.prevWidth = width
 	t.prevHeight = height
+	return true
 }
 
 // differentialOverflowRow returns the row at which upstream's differential

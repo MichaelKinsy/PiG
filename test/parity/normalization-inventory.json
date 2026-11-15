@@ -6725,6 +6725,102 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/oauth/34-login-failure-device-unauthorized.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\n+(\\x1b\\[[0-9;]*m─)",
+          "with": "\n${1}",
+          "reason": "Filler rows between the transcript and the bottom-anchored editor depend on the startup header height of each binary."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Failed to login to GitHub Copilot",
+            "capture_end": "typed-after-failure"
+          },
+          "reason": "Owned visible surface: A GitHub Copilot device login rejected with 401 closes the dialog and reports Error: Failed to login to GitHub Copilot in the transcript",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/oauth/35-login-failure-code-exchange-400.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\n+(\\x1b\\[[0-9;]*m─)",
+          "with": "\n${1}",
+          "reason": "Filler rows between the transcript and the bottom-anchored editor depend on the startup header height of each binary."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Failed to login to Exchange Four Hundred",
+            "capture_end": "typed-after-failure"
+          },
+          "reason": "Owned visible surface: A pasted-code OAuth login whose token exchange answers 400 closes the dialog and reports Error: Failed to login to <provider> in the transcript",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/oauth/36-login-failure-connection-refused.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\n+(\\x1b\\[[0-9;]*m─)",
+          "with": "\n${1}",
+          "reason": "Filler rows between the transcript and the bottom-anchored editor depend on the startup header height of each binary."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Failed to login to Refused Endpoint",
+            "capture_end": "typed-after-failure"
+          },
+          "reason": "Owned visible surface: A pasted-code OAuth login whose token request is refused closes the dialog and reports Error: Failed to login to <provider> in the transcript",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/oauth/37-login-cancel-mid-device-flow.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\n+(\\x1b\\[[0-9;]*m─)",
+          "with": "\n${1}",
+          "reason": "Filler rows between the transcript and the bottom-anchored editor depend on the startup header height of each binary."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Failed to login to GitHub Copilot",
+            "capture_end": "typed-after-cancel"
+          },
+          "reason": "Owned visible surface: Escape while a GitHub Copilot device login polls closes the dialog and reports Error: Failed to login to GitHub Copilot: This operation was aborted",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/print/02-print-extension-command.toml",
       "transforms": [
         {

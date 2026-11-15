@@ -129,16 +129,19 @@ func TestFailedInteractiveReloadLeavesTheOldInstanceStale(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"quietStartup":true}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, step := range []struct{ input, logged string }{{"/reload\r", "\nstart:reload"}, {"/probe\r", "\nprobe:"}} {
+	// A key written while a reload runs is dropped, as in Pi (a focused component without handleInput gets nothing: packages/tui/src/tui.ts:1153-1158), so /probe waits for the end of the second reload: the status line it ends with (interactive-mode.ts:6693-6698).
+	const reloaded = "Reloaded keybindings, extensions, skills, prompts, themes, and context files"
+	for _, step := range []struct{ input, logged, shown string }{{"/reload\r", "\nstart:reload", reloaded}, {"/probe\r", "\nprobe:", ""}} {
+		mark := output.mark()
 		if _, err := master.WriteString(step.input); err != nil {
 			t.Fatal(err)
 		}
-		for !strings.Contains(read(), step.logged) {
+		for !strings.Contains(read(), step.logged) || !strings.Contains(string(output.since(mark)), step.shown) {
 			select {
 			case <-done:
 				t.Fatalf("pig exited early; log:\n%s\nscreen:\n%s", read(), output.since(0))
 			case <-deadline:
-				t.Fatalf("%q never logged %q; log:\n%s\nscreen:\n%s", step.input, step.logged, read(), output.since(0))
+				t.Fatalf("%q never logged %q and showed %q; log:\n%s\nscreen:\n%s", step.input, step.logged, step.shown, read(), output.since(0))
 			case <-time.After(50 * time.Millisecond):
 			}
 		}

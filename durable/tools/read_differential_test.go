@@ -46,7 +46,7 @@ func jsSliceLines(lines []string, start, end float64) []string {
 // lines, and truncates the selection. The tool must give the same result while reading only a bounded part of the file.
 func referenceRead(data []byte, path string, offset, limit *float64) (durable.ToolExecutionResult, error) {
 	input := ReadToolInput{Path: path, Offset: offset, Limit: limit}
-	if mimeType := detectSupportedImageMimeType(data); mimeType != "" {
+	if mimeType := DetectSupportedImageMimeType(data); mimeType != "" {
 		encoded := base64.StdEncoding.EncodeToString(data)
 		return durable.ToolExecutionResult{
 			Output:              []ai.ToolResultMessageContent{ai.ImageContent{Data: encoded, MimeType: mimeType}},

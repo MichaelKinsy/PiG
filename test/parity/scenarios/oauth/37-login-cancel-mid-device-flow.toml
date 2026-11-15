@@ -1,0 +1,61 @@
+# Upstream evidence: Pi 1.5.2 login-dialog.ts:115-123 cancel() aborts the login signal and rejects a pending input with "Login cancelled"; with the device code shown no input is pending, so the login rejects with the abort error and showLoginDialog (interactive-mode.ts:6564-6573) restores the editor and prints `Error: Failed to login to <provider name>: This operation was aborted`.
+# The stub (PIG/PI_PARITY_LOGIN_DIALOG=1) answers the device code with a 30 second interval, so the login is still polling when Escape arrives.
+name = "37-login-cancel-mid-device-flow"
+description = "Escape while a GitHub Copilot device login polls closes the dialog and reports Error: Failed to login to GitHub Copilot: This operation was aborted"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Error: Failed to login to GitHub Copilot"
+capture_end = "typed-after-cancel"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Select provider"]
+
+[[tmux.steps]]
+keys = ["github-copilot", "Enter"]
+wait_contains = ["GitHub Enterprise URL/domain"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["ABCD-EFGH"]
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["This operation was aborted"]
+
+[[tmux.steps]]
+keys = ["typed-after-cancel"]
+wait_visible_contains = ["typed-after-cancel"]
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "PIG_PARITY_HARNESS=1", "PIG_PARITY_LOGIN_DIALOG=1", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]  # gitleaks:allow -- synthetic parity fixture
+pi = ["PIG_CODING_AGENT_DIR=", "PIG_HOME=", "PI_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_PARITY_LOGIN_DIALOG=1", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Error: Failed to login to GitHub Copilot: This operation was aborted"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: The rows between the error line and the editor's top border are screen filler: the editor sits at the bottom of the 40-row screen, so the count depends on how tall each binary's startup header is, not on the login. Only the run of line breaks before the border is collapsed; the error text, its colour escapes, the border and the typed text stay compared.
+[[assert.normalize_replace]]
+pattern = '\n+(\x1b\[[0-9;]*m─)'
+with = "\n${1}"
+reason = "Filler rows between the transcript and the bottom-anchored editor depend on the startup header height of each binary."
