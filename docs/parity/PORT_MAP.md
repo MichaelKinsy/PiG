@@ -759,17 +759,17 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/store.ts` | `chord/telemetrysqlite/store.go` | ✅ |
 | `packages/chord/src/contracts/accepts.ts` | `chord/next/contracts/accepts.go` | ✅ |
-| `packages/chord/src/contracts/contract.ts` | `chord/next/contracts/contract.go` Pi 92e1db6ca (slice 14 first part, test/parity/upstream-sync/v1.5.2+7f021f0e.toml) lacks: the `queries` member kind (MemberKind "queries", VariantData.queries, QueriesData) and NamedQuery, QueryPage, NamedQueriesOf | 🟡 |
-| `packages/chord/src/contracts/declare.ts` | `chord/next/contracts/declare.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: declaring `queries` members (readQueries, their refusal in a remote contract, the kind recording) | 🟡 |
-| `packages/chord/src/contracts/evolve.ts` | `chord/next/contracts/evolve.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: carrying `queries` members over an evolve and refusing a member name they hold | 🟡 |
-| `packages/chord/src/contracts/fingerprint.ts` | `chord/next/contracts/fingerprint.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: the fingerprint node of a `queries` member (a contract without one keeps its fingerprint, so peers of an app with no named query are unaffected) | 🟡 |
-| `packages/chord/src/contracts/history.ts` | `chord/next/contracts/history.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: `queries` members in a local contract's history declaration | 🟡 |
+| `packages/chord/src/contracts/contract.ts` | `chord/next/contracts/contract.go` | ✅ |
+| `packages/chord/src/contracts/declare.ts` | `chord/next/contracts/declare.go` | ✅ |
+| `packages/chord/src/contracts/evolve.ts` | `chord/next/contracts/evolve.go` | ✅ |
+| `packages/chord/src/contracts/fingerprint.ts` | `chord/next/contracts/fingerprint.go` | ✅ |
+| `packages/chord/src/contracts/history.ts` | `chord/next/contracts/history.go` | ✅ |
 | `packages/chord/src/contracts/host-kind.ts` | `chord/next/contracts/host_kind.go` | ✅ |
 | `packages/chord/src/contracts/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
 | `packages/chord/src/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
 | `packages/chord/src/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
 | `packages/chord/src/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
-| `packages/chord/src/contracts/schema.ts` | `chord/next/contracts/schema.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: QueriesMember, QueryArguments and `queries(item, args)` | 🟡 |
+| `packages/chord/src/contracts/schema.ts` | `chord/next/contracts/schema.go` | ✅ |
 | `packages/chord/src/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
 | `packages/chord/src/data/args.ts` | `chord/next/data/args.go` | ✅ |
 | `packages/chord/src/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
@@ -808,11 +808,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/link/values.ts` | `chord/next/link/values.go` | ✅ |
 | `packages/chord/src/link/websocket.ts` | `chord/next/link/websocket.go` (WebSocketLink and WebSocketLike: readyState is ReadyState(), send is Send, close is Close; the packages/chord/test/link/websocket.test.ts cases in chord/next/link/websocket_test.go) | ✅ |
 | `packages/chord/src/store/table-writes.ts` | `chord/next/store/table_writes.go` | ✅ |
-| `packages/chord/src/store/table-changes.ts` | `chord/next/store/table_changes.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: `changes()`, a transaction's writes as the Change list of the skip test (and the assigned columns of bulk writes) | 🟡 |
-| `packages/chord/src/store/table-handle.ts` | `chord/next/store/table_handle.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: page and count over ReadPlan/readPage (a query with `exists` read, a joined query refused), an owner without liveQueries | 🟡 |
+| `packages/chord/src/store/table-changes.ts` | `chord/next/store/table_changes.go` | ✅ |
+| `packages/chord/src/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
 | `packages/chord/src/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
 | `packages/chord/src/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
-| `packages/chord/src/store/store.ts` | `chord/next/store/store.go (group commit S18 as enlist/runGroup; Pi's d7704516e int() key typing is TypeScript typing: designed out); Store.OnCommitted / ChordStore.committed (Pi 6268cc5cd): the announcement is a goroutine of its own, coalesced, one delivery at a time and in order, in place of the microtask` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: `ChordStore.reads`, the Reads index of every live read by table and the column-set bindings | 🟡 |
+| `packages/chord/src/store/store.ts` | `chord/next/store/store.go (group commit S18 as enlist/runGroup; Pi's d7704516e int() key typing is TypeScript typing: designed out); Store.OnCommitted / ChordStore.committed (Pi 6268cc5cd): the announcement is a goroutine of its own, coalesced, one delivery at a time and in order, in place of the microtask` | ✅ |
 | `packages/chord/src/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
 | `packages/chord/src/store/apply-batch.ts` | `chord/next/store/apply_batch.go` | ✅ |
 | `packages/chord/src/store/index.ts` | `(export barrel: the Go package exports the names directly. Each exported name of the list exists in package store: ArchivePart (ArchiveManifest is ManifestPart), Backend/SqliteBackend, expression builders (Add And ColumnRef Condition Coalesce Concat Expression Eq Gt Gte InArray IsNull Lt Lte Max Min Ne Not Or Prefix ReplacePrefix SetOf Sub When), ImportStore, JsonColumnOptions/Json, DecodeJsonl/EncodeJsonl, Outbox/OutboxCommit, ColumnRefs/Query, OpenStore/Store/StoreOptions, DefineTable/TableDefinition/TableOptions, EvolveTable/TableEditor, Page/PageOptions, CompareText, StoreWrite. Type-level only, designed out by the other D3 agents: Columns PutRowOf RowOf KeyOf PatchOf AddedColumn TableTailEditor TableOf Table)` | n/a |
@@ -825,16 +825,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/refusal.ts` | `chord/next/store/refusal.go` | ✅ |
 | `packages/chord/src/store/columns.ts` | `chord/next/store/columns.go` | ✅ |
 | `packages/chord/src/store/json-column.ts` | `chord/next/store/json_column.go` | ✅ |
-| `packages/chord/src/store/rows.ts` | `chord/next/store/rows.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: the exported decodeScalar a read's mapping uses (the in-package decoding exists and behaves the same) | 🟡 |
-| `packages/chord/src/store/sql.ts` | `chord/next/store/sql.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: ConditionSql, whereSql rendering a condition's columns and `exists` for a read | 🟡 |
+| `packages/chord/src/store/rows.ts` | `chord/next/store/rows.go` | ✅ |
+| `packages/chord/src/store/sql.ts` | `chord/next/store/sql.go` | ✅ |
 | `packages/chord/src/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |
 | `packages/chord/src/store/catalog.ts` | `chord/next/store/catalog.go` | ✅ |
-| `packages/chord/src/store/expression.ts` | `chord/next/store/expression.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: `exists`, `existsNode`, `compile(Set, condition)`, `whereNode`, `join` of a column set, and the checks of nodes given as data | 🟡 |
-| `packages/chord/src/store/evaluate.ts` | `chord/next/store/evaluate.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: the refusal of an `exists` node in the in-memory evaluator (Go has no such node to refuse) | 🟡 |
-| `packages/chord/src/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: joined queries (`Query.joined`, `join`, `whereNode`) and the cursor decoding of a joined order | 🟡 |
-| `packages/chord/src/store/table.ts` | `chord/next/store/table.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: the `exposes` column-set option of defineTable and checkExposes | 🟡 |
+| `packages/chord/src/store/expression.ts` | `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/store/evaluate.ts` | `chord/next/store/evaluate.go` | ✅ |
+| `packages/chord/src/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/store/table.ts` | `chord/next/store/table.go` | ✅ |
 | `packages/chord/src/store/table-history.ts` | `chord/next/store/table_history.go` | ✅ |
-| `packages/chord/src/store/table-evolve.ts` | `chord/next/store/table_evolve.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: EvolveOptions, `evolveTable(..., { exposes })` | 🟡 |
+| `packages/chord/src/store/table-evolve.ts` | `chord/next/store/table_evolve.go` | ✅ |
 | `packages/chord/src/store/table-migration.ts` | `chord/next/store/table_migration.go` | ✅ |
 | `packages/chord/src/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
 | `packages/chord/src/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
@@ -853,7 +853,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/documents/persistence.ts` | `chord/next/documents/persistence.go` | ✅ |
 | `packages/chord/src/documents/residency.ts` | `chord/next/documents/residency.go` | ✅ |
 | `packages/chord/src/documents/slot.ts` | `chord/next/documents/slot.go` | ✅ |
-| `packages/chord/src/documents/transaction.ts` | `chord/next/documents/transaction.go, chord/next/documents/job.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: the commit's refresh of the store's reads through ReadRefresh over Reads (the skip test); Go refreshes the object's own live queries as before | 🟡 |
+| `packages/chord/src/documents/transaction.ts` | `chord/next/documents/transaction.go, chord/next/documents/job.go` | ✅ |
 | `packages/chord/src/host/backoff.ts` | `chord/next/host/host_backoff.go` | ✅ |
 | `packages/chord/src/host/deadline.ts` | `chord/next/host/host_deadline.go` | ✅ |
 | `packages/chord/src/host/sleep.ts` | `chord/next/host/host_sleep.go` | ✅ |
@@ -1014,7 +1014,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: LiveQuery rebuilt over Read, OpenQuery and Reads (the skip test: a commit reruns a live query only when it can change it); Go reruns every live query over a written table | 🟡 |
+| `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go` | ✅ |
 | `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go`, `chord/next/surfaces/surfaces_page_state.go` | ✅ |
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
 | `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go; Pi 22fe46c7b: ClientOptions.Follow (false: a static client); Pi 3c771bd18: StartClient follows the scripts object in the background (an owned goroutine Stop joins) and applies the set shown when following begins; Pi 21e4cb80d: connect stops the loop (stopNow) before it calls Outdated; Pi 34fb59f67: ClientOptions.Limits (*link.PartLimits, nil: Pi's undefined) is the host link's part limits`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/client.ts` (vendored byte-for-byte for the browser, D601; derived tree: manifest `carried`) | ✅ |
@@ -1063,7 +1063,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/host/host-data.ts` | `chord/next/host/host_host_data.go` Pi 92e1db6ca (slice 14, v1.5.2+7f021f0e) lacks: the host-kind rewrite running every read over a table with a host column (`reads.onHostKind`, joined and exists tables included) | 🟡 |
+| `packages/chord/src/host/host-data.ts` | `chord/next/host/host_host_data.go` | ✅ |
 | `packages/chord/src/store/host-column.ts` | `chord/next/store/host_column.go, chord/next/store/columns.go (ColumnSchema.Host, the Go form of Pi's HostColumnSchema.host)` | ✅ |
 | `packages/chord/src/store/host-data.ts` | `chord/next/store/host_data.go` | ✅ |
 | `packages/chord/src/store/import-migration.ts` | `chord/next/store/import_migration.go` | ✅ |
