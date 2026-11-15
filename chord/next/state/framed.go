@@ -9,7 +9,8 @@ import (
 
 // Ports packages/chord/src/state/framed.ts (FramedOwner, FramedSource). Framed sources: a JSON source whose owner sets
 // its value whole (a live query's rows, a list's pages joined), one frame per batch as the diff from the value its
-// watches had; it may fail and recover, as a derive does (design §11).
+// watches had, however often the batch set it (a list sets once per page a commit touched); it may fail and recover, as a
+// derive does (design §11).
 
 // FramedOwner is who a framed source belongs to: named in errors, and told its failures after its first value (once
 // per episode).
@@ -31,9 +32,10 @@ const (
 	framedDetached
 )
 
-// FramedSource is a source its embedder feeds with Set and FailWith, inside a batch. A failure makes it a failed member
-// (as a throwing derive): its watches get one failure call, its owner one report per failure episode; the next value
-// replaces the value whole (`[["r", value]]`). It is embedded by value and initialized with Init.
+// FramedSource is a source its embedder feeds with Set and FailWith, inside a batch, as often as it likes: the batch
+// delivers one frame, of the state it ended in. A failure makes it a failed member (as a throwing derive): its watches get
+// one failure call, its owner one report per failure episode; the next value replaces the value whole (`[["r", value]]`).
+// It is embedded by value and initialized with Init.
 type FramedSource struct {
 	Source
 	owner FramedOwner
@@ -43,9 +45,9 @@ type FramedSource struct {
 	hasLast bool
 	// err is its failure (framedFailed) or its owner's end (framedDetached).
 	err error
-	// framed is the value its watches have, kept from a change to its frame in the batch: framedNone is not listed;
-	// framedNoValue is Pi's NO_VALUE, what the watches of a failed source had (no value, so its next one replaces the
-	// value whole).
+	// framed is the value its watches have, kept from its first change in a batch to that batch's frame: framedNone is not
+	// listed in the batch; framedNoValue is Pi's NO_VALUE, what the watches of a failed source had (no value, so its next one
+	// replaces the value whole).
 	framed    framedKind
 	framedVal delta.JsonValue
 	// failing is set from a failure until the next value: a failure episode is reported once.
@@ -103,26 +105,28 @@ func (f *FramedSource) Start() WatchStart {
 // Quiet leaves its next failure unreported: whoever awaits its first value reports that failure itself.
 func (f *FramedSource) Quiet() { f.failing = true }
 
-// Set takes value, inside a batch: listed for a frame when watched, its dependents marked.
+// Set takes value, inside a batch: listed for the batch's frame when watched, its dependents marked.
 func (f *FramedSource) Set(value delta.JsonValue) {
-	if !f.list() {
+	if f.state == framedDetached {
 		return
 	}
 	f.failing = false
+	f.keep()
 	f.state, f.value, f.hasLast, f.err = framedHasValue, value, false, nil
-	f.Changed()
+	f.markDependents()
 }
 
 // FailWith fails with err, inside a batch, keeping its last good value for a watch opened meanwhile.
 func (f *FramedSource) FailWith(err error) {
 	before, last, hasLast := f.state, f.value, f.hasLast
-	if !f.list() {
+	if before == framedDetached {
 		return
 	}
 	if !f.failing {
 		f.owner.Report(HandedOut(err))
 	}
 	f.failing = true
+	f.keep()
 	f.state, f.err = framedFailed, err
 	switch before {
 	case framedHasValue:
@@ -132,10 +136,11 @@ func (f *FramedSource) FailWith(err error) {
 	default:
 		f.value, f.hasLast = nil, false
 	}
-	f.Changed()
+	f.markDependents()
 }
 
-// Deliver delivers the frame: the diff from the value its watches had, or one failure call when they had one.
+// Deliver delivers the batch's one frame, of the state the batch left: the diff from the value its watches had before the
+// batch, or one failure call when they had a value.
 func (f *FramedSource) Deliver(ctx context.Context) error {
 	beforeKind, before := f.framed, f.framedVal
 	f.framed, f.framedVal = framedNone, nil
@@ -166,17 +171,26 @@ func (f *FramedSource) End(err error) {
 	f.EndWatches()
 }
 
-// list keeps what its watches have for this batch's frame; false once detached (nothing changes then).
-func (f *FramedSource) list() bool {
-	if f.state == framedDetached {
-		return false
-	}
+// keep is the first half of Pi's `#change(next)`, before the state becomes `next` (Go has no state value to pass: the caller
+// assigns it between keep and markDependents). The first change of a batch lists the source for that batch's frame
+// (batch.changed, once: a source listed twice delivers twice, two frames of one member in one commit, which a link refuses)
+// and keeps what its watches have, which the frame diffs from; a later one lists nothing. Pi: `this.batch.changed(this)`
+// is the Source's impl here, as in Source.Changed.
+func (f *FramedSource) keep() {
 	if f.Watched() && f.framed == framedNone {
 		if f.state == framedHasValue {
 			f.framed, f.framedVal = framedValue, f.value
 		} else {
 			f.framed, f.framedVal = framedNoValue, nil
 		}
+		f.batch.Changed(f.impl)
 	}
-	return true
+}
+
+// markDependents is the second half of `#change`: every change marks its dependents, one may have read the value since the
+// last.
+func (f *FramedSource) markDependents() {
+	for _, dependent := range f.dependents.Snapshot() {
+		dependent.Invalidate()
+	}
 }
