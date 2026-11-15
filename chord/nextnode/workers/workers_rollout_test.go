@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"time"
 	"weak"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
@@ -92,6 +94,83 @@ func TestTheRolloutStepShipsTheCurrentSetToRunningWorkersRetriesHeldFailedOnesLi
 		}
 	}
 	for _, reference := range []interface{ Release() }{one, two, failed, control} {
+		reference.Release()
+	}
+}
+
+// A failed worker is listed when its address already has a start running as the rollout retries it, as Pi lists whatever
+// `routed.starting` the retry left (workers.ts:598-601): the route starts a resolve itself when a worker's link closes, and a
+// resolve ends only when its start settles, so a rollout that clears the failure meanwhile finds `Retry` starting none (it
+// answers false) and the address with a start of its own running. The entry waits for that start, as for one the retry made.
+func TestTheRolloutStepListsAFailedWorkerWhoseStartWasAlreadyRunningWhenItRetriedIt(t *testing.T) {
+	// The replacement start of S3 (the one the failed worker's retry begins) waits on `release`, which the test closes once the
+	// rollout has read the start the address has: a start settling before that is read as none, and the address is forgotten.
+	var held atomic.Bool
+	release := make(chan struct{})
+	var f *fleet
+	f = newFleet(t, fleetOptions{start: func(address contracts.Address, ctx context.Context) (delta.JsonValue, error) {
+		if address.Key == session("S3").Key && held.Load() {
+			select {
+			case <-release:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		id, _ := address.Params.Value("id").(string)
+		return f.behaviours.get(id).json(), nil
+	}})
+	one := f.get(fixtureNotes, "S1")
+	control := f.get(fixtureControl, "S3")
+	failed := f.get(fixtureNotes, "S3")
+	if _, err := control.Call("crash", float64(1), background); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return f.stateOf("S3") != nil && f.stateOf("S3").Status == WorkerFailed })
+	f.label("v2")
+	f.untilDirty()
+	built := f.build(f.dirty())
+	held.Store(true)
+	retry := f.workers.route.Retry
+	f.workers.route.Retry = func(address contracts.Address) bool {
+		if address.Key != session("S3").Key {
+			return retry(address)
+		}
+		// The resolve the route would be running: the first Retry starts it, so the rollout's own finds it running.
+		if !retry(address) {
+			t.Error("Retry of the failed address started no resolve")
+		}
+		refused := retry(address)
+		if refused {
+			t.Error("a second Retry of the address started another resolve while the first runs")
+		}
+		return refused
+	}
+	type result struct {
+		hosts []string
+		err   error
+	}
+	finished := make(chan result, 1)
+	go func() {
+		out, err := f.plugins.Rollout([]plugins.RolloutStep{f.workers.Step("workers")}, built, background)
+		if err != nil {
+			finished <- result{err: err}
+			return
+		}
+		finished <- result{hosts: listed(out.Steps[0].Hosts)}
+	}()
+	// S1 reloads in the same section of the rollout that reads the retried address's start, after it: once S1 has the new
+	// set, the rollout has read the list, and only then does the replacement's start settle.
+	until(t, func() bool { return labelOf(t, one) == "S1 v2" })
+	close(release)
+	got := <-finished
+	if got.err != nil {
+		t.Fatal(got.err)
+	}
+	requireListed(t, got.hosts,
+		"session|S1 "+changedNotes,
+		"session|S3 added=[@test/notes] changed=[] removed=[]")
+	until(t, func() bool { return labelOf(t, failed) == "S3 v2" })
+	for _, reference := range []interface{ Release() }{one, failed, control} {
 		reference.Release()
 	}
 }
