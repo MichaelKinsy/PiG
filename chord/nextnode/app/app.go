@@ -1185,7 +1185,7 @@ func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, addr
 	if kitServer == "" {
 		// No part of the Go host's: its data of the address is replaced by nothing (a replace removes the address's data), or refused if it has any.
 		if existing == store.ExistingReplace {
-			_, err := a.Host.DeleteHostData(address, ctx)
+			_, err := a.Host.DeleteHostData(address, ctx, host.HostDeleteOptions{})
 			return true, err
 		}
 		// Refuse: Pi's one `importHostData` refuses an address that has data in the store whatever the archive holds, so the Go host's
@@ -1248,7 +1248,7 @@ func (a *App) DeleteData(address contracts.Address, ctx context.Context) error {
 		if err := a.nodeData.DeleteHostData(address, ctx); err != nil {
 			return err
 		}
-		if _, err := a.Host.DeleteHostData(address, ctx); err != nil {
+		if _, err := a.Host.DeleteHostData(address, ctx, host.HostDeleteOptions{}); err != nil {
 			return err
 		}
 		return os.RemoveAll(dir)

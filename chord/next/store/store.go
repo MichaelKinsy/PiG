@@ -828,10 +828,14 @@ func (store *ChordStore) Close(ctx context.Context) error {
 	}
 }
 
-// finishClose is the close after its synchronous part: the queue's last entry, the reads underway, the backend.
+// finishClose is the close after its synchronous part: the queue's last entry, the index's tasks, the reads underway, the
+// backend.
 func (store *ChordStore) finishClose(started *closing, tail <-chan struct{}) {
 	defer close(started.done)
 	<-tail
+	// The reloads a changed binding started (Pi's unawaited `void open.load()`) are cancelled and joined: none counts as a read
+	// underway after this, none adopts a run.
+	store.Reads.Close()
 	store.mu.Lock()
 	var drained chan struct{}
 	if store.underway > 0 {

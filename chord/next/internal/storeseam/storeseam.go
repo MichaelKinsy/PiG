@@ -28,3 +28,8 @@ var WrapAdopt func(store any, wrap func(adopt Adopt) Adopt)
 // no builder or decoder can make happen.
 var FailRuns func(read any, fail func() error)
 
+// ReadTasks is a barrier on the reloads a changed binding of a `*store.ChordStore` started (the store's reads index owns them,
+// Pi's unawaited `void open.load()`): the channel (the store given as any) is closed once the tasks running now ended, and
+// already closed when none runs. A test that changes a binding joins the read it started through it, as Pi's `await flushed()`
+// does, with no polling.
+var ReadTasks func(store any) <-chan struct{}
