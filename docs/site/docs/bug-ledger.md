@@ -24370,7 +24370,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
 | D247 | Quit settles the interrupted run before session_shutdown and disposal | [BF-D247](#bf-d247) |
 | D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
-| D651 | Credential and state files are replaced through a temporary file where that changes nothing but the inode… | [BF-26b210c](#bf-26b210c) |
+| D651 | Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi… | [BF-26b210c](#bf-26b210c) |
 
 ## Fix-titled commits that are not bugs in a release
 

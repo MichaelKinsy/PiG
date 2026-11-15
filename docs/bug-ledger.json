@@ -48221,7 +48221,7 @@
     },
     {
       "id": "D651",
-      "title": "Credential and state files are replaced through a temporary file where that changes nothing but the inode…",
+      "title": "Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi…",
       "entry": "BF-26b210c"
     }
   ],
