@@ -40,7 +40,7 @@ func sourceValue(d *data, name string) any {
 	case "dependency-graph":
 		return d.Dependencies
 	case "reviewed-ledger":
-		return d.ReviewedLedger
+		return map[string]any{"ledger": d.ReviewedLedger, "commit_files": d.CommitFiles}
 	}
 	return nil
 }

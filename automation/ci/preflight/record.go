@@ -49,11 +49,16 @@ func markdown(cfg config, d *data, ev evaluation) string {
 	return b.String()
 }
 
-// cell is s as a table cell that cannot be anything else: one code span on one line. Text of a pull request (a file
-// name, a ledger reason) goes through it into the comment, so that it becomes no further cell, no mention, no HTML tag,
-// no link and no fence. The span is fenced with one backtick more than the longest run in s, and a pipe is escaped.
+// cell is s as a table cell that cannot be anything else: one code span on one line with the pipe escaped.
 func cell(s string) string {
-	s = strings.ReplaceAll(flatten(s), "|", `\|`)
+	return codeSpan(strings.ReplaceAll(s, "|", `\|`))
+}
+
+// codeSpan is s as one Markdown code span on one line. Text of a pull request (a file name, a ledger reason, the
+// reason of a verdict) goes through it into a comment, so that it becomes no further cell, no mention, no HTML tag, no
+// link and no fence. The span is fenced with one backtick more than the longest run in s.
+func codeSpan(s string) string {
+	s = flatten(s)
 	if strings.TrimSpace(s) == "" {
 		return ""
 	}
@@ -166,7 +171,7 @@ func alertsFor(cfg config, ev evaluation, prev *state, posted []string) (due []c
 }
 
 func alertBody(c check, d *data, ev evaluation) string {
-	return fmt.Sprintf("@%s %s\n\n%s on `%s`: %s\n\n%s", d.Pull.User.Login, c.Alert, c.Name, short(ev.Head), ev.Checks[c.Name].Reason, alertMark(c.Name, ev.Head))
+	return fmt.Sprintf("@%s %s\n\n%s on `%s`: %s\n\n%s", d.Pull.User.Login, c.Alert, c.Name, short(ev.Head), codeSpan(ev.Checks[c.Name].Reason), alertMark(c.Name, ev.Head))
 }
 
 func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOptions, log io.Writer) error {

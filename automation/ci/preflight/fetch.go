@@ -79,6 +79,8 @@ type data struct {
 	Acknowledged string             `json:"acknowledged,omitempty"`
 	// ReviewedLedger is the text of test/parity/testprune-reviewed.toml at the PR's head commit.
 	ReviewedLedger string `json:"reviewed_ledger,omitempty"`
+	// CommitFiles are the files each commit has changed that a ledger row names for a changed test file, by commit sha.
+	CommitFiles map[string][]string `json:"commit_files,omitempty"`
 }
 
 func (d *data) failed(mu *sync.Mutex, log io.Writer, source string, err error) {
@@ -320,10 +322,11 @@ func (f *fetcher) waveTwo(ctx context.Context, reads map[string]bool) {
 	if reads["reviewed-ledger"] {
 		f.source("reviewed-ledger", func() error {
 			text, err := f.fileAtHead(ctx, reviewed.File, head)
-			if err == nil {
-				d.ReviewedLedger = text
+			if err != nil {
+				return err
 			}
-			return err
+			d.ReviewedLedger = text
+			return f.readLedgerCommits(ctx, text)
 		})
 	}
 	f.source("acknowledged", func() error {
@@ -414,10 +417,18 @@ func writeJSON(path string, v any) error {
 
 var logMu sync.Mutex
 
+// logf prints one line of the log. An error among args is printed flattened: an error of the API, of git or of a parser
+// can quote text of the pull request, and a line that starts with "::" is a workflow command.
 func logf(w io.Writer, format string, args ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
-	_, _ = fmt.Fprintf(w, format+"\n", args...)
+	shown := slices.Clone(args)
+	for i, a := range shown {
+		if err, ok := a.(error); ok {
+			shown[i] = flatten(err.Error())
+		}
+	}
+	_, _ = fmt.Fprintf(w, format+"\n", shown...)
 }
 
 func short(sha string) string { return sha[:min(len(sha), 9)] }
@@ -427,4 +438,56 @@ func formatBool(b *bool) string {
 		return "unknown"
 	}
 	return strconv.FormatBool(*b)
+}
+
+// maxCommitFilePages bounds the pages of one commit's file list: the API lists at most 3000 files of a commit.
+const maxCommitFilePages = 30
+
+// readLedgerCommits lists the files of each commit a ledger row names for a changed test file, one commit at a time,
+// pages included. A ledger the rule cannot read, or rows of more than maxLedgerCommits commits, are for the rule to
+// report: nothing is fetched then. Any other failure, a 404 included (the PR's own commit list named the commit), is the
+// source's failure.
+func (f *fetcher) readLedgerCommits(ctx context.Context, text string) error {
+	rows, err := reviewed.Parse(text)
+	if err != nil {
+		return nil
+	}
+	shas := ledgerCommits(f.d, rows)
+	if len(shas) > maxLedgerCommits {
+		return nil
+	}
+	files := map[string][]string{}
+	for _, sha := range shas {
+		names, err := f.commitFiles(ctx, sha)
+		if err != nil {
+			return err
+		}
+		files[sha] = names
+	}
+	if len(files) > 0 {
+		f.d.CommitFiles = files
+	}
+	return nil
+}
+
+// commitFiles are the files one commit changed: the pages of the commit endpoint's file list, until a page is short.
+func (f *fetcher) commitFiles(ctx context.Context, sha string) ([]string, error) {
+	var names []string
+	for page := 1; page <= maxCommitFilePages; page++ {
+		var c struct {
+			Files []struct {
+				Filename string `json:"filename"`
+			} `json:"files"`
+		}
+		if err := f.a.get(ctx, fmt.Sprintf("%s/commits/%s?per_page=%d&page=%d", f.prefix, sha, perPage, page), &c, false); err != nil {
+			return nil, err
+		}
+		for _, file := range c.Files {
+			names = append(names, file.Filename)
+		}
+		if len(c.Files) < perPage {
+			return names, nil
+		}
+	}
+	return nil, fmt.Errorf("commit %s changes more than %d files: the API does not list them all", short10(sha), maxCommitFilePages*perPage)
 }

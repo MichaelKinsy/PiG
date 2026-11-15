@@ -56,6 +56,15 @@ func ledgerFiles(tests ...string) []prFile {
 	return files
 }
 
+// changedBy says that each of the commits changed each of the files.
+func changedBy(files []string, commits ...string) map[string][]string {
+	out := map[string][]string{}
+	for _, sha := range commits {
+		out[sha] = files
+	}
+	return out
+}
+
 func TestRuleTestExpectationReviewedLedger(t *testing.T) {
 	r, p := shippedRule(t, "test-expectation")
 	env := ledgerEnv(t)
@@ -86,7 +95,7 @@ func TestRuleTestExpectationReviewedLedger(t *testing.T) {
 		{"two files, one row", nobehavior, []string{ledgerTestA, ledgerTestB}, []string{ledgerCommitA, ledgerCommitB}, resultFail, ledgerTestB, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			d := &data{Pull: pull{}, Files: ledgerFiles(tc.tests...), ReviewedLedger: tc.ledger}
+			d := &data{Pull: pull{}, Files: ledgerFiles(tc.tests...), ReviewedLedger: tc.ledger, CommitFiles: changedBy(tc.tests, tc.commits...)}
 			for _, sha := range tc.commits {
 				d.Commits = append(d.Commits, commit(sha, "a: b", true))
 			}
@@ -108,7 +117,7 @@ func TestRuleTestExpectationDivergenceRowOfARecordInThePR(t *testing.T) {
 		result string
 	}{{"added", resultPass}, {"removed", resultFail}} {
 		files := append(ledgerFiles(ledgerTestA), prFile{Filename: "docs/parity/divergences/D77.md", Status: tc.status})
-		d := &data{Files: files, Commits: []prCommit{commit(ledgerCommitA, "a: b", true)}, ReviewedLedger: row}
+		d := &data{Files: files, Commits: []prCommit{commit(ledgerCommitA, "a: b", true)}, ReviewedLedger: row, CommitFiles: changedBy([]string{ledgerTestA}, ledgerCommitA)}
 		if o := r.run(d, p, env); o.result != tc.result {
 			t.Errorf("record %s by the PR: %+v, want %s", tc.status, o, tc.result)
 		}
@@ -125,6 +134,7 @@ func TestRuleTestExpectationRowAndTrailerTogether(t *testing.T) {
 		Files:          ledgerFiles(ledgerTestA, ledgerTestB),
 		Commits:        []prCommit{commit(ledgerCommitA, "a: b\n\n"+cite, true), commit(ledgerCommitB, "c: d", true)},
 		ReviewedLedger: ledgerRow(ledgerCommitA, ledgerTestA, "NOBEHAVIOR", "", "PiG-only."),
+		CommitFiles:    changedBy([]string{ledgerTestA}, ledgerCommitA),
 	}
 	if o := r.run(d, p, env); o.result != resultPass || len(o.notices) != 1 || !strings.Contains(o.notices[0], ledgerTestA) {
 		t.Fatalf("the cited file and the admitted one: %+v", o)
@@ -145,6 +155,7 @@ func TestAdmittedExpectationIsPrintedAndAsksForNothing(t *testing.T) {
 		Files:          ledgerFiles(ledgerTestA, ledgerTestB),
 		Commits:        []prCommit{commit(ledgerCommitA, "a: b", true), commit(ledgerCommitB, "c: d", true)},
 		ReviewedLedger: ledger,
+		CommitFiles:    changedBy([]string{ledgerTestA, ledgerTestB}, ledgerCommitA, ledgerCommitB),
 	}
 	ev := evaluate(cfg, d, env)
 	v := ev.Checks["test-expectation"]
@@ -208,6 +219,8 @@ func TestReviewedLedgerFetchedAtTheHeadCommit(t *testing.T) {
 					_, _ = io.WriteString(w, `[{"sha":"`+ledgerCommitA+`"}]`)
 				case strings.HasPrefix(p, "/repos/o/r/compare/"):
 					_, _ = io.WriteString(w, `{"status":"ahead","ahead_by":1,"behind_by":0}`)
+				case strings.HasPrefix(p, "/repos/o/r/commits/"):
+					_, _ = io.WriteString(w, `{"files":[{"filename":"a/a_test.go"}]}`)
 				case p == "/repos/o/r/contents/test/parity/testprune-reviewed.toml":
 					refs = append(refs, r.URL.Query().Get("ref"))
 					if tc.status != http.StatusOK {

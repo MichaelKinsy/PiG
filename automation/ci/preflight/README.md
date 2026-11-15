@@ -170,10 +170,16 @@ the file. The ledger is `test/parity/testprune-reviewed.toml` read at the PR's
 head commit; `make test-expectation-lint` admits by the same rows and validates
 them with the same code (`reviewed/`). A row admits a changed test file when its
 `path` is the file and its `commit` (at least ten characters) names exactly one
-commit of the PR; a row of any other commit or file admits nothing. A row of
+commit of the PR, and that commit changed the file (as the line lint requires;
+the pre-flight asks the commit endpoint for the files of each such commit, one
+call per commit and page of 100 files until a page is short, at most 30 pages;
+a failure or a 404 there makes the check an error, and rows of more than 50
+commits (`maxLedgerCommits`) are a failure that asks to split the PR, with no
+call made; the answer is part of the check's input hash); a row of any other
+commit or file admits nothing. A row of
 class `CITE` needs a Pi file of main's inventories, `DIVERGENCE` a record in
 `docs/parity/divergences/` (main's or the PR's), `NOBEHAVIOR` a reason. A
-matching row that fails this, an ambiguous commit prefix, and a ledger that is
+matching row that fails this, one whose commit does not change the file, an ambiguous commit prefix, and a ledger that is
 not valid TOML are failures; a ledger the API cannot deliver makes the check an
 error, and a head without the file admits nothing. Each admission prints a `NOTE`
 line (and a `::notice`, and a row in the comment) naming the file, the row's

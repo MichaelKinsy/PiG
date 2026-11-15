@@ -525,10 +525,40 @@ func divergenceRecorded(d *data, env *ruleEnv) func(string) bool {
 	}
 }
 
+// maxLedgerCommits bounds the commits whose file lists the pre-flight fetches for ledger rows: one call per commit that
+// a row names for a changed test file. A PR with rows of more commits is a finding that asks to split it.
+const maxLedgerCommits = 50
+
+// commitOfRow is the commit of the PR that the row's commit prefix names, and how many commits of the PR it names.
+func commitOfRow(d *data, r reviewed.Entry) (sha string, named int) {
+	for _, c := range d.Commits {
+		if r.NamesCommit(c.SHA) {
+			sha = c.SHA
+			named++
+		}
+	}
+	return sha, named
+}
+
+// ledgerCommits are the commits whose file lists decide the admissions: those that a row names, alone among the PR's
+// commits, for a test file the check flags. Each is listed once, in the order of the ledger.
+func ledgerCommits(d *data, ledger []reviewed.Entry) []string {
+	var out []string
+	for _, e := range editedTests(d) {
+		for _, r := range ledger {
+			if sha, named := commitOfRow(d, r); r.Path == e.name && named == 1 && !slices.Contains(out, sha) {
+				out = append(out, sha)
+			}
+		}
+	}
+	return out
+}
+
 // admitByLedger splits the edited test files into those a reviewed ledger row admits and those it leaves open. A row
 // applies to a test file when its path is the file and its commit prefix names exactly one commit of the PR. An
-// applying row that fails the ledger's validation, or whose prefix names several commits of the PR, is a problem: the
-// file is not admitted. Each admission has a notice naming the row.
+// applying row that fails the ledger's validation, whose prefix names several commits of the PR, or whose commit does
+// not change the file (the line lint requires it too) is a problem: the file is not admitted. Each admission has a
+// notice naming the row.
 func admitByLedger(d *data, ledger []reviewed.Entry, known map[string]bool, recorded func(string) bool, edited []editedTest) (open []editedTest, notices, problems []string) {
 	for _, e := range edited {
 		admitted := false
@@ -536,19 +566,19 @@ func admitByLedger(d *data, ledger []reviewed.Entry, known map[string]bool, reco
 			if r.Path != e.name {
 				continue
 			}
-			named := 0
-			for _, c := range d.Commits {
-				if r.NamesCommit(c.SHA) {
-					named++
-				}
-			}
+			sha, named := commitOfRow(d, r)
 			row := fmt.Sprintf("%s %s", short10(r.Commit), r.Path)
+			files, listed := d.CommitFiles[sha]
 			switch err := r.Validate(known, recorded); {
 			case named == 0:
 			case named > 1:
 				problems = append(problems, fmt.Sprintf("ledger row %s names %d commits of the PR; give a longer commit prefix", row, named))
 			case err != nil:
 				problems = append(problems, fmt.Sprintf("ledger row %s %s", row, err))
+			case !listed:
+				problems = append(problems, fmt.Sprintf("ledger row %s: the files of that commit were not fetched, so the row cannot be checked", row))
+			case !slices.Contains(files, r.Path):
+				problems = append(problems, fmt.Sprintf("ledger row %s: that commit does not change the file", row))
 			default:
 				admitted = true
 				notices = append(notices, fmt.Sprintf("%s: expected-value change admitted by reviewed ledger row %s, class %s%s: %s", e.name, short10(r.Commit), r.Class, citeOf(r), ledgerText(r.Reason)))
@@ -576,20 +606,7 @@ func citeOf(r reviewed.Entry) string {
 func short10(sha string) string { return sha[:min(len(sha), 10)] }
 
 func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
-	prodDirs := map[string]bool{}
-	for _, f := range d.Files {
-		if isProdGo(f.Filename) {
-			prodDirs[path.Dir(f.Filename)] = true
-		}
-	}
-	var edited []editedTest
-	for _, f := range d.Files {
-		if strings.HasSuffix(f.Filename, "_test.go") && prodDirs[path.Dir(f.Filename)] {
-			if n := expectationEdits(f.Patch); n > 0 {
-				edited = append(edited, editedTest{f.Filename, n})
-			}
-		}
-	}
+	edited := editedTests(d)
 	if len(edited) == 0 {
 		return pass("no expected value changed together with production code of its directory")
 	}
@@ -602,6 +619,9 @@ func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 	ledger, err := reviewed.Parse(d.ReviewedLedger)
 	if err != nil {
 		return fail("%s change expected values together with production code, and the reviewed ledger at the PR head cannot be read, so no row admits them: %v", joinEdited(edited), err)
+	}
+	if n := len(ledgerCommits(d, ledger)); n > maxLedgerCommits {
+		return fail("the reviewed ledger holds rows of %d commits of the PR for its changed test files; the pre-flight checks at most %d: split the PR (%s change expected values together with production code)", n, maxLedgerCommits, joinEdited(edited))
 	}
 	open, notices, problems := admitByLedger(d, ledger, known, divergenceRecorded(d, env), edited)
 	if len(problems) > 0 {
@@ -617,6 +637,26 @@ func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 	o := citedExpectation(d, open, known)
 	o.notices = notices
 	return o
+}
+
+// editedTests are the test files of the PR that change an expected value together with production code of their
+// directory.
+func editedTests(d *data) []editedTest {
+	prodDirs := map[string]bool{}
+	for _, f := range d.Files {
+		if isProdGo(f.Filename) {
+			prodDirs[path.Dir(f.Filename)] = true
+		}
+	}
+	var edited []editedTest
+	for _, f := range d.Files {
+		if strings.HasSuffix(f.Filename, "_test.go") && prodDirs[path.Dir(f.Filename)] {
+			if n := expectationEdits(f.Patch); n > 0 {
+				edited = append(edited, editedTest{f.Filename, n})
+			}
+		}
+	}
+	return edited
 }
 
 // citedExpectation decides the edited test files no ledger row admits: the Pi behavior that changed is cited in the PR

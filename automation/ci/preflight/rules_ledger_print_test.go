@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -95,42 +96,78 @@ func rowOf(t *testing.T, md, marker string) string {
 
 const commandOfNotice = "::notice title=pre-flight test-expectation #7::"
 
+type hostileText struct{ name, text string }
+
+// hostileTexts are what a pull request can put into a printed text: line breaks of every kind, GitHub's escapes as
+// literal text, and a workflow command at the start and in the middle.
+var hostileTexts = []hostileText{
+	{"a newline and a command", "ok\n::error file=x::injected"},
+	{"a carriage return and a mask", "ok\r::add-mask::x"},
+	{"a CRLF and a mask", "ok\r\n::add-mask::x"},
+	{"a command at the start", "::error::first"},
+	{"a command in the middle", "a ::error::mid b"},
+	{"a percent sign", "100% of %"},
+	{"the escape of a newline as text", "%0A::warning::y"},
+	{"the escape of a carriage return as text", "%0D::warning::y"},
+	{"the escape of a percent sign as text", "%25 %250A"},
+	{"a unicode line separator", "a\u2028::error::z"},
+}
+
+// unescapeData is what the runner makes of the data of a workflow command.
+func unescapeData(s string) string {
+	return strings.NewReplacer("%0D", "\r", "%0A", "\n", "%25", "%").Replace(s)
+}
+
 // Text of the ledger row comes from the pull request. Printed, it must not start a workflow command or a second line
-// of the log.
+// of the log, the annotation data must unescape to the notice, and the comment row must stay one inert row.
 func TestAdmittedExpectationTextCannotStartAWorkflowCommand(t *testing.T) {
-	for _, tc := range []struct{ name, cite, reason string }{
-		{"a newline and a command in the reason", "", "ok\n::error file=x::injected"},
-		{"a carriage return and a mask in the reason", "", "a\r\n::add-mask::x"},
-		{"an escape already in the reason", "", "%0A::warning::y"},
-		{"a unicode line separator in the reason", "", "a\u2028::error::z"},
-		{"a command in the cite", "c\n::error::cite", "A reason."},
-		{"a mask in the cite", "c\r::add-mask::x", "A reason."},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			d := &data{
-				Files:          ledgerFiles(ledgerTestA),
-				Commits:        []prCommit{commit(ledgerCommitA, "a: b", true)},
-				ReviewedLedger: ledgerRow(ledgerCommitA, ledgerTestA, "NOBEHAVIOR", tc.cite, tc.reason),
-			}
-			log, _ := printedBy(t, d)
-			cmds := workflowCommands(log)
-			if len(cmds) != 1 || !strings.HasPrefix(cmds[0], commandOfNotice) {
-				t.Errorf("the log runs %q, want the one notice of the admission:\n%s", cmds, log)
-			}
-			var notes int
-			for _, l := range logLines(log) {
-				switch {
-				case strings.HasPrefix(l, "NOTE "):
-					notes++
-				case strings.HasPrefix(l, "PASS "), strings.HasPrefix(l, commandOfNotice):
-				default:
-					t.Errorf("the log has the line %q, which the report does not print", l)
+	for _, where := range []string{"reason", "cite"} {
+		for _, h := range hostileTexts {
+			t.Run(where+": "+h.name, func(t *testing.T) {
+				cite, reason := "", "A reason."
+				if where == "cite" {
+					cite = h.text
+				} else {
+					reason = h.text
 				}
-			}
-			if notes != 1 {
-				t.Errorf("%d NOTE line(s), want one:\n%q", notes, log)
-			}
-		})
+				d := &data{
+					Files:          ledgerFiles(ledgerTestA),
+					Commits:        []prCommit{commit(ledgerCommitA, "a: b", true)},
+					ReviewedLedger: ledgerRow(ledgerCommitA, ledgerTestA, "NOBEHAVIOR", cite, reason),
+					CommitFiles:    changedBy([]string{ledgerTestA}, ledgerCommitA),
+				}
+				log, md := printedBy(t, d)
+				cmds := workflowCommands(log)
+				if len(cmds) != 1 || !strings.HasPrefix(cmds[0], commandOfNotice) {
+					t.Fatalf("the log runs %q, want the one notice of the admission:\n%q", cmds, log)
+				}
+				want := ledgerTestA + ": expected-value change admitted by reviewed ledger row aaaaaaaaaa, class NOBEHAVIOR"
+				if cite != "" {
+					want += " " + strings.Join(strings.Fields(cite), " ")
+				}
+				want += ": " + strings.Join(strings.Fields(reason), " ")
+				if got := unescapeData(strings.TrimPrefix(cmds[0], commandOfNotice)); got != want {
+					t.Errorf("the annotation data unescapes to %q, want %q", got, want)
+				}
+				var notes int
+				for _, l := range logLines(log) {
+					switch {
+					case strings.HasPrefix(l, "NOTE "):
+						notes++
+					case strings.HasPrefix(l, "PASS "), strings.HasPrefix(l, commandOfNotice):
+					default:
+						t.Errorf("the log has the line %q, which the report does not print", l)
+					}
+				}
+				if notes != 1 {
+					t.Errorf("%d NOTE line(s), want one:\n%q", notes, log)
+				}
+				row := rowOf(t, md, "📝")
+				if rest := outsideCodeSpans(row); rest != "| 📝 | test-expectation |  |" {
+					t.Errorf("outside a code span the row holds %q, want the table cells only:\n%s", rest, row)
+				}
+			})
+		}
 	}
 }
 
@@ -147,6 +184,7 @@ func TestAdmittedExpectationTextIsInertInTheComment(t *testing.T) {
 				Files:          ledgerFiles(ledgerTestA),
 				Commits:        []prCommit{commit(ledgerCommitA, "a: b", true)},
 				ReviewedLedger: ledgerRow(ledgerCommitA, ledgerTestA, "NOBEHAVIOR", tc.cite, tc.reason),
+				CommitFiles:    changedBy([]string{ledgerTestA}, ledgerCommitA),
 			}
 			_, md := printedBy(t, d)
 			row := rowOf(t, md, "📝")
@@ -178,6 +216,44 @@ func TestFindingTextOfThePullRequestIsInert(t *testing.T) {
 	row := rowOf(t, md, "| test-expectation |")
 	if rest := outsideCodeSpans(row); rest != "| ❌ | test-expectation |  |" {
 		t.Errorf("outside a code span the row holds %q, want the table cells only:\n%s", rest, row)
+	}
+}
+
+// A file name of the pull request, whatever it holds, is one line of the log and one inert row of the comment, and the
+// error annotation of the finding carries it escaped the way GitHub unescapes.
+func TestFindingTextCannotStartAWorkflowCommand(t *testing.T) {
+	texts := append(slices.Clone(hostileTexts), hostileText{"control characters", "a\x1b[31mb\x7f"})
+	for _, h := range texts {
+		t.Run(h.name, func(t *testing.T) {
+			name := "a/" + h.text + "_test.go"
+			d := &data{Files: ledgerFiles(name), Commits: []prCommit{commit(ledgerCommitA, "a: b", true)}}
+			log, md := printedBy(t, d)
+			const commandOfError = "::error title=pre-flight test-expectation #7::"
+			cmds := workflowCommands(log)
+			if len(cmds) != 1 || !strings.HasPrefix(cmds[0], commandOfError) {
+				t.Fatalf("the log runs %q, want the one error of the finding:\n%q", cmds, log)
+			}
+			if got := unescapeData(strings.TrimPrefix(cmds[0], commandOfError)); !strings.Contains(got, name) {
+				t.Errorf("the annotation data unescapes to %q, which lacks the file name %q", got, name)
+			}
+			var fails int
+			for _, l := range logLines(log) {
+				switch {
+				case strings.HasPrefix(l, "FAIL "):
+					fails++
+				case strings.HasPrefix(l, "PASS "), strings.HasPrefix(l, commandOfError):
+				default:
+					t.Errorf("the log has the line %q, which the report does not print", l)
+				}
+			}
+			if fails != 1 {
+				t.Errorf("%d FAIL line(s), want one:\n%q", fails, log)
+			}
+			row := rowOf(t, md, "| test-expectation |")
+			if rest := outsideCodeSpans(row); rest != "| ❌ | test-expectation |  |" {
+				t.Errorf("outside a code span the row holds %q, want the table cells only:\n%s", rest, row)
+			}
+		})
 	}
 }
 
