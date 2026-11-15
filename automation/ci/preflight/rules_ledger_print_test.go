@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"slices"
 	"strings"
 	"testing"
@@ -294,5 +295,59 @@ func TestUnreadableLedgerTextCannotStartAWorkflowCommand(t *testing.T) {
 	log, _ := printedBy(t, d)
 	if cmds := workflowCommands(log); len(cmds) != 1 || !strings.HasPrefix(cmds[0], "::error title=pre-flight test-expectation #7::") {
 		t.Errorf("the log runs %q, want the one error of the finding:\n%s", cmds, log)
+	}
+}
+
+// A notice is cut when it is printed, not when it is made: the stored record of a verdict holds the whole text of the
+// ledger row, and a later run that reuses the record prints the same cut notice as the first run.
+func TestClippedNoticeIsNotAStoredVerdict(t *testing.T) {
+	cfg, err := loadConfig(configYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reason := strings.TrimSpace(strings.Repeat("reason words ", 800))
+	if len(reason) < 10000 {
+		t.Fatalf("the reason is %d bytes, want 10000 or more", len(reason))
+	}
+	d := &data{
+		Files:          ledgerFiles(ledgerTestA),
+		Commits:        []prCommit{commit(ledgerCommitA, "a: b", true)},
+		ReviewedLedger: ledgerRow(ledgerCommitA, ledgerTestA, "NOBEHAVIOR", "", reason),
+		CommitFiles:    changedBy([]string{ledgerTestA}, ledgerCommitA),
+	}
+	d.Repo, d.PR, d.Mode, d.Relevant = "o/r", 7, modeFull, []string{"test-expectation"}
+	env := ledgerEnv(t)
+	printed := func(ev evaluation) (log, row string) {
+		var out bytes.Buffer
+		report(&out, cfg, ev)
+		return out.String(), rowOf(t, markdown(cfg, d, ev), "📝")
+	}
+	first := evaluate(cfg, d, env)
+	log1, row1 := printed(first)
+	if cmds := workflowCommands(log1); len(cmds) != 1 || !strings.Contains(cmds[0], "…") || len(cmds[0]) > 2000 {
+		t.Fatalf("the notice is not cut with an ellipsis once (%d command(s)):\n%.600q", len(cmds), log1)
+	}
+	if !strings.Contains(row1, "…") {
+		t.Errorf("the comment row is not cut with an ellipsis:\n%.300s", row1)
+	}
+	raw, err := json.Marshal(state{Engine: cfg.EngineRevision, Checks: first.Checks})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored state
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		t.Fatal(err)
+	}
+	if n := stored.Checks["test-expectation"].Notices; len(n) != 1 || !strings.Contains(n[0], reason) {
+		t.Errorf("the stored record does not hold the whole reason (%d bytes): %.300q", len(reason), n)
+	}
+	d.Previous = &stored
+	second := evaluate(cfg, d, env)
+	if second.Checks["test-expectation"].Input != first.Checks["test-expectation"].Input {
+		t.Fatal("the second evaluation has another input")
+	}
+	log2, row2 := printed(second)
+	if log2 != log1 || row2 != row1 {
+		t.Errorf("a reused record prints another notice:\nfirst  %.400q\nsecond %.400q", log1, log2)
 	}
 }
