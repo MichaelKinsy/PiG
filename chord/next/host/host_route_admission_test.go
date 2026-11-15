@@ -183,6 +183,15 @@ func (g *gatedRelay) tabOf(principal data.Principal) Host {
 	return tab
 }
 
+// rawTab is a raw tab on a new link the server accepts as principal.
+func (g *gatedRelay) rawTab(principal data.Principal) *RawPeer {
+	g.t.Helper()
+	a, b := link.MemoryLinkPair()
+	must(g.t, g.Server.Accept(a, LinkOptions{Principal: principal, Codec: testCodec()}, background))
+	g.links = append(g.links, a, b)
+	return newRawPeer(g.t, b, rawPeerOptions{})
+}
+
 // kindOf is `ref.state.value.kind`.
 func kindOf(ref *Reference) RefStateKind { return stateOfRef(ref).Kind }
 
@@ -216,6 +225,14 @@ func toldOf(t testing.TB, err error) errorTold {
 		t.Fatalf("error = %v, want a ChordError", err)
 	}
 	return errorTold{string(chordErr.Code), string(chordErr.Reason), chordErr.Message}
+}
+
+// wireTold is toldOf of a wire error.
+func wireTold(t testing.TB, wire link.WireError) errorTold {
+	t.Helper()
+	received, err := link.ErrorFromWire(wire)
+	must(t, err)
+	return toldOf(t, received)
 }
 
 func workerCount(rel *relayed) int {
@@ -674,4 +691,317 @@ func kindsEqual(got []string, want ...string) bool {
 		}
 	}
 	return true
+}
+
+// --- the fence after a denial -------------------------------------------------------------------------------------------
+
+// since is the kinds of the messages peer received since from.
+func since(peer *RawPeer, from int) []string {
+	kinds := peer.Kinds()
+	if from > len(kinds) {
+		return nil
+	}
+	return kinds[from:]
+}
+
+// withoutKind is kinds without the entries of kind.
+func withoutKind(kinds []string, kind string) []string {
+	var kept []string
+	for _, got := range kinds {
+		if got != kind {
+			kept = append(kept, got)
+		}
+	}
+	return kept
+}
+
+// boundOf is `bound(held, count)`: held's binding on the raw worker, the editor variant with `count`.
+func boundOf(t testing.TB, held *link.HoldMessage, count int) link.Message {
+	t.Helper()
+	editor := editorWire(t)
+	notes, err := link.JsonPart([]any{})
+	must(t, err)
+	counted, err := link.JsonPart(float64(count))
+	must(t, err)
+	return &link.BoundMessage{Origin: held.Origin, Holds: []link.BoundEntry{{
+		Hold: held.Hold, Variant: editor.Variant,
+		Members: []link.BoundMember{{Member: editor.State["notes"], Value: notes}, {Member: editor.State["count"], Value: counted}},
+		Failed:  []link.FailedMember{},
+	}}}
+}
+
+// stateMessage is `state(held, count)`: a `state` of `count` for held on the raw worker.
+func stateMessage(t testing.TB, held *link.HoldMessage, count int) link.Message {
+	t.Helper()
+	editor := editorWire(t)
+	ops, err := link.JsonPart([]any{[]any{"r", float64(count)}})
+	must(t, err)
+	return &link.StateMessage{Origin: held.Origin, Holds: []link.StateEntry{{
+		Hold: held.Hold, Members: []link.StateMember{{Member: editor.State["count"], Ops: ops}}, Failed: []link.FailedMember{}, Retired: []int{},
+	}}}
+}
+
+// holdsOf are the `hold` messages a raw worker received, in order.
+func holdsOf(peer *RawPeer) []*link.HoldMessage {
+	var holds []*link.HoldMessage
+	for _, message := range peer.Received() {
+		if hold, ok := message.(*link.HoldMessage); ok {
+			holds = append(holds, hold)
+		}
+	}
+	return holds
+}
+
+// fencedRig is `fenced()`: a server routing to a raw worker, an owner's raw tab and a guest's, each holding S1 as its hold 0,
+// both bound (count 0); the worker's holds by tab.
+type fencedRig struct {
+	*gatedRelay
+	raw          *rawWorkers
+	worker       *RawPeer
+	owner, guest *RawPeer
+	mine, theirs *link.HoldMessage
+}
+
+func fenced(t testing.TB) *fencedRig {
+	t.Helper()
+	raw := newRawWorkers(t, rawWorkerOptions{})
+	g := routeGated(t, relayedOptions{Resolve: raw.Resolve}, raw)
+	g.set("yes")
+	g.set("yes", "guest")
+	owner := g.rawTab(ownerPrincipal())
+	guest := g.rawTab(delta.JsonObjectOf("kind", "guest", "session", "S1"))
+	holdOfPlaced(t, owner, "S1", "S1", PlacedNotes.Name, 0)
+	g.settled()
+	holdOfPlaced(t, guest, "S1", "S1", PlacedNotes.Name, 0)
+	g.settled()
+	worker := raw.At(t, 0)
+	holds := holdsOf(worker)
+	if len(holds) != 2 {
+		t.Fatalf("worker holds = %d, want 2", len(holds))
+	}
+	mine, theirs := holds[0], holds[1]
+	worker.Send(boundOf(t, mine, 0))
+	worker.Send(boundOf(t, theirs, 0))
+	g.settled()
+	if got := owner.Kinds(); !kindsEqual(got, "hello", "bound") {
+		t.Fatalf("owner kinds = %v, want hello, bound", got)
+	}
+	if got := guest.Kinds(); !kindsEqual(got, "hello", "bound") {
+		t.Fatalf("guest kinds = %v, want hello, bound", got)
+	}
+	return &fencedRig{gatedRelay: g, raw: raw, worker: worker, owner: owner, guest: guest, mine: mine, theirs: theirs}
+}
+
+// Pi: "the fence after a denial › drops what was in transit for the released hold, and forwards it again under its id only after
+// the pong". Covers (part B): relayedHold.withheld (release, error then failed), providerSide.withheld/rejectRelayed(all),
+// relayedHold.admitted (`loading` downstream), path.forward's fence (hostLink.fence), the relay's drop of a released hold's
+// replies and the ack of the dropped state.
+func TestRouteAdmissionTheFenceAfterADenialDropsWhatWasInTransitForTheReleasedHoldAndForwardsItAgainUnderItsIdOnlyAfterThePong(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		f := fenced(t)
+		defer closeHosts(t, f.Server)
+		editor := editorWire(t)
+		f.owner.Send(&link.CallMessage{Call: 7, Hold: 0, Method: editor.Methods["wait"]})
+		f.settled()
+		seen := len(f.worker.Kinds())
+		f.set("no")
+		f.settled()
+		// The denial: released upstream, the call in flight answered, the hold failed.
+		if got := since(f.worker, seen); !kindsEqual(got, "release") {
+			t.Fatalf("worker since denial = %v, want release", got)
+		}
+		if got := f.owner.Kinds()[2:]; !kindsEqual(got, "error", "failed") {
+			t.Fatalf("owner after bound = %v, want error, failed", got)
+		}
+		received := f.owner.Received()
+		if got := wireTold(t, received[2].(*link.ErrorMessage).Error); got.Code != "forbidden" || got.Reason != "revoked" {
+			t.Fatalf("call error = %+v, want forbidden/revoked", got)
+		}
+		if cause := received[3].(*link.FailedMessage).Cause; cause.Kind != "denied" {
+			t.Fatalf("failed cause = %s, want denied", cause.Kind)
+		}
+		// What the worker sent before it saw the release, arriving now: a state, an event, the call's result.
+		eventValue, err := link.JsonPart(float64(1))
+		must(t, err)
+		stale := []link.Message{
+			stateMessage(t, f.mine, 1),
+			&link.EventMessage{Origin: f.mine.Origin, Events: []link.WireEvent{{Hold: f.mine.Hold, Member: 0, At: 1, Value: eventValue}}},
+			&link.ResultMessage{Origin: f.mine.Origin, Call: 7},
+		}
+		tabSeen := len(f.owner.Kinds())
+		acked := peerKindCount(f.worker, "ack")
+		for _, message := range stale {
+			f.worker.Send(message)
+		}
+		f.settled()
+		// An `event` message is forwarded with what is left of it (its ticket is the downstream's to return): nothing.
+		after := f.owner.Received()[tabSeen:]
+		if len(after) != 1 || after[0].Kind() != "event" || len(after[0].(*link.EventMessage).Events) != 0 {
+			t.Fatalf("owner after the stale messages = %v, want one empty event", after)
+		}
+		// The dropped state is still acknowledged: the worker's window does not stall.
+		if acks := peerKindCount(f.worker, "ack") - acked; acks != 1 {
+			t.Fatalf("acks = %d, want 1", acks)
+		}
+		f.set("yes")
+		f.settled()
+		// Allowed: the tab is told `loading` at once (the person has access again), the worker gets a `ping`, and no hold
+		// before its `pong`.
+		if got := since(f.owner, tabSeen); !kindsEqual(got, "event", "loading") {
+			t.Fatalf("owner since = %v, want event, loading", got)
+		}
+		if got := withoutKind(since(f.worker, seen), "ack"); !kindsEqual(got, "release", "ping") {
+			t.Fatalf("worker since = %v, want release, ping", got)
+		}
+		f.worker.Send(stateMessage(t, f.mine, 2))
+		f.worker.Send(boundOf(t, f.mine, 3))
+		// The other principal's hold of the same id is undisturbed meanwhile.
+		f.worker.Send(stateMessage(t, f.theirs, 5))
+		f.settled()
+		if got := since(f.owner, tabSeen); !kindsEqual(got, "event", "loading") {
+			t.Fatalf("owner since = %v, want event, loading", got)
+		}
+		if got := f.guest.Kinds(); !kindsEqual(got, "hello", "bound", "state") {
+			t.Fatalf("guest kinds = %v, want hello, bound, state", got)
+		}
+		f.worker.Send(&link.PongMessage{})
+		f.settled()
+		holds := holdsOf(f.worker)
+		again := holds[len(holds)-1]
+		if f.worker.Kinds()[len(f.worker.Kinds())-1] != "hold" || again.Hold != f.mine.Hold || again.Origin != f.mine.Origin {
+			t.Fatalf("last worker message = %v hold %d origin %v, want hold %d origin %v", f.worker.Kinds()[len(f.worker.Kinds())-1], again.Hold, again.Origin, f.mine.Hold, f.mine.Origin)
+		}
+		f.worker.Send(boundOf(t, again, 9))
+		f.settled()
+		if got := since(f.owner, tabSeen); !kindsEqual(got, "event", "loading", "bound") {
+			t.Fatalf("owner since = %v, want event, loading, bound", got)
+		}
+	})
+}
+
+// Pi: "the fence after a denial › a call that crossed the denial on the wire is answered forbidden/revoked by the relay, and
+// forwarded nowhere". Covers (part B): relayedHold.unreached (heldBack set and denied: `revoked(hold 0)`), relayedHold.submit
+// without an upstream, relayedHold.withheld's heldBack.
+func TestRouteAdmissionTheFenceAfterADenialACallThatCrossedTheDenialOnTheWireIsAnsweredForbiddenRevokedByTheRelayAndForwardedNowhere(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		f := fenced(t)
+		defer closeHosts(t, f.Server)
+		f.set("no")
+		f.settled()
+		seen := len(f.worker.Kinds())
+		// Sent by a tab that has not read its `failed` yet.
+		f.owner.Send(&link.CallMessage{Call: 9, Hold: 0, Method: editorWire(t).Methods["wait"]})
+		f.settled()
+		received := f.owner.Received()
+		last, ok := received[len(received)-1].(*link.ErrorMessage)
+		if !ok || last.Call != 9 {
+			t.Fatalf("last owner message = %v, want error for call 9", received[len(received)-1])
+		}
+		if got := wireTold(t, last.Error); got != (errorTold{"forbidden", "revoked", "hold 0: no access"}) {
+			t.Fatalf("error = %+v, want forbidden/revoked: hold 0: no access", got)
+		}
+		if got := since(f.worker, seen); len(got) != 0 {
+			t.Fatalf("worker since = %v, want none", got)
+		}
+	})
+}
+
+// Pi: "the fence after a denial › a denial before the pong ends the fence; the next allow sends a new one". Covers (part B):
+// path.withhold cancelling a waiting fence (hostLink.fence cancel), path.forward's new fence.
+func TestRouteAdmissionTheFenceAfterADenialADenialBeforeThePongEndsTheFenceTheNextAllowSendsANewOne(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		f := fenced(t)
+		defer closeHosts(t, f.Server)
+		f.set("no")
+		f.set("yes")
+		f.set("no")
+		f.settled()
+		seen := len(f.worker.Kinds())
+		// The first fence's pong: nothing is forwarded for a denied principal.
+		f.worker.Send(&link.PongMessage{})
+		f.settled()
+		if got := since(f.worker, seen); len(got) != 0 {
+			t.Fatalf("worker since = %v, want none", got)
+		}
+		f.set("yes")
+		f.settled()
+		if got := since(f.worker, seen); !kindsEqual(got, "ping") {
+			t.Fatalf("worker since = %v, want ping", got)
+		}
+		f.worker.Send(&link.PongMessage{})
+		f.settled()
+		holds := holdsOf(f.worker)
+		if holds[len(holds)-1].Hold != f.mine.Hold {
+			t.Fatalf("last hold = %d, want %d", holds[len(holds)-1].Hold, f.mine.Hold)
+		}
+	})
+}
+
+// Pi: "the fence after a denial › deny and allow three times in a row forward the hold once, after the last pong". Covers
+// (part B): hostLink.fence counting (a ping per fence, one pong per fence), path.forward / path.withhold interplay.
+func TestRouteAdmissionTheFenceAfterADenialDenyAndAllowThreeTimesInARowForwardTheHoldOnceAfterTheLastPong(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		f := fenced(t)
+		defer closeHosts(t, f.Server)
+		seen := len(f.worker.Kinds())
+		for range 3 {
+			f.set("no")
+			f.set("yes")
+		}
+		f.settled()
+		if got := since(f.worker, seen); !kindsEqual(got, "release", "ping", "ping", "ping") {
+			t.Fatalf("worker since = %v, want release, ping, ping, ping", got)
+		}
+		f.worker.Send(&link.PongMessage{})
+		f.worker.Send(&link.PongMessage{})
+		f.settled()
+		if slicesContains(since(f.worker, seen), "hold") {
+			t.Fatalf("worker since = %v, want no hold before the last pong", since(f.worker, seen))
+		}
+		f.worker.Send(&link.PongMessage{})
+		f.settled()
+		if got := since(f.worker, seen); !kindsEqual(got, "release", "ping", "ping", "ping", "hold") {
+			t.Fatalf("worker since = %v, want release, ping, ping, ping, hold", got)
+		}
+	})
+}
+
+func slicesContains(kinds []string, kind string) bool {
+	for _, got := range kinds {
+		if got == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// Pi: "the fence after a denial › the link lost before the pong: the next link holds what the decision allows then, with no
+// fence". Covers (part B): path.disconnected dropping the fences (released cleared), path.connected holding every
+// non-withheld holder with no fence.
+func TestRouteAdmissionTheFenceAfterADenialTheLinkLostBeforeThePongTheNextLinkHoldsWhatTheDecisionAllowsThenWithNoFence(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		f := fenced(t)
+		defer closeHosts(t, f.Server)
+		f.set("no")
+		f.set("yes")
+		f.settled()
+		f.worker.Close()
+		f.settled()
+		next := f.raw.At(t, 1)
+		f.settled()
+		// Both principals are allowed: both holds, no `ping` first.
+		if got := next.Kinds(); !kindsEqual(got, "hello", "hold", "hold") {
+			t.Fatalf("next kinds = %v, want hello, hold, hold", got)
+		}
+		if f.owner.Closed() {
+			t.Fatal("the owner's tab closed")
+		}
+		// Denied while the link is down: the next link holds only the other principal's.
+		f.set("no")
+		next.Close()
+		f.settled()
+		if got := f.raw.At(t, 2).Kinds(); !kindsEqual(got, "hello", "hold") {
+			t.Fatalf("third kinds = %v, want hello, hold", got)
+		}
+	})
 }
