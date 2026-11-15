@@ -2,9 +2,9 @@ package host
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord/next/store"
@@ -73,8 +73,17 @@ func newTiling(site store.ReadSite, target store.LiveTarget, first int, owner ti
 
 // signature is what bookmarks of this tiling are positions of: the table, the order's columns and its direction.
 func (t *tiling) signature() string {
-	text, _ := json.Marshal([]any{t.target.Spec.Table, t.order.Columns, t.order.Direction})
-	return string(text)
+	// JSON.stringify([table, columns, direction]): strings as the port's JSON string marshaller escapes them.
+	var text strings.Builder
+	text.WriteString("[" + jsStringify(t.target.Spec.Table) + ",[")
+	for index, column := range t.order.Columns {
+		if index > 0 {
+			text.WriteByte(',')
+		}
+		text.WriteString(jsStringify(column))
+	}
+	text.WriteString("]," + jsStringify(t.order.Direction) + "]")
+	return text.String()
 }
 
 // bookmarks are the upper bound of every bounded page.
@@ -168,12 +177,31 @@ func (t *tiling) openPages(bookmarks []store.Position, open bool) (load func()) 
 	pages := slices.Clone(t.pages)
 	t.mu.Unlock()
 	return func() {
+		// `await Promise.all(pages.map((page) => page.read.load()))`: a page's load that panics rejects the whole, which is the
+		// panic again in the caller, once every load ended.
 		var loads sync.WaitGroup
+		var mu sync.Mutex
+		var panicked any
 		for _, page := range pages {
 			loads.Add(1)
-			go func() { defer loads.Done(); page.read.Load() }()
+			go func() {
+				defer loads.Done()
+				defer func() {
+					if recovered := recover(); recovered != nil {
+						mu.Lock()
+						defer mu.Unlock()
+						if panicked == nil {
+							panicked = recovered
+						}
+					}
+				}()
+				page.read.Load()
+			}()
 		}
 		loads.Wait()
+		if panicked != nil {
+			panic(panicked)
+		}
 	}
 }
 
