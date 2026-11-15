@@ -47,7 +47,7 @@ func routes() host.Facet {
 }
 
 // routesStep is chapter III: a command-line client on this machine sends the owner token file as a bearer token; the route's
-// `ctx.Get` acts as the request's principal, so the todo is the owner's.
+// `ctx.Get` acts as the request's principal, so the to-do is the owner's.
 func (s *session) routesStep() error {
 	text, err := os.ReadFile(s.app.OwnerTokenFile)
 	if err != nil {

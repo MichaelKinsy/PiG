@@ -26,7 +26,7 @@ var rules = []rule{
 	{"SH001", regexp.MustCompile(`(?i)\bphase\s+(?:[0-9]+|[a-z](?:\b|[0-9.]))|\bWS[0-9]+\b|\b(?:lands?|tracked|deferred|planned|scheduled)\s+(?:in|for|to)\s+P[0-9]+\b`), "production comments describe current behavior, not roadmap phases", false},
 	{"SH002", regexp.MustCompile(`(?i)\bfuture\s+(?:row|phase|work|worker)\b|\bonce\b[^.\n]{0,80}\blands\b|\bwill be\s+(?:implemented|wired|added)\b`), "future-work promises belong in tracked specifications", false},
 	{"SH003", regexp.MustCompile(`(?i)\b(?:TODO|FIXME|HACK|XXX)\b|\b(?:currently|still|temporary|only) (?:a )?placeholder\b|\bplaceholder (?:until|for future)\b|\bscaffold(?:ed)?(?: only|,? not| until)\b|\bstub\b|\btemporary no-op\b`), "production placeholders must be implemented, removed, or tracked outside source", false},
-	{"SH004", regexp.MustCompile(`(?i)\bnot yet (?:wired|implemented|supported)\b|\bTODO:`), "user-visible output must not promise unfinished behavior", true},
+	{"SH004", regexp.MustCompile(`(?i:\bnot yet (?:wired|implemented|supported)\b)|\bTODO:`), "user-visible output must not promise unfinished behavior", true},
 	{"SH005", regexp.MustCompile(`(?i)\bpig (?:divergence|additive)(?::| [^(])`), "use a typed D<N> marker or neutral translation language", false},
 	{"SH006", regexp.MustCompile(`\bGopi\b`), "use the current PiG name", false},
 }

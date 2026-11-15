@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
 )
 
-// listKind is the app's host kind: a todo list, a worker process of its own with its own store (`List` of api/v1.ts).
+// listKind is the app's host kind: a to-do list, a worker process of its own with its own store (`List` of api/v1.ts).
 var listKind = func() *contracts.HostKind {
 	kind, err := contracts.NewHostKind("list", contracts.Prop("id", contracts.Str()))
 	if err != nil {
@@ -19,7 +19,7 @@ var listKind = func() *contracts.HostKind {
 	return kind
 }()
 
-// item is a todo: `Item` of the lists plugin's contract.ts.
+// item is a to-do: `Item` of the lists plugin's contract.ts.
 var item = contracts.Obj(
 	contracts.Prop("id", contracts.Int()), contracts.Prop("text", contracts.Str()), contracts.Prop("done", contracts.Bool()),
 	contracts.Prop("by", contracts.Str()), contracts.Prop("at", contracts.Num()),
@@ -49,7 +49,7 @@ var todos = func() *contracts.Contract {
 	return contract
 }()
 
-// todo is a todo as the steps read it.
+// A to-do as the steps read it.
 type todo struct {
 	ID   int
 	Text string

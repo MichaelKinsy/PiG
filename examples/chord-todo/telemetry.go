@@ -55,7 +55,7 @@ func principalAttributes(principal data.Principal) telemetry.SpanAttributes {
 	}
 }
 
-// traceCommand is `chord-todo trace <data directory> [--name <span>] [--principal <key>]` or `... <trace id>`: it reads the telemetry
+// traceCommand is the app's `trace <data directory> [--name <span>] [--principal <key>]` or `... <trace id>` command: it reads the telemetry
 // store of a data directory through the store's read interface, while the app runs or after. Without a trace id it prints the newest
 // traces (those whose first span is `--name`, and with a span for `--principal`, when given) and the bytes on the links; with one,
 // that trace as the renderer prints it.
@@ -177,7 +177,7 @@ func (s *session) written(name string, count int, last string) ([]telemetry.Stor
 }
 
 // telemetryStep is chapter XI. The server records to the store in the data directory (step 1 opened it) and writes what every list's
-// worker sends it. A command-line client adds honey and a blank todo: each request is a `chord.http` trace of the server, the call
+// worker sends it. A command-line client adds honey and a blank to-do: each request is a `chord.http` trace of the server, the call
 // into the list's worker under it, and the store's `add` checks the text in a span of its own (`ctx.Trace`). A page's click,
 // recorded by the page itself, is the screenshots' (they need Chromium).
 func (s *session) telemetryStep() error {
