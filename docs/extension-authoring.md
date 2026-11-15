@@ -643,16 +643,20 @@ An extension that draws the model's thinking itself, for example in an activity 
 A fused Go member that owns the command line (`extensions/sdk/clihook`) may also decide which failed model requests PiG retries. Set `clihook.Result.Retry` with a `Decide` function:
 
 ```go
-Retry: &clihook.RetryPolicy{
-	Decide: func(f clihook.RetryFailure) clihook.RetryDecision {
-		if f.Status == 429 {
-			return clihook.RetryDecision{Retry: true, DelayMs: 5000}
-		}
-		return clihook.RetryDecision{}
+idle := 9000
+result := clihook.Result{
+	Args: env.Args,
+	Retry: &clihook.RetryPolicy{
+		Decide: func(f clihook.RetryFailure) clihook.RetryDecision {
+			if f.Status == 429 {
+				return clihook.RetryDecision{Retry: true, DelayMs: 5000}
+			}
+			return clihook.RetryDecision{}
+		},
+		Silent: true,
 	},
-	Silent: true,
-},
-HTTPIdleTimeoutMs: &idle,
+	HTTPIdleTimeoutMs: &idle,
+}
 ```
 
 `Decide` runs for each failed model request of a session run and for each failed summarization request of a compaction. `RetryFailure` holds the attempt, the retry budget from `settings.json`, the error text, the HTTP status (0 when no response arrived), the lower-cased response headers and `StreamStarted`, which is true when the stream had emitted an event before it failed. A refusal ends the run with the failure. `DelayMs` replaces PiG's exponential delay. Without `Decide`, PiG retries by Pi's rule, and the numeric fields of the policy only set defaults that `settings.json` overrides.
