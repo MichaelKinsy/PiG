@@ -823,7 +823,7 @@ func (h *chordHost) Accept(l link.Link, options LinkOptions, ctx context.Context
 		if err = h.assertOpen(); err != nil {
 			return
 		}
-		h.linkOf(l, linkRoleChild, options, ctx)
+		h.linkOf(l, linkRoleChild, options, ctx, nil)
 	})
 	return err
 }
@@ -839,7 +839,7 @@ func (h *chordHost) Connect(l link.Link, options LinkOptions, ctx context.Contex
 			err = errors.New("connect: this host has an open parent link")
 			return
 		}
-		parent := h.linkOf(l, linkRoleParent, options, ctx)
+		parent := h.linkOf(l, linkRoleParent, options, ctx, nil)
 		if parent.open() {
 			h.parent.connected(parent)
 		}
@@ -1664,13 +1664,13 @@ func (h *chordHost) relayOrigin(side *providerSide) int {
 }
 
 // routeLink is a route's link, its work under the route's ctx: registered with the host and its heartbeat; one closed
-// already is returned closed.
+// already is returned closed. options.opened is told the peer's incarnation once its `hello` arrived.
 func (h *chordHost) routeLink(l link.Link, options routeLinkOptions, ctx context.Context) *hostLink {
 	limits := link.PartLimits{}
 	if options.limits != nil {
 		limits = *options.limits
 	}
-	return h.linkOf(l, linkRoleRoute, LinkOptions{Principal: options.principal, Trusted: options.trusted, Codec: options.codec, Limits: limits}, ctx)
+	return h.linkOf(l, linkRoleRoute, LinkOptions{Principal: options.principal, Trusted: options.trusted, Codec: options.codec, Limits: limits}, ctx, options.opened)
 }
 
 // linkOpened: a link completed its handshake: a route's address resolves again once if it drops.
@@ -1857,14 +1857,15 @@ func (h *chordHost) principalKeyOf(principal data.Principal, ctx context.Context
 	return data.PrincipalKey(principal, ctx, h.principalKey)
 }
 
-// linkOf is a new link of role, registered with the heartbeat while open.
-func (h *chordHost) linkOf(l link.Link, role linkRole, options LinkOptions, ctx context.Context) *hostLink {
+// linkOf is a new link of role, registered with the heartbeat while open. opened (nil: none) is told the peer's incarnation
+// once its `hello` arrived.
+func (h *chordHost) linkOf(l link.Link, role linkRole, options LinkOptions, ctx context.Context, opened func(incarnation string)) *hostLink {
 	codec := options.Codec
 	if codec == nil {
 		codec = link.BinaryCodec
 	}
 	limits := link.LinkLimits(options.Trusted, options.Limits)
-	made := newHostLink(h, l, hostLinkOptions{role: role, principal: options.Principal, trusted: options.Trusted, codec: codec, limits: limits}, h.counted(chordctx.WithoutAbortSignal(ctx)))
+	made := newHostLink(h, l, hostLinkOptions{role: role, principal: options.Principal, trusted: options.Trusted, codec: codec, limits: limits, opened: opened}, h.counted(chordctx.WithoutAbortSignal(ctx)))
 	if !made.open() {
 		return made
 	}

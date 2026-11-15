@@ -63,6 +63,11 @@ type ResolvedLink struct {
 	Trusted   bool
 	Codec     link.Codec
 	Limits    *link.PartLimits
+	// Opened is called once, when the link's handshake completed, with the incarnation of the host at the other end (its calls'
+	// `ctx.Incarnation()`): before anything else that host sent is handled and before this host sends on the link, so whoever
+	// resolves knows which run of the host its link reaches before that host's first call runs; never for a link that closes
+	// before its handshake. It must not throw. Nil: none.
+	Opened func(incarnation string)
 }
 
 // routeLinkOptions is what a host's routeLink takes of a resolved link besides the link.
@@ -71,6 +76,7 @@ type routeLinkOptions struct {
 	trusted   bool
 	codec     link.Codec
 	limits    *link.PartLimits
+	opened    func(incarnation string)
 }
 
 // RouteHandle is what `host.route` returns: the app's controls of its addresses (D10b, R1).
@@ -372,7 +378,7 @@ func (r *route) resolved(routed *routed, resolved ResolvedLink, err error, span 
 		return
 	}
 	made := r.host.routeLink(resolved.Link, routeLinkOptions{
-		principal: resolved.Principal, trusted: resolved.Trusted, codec: resolved.Codec, limits: resolved.Limits,
+		principal: resolved.Principal, trusted: resolved.Trusted, codec: resolved.Codec, limits: resolved.Limits, opened: resolved.Opened,
 	}, r.context)
 	if !made.open() {
 		closed := data.NewChordError(data.ChordErrorInit{
