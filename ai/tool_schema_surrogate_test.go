@@ -61,6 +61,12 @@ func TestToolParametersWithoutRecordedOrderKeepALoneSurrogate(t *testing.T) {
 	}
 }
 
+// toolWireKind is the tools of a request as one API kind sends them.
+type toolWireKind struct {
+	name  string
+	value any
+}
+
 // BenchmarkToolDeclarationWire encodes the tools of a request as each API kind sends them, a system message that adds them as a session line holds
 // it, and decodes them, for tools whose text is plain, holds a lone surrogate, and holds U+FFFD.
 func BenchmarkToolDeclarationWire(b *testing.B) {
@@ -77,21 +83,18 @@ func BenchmarkToolDeclarationWire(b *testing.B) {
 		if err := json.Unmarshal(text, &tools); err != nil {
 			b.Fatal(err)
 		}
-		anthropic, completions, responses, mistral := make([]anthTool, len(tools)), make([]oaiToolFunction, len(tools)), make([]ResponsesTool, len(tools)), make([]mistralTool, len(tools))
+		anthropic, completions, responses := make([]anthTool, len(tools)), make([]oaiToolFunction, len(tools)), make([]ResponsesTool, len(tools))
 		for i, tool := range tools {
 			anthropic[i] = anthTool{Name: tool.Name, Description: tool.Description, InputSchema: tool.Parameters, inputSchemaOrder: tool.parameterOrder}
 			completions[i] = oaiToolFunction{Name: tool.Name, Description: tool.Description, Parameters: tool.Parameters, parameterOrder: tool.parameterOrder}
 			responses[i] = ResponsesTool{Type: "function", Name: tool.Name, Description: tool.Description, Parameters: tool.Parameters, parameterOrder: tool.parameterOrder}
-			mistral[i] = mistralTool{Type: "function", Function: mistralToolFn{Name: tool.Name, Description: tool.Description, Parameters: tool.Parameters, parameterOrder: tool.parameterOrder}}
 		}
 		google, err := geminiConvertTools(tools, false, false)
 		if err != nil {
 			b.Fatal(err)
 		}
-		for _, kind := range []struct {
-			name  string
-			value any
-		}{{"anthropic-messages", anthropic}, {"openai-completions", completions}, {"openai-responses", responses}, {"google-generative-ai", google}, {"mistral-conversations", mistral}} {
+		kinds := []toolWireKind{{"anthropic-messages", anthropic}, {"openai-completions", completions}, {"openai-responses", responses}, {"google-generative-ai", google}}
+		for _, kind := range append(kinds, mistralToolWireKinds(tools)...) {
 			b.Run(form.name+"/"+kind.name, func(b *testing.B) {
 				b.ReportAllocs()
 				for b.Loop() {
