@@ -185,6 +185,39 @@ func TestKeyedMembers(t *testing.T) {
 	})
 }
 
+func TestQueriesMembers(t *testing.T) {
+	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	args := func() []contracts.Property {
+		return []contracts.Property{
+			contracts.Prop("ofBoard", contracts.Obj(contracts.Prop("board", contracts.Str()))),
+			contracts.Prop("one", contracts.Obj(contracts.Prop("id", contracts.Int()))),
+		}
+	}
+
+	t.Run("declare named queries in a local contract: their own kind, each query's argument schema in the fingerprint", func(t *testing.T) {
+		store := local(t, "app.store", 1, noParams(), contracts.Mem("notes", contracts.Queries(note(), args())), contracts.Mem("add", contracts.NewMethod()))
+		variant := currentVariants(t, store).Value(contracts.LocalVariant)
+		if got := keys(variant.Queries.Value("notes").Args); len(got) != 2 || got[0] != "ofBoard" || got[1] != "one" {
+			t.Fatalf("queries = %v", got)
+		}
+		if got := keys(variant.State); len(got) != 0 {
+			t.Fatalf("state = %v", got)
+		}
+	})
+
+	t.Run("refuse argument schemas that are not schemas or not closed", func(t *testing.T) {
+		// Upstream's `5 as never` is no Go input (a query's arguments are Schemas); an opt(...) is the Go case of a value that is no schema.
+		_, err := contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", contracts.Queries(note(), []contracts.Property{contracts.Prop("one", contracts.Opt(contracts.Str()))})),
+		}})
+		wantError(t, err, "app.store.members.notes.args.one: expected a schema")
+		_, err = contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", contracts.Queries(note(), []contracts.Property{contracts.Prop("one", tbObject())})),
+		}})
+		wantError(t, err, "app.store.members.notes.args.one: argument objects must be closed")
+	})
+}
+
 func TestHostKeyedMembers(t *testing.T) {
 	meta := func() contracts.Schema { return contracts.Obj(contracts.Prop("n", contracts.Int())) }
 
