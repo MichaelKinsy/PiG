@@ -1230,7 +1230,7 @@ func serveNotes(host FacetHost, typ *contracts.Contract) (*notesProbe, error) {
 				probe.changed = nil
 			}
 			probe.mu.Unlock()
-			UntilAborted(ctx)
+			_, _ = chordctx.Receive(ctx, ctx.Done())
 			return nil, nil
 		}
 		members := map[string]chord.Watchable[delta.JsonValue]{"notes": notes, "count": count}
@@ -1513,7 +1513,7 @@ type relayedOptions struct {
 	// Resolve wraps the default one (`worker()` makes the worker).
 	Resolve func(address contracts.Address, worker func() resolved, ctx context.Context) (resolved, error)
 	// Admit is the route's admission (slice 14 §2.3); nil: none.
-	Admit RouteAdmit
+	Admit   RouteAdmit
 	Context context.Context
 	// RevokedBy is the server's and the workers' `revokedBy`; ServerRevokedBy is the server's when it differs.
 	RevokedBy       RevokedBy[delta.JsonValue]
@@ -1587,13 +1587,14 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			}
 			return nil
 		})
-		// `void host.load(...)`: an unawaited promise. Pi's `transported()` lets it settle (it drains every microtask); a Go
-		// goroutine is not drained by a link's queue, so WorkerLoaded is the wait on it.
+		// `void host.load(...)`: an unawaited promise, an owned task of the worker's loop that `deliveredOn` joins (Pi's
+		// `transported()` lets it settle: it drains every microtask); WorkerLoaded is the wait on its end.
 		loaded := make(chan struct{})
-		go func() {
+		load := func() {
 			defer close(loaded)
 			_, _ = host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, ctx)
-		}()
+		}
+		goTask(host.(*chordHost).loop(), load, load)
 		result.loads.Store(address.Key, loaded)
 		result.Workers.Store(address.Key, host)
 		result.mu.Lock()

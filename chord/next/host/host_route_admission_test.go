@@ -9,6 +9,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -147,9 +148,12 @@ func hostsOf(rel *relayed) []Host {
 
 // settled is Pi's `await transported()` after something an admission decides: what is in flight arrived, the settles the
 // change started (joined hops of the server's loop) and the deliveries they made ran to their end (deliveredOn), and what
-// that made arrived. No condition of its own.
+// that made arrived; a worker the settles started (resolve made its host) has its own tasks to run, so the hosts are listed
+// again once the first ones are quiet. No condition of its own.
 func (g *gatedRelay) settled() {
 	g.t.Helper()
+	g.Transported()
+	deliveredOn(append(hostsOf(g.relayed), g.tabs...)...)
 	g.Transported()
 	deliveredOn(append(hostsOf(g.relayed), g.tabs...)...)
 	g.Transported()
@@ -157,6 +161,8 @@ func (g *gatedRelay) settled() {
 
 // settledOn is settled for a relay with no links of its own.
 func settledOn(rel *relayed) {
+	rel.Transported()
+	deliveredOn(hostsOf(rel)...)
 	rel.Transported()
 	deliveredOn(hostsOf(rel)...)
 	rel.Transported()
@@ -666,6 +672,51 @@ func TestRouteAdmissionOneDecisionPerPrincipalAndAddressANewLinkOfTheAddressHold
 		}
 		if got := kindOf(notes); got != RefStateLoading {
 			t.Fatalf("state = %s, want loading", got)
+		}
+	})
+}
+
+// Pi: "one decision per principal and address › a source that fails while the address's link is down takes the forwarded holds
+// back; one that only loads does not". Covers (host_route_admission.go): apply's `path.link() == nil` branch (forwarded cleared),
+// path.wanted false at `dropped` (route.changed's new arm: nothing resolves for held-back holds).
+func TestRouteAdmissionOneDecisionPerPrincipalAndAddressASourceThatFailsWhileTheAddressesLinkIsDownTakesTheForwardedHoldsBackOneThatOnlyLoadsDoesNot(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		raw := newRawWorkers(t, rawWorkerOptions{})
+		pending := make(chan struct{})
+		var resolving atomic.Int32
+		g := routeGated(t, relayedOptions{Resolve: func(address contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
+			if resolving.Add(1) > 1 {
+				_, _ = chordctx.Receive(ctx, pending)
+			}
+			return raw.Resolve(address, worker, ctx)
+		}}, raw)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		notes := mustHold(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		first := raw.At(t, 0)
+		g.settled()
+		// The link drops under an allow: the hold waits for the next link, which is being resolved.
+		first.Close()
+		g.settled()
+		if got := kindOf(notes); got != RefStateLoading {
+			t.Fatalf("state = %s, want loading", got)
+		}
+		// The source fails before that link is there: the link, once made, holds nothing.
+		g.set("throw")
+		g.settled()
+		if cause := failedWith(t, notes); cause.Kind != data.FailureWaiting {
+			t.Fatalf("cause = %s, want waiting", cause.Kind)
+		}
+		close(pending)
+		second := raw.At(t, 1)
+		g.settled()
+		if kinds := second.Kinds(); !kindsEqual(kinds, "hello") {
+			t.Fatalf("second worker kinds = %v, want hello", kinds)
+		}
+		g.set("yes")
+		g.settled()
+		if kinds := second.Kinds(); !kindsEqual(kinds, "hello", "hold") {
+			t.Fatalf("second worker kinds = %v, want hello, hold", kinds)
 		}
 	})
 }
