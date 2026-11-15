@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -347,9 +348,15 @@ func (d *Decision) now(ctx context.Context) *verdict {
 	return d.unsettled(check)
 }
 
-// endedError is what a released decision's waiters get.
+// ErrDecisionReleased is the cause of the broken verdict a released decision's waiters get (`settle`, `settleWait`): the
+// decision ended under them, nothing it asked failed. A caller tells a release from a genuinely broken admit by
+// `errors.Is(verdict.err, ErrDecisionReleased)`; neither an allow nor a denial is made of it. (Pi's promise of a released
+// decision never settles: there is no Pi cause to port.)
+var ErrDecisionReleased = errors.New("admission decision released")
+
+// endedError is what a released decision's waiters get: `released`, with ErrDecisionReleased as its cause.
 func (d *Decision) endedError() *data.ChordError {
-	return data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: d.owner.label + ": its admission ended"}, nil)
+	return data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: d.owner.label + ": its admission ended"}, ErrDecisionReleased)
 }
 
 // settleWait is `settle` for a caller outside a section (a route's task: Pi's `await decision.settle(...)`): it BLOCKS until
