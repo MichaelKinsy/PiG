@@ -230,9 +230,19 @@ func builtinProviderForModel(model *Model) *ModelsProvider {
 func resolveAPIProvider(api API) (*APIProvider, error) {
 	provider := GetAPIProvider(api)
 	if provider == nil {
-		return nil, fmt.Errorf("No API provider registered for api: %s", api)
+		return nil, NoAPIProviderError(api)
 	}
 	return provider, nil
+}
+
+// NoAPIProviderError is the error of a model whose api has no registered implementation: "No API provider registered for api: <api>" (compat.ts:244-247 resolveApiProvider).
+// A model with no api, which Go carries as the empty name, is the object of Pi whose api is undefined, and the text names it so.
+func NoAPIProviderError(api API) error {
+	name := string(api)
+	if api == "" {
+		name = "undefined"
+	}
+	return fmt.Errorf("No API provider registered for api: %s", name)
 }
 
 func compatStream(ctx context.Context, model *Model, request Context, simple bool, options []StreamOptions) (*AssistantMessageEventStream, error) {

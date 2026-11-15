@@ -36,7 +36,7 @@ func TestStatusAndMarkdown(t *testing.T) {
 		t.Fatalf("status %q %q", state, description)
 	}
 	md := markdown(cfg, d, ev)
-	for _, want := range []string{commentMarker, "❌ fail", "| ❌ | template |", `\| x`, "🔶 | reuse | a.sh:2", "[[ack]]", `blob = "b1"`} {
+	for _, want := range []string{commentMarker, "❌ fail", "| ❌ | template |", `\| x`, "🔶 | reuse | ` a.sh:2", "[[ack]]", `blob = "b1"`} {
 		if !strings.Contains(md, want) {
 			t.Errorf("report lacks %q:\n%s", want, md)
 		}
@@ -104,7 +104,7 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 		return d.Previous
 	}
 	st := step()
-	if len(g.alerts) != 1 || g.alerts[0] != "@dev revoke it\n\nsecrets on `h1`: 1 finding(s): a:1 key\n\n<!-- pig-preflight-alert secrets h1 -->" || st == nil || !slices.Equal(st.Alerted, []string{"secrets"}) || len(g.statuses) != 1 {
+	if len(g.alerts) != 1 || g.alerts[0] != "@dev revoke it\n\nsecrets on `h1`: ` 1 finding(s): a:1 key `\n\n<!-- pig-preflight-alert secrets h1 -->" || st == nil || !slices.Equal(st.Alerted, []string{"secrets"}) || len(g.statuses) != 1 {
 		t.Fatalf("first run: alerts %q, state %+v, statuses %v", g.alerts, st, g.statuses)
 	}
 	if !strings.HasPrefix(g.comments[1], commentMarker) || !strings.Contains(g.comments[1], "❌ fail") {
@@ -282,7 +282,7 @@ func TestWarningsArePerFileAndBounded(t *testing.T) {
 		t.Fatalf("%d warnings, last %+v", len(ws), ws[len(ws)-1])
 	}
 	md := markdown(cfg, d, ev)
-	if strings.Count(md, "[[ack]]") != maxWarnedFiles || !strings.Contains(md, "| 🔶 | licenses | and 3 more file(s) with warnings |") {
+	if strings.Count(md, "[[ack]]") != maxWarnedFiles || !strings.Contains(md, "| 🔶 | licenses | ` and 3 more file(s) with warnings ` |") {
 		t.Fatalf("markdown:\n%s", md)
 	}
 	var log strings.Builder
@@ -346,7 +346,7 @@ func TestCommentBodyShortensOnlyWhatCanGrow(t *testing.T) {
 		t.Fatalf("a body of exactly the limit: %d %v", len(body), err)
 	}
 	body, err := commentBody(cfg, d, ev, exact+"x", st)
-	if err != nil || !strings.Contains(body, strings.TrimSpace(shortened)) || strings.Contains(body, "| 🔶 |") || !strings.Contains(body, "| ✅ | licenses | ok |") {
+	if err != nil || !strings.Contains(body, strings.TrimSpace(shortened)) || strings.Contains(body, "| 🔶 |") || !strings.Contains(body, "| ✅ | licenses | ` ok ` |") {
 		t.Fatalf("shortened body: %v\n%s", err, body)
 	}
 	if got := parseState(body); got == nil || got.Checks["licenses"].Result != resultPass || len(got.Checks["licenses"].Warnings) != 0 {

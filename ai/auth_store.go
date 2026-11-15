@@ -259,7 +259,7 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 		return nil, err
 	}
 	defer a.mu.Unlock()
-	var result *Credential
+	var result, held *Credential
 	err := a.withFileLock(ctx, true, func(lock *pilock.Lock) error {
 		// The lock's context carries a heartbeat compromise as its cause, which withLockAsync's throwIfCompromised throws before the caller's abort (auth-storage.ts:168-172,180-184).
 		ctx := lock.Context()
@@ -281,6 +281,17 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 		if err != nil {
 			return err
 		}
+		// A compromise the heartbeat already reported is thrown as withLockAsync's throwIfCompromised throws it (auth-storage.ts:180-184): nothing is written.
+		if err := heartbeatCompromise(ctx); err != nil {
+			return err
+		}
+		if next != nil && lockCompromised(lock) {
+			// The lock was taken over while fn ran and the heartbeat has not reported it yet (a refresh outlasting the sync lock's 10 s staleness window, which Pi
+			// writes through): fn's credential may be the only copy of a single-use refresh token, so it is not dropped. It is written below under a lock of its
+			// own, without the stale read it was computed from.
+			held = new(cloneCredential(*next))
+			return nil
+		}
 		if ctx.Err() != nil {
 			return context.Cause(ctx)
 		}
@@ -299,7 +310,43 @@ func (a *AuthStorage) Modify(ctx context.Context, providerID string, fn func(cur
 		result = new(cloneCredential(*next))
 		return nil
 	})
-	return result, err
+	if err != nil || held == nil {
+		return result, err
+	}
+	// Persist that provider's entry alone into whatever auth.json holds now, so what the other holder wrote in the meantime stays.
+	err = a.withFileLock(context.WithoutCancel(ctx), true, func(lock *pilock.Lock) error {
+		credentials, err := a.loadLocked()
+		if err != nil {
+			return err
+		}
+		if credentials.root == authRootNull {
+			return errAuthNullRead(providerID)
+		}
+		credentials.set(providerID, cloneCredential(*held))
+		return a.writeLocked(credentials, lock)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return held, nil
+}
+
+// heartbeatCompromise is the compromise the lock's heartbeat reported through ctx, the context of the lock, or nil when it has reported none.
+func heartbeatCompromise(ctx context.Context) error {
+	if ctx.Err() == nil {
+		return nil
+	}
+	cause := context.Cause(ctx)
+	if _, ok := errors.AsType[*pilock.CompromisedError](cause); ok {
+		return cause
+	}
+	return nil
+}
+
+// lockCompromised reports whether lock was removed or replaced by another process, as opposed to ended by its caller's cancellation.
+func lockCompromised(lock *pilock.Lock) bool {
+	var compromised *pilock.CompromisedError
+	return errors.As(lock.Compromised(), &compromised)
 }
 
 // InMemoryAuthStorage is a process-local CredentialStore. Mirrors upstream

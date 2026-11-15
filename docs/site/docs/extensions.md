@@ -426,6 +426,8 @@ Clearing the queue (RPC `clear_queue`, the SDK, or the interactive restore-to-ed
 
 A `waitForIdle()` call made during a run stays pending until the `agent_settled` handlers and every prompt they deferred have finished. An abort during settlement discards the deferred prompts. Pi resolves the waiter earlier and still starts a deferred prompt after an abort (D142, Pi #10704, #10705).
 
+`ctx.abort()` cancels the run's signal and returns without waiting for the run to end, so a handler the run awaits (a `tool_call` or `message_update` handler, for example) can call it. When the call returns, `ctx.signal` is already aborted for every handler of the turn, and a second abort changes nothing. Such a handler cannot wait for the end of the run, because the run is waiting for it: a `waitForIdle()` inside it would wait for the run to end while the run waits for the handler to return. Code that needs the run to have ended waits outside the handler: a command handler awaits `ctx.waitForIdle()` (Pi offers it on the command context only), or the work starts from an `agent_settled` handler, which runs once the run has settled.
+
 ## Session context
 
 PiG loads session history for an extension only when the extension reads it. A persisted session is read from its local JSONL file and reconciled with the host cursor. If the file is unavailable, the host sends ordered pages of at most 4 MB. Later appends use the same bounded path.
