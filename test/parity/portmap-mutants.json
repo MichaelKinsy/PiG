@@ -5562,8 +5562,8 @@
  "packages/chord/test/examples/08-remote.ts": [
   {
    "file": "chord/next/host/remote_replica.go",
-   "old": "\tr.state = replicaState{kind: replicaValue, value: value}\n\tr.ops = ops",
-   "new": "\tr.state = replicaState{kind: replicaValue, value: r.state.value}\n\tr.ops = ops"
+   "old": "\tr.state = replicaState{kind: replicaValue, value: value}\n\tr.generation++\n",
+   "new": "\tr.state = replicaState{kind: replicaValue, value: r.state.value}\n\tr.generation++\n"
   }
  ],
  "packages/chord/test/examples/09-calls.ts": [
