@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/admitseam"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -1432,6 +1434,68 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		must(t, s.h.Close(background))
 	})
 
+	t.Run("a denial between staging and activation: the new factory never runs", func(t *testing.T) {
+		built := &admLog{}
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		// Pi's order: the reload stages and commits, the test's `set("none")` is made before the microtask that runs the new
+		// attempt's admission. A Go transaction of a source lands on a later hop than the host's microtask, so the test holds
+		// that hop (internal/admitseam) until the denial has landed; the reload waits for the new attempt's first outcome
+		// and runs on a goroutine. What waits: the hop being handed over (the commit started the attempt).
+		var mu sync.Mutex
+		var starts []func()
+		handed := make(chan struct{}, 8)
+		admitseam.Hold(s.h, func(start func()) {
+			mu.Lock()
+			starts = append(starts, start)
+			mu.Unlock()
+			handed <- struct{}{}
+		})
+		done := make(chan error, 1)
+		go func() {
+			_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
+			done <- err
+		}()
+		receive(t, handed)
+		s.set("none", "server")
+		admitseam.Hold(s.h, nil)
+		mu.Lock()
+		held := slices.Clone(starts)
+		mu.Unlock()
+		for _, start := range held {
+			start()
+		}
+		must(t, <-done)
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Errorf("state = %+v, want failed denied", st)
+		}
+		// Staging rehearsed it once; no attempt ran it.
+		expectStrings(t, built.Items(), "a:read")
+		must(t, s.h.Close(background))
+	})
+
+	// Go only: the other order a caller can get. The denial lands after the new attempt's factory ran: the attempt is sealed
+	// and the object shows the denial; the rehearsal and the run were both built (Pi's "a decision change while settled").
+	t.Run("a denial made after the new factory ran seals its attempt: the rehearsal and the run are both built", func(t *testing.T) {
+		built := &admLog{}
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		live := admWatchStates(t, doc)
+		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
+		must(t, err)
+		// The new attempt activates on tasks `delivered()` does not join: wait for the state the host delivers.
+		live.until(t, admIsLive)
+		s.delivered()
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		s.set("none", "server")
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Fatalf("state = %+v, want failed denied", st)
+		}
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		must(t, s.h.Close(background))
+	})
 }
 
 func TestAdmissionWhatADenialRemoves(t *testing.T) {
