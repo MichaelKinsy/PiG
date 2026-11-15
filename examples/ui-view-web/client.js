@@ -19,7 +19,16 @@ const ABILITIES = {
   drawing: { profiles: ["scene", "pixels"], shapes: 4096, pixels: 1 << 20 },
 };
 
-const token = new URLSearchParams(location.search).get("token");
+// The address carries the token. The page keeps it for this tab (sessionStorage, so a reload still attaches) and takes it
+// out of the address bar and the history, so neither a shared screen nor the browser's history holds it.
+const TOKEN_KEY = "ui-view-web-token";
+const addressParams = new URLSearchParams(location.search);
+if (addressParams.has("token")) {
+  sessionStorage.setItem(TOKEN_KEY, addressParams.get("token"));
+  addressParams.delete("token");
+  history.replaceState(null, "", location.pathname + (addressParams.size > 0 ? `?${addressParams}` : "") + location.hash);
+}
+const token = sessionStorage.getItem(TOKEN_KEY);
 const state = document.getElementById("state");
 const chat = document.getElementById("chat");
 let session = "";

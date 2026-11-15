@@ -55,8 +55,9 @@ func buildPig(t *testing.T) string {
 	return pigBinary.path
 }
 
+// bridge is a running bridge: the page's base address, its token and the page open.html that sends a browser to it.
 type bridge struct {
-	base, token string
+	base, token, openFile string
 }
 
 // startBridge runs bridge.mjs over a pig with the demo extension and the faux model, and returns the page's address.
@@ -88,7 +89,8 @@ func nodeBinary(t *testing.T) string {
 	return node
 }
 
-// runBridge runs bridge.mjs with args on any free port and returns the page's address.
+// runBridge runs bridge.mjs with args on any free port and returns the page's address. It reads the address from the
+// file the bridge's first line names, as an author following the README does.
 func runBridge(t *testing.T, node string, env []string, args ...string) bridge {
 	t.Helper()
 	cmd := exec.Command(node, append([]string{"bridge.mjs", "--port", "0"}, args...)...)
@@ -109,12 +111,8 @@ func runBridge(t *testing.T, node string, env []string, args ...string) bridge {
 	if err != nil {
 		t.Fatalf("the bridge printed no address: %v", err)
 	}
-	address := strings.TrimSpace(strings.TrimPrefix(line, "ui-view-web: "))
-	base, token, ok := strings.Cut(address, "/?token=")
-	if !ok || !strings.HasPrefix(base, "http://127.0.0.1:") {
-		t.Fatalf("the bridge printed %q", line)
-	}
-	return bridge{base: base, token: token}
+	base, token, path := tokenFile(t, line)
+	return bridge{base: base, token: token, openFile: filepath.Join(filepath.Dir(path), "open.html")}
 }
 
 type page struct {

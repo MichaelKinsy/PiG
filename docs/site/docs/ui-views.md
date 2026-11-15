@@ -30,7 +30,9 @@ node examples/ui-view-web/bridge.mjs --connect ~/.pig/agent/view-endpoint
 node examples/ui-view-web/bridge.mjs -- -e ./todo.mjs
 ```
 
-The first command attaches a web page to the running terminal session. The second command starts a `pig` of its own for each page and needs no Piglet. Both print the page's address, `http://127.0.0.1:<port>/?token=<token>`.
+The first command attaches a web page to the running terminal session. The second command starts a `pig` of its own for each page and needs no Piglet. Both print one line that names the file to open: `ui-view-web: http://127.0.0.1:<port>/ (open: <dir>/open.html)`.
+
+Open that file with the path the line printed: `open <path>` on macOS, `xdg-open <path>` on Linux, `Start-Process <path>` in PowerShell on Windows. The file sends your browser to the page's address. The path holds no token, and only you can read the file. Do not hand the address itself to a command: the argument list of a command can be read by every user of a Linux machine. The bridge does not print the token, so a log, a terminal recording or a shared screen does not hold a live address. Keep the address to yourself: with the second command, a process on your machine that has it can prompt the `pig` the bridge starts, as you. The bridge removes the files when it ends. `--print-token`, or `UI_VIEW_WEB_PRINT_TOKEN=1`, prints `ui-view-web: http://127.0.0.1:<port>/?token=<token>` as the line instead and makes no file.
 
 ## A complete extension
 

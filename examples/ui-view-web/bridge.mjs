@@ -13,13 +13,20 @@
 //       files theme.css names (images, fonts) are served from the same directory under /theme/. Without it the page
 //       is index.html as it is.
 //
-// It listens on 127.0.0.1 only and prints the page's address, which carries a token every request must repeat.
+// It listens on 127.0.0.1 only. Every request but the page's own files must repeat a token. The address with the token is
+// not printed, so a log, a recording or a shared screen holds no live address: the first line is
+// `ui-view-web: http://127.0.0.1:<port>/ (open: <dir>/open.html)`, and open.html (mode 0600, in a directory of mode 0700,
+// removed when the bridge ends) sends a browser to the address. Open that file, never the address: no argument list then
+// holds the token. The file `address` beside it holds the address for a script. --print-token, or UI_VIEW_WEB_PRINT_TOKEN=1,
+// prints `ui-view-web: http://127.0.0.1:<port>/?token=<token>` instead and makes no file. With `-- <pig arguments>` the
+// address lets a process of this machine prompt the pig the bridge starts, as this user: keep it to yourself.
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { readdirSync, statSync } from "node:fs";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createConnection } from "node:net";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -59,6 +66,9 @@ if (argv.includes("--theme") && (option("--theme") === undefined || !statSync(jo
   process.exit(2);
 }
 const token = randomBytes(16).toString("hex");
+// --print-token, or UI_VIEW_WEB_PRINT_TOKEN=1 (exactly 1), prints the address with its token. Without either the token
+// is written to a private file and the printed line names the file.
+const printToken = argv.includes("--print-token") || process.env.UI_VIEW_WEB_PRINT_TOKEN === "1";
 const files = { "/": ["index.html", "text/html; charset=utf-8"], "/client.js": ["client.js", "text/javascript; charset=utf-8"] };
 // Where the lines of a page go, by the session it was told: deliver(line) passes one line on or returns the refusal
 // [status, text], and close() ends the session.
@@ -298,8 +308,28 @@ function send(req, res, session) {
   });
 }
 
+// The page open.html is: it sends the browser on to the address and is not kept in its history. For a browser that does
+// not follow a script from a local file, it also shows a link to click; the token is then in the page of a private file
+// and in no argument list.
+function openPage(address) {
+  const escaped = address.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const script = JSON.stringify(address).replace(/</g, "\\u003c");
+  return `<!doctype html>\n<meta charset="utf-8">\n<meta name="referrer" content="no-referrer">\n<title>ui-view-web</title>\n<script>location.replace(${script});</script>\n<p><a href="${escaped}" rel="noreferrer">Open the page</a></p>\n`;
+}
+
+// holdsToken compares in constant time: another user of the machine can reach the port.
+const tokenBytes = Buffer.from(token);
+function holdsToken(url) {
+  const given = Buffer.from(url.searchParams.get("token") ?? "");
+  return given.length === tokenBytes.length && timingSafeEqual(given, tokenBytes);
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1");
+  // No page of the bridge is kept, and none is a referrer: a link a view draws or a resource a theme names is not told
+  // the address of the page.
+  res.setHeader("cache-control", "no-store");
+  res.setHeader("referrer-policy", "no-referrer");
   if (!own(req)) return refuse(res, 403, "not this page's request");
   if (req.method === "GET" && files[url.pathname]) {
     const [name, type] = files[url.pathname];
@@ -316,7 +346,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(200, { "content-type": THEME_TYPES[name[2]], "cache-control": "no-store" });
     return res.end(body);
   }
-  if (url.searchParams.get("token") !== token) return refuse(res, 403, "the token is missing or wrong");
+  if (!holdsToken(url)) return refuse(res, 403, "the token is missing or wrong");
   if (req.method === "GET" && url.pathname === "/events") return target ? follow(req, res) : events(req, res);
   if (req.method === "POST" && url.pathname === "/send") {
     const session = sessions.get(url.searchParams.get("session"));
@@ -333,11 +363,27 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`ui-view-web: http://127.0.0.1:${server.address().port}/?token=${token}`);
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  if (printToken) return console.log(`ui-view-web: ${origin}/?token=${token}`);
+  // A log, a terminal recording or a shared screen must not hold a live address: the line names a file to open instead.
+  // The directory is made private (mkdtemp: mode 0700) and the files in it are 0600; all are removed when the process
+  // ends, by any path that runs code ('exit' follows a signal handler's process.exit and an uncaught error). On Windows
+  // the mode bits do not apply: what protects the files is the ACL the user's temporary directory gives what is made in it.
+  const dir = mkdtempSync(join(tmpdir(), "ui-view-web-"));
+  process.on("exit", () => rmSync(dir, { recursive: true, force: true }));
+  const address = `${origin}/?token=${token}`;
+  // address holds the address and nothing else, for a script that reads it. It is never an argument of a command: a
+  // command that gave the browser the address would put the token in the argument list of the opener and of the browser,
+  // which every user of a Linux machine can read (/proc/<pid>/cmdline).
+  writeFileSync(join(dir, "address"), address, { mode: 0o600, flag: "wx" });
+  // open.html is what an author opens: its path holds no token, and the file is as private as address.
+  const open = join(dir, "open.html");
+  writeFileSync(open, openPage(address), { mode: 0o600, flag: "wx" });
+  console.log(`ui-view-web: ${origin}/ (open: ${open})`);
 });
 // A signal ends the sessions and then waits for the pigs it started: a pig's own teardown (it removes the files it made in
 // the temporary directory) runs after its stdin or its signal, and the bridge's exit must not outrun it.
-for (const signal of ["SIGINT", "SIGTERM"]) {
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
   process.on(signal, () => {
     for (const session of sessions.values()) session.close();
     const killer = setTimeout(() => children.forEach((child) => child.kill("SIGKILL")), 10000);

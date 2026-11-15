@@ -8,8 +8,8 @@ The bridge has two modes.
 
 ```sh
 cd examples/ui-view-web
-node bridge.mjs -- -e ./demo-extension.mjs      # prints http://127.0.0.1:<port>/?token=<token>
-# open the printed address and type /ui-demo
+node bridge.mjs -- -e ./demo-extension.mjs      # prints http://127.0.0.1:<port>/ and the path of open.html, which sends a browser to the page
+# open the open.html its first line names (below, "Opening the page") and type /ui-demo
 ```
 
 The bridge starts one `pig --mode rpc` per page, so every page has a session of its own and can prompt it. `--pig <path>` names the pig to start (default `$PIG_BIN`, then `pig` on the PATH), `--port <n>` the port (default: any free one); everything after `--` goes to pig.
@@ -20,7 +20,7 @@ When the page reads slower than pig writes, the bridge stops reading pig's outpu
 
 ```sh
 pig --piglet ./my-piglet.yaml                                # an interactive session, in a terminal
-node bridge.mjs --connect ~/.pig/agent/view-endpoint         # in another; open the printed address
+node bridge.mjs --connect ~/.pig/agent/view-endpoint         # in another; open the open.html its first line names
 ```
 
 With `--connect` the bridge starts no pig. Every page is one more client of a session that already runs, next to its terminal: both draw the same mounts, a click in the page is redrawn in the terminal, and a key in the terminal is redrawn in the page. The session must serve a view endpoint, which a Piglet selects with two keys:
@@ -35,7 +35,33 @@ viewEndpoint: socket    # other programs of this user may attach: <agent directo
 - `/reload` keeps the session's registry, so it keeps the connection and the page's attachment. It replaces the instance of every extension, and a mount belongs to the instance that made it: each mount arrives once more as `broken` (reason `owner_gone`) and goes from the page with one line (`<title> closed: its extension stopped.`), and what the reloaded extensions mount afterwards is drawn as new mounts: the line of a key that is mounted again goes with it.
 - A new, resumed, forked or switched session and the exit close the connection and remove the socket. The page then shows no mount. The bridge tries again every 100 ms, tells the page why it waits (`no running session: ...`), and when the next session serves its socket the page attaches to it and draws what that session holds. After `--wait <seconds>` (default 60) without a session the page's stream ends with the reason; reload the page to try again.
 - A page that stops reading is owed at most 8 MiB and is then cut, which ends its attachment; the browser connects again by itself and the page attaches afresh. The bridge never stops reading the session for a page, and it refuses a page's line while the session is owed 8 MiB it has not read.
-- Security is the same in both modes: 127.0.0.1 only, and the token and the origin are checked before the bridge opens any connection to the session.
+- Security is the same in both modes: 127.0.0.1 only, and the token and the origin are checked before the bridge opens any connection to the session. The address with the token is not printed; see "Opening the page".
+
+## Opening the page
+
+The first line the bridge prints names the file to open:
+
+```text
+ui-view-web: http://127.0.0.1:<port>/ (open: <dir>/open.html)
+```
+
+`open.html` sends your browser to the page's address. Open it with the path the line printed:
+
+```sh
+open <path>             # macOS
+xdg-open <path>         # Linux
+Start-Process <path>    # Windows, PowerShell
+```
+
+The path holds no token, and the file is readable by you only. Beside it is `address`, which holds the page's address with its token, `http://127.0.0.1:<port>/?token=<token>`, and nothing else, for a script that reads it. Never pass the content of `address` as an argument to a browser or to `open`, `xdg-open` or `Start-Process`: that puts the token in the argument lists of the opener and of the browser, and on Linux every user of the machine can read an argument list (`/proc/<pid>/cmdline`, `ps`). Copying it into a browser's address bar is fine. If your browser does not follow the script in `open.html`, the file also shows a link: click it.
+
+Why the bridge does not print the address: it is a live secret, and a log, a terminal recording, a CI log or a shared screen must not hold one. The token lives as long as the bridge runs. With `-- <pig arguments>` the address lets any process of this machine that has it prompt the pig the bridge starts, as you, and so do what the agent can do; with `--connect` it passes the seven `ui_view_*` commands only. Treat the address like a password. Other users of the machine can reach the port, and the token is all that stops them: 16 random bytes, compared in constant time.
+
+- `address` and `open.html` are in a directory the bridge makes in the temporary directory (mode 0700), they have mode 0600, and the bridge removes the directory when it ends: on Ctrl-C, on SIGTERM and SIGHUP, and on an error that ends it. A bridge that is killed with SIGKILL cannot remove it; the files then hold a token no process accepts.
+- On Windows the mode bits do not apply. What protects the files there is the access list (ACL) that the user's temporary directory (`%TEMP%`) gives to what is made in it.
+- Once the page has loaded, it takes the token out of the address bar and the browser's history and keeps it for that tab only (`sessionStorage`), so a reload still works. An address without the token, opened in a new tab, does not attach: the bridge refuses it with 403 (`the token is missing or wrong`). Open `open.html` again.
+- Every answer of the bridge carries `Referrer-Policy: no-referrer` and `Cache-Control: no-store`. The bridge prints no request.
+- `--print-token`, or the environment variable `UI_VIEW_WEB_PRINT_TOKEN=1`, prints the old line, `ui-view-web: http://127.0.0.1:<port>/?token=<token>`, and makes no file. Use it for a script that reads the line, and know that whatever records the output then holds a live address. An empty value of the variable, or any value other than `1`, does not turn it on.
 
 ## A presentation of your own: `--theme`
 
@@ -53,7 +79,8 @@ A script that drives the terminal of the session (the integration tests do it wi
 
 | File | What it is |
 |---|---|
-| `bridge.mjs` | the relay: `GET /events` streams a session's lines to a page, `POST /send` writes one line of the page to it, `GET /state` counts what the bridge holds; each needs the token of the printed address and this origin |
+| `bridge.mjs` | the relay: `GET /events` streams a session's lines to a page, `POST /send` writes one line of the page to it, `GET /state` counts what the bridge holds; each needs the token of the address (in the file `address`, or printed with `--print-token`) and this origin |
+| `open.html`, `address` | not in this directory: the bridge makes them in a private temporary directory and removes them when it ends. Open `open.html`, the file its first line names; `address` holds the address with its token for a script, and its content is never an argument to a browser, because other users of the machine can read process arguments |
 | `index.html`, `client.js` | the page: attach, the client's rule for numbers, gaps and resync, view nodes as controls, drawings as SVG, a11y and focus, intents and their cancel, reports; the default stylesheet and its tokens are in `index.html` |
 | `testdata/fixture*.mjs` | four extensions of the page tests: `/fx-a mount <content>`, `update`, `hide`, `show`; `fx-c` and `fx-d` also answer two intents of their view: `fx.open` shows the mount and `fx.close` hides it |
 | `testdata/scene.mjs` | an extension of the page tests: `/scene mount <points>` mounts a drawing of every shape kind with regions whose intents it answers by redrawing |
@@ -63,6 +90,7 @@ A script that drives the terminal of the session (the integration tests do it wi
 | `bridge_test.go` | a pig for every page: `TestBridgeRelaysTheCarrier` drives the bridge with an HTTP client and always runs; the `TestPage*` tests drive the page in headless Chromium (focus and intents, layout geometry, colours and markdown, typed text across updates, panels as tabs); they need `CHROMIUM_BIN` and are skipped without it, and fail without it where `CHORD_REQUIRE_CHROMIUM` is set, as in `make ci-chord-web` |
 | `connect_test.go` | `--connect` against a view endpoint the test serves: the `TestConnect*` tests drive the bridge with an HTTP client, `TestPageFollowsARunningSession` and `TestPageSaysNothingOfAMountItsExtensionEndedOrMountedAgain` (what the page says when a mount ends) drive the page in headless Chromium. `TestUIViewWebPageAndTerminalShareOneSession` in `test/integration` does it with a real interactive session |
 | `theme_test.go` | `--theme`: without it the page is `index.html` byte for byte and `/theme/` holds nothing; with it the link is added and only the directory's own files of the served types are found |
+| `token_print_test.go` | the first line: the default names a private file and holds no token in stdout or stderr in any form it could print; `--print-token` and `UI_VIEW_WEB_PRINT_TOKEN=1` print the old line byte for byte, any other value does not; the files are removed on SIGINT, SIGTERM, SIGHUP and an uncaught error; `open.html` is private and opens the page from headless Chromium, whose address bar then holds no token, also after a reload; every answer carries `Referrer-Policy` and `Cache-Control`; no process holds the token in its argument list or environment. The other tests of this directory read the address from the file |
 
 ## What the page draws
 
