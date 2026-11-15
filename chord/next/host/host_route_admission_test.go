@@ -1255,6 +1255,9 @@ func TestRouteAdmissionAServersOwnReferenceToAGatedAddressIsWithheldAndAdmittedA
 		defer closeHosts(t, g.Tab, g.Server)
 		// The server acts as itself (kind `server`): its decision is its own, apart from the owner's.
 		own := mustHold(t, g.Server, PlacedNotes, jsonObject("session", "S1"))
+		watch, err := own.State().Watch(background)
+		must(t, err)
+		states := statesOf(t, watch)
 		g.settled()
 		wantDenied(t, own)
 		if resolves := g.Resolves(); len(resolves) != 0 {
@@ -1263,11 +1266,18 @@ func TestRouteAdmissionAServersOwnReferenceToAGatedAddressIsWithheldAndAdmittedA
 		g.set("yes", "server")
 		g.settled()
 		wantKind(t, own, RefStateLive)
+		if _, bound, err := own.Variant(); err != nil || !bound {
+			t.Fatalf("variant bound = %v, %v, want a variant bound once it is live", bound, err)
+		}
 		g.set("no", "server")
 		g.settled()
 		wantDenied(t, own)
 		if _, err := own.Member("count").Value(); err == nil {
 			t.Fatal("a denied remote reference still reads its replica")
+		}
+		// remote-object.ts `withheld`: a denial drops what it bound; a refusal that only holds back (waiting) would keep it.
+		if variant, bound, err := own.Variant(); err != nil || bound {
+			t.Fatalf("variant after the denial = %q bound %v, %v, want none bound", variant, bound, err)
 		}
 		g.WorkerLoaded(t, "session|S1")
 		if references := workerReferences(g.relayed, "session|S1"); references != 0 {
@@ -1276,6 +1286,11 @@ func TestRouteAdmissionAServersOwnReferenceToAGatedAddressIsWithheldAndAdmittedA
 		g.set("yes", "server")
 		g.settled()
 		wantKind(t, own, RefStateLive)
+		// The allow holds it again as `loading` (admitted: startOver) until its next binding, which makes it live: it does not
+		// jump from the denial to live.
+		if all := states.All(); len(all) < 2 || all[len(all)-2] != "loading" || all[len(all)-1] != "live" {
+			t.Fatalf("states after the allow = %v, want ... loading, live", all)
+		}
 		if references := workerReferences(g.relayed, "session|S1"); references != 1 {
 			t.Fatalf("worker references = %d, want 1 after the allow", references)
 		}

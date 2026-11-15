@@ -3,9 +3,11 @@ package host
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,6 +30,20 @@ func joinHost(t *testing.T) *chordHost {
 	h := newHost(t, HostOptions{}).(*chordHost)
 	t.Cleanup(func() { closeHosts(t, h) })
 	return h
+}
+
+// joinedParked is the join over a loop whose only task waits parked for something the test holds: it returns at once. A join
+// that counts a parked task waits for it, and the loop's detector ends that wait by a panic after joinStall; the panic is the
+// failure of this test, with the detector's first line, instead of a crash of the binary.
+func joinedParked(t *testing.T, h *chordHost) {
+	t.Helper()
+	defer func() {
+		if report := recover(); report != nil {
+			first, _, _ := strings.Cut(fmt.Sprint(report), "\n")
+			t.Fatalf("the join waited for a task that is parked on something the test holds: %s", first)
+		}
+	}()
+	loopseam.Quiesce(h.loop())
 }
 
 func TestLoopJoinWaitsForATaskThatEndsLaterAndForTheContinuationOfItsPromise(t *testing.T) {
@@ -97,17 +113,19 @@ func TestLoopJoinWaitsForWhatIsLeftOfAHandlerThatParked(t *testing.T) {
 func TestLoopJoinDoesNotWaitForAHandlerParkedOnAGateAndWaitsForItsRestOnceTheGateIsReleased(t *testing.T) {
 	h := joinHost(t)
 	gate := make(chan struct{})
+	release := sync.OnceFunc(func() { close(gate) })
+	t.Cleanup(release)
 	var rest atomic.Bool
 	lendParked(h, func(ctx context.Context) {
 		_, _ = chordctx.Receive(ctx, gate)
 		rest.Store(true)
 	})
 	// The handler waits on a gate a test holds: Pi's `await held` pending, which `delivered()` does not wait for.
-	loopseam.Quiesce(h.loop())
+	joinedParked(t, h)
 	if rest.Load() {
 		t.Fatal("the handler went on before its gate was released")
 	}
-	close(gate)
+	release()
 	loopseam.Quiesce(h.loop())
 	if !rest.Load() {
 		t.Fatal("the join returned before the handler, whose gate was released just before, went on")
@@ -117,6 +135,7 @@ func TestLoopJoinDoesNotWaitForAHandlerParkedOnAGateAndWaitsForItsRestOnceTheGat
 func TestLoopJoinDoesNotWaitForAHandlerInUntilAbortedAndWaitsForItsRestOnceItIsAborted(t *testing.T) {
 	h := joinHost(t)
 	base, abort := context.WithCancel(context.Background())
+	t.Cleanup(abort)
 	var rest atomic.Bool
 	lendParkedUnder(h, base, func(ctx context.Context) {
 		UntilAborted(ctx)
@@ -124,7 +143,7 @@ func TestLoopJoinDoesNotWaitForAHandlerInUntilAbortedAndWaitsForItsRestOnceItIsA
 	})
 	// Waiting for its abort is what the handler does until then: Pi's pending `await untilAborted(ctx)`, which `delivered()` does
 	// not wait for.
-	loopseam.Quiesce(h.loop())
+	joinedParked(t, h)
 	if rest.Load() {
 		t.Fatal("the handler went on before its abort")
 	}
@@ -148,10 +167,11 @@ func TestLoopJoinDoesNotWaitForAHandlerInSleepAndItResumesAtTheDeadlineAndAtAnAb
 	})
 	t.Run("abort", func(t *testing.T) {
 		base, abort := context.WithCancel(context.Background())
+		t.Cleanup(abort)
 		slept := make(chan error, 1)
 		lendParkedUnder(h, base, func(ctx context.Context) { slept <- sleepOn(h.loop(), time.Hour, ctx) })
 		// An hour is a wait for something the loop does not run: the join does not wait for it.
-		loopseam.Quiesce(h.loop())
+		joinedParked(t, h)
 		select {
 		case err := <-slept:
 			t.Fatalf("a sleep of an hour returned %v before its abort", err)
@@ -229,6 +249,13 @@ func TestLoopJoinDoesNotWaitForATaskParkedOnAGateAndWaitsForItsContinuationOnceT
 			gate, settled := make(chan struct{}), make(chan chordctx.Settled[int])
 			ctx, cancel := context.WithCancel(background)
 			defer cancel()
+			t.Cleanup(func() {
+				select {
+				case <-gate:
+				default:
+					close(gate)
+				}
+			})
 			var continued atomic.Bool
 			h.enter(func() {
 				awaitTask(h, func() (int, error) {
@@ -238,7 +265,7 @@ func TestLoopJoinDoesNotWaitForATaskParkedOnAGateAndWaitsForItsContinuationOnceT
 			})
 			// The task parks (or the join waits until it does, it cannot end before the wait is over): the join returns with
 			// the task unfinished.
-			loopseam.Quiesce(h.loop())
+			joinedParked(t, h)
 			if continued.Load() {
 				t.Fatal("the task went past its wait")
 			}
@@ -293,7 +320,7 @@ func TestLoopJoinDoesNotWaitForATaskParkedOnTheLineAndWaitsForItsContinuationOnc
 			return 1, nil
 		}).then(func(int, error) { continued.Store(true) })
 	})
-	loopseam.Quiesce(h.loop())
+	joinedParked(t, h)
 	if continued.Load() {
 		t.Fatal("the task went past the line's holder")
 	}
