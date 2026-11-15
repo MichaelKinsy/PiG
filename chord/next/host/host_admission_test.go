@@ -1105,6 +1105,28 @@ func admRejection(t testing.TB, result *parkedCallResult) error {
 	return err
 }
 
+// admOverLink is Pi's `overLink()`: a server of Access and Doc, a client linked to it (the link's caller is the `owner`), and
+// `set` makes `access.set({ who: "owner", mode })` on the server.
+type admOverLink struct {
+	*linkedHosts
+	set func(mode string)
+}
+
+func admLinked(t *testing.T, code admDocCode) *admOverLink {
+	t.Helper()
+	hosts := linked(t, func(host FacetHost) error {
+		if err := admAccessFacet(admAccessCode{}, admAccess, nil).definition.setup(host, nil); err != nil {
+			return err
+		}
+		return admDocFacet(code, admDoc, nil).definition.setup(host, nil)
+	}, linkedOptions{})
+	access := mustGet(t, hosts.Server, admAccess, jsonObject())
+	return &admOverLink{linkedHosts: hosts, set: func(mode string) {
+		_, err := access.Call("set", jsonObject("who", "owner", "mode", mode), background)
+		must(t, err)
+	}}
+}
+
 func TestAdmissionOverALink(t *testing.T) {
 	t.Run("a call still waiting for a call-window slot at a denial is rejected forbidden/revoked, as one in flight, and never sent", func(t *testing.T) {
 		window := 1
@@ -1151,6 +1173,72 @@ func TestAdmissionOverALink(t *testing.T) {
 		must(t, server.Close(background))
 	})
 
+	t.Run("a second reference joins a denied hold and shows the denial; both go live with the allow", func(t *testing.T) {
+		l := admLinked(t, admDocCode{Built: &admLog{}})
+		first := mustHold(t, l.Client, admDoc, jsonObject("id", "a"))
+		settleLinked(l.linkedHosts)
+		deliveredOn(l.Server, l.Client)
+		second := mustHold(t, l.Client, admDoc, jsonObject("id", "a"))
+		if st := stateOfRef(second); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Fatalf("second = %+v, want failed denied", st)
+		}
+		l.set("read")
+		settleLinked(l.linkedHosts)
+		deliveredOn(l.Server, l.Client)
+		if a, b := stateOfRef(first).Kind, stateOfRef(second).Kind; a != RefStateLive || b != RefStateLive {
+			t.Fatalf("[%v %v], want [live live]", a, b)
+		}
+		// One wire hold: one object, one presence entry.
+		if n := len(admPresent(l.Server, admDoc)); n != 1 {
+			t.Errorf("presence = %d, want 1", n)
+		}
+		must(t, l.Client.Close(background))
+		must(t, l.Server.Close(background))
+	})
+
+	t.Run("host.revoke ends a denied principal's object: its admission's requests go with it", func(t *testing.T) {
+		errs, decisions := &hostErrors{}, &admDecisions{}
+		address := Server.Address(nil)
+		server := newHost(t, HostOptions{
+			Address: &address, Principal: serverPrincipal(), OnError: errs.push,
+			RevokedBy: RevokedBy[delta.JsonValue](func(principal data.Principal) ([]delta.JsonValue, error) {
+				if principalKind(principal) == "owner" {
+					return []delta.JsonValue{"owner"}, nil
+				}
+				return nil, nil
+			}),
+		})
+		facets := []HostFacet{
+			{Name: "@test/access", Facet: admAccessFacet(admAccessCode{}, admAccess, nil)},
+			{Name: "@test/doc", Facet: admDocFacet(admDocCode{Built: &admLog{}, Admit: decisions.counting(admitBy(false))}, admDoc, nil)},
+		}
+		mustLoad(t)(server.Load(facets, background))
+		client := newHost(t, HostOptions{OnError: func(HostError) {}})
+		mustLoad(t)(client.Load(nil, background))
+		a, b := link.MemoryLinkPair()
+		must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+		must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+		before := decisions.len()
+		doc := mustHold(t, client, admDoc, jsonObject("id", "a"))
+		transported(a, b)
+		deliveredOn(server, client)
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Fatalf("doc = %+v, want failed denied", st)
+		}
+		if n := admActivity(server, "references"); n != 1 {
+			t.Fatalf("activity.references = %v, want 1", n)
+		}
+		must(t, server.Revoke("owner", background))
+		transported(a, b)
+		deliveredOn(server, client)
+		if n := admActivity(server, "references"); n != 0 {
+			t.Errorf("activity.references = %v, want 0", n)
+		}
+		expectCollected(t, decisions.since(before)...)
+		expectNoErrors(t, errs)
+		must(t, client.Close(background))
+		must(t, server.Close(background))
+	})
 }
 
 // admActivity is `host.activity.value[field]`.
