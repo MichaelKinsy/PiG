@@ -46,6 +46,7 @@
     "github.com/MichaelKinsy/PiG/coding/source",
     "github.com/MichaelKinsy/PiG/coding/uiview",
     "github.com/MichaelKinsy/PiG/extensions/sdk",
+    "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
     "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
     "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
     "github.com/MichaelKinsy/PiG/extensions/sdk/internal/kitwire",
@@ -235796,6 +235797,248 @@
       "shapeHash": "sha256:2210a4b0b5447db85408863294091e2116a8350bf2f356d7976b8a153e247e14"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Env",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "Env",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Env"
+      },
+      "shapeHash": "sha256:1c38e11abecade031c39827185e9ac15e838a370a4d1d833cab3657509a7466c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#ExitCode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "ExitCode",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (int, bool)"
+      },
+      "shapeHash": "sha256:282d9e6ba10451d0f4092f990c43accd93671f6fc1daed712ddd645d0f68de62"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Hook",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "Hook",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Hook"
+      },
+      "shapeHash": "sha256:25aeab7c60a6aff2cdcc1fb446398b0634b0e611a8c5306451f22a04c6c08561"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Register",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "Register",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(h Hook)"
+      },
+      "shapeHash": "sha256:39525d15d8ff5ddda1e321df3cdfe708ea005fdd075f2bb16e5825d31d0500ec"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Registered",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "Registered",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() Hook"
+      },
+      "shapeHash": "sha256:50eda774fb481174cdd2da95ec1ae63fb8046534afe2afb7adcc4031f3d92edd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Result",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "Result",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Result"
+      },
+      "shapeHash": "sha256:18238b779f9c34b850dfb19262b5033c826397cdedca114adec53dcf89ff386d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#RetryPolicy",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "RetryPolicy",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "RetryPolicy"
+      },
+      "shapeHash": "sha256:f6d74a2793bec94fc60d05beb081a86a44d11d60febf1d77ebd20a445737e03a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#SetExitCode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "SetExitCode",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(c int)"
+      },
+      "shapeHash": "sha256:f273ecccf6b32ae4f67c3cd34f0256ded0798fc2759c29cbb842aae6e8170e48"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#SetStdout",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "SetStdout",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(w io.Writer)"
+      },
+      "shapeHash": "sha256:6e50c2e631188708bf46f2b9e34eabdbd42a34559b5973e09becac8ee43be02f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Stdout",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "Stdout",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() io.Writer"
+      },
+      "shapeHash": "sha256:d7c677d9ada70cf8271efff252875ad7277df0425d684d26fa7fb0a0b8a13f24"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#exitCode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "exitCode",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "int"
+      },
+      "shapeHash": "sha256:8227b502038b08acf2c1eaddd782f2d370e26cf4bed2d3b8c74045d4c95e78d0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#exitCodeS",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "exitCodeS",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "bool"
+      },
+      "shapeHash": "sha256:58c4edfb6b4510b75f2f02a3aab499ee7b806d5fe9e574872a76242744f74be4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#hook",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "hook",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[Hook]"
+      },
+      "shapeHash": "sha256:8cf171b20cfa2d649a5ace3cf82add83ea54f8879c474eb1c423e1404ad7680e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#hook.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "hook.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *Hook, new *Hook) (swapped bool)"
+      },
+      "shapeHash": "sha256:c01344039655da925732fcc18ee556badbc8e213bea18a4a80b7c8aa0fd15824"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#hook.Load",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "hook.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *Hook"
+      },
+      "shapeHash": "sha256:8b4f96f0c5683e1c12b340d073dd385828510e241e0a68a7ca88014ca53c5dd7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#hook.Store",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "hook.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *Hook)"
+      },
+      "shapeHash": "sha256:426cad0ad94540808009ad4d1e00ea3550f463995ca86c413b0106df3d316406"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#hook.Swap",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "hook.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *Hook) (old *Hook)"
+      },
+      "shapeHash": "sha256:97ebb1a248c0d20b7078464e6c12cb937aa630ec01e5074f5f7684cd6c7bd807"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#mu",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "mu",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync.Mutex"
+      },
+      "shapeHash": "sha256:a2d332c86a6bd7cbb82babb1c2f0f2f3652c3549828eadd3f034a5d06ef89a3d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#mu.Lock",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "mu.Lock",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#mu.TryLock",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "mu.TryLock",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#mu.Unlock",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "mu.Unlock",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#stdout",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/clihook",
+      "name": "stdout",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "io.Writer"
+      },
+      "shapeHash": "sha256:2aa853c310ce24a498161d7f88ccc2f8eea9d7fb5c37a40f099a28362d5ee649"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#Action",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
       "name": "Action",
@@ -259479,6 +259722,17 @@
       "shapeHash": "sha256:81d9bd583f5a0e2b1744be4c9fdced5dc78b0410da376e4f322ec90e0de0989a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#DefaultRetryConfig",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "DefaultRetryConfig",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() RetryConfig"
+      },
+      "shapeHash": "sha256:5cf42d73d153f762267fd718c4ebe52242aa8efa5f769f8333874d1152ec79bd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#DefaultSkillsDir",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "DefaultSkillsDir",
@@ -283052,6 +283306,17 @@
       "shapeHash": "sha256:fcf0d9f9c4b35116c5ba3481ee5b510140ea1906a54486b3368ac165b5061a29"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SetDefaultRetryConfig",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "SetDefaultRetryConfig",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(config RetryConfig)"
+      },
+      "shapeHash": "sha256:cfd2ec6eafdc2ea70c7b7ac38c2b50e464b939ef87493d44107ef03917146eea"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SetUncaughtGoroutineHandler",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "SetUncaughtGoroutineHandler",
@@ -291489,6 +291754,17 @@
       "shapeHash": "sha256:c4a051da47b494c782e95232b77c1eb7052d47750ee589dfb263dfcaf7906fe2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinRetryConfig",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtinRetryConfig",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "RetryConfig"
+      },
+      "shapeHash": "sha256:c89ce53681efa2608284a11b226fd7ae436cfb9e93d514dbadd5f70af225a04f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinRuntimeModels",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "builtinRuntimeModels",
@@ -296019,6 +296295,61 @@
         "type": "[]struct{value string; label string}"
       },
       "shapeHash": "sha256:84b1ec298ad799a21aad719880b462127bc445a0e5bd6136dec6885300e75744"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultRetryConfig",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "defaultRetryConfig",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[RetryConfig]"
+      },
+      "shapeHash": "sha256:436cddf55349247505b17f9fbd85698bb3244aa31d4de241a0be96d96f1c350b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultRetryConfig.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "defaultRetryConfig.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *RetryConfig, new *RetryConfig) (swapped bool)"
+      },
+      "shapeHash": "sha256:cfbaa4809f2ae65154956c2a4e4dc86fd9aa3c00dc688d9e18e07b2b79996163"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultRetryConfig.Load",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "defaultRetryConfig.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *RetryConfig"
+      },
+      "shapeHash": "sha256:75c9a5829cc54aa2236680688e1b79ea5e80a25edde595c8655b06383bb1cc8a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultRetryConfig.Store",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "defaultRetryConfig.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *RetryConfig)"
+      },
+      "shapeHash": "sha256:e7eaa1cdefc292c22095f2de5e010cdc0adce5d7fb9721370f0eb6d2533fffe6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultRetryConfig.Swap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "defaultRetryConfig.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *RetryConfig) (old *RetryConfig)"
+      },
+      "shapeHash": "sha256:d313f49f1a0b650fcf6f1b7d41c0546d345a27256fbe73b077f476f58aeb432a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultSessionDir",
