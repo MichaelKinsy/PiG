@@ -148,7 +148,7 @@ func (p *keyedPromise[T]) thenWithContext(ctx context.Context, callback func(val
 // waits parks (its call's section goes on) before it blocks.
 func (p *keyedPromise[T]) await(ctx context.Context) (T, error) {
 	parking.Park(ctx)
-	<-p.done
+	parkedOn(p.done)
 	return p.value, p.err
 }
 

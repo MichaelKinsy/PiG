@@ -282,7 +282,7 @@ func (records *jobRecords) undeclare() {
 	waiting := records.waiting.snapshot()
 	records.waiting.clear()
 	for _, run := range waiting {
-		records.loop.Go(func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
+		startTask(records.loop, func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
 	}
 }
 
@@ -795,7 +795,7 @@ func (records *jobRecords) progressed(tx *documents.Transaction, run *jobRun) er
 // settled is: a run's invocation settled: its outcome is recorded (phase `finishing`) in a transaction of the object
 // behind the state changes admitted before, so `outcome.State` has them; then it is finished on the live attempt.
 func (records *jobRecords) settled(run *jobRun, ended jobEnded) {
-	records.loop.Go(func() { records.recordOutcome(run, ended) })
+	startTask(records.loop, func() { records.recordOutcome(run, ended) })
 }
 
 // cut is: a running run whose attempt was sealed: its signal fires with err, its invocation is fenced (later state
@@ -823,7 +823,7 @@ func (records *jobRecords) cut(run *jobRun, err *data.ChordError, reason cutReas
 		if reason == cutReload {
 			ended = reload
 		}
-		records.loop.Go(func() { records.recordOutcome(run, ended) })
+		startTask(records.loop, func() { records.recordOutcome(run, ended) })
 	}
 }
 
@@ -1150,7 +1150,7 @@ func (records *jobRecords) need(run *jobRun) {
 	// A job the code no longer declares: blocked `version`, kept (slice 7b section 8).
 	if !records.declared {
 		if run.phase != phaseBlocked {
-			records.loop.Go(func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
+			startTask(records.loop, func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
 		}
 		return
 	}
@@ -1170,7 +1170,7 @@ func (records *jobRecords) dispatch(run *jobRun, target *job) {
 	}
 	// Not of a version the code takes: blocked `version` until a reload brings matching code.
 	if !records.takes(run) {
-		records.loop.Go(func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
+		startTask(records.loop, func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
 		return
 	}
 	if run.phase == phaseFinishing {
@@ -1181,11 +1181,11 @@ func (records *jobRecords) dispatch(run *jobRun, target *job) {
 		return
 	}
 	if run.abortMarked {
-		records.loop.Go(func() { records.recordOutcome(run, aborted) })
+		startTask(records.loop, func() { records.recordOutcome(run, aborted) })
 		return
 	}
 	if run.resuming && records.definition.Persist != nil && records.definition.Persist.Resume == ResumeAbandon {
-		records.loop.Go(func() { records.recordOutcome(run, restart) })
+		startTask(records.loop, func() { records.recordOutcome(run, restart) })
 		return
 	}
 	run.resuming = false

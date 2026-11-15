@@ -39,19 +39,21 @@ var (
 	awaitTaskName       = strings.TrimSuffix(runtime.FuncForPC(reflect.ValueOf(awaitTask[int]).Pointer()).Name(), "[...]")
 	afterDeliveriesName = runtime.FuncForPC(reflect.ValueOf((*onRoutine).afterDeliveries).Pointer()).Name()
 	goTaskName          = runtime.FuncForPC(reflect.ValueOf(goTask).Pointer()).Name()
+	startTaskName       = runtime.FuncForPC(reflect.ValueOf(startTask).Pointer()).Name()
 )
 
 func newScopeLoop() *scopeLoop { return &scopeLoop{fakeLoop: newFakeLoop(), real: NewLoop()} }
 
 func (l *scopeLoop) Run(work func()) { l.real.Run(work) }
 
-// starterOf is the function that called scopeLoop.Go, goTask (the host's counted start of a task) not counting as a caller.
+// starterOf is the function that called scopeLoop.Go, goTask and startTask (the host's counted start of a task) not counting as
+// callers.
 func starterOf() string {
 	pcs := make([]uintptr, 8)
 	frames := runtime.CallersFrames(pcs[:runtime.Callers(3, pcs)])
 	for {
 		frame, more := frames.Next()
-		if frame.Function != goTaskName || !more {
+		if (frame.Function != goTaskName && frame.Function != startTaskName) || !more {
 			return frame.Function
 		}
 	}
