@@ -385,9 +385,7 @@ func TestBridgeCodeGivesOneSecretToTwoRacingRequests(t *testing.T) {
 	var wg sync.WaitGroup
 	start := make(chan struct{})
 	for range racers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			status, _, _, err := b.post("/exchange", codeBody(code), "")
 			switch {
@@ -400,7 +398,7 @@ func TestBridgeCodeGivesOneSecretToTwoRacingRequests(t *testing.T) {
 			default:
 				t.Errorf("POST /exchange = %d", status)
 			}
-		}()
+		})
 	}
 	close(start)
 	wg.Wait()
@@ -498,9 +496,7 @@ func TestBridgeWritesTheNextCodeBeforeItAnswers(t *testing.T) {
 		readers.Wait()
 	}
 	t.Cleanup(shutdown)
-	readers.Add(1)
-	go func() {
-		defer readers.Done()
+	readers.Go(func() {
 		whole := regexp.MustCompile(`#([0-9a-f]{32})`)
 		for {
 			select {
@@ -531,7 +527,7 @@ func TestBridgeWritesTheNextCodeBeforeItAnswers(t *testing.T) {
 				}
 			}
 		}
-	}()
+	})
 	seen := map[string]bool{}
 	for range 25 {
 		code := b.code(t)
