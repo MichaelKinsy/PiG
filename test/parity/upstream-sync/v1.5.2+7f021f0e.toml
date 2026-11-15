@@ -1,8 +1,8 @@
 from = "1.5.2+c3cc9163"
-to = "1.5.2+0db9861e"
+to = "1.5.2+7f021f0e"
 
-# The range c3cc91632d0a..0db9861ec018 under packages/chord: 92e1db6ca (slice 14, first part: named live queries, column
-# sets, exists and joins, lists), a merge, and 0db9861ec (the app kit exports its start-data facets). The Go chord
+# The range c3cc91632d0a..7f021f0eebfa outside apps/p2 and apps/p3: 92e1db6ca (slice 14, first part: named live queries, column
+# sets, exists and joins, lists), a merge, 0db9861ec (the app kit exports its start-data facets), and the two test-only commits 0a25dd15e (Together Kimi K3) and 7f021f0ee (consumer event tests). The Go chord
 # implements Pi through c3cc91632d0a and does not implement slice 14. Every row below says so: `deferred` rows are work
 # the port has not done (they lie behind PORT_MAP's 🟡 rows of the changed files), `designed-out` rows are documents.
 # Interop for an app that declares no named query and uses no list: no fingerprint, wire frame or stored format changes
@@ -535,3 +535,17 @@ change = "modified"
 disposition = "deferred"
 evidence = []
 rationale = "92e1db6ca: the test scaffolding drops its LiveQueries stub from the fake object (queries: new LiveQueries()). Its Go form is the shared helpers in chord/next/host/host_next_support_test.go; they change when Reads is ported."
+
+[[files]]
+path = "packages/chord/test/remote/consumer.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents", "test:chord/next/host/remote_consumer_events_test.go#waitDelivered"]
+rationale = "7f021f0ee: the two event cases that waited for the web inflate by turns (`for (turn < 50 && seen.length === 0) await transported()`, `for (turn < 5 && seen.length === 0)`) wait for the listener's delivery (`delivered.promise`, resolved by the listener): libuv's thread pool runs the real inflate, so no number of turns is sure to cover it. The async contract: the test waits on the first delivery to the listener, then one more turn, then asserts. Go: both cases (`inflate nothing for a member nobody listens to…` and `keep the event window exhausted while an asynchronous inflate holds the message…`) in remote_consumer_events_test.go close a channel from the listener (sync.Once) and wait on it with waitDelivered (a 10 s bound, no sleep, no turn count) before the assertions. Go's ack is sent by the client's own goroutine after the delivery, so each case also waits for the ack event as before (rhWaitFor on the acks the peer saw, not a turn count). The base test already waited on that ack, not on turns: no red exists; 50 runs under -race passed on the base and after (counts in the commit message)."
+
+[[files]]
+path = "packages/ai/test/together-models.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "0a25dd15e: the Together Kimi K3 case expects maxTokens 1048576 (was 131072). Pi's Together models come from models.dev at its build (catalog/providers/together.ts, modelsDevModels; src/providers/data is not in Pi's git), so the test follows live data, not a Pi source change. PiG's catalog (ai/models_generated.go) is the snapshot of the pin, Together Kimi K3 max output 131072, and ai/catalog_options_upstream_test.go:66 expects 131072, consistent with it. Not ported: it needs a re-snapshot of the catalog from models.dev (a data refresh, not a per-test edit). Row 188 (model catalog snapshot older than models.dev: Together Kimi K3 max output 131072 vs 1048576), decided by the coordinators; a separate lane measures the refresh."
