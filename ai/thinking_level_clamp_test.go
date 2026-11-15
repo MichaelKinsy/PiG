@@ -123,12 +123,10 @@ func TestGetSupportedThinkingLevelsResultIsTheCallersToChange(t *testing.T) {
 // coding Session asks for every agent run it ends.
 func TestClampThinkingLevelOfASupportedLevelAllocatesNothing(t *testing.T) {
 	for name, model := range thinkingLevelTestModels() {
-		level := ThinkingOff
-		if supported := GetSupportedThinkingLevels(model); len(supported) > 0 {
-			level = supported[len(supported)-1]
-		}
-		if got := testing.AllocsPerRun(100, func() { _ = ClampThinkingLevel(model, level) }); got != 0 {
-			t.Errorf("%s: ClampThinkingLevel(%q) allocates %v times, want 0", name, level, got)
+		for _, level := range GetSupportedThinkingLevels(model) {
+			if got := testing.AllocsPerRun(100, func() { _ = ClampThinkingLevel(model, level) }); got != 0 {
+				t.Errorf("%s: ClampThinkingLevel(%q) allocates %v times, want 0", name, level, got)
+			}
 		}
 	}
 }

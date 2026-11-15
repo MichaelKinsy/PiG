@@ -485,10 +485,7 @@ func (s *Session) recordThinkingLevel(branch []icodingagent.SessionEntry) {
 	if !found {
 		return
 	}
-	effective := recorded
-	if !slices.Contains(s.AvailableThinkingLevels(), recorded) {
-		effective = ai.ClampThinkingLevel(s.Model(), recorded)
-	}
+	effective := ai.ClampThinkingLevel(s.Model(), recorded)
 	if effective == s.ThinkingLevel() {
 		return
 	}
