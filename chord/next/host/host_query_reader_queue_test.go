@@ -245,7 +245,7 @@ func TestQueryReaderArgumentsThatFailWithAnythingButNotReadyFailTheReadWithThatE
 		"another code": data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "the source is down"}, nil),
 		"a plain one":  errors.New("boom"),
 	} {
-		if _, got := given(err).value(); got != err {
+		if _, got := given(err).value(); got != err { //nolint:errorlint // identity: the failure as it is, not one that wraps it
 			t.Fatalf("%s: value failed with %v, want %v as it is", name, got, err)
 		}
 	}
