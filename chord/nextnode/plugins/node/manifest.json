@@ -25,7 +25,8 @@
 		"c8390defa9b69a05629a1a0877cd91aa18585ecd",
 		"926b2f8cd8a8ac966f331882557f1bdc98e200de",
 		"7ae9ff8c7be018d526cd50c6ffe35ad9e8128127",
-		"21e4cb80dddd4330806247818b1f4ec19af95fa5"
+		"21e4cb80dddd4330806247818b1f4ec19af95fa5",
+		"34fb59f670fd2fd0d142d2f308612b55e8fcb74e"
 	],
 	"patches": [
 		{
@@ -730,7 +731,7 @@
 		},
 		{
 			"path": "pi/chord/src/surfaces/client.ts",
-			"sha256": "4b2d95584930eaaae5791539cda830a477c16b73bdc86d6b3ed918b4d6759a1b"
+			"sha256": "d9f46184f7a95562d3bd9d88ee3a236a7a3ae0012abac6da63e79ab70236ba1a"
 		},
 		{
 			"path": "pi/chord/src/surfaces/connection.ts",

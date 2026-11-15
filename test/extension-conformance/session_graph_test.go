@@ -63,6 +63,9 @@ type sessionGraphRig struct {
 
 func newSessionGraphRig(t testing.TB) *sessionGraphRig {
 	t.Helper()
+	if os.Getenv(sessionGraphCollectorEnv) != "" {
+		collectContinuously(t)
+	}
 	r := &sessionGraphRig{t: t, host: subprocess.NewHostWithConfigRoot(t.TempDir(), t.TempDir())}
 	t.Cleanup(func() { r.host.Shutdown("test complete") })
 	r.host.SetSessionGraph(coding.NewSessionGraph())

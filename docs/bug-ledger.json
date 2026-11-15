@@ -3153,6 +3153,28 @@
       ]
     },
     {
+      "id": "BF-0fde943",
+      "title": "fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement",
+      "symptom": "fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement",
+      "rootCause": "the placement cache of (view_mount_image.go place) keyed the terminal image by ref+cols+rows, so a component that renders at more than one width in a frame, or two components of one image at two sizes, were each given an image of their own and its bytes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0fde943c25",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageInAnHStackIsTransmittedOncePerRef",
+        "coding/extension/host/subprocess/view_mount_image_test.go::TestMountImageUpdateSecondMountAndEnd"
+      ]
+    },
+    {
       "id": "BF-0ff9f4a",
       "title": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh…",
       "symptom": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.",
@@ -9517,6 +9539,28 @@
       ],
       "tests": [
         "internal/yaml12/parse_mutation_test.go::TestParseMatchesTheLibraryOnCollectionTagsOnScalars"
+      ]
+    },
+    {
+      "id": "BF-301270f",
+      "title": "An extension that emits an event to listeners in another extension process no longer pays a host round trip…",
+      "symptom": "An extension that emits an event to listeners in another extension process no longer pays a host round trip, and its allocations, for a varying share of its emits (a cost only: what the emits return is unchanged).",
+      "rootCause": "A listener realm that already waits in a synchronous call when events.dispatch reaches it reports events.quiesce at once. It wrote the report after the response, in a separate write, so the Host read the two in two reads in a varying share of the emits: the emit goroutine checked emission.pending before the report was applied, returned an emission, and the emitter paid an events.settle round trip (33 to 120 of 200 emits per burst). The report now goes first; the Host applies one connection's frames in wire order, so the verdict no longer depends on read timing. The protocol is otherwise unchanged. The runtime pack and its digest are regenerated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Extra allocation or slower run",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that emits an event to listeners in another extension process no longer pays a host round trip, and its allocations, for a varying share of its emits (a cost only: what the emits return is unchanged). The listener process now reports that it has run its listeners before it sends its answer, so the host settles the emit when the answer arrives and does not depend on whether a second read has already delivered the report; the same 200 emits cost the same frames and allocations on every run.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "301270f76a",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/xref_quiesce_order_test.go::TestXrefListenerRealmReportsQuiesceBeforeItsDispatchResponse"
       ]
     },
     {
@@ -20767,6 +20811,34 @@
         "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsOutputWhenItsChannelsReaderEndedFirst",
         "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterWhatItsChannelsReaderTookIsTold"
       ]
+    },
+    {
+      "id": "BF-60e15bd",
+      "title": "A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded…",
+      "symptom": "A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get \"Unknown or released session graph object\" from the host, at random and more often under memory pressure.",
+      "rootCause": "A Go extension that built session graph objects failed at random under allocation pressure with Unknown or released session graph object: the SDK released an object when its Go value was collected, but a call that put the handle on the wire, a model stream, and a LoadedExtension (which named its loader by string) did not keep the value. Every call that names an object now keeps it until the host has answered (graphMethodCall, the constructors that take objects, the runtime of a loader, createAgentSession, the model stream goroutine), and a LoadedExtension holds its loader object.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get \"Unknown or released session graph object\" from the host, at random and more often under memory pressure. The SDK released the host's object when its wrapper was collected or dropped, but the later call named the object by a handle string that nothing kept the wrapper alive for: `ExtensionRunner` built from the extensions a loader returned, a method call on the object's last use, and a model stream on a `ModelRuntime` the program had already let go of. An object now stays valid while anything that names its handle is still in use or in flight. Affects 0.5.2 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "60e15bd01e",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "7cc188258c",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "81cc293a90",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-612955a",
@@ -56015,6 +56087,31 @@
       "tests": [
         "internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi",
         "tui/select_filterable_test.go::TestFilterableListShowsNoLabelWhenNoCellRemains"
+      ]
+    },
+    {
+      "id": "BF-e4b5861",
+      "title": "fix(view): a second size of an image is a placement only while its first placement is not drawn",
+      "symptom": "fix(view): a second size of an image is a placement only while its first placement is not drawn",
+      "rootCause": "the placement cache of (view_mount_image.go place) keyed the terminal image by ref+cols+rows, and the first cut of the cure used placement 0 beside a second placement, which kitty draws half.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e4b5861a96",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageAtTwoSizesAtOnceIsTwoImages",
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageInAnHStackIsTransmittedOncePerRef",
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageIsFreedAtItsLastPlacement",
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImagePlacementIDReachesTheTerminalThroughTheFrame",
+        "coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageResizeSendsNoBytesAndKeepsFewPlacements"
       ]
     },
     {
