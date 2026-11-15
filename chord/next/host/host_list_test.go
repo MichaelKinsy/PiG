@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
@@ -607,10 +608,8 @@ func TestListReload(t *testing.T) {
 		next := lsStorePlugin("desc", &lsStoreProbe{declare: func(self StoreSelf) {
 			self.Open(func(ctx context.Context) (any, error) {
 				close(opening)
-				select { // Pi awaits `opened.promise`
-				case <-opened:
-				case <-ctx.Done():
-				}
+				// Pi awaits `opened.promise`: a park, which the loop's join does not count as running.
+				_, _ = chordctx.Receive(ctx, opened)
 				return nil, nil
 			}, func(any, NativeCloseReason, context.Context) error { return nil })
 		}})
