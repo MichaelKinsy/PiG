@@ -64,7 +64,7 @@ var pageNames = [...]string{
 // pageSizes holds the byte size of each page of pageNames.
 var pageSizes = [...]int{
 	12911,
-	5949,
+	6646,
 	3844,
 	2849,
 	8387,
@@ -115,10 +115,10 @@ var pageSizes = [...]int{
 	9558,
 	6154,
 	9813,
-	38489,
+	40069,
 	5877,
 	9269,
 }
 
 // contentDigest is the digest of the pages: sha256 over "name\x00size\x00contents" of each page in name order, in hex.
-const contentDigest = "9eb3639028104bd14d8b6846ed84308dd9717d395554b1b0bffb0b1f951d0f3b"
+const contentDigest = "23885b90c2783b57bfb3009fd2c59e161da787a320676e9f8581077114701aa5"

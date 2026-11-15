@@ -40574,7 +40574,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -40585,7 +40585,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#RetryPolicy"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -99727,7 +99728,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -99738,7 +99739,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#RetryPolicy"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -137579,7 +137581,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -137590,7 +137592,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#RetryPolicy"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -151827,7 +151830,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "11 normalized-name Pig candidates are ambiguous."
+        "12 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -151847,6 +151850,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/piglogin#Register",
         "go:github.com/MichaelKinsy/PiG/coding/secretresolver#Register",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#mcpFunctionOptions.register",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Register",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#SlashRegistry.Register"
       ],
       "missingClosure": [
@@ -155529,7 +155533,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "90 normalized-name Pig candidates are ambiguous."
+        "95 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -155585,6 +155589,7 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#diagnosticBytes.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#hostTheme.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#installedTheme.Store",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#hook.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#encoderCache.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#fieldCache.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#globalTUIKeybindings.Store",
@@ -155593,6 +155598,10 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#kittyProtocolActive.Store",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#lastKeystroke.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#currentBuiltinChatCatalogs.Store",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultHTTPIdleMsOverride.Store",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultRetryConfig.Store",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultRetryDecider.Store",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#defaultRetrySilent.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#emergencyExiting.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#encodableTypes.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#extensionKeybindingDefinitions.Store",
@@ -330640,7 +330649,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "5 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -330652,7 +330661,9 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/agent#AfterToolCallFunc.hook",
         "go:github.com/MichaelKinsy/PiG/agent#BeforeToolCallFunc.hook",
-        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcTermination.hook"
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcTermination.hook",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Hook",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#hook"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -336195,7 +336206,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "15 normalized-name Pig candidates are ambiguous."
+        "16 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -336211,6 +336222,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/piglet/release#Result",
         "go:github.com/MichaelKinsy/PiG/coding/uiview#Result",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelEventStream.Result",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/clihook#Result",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Result",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/internal/upgrade#Result",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/plan#Result",

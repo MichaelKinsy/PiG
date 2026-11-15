@@ -20,6 +20,7 @@ var bundledFiles = []string{
 	"callback_guard.go",
 	"child_session.go",
 	"child_session_members.go",
+	"clihook/clihook.go",
 	"command_options.go",
 	"compaction_cutpoint.go",
 	"compaction_estimate.go",
@@ -224,4 +225,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "d57c9a3787034807"
+const stagedHash = "5b8305d4be7e8d62"
