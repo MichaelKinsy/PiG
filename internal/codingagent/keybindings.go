@@ -547,7 +547,8 @@ func (km *KeybindingsManager) Save(path string) error {
 		return err
 	}
 	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
-	return atomicfile.WriteFile(path, buf.Bytes(), 0o644)
+	// PiG-only write (Pi never saves the file but for its migration): the mode of that write, coding-agent/src/migrations.ts:168 writeFileSync(configPath, ..., "utf-8"), no mode, 0666 with the umask taken out.
+	return atomicfile.WriteFile(path, buf.Bytes(), 0o666)
 }
 
 // keysOf is the resolved keys of an action the merged table defines, tui.* and app.* alike as upstream's KeybindingsManager extends the tui
