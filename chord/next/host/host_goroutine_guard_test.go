@@ -87,7 +87,7 @@ func TestProductionStartsNoGoroutineTheJoinDoesNotCount(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, line := range strings.Split(string(source), "\n") {
+		for line := range strings.SplitSeq(string(source), "\n") {
 			code := strings.TrimSpace(withoutComment(line))
 			if code != "" && startsGoroutine.MatchString(code) {
 				found[file+"\x00"+code]++

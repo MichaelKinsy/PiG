@@ -586,7 +586,7 @@ func TestTilingACommitGroupOfTwoOwners(t *testing.T) {
 			func() { w.clubWrite(jsonObject("add", tlMembers("t", tlNumbered(4, 5, 6, 7, 8)...))) },
 			func() { w.sessionsWrite(jsonObject("rename", tlRenames("renamed", "s2"))) },
 		)
-		for page := 0; page < 6; page++ {
+		for range 6 {
 			if _, moreAfter := w.value(); !moreAfter {
 				break
 			}
@@ -666,7 +666,7 @@ func TestTilingOneCommitSeveralPages(t *testing.T) {
 			if !moreAfter && len(shown) != len(all) {
 				t.Fatalf("moreAfter = false with %d of %d rows", len(shown), len(all))
 			}
-			for page := 0; page < 6; page++ {
+			for range 6 {
 				if _, more := w.value(); !more {
 					break
 				}
@@ -1246,7 +1246,7 @@ func TestTilingTheInvariantWithTwoOwnersAndCommitGroups(t *testing.T) {
 					w.clubWrite(jsonObject("remove", tlMembers("t", leaving...), "add", tlMembers("t", joining...)))
 				}
 			}
-			for index := 0; index < 400; index++ {
+			for index := range 400 {
 				stepName.Store(fmt.Sprintf("seed %d, step %d", seed, index))
 				switch kind := r.int(10); {
 				case kind < 3:
@@ -1285,7 +1285,7 @@ func TestTilingTheInvariantWithTwoOwnersAndCommitGroups(t *testing.T) {
 			if n := checks.Load(); n <= 600 {
 				t.Fatalf("checks = %d, want > 600", n)
 			}
-			for page := 0; page < 200; page++ {
+			for range 200 {
 				if _, moreAfter := w.value(); !moreAfter {
 					break
 				}

@@ -123,11 +123,9 @@ func (l *list) describe() string {
 func parallel(calls ...func()) {
 	var group sync.WaitGroup
 	for _, call := range calls {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			call()
-		}()
+		})
 	}
 	group.Wait()
 }
@@ -184,15 +182,13 @@ func (c *commitLog) grouped() int { c.mu.Lock(); defer c.mu.Unlock(); return c.g
 // order, and the queue adopts in the order of the enlisting, so the truth a test tracks call by call is the store's.
 func (c *commitLog) start(group *sync.WaitGroup, commits bool, call func()) {
 	before, finished := c.count(), false
-	group.Add(1)
-	go func() {
-		defer group.Done()
+	group.Go(func() {
 		call()
 		c.mu.Lock()
 		finished = true
 		c.changed.Broadcast()
 		c.mu.Unlock()
-	}()
+	})
 	if !commits {
 		return
 	}

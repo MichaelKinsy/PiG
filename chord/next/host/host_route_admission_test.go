@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1082,12 +1083,7 @@ func TestRouteAdmissionTheFenceAfterADenialDenyAndAllowThreeTimesInARowForwardTh
 }
 
 func slicesContains(kinds []string, kind string) bool {
-	for _, got := range kinds {
-		if got == kind {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(kinds, kind)
 }
 
 // Pi: "the fence after a denial › the link lost before the pong: the next link holds what the decision allows then, with no
