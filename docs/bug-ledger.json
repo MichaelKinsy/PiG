@@ -5304,6 +5304,26 @@
       "tests": []
     },
     {
+      "id": "BF-2844ff3",
+      "title": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole…",
+      "symptom": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole text and only the printed line is cut.",
+      "rootCause": "ledgerText no longer cuts: the notice in the stored record of a verdict holds the whole text of the ledger row (bounded by the 1 MiB the contents endpoint serves) and a run that reuses the record prints what the first run printed. The log, the annotation and the comment row cut it at 600 characters with an ellipsis through shownNotice. A comment too long for GitHub still leaves its notices out. README and changelog fragment updated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole text and only the printed line is cut.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2844ff315c",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-286d303",
       "title": "A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)…",
       "symptom": "Such a provider never composed (no models, its name replaced by its id, every stream an error), and a provider-level `baseUrl` was copied onto its models, which Pi does not do (it is only the context of `refreshModels`).",
@@ -7413,6 +7433,28 @@
       ],
       "tests": [
         "durable/contract/test/vitest-candidate-plugin.test.mjs"
+      ]
+    },
+    {
+      "id": "BF-363faed",
+      "title": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could…",
+      "symptom": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could start a workflow command on the runner, in the `::command::` form and in the legacy `##[command]` form.",
+      "rootCause": "The runner also reads \"##[command]data\". defang turns \"##[\" into \"# #[\" (plain ASCII, readable); inert is flatten plus defang plus a split leading \"::\", used for every PR text the report, logf and the run error print; logf defangs the whole line, so annotation data and the dry-run comment are covered too, as every print goes through logf. Comment cells of existing findings are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could start a workflow command on the runner, in the `::command::` form and in the legacy `##[command]` form. Every line the tool prints is now inert.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "363faed088",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestInertKeepsTextReadable"
       ]
     },
     {
@@ -12143,6 +12185,32 @@
         "tui/fake_cursor_test.go::TestResolveFakeCursorsTable",
         "tui/keys_oracle_test.go::TestParseAndMatchKeyMatchPiOnSeededInput",
         "tui/tui_surface_test.go::TestTuiSurfaceResolvesTheFakeCursorOfDockLines"
+      ]
+    },
+    {
+      "id": "BF-546133a",
+      "title": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that…",
+      "symptom": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that file, as the line lint requires, so the two gates judge alike.",
+      "rootCause": "The commit must change the file. The line lint requires that the commit a row names changed the row's path; the pre-flight rule did not. For each commit that a row names, alone among the PR's commits, for a changed test file, the pre-flight asks the commit endpoint for the commit's files (pages of 100 until a page is short, at most 30 pages) and the check's input hash includes the answer. A commit that does not change the file is a finding (\"ledger row \u003csha10\u003e \u003cpath\u003e: that commit does not change the file\"). A failed call, a 404 for a commit the PR listed, or a file list that cannot be read in full leaves the check undecided. Tests (rules_ledger_commit_test.go): the commit changed the file…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that file, as the line lint requires, so the two gates judge alike.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "546133acb5",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestLogfPrintsAnErrorOnOneLine",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestAdmissionRequiresTheNamedCommitToChangeTheFile",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitFilesAreAnInputOfTheCheck",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestLedgerRowsOfTooManyCommitsAskToSplit",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextCannotStartAWorkflowCommand"
       ]
     },
     {
@@ -20401,6 +20469,26 @@
         "tui/extension_selector_oracle_test.go::TestExtensionSelectorMatchesPi",
         "tui/message_components_oracle_test.go::TestSummaryAndSkillMessageComponentsMatchPi"
       ]
+    },
+    {
+      "id": "BF-730c233",
+      "title": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no…",
+      "symptom": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no warnings or notices; it now recomputes.",
+      "rootCause": "The state of a shortened comment is marked, and decideMode runs the checks again for such a state instead of reusing the verdicts that lack their warnings and notices. A state written before this field cannot be told from an honest empty one and is reused once more, until the head moves.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no warnings or notices; it now recomputes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "730c233072",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-731474b",
@@ -29224,6 +29312,33 @@
       ],
       "tests": [
         "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
+      ]
+    },
+    {
+      "id": "BF-a058b99",
+      "title": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on…",
+      "symptom": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
+      "rootCause": "The list is read from main's checkout only (the file is added to the check's main reads and to both sparse checkouts of the workflow), so a prefix that a pull request adds exempts nothing in that pull request. A list that is missing, empty or not TOML on main fails the check with that reason. Each skip is a notice (a NOTE line, a ::notice, a comment row) naming the file and the prefix. A ledger row for a skipped file is not needed, and the ledger is not read when every flagged file is skipped.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a058b99ea8",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/reviewed/tooling_test.go::TestParseToolingAndInTooling",
+        "automation/ci/preflight/rules_test.go::TestRuleTestExpectation",
+        "automation/ci/preflight/rules_test.go::TestRuleTestExpectationEdges",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationSkipsToolingDirectoriesOfMain",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsSkipsOnlyListedToolingDirectories",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckToolingRejectsEntriesThatWidenTheScope"
       ]
     },
     {
