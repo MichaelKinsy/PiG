@@ -107,13 +107,22 @@ func thinkingLevelUnsupported(levelMap ThinkingLevelMap, level ModelThinkingLeve
 	return false
 }
 
+// thinkingLevelSupported reports whether level is one of GetSupportedThinkingLevels(m), without building the list: it is asked for every agent run
+// end of a coding Session, and the list is a fresh slice for each caller.
+func thinkingLevelSupported(m *Model, level ModelThinkingLevel) bool {
+	if m == nil || !m.ProviderMeta.Reasoning && m.Capabilities.MaxThinking == "" {
+		return level == ThinkingOff
+	}
+	return slices.Contains(extendedThinkingLevels, level) && !thinkingLevelUnsupported(m.ThinkingLevelMap, level)
+}
+
 // ClampThinkingLevel clamps level to the nearest supported thinking level.
 // Mirrors upstream models.ts:clampThinkingLevel.
 func ClampThinkingLevel(m *Model, level ModelThinkingLevel) ModelThinkingLevel {
-	available := GetSupportedThinkingLevels(m)
-	if slices.Contains(available, level) {
+	if thinkingLevelSupported(m, level) {
 		return level
 	}
+	available := GetSupportedThinkingLevels(m)
 	requestedIndex := slices.Index(extendedThinkingLevels, level)
 	if requestedIndex == -1 {
 		if len(available) == 0 {

@@ -159708,7 +159708,7 @@
       "evidence": [
         "test:tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd",
         "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach",
-        "test:tui/assistant_message_stream_pin_test.go#TestStreamingMessageLetsGoOfItsBlocksWhenItEnds"
+        "test:tui/assistant_message_hidden_text_test.go#TestHiddenThinkingRowFollowsItsInputs"
       ]
     },
     {
@@ -159730,7 +159730,7 @@
       "evidence": [
         "test:tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd",
         "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach",
-        "test:tui/assistant_message_stream_pin_test.go#TestStreamingMessageLetsGoOfItsBlocksWhenItEnds"
+        "test:tui/assistant_message_hidden_text_test.go#TestHiddenThinkingRowFollowsItsInputs"
       ]
     },
     {
@@ -224650,7 +224650,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/assistant_message_block.go#AssistantMessageComponent.measureOwnedRuns"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.hiddenThinkingText"
       ],
       "evidence": [
         "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",

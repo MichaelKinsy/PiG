@@ -49,6 +49,7 @@ type AssistantMessageComponent struct {
 	// spacers, thinkingRuns and terminalError are the children updateContent keeps across updates (see updateContent).
 	spacers           []*Spacer
 	thinkingRuns      []thinkingRunRegion
+	hiddenMemo        hiddenThinkingMemo
 	terminalError     []Component
 	terminalErrorLine string
 	terminalErrorPad  int
@@ -581,6 +582,27 @@ type thinkingRunRegion struct {
 	region     *MouseRegion
 }
 
+// hiddenThinkingMemo is the hidden-thinking text drawn for the inputs beside it: the theme's thinking colour, the label and whether chalk draws
+// modifiers (chalk's color level above zero).
+type hiddenThinkingMemo struct {
+	color, label string
+	plain        bool
+	text         string
+	set          bool
+}
+
+// hiddenThinkingText is the hidden-thinking label in the theme's thinking colour and italic. A click that hides or shows a run changes none of
+// its inputs, so the block keeps the text it built for them instead of building it again.
+func (b *AssistantMessageComponent) hiddenThinkingText() string {
+	color, plain := ActiveTheme().ThinkingText, chalkModifiersOff.Load()
+	memo := &b.hiddenMemo
+	if !memo.set || memo.color != color || memo.label != b.hiddenLabel || memo.plain != plain {
+		*memo = hiddenThinkingMemo{color: color, label: b.hiddenLabel, plain: plain, set: true,
+			text: ChalkItalic(color + b.hiddenLabel + FgClose(color))}
+	}
+	return memo.text
+}
+
 // thinkingRun is the mouse region of thinking run index: its Markdown, or the hidden-thinking label when hidden. A click toggles the
 // run's visibility.
 func (b *AssistantMessageComponent) thinkingRun(index int, md *Markdown, hidden bool) *MouseRegion {
@@ -590,7 +612,7 @@ func (b *AssistantMessageComponent) thinkingRun(index int, md *Markdown, hidden 
 	kept := &b.thinkingRuns[index]
 	hiddenText := ""
 	if hidden {
-		hiddenText = ChalkItalic(ActiveTheme().ThinkingText + b.hiddenLabel + FgClose(ActiveTheme().ThinkingText))
+		hiddenText = b.hiddenThinkingText()
 	} else {
 		md.SetDefaultColor(ActiveTheme().ThinkingText)
 	}

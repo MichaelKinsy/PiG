@@ -141,6 +141,11 @@ func BenchmarkRenderSteadyState(b *testing.B) {
 	for _, n := range []int{50, 500, 5000} {
 		b.Run(fmt.Sprintf("turns=%d", n), func(b *testing.B) {
 			tui, _, bottom := buildConversation(io.Discard, n)
+			// One frame with a changed bottom line first, so the iterations measure the steady frame: the first one after buildConversation's
+			// full render also builds the container's settle and window bookkeeping once (7 allocations more than a steady frame at
+			// 3e11272d54), which at 5 iterations lifts the average by one or two.
+			bottom.SetText("streaming warm-up")
+			tui.Render()
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := range b.N {
