@@ -15,7 +15,7 @@ import (
 const sessionGraphCollectorEnv = "PIG_SESSION_GRAPH_COLLECTOR"
 
 // sessionGraphCollectorTests are the session graph rows the aggressive-collector run repeats.
-const sessionGraphCollectorTests = `^(TestSessionGraph[A-Za-z]*AcrossSDKs|TestPackedSessionGraphModelRuntimeAcrossSDKs)$`
+const sessionGraphCollectorTests = `^(TestSessionGraph[A-Za-z]*AcrossSDKs|TestPackedSessionGraph[A-Za-z]*AcrossSDKs)$`
 
 // TestSessionGraphRowsUnderAggressiveCollector runs the session graph rows of the SDKs that have a collector once more with
 // the collector as aggressive as it goes (Go: GOGC=1 in the test process and in every extension process it starts, and the test
