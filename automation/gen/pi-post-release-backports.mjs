@@ -1383,6 +1383,60 @@ patch("86918f9eeb", "pi-ai/providers/data/.manifest.json", [
 ]);
 // END backport 86918f9eeb
 
+// BEGIN backport 3567987250
+// 3567987250: pi-mcp exports mcpServerSummary, the one-line server summary the coding agent's mcp_servers section reads (an extension cannot import pi-mcp; the vendored coding agent and the oracle's `pi` do).
+// not carried: pi-mcp/naming.d.ts and pi-mcp/index.d.ts (the declaration of mcpServerSummary): declaration files; no backport table patches one, and nothing runs them.
+// not carried: packages/mcp/test/naming.test.ts (a test of the TypeScript source) and packages/mcp/CHANGELOG.md (Pi's changelog entry): the package ships neither.
+patch("3567987250", "pi-mcp/naming.js", [
+    [` * Names of MCP tools and of their servers' namespaces as models and code mode scripts see them.
+ * Applications that name tools the same way rank and group them the same way in tool search and
+ * code mode.
+ */`, ` * Names of MCP tools and of their servers' namespaces, and the servers' one-line summaries, as models
+ * and code mode scripts see them. Applications that name tools the same way rank and group them the
+ * same way in tool search and code mode.
+ */`],
+    [`export function mcpNamespace(server) {
+    return \`mcp__\${server.replace(/-/g, "_")}\`;
+}
+`, `export function mcpNamespace(server) {
+    return \`mcp__\${server.replace(/-/g, "_")}\`;
+}
+${note("3567987250").trim()}
+/**
+ * A server's one-line summary for the system prompt: the first line of its configured \`description\`,
+ * else of the instructions it sent in \`initialize\`; empty when it has neither.
+ */
+export function mcpServerSummary(description, instructions) {
+    const text = description?.trim() || instructions?.trim() || "";
+    return (text.split("\\n", 1)[0] ?? "").trim();
+}
+`],
+]);
+// END backport 3567987250
+
+// BEGIN backport 3567987250
+patch("3567987250", "pi-mcp/index.js", [
+    ['export { createMcpToolName, mcpNamespace } from "./naming.js";', 'export { createMcpToolName, mcpNamespace, mcpServerSummary } from "./naming.js";'],
+]);
+// END backport 3567987250
+
+// BEGIN backport 3567987250
+// 3567987250: renderServersSection reads the summary through mcpServerSummary; the local serverSummary, which did not trim the instructions, is deleted.
+patch("3567987250", "pi-coding-agent/extensions/mcp/index.js", [
+    ['import { createMcpToolName, mcpNamespace } from "@earendil-works/pi-mcp";', 'import { createMcpToolName, mcpNamespace, mcpServerSummary } from "@earendil-works/pi-mcp";'],
+    [`/** First line of the configured description, or of the server instructions once connected. */
+function serverSummary(server) {
+    const text = server.entry.config.description?.trim() || server.connection?.instructions || "";
+    return (text.split("\\n", 1)[0] ?? "").trim();
+}
+`, ""],
+    ['        const summary = perServer > 0 ? truncate(serverSummary(server), perServer) : "";\n', `        const summary = perServer > 0
+            ? truncate(mcpServerSummary(server.entry.config.description, server.connection?.instructions), perServer)
+            : "";
+`],
+]);
+// END backport 3567987250
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

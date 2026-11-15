@@ -12,7 +12,8 @@ import (
 
 // Pi's pi.setModel(model) (core/extensions/loader.ts:453-456 -> agent-session.ts:3583-3587, 2644-2668) takes a Model object: it answers false when
 // hasConfiguredAuth(model.provider) is false and otherwise makes that object the session's model, whether or not the registry carries it.
-// The wire carries "provider/id", and the production host action resolves it through BuildModel (coding/session_extension_host.go:288).
+// The NAMED form ("provider/id", a PiG surface Pi has no call for) resolves through BuildModel (coding/session_extension_host.go) and so reaches only a model the registry lists:
+// an id nothing lists is the error "Model not found: p/id" and the session keeps its model, in every SDK (the OBJECT form keeps Pi's rule: set_model_object_sdk_test.go, set_model_object_node_test.go).
 func TestSetModelObjectAcrossSDKs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -20,19 +21,20 @@ func TestSetModelObjectAcrossSDKs(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "conformance-key")
 	cases := []struct {
 		name, spec string
-		wantPi     string // Pi's answer: "true:<id>" (the session holds the model) or "false"
+		wantPi     string // "true:<id>" (the session holds the model), "false" (no auth for the provider) or the named form's error
+		wantNode   string // Node has no named form: its fixture passes pi.setModel the registry's model or an object it builds by hand, so an unlisted id is Pi's object rule (auth only); empty = wantPi
 	}{
-		{"builtin-in-catalog", "anthropic/claude-haiku-4-5", "true:claude-haiku-4-5"},
-		{"builtin-not-in-catalog", "anthropic/claude-handmade-9", "true:claude-handmade-9"},
-		{"builtin-without-credentials", "openai/gpt-5", "false"},
-		{"unknown-provider", "nonesuch/model-1", "false"},
-		{"custom-provider-listed-model", "acme/chat-1", "true:chat-1"},
-		{"custom-provider-unlisted-model", "acme/chat-2", "true:chat-2"},
-		{"custom-provider-no-models", "acme-empty/anything", "true:anything"},
-		{"native-provider-listed-model", "native/m1", "true:m1"},
-		{"native-provider-unlisted-model", "native/m2", "true:m2"},
-		{"oauth-provider-in-catalog", "github-copilot/claude-haiku-4.5", "true:claude-haiku-4.5"},
-		{"oauth-provider-not-in-catalog", "github-copilot/handmade-1", "true:handmade-1"},
+		{"builtin-in-catalog", "anthropic/claude-haiku-4-5", "true:claude-haiku-4-5", ""},
+		{"builtin-not-in-catalog", "anthropic/claude-handmade-9", "error: Model not found: anthropic/claude-handmade-9", "true:claude-handmade-9"},
+		{"builtin-without-credentials", "openai/gpt-5", "false", ""},
+		{"unknown-provider", "nonesuch/model-1", "error: Model not found: nonesuch/model-1", "false"},
+		{"custom-provider-listed-model", "acme/chat-1", "true:chat-1", ""},
+		{"custom-provider-unlisted-model", "acme/chat-2", "error: Model not found: acme/chat-2", "true:chat-2"},
+		{"custom-provider-no-models", "acme-empty/anything", "error: Model not found: acme-empty/anything", "true:anything"},
+		{"native-provider-listed-model", "native/m1", "true:m1", ""},
+		{"native-provider-unlisted-model", "native/m2", "error: Model not found: native/m2", "true:m2"},
+		{"oauth-provider-in-catalog", "github-copilot/claude-haiku-4.5", "true:claude-haiku-4.5", ""},
+		{"oauth-provider-not-in-catalog", "github-copilot/handmade-1", "error: Model not found: github-copilot/handmade-1", "true:handmade-1"},
 	}
 	for _, sdk := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(sdk.name, func(t *testing.T) {
@@ -95,9 +97,13 @@ func TestSetModelObjectAcrossSDKs(t *testing.T) {
 						got = "false"
 					}
 				}
+				want := c.wantPi
+				if c.wantNode != "" && strings.HasPrefix(sdk.name, "subprocess-node") {
+					want = c.wantNode
+				}
 				t.Logf("%s (%s): %s window=%d", c.name, c.spec, got, session.Model().Capabilities.ContextWindow)
-				if got != c.wantPi {
-					t.Errorf("%s (%s): got %q, Pi answers %q", c.name, c.spec, got, c.wantPi)
+				if got != want {
+					t.Errorf("%s (%s): got %q, want %q", c.name, c.spec, got, want)
 				}
 			}
 		})

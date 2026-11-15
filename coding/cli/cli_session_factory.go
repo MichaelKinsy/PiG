@@ -190,6 +190,12 @@ func (h *cliExtensionHost[S]) SetRuntimeDrainHandler(fn func()) {
 	}
 }
 
+func (h *cliExtensionHost[S]) SetRuntimeLoopDrainHandler(fn func()) {
+	if h.host != nil {
+		h.host.SetRuntimeLoopDrainHandler(fn)
+	}
+}
+
 func (h *cliExtensionHost[S]) SetSettleTailHandler(fn func(suspended int)) {
 	if h.host != nil {
 		h.host.SetSettleTailHandler(fn)

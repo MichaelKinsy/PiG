@@ -507,6 +507,10 @@ type Host struct {
 	deathGate deathGateFunc
 
 	runtimeDrainHandler func()
+	// runtimeLoopDrainHandler is the process-owner callback for a drained loop alone (SetRuntimeLoopDrainHandler). loopDrainActed records that the drained loop was handed to the handlers: once. Both are guarded by h.mu. loopDrainPending is set once a Node process with a pending handler reported its loop drained (runtime_drained): from then on the host evaluates whether any runtime still holds the loop (evaluateLoopDrain).
+	runtimeLoopDrainHandler func()
+	loopDrainActed          bool
+	loopDrainPending        atomic.Bool
 	// runtimeDrains holds, per Node process and report, the connections that reported it. Guarded by h.mu.
 	runtimeDrains map[runtimeDrainKey]*runtimeDrainReports
 	// drainTasks joins the goroutines that finish a drain after a connection closed and the crash-restart backoffs; drainTasksClosed stops new ones once Shutdown waits. Guarded by drainTasksMu.
@@ -2063,7 +2067,7 @@ const (
 	notifyRuntimeDrained = "runtime_drained"
 	// notifyRuntimeQuitYield reports a post-disposal boundary that suspended beyond its immediately fulfilled continuations: Pi's exit at the stdout flush.
 	notifyRuntimeQuitYield = "runtime_quit_yield"
-	// notifyRuntimeCommandsDrained reports unanswered commands in a process that has no pending quit handler, whose event loop drained. It covers the commands the process had started; the host marks them on each connection as the report arrives and does not act on the process as a whole.
+	// notifyRuntimeCommandsDrained reports the drained event loop of a process that has no pending quit handler: nothing keeps its loop alive, whatever it has left unanswered, and that can be nothing at all. It covers the commands the process had started; the host marks them on each connection as the report arrives. The report does not end the host by itself: each connection records that its process holds nothing (Conn.holdsLoop), which the quit's evaluation reads (evaluateLoopDrain). A process sends it only after runtime_input_end, once per drained loop, and again after it ran again.
 	notifyRuntimeCommandsDrained = "runtime_commands_drained"
 )
 
@@ -2075,13 +2079,18 @@ func isRuntimeDrainNotify(method string) bool {
 //
 // runtime_drained is the loop-drain checkpoint of a pending quit handler: Pi exits when its single loop empties, so every process's unanswered commands now count as Pi's loop counts them.
 //
-// runtime_quit_yield is Pi's exit at the flush, so it applies the flush checkpoint and leaves the flush rule in force for the commands that are still running. The process did not report its loop drained, so its Node commands keep their own window reports.
+// runtime_quit_yield is Pi's exit at the flush, so it applies the flush checkpoint and leaves the flush rule in force for the commands that are still running. The process did not report its loop drained, so its Node commands keep their own window reports. Only the handler of both kinds takes it (SetRuntimeDrainHandler).
+//
+// The handlers do not run at the runtime_drained report itself: Pi's one loop holds every extension's timers and sockets, and pig's extensions run in several processes, so the host first asks whether any other runtime still holds the loop (evaluateLoopDrain).
 func (h *Host) applyRuntimeDrain(me *managedExt, method string) {
 	switch method {
 	case notifyRuntimeCommandsDrained:
 		return
 	case notifyRuntimeDrained:
 		h.markLoopDrained()
+		h.loopDrainPending.Store(true)
+		h.evaluateLoopDrain()
+		return
 	case notifyRuntimeQuitYield:
 		h.FlushCommands()
 	}
@@ -2090,6 +2099,42 @@ func (h *Host) applyRuntimeDrain(me *managedExt, method string) {
 	h.mu.Unlock()
 	if handler != nil {
 		handler()
+	}
+}
+
+// evaluateLoopDrain hands the drained loop to the process owner once a pending handler's Node process has reported its loop drained and no runtime of the host holds what Pi's one event loop would stay alive for (Conn.holdsLoop): every Node process has reported its own drained loop since it last ran, and no other runtime has a command in flight. Pi 1.5.2 under tmux, a session_shutdown handler that never settles beside a second extension: with an interval or a listening socket the process does not exit; with a 3 s timer it exits 0 after 3.09 s; with a command in flight on a TCP read it exits 53 ms after the read ends; with a pending promise it exits at once.
+//
+// The host evaluates at each report, at the end of each request of a runtime that reports no loop, and at each connection's end. Until a pending handler's process has reported (loopDrainPending) there is nothing to evaluate: a dispose that can return ends the process itself. The handlers run once.
+func (h *Host) evaluateLoopDrain() {
+	if !h.loopDrainPending.Load() {
+		return
+	}
+	h.mu.Lock()
+	if h.loopDrainActed {
+		h.mu.Unlock()
+		return
+	}
+	for _, me := range h.exts {
+		conn := me.connection()
+		if conn == nil || conn.closed.Load() {
+			continue
+		}
+		if _, gone := h.closedConns[conn]; gone {
+			continue
+		}
+		if conn.holdsLoop(me.hostsNodeRuntime()) {
+			h.mu.Unlock()
+			return
+		}
+	}
+	h.loopDrainActed = true
+	loop, both := h.runtimeLoopDrainHandler, h.runtimeDrainHandler
+	h.mu.Unlock()
+	if loop != nil {
+		loop()
+	}
+	if both != nil {
+		both()
 	}
 }
 
@@ -2114,10 +2159,17 @@ func (h *Host) goDrainTask(fn func()) bool {
 	return true
 }
 
-// SetRuntimeDrainHandler installs the process-owner callback for a Node event-loop drain after input end. A drain is not handler completion; the callback must not resume pending extension work.
+// SetRuntimeDrainHandler installs the process-owner callback for a Node event-loop drain after input end: a drained loop that no runtime holds any more (evaluateLoopDrain), and a quit yield, Pi's exit at the stdout flush. A drain is not handler completion; the callback must not resume pending extension work.
 func (h *Host) SetRuntimeDrainHandler(fn func()) {
 	h.mu.Lock()
 	h.runtimeDrainHandler = fn
+	h.mu.Unlock()
+}
+
+// SetRuntimeLoopDrainHandler installs the process-owner callback for a drained loop alone, for an owner that has no exit at the stdout flush: Pi's interactive quit ends in its drained loop or returns from its dispose. A quit yield does not run it.
+func (h *Host) SetRuntimeLoopDrainHandler(fn func()) {
+	h.mu.Lock()
+	h.runtimeLoopDrainHandler = fn
 	h.mu.Unlock()
 }
 
@@ -2475,6 +2527,10 @@ func (h *Host) endTailFlight(f *tailFlight) {
 }
 
 // tailWaitsLocked reports whether the handler waits on something Pi serves stdin during: a Node handler whose window closed, or, once input ended, a still-running handler of a runtime with no microtask continuation, as FlushCommands counts its commands. The caller holds commandFlightMu.
+//
+// A settle-tail handler of a runtime with no microtask continuation does not hold the RPC exit after input ended, where Pi's process stays while the handler holds a handle.
+//
+// pig divergence (D649): a settle-tail handler of a runtime with no microtask continuation (Go, Rust, Python, Lisp) does not hold the RPC exit after input ended, where Pi's process stays while the handler holds a handle (docs/parity/divergences/D649.md).
 func (h *Host) tailWaitsLocked(f *tailFlight) bool {
 	return f.suspended || (!f.node && h.inputEnded)
 }
@@ -2609,14 +2665,22 @@ func TerminateHostProcesses(hosts ...*Host) {
 	}
 	timer := time.NewTimer(bound)
 	var reaped []<-chan struct{}
+	var logs []*processStderrLog
 	for _, h := range hosts {
-		reaped = append(reaped, h.killProcesses()...)
+		hostReaped, hostLogs := h.killProcesses()
+		reaped = append(reaped, hostReaped...)
+		logs = append(logs, hostLogs...)
 	}
 	awaitReaped(reaped, timer, bound)
+	// The host process ends right after this: a log is kept only for a failure that was reported, and this exit is not one. The
+	// processes are ended, so nothing writes to the files, and no goroutine is left to remove them that the exit would outrun.
+	for _, log := range logs {
+		log.remove()
+	}
 }
 
-// killProcesses kills the processes of h and returns the channels that close once each is reaped.
-func (h *Host) killProcesses() []<-chan struct{} {
+// killProcesses kills the processes of h and returns the channels that close once each is reaped, and the stderr logs of the processes it killed.
+func (h *Host) killProcesses() ([]<-chan struct{}, []*processStderrLog) {
 	h.shuttingDown.Store(true)
 	h.mu.Lock()
 	processes := make(map[*os.Process]struct{})
@@ -2635,7 +2699,16 @@ func (h *Host) killProcesses() []<-chan struct{} {
 			reaped = append(reaped, exited)
 		}
 	}
+	logs := make(map[*processStderrLog]struct{})
+	// A cell that is still starting is in packedProcesses only, a started one also in watchedPacked, and a replaced one in watchedPacked only.
+	states := make(map[*packedProcessState]struct{}, len(h.packedProcesses)+len(h.watchedPacked))
+	for _, process := range h.packedProcesses {
+		states[process] = struct{}{}
+	}
 	for process := range h.watchedPacked {
+		states[process] = struct{}{}
+	}
+	for process := range states {
 		if process.processTree != nil {
 			trees[process.processTree] = struct{}{}
 		} else if process.cmd != nil && process.cmd.Process != nil {
@@ -2643,6 +2716,9 @@ func (h *Host) killProcesses() []<-chan struct{} {
 		}
 		if process.cmd != nil && process.cmd.Process != nil {
 			reaped = append(reaped, process.startWait())
+		}
+		if process.stderrLog != nil {
+			logs[process.stderrLog] = struct{}{}
 		}
 	}
 	h.mu.Unlock()
@@ -2652,7 +2728,7 @@ func (h *Host) killProcesses() []<-chan struct{} {
 	for process := range processes {
 		_ = process.Kill()
 	}
-	return reaped
+	return reaped, slices.Collect(maps.Keys(logs))
 }
 
 // awaitReaped waits until every channel in reaped closed or timer fired, and says on stderr when the bound ended the wait with processes unfinished. The timer starts before the first kill, so it fires before the WaitDelay of a process the kill ended can.
@@ -4982,6 +5058,13 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 		// A request's handler in a Go, Rust or Python extension may await a call the host holds for the loop's turn; it runs before the request does (Turns.Release).
 		release := func() { h.timerTurns.Load().Release(conn) }
 		conn.onRequestStart.Store(&release)
+		// The runtime reports no event loop: a command it has not answered is what holds a quit (Conn.holdsLoop), so the quit is evaluated again when a request of it ends. The request's goroutine may be one the owner's exit waits for, so the evaluation runs apart from it.
+		ended := func() {
+			if h.loopDrainPending.Load() {
+				h.goDrainTask(h.evaluateLoopDrain)
+			}
+		}
+		conn.onRequestEnd.Store(&ended)
 	}
 	for env := range conn.Incoming() {
 		if env.barrier != nil {
@@ -4999,6 +5082,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			}
 			if env.Type == MsgNotify && env.Notify != nil && isRuntimeDrainNotify(env.Notify.Method) {
 				if h.runtimeCommandsDrained(conn, lanes, env) {
+					h.evaluateLoopDrain()
 					continue
 				}
 				// The report of a generation the host no longer accepts still orders that connection's earlier frames. Its calls apply before it counts, as on the accepted path.
@@ -5105,6 +5189,8 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			// pig additive (D19): a subprocess event-loop drain is a process-exit observation, not a completed handler.
 			if isRuntimeDrainNotify(env.Notify.Method) {
 				if h.runtimeCommandsDrained(conn, lanes, env) {
+					// The process holds nothing any more: a quit that waited for it is evaluated again.
+					h.evaluateLoopDrain()
 					continue
 				}
 				// The runtime sent its earlier calls first. Their synchronous parts, such as writing a dialog request, happen before the owner exits.
@@ -5163,6 +5249,10 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	}
 	conn.endIncoming()
 
+	// A process that ended holds nothing: a quit that waited for it is evaluated again.
+	if h.loopDrainPending.Load() {
+		h.goDrainTask(h.evaluateLoopDrain)
+	}
 	if completed := h.noteRuntimeConnClosed(me, conn); len(completed) > 0 {
 		// The connection's earlier calls apply before the drain acts, as on the report path; a call's handler can wait, so this does not delay the close handling below. The connection owns the wait: its close cancels the host calls it applies, and Shutdown joins the task.
 		h.goDrainTask(func() {

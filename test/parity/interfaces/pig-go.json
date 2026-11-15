@@ -44231,6 +44231,17 @@
       "shapeHash": "sha256:6b25c6d3fef8ce1be2de7f5596863d59e149c12bb745f004a64753adc2b9e137"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#heartbeatCompromise",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "heartbeatCompromise",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#heldFile",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "heldFile",
@@ -48475,6 +48486,17 @@
         "type": "func(t float64, loc *time.Location) float64"
       },
       "shapeHash": "sha256:5fb5abc3d49cc4fe917dcd87f71e94bd911029a4c41769a8d5eef16625a02d7d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#lockCompromised",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "lockCompromised",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(lock *github.com/MichaelKinsy/PiG/internal/pilock.Lock) bool"
+      },
+      "shapeHash": "sha256:202efc6b3d86619be15b0540a733e9fc3148c0bec89508d3abe8ec83643b2aa9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#logoSVG",
@@ -66930,9 +66952,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "func(name string, data []byte, perm os.FileMode) error"
+        "type": "func(path string, data []byte, perm os.FileMode) error"
       },
-      "shapeHash": "sha256:13ca68c8f5eca3b14824cbf89eb6856775c8fe89ac7a9f63638a64f65ed8bd06"
+      "shapeHash": "sha256:f3edfada1023535619d05718f80854b63610ed7af4e056e2ac15bb15ab23eb00"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#writeFauxMessageText",
@@ -85668,6 +85690,17 @@
       "shapeHash": "sha256:404fa8bc64cc15d3e8b666d5daa1b4b020fa439cdfdf1c27e42a15b5da3f7680"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#lookupModelEntry",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "lookupModelEntry",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(svcs *AgentSessionServices, providerID string, modelID string) (github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry, bool)"
+      },
+      "shapeHash": "sha256:24dc580499e1d1262334d6ca10911fde82e79bfcbd54ae15e495c58648296cef"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#mapSkillPath",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "mapSkillPath",
@@ -86150,6 +86183,17 @@
         "type": "func(message github.com/MichaelKinsy/PiG/agent.AgentMessage) github.com/MichaelKinsy/PiG/agent.AgentMessage"
       },
       "shapeHash": "sha256:d9c8dd54c8abad10cad414c3a241f193389d56a4241fca4c87000788e7a2e25e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#notListedError",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "notListedError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, modelID string) error"
+      },
+      "shapeHash": "sha256:7e285ec73e971e5bf06550bef8dd7031ddd97d6161ead222343cd63d4418405b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#operationHeldKey",
@@ -93030,6 +93074,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliExtensionHost.SetRuntimeDrainHandler",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "cliExtensionHost.SetRuntimeDrainHandler",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fn func())"
+      },
+      "shapeHash": "sha256:46bc02246fa709521fd10c13588763daa3e5c53683f39550f1fc02b8f2117fdb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliExtensionHost.SetRuntimeLoopDrainHandler",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "cliExtensionHost.SetRuntimeLoopDrainHandler",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -133628,6 +133683,17 @@
       "shapeHash": "sha256:1025d3f254e4b5a3e2d27a72364c0f9fb6b4cf3930978b64b2968735672f125b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.clearLoopDrained",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.clearLoopDrained",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.closeRequestWindow",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.closeRequestWindow",
@@ -133879,6 +133945,17 @@
         "type": "func() func()"
       },
       "shapeHash": "sha256:207ce74f02e77526c8289eecfae4b3d4c23dfd6f19c6f0d62a67b13cc07ecb07"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.holdsLoop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.holdsLoop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(node bool) bool"
+      },
+      "shapeHash": "sha256:67b86cb1912c178fc6f901fa3f9856e3256c243a681a156c8ce16d1ccac6f1df"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.holdsNoStartWindow",
@@ -136136,6 +136213,17 @@
       "shapeHash": "sha256:46bc02246fa709521fd10c13588763daa3e5c53683f39550f1fc02b8f2117fdb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.SetRuntimeLoopDrainHandler",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.SetRuntimeLoopDrainHandler",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fn func())"
+      },
+      "shapeHash": "sha256:46bc02246fa709521fd10c13588763daa3e5c53683f39550f1fc02b8f2117fdb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.SetRuntimeRetention",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.SetRuntimeRetention",
@@ -136838,6 +136926,17 @@
         "type": "func() (string, error)"
       },
       "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.evaluateLoopDrain",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.evaluateLoopDrain",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.execSignal",
@@ -137594,9 +137693,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() []\u003c-chan struct{}"
+        "type": "func() ([]\u003c-chan struct{}, []*processStderrLog)"
       },
-      "shapeHash": "sha256:eb3a45aa51608d135b417512e34d1d9b5b8c80a0abee09f661f1ff703eace26b"
+      "shapeHash": "sha256:756ec6e7d7f6175dc2235c928c602df7685cda0ef4d5cfec4390a2ee8a9a9ef6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.lispCommand",
@@ -160248,6 +160347,28 @@
       "shapeHash": "sha256:ca77f838b315b1e3e7f23b9e99a0f6419eb85a176e085190bea759ca3c87aefe"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#requestCallCount",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "requestCallCount",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "requestCallCount"
+      },
+      "shapeHash": "sha256:cac2416b13aa0a6462a68610ee9d5ae912b7d8a9a90dbf9416b9dc4c578b5d36"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#requestCallCount.add",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "requestCallCount.add",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dialog bool, delta int)"
+      },
+      "shapeHash": "sha256:cb9713656631426fc156f227c83918736b7f31f22c9a97f3eb934a9c67ecc33c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#requestDrained",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "requestDrained",
@@ -177485,17 +177606,6 @@
       "shapeHash": "sha256:3062ee9e243d7b065598850f925d452b94af5ac8441a7135894bdc33f17acf37"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#serverSummary",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "serverSummary",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(server McpServerListing) string"
-      },
-      "shapeHash": "sha256:deb393de3f2a9ae51f9436e5d0fdfc6935d53fd2809f9267287173ece5d9163e"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#serversSectionIntro",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "serversSectionIntro",
@@ -177582,17 +177692,6 @@
         "type": "func(params encoding/json.RawMessage, key string) (string, error)"
       },
       "shapeHash": "sha256:93eaf9463332dc9ded8bac5e48a7c485044d56ba0479f3beef9ecdaf7cfd86ab"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#syncDirectory",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "syncDirectory",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(path string) bool"
-      },
-      "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#textOf",
@@ -177725,17 +177824,6 @@
         "type": "func[T any](list func() (T, error), empty T) (T, error)"
       },
       "shapeHash": "sha256:37ef41b5fc3acc45b5fd510426163519cb36085fa7cad4a022252fa12b8099c9"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#writeFileAtomic",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "writeFileAtomic",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(path string, data []byte) (err error)"
-      },
-      "shapeHash": "sha256:16e073ebc34eb8f6c7379213978e4f9db248915460bcfcd92a1aa430f264d0a8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#CreateMcpToolRenderers",
@@ -265496,6 +265584,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.ExitIfQuitting",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.ExitIfQuitting",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(status int)"
+      },
+      "shapeHash": "sha256:3b260c84780b92ec9af902b8cce031b50d69e178a8792ee46e647e890f539bfe"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.Init",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.Init",
@@ -267430,6 +267529,17 @@
         "type": "func() (leave func())"
       },
       "shapeHash": "sha256:3d8c92bd62e2bad9dfa839e7a2af5f64e559259d0dafc6823b13f7c44153a76c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.exitAtSignal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.exitAtSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(status int)"
+      },
+      "shapeHash": "sha256:3b260c84780b92ec9af902b8cce031b50d69e178a8792ee46e647e890f539bfe"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.exitIfDeadTerminal",

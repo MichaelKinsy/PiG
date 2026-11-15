@@ -241,7 +241,7 @@ class BlockTests(unittest.TestCase):
     def test_retiring_an_entry_removes_every_block_of_it_and_no_other(self):
         text = SCRIPT.read_text(encoding="utf-8")
         ids = oracle.backport_ids(text)
-        self.assertEqual(len(ids), 7, ids)
+        self.assertEqual(len(ids), 8, ids)
         out = carried.retire_backport_blocks(text, ["0e1e3fc81"])
         self.assertEqual(oracle.backport_ids(out), [i for i in ids if i != "0e1e3fc81"])
         self.assertNotIn("0e1e3fc81 (#12052)", out)
@@ -637,6 +637,7 @@ packageFile("abc123", "pi-coding-agent/docs/models.md", [["a", "b"]]);
         self.assertEqual(carried.ledger_block_key("packages/coding-agent/docs/models.md"), "pi-coding-agent/docs/models.md")
         self.assertEqual(carried.ledger_block_key("packages/tui/src/tui.ts"), "pi-tui/tui.js")
         self.assertEqual(carried.ledger_block_key("packages/agent/src/agent-loop.ts"), "pi-agent-core/agent-loop.js")
+        self.assertEqual(carried.ledger_block_key("packages/mcp/src/naming.ts"), "pi-mcp/naming.js")
         for path in ("packages/ai/test/fetch-option.test.ts", "packages/agent/test/agent-loop.test.ts", "packages/ai/CHANGELOG.md", "packages/chord/src/store/store.ts", "packages/ai/package.json", "package-lock.json"):
             self.assertIsNone(carried.ledger_block_key(path), path)
 

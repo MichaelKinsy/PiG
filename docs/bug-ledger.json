@@ -1180,6 +1180,26 @@
       ]
     },
     {
+      "id": "BF-0635f23",
+      "title": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential…",
+      "symptom": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "rootCause": "Modify treated a lock taken over while the refresh ran as a failure of the whole write, though the refreshed credential, possibly the only copy of a single-use refresh token, was already in hand.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A login refresh that took between ten and fifteen seconds while another pig process opened the credential file was thrown away, and the next request asked you to log in again. pig now saves the refreshed login for that provider into the file as it is at that moment, leaving every other provider's entry as the other process wrote it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0635f2339b",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0636520",
       "title": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
       "symptom": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
@@ -2304,6 +2324,26 @@
         }
       ],
       "commitsFrom": "release note",
+      "tests": []
+    },
+    {
+      "id": "BF-0b2baca",
+      "title": "A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped…",
+      "symptom": "A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped, could draw after the stop.",
+      "rootCause": "The start-up pickers (`--resume` and the others in `startup_ui.go`) run on such a renderer; the interleaving is forced in a test with the frame parked at its first clock read, and it was not observed in a real terminal.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped, could draw after the stop. Its hide of the cursor then undid the cursor show of the stop, and the shell prompt that followed was left without a cursor. The start-up pickers (`--resume` and the others in `startup_ui.go`) run on such a renderer; the interleaving is forced in a test with the frame parked at its first clock read, and it was not observed in a real terminal. As Pi's timer callback runs on its one event loop, where nothing runs between its `stopped` check and its render (`tui.ts` `scheduleRender`), a stopped screen now draws nothing: the frame lock checks the flag, as the alternate screen's already did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0b2baca2ce",
+          "date": "2026-11-14"
+        }
+      ],
       "tests": []
     },
     {
@@ -4614,6 +4654,26 @@
         "internal/photonimage/farbfelddecode_test.go::TestDecodeFarbfeldRefusesWhatImageRefuses",
         "internal/photonimage/farbfelddecode_test.go::TestDecodeRoutesFarbfeld"
       ]
+    },
+    {
+      "id": "BF-16c1901",
+      "title": "A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the…",
+      "symptom": "A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the file empty, and the next change then saved it with that one setting or decision alone, so every other setting or trust decision was lost.",
+      "rootCause": "settings.json and trust.json were written with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file and the next change was saved on top of that.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process while pig saved `settings.json` or the project trust store could leave the file empty, and the next change then saved it with that one setting or decision alone, so every other setting or trust decision was lost. Both files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched; the bytes written are the same. Where one of them cannot be replaced atomically, for example a single file mounted into a container, pig writes it in place as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "16c1901a48",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-16d0758",
@@ -8651,6 +8711,26 @@
         "internal/jsparity/node_differential_test.go::TestIsIndexKeyMatchesNode",
         "internal/jsstring/stringify_test.go::TestAppendStringIsJSONStringify"
       ]
+    },
+    {
+      "id": "BF-2ca1d45",
+      "title": "A Chord rollout lists every failed worker it retried",
+      "symptom": "A Chord rollout lists every failed worker it retried.",
+      "rootCause": "the rollout kept a retried worker's entry only when its own Retry answered that it had started the resolve, assuming a start on a failed address was always its own; Pi lists whatever start the address has after the retry (workers.ts:598-601)",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord rollout lists every failed worker it retried. A worker whose address already had a start running when the rollout retried it (the route starts one itself when the worker's link closes) was left out of the rollout's list although its start went on, so the app saw one worker fewer than the rollout had brought up; the list now carries the start the address has after the retry, whoever began it, as Pi's does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2ca1d45bb4",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-2cef1bf",
@@ -28203,6 +28283,30 @@
       ]
     },
     {
+      "id": "BF-74be405",
+      "title": "A full disk or a killed process during a credential write could sign you out of every provider",
+      "symptom": "A full disk or a killed process during a credential write could sign you out of every provider.",
+      "rootCause": "the credential store wrote auth.json with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file that the next process read as holding no credentials.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Its mode, owner, extended attributes (the POSIX ACL on Linux), a symlinked `auth.json` and, on Windows, its access rights are kept. pig replaces a file only when that changes nothing but the file itself: where a credential or settings file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, or a file with more than one hard link, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "74be4056e2",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile"
+      ]
+    },
+    {
       "id": "BF-74c3fde",
       "title": "Typing fast into an `@`, `#` or provider-trigger token, or while a slow autocomplete provider is still…",
       "symptom": "Typing fast into an `@`, `#` or provider-trigger token, or while a slow autocomplete provider is still working, no longer loses the popup: a character that triggers nothing (a space, `é` or `/` after `@al`) leaves the pending request alone, and the request asks the provider about the text the editor holds when it starts, as Pi does, instead of asking nothing.",
@@ -33242,6 +33346,26 @@
         "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
         "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
       ]
+    },
+    {
+      "id": "BF-8d4e7f2",
+      "title": "A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during…",
+      "symptom": "A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during the legacy API-key migration could leave the file empty or cut short and lose your keybindings, your MCP servers or your settings.",
+      "rootCause": "these files were written with os.WriteFile, which truncates the file before it writes, so a write that failed after it began left an empty or cut-short file.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during the legacy API-key migration could leave the file empty or cut short and lose your keybindings, your MCP servers or your settings. These files are now replaced as a whole through a temporary file in the same directory, so a failed write leaves the old file untouched. Where one of them cannot be replaced atomically, for example a single file mounted into a container or a file in a directory pig cannot write into, pig writes it in place as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d4e7f2452",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-8d6fb83",
@@ -39658,6 +39782,73 @@
       ]
     },
     {
+      "id": "BF-D649",
+      "title": "A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's…",
+      "symptom": "none.",
+      "rootCause": "a native SDK cannot tell a settle-tail handler that waits on a timer from one that waits for the shutdown itself to cancel it, and the second kind must not hold the exit: `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` pins a Go handler that waits until the shutdown cancels it, which Pi has no counterpart of (a Node handler that waits for a shutdown signal holds no handle, so Pi's process ends under it). Holding for every native settle-tail handler would make that process wait for ever.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D649",
+      "removeWhen": "the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), so that the host can hold the exit for exactly the handlers Pi holds it for.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "50c06c75eb",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "9794ea1555",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "e5d8c37f40",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_shutdown_drain_go_test.go::TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown",
+        "coding/extension/host/subprocess/quit_every_runtime_test.go::TestQuitDrainDoesNotWaitForANativeSettleTailHandler"
+      ]
+    },
+    {
+      "id": "BF-D650",
+      "title": "A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process…",
+      "symptom": "none.",
+      "rootCause": "a native SDK cannot tell a handler that waits on a timer, a socket or a child process from one that waits on nothing, and ending the quit while a handler holds a handle would cut off work that Pi finishes: a command on a TCP read ended 53 ms after its peer answered in Pi, a 3 s timer held Pi for 3.09 s. Holding while the handler is in flight keeps Pi's results for the cases that hold, and costs the quit that Pi's gets from a handler that waits on nothing. The user is never without an exit: the keys and signals above end the process at once, with the terminal restored and Pi's status.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D650",
+      "removeWhen": "the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), or the host can read it.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "50c06c75eb",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "9794ea1555",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "e5d8c37f40",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds",
+        "coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveQuitWaitsForACommandInFlight",
+        "coding/cli/rpc_held_quit_native_command_signal_test.go::TestRPCHeldQuitOfANativeCommandEndsOnTheSignalsPiEnds",
+        "coding/extension/host/subprocess/quit_every_runtime_test.go::TestQuitDrainWaitsForANativeCommandInFlight",
+        "test/extension-conformance/quit_every_runtime_conformance_test.go::TestConformance_QuitWaitsForACommandInFlight"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -39991,6 +40182,28 @@
       ],
       "tests": [
         "schema/errors_golden_test.go::TestHandWrittenCaseErrorsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-a1af4d7",
+      "title": "Fix BuildModel returning a model object for an id no registry lists",
+      "symptom": "Fix BuildModel returning a model object for an id no registry lists",
+      "rootCause": "buildModel treated \"the provider exists\" as \"the model exists\" and filled the gaps with an empty object, so a model id the registry did not list reached the provider's stream function with the provider's credential.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a1af4d7dd9",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/model_unlisted_noconnection_test.go::TestUnlistedModelMakesNoConnection",
+        "coding/model_unlisted_noconnection_test.go::TestUnlistedModelOfAProviderObjectMakesNoConnection"
       ]
     },
     {
@@ -43316,6 +43529,26 @@
       ]
     },
     {
+      "id": "BF-b214a4c",
+      "title": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose…",
+      "symptom": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.",
+      "rootCause": "the per-session bindings of a replacement were swapped one by one and the model builder was left out of the list",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b214a4c12d",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b22120f",
       "title": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into",
       "symptom": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into.",
@@ -45064,6 +45297,26 @@
       ]
     },
     {
+      "id": "BF-bc05945",
+      "title": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API…",
+      "symptom": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API, window and limits, instead of building it a second time from its name.",
+      "rootCause": "restore followed the old BuildModel contract, which made a model from any provider and id, so it re-resolved what it had already resolved",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A resumed session takes the model its registry lists for the saved provider and id, with that listing's API, window and limits, instead of building it a second time from its name.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bc0594500f",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-bc24321",
       "title": "fix(mem M3): arm the idle collection at run end and run it after 500 ms",
       "symptom": "fix(mem M3): arm the idle collection at run end and run it after 500 ms",
@@ -45374,6 +45627,25 @@
         "ai/sse_long_line_test.go::TestSSEDecoderBoundsALine",
         "ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength"
       ]
+    },
+    {
+      "id": "BF-be0c55b",
+      "title": "fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does",
+      "symptom": "fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does",
+      "rootCause": "the drain handler took the drained-loop report of the one process with a pending handler as the verdict for Pi's whole loop. Pi has one loop for every extension and pig has several processes, so the report said nothing about the others; an idle Node process could not be counted at all (it kept its transports referenced after input ended, so it never reached beforeExit and reported nothing), and a native runtime has no loop to report.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "be0c55bcc6",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-be2920a",
@@ -48152,6 +48424,28 @@
       ]
     },
     {
+      "id": "BF-cc9cc2f",
+      "title": "A pig that ended while an extension cell was still starting, or right after one had started, left an empty…",
+      "symptom": "A pig that ended while an extension cell was still starting, or right after one had started, left an empty `pig-packed-*.log` file in the temporary directory: the exit killed only the processes it already knew of, and the removal of the log of a killed process ran in a goroutine the exit outran.",
+      "rootCause": "TerminateProcesses (the exit of every mode) killed only the processes it knew of in h.exts and watchedPacked: a cell still starting was in neither, and the log of a killed process was removed by a goroutine the exit outran. The host now reads every packed state under h.mu (the spawn publishes its process and log under it and ends a process it spawned after the exit began), and removes the logs of the processes it ended before the exit; a log kept for a reported failure stays.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A pig that ended while an extension cell was still starting, or right after one had started, left an empty `pig-packed-*.log` file in the temporary directory: the exit killed only the processes it already knew of, and the removal of the log of a killed process ran in a goroutine the exit outran. The exit now ends every packed cell process, including one still starting, and removes its log before the pig exits; the log of a failure that was reported stays.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cc9cc2f3e8",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/packed_log_stop_race_test.go::TestPackedStderrLogTerminateProcessesLeavesNoLog"
+      ]
+    },
+    {
       "id": "BF-ccaade2",
       "title": "The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer…",
       "symptom": "The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer repeats a selection or cancel on the next navigation key.",
@@ -48301,6 +48595,26 @@
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
       ]
+    },
+    {
+      "id": "BF-cdd5b98",
+      "title": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer…",
+      "symptom": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer leaves the file truncated and loses every provider's cached model catalog.",
+      "rootCause": "the store was written in place with os.WriteFile, which truncates the file before it writes, so any failure after that left a partial file",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A write to `models-store.json` that fails partway (a full disk, a size limit, the process killed) no longer leaves the file truncated and loses every provider's cached model catalog. The file is replaced through a temporary file in the same directory, and a failed write leaves the old content.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cdd5b98d39",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-cdf0be7",
@@ -50363,7 +50677,6 @@
         }
       ],
       "tests": [
-        "coding/build_model_native_unlisted_test.go::TestBuildModelOnNativeProviderBuildsUnlistedModel",
         "test/extension-conformance/set_model_object_test.go::TestSetModelObjectAcrossSDKs"
       ]
     },
@@ -50641,6 +50954,25 @@
         "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
         "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown"
       ]
+    },
+    {
+      "id": "BF-d777d4b",
+      "title": "fix(interactive): SIGTERM and SIGHUP at the stopped TUI of a pending quit end pig at once",
+      "symptom": "fix(interactive): SIGTERM and SIGHUP at the stopped TUI of a pending quit end pig at once",
+      "rootCause": "the signal shutdown assumed that it could always take shutdownMu and run the extension cleanup, but a pending quit holds that lock for as long as a runtime holds the dispose.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d777d4ba14",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-d7855fd",
@@ -54956,6 +55288,25 @@
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
       ]
+    },
+    {
+      "id": "BF-e12859e",
+      "title": "fix(interactive): a ctrl+c at the stopped TUI of a pending quit ends pig at once",
+      "symptom": "fix(interactive): a ctrl+c at the stopped TUI of a pending quit ends pig at once",
+      "rootCause": "interruptShutdown gave the extensions a second to shut down (shutdownExtensionsBriefly), but the pending quit's dispose already emitted session_shutdown and holds shutdownMu while it waits for its author, so the second was spent on a lock that nothing releases. The interrupt now skips that wait when the quit by keys is disposing (quitDisposing), and goes on to the terminal restore and exit 130.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e12859ea5e",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-e1634c0",
@@ -62285,6 +62636,55 @@
       ]
     },
     {
+      "id": "BF-fbe92b6",
+      "title": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost…",
+      "symptom": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost its lock, and the refreshed login was thrown away.",
+      "rootCause": "the async lock heartbeat (stale/2 = 15 s) was longer than the sync acquirers stale window (10 s), so a live holder looked stale to them.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D651",
+      "removeWhen": "(A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A login refresh that took more than fifteen seconds while another pig process opened the credential file lost its lock, and the refreshed login was thrown away. The lock is now renewed every five seconds, so a slow refresh keeps it. Divergence D651 (approved by the owner, 2026-11-14T14:10:39Z \"proceed\"): Pi renews its async auth lock every 15 s (proper-lockfile stale/2) while its sync readers take any lock older than 10 s; pig renews every 5 s. Why: a live holder is never taken over, so a rotating refresh token is not spent twice. Remove when: Pi renews faster than its sync stale window.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "73cb76959b",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "a7f0835033",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "d5b70c4804",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "fbe92b66a0",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile",
+        "internal/atomicfile/inplace_test.go::TestWriteFileCannotCreateAFileInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReplacesAPlainFileAndReportsNothing",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReportsARealFailureOfTheInPlaceWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceThroughAHardLink",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceWhereTheRenameIsRefused",
+        "internal/atomicfile/xattr_test.go::TestWriteFileCarriesExtendedAttributesOver",
+        "internal/atomicfile/xattr_test.go::TestWriteFileKeepsAPosixACL",
+        "internal/atomicfile/xattr_test.go::TestWriteFileWritesInPlaceWhenAnAttributeCannotBeCarried",
+        "internal/pilock/async_heartbeat_test.go::TestAsyncLockHeldPastTheSyncStaleWindowIsNotTaken"
+      ]
+    },
+    {
       "id": "BF-fc028ee",
       "title": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or…",
       "symptom": "The reference web client no longer erases what the user is typing when a view is updated: an `input` or `editor` whose `id` is in the next view keeps its text, selection and the focus, unless the extension changed its `value`.",
@@ -63598,6 +63998,21 @@
       "id": "D648",
       "title": "A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where…",
       "entry": "BF-D648"
+    },
+    {
+      "id": "D649",
+      "title": "A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's…",
+      "entry": "BF-D649"
+    },
+    {
+      "id": "D650",
+      "title": "A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process…",
+      "entry": "BF-D650"
+    },
+    {
+      "id": "D651",
+      "title": "Credential and state files are replaced through a temporary file where that changes nothing but the inode…",
+      "entry": "BF-fbe92b6"
     }
   ],
   "exemptCommits": {

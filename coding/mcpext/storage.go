@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
@@ -59,62 +60,10 @@ func (b *FileAuthStorageBackend) WithLock(fn func(current string, exists bool) (
 		return err
 	}
 	if next != nil {
-		return writeFileAtomic(b.path, []byte(*next))
+		// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
+		return atomicfile.WriteFile(b.path, []byte(*next), 0o600)
 	}
 	return nil
-}
-
-// writeFileAtomic replaces path with data through a temporary file in the same directory (fsynced, then renamed), so a crash or a full disk
-// never leaves a torn credential file. Pi's writeFileSync keeps the mode of a file that exists and creates a new one private (0600); so does this.
-func writeFileAtomic(path string, data []byte) (err error) {
-	// writeFileSync writes through a symlink to its target; the rename below would replace the link itself.
-	if resolved, resolveErr := filepath.EvalSymlinks(path); resolveErr == nil {
-		path = resolved
-	}
-	mode := os.FileMode(0o600)
-	//perf:ok one stat per credential write, which already syncs a file
-	if info, statErr := os.Stat(path); statErr == nil {
-		mode = info.Mode().Perm()
-	}
-	temp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			_ = temp.Close()
-			_ = os.Remove(temp.Name())
-		}
-	}()
-	if err = temp.Chmod(mode); err != nil {
-		return err
-	}
-	if _, err = temp.Write(data); err != nil {
-		return err
-	}
-	if err = temp.Sync(); err != nil {
-		return err
-	}
-	if err = temp.Close(); err != nil {
-		return err
-	}
-	if err = os.Rename(temp.Name(), path); err != nil {
-		return err
-	}
-	// The rename is durable once its directory entry is; a platform that cannot open or sync a directory has nothing more to give.
-	syncDirectory(filepath.Dir(path))
-	return nil
-}
-
-// syncDirectory flushes a directory's entries and reports whether it could; the credential write is complete either way.
-func syncDirectory(path string) bool {
-	dir, err := os.Open(path)
-	if err != nil {
-		return false
-	}
-	synced := dir.Sync() == nil
-	_ = dir.Close()
-	return synced
 }
 
 // InMemoryAuthStorageBackend keeps the document in memory.

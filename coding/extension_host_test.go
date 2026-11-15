@@ -12,6 +12,7 @@ type recordingExtensionHost struct{ name string }
 func (*recordingExtensionHost) UIBridge() *subprocess.UIBridge               { return nil }
 func (*recordingExtensionHost) FlushCommands()                               {}
 func (*recordingExtensionHost) SetRuntimeDrainHandler(func())                {}
+func (*recordingExtensionHost) SetRuntimeLoopDrainHandler(func())            {}
 func (*recordingExtensionHost) SetSettleTailHandler(func(int))               {}
 func (*recordingExtensionHost) SetBackgroundCallGate(func() <-chan struct{}) {}
 func (*recordingExtensionHost) SetTimerTurns(*jsloop.Turns)                  {}

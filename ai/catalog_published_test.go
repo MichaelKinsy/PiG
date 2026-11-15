@@ -3,12 +3,13 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/MichaelKinsy/PiG/internal/pioracle"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // publishedCatalogScript imports the published pi-ai barrel (dist/models.generated.js) and lists every provider's chat,

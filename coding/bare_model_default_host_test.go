@@ -4,6 +4,7 @@ package coding
 
 import (
 	"bufio"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -22,31 +23,66 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// A model PiG builds for an id its registry does not list has no api and no base URL. A request of it used to go to the default OpenAI host as chat completions with the provider key.
-// The test stands a local TLS-terminating CONNECT proxy in for that host (HTTPS_PROXY; its certificate for the requested host is signed by the test CA this binary trusts, test_ca_test.go)
-// and counts what arrives: the refusal must leave zero connections and zero requests. BuildModel is the builder an extension set-model and resolve-model use (session_extension_host.go,
-// ModelBuilder), so the library row is the extension row.
+// A model PiG used to build for an id its registry does not list had no api and no base URL, and a request of it went to the default OpenAI host as chat completions with the provider key. Pi
+// has no object for such an id: the registry's getModel answers undefined (model-runtime.ts:454-455 over ai/src/models.ts:498) and set_model answers "Model not found" (rpc-mode.ts:492-495), so
+// BuildModel and buildModel refuse it at the build, with that text and no model. The model object an extension hands over (buildRequestModel, Pi's setModel object) is taken to the stream with
+// its api undefined and refused there (compat.ts:244-247). The test stands a local TLS-terminating CONNECT proxy in for the default host (HTTPS_PROXY; its certificate for the requested host is
+// signed by the test CA this binary trusts, test_ca_test.go) and counts what arrives on every row: zero connections and zero requests, so no Authorization header, whichever side refuses.
+// BuildModel is the builder an extension set-model and resolve-model use (session_extension_host.go, ModelBuilder), so the library row is the extension row.
 func TestBareModelSendsNothingToTheDefaultOpenAIHost(t *testing.T) {
 	for _, provider := range []string{"groq", "anthropic", "google", "openrouter", "mistral", "xai"} {
-		for _, via := range []string{"BuildModel", "buildModel-explicit-key"} {
+		for _, via := range []string{"BuildModel", "buildModel-explicit-key", "request-model-object", "listed-model-control"} {
 			t.Run(provider+"/"+via, func(t *testing.T) {
 				proxy := newDefaultHostProxy(t)
 				services := newRuntimeTestServices(t)
 				fakeKey := "sk-fake-" + provider + "-key"
+				const id = "not-listed-anywhere"
 				var model *ai.Model
 				var err error
-				if via == "BuildModel" {
+				switch via {
+				case "BuildModel":
 					services.Registry().SetRuntimeAPIKey(provider, fakeKey)
-					model, err = BuildModel(provider+"/not-listed-anywhere", services)
-				} else {
-					model, err = buildModel(provider+"/not-listed-anywhere", services, fakeKey)
+					model, err = BuildModel(provider+"/"+id, services)
+				case "buildModel-explicit-key":
+					model, err = buildModel(provider+"/"+id, services, fakeKey)
+				case "request-model-object":
+					services.Registry().SetRuntimeAPIKey(provider, fakeKey)
+					model, err = buildRequestModel(&ai.Model{ID: id, ProviderMeta: ai.ProviderMetadata{ProviderID: provider}}, services, "")
+				default:
+					// The control: a model of the same provider the catalog lists reaches the proxy, so the zero of the rows above is a measurement and not a proxy nobody can reach.
+					listedModels := services.ModelRuntime().GetModels(provider)
+					if len(listedModels) == 0 {
+						t.Fatalf("the catalog lists no model of %s", provider)
+					}
+					services.Registry().SetRuntimeAPIKey(provider, fakeKey)
+					if model, err = BuildModel(provider+"/"+listedModels[0].ID, services); err != nil {
+						t.Fatal(err)
+					}
+					t.Cleanup(func() { _ = model.Provider.Close() })
+					ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+					defer cancel()
+					if stream, err := model.Provider.Stream(ctx, ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}), ai.StreamOptions{MaxRetries: new(0)}); err == nil {
+						_ = stream.Result()
+					}
+					if connects, _ := proxy.report(); len(connects) == 0 {
+						t.Errorf("control: a listed model of %s (%s) reached no CONNECT at the proxy, so the rows that count zero measure nothing", provider, listedModels[0].ID)
+					}
+					return
 				}
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() { _ = model.Provider.Close() })
-				if stream, err := model.Provider.Stream(t.Context(), ai.NormalizeContext(ai.Context{SystemPrompt: "be brief", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}), ai.StreamOptions{}); err == nil {
-					t.Errorf("the stream started: error message %q", stream.Result().ErrorMessage)
+				if via == "request-model-object" {
+					if err != nil {
+						t.Fatal(err)
+					}
+					t.Cleanup(func() { _ = model.Provider.Close() })
+					stream, err := model.Provider.Stream(t.Context(), ai.NormalizeContext(ai.Context{SystemPrompt: "be brief", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}), ai.StreamOptions{})
+					if err == nil {
+						t.Fatalf("the stream started: error message %q", stream.Result().ErrorMessage)
+					}
+					if want := "No API provider registered for api: undefined"; err.Error() != want {
+						t.Errorf("error = %q, want %q", err, want)
+					}
+				} else if want := "Model not found: " + provider + "/" + id; model != nil || err == nil || err.Error() != want {
+					t.Errorf("model %+v, error %v; want no model and %q", model, err, want)
 				}
 				if connects, requests := proxy.report(); len(connects) != 0 || len(requests) != 0 {
 					t.Errorf("a bare model of %s reached the default host: CONNECT %v, requests %v", provider, connects, requests)

@@ -280,16 +280,6 @@ func truncateChars(text string, max int) string {
 	return strings.TrimRightFunc(jsstring.SliceHead(text, max-1), isJSWhitespace) + "…"
 }
 
-// serverSummary is the first line of the configured description, or of the server instructions once connected.
-func serverSummary(server McpServerListing) string {
-	text := strings.TrimFunc(server.Entry.Config.Description, isJSWhitespace)
-	if text == "" {
-		text = server.Instructions
-	}
-	first, _, _ := strings.Cut(text, "\n")
-	return strings.TrimFunc(first, isJSWhitespace)
-}
-
 // RenderServersSection is the `mcp_servers` section: every enabled server with codemode or deferred tools, with how its
 // tools are reached and a one-line summary. The model learns of the servers from it, since neither codemode nor
 // tool_search lists them. It reports false when there are no such servers.
@@ -342,7 +332,7 @@ func RenderServersSection(servers []McpServerListing) (string, bool) {
 	for i, server := range listed[:kept] {
 		summary := ""
 		if perServer > 0 {
-			summary = truncateChars(serverSummary(server), perServer)
+			summary = truncateChars(mcp.McpServerSummary(server.Entry.Config.Description, server.Instructions), perServer)
 		}
 		lines[i] = heads[i]
 		if summary != "" {

@@ -78,12 +78,14 @@ type InteractiveReplacement struct {
 	ReloadBuiltinExtensions func() []extension.Extension
 	SubprocessUIBridge      SubprocessUIBridge
 	SubprocessHost          SubprocessHost
-	ModelBinder             func(*ai.Model) *ai.Model
-	ModelLookup             func(providerID, modelID string) *ai.Model
-	ModelCatalog            func(providerID ...string) []*ai.Model
-	ModelClassify           func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
-	ModelGenerateImages     func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages
-	RequestAuthRuntime      *RequestAuthRuntime
+	// ModelBuilder is InteractiveOptions.ModelBuilder of the replacement Session's services: the selector lists from the replacement's registry (ModelRegistry, ModelCatalog), so it builds from it too.
+	ModelBuilder        func(spec string) (*ai.Model, error)
+	ModelBinder         func(*ai.Model) *ai.Model
+	ModelLookup         func(providerID, modelID string) *ai.Model
+	ModelCatalog        func(providerID ...string) []*ai.Model
+	ModelClassify       func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
+	ModelGenerateImages func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages
+	RequestAuthRuntime  *RequestAuthRuntime
 }
 
 // installRuntimeHooks binds the runtime host to this mode as the constructor of Pi's InteractiveMode does: the mode resets extension UI before the outgoing Session's contexts go stale, drains active work before the outgoing Session aborts, and rebinds to the replacement Session.
@@ -232,6 +234,7 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	m.opts.ReloadBuiltinExtensions = r.ReloadBuiltinExtensions
 	m.opts.SubprocessUIBridge = r.SubprocessUIBridge
 	m.opts.SubprocessHost = r.SubprocessHost
+	m.opts.ModelBuilder = r.ModelBuilder
 	m.opts.ModelBinder = r.ModelBinder
 	m.opts.ModelLookup = r.ModelLookup
 	m.opts.ModelCatalog = r.ModelCatalog

@@ -88509,8 +88509,8 @@
       ],
       "evidence": [
         "test:ai/registry_test.go#TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime",
-        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits",
-        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath"
+        "test:coding/cli/interactive_replacement_builder_test.go#TestInteractiveReplacementBuildsFromItsOwnServices",
+        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits"
       ]
     },
     {
@@ -88531,8 +88531,8 @@
       ],
       "evidence": [
         "test:ai/registry_test.go#TestGetBuiltinModelDataGeneratedAtReturnsACopyOfTheManifestTime",
-        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits",
-        "test:coding/model_runtime_store_path_test.go#TestCreateModelRuntimeRestoresCachedCatalogsFromModelsStorePath"
+        "test:coding/cli/interactive_replacement_builder_test.go#TestInteractiveReplacementBuildsFromItsOwnServices",
+        "test:coding/cli/model_remote_catalog_test.go#TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits"
       ]
     },
     {
@@ -274068,9 +274068,9 @@
         "call:coding/mcpext/extension.go#Extension.registerTools"
       ],
       "evidence": [
+        "test:coding/mcpext/servers_section_oracle_test.go#TestMCPServersSectionMatchesPiOracle",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence",
-        "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthAcceptsAPastedRedirectURLWhenTheBrowserCannotReachTheCallback"
+        "test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence"
       ]
     },
     {
@@ -275128,9 +275128,9 @@
         "call:coding/mcpext/manager.go#describeTransport"
       ],
       "evidence": [
+        "test:coding/mcpext/servers_section_oracle_test.go#TestMCPServersSectionMatchesPiOracle",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIReplicatedStateAndLateRegistrationGo",
-        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKMcpServerRegistration",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeMcpServerRegistration"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKMcpServerRegistration"
       ]
     },
     {
@@ -275170,9 +275170,9 @@
         "call:coding/mcpext/extension.go#Extension.registerTools"
       ],
       "evidence": [
+        "test:coding/mcpext/servers_section_oracle_test.go#TestMCPServersSectionMatchesPiOracle",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence",
-        "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthAcceptsAPastedRedirectURLWhenTheBrowserCannotReachTheCallback"
+        "test:coding/mcpext/config_test.go#TestMCPConfigValidatesExposureAndReadsAutoEnableCodemodeWithProjectPrecedence"
       ]
     },
     {

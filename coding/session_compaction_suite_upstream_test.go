@@ -173,7 +173,7 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 		t.Setenv("FAUX_API_KEY", "")
 		h := newRecoveryHarness(t, harnessOptions{withConfiguredAuth: new(false)})
 		suiteCompactionSeed(t, h.session)
-		model, err := BuildModel("faux/faux-1", h.session.services)
+		model, err := fauxFallbackModel(h.session.services)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -325,7 +325,7 @@ func TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself(t *testing.T) {
 	t.Run("an empty session reports there is nothing to compact instead of missing auth", func(t *testing.T) {
 		t.Setenv("FAUX_API_KEY", "")
 		h := newRecoveryHarness(t, harnessOptions{withConfiguredAuth: new(false)})
-		model, err := BuildModel("faux/faux-1", h.session.services)
+		model, err := fauxFallbackModel(h.session.services)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -339,7 +339,7 @@ func TestManualCompactionResolvesAuthOnlyWhenPiSummarizesItself(t *testing.T) {
 	t.Run("an extension-supplied summary needs no auth", func(t *testing.T) {
 		t.Setenv("FAUX_API_KEY", "")
 		h := newRecoveryHarness(t, harnessOptions{withConfiguredAuth: new(false), extension: summaryFromPreparation("extension summary")})
-		model, err := BuildModel("faux/faux-1", h.session.services)
+		model, err := fauxFallbackModel(h.session.services)
 		if err != nil {
 			t.Fatal(err)
 		}

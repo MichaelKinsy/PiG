@@ -13,8 +13,10 @@ type ExtensionHost interface {
 	UIBridge() *subprocess.UIBridge
 	// FlushCommands applies the stdin-end window to the commands of runtimes that report none.
 	FlushCommands()
-	// SetRuntimeDrainHandler installs the handler that runs when the extension runtimes report that nothing keeps their event loops alive.
+	// SetRuntimeDrainHandler installs the handler that runs when the extension runtimes report that nothing keeps their event loops alive, and at a quit yield, Pi's RPC exit at the stdout flush.
 	SetRuntimeDrainHandler(fn func())
+	// SetRuntimeLoopDrainHandler installs the handler that runs only when the extension runtimes report that nothing keeps their event loops alive.
+	SetRuntimeLoopDrainHandler(fn func())
 	// SetSettleTailHandler installs the handler that receives the count of extension calls that keep a settle tail open.
 	SetSettleTailHandler(fn func(suspended int))
 	// SetBackgroundCallGate installs the hold on the UI calls that no request started: a call waits while the gate returns a channel and runs when it closes.
