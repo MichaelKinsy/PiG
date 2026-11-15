@@ -88,7 +88,6 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 
 // writeInPlace is Pi's writeFileSync: open (created with perm when it does not exist, an existing file keeps its mode), truncate, write.
 func writeInPlace(path string, data []byte, perm os.FileMode, cause error) error {
-	// pig divergence (D651): the in-place write, as Pi writes the file, where a replacement is refused.
 	if report := inPlaceReporter.Load(); report != nil {
 		(*report)(path, cause)
 	}
